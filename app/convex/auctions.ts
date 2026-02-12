@@ -31,6 +31,11 @@ export const placeBid = mutation({
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
     if (auction.status !== "active") throw new Error("Auction not active");
+
+    // Prevent sellers from bidding on their own auction
+    if (auction.sellerId === userId) {
+      throw new Error("Sellers cannot bid on their own auction");
+    }
     
     // Check if auction has expired
     if (auction.endTime <= Date.now()) {

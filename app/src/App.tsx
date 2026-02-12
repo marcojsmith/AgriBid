@@ -39,7 +39,12 @@ function App() {
             <Button variant="outline" size="sm" onClick={async () => await signOut()}>Sign Out</Button>
           </Authenticated>
           <Unauthenticated>
-            <Button size="sm">Login / Register</Button>
+            <Button size="sm" onClick={() => {
+              const element = document.getElementById("auth-form");
+              if (element) {
+                element.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}>Login / Register</Button>
           </Unauthenticated>
         </div>
       </header>
@@ -75,7 +80,7 @@ function App() {
         </Authenticated>
 
         <Unauthenticated>
-          <div className="max-w-md mx-auto mt-20 space-y-8 border-2 border-primary/20 p-8 rounded-2xl bg-card shadow-xl">
+          <div id="auth-form" className="max-w-md mx-auto mt-20 space-y-8 border-2 border-primary/20 p-8 rounded-2xl bg-card shadow-xl">
             <div className="text-center">
               <h2 className="text-3xl font-black text-primary mb-2">FIELD TO MARKET</h2>
               <p className="text-muted-foreground text-sm uppercase tracking-widest">Real-Time Bidding for Serious Farmers</p>
@@ -88,8 +93,9 @@ function App() {
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Email Address</label>
+                <label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground ml-1">Email Address</label>
                 <input
+                  id="email"
                   type="email"
                   placeholder="name@farm.com"
                   className="w-full border-2 border-muted p-3 rounded-xl focus:border-primary outline-none transition-colors"
@@ -98,8 +104,9 @@ function App() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Secure Password</label>
+                <label htmlFor="password" className="text-xs font-bold uppercase text-muted-foreground ml-1">Secure Password</label>
                 <input
+                  id="password"
                   type="password"
                   placeholder="••••••••"
                   className="w-full border-2 border-muted p-3 rounded-xl focus:border-primary outline-none transition-colors"

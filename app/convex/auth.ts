@@ -22,7 +22,7 @@ export const createAuth = (
       disabled: optionsOnly,
     },
     // The site URL is needed for redirects and cookies
-    baseURL: (globalThis as any).process.env.VITE_CONVEX_SITE_URL,
+    baseURL: (globalThis as any).process.env.CONVEX_SITE_URL,
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
@@ -34,7 +34,7 @@ export const createAuth = (
         authConfig: { 
           providers: [{ 
             applicationID: "convex", 
-            domain: (globalThis as any).process.env.VITE_CONVEX_SITE_URL || "" 
+            domain: (globalThis as any).process.env.CONVEX_SITE_URL || "" 
           }] 
         } 
       }),
