@@ -3,33 +3,33 @@
 ## Project Setup & Infrastructure
 
 ### Initial Setup
-- [ ] Create `app/` directory for monorepo-style structure
-- [ ] Initialise Vite + React + TypeScript project in `app/`
-- [ ] Configure Tailwind CSS with custom theme (Earth tones)
-- [ ] Install and configure Shadcn/UI components
+- [x] Create `app/` directory for monorepo-style structure
+- [x] Initialise Vite + React + TypeScript project in `app/`
+- [x] Configure Tailwind CSS with custom theme (Earth tones)
+- [x] Install and configure Shadcn/UI components
 - [ ] Set up ESLint + Prettier with project rules
 - [ ] Configure Vitest for unit testing
-- [ ] Create `.env.example` with required variables
-- [ ] Set up Git repository with `.gitignore`
-- [ ] Create initial folder structure (`src/components`, `src/pages`, `src/lib`, etc.)
+- [x] Create `.env.example` with required variables
+- [x] Set up Git repository with `.gitignore`
+- [x] Create initial folder structure (`src/components`, `src/pages`, `src/lib`, etc.)
 
 ### Convex Configuration
-- [ ] Install Convex CLI (`npm install convex`)
-- [ ] Run `npx convex dev` to initialise project in `app/`
-- [ ] Configure `convex.json` with deployment settings
-- [ ] Set up environment variables in Convex dashboard
-- [ ] Create initial schema (`convex/schema.ts`)
-- [ ] Implement seeding script (`convex/seed.ts`) for equipment metadata and mock data
-- [ ] Test database connection with sample query
+- [x] Install Convex CLI (`npm install convex`)
+- [x] Run `npx convex dev` to initialise project in `app/`
+- [x] Configure `convex.json` with deployment settings
+- [x] Set up environment variables in Convex dashboard
+- [x] Create initial schema (`convex/schema.ts`)
+- [x] Implement seeding script (`convex/seed.ts`) for equipment metadata and mock data
+- [x] Test database connection with sample query
 
 ### Better Auth Integration
-- [ ] Install `@better-auth/cli` and dependencies
-- [ ] Generate Better Auth component (`npx @better-auth/cli init`)
-- [ ] Configure auth providers (email/password, Google OAuth)
-- [ ] Set up auth middleware in `convex/http.ts`
-- [ ] Create auth client utilities (`src/lib/auth-client.ts`)
-- [ ] Test authentication flow (register, login, logout)
-- [ ] Implement role-based access control (RBAC)
+- [x] Install `@better-auth/cli` and dependencies
+- [x] Generate Better Auth component (`npx @better-auth/cli init`)
+- [x] Configure auth providers (email/password, Google OAuth)
+- [x] Set up auth middleware in `convex/http.ts`
+- [x] Create auth client utilities (`src/lib/auth-client.ts`)
+- [x] Test authentication flow (register, login, logout)
+- [x] Implement role-based access control (RBAC)
 
 ---
 
