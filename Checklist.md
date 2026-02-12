@@ -3,8 +3,9 @@
 ## Project Setup & Infrastructure
 
 ### Initial Setup
-- [ ] Initialise Vite + React + TypeScript project
-- [ ] Configure Tailwind CSS with custom theme
+- [ ] Create `app/` directory for monorepo-style structure
+- [ ] Initialise Vite + React + TypeScript project in `app/`
+- [ ] Configure Tailwind CSS with custom theme (Earth tones)
 - [ ] Install and configure Shadcn/UI components
 - [ ] Set up ESLint + Prettier with project rules
 - [ ] Configure Vitest for unit testing
@@ -14,10 +15,11 @@
 
 ### Convex Configuration
 - [ ] Install Convex CLI (`npm install convex`)
-- [ ] Run `npx convex dev` to initialise project
+- [ ] Run `npx convex dev` to initialise project in `app/`
 - [ ] Configure `convex.json` with deployment settings
 - [ ] Set up environment variables in Convex dashboard
 - [ ] Create initial schema (`convex/schema.ts`)
+- [ ] Implement seeding script (`convex/seed.ts`) for equipment metadata and mock data
 - [ ] Test database connection with sample query
 
 ### Better Auth Integration
@@ -34,11 +36,14 @@
 ## Database Schema & Backend Logic
 
 ### Schema Definition
+- [ ] Define `equipmentMetadata` table (static lookup)
+  - [ ] Fields: make, models, category
+  - [ ] Index: `by_make`
 - [ ] Define `users` table with indexes
   - [ ] Fields: email, name, role, isVerified, createdAt
   - [ ] Index: `by_email`
 - [ ] Define `auctions` table with indexes
-  - [ ] Fields: title, make, model, year, operatingHours, location, prices, timestamps, status, images
+  - [ ] Fields: title, make, model, year, operatingHours, location, prices, timestamps, status, images, minIncrement
   - [ ] Indexes: `by_status`, `by_seller`, `by_end_time`, `by_location`
 - [ ] Define `bids` table with indexes
   - [ ] Fields: auctionId, bidderId, amount, timestamp, isAutoBid
@@ -63,13 +68,13 @@
 
 ### Convex Mutations
 - [ ] `createAuction` - create new auction (seller only)
-  - [ ] Validate required fields
+  - [ ] Validate required fields (using equipmentMetadata for lookup)
   - [ ] Upload images to Convex File Storage
   - [ ] Set initial status to "draft"
 - [ ] `updateAuction` - edit draft auction
 - [ ] `publishAuction` - change status from "draft" to "active"
 - [ ] `placeBid` - place a bid with soft close logic
-  - [ ] Validate bid amount (current price + increment)
+  - [ ] Enforce minimum bid increment (`currentPrice + minIncrement`)
   - [ ] Check auction is active and not expired
   - [ ] Extend endTime if bid in final 2 minutes
   - [ ] Create audit log entry
@@ -170,6 +175,7 @@
   - [ ] Current bid display (real-time updates)
   - [ ] Bid history (collapsible list)
   - [ ] Bid form: amount input + "Place Bid" button
+  - [ ] Enforce Minimum Bid Increment logic in UI and Backend
   - [ ] Proxy bid toggle: "Set Max Bid"
   - [ ] Shipping calculator: postcode input → API call → cost display
 - [ ] **Seller Info**

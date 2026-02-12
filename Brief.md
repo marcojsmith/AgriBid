@@ -162,29 +162,32 @@ AgriBid bridges the trust gap through:
 ---
 
 ## 5. File Structure:
+The project uses a monorepo-style structure where all application code resides within the `app/` directory.
+
 ```
-app/
-├── convex/
-│   ├── schema.ts
-│   ├── auctions.ts (queries/mutations)
-│   ├── betterAuth/ (Better Auth component)
-│   ├── cron.ts (scheduled functions)
-│   └── http.ts (Better Auth routes)
-├── src/
-│   ├── components/
-│   │   ├── AuctionCard.tsx
-│   │   ├── BidForm.tsx
-│   │   ├── ImageGallery.tsx
-│   │   └── CountdownTimer.tsx
-│   ├── pages/
-│   │   ├── Home.tsx
-│   │   ├── AuctionDetail.tsx
-│   │   └── SellerDashboard.tsx
-│   ├── lib/
-│   │   ├── auth-client.ts (Better Auth client)
-│   │   └── auth-server.ts (Next.js server helpers)
-│   └── App.tsx
-└── tailwind.config.js
+/ (Project Root)
+├── app/ (Application Root)
+│   ├── convex/
+│   │   ├── schema.ts
+│   │   ├── auctions.ts (queries/mutations)
+│   │   ├── seed.ts (static equipment & mock data)
+│   │   ├── betterAuth/
+│   │   ├── cron.ts
+│   │   └── http.ts
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ui/ (Shadcn components)
+│   │   │   ├── AuctionCard.tsx
+│   │   │   ├── BidForm.tsx
+│   │   │   └── ...
+│   │   ├── pages/
+│   │   ├── lib/
+│   │   └── App.tsx
+│   ├── tailwind.config.js
+│   └── package.json
+├── Brief.md
+├── Checklist.md
+└── README.md
 ```
 
 ---
@@ -228,11 +231,18 @@ app/
 
 ### 5.2 Starting Convex Schema Design
 ```typescript
-// convex/schema.ts
+// app/convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // Static lookup table for equipment makes/models
+  equipmentMetadata: defineTable({
+    make: v.string(),
+    models: v.array(v.string()),
+    category: v.string(), // e.g., "Tractor", "Combine"
+  }).index("by_make", ["make"]),
+
   auctions: defineTable({
     title: v.string(),
     make: v.string(),
@@ -243,6 +253,7 @@ export default defineSchema({
     reservePrice: v.number(),
     startingPrice: v.number(),
     currentPrice: v.number(),
+    minIncrement: v.number(), // Enforced increment logic
     startTime: v.number(), // Unix timestamp
     endTime: v.number(),
     sellerId: v.id("users"),
@@ -281,7 +292,7 @@ export default defineSchema({
 
 #### Mutation: `placeBid`
 ```typescript
-// convex/auctions.ts
+// app/convex/auctions.ts
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
@@ -294,7 +305,12 @@ export const placeBid = mutation({
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
     if (auction.status !== "active") throw new Error("Auction not active");
-    if (args.amount <= auction.currentPrice) throw new Error("Bid too low");
+    
+    // Enforce Minimum Bid Increment
+    const minimumRequired = auction.currentPrice + auction.minIncrement;
+    if (args.amount < minimumRequired) {
+      throw new Error(`Bid must be at least £${minimumRequired}`);
+    }
 
     // Extend auction if bid placed in final 2 minutes
     const timeRemaining = auction.endTime - Date.now();

@@ -25,6 +25,8 @@ Additional documentation can be found in the following folders and files:
     - Use a cohesive color scheme and typography that aligns with the game's theme.
     - Make use of the defined theme styles, and do not hardcode colors or fonts directly in components.
     - If a new theme style is needed, define it in the theme configuration.
+- **skills:**
+    - Use the frontend, react-best-practice, react-composition-patterns, shadcn, and web-design-guidelines skills to inform your UI design decisions and implementation.
 
 # Digital Prototype Tech Stack
 - **Frontend:** React (Vite), TypeScript.
@@ -50,7 +52,6 @@ Leverage 3rd party LLMs (Gemini 3.0 Pro, Kimi K2, GPT-5, Claude, Nano Banana Pro
 3. **Request:** Ask the user to submit this prompt to their preferred external model and provide the output back to you.
 4. **Integration:** Review, edit, and refine the returned content for accuracy and consistency before adding it to the project.
 
-# Additional Rules
 # Additional Tools & Capabilities
 
 ## Gemini Model access
