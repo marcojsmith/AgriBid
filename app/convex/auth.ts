@@ -18,6 +18,12 @@ export const createAuth = (
 ) => {
   const trustedOrigins = ALLOWED_ORIGINS;
 
+  const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;
+  const siteUrl = env.CONVEX_SITE_URL;
+  if (!siteUrl) {
+    throw new Error("Missing CONVEX_SITE_URL environment variable. This is required for authentication to function correctly.");
+  }
+
   return betterAuth({
     appName: "AgriBid",
     // disable logging when createAuth is called just to generate options.
@@ -25,8 +31,7 @@ export const createAuth = (
       disabled: optionsOnly,
     },
     // The site URL is needed for redirects and cookies
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    baseURL: (globalThis as any).process.env.CONVEX_SITE_URL || (globalThis as any).process.env.BETTER_AUTH_URL,
+    baseURL: siteUrl || env.BETTER_AUTH_URL,
     basePath: "/api/auth",
     trustedOrigins,
     advanced: {
@@ -47,8 +52,7 @@ export const createAuth = (
         authConfig: { 
           providers: [{ 
             applicationID: "convex", 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            domain: (globalThis as any).process.env.CONVEX_SITE_URL || "" 
+            domain: siteUrl
           }] 
         } 
       }),

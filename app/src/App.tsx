@@ -18,6 +18,7 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [signInLoading, setSignInLoading] = useState(false);
   const [signUpLoading, setSignUpLoading] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
   const handleSeed = async () => {
     await seedMetadata();
@@ -83,26 +84,46 @@ function App() {
           <div id="auth-form" className="max-w-md mx-auto mt-20 space-y-8 border-2 border-primary/20 p-8 rounded-2xl bg-card shadow-xl">
             <div className="text-center">
               <h2 className="text-3xl font-black text-primary mb-2">FIELD TO MARKET</h2>
-              <p className="text-muted-foreground text-sm uppercase tracking-widest">Real-Time Bidding for Serious Farmers</p>
+              <p className="text-muted-foreground text-sm uppercase tracking-widest">
+                {authMode === "signin" ? "Real-Time Bidding for Serious Farmers" : "Join the Leading Agricultural Marketplace"}
+              </p>
             </div>
             
             <form 
               className="flex flex-col space-y-4"
               onSubmit={async (e) => {
                 e.preventDefault();
-                setSignInLoading(true);
-                setAuthError("");
-                try {
-                  const { error } = await signIn.email({ email, password });
-                  if (error) {
-                    setAuthError(error.message || "Sign in failed");
+                if (authMode === "signin") {
+                  setSignInLoading(true);
+                  setAuthError("");
+                  try {
+                    const { error } = await signIn.email({ email, password });
+                    if (error) {
+                      setAuthError(error.message || "Sign in failed");
+                    }
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : "Sign in failed. Please try again.";
+                    setAuthError(message);
+                    console.error("Sign in error:", error);
+                  } finally {
+                    setSignInLoading(false);
                   }
-                } catch (error) {
-                  const message = error instanceof Error ? error.message : "Sign in failed. Please try again.";
-                  setAuthError(message);
-                  console.error("Sign in error:", error);
-                } finally {
-                  setSignInLoading(false);
+                } else {
+                  setSignUpLoading(true);
+                  setAuthError("");
+                  try {
+                    const name = email.split('@')[0];
+                    const { error } = await signUp.email({ email, password, name });
+                    if (error) {
+                      setAuthError(error.message || "Registration failed");
+                    }
+                  } catch (error) {
+                    const message = error instanceof Error ? error.message : "Registration failed. Please try again.";
+                    setAuthError(message);
+                    console.error("Sign up error:", error);
+                  } finally {
+                    setSignUpLoading(false);
+                  }
                 }
               }}
             >
@@ -125,11 +146,13 @@ function App() {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="password" className="text-xs font-bold uppercase text-muted-foreground ml-1">Secure Password</label>
+                <label htmlFor="password" className="text-xs font-bold uppercase text-muted-foreground ml-1">
+                  {authMode === "signin" ? "Secure Password" : "Create Secure Password"}
+                </label>
                 <input
                   id="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete={authMode === "signin" ? "current-password" : "new-password"}
                   placeholder="••••••••"
                   className="w-full border-2 border-muted p-3 rounded-xl focus:border-primary outline-none transition-colors"
                   value={password}
@@ -137,31 +160,31 @@ function App() {
                   required
                 />
               </div>
-              <Button type="submit" className="h-12 text-lg font-bold rounded-xl" disabled={signInLoading}>
-                {signInLoading ? "Signing in..." : "Sign In to AgriBid"}
+              <Button type="submit" className="h-12 text-lg font-bold rounded-xl" disabled={signInLoading || signUpLoading}>
+                {authMode === "signin" 
+                  ? (signInLoading ? "Signing in..." : "Sign In to AgriBid") 
+                  : (signUpLoading ? "Creating account..." : "Create Verified Account")}
               </Button>
+              
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t"></span></div>
-                <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground font-bold">New to the platform?</span></div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground font-bold">
+                    {authMode === "signin" ? "New to the platform?" : "Already have an account?"}
+                  </span>
+                </div>
               </div>
-              <Button type="button" variant="secondary" className="h-12 font-bold rounded-xl" disabled={signUpLoading} onClick={async () => {
-                setSignUpLoading(true);
-                setAuthError("");
-                try {
-                  const name = email.split('@')[0];
-                  const { error } = await signUp.email({ email, password, name });
-                  if (error) {
-                    setAuthError(error.message || "Registration failed");
-                  }
-                } catch (error) {
-                  const message = error instanceof Error ? error.message : "Registration failed. Please try again.";
-                  setAuthError(message);
-                  console.error("Sign up error:", error);
-                } finally {
-                  setSignUpLoading(false);
-                }
-              }}>
-                {signUpLoading ? "Creating account..." : "Create Verified Account"}
+              
+              <Button 
+                type="button" 
+                variant="secondary" 
+                className="h-12 font-bold rounded-xl" 
+                onClick={() => {
+                  setAuthMode(authMode === "signin" ? "signup" : "signin");
+                  setAuthError("");
+                }}
+              >
+                {authMode === "signin" ? "Switch to Registration" : "Switch to Sign In"}
               </Button>
             </form>
           </div>
