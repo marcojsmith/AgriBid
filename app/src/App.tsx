@@ -86,7 +86,26 @@ function App() {
               <p className="text-muted-foreground text-sm uppercase tracking-widest">Real-Time Bidding for Serious Farmers</p>
             </div>
             
-            <div className="flex flex-col space-y-4">
+            <form 
+              className="flex flex-col space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSignInLoading(true);
+                setAuthError("");
+                try {
+                  const { error } = await signIn.email({ email, password });
+                  if (error) {
+                    setAuthError(error.message || "Sign in failed");
+                  }
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : "Sign in failed. Please try again.";
+                  setAuthError(message);
+                  console.error("Sign in error:", error);
+                } finally {
+                  setSignInLoading(false);
+                }
+              }}
+            >
               {authError && (
                 <div className="bg-destructive/10 border border-destructive text-destructive p-3 rounded-lg text-sm">
                   {authError}
@@ -97,10 +116,12 @@ function App() {
                 <input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="name@farm.com"
                   className="w-full border-2 border-muted p-3 rounded-xl focus:border-primary outline-none transition-colors"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -108,37 +129,30 @@ function App() {
                 <input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   className="w-full border-2 border-muted p-3 rounded-xl focus:border-primary outline-none transition-colors"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
               </div>
-              <Button className="h-12 text-lg font-bold rounded-xl" disabled={signInLoading} onClick={async () => {
-                setSignInLoading(true);
-                setAuthError("");
-                try {
-                  await signIn.email({ email, password });
-                } catch (error) {
-                  const message = error instanceof Error ? error.message : "Sign in failed. Please try again.";
-                  setAuthError(message);
-                  console.error("Sign in error:", error);
-                } finally {
-                  setSignInLoading(false);
-                }
-              }}>
+              <Button type="submit" className="h-12 text-lg font-bold rounded-xl" disabled={signInLoading}>
                 {signInLoading ? "Signing in..." : "Sign In to AgriBid"}
               </Button>
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t"></span></div>
                 <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground font-bold">New to the platform?</span></div>
               </div>
-              <Button variant="secondary" className="h-12 font-bold rounded-xl" disabled={signUpLoading} onClick={async () => {
+              <Button type="button" variant="secondary" className="h-12 font-bold rounded-xl" disabled={signUpLoading} onClick={async () => {
                 setSignUpLoading(true);
                 setAuthError("");
                 try {
                   const name = email.split('@')[0];
-                  await signUp.email({ email, password, name });
+                  const { error } = await signUp.email({ email, password, name });
+                  if (error) {
+                    setAuthError(error.message || "Registration failed");
+                  }
                 } catch (error) {
                   const message = error instanceof Error ? error.message : "Registration failed. Please try again.";
                   setAuthError(message);
@@ -149,7 +163,7 @@ function App() {
               }}>
                 {signUpLoading ? "Creating account..." : "Create Verified Account"}
               </Button>
-            </div>
+            </form>
           </div>
         </Unauthenticated>
       </main>

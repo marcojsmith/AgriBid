@@ -4,6 +4,9 @@ import { convexClient } from "@convex-dev/better-auth/client/plugins";
 
 export const authClient = createAuthClient({
   baseURL: import.meta.env.VITE_CONVEX_SITE_URL || window.location.origin,
+  fetchOptions: {
+    credentials: "include",
+  },
   plugins: [convexClient()],
 });
 

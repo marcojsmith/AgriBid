@@ -6,30 +6,11 @@ interface CountdownTimerProps {
 }
 
 export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
-  const [timeLeft, setTimeLeft] = useState<string>("");
+  const [remainingMs, setRemainingMs] = useState<number>(() => endTime - Date.now());
 
   useEffect(() => {
     const calculateTime = () => {
-      const now = Date.now();
-      const diff = endTime - now;
-
-      if (diff <= 0) {
-        setTimeLeft("Ended");
-        return;
-      }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      const parts = [];
-      if (days > 0) parts.push(`${days}d`);
-      if (hours > 0 || days > 0) parts.push(`${hours}h`);
-      parts.push(`${minutes}m`);
-      parts.push(`${seconds}s`);
-
-      setTimeLeft(parts.join(" "));
+      setRemainingMs(endTime - Date.now());
     };
 
     calculateTime();
@@ -38,10 +19,26 @@ export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
     return () => clearInterval(interval);
   }, [endTime]);
 
-  const isLowTime = endTime - Date.now() < 3600000; // Less than 1 hour
+  const isLowTime = remainingMs > 0 && remainingMs < 3600000; // Less than 1 hour
+
+  if (remainingMs <= 0) {
+    return <span className="font-mono font-bold text-primary">Ended</span>;
+  }
+
+  const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  parts.push(`${seconds}s`);
+  const timeLeft = parts.join(" ");
 
   return (
-    <span className={`font-mono font-bold ${isLowTime && timeLeft !== "Ended" ? "text-red-600 animate-pulse" : "text-primary"}`}>
+    <span className={`font-mono font-bold ${isLowTime ? "text-red-600 animate-pulse" : "text-primary"}`}>
       {timeLeft}
     </span>
   );
