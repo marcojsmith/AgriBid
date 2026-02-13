@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Auction Detail Page and Bid Submission Flow**
+- [~] **Track: Auction Detail Page and Bid Submission Flow**
 *Link: [./tracks/auction_detail_20260213/](./tracks/auction_detail_20260213/)*

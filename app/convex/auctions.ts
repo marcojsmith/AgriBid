@@ -13,9 +13,9 @@ export const getActiveAuctions = query({
 });
 
 export const getAuctionById = query({
-  args: { id: v.id("auctions") },
+  args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    return await ctx.db.get(args.auctionId);
   },
 });
 
