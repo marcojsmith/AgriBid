@@ -101,23 +101,23 @@ export const ListingWizard = () => {
     }));
   };
 
-  const handleImageUpload = (slotId: string) => {
-    const mockImages: Record<string, string> = {
-      front: "https://images.unsplash.com/photo-1698656627092-d7b1a629b0a1?auto=format&fit=crop&w=800",
-      engine: "https://images.unsplash.com/photo-1650361288331-5079a81f3ca5?auto=format&fit=crop&w=800",
-      cabin: "https://images.unsplash.com/photo-1549495676-928e08d6265e?auto=format&fit=crop&w=800",
-      rear: "https://images.unsplash.com/photo-1626435091215-649065609337?auto=format&fit=crop&w=800",
-    };
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, slotId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // For the prototype, we'll use a local object URL to show the image
+    const imageUrl = URL.createObjectURL(file);
     
-    const newImageUrl = mockImages[slotId];
-    if (formData.images.includes(newImageUrl)) return;
-    
-    updateField("images", [...formData.images, newImageUrl]);
-    toast.info(`${slotId.toUpperCase()} photo added to listing`);
+    updateField("images", [...formData.images, imageUrl]);
+    toast.success(`${slotId.toUpperCase()} photo added to listing`);
   };
 
   const removeImage = (url: string) => {
     updateField("images", formData.images.filter((img: string) => img !== url));
+    // Clean up memory
+    if (url.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+    }
   };
 
   const next = () => setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
@@ -369,18 +369,27 @@ export const ListingWizard = () => {
                         </div>
                       </>
                     ) : (
-                      <button 
-                        onClick={() => handleImageUpload(slot.id)}
-                        className="w-full h-full flex flex-col items-center justify-center gap-2 outline-none"
-                      >
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Camera className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm font-black uppercase tracking-tight">{slot.label}</p>
-                          <p className="text-[10px] text-muted-foreground font-medium uppercase">{slot.desc}</p>
-                        </div>
-                      </button>
+                      <div className="w-full h-full">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          id={`file-upload-${slot.id}`}
+                          onChange={(e) => handleImageUpload(e, slot.id)}
+                        />
+                        <label 
+                          htmlFor={`file-upload-${slot.id}`}
+                          className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer outline-none"
+                        >
+                          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Camera className="h-6 w-6 text-primary" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-black uppercase tracking-tight">{slot.label}</p>
+                            <p className="text-[10px] text-muted-foreground font-medium uppercase">{slot.desc}</p>
+                          </div>
+                        </label>
+                      </div>
                     )}
                   </div>
                 );
