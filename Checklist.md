@@ -50,7 +50,7 @@
 - [x] `getAuctionBids` - fetch bid history for an auction
 - [ ] `getUserBids` - fetch bids placed by a user
 - [ ] `getWatchlist` - fetch user's watched auctions
-- [ ] `searchAuctions` - implement search/filter logic
+- [x] `searchAuctions` - implement search/filter logic (integrated into getActiveAuctions)
 
 ### Convex Mutations
 - [x] `createAuction` - create new auction (seller only)
@@ -96,8 +96,8 @@
 ## Frontend Pages & Components
 
 ### Global Components
-- [ ] **NavBar** (`src/components/NavBar.tsx`)
-- [ ] **Footer** (`src/components/Footer.tsx`)
+- [x] **NavBar** (`src/components/Header.tsx`)
+- [x] **Footer** (`src/components/Footer.tsx`)
 - [ ] **LoadingSpinner** (`src/components/LoadingSpinner.tsx`)
 - [ ] **ErrorBoundary** (`src/components/ErrorBoundary.tsx`)
 - [x] **Toast** notifications (Shadcn Toast/Sonner)
@@ -161,7 +161,7 @@
 - [ ] Integrate Convex File Storage API
 
 ### Search & Filters
-- [ ] Implement text search on title, make, model
+- [x] Implement text search on title, make, model
 
 ### Countdown Timer
 - [x] Create reusable `CountdownTimer` component
