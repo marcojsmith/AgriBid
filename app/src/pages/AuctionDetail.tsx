@@ -12,11 +12,11 @@ import { SellerInfo } from "../components/SellerInfo";
 import type { Id } from "../../convex/_generated/dataModel";
 
 /**
- * Render the detailed auction page for the auction identified by the current route `id`.
+ * Display the auction detail page for the auction identified by the current route `id`.
  *
- * Renders a fullscreen loading spinner while the auction is being fetched, a "Auction Not Found" screen if no auction exists for the given id, and otherwise a two-column layout showing the auction header, image gallery, equipment description, bidding panel with bid history, and seller information.
+ * Shows an "Invalid Auction ID" message when the route `id` is missing, a loading indicator while data is being fetched, and an "Auction Not Found" message when no auction exists for the given `id`. When the auction exists, renders the auction header, image gallery, equipment description, bidding panel with bid history, and seller information.
  *
- * @returns The auction detail page as a JSX element.
+ * @returns A JSX element representing the auction detail page
  */
 export default function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
