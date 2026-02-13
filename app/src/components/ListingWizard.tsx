@@ -2,10 +2,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, ChevronLeft, Save, Search, Check } from "lucide-react";
-import { useQuery } from "convex/react";
+import { ChevronRight, ChevronLeft, Save, Search, Check, AlertCircle, Info, TrendingUp, Camera, X, CheckCircle2 } from "lucide-react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const STEPS = [
   "General Information",
@@ -15,9 +17,20 @@ const STEPS = [
   "Pricing & Strategy",
 ];
 
+const PHOTO_SLOTS = [
+  { id: "front", label: "Front 45° View", desc: "Show the main profile of the equipment" },
+  { id: "engine", label: "Engine Bay", desc: "Detailed shot of the engine and components" },
+  { id: "cabin", label: "Instrument Cluster", desc: "Show hours and dashboard controls" },
+  { id: "rear", label: "Rear / Hitch", desc: "Show hydraulics and rear assembly" },
+];
+
 export const ListingWizard = () => {
   const metadata = useQuery(api.auctions.getEquipmentMetadata);
+  const createAuction = useMutation(api.auctions.createAuction);
   const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmitting, setIsBidding] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem("agribid_listing_draft");
     return saved ? JSON.parse(saved) : {
@@ -47,21 +60,99 @@ export const ListingWizard = () => {
   const updateField = (field: string, value: any) => {
     setFormData((prev: any) => {
       const newData = { ...prev, [field]: value };
-      
-      // Auto-update title if it's empty or looks like a default title
       if (field === "make" || field === "model" || field === "year") {
         const parts = [newData.year, newData.make, newData.model].filter(Boolean);
         if (parts.length > 0) {
           newData.title = parts.join(" ");
         }
       }
-      
       return newData;
     });
   };
 
+  const updateChecklist = (field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      conditionChecklist: {
+        ...prev.conditionChecklist,
+        [field]: value,
+      }
+    }));
+  };
+
+  const handleImageUpload = (slotId: string) => {
+    // Mock upload for now: using Unsplash IDs
+    const mockImages: Record<string, string> = {
+      front: "https://images.unsplash.com/photo-1698656627092-d7b1a629b0a1?auto=format&fit=crop&w=800",
+      engine: "https://images.unsplash.com/photo-1650361288331-5079a81f3ca5?auto=format&fit=crop&w=800",
+      cabin: "https://images.unsplash.com/photo-1549495676-928e08d6265e?auto=format&fit=crop&w=800",
+      rear: "https://images.unsplash.com/photo-1626435091215-649065609337?auto=format&fit=crop&w=800",
+    };
+    
+    const newImageUrl = mockImages[slotId];
+    if (formData.images.includes(newImageUrl)) return;
+    
+    updateField("images", [...formData.images, newImageUrl]);
+    toast.info(`${slotId.toUpperCase()} photo added to listing`);
+  };
+
+  const removeImage = (url: string) => {
+    updateField("images", formData.images.filter((img: string) => img !== url));
+  };
+
   const next = () => setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
   const prev = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
+
+  const handleSubmit = async () => {
+    setIsBidding(true);
+    try {
+      await createAuction(formData);
+      localStorage.removeItem("agribid_listing_draft");
+      setIsSuccess(true);
+      toast.success("Listing submitted for review!");
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Submission failed");
+    } finally {
+      setIsBidding(false);
+    }
+  };
+
+  if (isSuccess) {
+    return (
+      <div className="bg-card border-2 rounded-3xl p-12 text-center space-y-8 animate-in zoom-in duration-500">
+        <div className="h-24 w-24 rounded-full bg-green-500/10 flex items-center justify-center mx-auto border-4 border-green-500/20">
+          <CheckCircle2 className="h-12 w-12 text-green-500" />
+        </div>
+        <div className="space-y-3">
+          <h2 className="text-4xl font-black uppercase tracking-tight">Submission Received</h2>
+          <p className="text-muted-foreground text-lg max-w-md mx-auto">
+            Your machinery listing has been successfully submitted to our moderation queue.
+          </p>
+        </div>
+        <div className="bg-muted/30 p-6 rounded-2xl border-2 border-dashed max-w-md mx-auto">
+          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">What Happens Next?</p>
+          <ul className="text-left space-y-4">
+            <li className="flex gap-3 text-sm font-bold uppercase tracking-tight">
+              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">1</span>
+              Technical Review (2-4 Hours)
+            </li>
+            <li className="flex gap-3 text-sm font-bold uppercase tracking-tight">
+              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">2</span>
+              Valuation Confirmation
+            </li>
+            <li className="flex gap-3 text-sm font-bold uppercase tracking-tight">
+              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">3</span>
+              Auction Goes Live
+            </li>
+          </ul>
+        </div>
+        <Button size="lg" className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20" asChild>
+          <a href="/">Return to Marketplace</a>
+        </Button>
+      </div>
+    );
+  }
 
   const renderStep = () => {
     switch (currentStep) {
@@ -75,7 +166,7 @@ export const ListingWizard = () => {
                   type="number" 
                   value={formData.year} 
                   onChange={(e) => updateField("year", parseInt(e.target.value))}
-                  placeholder="e.g. 2022"
+                  placeholder="e.g. 2023"
                   className="h-12 border-2 rounded-xl"
                 />
               </div>
@@ -84,7 +175,7 @@ export const ListingWizard = () => {
                 <Input 
                   value={formData.location} 
                   onChange={(e) => updateField("location", e.target.value)}
-                  placeholder="e.g. NG1 1AA"
+                  placeholder="e.g. PE11 2AA"
                   className="h-12 border-2 rounded-xl"
                 />
               </div>
@@ -94,7 +185,7 @@ export const ListingWizard = () => {
               <Input 
                 value={formData.title} 
                 onChange={(e) => updateField("title", e.target.value)}
-                placeholder="e.g. 2022 John Deere 6155R Premium"
+                placeholder="e.g. 2023 John Deere 6155R Premium"
                 className="h-12 border-2 rounded-xl"
               />
               <p className="text-[10px] text-muted-foreground font-medium uppercase px-1 italic">
@@ -126,7 +217,7 @@ export const ListingWizard = () => {
                     variant={formData.make === item.make ? "default" : "outline"}
                     onClick={() => {
                       updateField("make", item.make);
-                      updateField("model", ""); // Reset model when make changes
+                      updateField("model", ""); 
                     }}
                     className="h-12 font-bold rounded-xl border-2 transition-all"
                   >
@@ -164,16 +255,199 @@ export const ListingWizard = () => {
             )}
           </div>
         );
-      default:
+      case 2:
+        const checklistItems = [
+          { id: "engine", label: "Engine Condition", desc: "Is the engine running smoothly without leaks?" },
+          { id: "hydraulics", label: "Hydraulic System", desc: "Are all hydraulic cylinders and hoses in good working order?" },
+          { id: "tires", label: "Tires / Tracks", desc: "Do tires/tracks have more than 50% tread remaining?" },
+          { id: "serviceHistory", label: "Service History", desc: "Do you have complete maintenance records for this unit?" },
+        ];
         return (
-          <div className="text-center py-20 bg-muted/20 rounded-2xl border-2 border-dashed border-primary/10 animate-in fade-in duration-500">
-            <div className="h-16 w-16 rounded-full bg-primary/5 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">🏗️</span>
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="bg-amber-50 border-2 border-amber-100 p-4 rounded-xl flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <p className="text-[11px] text-amber-900 font-bold uppercase tracking-wide leading-relaxed">
+                Honesty ensures the highest final bid. Buyers value transparency above all else.
+              </p>
             </div>
-            <p className="font-black text-lg uppercase tracking-tight">{STEPS[currentStep]} Under Construction</p>
-            <p className="text-muted-foreground text-sm uppercase tracking-widest font-bold">Coming in the next phase</p>
+            
+            <div className="space-y-4">
+              {checklistItems.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-card">
+                  <div className="space-y-0.5">
+                    <p className="font-black text-sm uppercase tracking-tight">{item.label}</p>
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase">{item.desc}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={formData.conditionChecklist[item.id] ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateChecklist(item.id, true)}
+                      className="rounded-lg font-bold w-16"
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      variant={formData.conditionChecklist[item.id] === false ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={() => updateChecklist(item.id, false)}
+                      className="rounded-lg font-bold w-16"
+                    >
+                      No
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase text-muted-foreground ml-1">Additional Condition Notes</label>
+              <textarea 
+                value={formData.conditionChecklist.notes}
+                onChange={(e) => updateChecklist("notes", e.target.value)}
+                placeholder="Mention any recent repairs, known issues, or upgrades..."
+                className="w-full min-h-[120px] p-4 rounded-xl border-2 bg-background focus:border-primary outline-none transition-colors text-sm"
+              />
+            </div>
           </div>
         );
+      case 3:
+        return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {PHOTO_SLOTS.map((slot) => {
+                const hasImage = formData.images.length > PHOTO_SLOTS.indexOf(slot);
+                const imageUrl = hasImage ? formData.images[PHOTO_SLOTS.indexOf(slot)] : null;
+                
+                return (
+                  <div 
+                    key={slot.id} 
+                    className={cn(
+                      "relative group aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-4 transition-all overflow-hidden",
+                      imageUrl ? "border-primary/40 bg-muted" : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"
+                    )}
+                  >
+                    {imageUrl ? (
+                      <>
+                        <img src={imageUrl} alt={slot.label} className="absolute inset-0 w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => removeImage(imageUrl)}
+                            className="rounded-xl font-bold gap-2"
+                          >
+                            <X className="h-4 w-4" />
+                            Remove
+                          </Button>
+                        </div>
+                        <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                          <Check className="h-3 w-3 text-green-600" />
+                          {slot.label}
+                        </div>
+                      </>
+                    ) : (
+                      <button 
+                        onClick={() => handleImageUpload(slot.id)}
+                        className="w-full h-full flex flex-col items-center justify-center gap-2 outline-none"
+                      >
+                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Camera className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-black uppercase tracking-tight">{slot.label}</p>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase">{slot.desc}</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {formData.images.length > 0 && formData.images.length < PHOTO_SLOTS.length && (
+              <div className="bg-primary/5 p-4 rounded-xl flex items-center gap-3 border border-primary/10">
+                <Info className="h-5 w-5 text-primary shrink-0" />
+                <p className="text-[10px] font-black uppercase tracking-wide text-primary">
+                  Upload {PHOTO_SLOTS.length - formData.images.length} more photos to provide the best detail for buyers.
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-muted-foreground ml-1">Starting Price (R)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-lg">R</span>
+                    <Input 
+                      type="number" 
+                      value={formData.startingPrice} 
+                      onChange={(e) => updateField("startingPrice", parseInt(e.target.value))}
+                      className="h-14 pl-10 text-xl font-black rounded-xl border-2"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
+                    The price at which bidding will begin.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-muted-foreground ml-1">Reserve Price (R)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-lg">R</span>
+                    <Input 
+                      type="number" 
+                      value={formData.reservePrice} 
+                      onChange={(e) => updateField("reservePrice", parseInt(e.target.value))}
+                      className="h-14 pl-10 text-xl font-black rounded-xl border-2 border-primary/20"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
+                    The minimum price you are willing to accept.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-primary/5 border-2 border-primary/10 rounded-3xl p-6 space-y-6">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <h3 className="font-black uppercase tracking-tight">Pricing Strategy</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground font-bold uppercase text-[10px]">Market Confidence</span>
+                    <Badge className="bg-green-500 hover:bg-green-600 font-black uppercase text-[10px]">High</Badge>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 w-[85%]" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Based on recent auctions for <strong>{formData.year} {formData.make} {formData.model}</strong>, items with verified service history often sell for 15% more than average.
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-dashed border-primary/20">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Info className="h-4 w-4 text-primary" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-primary">
+                      Our recommendation: Set a lower starting price to encourage a "bidding war" early in the auction.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -209,20 +483,31 @@ export const ListingWizard = () => {
         <Button
           variant="outline"
           onClick={prev}
-          disabled={currentStep === 0}
+          disabled={currentStep === 0 || isSubmitting}
           className="h-12 px-6 rounded-xl font-bold border-2 gap-2"
         >
           <ChevronLeft className="h-4 w-4" />
           Previous
         </Button>
-        <Button
-          onClick={next}
-          disabled={currentStep === STEPS.length - 1}
-          className="h-12 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
-        >
-          Next Step
-          <ChevronRight className="h-5 w-5" />
-        </Button>
+        
+        {currentStep === STEPS.length - 1 ? (
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !formData.make || !formData.model || formData.images.length === 0}
+            className="h-14 px-12 rounded-xl font-black text-xl gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all scale-105"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Listing"}
+            {!isSubmitting && <Check className="h-6 w-6" />}
+          </Button>
+        ) : (
+          <Button
+            onClick={next}
+            className="h-12 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
+          >
+            Next Step
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        )}
       </div>
     </div>
   );

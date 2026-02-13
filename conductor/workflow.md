@@ -40,9 +40,14 @@ All tasks follow a strict lifecycle:
    ```
    Target: >80% coverage for new code. Note: Ensure the command matches the project's test tooling.
 
-7. **Document Deviations:** If implementation differs from tech stack:
-   - **STOP** implementation
-   - Update `tech-stack.md` with new design
+7. **Document Deviations:**
+   - Update `conductor/tech-stack.md` with new design decisions or changes to the tech stack.
+   - Update `conductor/product-guidelines.md` if user-facing behaviour changes.
+   - Update `conductor/tracks/[track_name]/plan.md` with implementation notes and rationale for the chosen approach.
+   - Update `conductor/product.md` if feature scope changes.
+   - Update `Checklist.md` if any items have been completed as part of this task.
+   - Update `codebase_notes.md` with any relevant notes for future developers.
+   - **CRITICAL:** If you deviate from the original task specification, you must document this clearly in `plan.md` with a dated note explaining the change and the rationale behind it. This ensures transparency and provides context for future reference.
    - Add dated note explaining the change
    - Resume implementation
 

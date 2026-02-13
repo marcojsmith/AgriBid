@@ -73,6 +73,46 @@ export const getSellerInfo = query({
   },
 });
 
+export const createAuction = mutation({
+  args: {
+    title: v.string(),
+    make: v.string(),
+    model: v.string(),
+    year: v.number(),
+    operatingHours: v.number(),
+    location: v.string(),
+    startingPrice: v.number(),
+    reservePrice: v.number(),
+    images: v.array(v.string()),
+    conditionChecklist: v.object({
+      engine: v.boolean(),
+      hydraulics: v.boolean(),
+      tires: v.boolean(),
+      serviceHistory: v.boolean(),
+      notes: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.subject;
+
+    const auctionId = await ctx.db.insert("auctions", {
+      ...args,
+      sellerId: userId,
+      status: "pending_review",
+      currentPrice: args.startingPrice,
+      minIncrement: args.startingPrice < 10000 ? 100 : 500,
+      startTime: Date.now(), // Will be updated by admin upon approval
+      endTime: Date.now() + 7 * 24 * 60 * 60 * 1000, // Default 7 days
+    });
+
+    return auctionId;
+  },
+});
+
 export const placeBid = mutation({
   args: { auctionId: v.id("auctions"), amount: v.number() },
   handler: async (ctx, args) => {

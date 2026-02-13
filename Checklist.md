@@ -72,6 +72,17 @@
 
 ---
 
+## Deploy to vercel
+
+### Vercel Deployment
+- [ ] Connect GitHub repository to Vercel
+- [ ] Configure build settings (build command: `npm run build`, output directory: `dist/`)
+- [ ] Set environment variables in Vercel dashboard
+- [ ] Deploy staging environment for testing
+- [ ] Deploy production environment after testing
+
+---
+
 ## Authentication & User Management
 
 ### Registration & Login
@@ -170,9 +181,6 @@
 - [x] Display format: "2d 5h 32m 15s" or "Ended"
 - [x] Change colour to red when < 1 hour remaining
 
-### Shipping Calculator
-- [ ] Integrate with haulage API (Shiply or uShip)
-
 ---
 
 ## Testing & Quality Assurance
@@ -200,7 +208,7 @@
 ### Convex Deployment
 - [ ] Deploy to Convex Cloud (`npx convex deploy`)
 
-### Frontend Deployment (Vercel/Netlify)
+### Frontend Deployment (Vercel)
 - [ ] Connect GitHub repository
 - [ ] Configure build settings
 
