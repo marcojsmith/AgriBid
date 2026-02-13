@@ -18,7 +18,8 @@ describe('BidConfirmation', () => {
     );
     
     expect(screen.getByText(/Confirm your bid/i)).toBeInTheDocument();
-    expect(screen.getByText(/R50,500/)).toBeInTheDocument();
+    const formattedAmount = new Intl.NumberFormat("en-ZA", { maximumFractionDigits: 0 }).format(50500);
+    expect(screen.getByText(`R${formattedAmount}`)).toBeInTheDocument();
     
     fireEvent.click(screen.getByRole('button', { name: /Confirm Bid/i }));
     expect(onConfirm).toHaveBeenCalled();

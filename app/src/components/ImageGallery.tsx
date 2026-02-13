@@ -73,6 +73,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                   size="icon" 
                   className="absolute left-4 text-white hover:bg-white/10 h-12 w-12 rounded-full"
                   onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  aria-label="Previous image"
                 >
                   <ChevronLeft className="h-8 w-8" />
                 </Button>
@@ -81,6 +82,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                   size="icon" 
                   className="absolute right-4 text-white hover:bg-white/10 h-12 w-12 rounded-full"
                   onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  aria-label="Next image"
                 >
                   <ChevronRight className="h-8 w-8" />
                 </Button>

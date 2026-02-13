@@ -12,14 +12,24 @@ interface SellerInfoProps {
 export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
   const seller = useQuery(api.auctions.getSellerInfo, { sellerId });
 
-  if (!seller) {
+  if (seller === undefined) {
     return (
-      <div className="animate-pulse flex items-center gap-4 p-4">
-        <div className="h-12 w-12 rounded-full bg-muted" />
-        <div className="space-y-2">
-          <div className="h-4 w-32 bg-muted rounded" />
-          <div className="h-3 w-24 bg-muted rounded" />
+      <div className="bg-card border-2 rounded-2xl p-6 shadow-sm">
+        <div className="animate-pulse flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-muted" />
+          <div className="space-y-2">
+            <div className="h-4 w-32 bg-muted rounded" />
+            <div className="h-3 w-24 bg-muted rounded" />
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  if (seller === null) {
+    return (
+      <div className="bg-muted/20 border-2 border-dashed rounded-2xl p-6 text-center">
+        <p className="text-sm font-medium text-muted-foreground italic">Seller information unavailable</p>
       </div>
     );
   }
@@ -54,11 +64,19 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2">
+        <Button 
+          variant="outline" 
+          className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
+          aria-label={`Message ${seller.name}`}
+        >
           <Mail className="h-4 w-4" />
           Message
         </Button>
-        <Button variant="secondary" className="h-11 font-bold rounded-xl border-2 border-transparent hover:border-muted-foreground/20 transition-all">
+        <Button 
+          variant="secondary" 
+          className="h-11 font-bold rounded-xl border-2 border-transparent hover:border-muted-foreground/20 transition-all"
+          aria-label={`View ${seller.name}'s profile`}
+        >
           View Profile
         </Button>
       </div>

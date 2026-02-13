@@ -1,4 +1,5 @@
 // app/src/components/AuctionCard.tsx
+import React from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "./CountdownTimer";
@@ -80,7 +81,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
         <Button className="flex-1 font-bold" onClick={handleBid} disabled={isBidding || auction.status !== 'active'}>
           {isBidding ? "Processing..." : `Bid R${(auction.currentPrice + auction.minIncrement).toLocaleString()}`}
         </Button>
-        <Button variant="outline" size="icon" className="shrink-0" asChild>
+        <Button variant="outline" size="icon" className="shrink-0" aria-label="View auction details" asChild>
           <Link to={`/auction/${auction._id}`}>
             <Eye className="h-4 w-4" />
           </Link>

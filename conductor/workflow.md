@@ -235,7 +235,7 @@ Before requesting review:
 ## Commit Guidelines
 
 ### Message Format
-```
+```text
 <type>(<scope>): <description>
 
 [optional body]

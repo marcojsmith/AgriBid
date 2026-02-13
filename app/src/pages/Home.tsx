@@ -2,10 +2,13 @@
 import { Authenticated, Unauthenticated, useQuery, useMutation } from "convex/react";
 import { useSession, signIn, signUp, signOut } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { AuctionCard } from "../components/AuctionCard";
 import type { Doc } from "../../convex/_generated/dataModel";
+import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 /**
  * Render the Home page for the AgriBid auction platform.
@@ -31,8 +34,14 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
   const handleSeed = async () => {
-    await seedMetadata();
-    await seedAuctions();
+    try {
+      await seedMetadata();
+      await seedAuctions();
+      toast.success("Mock data populated successfully");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to populate mock data");
+    }
   };
 
   if (isPending) {
@@ -68,7 +77,9 @@ export default function Home() {
               <Button variant="outline" size="sm" onClick={handleSeed}>
                 Seed Mock Data
               </Button>
-              <Button size="sm">Sell Equipment</Button>
+              <Button size="sm" asChild>
+                <Link to="/sell">Sell Equipment</Link>
+              </Button>
             </div>
           </div>
 
@@ -144,12 +155,12 @@ export default function Home() {
               )}
               <div className="space-y-2">
                 <label htmlFor="email" className="text-xs font-bold uppercase text-muted-foreground ml-1">Email Address</label>
-                <input
+                <Input
                   id="email"
                   type="email"
                   autoComplete="email"
                   placeholder="name@farm.com"
-                  className="w-full border-2 border-muted p-3 rounded-xl focus:border-primary outline-none transition-colors"
+                  className="h-12 border-2 rounded-xl"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -159,12 +170,12 @@ export default function Home() {
                 <label htmlFor="password" className="text-xs font-bold uppercase text-muted-foreground ml-1">
                   {authMode === "signin" ? "Secure Password" : "Create Secure Password"}
                 </label>
-                <input
+                <Input
                   id="password"
                   type="password"
                   autoComplete={authMode === "signin" ? "current-password" : "new-password"}
                   placeholder="••••••••"
-                  className="w-full border-2 border-muted p-3 rounded-xl focus:border-primary outline-none transition-colors"
+                  className="h-12 border-2 rounded-xl"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

@@ -36,7 +36,7 @@ Additional documentation can be found in the following folders and files:
 - **Feedback:** Provide users with clear feedback for their actions (e.g., loading indicators, success/error messages).
 - **Simplicity:** Avoid clutter and unnecessary elements.
 - **Theming:** 
-    - Use a cohesive color scheme and typography that aligns with the game's theme.
+    - Use a cohesive color scheme and typography that aligns with the application's brand.
     - Make use of the defined theme styles, and do not hardcode colors or fonts directly in components.
     - If a new theme style is needed, define it in the theme configuration.
 - **skills:**

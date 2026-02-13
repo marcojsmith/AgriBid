@@ -19,6 +19,6 @@ describe('SellerInfo', () => {
     
     expect(screen.getByText('Verified Farmer')).toBeInTheDocument();
     expect(screen.getByText('Commercial Dealer')).toBeInTheDocument();
-    expect(screen.getByText(/Verified/i)).toBeInTheDocument();
+    expect(screen.getByText(/High-Integrity Verification/i)).toBeInTheDocument();
   });
 });

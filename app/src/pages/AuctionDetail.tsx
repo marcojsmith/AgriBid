@@ -20,9 +20,22 @@ import type { Id } from "../../convex/_generated/dataModel";
  */
 export default function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
-  const auction = useQuery(api.auctions.getAuctionById, { 
-    auctionId: id as Id<"auctions"> 
-  });
+  
+  const auction = useQuery(
+    api.auctions.getAuctionById, 
+    id ? { auctionId: id as Id<"auctions"> } : "skip"
+  );
+
+  if (id === undefined) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-background gap-4">
+        <h2 className="text-2xl font-bold">Invalid Auction ID</h2>
+        <Button asChild>
+          <Link to="/">Return to Home</Link>
+        </Button>
+      </div>
+    );
+  }
 
   if (auction === undefined) {
     return (
@@ -57,8 +70,12 @@ export default function AuctionDetail() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon"><Share2 className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon"><Heart className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Share listing">
+            <Share2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="Add to favorites">
+            <Heart className="h-4 w-4" />
+          </Button>
         </div>
       </header>
 
