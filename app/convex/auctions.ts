@@ -120,7 +120,18 @@ export const approveAuction = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
-    // In a real app, check for admin role here
+    
+    // Enforce admin authorization
+    // Note: Better Auth roles are mapped to identity.role in the Convex integration
+    if (identity.role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    // Validate durationDays
+    const durationDays = args.durationDays ?? 7;
+    if (durationDays <= 0 || durationDays > 365) {
+      throw new Error("Invalid duration: must be between 1 and 365 days");
+    }
     
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
@@ -129,7 +140,7 @@ export const approveAuction = mutation({
     }
 
     const startTime = Date.now();
-    const durationMs = (args.durationDays ?? 7) * 24 * 60 * 60 * 1000;
+    const durationMs = durationDays * 24 * 60 * 60 * 1000;
     const endTime = startTime + durationMs;
 
     await ctx.db.patch(args.auctionId, {

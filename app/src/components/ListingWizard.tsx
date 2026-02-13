@@ -114,6 +114,12 @@ export const ListingWizard = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Revoke previous URL if it exists to avoid memory leaks
+    const prevUrl = formData.images[slotId];
+    if (prevUrl && prevUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(prevUrl);
+    }
+
     // For the prototype, we'll use a local object URL to show the image
     const imageUrl = URL.createObjectURL(file);
     
