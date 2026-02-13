@@ -99,9 +99,9 @@ export default function Home() {
                         <Button asChild>
                           <Link to="/">View All Auctions</Link>
                         </Button>
-                      ) : (
+                      ) : import.meta.env.DEV ? (
                         <Button onClick={handleSeed}>Populate Mock Auctions</Button>
-                      )}
+                      ) : null}
                     </div>
                   ) : (          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {auctions.map((auction: Doc<"auctions">) => (
