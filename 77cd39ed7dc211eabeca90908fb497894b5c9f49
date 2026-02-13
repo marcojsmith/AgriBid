@@ -1,0 +1,13 @@
+Task: Global Styling & Cleanup
+Summary:
+- Centralized container and padding logic in Layout.tsx.
+- Removed redundant main and container tags from Home, AuctionDetail, and Sell pages.
+- Standardized vertical padding (py-8) and horizontal responsive padding (px-4 md:px-8).
+- Fixed unused variable in Header.test.tsx.
+- Verified with 100% build pass and 28 passing tests.
+Files:
+- app/src/components/Layout.tsx
+- app/src/pages/Home.tsx
+- app/src/pages/AuctionDetail.tsx
+- app/src/pages/Sell.tsx
+- app/src/components/__tests__/Header.test.tsx
