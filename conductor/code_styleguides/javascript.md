@@ -9,7 +9,7 @@ This document summarizes key rules and best practices from the Google JavaScript
 
 ## 2. Source File Structure
 - New files should be ES modules (`import`/`export`).
-- **Exports:** Use named exports (`export {MyClass};`). **Do not use default exports.**
+- **Exports:** Use named exports (`export {MyClass};`). **Do not use default exports**, except for React components or Next.js pages where required by the framework or for dynamic imports.
 - **Imports:** Do not use line-wrapped imports. The `.js` extension in import paths is mandatory.
 
 ## 3. Formatting

@@ -31,6 +31,8 @@ function DialogTrigger({
 
 /**
  * Renders a Radix Dialog Portal element and marks it with `data-slot="dialog-portal"`.
+ * 
+ * Note: The `data-slot` attribute will be ignored as Radix's Portal doesn't render a wrapper element.
  *
  * @returns The portal element used to mount dialog content, forwarding all received props to the underlying Radix primitive.
  */
@@ -49,7 +51,9 @@ function DialogPortal({
 function DialogClose({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+  return (
+    <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+  )
 }
 
 /**
@@ -78,19 +82,19 @@ function DialogOverlay({
 /**
  * Renders the dialog's content inside a portal with an overlay and an optional close control.
  *
- * @param showCloseButton - When `true`, includes a close control (an X button) in the top-right of the content; when `false`, omits the close control.
+ * @param showCloseIcon - When `true`, includes a close control (an X button) in the top-right of the content; when `false`, omits the close control.
  * @returns The dialog content element including its portal and overlay, with children rendered inside and the close control included conditionally.
  */
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
+  showCloseIcon = true,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
+  showCloseIcon?: boolean
 }) {
   return (
-    <DialogPortal data-slot="dialog-portal">
+    <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
@@ -101,7 +105,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
+        {showCloseIcon && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
             className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
@@ -136,17 +140,17 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 /**
  * Layout container for dialog footer actions that can optionally render a close button.
  *
- * @param showCloseButton - When `true`, renders a "Close" button that triggers the dialog to close.
+ * @param showFooterClose - When `true`, renders a "Close" button that triggers the dialog to close.
  * @param children - Elements to display inside the footer (e.g., action buttons).
  * @returns The rendered footer element containing `children` and, if enabled, a close control.
  */
 function DialogFooter({
   className,
-  showCloseButton = false,
+  showFooterClose = false,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
-  showCloseButton?: boolean
+  showFooterClose?: boolean
 }) {
   return (
     <div
@@ -158,7 +162,7 @@ function DialogFooter({
       {...props}
     >
       {children}
-      {showCloseButton && (
+      {showFooterClose && (
         <DialogPrimitive.Close asChild>
           <Button variant="outline">Close</Button>
         </DialogPrimitive.Close>

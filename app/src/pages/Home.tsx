@@ -133,7 +133,12 @@ export default function Home() {
                   setSignUpLoading(true);
                   setAuthError("");
                   try {
-                    const name = email.split('@')[0] || "User";
+                    const emailPrefix = email.split('@')[0] || "User";
+                    // Clean up prefix (remove numbers/special chars at end, capitalize)
+                    const name = emailPrefix
+                      .replace(/[0-9._-]+$/, '')
+                      .replace(/^[a-z]/, (char) => char.toUpperCase()) || "User";
+                    
                     const { error } = await signUp.email({ email, password, name });
                     if (error) {
                       setAuthError(error.message || "Registration failed");

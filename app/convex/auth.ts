@@ -6,7 +6,7 @@ import { components } from "./_generated/api";
 import { query } from "./_generated/server";
 import type { GenericCtx } from "@convex-dev/better-auth";
 import type { DataModel } from "./_generated/dataModel";
-import { ALLOWED_ORIGINS } from "./config";
+import { ALLOWED_ORIGINS, requireEnv } from "./config";
 
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.
@@ -17,12 +17,7 @@ export const createAuth = (
   { optionsOnly } = { optionsOnly: false },
 ) => {
   const trustedOrigins = ALLOWED_ORIGINS;
-
-  const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;
-  const siteUrl = env.CONVEX_SITE_URL;
-  if (!siteUrl) {
-    throw new Error("Missing CONVEX_SITE_URL environment variable. This is required for authentication to function correctly.");
-  }
+  const siteUrl = requireEnv("CONVEX_SITE_URL");
 
   return betterAuth({
     appName: "AgriBid",

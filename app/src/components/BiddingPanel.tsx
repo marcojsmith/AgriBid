@@ -32,6 +32,14 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
 
   const handleBidConfirm = async () => {
     if (!pendingBid) return;
+
+    // Guard against submitting after auction ends
+    if (auction.status !== "active" || auction.endTime <= Date.now()) {
+      toast.error("This auction has ended");
+      setIsConfirmOpen(false);
+      setPendingBid(null);
+      return;
+    }
     
     setIsConfirmOpen(false);
     setIsBidding(true);
