@@ -5,6 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { Button } from "../components/ui/button";
 import { ArrowLeft, Share2, Heart } from "lucide-react";
 import { AuctionHeader } from "../components/AuctionHeader";
+import { ImageGallery } from "../components/ImageGallery";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export default function AuctionDetail() {
@@ -64,13 +65,7 @@ export default function AuctionDetail() {
           <div className="lg:col-span-8 space-y-8">
             <AuctionHeader auction={auction} />
             
-            {/* Image Gallery Placeholder */}
-            <div className="aspect-[16/10] bg-muted rounded-2xl flex items-center justify-center border-2 overflow-hidden group relative">
-              <div className="animate-pulse flex flex-col items-center">
-                <span className="text-6xl mb-4">🚜</span>
-                <span className="text-muted-foreground font-medium italic">High-Resolution Gallery Initializing...</span>
-              </div>
-            </div>
+            <ImageGallery images={auction.images || []} title={auction.title} />
 
             {/* Description Section */}
             <div className="bg-card border-2 rounded-2xl p-8 space-y-4">

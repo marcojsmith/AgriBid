@@ -1,23 +1,23 @@
 # Implementation Plan: Auction Detail Page and Bid Submission Flow
 
-## Phase 1: Routing and Basic Layout
+## Phase 1: Routing and Basic Layout [checkpoint: 0b1b438]
 - [x] Task: Install `react-router-dom` and set up basic routing. (3723f42)
-    - [ ] Create a `pages/` directory.
-    - [ ] Implement a placeholder `AuctionDetail` page.
-    - [ ] Configure routes in `App.tsx` for `/` and `/auction/:id`.
+    - [x] Create a `pages/` directory.
+    - [x] Implement a placeholder `AuctionDetail` page.
+    - [x] Configure routes in `App.tsx` for `/` and `/auction/:id`.
 - [x] Task: Implement the "Above-the-Fold" layout structure. (3723f42)
-    - [ ] Create the grid/flex container for desktop and mobile stacking.
-    - [ ] Implement the `AuctionHeader` section (Title, Specs summary).
-- [~] Task: Conductor - User Manual Verification 'Phase 1: Routing and Basic Layout' (Protocol in workflow.md)
+    - [x] Create the grid/flex container for desktop and mobile stacking.
+    - [x] Implement the `AuctionHeader` section (Title, Specs summary).
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Routing and Basic Layout' (Protocol in workflow.md) (0b1b438)
 
 ## Phase 2: Equipment Inspection (Image Gallery)
-- [ ] Task: Create the `ImageGallery` component.
-    - [ ] Write tests for gallery navigation (thumbnail clicks).
-    - [ ] Implement thumbnail carousel and main hero image display.
-- [ ] Task: Implement Lightbox zoom functionality.
-    - [ ] Write tests for lightbox opening/closing.
-    - [ ] Integrate a lightbox library or custom modal for full-screen inspection.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Equipment Inspection (Image Gallery)' (Protocol in workflow.md)
+- [x] Task: Create the `ImageGallery` component. (0b1b438)
+    - [x] Write tests for gallery navigation (thumbnail clicks).
+    - [x] Implement thumbnail carousel and main hero image display.
+- [x] Task: Implement Lightbox zoom functionality. (0b1b438)
+    - [x] Write tests for lightbox opening/closing.
+    - [x] Integrate a lightbox library or custom modal for full-screen inspection.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Equipment Inspection (Image Gallery)' (Protocol in workflow.md) (0b1b438)
 
 ## Phase 3: Real-Time Bidding Panel
 - [ ] Task: Implement the `BiddingPanel` component.

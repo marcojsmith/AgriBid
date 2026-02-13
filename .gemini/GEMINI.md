@@ -7,12 +7,26 @@ Additional documentation can be found in the following folders and files:
 - Brief.md
 - Checklist.md
 - codebase_notes.md
+- conductor/product.md
+- conductor/product-guidelines.md
+- conductor/workflow.md
+- conductor/tech-stack.md
+- conductor/tracks.md
+- conductor/code_styleguides/javascript.md
+
 
 # Rules & Guidelines
 
 ## Operational Rules
 - **Running development server:** 
     - Assume the development and convex servers are already running when making changes.
+- **commits and branches:**
+    - Follow the commit message format specified in `Checklist.md` for all commits.
+    - Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
+- **Pull Requests:**
+    - Open a pull request for each completed feature or bug fix.
+    - Include a clear description of the changes made and reference any relevant issues or tasks.
+    - Ensure that all automated tests pass before requesting a review.
 
 ## UI Design Rules
 - **Clarity:** Ensure all UI elements are clear and intuitive.
