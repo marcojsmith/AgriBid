@@ -3,7 +3,7 @@
 ## Phase 1: Core Layout Foundation
 Establish the shared structural components and refactor the routing to use a centralized Layout wrapper.
 
-- [ ] Task: Create a base `Layout` component and `Footer` placeholder.
+- [~] Task: Create a base `Layout` component and `Footer` placeholder.
     - [ ] Write tests for `Layout` component (rendering children, Presence of Header/Footer).
     - [ ] Implement `src/components/Layout.tsx`.
     - [ ] Implement a basic `src/components/Footer.tsx`.

@@ -20,5 +20,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Global Navigation & Brand Layout**
+- [~] **Track: Global Navigation & Brand Layout**
 *Link: [./tracks/global_nav_layout_20260213/](./tracks/global_nav_layout_20260213/)*
