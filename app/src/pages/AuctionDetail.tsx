@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { ArrowLeft, Share2, Heart } from "lucide-react";
 import { AuctionHeader } from "../components/AuctionHeader";
 import { ImageGallery } from "../components/ImageGallery";
+import { BiddingPanel } from "../components/BiddingPanel";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export default function AuctionDetail() {
@@ -80,16 +81,7 @@ export default function AuctionDetail() {
           {/* Right Column: Bidding Panel */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-card border-2 border-primary/20 rounded-2xl p-6 shadow-xl sticky top-24">
-              <div className="space-y-6">
-                <div className="animate-pulse space-y-4">
-                  <div className="h-8 bg-muted rounded w-3/4"></div>
-                  <div className="h-24 bg-muted rounded"></div>
-                  <div className="h-12 bg-primary/20 rounded"></div>
-                </div>
-                <p className="text-center text-xs text-muted-foreground uppercase font-bold tracking-widest pt-4">
-                  Bidding Panel Initializing...
-                </p>
-              </div>
+              <BiddingPanel auction={auction} />
             </div>
           </div>
         </div>

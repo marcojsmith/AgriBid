@@ -1,0 +1,105 @@
+// app/src/components/BiddingPanel.tsx
+import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { CountdownTimer } from "./CountdownTimer";
+import type { Doc } from "../../convex/_generated/dataModel";
+import { Badge } from "@/components/ui/badge";
+import { Gavel } from "lucide-react";
+import { BidForm } from "./BidForm";
+import { BidConfirmation } from "./BidConfirmation";
+import { toast } from "sonner";
+
+interface BiddingPanelProps {
+  auction: Doc<"auctions">;
+}
+
+export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [pendingBid, setPendingBid] = useState<number | null>(null);
+  const [isBidding, setIsBidding] = useState(false);
+  
+  const placeBid = useMutation(api.auctions.placeBid);
+
+  const isEnded = auction.status !== "active" || auction.endTime <= Date.now();
+  const nextMinBid = auction.currentPrice + auction.minIncrement;
+
+  const handleBidInitiate = (amount: number) => {
+    setPendingBid(amount);
+    setIsConfirmOpen(true);
+  };
+
+  const handleBidConfirm = async () => {
+    if (!pendingBid) return;
+    
+    setIsConfirmOpen(false);
+    setIsBidding(true);
+    
+    try {
+      await placeBid({ auctionId: auction._id, amount: pendingBid });
+      toast.success(`Bid of £${pendingBid.toLocaleString()} placed successfully!`);
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Failed to place bid");
+    } finally {
+      setIsBidding(false);
+      setPendingBid(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">Current Bid</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-black text-primary tracking-tighter">
+              £{auction.currentPrice.toLocaleString()}
+            </span>
+            {!isEnded && (
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 animate-pulse">
+                Live
+              </Badge>
+            )}
+          </div>
+        </div>
+        <div className="text-right space-y-1">
+          <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">Time Remaining</p>
+          <div className="text-xl font-bold">
+            <CountdownTimer endTime={auction.endTime} />
+          </div>
+        </div>
+      </div>
+
+      {isEnded ? (
+        <div className="bg-muted/50 border-2 border-dashed rounded-xl p-6 text-center">
+          <p className="font-bold text-muted-foreground uppercase tracking-widest text-sm">Auction Ended</p>
+          <p className="text-xs text-muted-foreground mt-1">Final Price: £{auction.currentPrice.toLocaleString()}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground bg-muted/30 p-3 rounded-lg border">
+            <Gavel className="h-4 w-4 text-primary" />
+            <span>Next minimum bid: <span className="text-foreground">£{nextMinBid.toLocaleString()}</span></span>
+          </div>
+          
+          <BidForm 
+            auction={auction} 
+            onBid={handleBidInitiate} 
+            isLoading={isBidding} 
+          />
+        </div>
+      )}
+
+      <BidConfirmation
+        isOpen={isConfirmOpen}
+        amount={pendingBid || 0}
+        onConfirm={handleBidConfirm}
+        onCancel={() => {
+          setIsConfirmOpen(false);
+          setPendingBid(null);
+        }}
+      />
+    </div>
+  );
+};

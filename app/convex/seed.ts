@@ -134,12 +134,12 @@ export const seedMockAuctions = mutation({
         sellerId: mockUserId,
         status: "active" as const,
         images: [
-          "https://images.unsplash.com/photo-1698656627092-d7b1a629b0a1?auto=format&fit=crop&w=1200&q=80",
+          "https://images.unsplash.com/photo-1711200373070-df98246ca82c?auto=format&fit=crop&w=1200&q=80",
           "https://images.unsplash.com/photo-1650361288331-5079a81f3ca5?auto=format&fit=crop&w=1200&q=80",
         ],
       },
       {
-        title: "Yellow Combine Harvester - Ready for Season",
+        title: "Red Combine Harvester - Ready for Season",
         make: "Claas",
         model: "Lexion 8900",
         year: 2023,
@@ -154,8 +154,8 @@ export const seedMockAuctions = mutation({
         sellerId: mockUserId,
         status: "active" as const,
         images: [
-          "https://images.unsplash.com/photo-1695648835165-f48259079a40?auto=format&fit=crop&w=1200&q=80",
-          "https://images.unsplash.com/photo-1682772596403-1be0082729a6?auto=format&fit=crop&w=1200&q=80",
+          "https://images.unsplash.com/photo-1692523295982-f56743c68383?auto=format&fit=crop&w=1200&q=80",
+          "https://images.unsplash.com/photo-1647416345091-c24c7da87640?auto=format&fit=crop&w=1200&q=80",
         ],
       },
       {
@@ -232,7 +232,8 @@ export const seedMockAuctions = mutation({
         await ctx.db.patch(existingAuction._id, { 
           images: auction.images,
           currentPrice: auction.currentPrice,
-          endTime: auction.endTime
+          endTime: auction.endTime,
+          title: auction.title
         });
       }
     }
