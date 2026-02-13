@@ -10,7 +10,7 @@ Establish the shared structural components and refactor the routing to use a cen
 - [x] Task: Refactor `App.tsx` to use the `Layout` wrapper for all routes. (18f6803)
     - [x] Update `App.tsx` to wrap `Routes` with `Layout`.
     - [x] Verify that all pages still render correctly within the layout.
-- [ ] Task: Conductor - User Manual Verification 'Core Layout Foundation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Core Layout Foundation' (Protocol in workflow.md) (23f58ee)
 
 ## Phase 2: Global Header & Auth Integration
 Implement the responsive navigation bar with authentication awareness and the "Hybrid Sticky" behavior.
