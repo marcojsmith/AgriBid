@@ -1,0 +1,9 @@
+Task: Build the Header component structure and navigation links
+Summary:
+- Implemented responsive Header.tsx with mobile menu toggle.
+- Added Marketplace, Sell, and Watchlist navigation links.
+- Implemented mobile menu overlay with Lucide icons.
+- Added unit tests for navigation and mobile toggle.
+Files:
+- app/src/components/Header.tsx
+- app/src/components/__tests__/Header.test.tsx
