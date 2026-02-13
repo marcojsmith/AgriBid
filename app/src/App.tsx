@@ -112,7 +112,7 @@ function App() {
                   setSignUpLoading(true);
                   setAuthError("");
                   try {
-                    const name = email.split('@')[0];
+                    const name = email.split('@')[0] || "User";
                     const { error } = await signUp.email({ email, password, name });
                     if (error) {
                       setAuthError(error.message || "Registration failed");

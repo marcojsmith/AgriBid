@@ -31,7 +31,7 @@ export const createAuth = (
       disabled: optionsOnly,
     },
     // The site URL is needed for redirects and cookies
-    baseURL: siteUrl || env.BETTER_AUTH_URL,
+    baseURL: siteUrl,
     basePath: "/api/auth",
     trustedOrigins,
     advanced: {
