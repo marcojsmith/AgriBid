@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 import { describe, it, expect, vi } from 'vitest';
+import type { ReactNode } from 'react';
 
 // Mock the pages to avoid Convex dependencies in this unit test
 vi.mock('./pages/Home', () => ({ default: () => <div data-testid="home-page">Home Page</div> }));
@@ -9,8 +10,8 @@ vi.mock('./pages/Sell', () => ({ default: () => <div data-testid="sell-page">Sel
 
 // Mock Convex and Auth globally for App tests
 vi.mock('convex/react', () => ({
-  Authenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="auth">{children}</div>,
-  Unauthenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="unauth">{children}</div>,
+  Authenticated: ({ children }: { children: ReactNode }) => <div data-testid="auth">{children}</div>,
+  Unauthenticated: ({ children }: { children: ReactNode }) => <div data-testid="unauth">{children}</div>,
 }));
 
 vi.mock('./lib/auth-client', () => ({

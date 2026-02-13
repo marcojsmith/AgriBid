@@ -20,7 +20,8 @@ import { Link, useSearchParams } from "react-router-dom";
 export default function Home() {
   const { isPending } = useSession();
   const [searchParams] = useSearchParams();
-  const searchQuery = searchParams.get("q") || undefined;
+  const rawQuery = searchParams.get("q") || "";
+  const searchQuery = rawQuery.trim() === "" ? undefined : rawQuery.trim();
   
   const auctions = useQuery(api.auctions.getActiveAuctions, { search: searchQuery });
   const seedMetadata = useMutation(api.seed.seedEquipmentMetadata);
@@ -34,13 +35,18 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
   const handleSeed = async () => {
+    if (!import.meta.env.DEV) {
+      toast.error("Seeding is only available in development mode.");
+      return;
+    }
+    
     try {
       await seedMetadata();
       await seedAuctions();
       toast.success("Mock data populated successfully");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to populate mock data");
+      toast.error(error instanceof Error ? error.message : "Failed to populate mock data");
     }
   };
 
@@ -67,9 +73,11 @@ export default function Home() {
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleSeed}>
-              Seed Mock Data
-            </Button>
+            {import.meta.env.DEV && (
+              <Button variant="outline" size="sm" onClick={handleSeed}>
+                Seed Mock Data
+              </Button>
+            )}
             <Button size="sm" asChild>
               <Link to="/sell">Sell Equipment</Link>
             </Button>

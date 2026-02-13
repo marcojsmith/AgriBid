@@ -96,7 +96,7 @@
 ## Frontend Pages & Components
 
 ### Global Components
-- [x] **NavBar** (`src/components/Header.tsx`)
+- [x] **Header** (`src/components/Header.tsx`)
 - [x] **Footer** (`src/components/Footer.tsx`)
 - [ ] **LoadingSpinner** (`src/components/LoadingSpinner.tsx`)
 - [ ] **ErrorBoundary** (`src/components/ErrorBoundary.tsx`)

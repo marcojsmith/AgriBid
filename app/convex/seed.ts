@@ -4,6 +4,11 @@ import { mutation } from "./_generated/server";
 export const seedEquipmentMetadata = mutation({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.role !== "admin") {
+      throw new Error("Unauthorized: Admin privileges required to seed metadata.");
+    }
+
     const items = [
       {
         make: "John Deere",
@@ -74,6 +79,11 @@ export const seedEquipmentMetadata = mutation({
 export const seedMockAuctions = mutation({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.role !== "admin") {
+      throw new Error("Unauthorized: Admin privileges required to seed mock auctions.");
+    }
+
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
 
