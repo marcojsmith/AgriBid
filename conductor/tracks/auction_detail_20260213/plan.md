@@ -40,7 +40,7 @@
     - [x] Display seller name, verification badge, and location details.
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Information Architecture & Seller Trust' (Protocol in workflow.md) (ec812fc)
 
-## Phase 5: Polish & Edge Cases
+## Phase 5: Polish & Edge Cases [checkpoint: 79d8e9a]
 - [x] Task: Implement Soft Close visual feedback. (ec812fc)
     - [x] Add a visual indicator/alert when the auction is extended.
 - [x] Task: Refine Mobile Responsiveness. (ab495dc)
@@ -49,4 +49,4 @@
 - [x] Task: Final Verification & Quality Gates. (ab495dc)
     - [x] Run full test suite and verify >80% coverage.
     - [x] Conduct final accessibility audit and linting check.
-- [x] Task: Conductor - User Manual Verification 'Phase 5: Polish & Edge Cases' (Protocol in workflow.md) (ab495dc)
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Polish & Edge Cases' (Protocol in workflow.md) (79d8e9a)
