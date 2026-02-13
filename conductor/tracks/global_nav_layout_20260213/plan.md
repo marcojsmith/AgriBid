@@ -36,7 +36,7 @@ Implement the navbar search bar and final branding refinements.
 - [x] Task: Implement the detailed Global Footer. (624593d)
     - [x] Write tests for `Footer` (Links: How it works, Safety, etc.).
     - [x] Complete `src/components/Footer.tsx` with specified branding and link sections.
-- [~] Task: Global Styling & Cleanup.
-    - [ ] Remove page-specific headers (e.g., from `AuctionDetail.tsx`).
-    - [ ] Ensure consistent horizontal padding across all pages via `Layout.tsx`.
-- [ ] Task: Conductor - User Manual Verification 'Global Search & Refinement' (Protocol in workflow.md)
+- [x] Task: Global Styling & Cleanup. (77cd39e)
+    - [x] Remove page-specific headers (e.g., from `AuctionDetail.tsx`).
+    - [x] Ensure consistent horizontal padding across all pages via `Layout.tsx`.
+- [x] Task: Conductor - User Manual Verification 'Global Search & Refinement' (Protocol in workflow.md) (77cd39e)
