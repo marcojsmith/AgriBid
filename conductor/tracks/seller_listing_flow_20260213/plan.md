@@ -7,16 +7,16 @@
 - [x] Task: Define Schema updates for Listing Moderation. (6b896f8)
     - [x] Update `auctions` status to include `pending_review`.
     - [x] Add `conditionChecklist` object field to `auctions` table in `schema.ts`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Navigation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Navigation' (Protocol in workflow.md) (f2c93f7)
 
 ## Phase 2: Listing Wizard - Equipment & Specs
-- [ ] Task: Implement Wizard Layout & State Management.
-    - [ ] Create a multi-step form container with progress indicator.
-    - [ ] Implement persistent local state to prevent data loss on refresh.
-- [ ] Task: Step 1 & 2: General Info & Metadata Lookup.
-    - [ ] Write tests for Make/Model auto-population logic.
-    - [ ] Implement Step 1: Basic details (Year, Title, Location).
-    - [ ] Implement Step 2: Technical specs with search/lookup from `equipmentMetadata`.
+- [x] Task: Implement Wizard Layout & State Management. (f2c93f7)
+    - [x] Create a multi-step form container with progress indicator.
+    - [x] Implement persistent local state to prevent data loss on refresh.
+- [x] Task: Step 1 & 2: General Info & Metadata Lookup. (f2c93f7)
+    - [x] Write tests for Make/Model auto-population logic.
+    - [x] Implement Step 1: Basic details (Year, Title, Location).
+    - [x] Implement Step 2: Technical specs with search/lookup from `equipmentMetadata`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Listing Wizard - Equipment & Specs' (Protocol in workflow.md)
 
 ## Phase 3: Condition & Pricing Strategy

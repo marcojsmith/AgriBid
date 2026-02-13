@@ -47,6 +47,13 @@ export const getAuctionBids = query({
   },
 });
 
+export const getEquipmentMetadata = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("equipmentMetadata").collect();
+  },
+});
+
 export const getSellerInfo = query({
   args: { sellerId: v.string() },
   handler: async (ctx, args) => {
