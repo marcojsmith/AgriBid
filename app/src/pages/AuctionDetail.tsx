@@ -106,12 +106,13 @@ export default function AuctionDetail() {
 
           {/* Right Column: Bidding Panel */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-card border-2 border-primary/20 rounded-2xl p-6 shadow-xl lg:sticky lg:top-24">
+            <div className="bg-card border-2 border-primary/20 rounded-2xl p-6 shadow-xl lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
               <BiddingPanel auction={auction} />
-              
-              <div className="mt-6 border-t pt-4">
-                <BidHistory auctionId={auction._id} />
-              </div>
+            </div>
+
+            <div className="bg-card border-2 rounded-2xl p-6">
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Bid History</h3>
+              <BidHistory auctionId={auction._id} />
             </div>
 
             <SellerInfo sellerId={auction.sellerId} />

@@ -23,7 +23,7 @@ export default defineSchema({
   })
     .index("email_name", ["email", "name"])
     .index("name", ["name"])
-    .index("userId", ["userId"])
+    .index("by_userId", ["userId"])
     .index("username", ["username"])
     .index("phoneNumber", ["phoneNumber"]),
 
