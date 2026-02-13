@@ -7,9 +7,9 @@ Establish the shared structural components and refactor the routing to use a cen
     - [x] Write tests for `Layout` component (rendering children, Presence of Header/Footer).
     - [x] Implement `src/components/Layout.tsx`.
     - [x] Implement a basic `src/components/Footer.tsx`.
-- [~] Task: Refactor `App.tsx` to use the `Layout` wrapper for all routes.
-    - [ ] Update `App.tsx` to wrap `Routes` with `Layout`.
-    - [ ] Verify that all pages still render correctly within the layout.
+- [x] Task: Refactor `App.tsx` to use the `Layout` wrapper for all routes. (18f6803)
+    - [x] Update `App.tsx` to wrap `Routes` with `Layout`.
+    - [x] Verify that all pages still render correctly within the layout.
 - [ ] Task: Conductor - User Manual Verification 'Core Layout Foundation' (Protocol in workflow.md)
 
 ## Phase 2: Global Header & Auth Integration
