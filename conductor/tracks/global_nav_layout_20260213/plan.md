@@ -4,10 +4,10 @@
 Establish the shared structural components and refactor the routing to use a centralized Layout wrapper.
 
 - [x] Task: Create a base `Layout` component and `Footer` placeholder. (77f5753)
-    - [ ] Write tests for `Layout` component (rendering children, Presence of Header/Footer).
-    - [ ] Implement `src/components/Layout.tsx`.
-    - [ ] Implement a basic `src/components/Footer.tsx`.
-- [ ] Task: Refactor `App.tsx` to use the `Layout` wrapper for all routes.
+    - [x] Write tests for `Layout` component (rendering children, Presence of Header/Footer).
+    - [x] Implement `src/components/Layout.tsx`.
+    - [x] Implement a basic `src/components/Footer.tsx`.
+- [~] Task: Refactor `App.tsx` to use the `Layout` wrapper for all routes.
     - [ ] Update `App.tsx` to wrap `Routes` with `Layout`.
     - [ ] Verify that all pages still render correctly within the layout.
 - [ ] Task: Conductor - User Manual Verification 'Core Layout Foundation' (Protocol in workflow.md)
