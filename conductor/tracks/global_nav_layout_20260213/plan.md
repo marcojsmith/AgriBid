@@ -21,10 +21,10 @@ Implement the responsive navigation bar with authentication awareness and the "H
 - [x] Task: Implement "Hybrid Sticky" and Responsive behavior. (2a94711)
     - [x] Add Tailwind classes for desktop sticky (`sticky top-0`) and mobile static positioning.
     - [x] Implement mobile hamburger menu for small screens.
-- [~] Task: Integrate Better Auth into the Header.
-    - [ ] Write tests for Auth states (Login button when out, Profile menu when in).
-    - [ ] Implement Auth logic in `Header.tsx` using `src/lib/auth-client.ts`.
-- [ ] Task: Conductor - User Manual Verification 'Global Header & Auth Integration' (Protocol in workflow.md)
+- [x] Task: Integrate Better Auth into the Header. (825a609)
+    - [x] Write tests for Auth states (Login button when out, Profile menu when in).
+    - [x] Implement Auth logic in `Header.tsx` using `src/lib/auth-client.ts`.
+- [x] Task: Conductor - User Manual Verification 'Global Header & Auth Integration' (Protocol in workflow.md) (825a609)
 
 ## Phase 3: Global Search & Refinement
 Implement the navbar search bar and final branding refinements.
