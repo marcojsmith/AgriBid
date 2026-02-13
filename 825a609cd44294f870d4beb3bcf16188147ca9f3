@@ -1,0 +1,10 @@
+Task: Integrate Better Auth into the Header
+Summary:
+- Implemented desktop profile dropdown using Shadcn UI DropdownMenu.
+- Integrated useSession and signOut from auth-client.
+- Added authenticated user section to mobile menu with Lucide icons.
+- Added unit tests for authenticated and unauthenticated states.
+Files:
+- app/src/components/Header.tsx
+- app/src/components/ui/dropdown-menu.tsx
+- app/src/components/__tests__/Header.test.tsx
