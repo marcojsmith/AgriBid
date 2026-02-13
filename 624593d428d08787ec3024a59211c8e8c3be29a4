@@ -1,0 +1,11 @@
+Task: Implement the detailed Global Footer
+Summary:
+- Implemented detailed Footer.tsx with Platform and Support sections.
+- Added links for How it Works, Safety & Trust, Auction Rules, etc.
+- Integrated Lucide icons for all footer links.
+- Added verified seller network badge and brand mission statement.
+- Added responsive contact info and legal links.
+- Verified with 100% test coverage.
+Files:
+- app/src/components/Footer.tsx
+- app/src/components/__tests__/Footer.test.tsx
