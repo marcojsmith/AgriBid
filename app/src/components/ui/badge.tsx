@@ -27,6 +27,16 @@ const badgeVariants = cva(
   }
 )
 
+/**
+ * Renders a styled badge element with selectable visual variants and optional slot composition.
+ *
+ * Renders a span by default or the provided child element when `asChild` is true, applies variant-based classes, and forwards remaining props to the rendered element.
+ *
+ * @param variant - Visual style to apply; one of "default", "secondary", "destructive", "outline", "ghost", or "link".
+ * @param asChild - When true, render using Radix `Slot.Root` so the child element receives the badge styling and attributes.
+ * @param className - Additional CSS classes to merge with the computed variant classes.
+ * @returns The rendered badge element (a span or the slotted child) with attributes, merged classes, and forwarded props.
+ */
 function Badge({
   className,
   variant = "default",

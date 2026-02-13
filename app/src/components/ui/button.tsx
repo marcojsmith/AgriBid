@@ -39,6 +39,15 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * Render a styled button whose classes are determined by `variant` and `size`, and which can render as a Radix Slot when needed.
+ *
+ * @param className - Additional CSS classes to merge with the computed variant and size classes.
+ * @param variant - Visual variant to apply (e.g., "default", "destructive", "outline", "secondary", "ghost", "link").
+ * @param size - Size token to apply (e.g., "default", "sm", "lg", "xs", "icon", "icon-sm", "icon-lg", "icon-xs").
+ * @param asChild - If true, render `Slot.Root` instead of a native `button` so the caller can supply a custom element.
+ * @returns A button-like React element with `data-variant` and `data-size` attributes and classes from `buttonVariants`.
+ */
 function Button({
   className,
   variant = "default",

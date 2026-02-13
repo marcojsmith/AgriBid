@@ -7,6 +7,16 @@ import { api } from "../../convex/_generated/api";
 import { AuctionCard } from "../components/AuctionCard";
 import type { Doc } from "../../convex/_generated/dataModel";
 
+/**
+ * Render the Home page for the AgriBid auction platform.
+ *
+ * Displays a sticky navbar and either an authenticated view (active auctions,
+ * seed/mock-data actions, and sign-out) or an unauthenticated view (in-page
+ * sign-in / sign-up form with error and loading states). While authentication
+ * status is pending, shows a full-screen loading indicator.
+ *
+ * @returns The JSX element for the Home page, including navbar, auction list, seeding actions, and authentication form.
+ */
 export default function Home() {
   const { data: session, isPending } = useSession();
   const auctions = useQuery(api.auctions.getActiveAuctions);

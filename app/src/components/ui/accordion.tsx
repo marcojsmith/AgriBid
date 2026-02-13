@@ -4,12 +4,23 @@ import { Accordion as AccordionPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Renders an Accordion root element that forwards all received props and sets `data-slot="accordion"`.
+ *
+ * @returns The rendered Accordion root element with forwarded props and a `data-slot="accordion"` attribute.
+ */
 function Accordion({
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Root>) {
   return <AccordionPrimitive.Root data-slot="accordion" {...props} />
 }
 
+/**
+ * Renders an accordion item element with base bottom-border styling and a data-slot attribute.
+ *
+ * @param className - Additional CSS classes to merge with the default border classes
+ * @returns The rendered accordion item element with merged classes and forwarded props
+ */
 function AccordionItem({
   className,
   ...props
@@ -23,6 +34,15 @@ function AccordionItem({
   )
 }
 
+/**
+ * Renders an accordion trigger that displays provided children and a chevron that rotates when open.
+ *
+ * The trigger forwards all native trigger props to the underlying Radix primitive, applies focused/open styling, and sets `data-slot="accordion-trigger"`.
+ *
+ * @param className - Additional CSS classes to merge with the trigger's base classes.
+ * @param children - Content shown inside the trigger (e.g., title or label).
+ * @returns The accordion trigger element that toggles its associated content panel.
+ */
 function AccordionTrigger({
   className,
   children,
@@ -45,6 +65,13 @@ function AccordionTrigger({
   )
 }
 
+/**
+ * Renders accordion panel content with open/close animations and an inner padded container.
+ *
+ * @param className - Additional classes applied to the inner content wrapper
+ * @param children - Content to display inside the accordion panel
+ * @returns The accordion content element that animates between open and closed states and wraps `children` in a padded container
+ */
 function AccordionContent({
   className,
   children,
