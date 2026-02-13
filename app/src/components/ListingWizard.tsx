@@ -24,6 +24,27 @@ const PHOTO_SLOTS = [
   { id: "rear", label: "Rear / Hitch", desc: "Show hydraulics and rear assembly" },
 ];
 
+interface ConditionChecklist {
+  engine: boolean;
+  hydraulics: boolean;
+  tires: boolean;
+  serviceHistory: boolean;
+  notes?: string;
+}
+
+interface ListingFormData {
+  year: number;
+  make: string;
+  model: string;
+  location: string;
+  operatingHours: number;
+  title: string;
+  conditionChecklist: ConditionChecklist;
+  images: string[];
+  startingPrice: number;
+  reservePrice: number;
+}
+
 export const ListingWizard = () => {
   const metadata = useQuery(api.auctions.getEquipmentMetadata);
   const createAuction = useMutation(api.auctions.createAuction);
@@ -31,7 +52,7 @@ export const ListingWizard = () => {
   const [isSubmitting, setIsBidding] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
-  const [formData, setFormData] = useState(() => {
+  const [formData, setFormData] = useState<ListingFormData>(() => {
     const saved = localStorage.getItem("agribid_listing_draft");
     return saved ? JSON.parse(saved) : {
       year: new Date().getFullYear(),
@@ -57,8 +78,8 @@ export const ListingWizard = () => {
     localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
   }, [formData]);
 
-  const updateField = (field: string, value: any) => {
-    setFormData((prev: any) => {
+  const updateField = <K extends keyof ListingFormData>(field: K, value: ListingFormData[K]) => {
+    setFormData((prev) => {
       const newData = { ...prev, [field]: value };
       if (field === "make" || field === "model" || field === "year") {
         const parts = [newData.year, newData.make, newData.model].filter(Boolean);
@@ -70,8 +91,8 @@ export const ListingWizard = () => {
     });
   };
 
-  const updateChecklist = (field: string, value: any) => {
-    setFormData((prev: any) => ({
+  const updateChecklist = <K extends keyof ConditionChecklist>(field: K, value: ConditionChecklist[K]) => {
+    setFormData((prev) => ({
       ...prev,
       conditionChecklist: {
         ...prev.conditionChecklist,
@@ -81,7 +102,6 @@ export const ListingWizard = () => {
   };
 
   const handleImageUpload = (slotId: string) => {
-    // Mock upload for now: using Unsplash IDs
     const mockImages: Record<string, string> = {
       front: "https://images.unsplash.com/photo-1698656627092-d7b1a629b0a1?auto=format&fit=crop&w=800",
       engine: "https://images.unsplash.com/photo-1650361288331-5079a81f3ca5?auto=format&fit=crop&w=800",
@@ -204,7 +224,7 @@ export const ListingWizard = () => {
             </div>
           </div>
         );
-      case 1:
+      case 1: {
         const selectedMake = metadata?.find(m => m.make === formData.make);
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -255,12 +275,13 @@ export const ListingWizard = () => {
             )}
           </div>
         );
-      case 2:
+      }
+      case 2: {
         const checklistItems = [
-          { id: "engine", label: "Engine Condition", desc: "Is the engine running smoothly without leaks?" },
-          { id: "hydraulics", label: "Hydraulic System", desc: "Are all hydraulic cylinders and hoses in good working order?" },
-          { id: "tires", label: "Tires / Tracks", desc: "Do tires/tracks have more than 50% tread remaining?" },
-          { id: "serviceHistory", label: "Service History", desc: "Do you have complete maintenance records for this unit?" },
+          { id: "engine" as const, label: "Engine Condition", desc: "Is the engine running smoothly without leaks?" },
+          { id: "hydraulics" as const, label: "Hydraulic System", desc: "Are all hydraulic cylinders and hoses in good working order?" },
+          { id: "tires" as const, label: "Tires / Tracks", desc: "Do tires/tracks have more than 50% tread remaining?" },
+          { id: "serviceHistory" as const, label: "Service History", desc: "Do you have complete maintenance records for this unit?" },
         ];
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -311,6 +332,7 @@ export const ListingWizard = () => {
             </div>
           </div>
         );
+      }
       case 3:
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">

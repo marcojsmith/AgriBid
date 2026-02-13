@@ -36,13 +36,13 @@
     - [x] Write tests for `createAuction` mutation with `pending_review` status.
     - [x] Implement final review step and submission to Convex.
     - [x] Create success/thank you page with moderation status info.
-- [x] Task: Conductor - User Manual Verification 'Phase 4: Media Gallery & Submission' (Protocol in workflow.md) (d348257)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Media Gallery & Submission' (Protocol in workflow.md) (b769afd)
 
 ## Phase 5: Polish & Mobile Optimization
-- [ ] Task: Refine Mobile UX.
-    - [ ] Ensure all inputs have appropriate `inputmode` and `autocomplete`.
-    - [ ] Optimize photo upload performance for slower connections.
-- [ ] Task: Final Verification & Quality Gates.
-    - [ ] Run full test suite and verify >80% coverage.
-    - [ ] Conduct accessibility audit (keyboard nav through wizard).
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Polish & Edge Cases' (Protocol in workflow.md)
+- [x] Task: Refine Mobile UX. (b769afd)
+    - [x] Ensure all inputs have appropriate `inputmode` and `autocomplete`.
+    - [x] Optimize photo upload performance for slower connections.
+- [x] Task: Final Verification & Quality Gates. (b769afd)
+    - [x] Run full test suite and verify >80% coverage.
+    - [x] Conduct accessibility audit (keyboard nav through wizard).
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Polish & Edge Cases' (Protocol in workflow.md) (b769afd)
