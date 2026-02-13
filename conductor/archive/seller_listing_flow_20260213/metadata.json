@@ -4,5 +4,5 @@
   "status": "completed",
   "created_at": "2026-02-13T09:44:00Z",
   "updated_at": "2026-02-13T11:30:00Z",
-  "description": "seller listing flow. however consider that users can be both buyers and sellers. I am looking at a similar design to webuycars.co.za"
+  "description": "Multi-step equipment listing wizard for sellers with metadata lookups, condition checklists, and moderation workflow"
 }

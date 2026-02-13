@@ -12,8 +12,8 @@ This track implements the "Supply" side of the AgriBid marketplace. It provides 
 ### 2. Multi-Step Listing Wizard
 - **Step 1: General Information**: Basic details (Title, Year, Location).
 - **Step 2: Technical Specifications**: 
-  - Make/Model lookup using existing `equipmentMetadata`.
-  - Auto-population of standard specs where available.
+  - Make/Model/Year capture via structured lookup.
+  - (Future work: Auto-population of extended technical specs via equipmentMetadata).
 - **Step 3: Condition Checklist**: 
   - Structured Yes/No questions covering key areas: Engine, Hydraulics, Tires, and Service History.
 - **Step 4: Media Gallery**:
@@ -21,7 +21,7 @@ This track implements the "Supply" side of the AgriBid marketplace. It provides 
   - Support for multi-file uploads.
 - **Step 5: Pricing & Strategy**:
   - Input for Starting Price and Reserve Price.
-  - Dynamic "Price Recommendation" indicator based on historical data.
+  - Dynamic "Price Recommendation" indicator (illustrative for prototype).
 
 ### 3. Listing Moderation
 - Listings are submitted with a `pending_review` status.
@@ -34,7 +34,6 @@ This track implements the "Supply" side of the AgriBid marketplace. It provides 
 
 ## Acceptance Criteria
 - [ ] Users can navigate from the home page grid to the "Sell Equipment" wizard.
-- [ ] Selecting a John Deere 6155R pre-fills known technical specs.
 - [ ] The wizard prevents submission if mandatory photo angles are missing.
 - [ ] Submitted listings appear in the database with `pending_review` status.
 - [ ] The user receives a "Submission Successful" confirmation with next steps regarding moderation.

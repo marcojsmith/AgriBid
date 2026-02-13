@@ -1,5 +1,6 @@
 // app/src/components/ListingWizard.tsx
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight, ChevronLeft, Save, Search, Check, AlertCircle, Info, TrendingUp, Camera, X, CheckCircle2 } from "lucide-react";
@@ -83,6 +84,21 @@ export const ListingWizard = () => {
     }
   });
 
+  const imagesRef = useRef(formData.images);
+  useEffect(() => {
+    imagesRef.current = formData.images;
+  }, [formData.images]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(imagesRef.current).forEach(url => {
+        if (url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
+  }, []);
+
   useEffect(() => {
     localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
   }, [formData]);
@@ -160,7 +176,8 @@ export const ListingWizard = () => {
       case 3:
         return Object.keys(formData.images).length > 0;
       case 4:
-        return formData.startingPrice > 0;
+        return formData.startingPrice > 0 &&
+               (formData.reservePrice === 0 || formData.reservePrice >= formData.startingPrice);
       default:
         return true;
     }
@@ -239,7 +256,7 @@ export const ListingWizard = () => {
           </ul>
         </div>
         <Button size="lg" className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20" asChild>
-          <a href="/">Return to Marketplace</a>
+          <Link to="/">Return to Marketplace</Link>
         </Button>
       </div>
     );
@@ -522,7 +539,7 @@ export const ListingWizard = () => {
                 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground font-bold uppercase text-[10px]">Market Confidence</span>
+                    <span className="text-muted-foreground font-bold uppercase text-[10px]">Market Confidence (Illustrative)</span>
                     <Badge className="bg-green-500 hover:bg-green-600 font-black uppercase text-[10px]">High</Badge>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
