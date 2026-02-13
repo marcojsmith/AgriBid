@@ -1,0 +1,8 @@
+Checkpoint: Core Layout Foundation
+Summary:
+- Established global Layout component wrapping all routes.
+- Implemented authenticated Header with navigation and branding.
+- Created consistent Footer placeholder.
+- Fixed critical Radix UI import issues across all UI components.
+- Standardized Slot usage in Badge and Button components.
+- Verified with 100% build pass and all unit tests passing.
