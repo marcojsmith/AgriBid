@@ -32,8 +32,8 @@ export const getAuctionBids = query({
       bids.map(async (bid) => {
         const user = await ctx.db
           .query("user")
-          // Use filter because bidderId is a string from Better Auth
-          .filter((q) => q.eq(q.field("_id"), bid.bidderId))
+          // Better Auth uses 'userId' as the external identifier
+          .withIndex("by_userId", (q) => q.eq("userId", bid.bidderId))
           .first();
         
         return {
@@ -52,7 +52,7 @@ export const getSellerInfo = query({
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("user")
-      .filter((q) => q.eq(q.field("_id"), args.sellerId))
+      .withIndex("by_userId", (q) => q.eq("userId", args.sellerId))
       .first();
     
     if (!user) return null;

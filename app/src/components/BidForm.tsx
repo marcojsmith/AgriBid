@@ -1,5 +1,5 @@
 // app/src/components/BidForm.tsx
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Doc } from "../../convex/_generated/dataModel";
@@ -14,6 +14,17 @@ interface BidFormProps {
 export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
   const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
+  const lastMinBidRef = useRef(nextMinBid);
+
+  // Sync manualAmount with nextMinBid when it changes, 
+  // but only if user hasn't manually entered a higher value
+  useEffect(() => {
+    const currentManualNum = parseFloat(manualAmount) || 0;
+    if (nextMinBid > lastMinBidRef.current && currentManualNum < nextMinBid) {
+      setManualAmount(nextMinBid.toString());
+    }
+    lastMinBidRef.current = nextMinBid;
+  }, [nextMinBid, manualAmount]);
 
   const currentManualNum = parseFloat(manualAmount) || 0;
   const isManualValid = currentManualNum >= nextMinBid;
@@ -28,9 +39,9 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
     <div className="space-y-6">
       {/* Quick Bid Options */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {quickBids.map((amount) => (
+        {quickBids.map((amount, index) => (
           <Button
-            key={amount}
+            key={`quick-bid-${index}-${amount}`}
             variant="outline"
             className="h-14 flex flex-col items-center justify-center gap-0.5 border-2 hover:border-primary hover:bg-primary/5 transition-all group"
             onClick={() => onBid(amount)}

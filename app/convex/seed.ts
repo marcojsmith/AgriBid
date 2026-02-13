@@ -228,11 +228,9 @@ export const seedMockAuctions = mutation({
       if (!existingAuction) {
         await ctx.db.insert("auctions", auction);
       } else {
-        // Force update images and title for existing ones to match new data
+        // Update static metadata only; preserve currentPrice/endTime set by real bids
         await ctx.db.patch(existingAuction._id, { 
           images: auction.images,
-          currentPrice: auction.currentPrice,
-          endTime: auction.endTime,
           title: auction.title
         });
       }

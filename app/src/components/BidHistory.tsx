@@ -64,7 +64,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {bids.map((bid, index) => (
+              {[...bids].sort((a, b) => b.amount - a.amount).map((bid, index) => (
                 <div 
                   key={bid._id} 
                   className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
