@@ -5,6 +5,11 @@ import { Button } from "../components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { ListingWizard } from "../components/ListingWizard";
 
+/**
+ * Page component that renders the "List Your Equipment" flow for authenticated users and an authentication prompt for unauthenticated users.
+ *
+ * @returns The JSX element for the Sell page, including a header with navigation, the ListingWizard for authenticated users, and a login prompt for unauthenticated users.
+ */
 export default function Sell() {
   const navigate = useNavigate();
 

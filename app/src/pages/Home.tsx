@@ -11,14 +11,11 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
 /**
- * Render the Home page for the AgriBid auction platform.
+ * Renders the AgriBid home page with a sticky navbar and conditional content for authenticated and unauthenticated users.
  *
- * Displays a sticky navbar and either an authenticated view (active auctions,
- * seed/mock-data actions, and sign-out) or an unauthenticated view (in-page
- * sign-in / sign-up form with error and loading states). While authentication
- * status is pending, shows a full-screen loading indicator.
+ * Authenticated users see active auctions, controls to seed mock data and sell equipment, and a sign-out button. Unauthenticated users see an in-page sign-in / sign-up form with validation, error messaging, and loading states. While authentication status is pending, a full-screen loading indicator is displayed.
  *
- * @returns The JSX element for the Home page, including navbar, auction list, seeding actions, and authentication form.
+ * @returns The JSX element for the Home page.
  */
 export default function Home() {
   const { data: session, isPending } = useSession();
