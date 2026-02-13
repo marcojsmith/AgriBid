@@ -2,6 +2,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BidHistory } from '../BidHistory';
 import { describe, it, expect, vi } from 'vitest';
+import type { Id } from '../../../convex/_generated/dataModel';
 
 // Mock Convex hooks
 vi.mock('convex/react', () => ({
@@ -13,7 +14,7 @@ vi.mock('convex/react', () => ({
 
 describe('BidHistory', () => {
   it('renders correctly and toggles expansion', () => {
-    render(<BidHistory auctionId={"auction123" as any} />);
+    render(<BidHistory auctionId={"auction123" as Id<"auctions">} />);
     
     // Header should be visible
     expect(screen.getByText(/Bid History/i)).toBeInTheDocument();

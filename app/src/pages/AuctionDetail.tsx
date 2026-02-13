@@ -82,7 +82,7 @@ export default function AuctionDetail() {
 
           {/* Right Column: Bidding Panel */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-card border-2 border-primary/20 rounded-2xl p-6 shadow-xl sticky top-24">
+            <div className="bg-card border-2 border-primary/20 rounded-2xl p-6 shadow-xl lg:sticky lg:top-24">
               <BiddingPanel auction={auction} />
               
               <div className="mt-6 border-t pt-4">

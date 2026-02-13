@@ -5,10 +5,11 @@ import { api } from "../../convex/_generated/api";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
-import { Gavel } from "lucide-react";
+import { Gavel, Info } from "lucide-react";
 import { BidForm } from "./BidForm";
 import { BidConfirmation } from "./BidConfirmation";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;
@@ -78,6 +79,16 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
         </div>
       ) : (
         <div className="space-y-4">
+          {auction.isExtended && (
+            <Alert className="bg-amber-50 border-amber-200 text-amber-900 rounded-xl py-3 border-2">
+              <Info className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-xs font-black uppercase tracking-widest mb-0.5">Soft Close Extended</AlertTitle>
+              <AlertDescription className="text-[10px] font-bold leading-tight opacity-80 uppercase">
+                Bidding activity has extended the auction to ensure a fair finish.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground bg-muted/30 p-3 rounded-lg border">
             <Gavel className="h-4 w-4 text-primary" />
             <span>Next minimum bid: <span className="text-foreground">R{nextMinBid.toLocaleString()}</span></span>

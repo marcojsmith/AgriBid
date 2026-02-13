@@ -2,11 +2,11 @@
 import { render, screen } from '@testing-library/react';
 import { AuctionHeader } from '../AuctionHeader';
 import { describe, it, expect } from 'vitest';
-import type { Doc } from '../../../convex/_generated/dataModel';
+import type { Doc, Id } from '../../../convex/_generated/dataModel';
 
 describe('AuctionHeader', () => {
   const mockAuction = {
-    _id: 'auction123' as any,
+    _id: 'auction123' as Id<"auctions">,
     title: 'John Deere 8RX 410',
     make: 'John Deere',
     model: '8RX 410',

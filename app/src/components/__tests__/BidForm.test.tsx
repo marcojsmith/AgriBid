@@ -2,11 +2,11 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BidForm } from '../BidForm';
 import { describe, it, expect, vi } from 'vitest';
-import type { Doc } from '../../../convex/_generated/dataModel';
+import type { Doc, Id } from '../../../convex/_generated/dataModel';
 
 describe('BidForm', () => {
   const mockAuction = {
-    _id: 'auction123' as any,
+    _id: 'auction123' as Id<"auctions">,
     currentPrice: 50000,
     minIncrement: 500,
     endTime: Date.now() + 100000,

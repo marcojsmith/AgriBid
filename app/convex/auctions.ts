@@ -98,13 +98,17 @@ export const placeBid = mutation({
     // Extend auction if bid placed in final 2 minutes (Soft Close)
     const timeRemaining = auction.endTime - Date.now();
     let newEndTime = auction.endTime;
+    let isExtended = auction.isExtended || false;
+    
     if (timeRemaining < 120000) { // 2 minutes in ms
       newEndTime = Date.now() + 120000;
+      isExtended = true;
     }
 
     await ctx.db.patch(args.auctionId, {
       currentPrice: args.amount,
       endTime: newEndTime,
+      isExtended,
     });
 
     await ctx.db.insert("bids", {

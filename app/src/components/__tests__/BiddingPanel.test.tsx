@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { BiddingPanel } from '../BiddingPanel';
 import { describe, it, expect, vi } from 'vitest';
-import type { Doc } from '../../../convex/_generated/dataModel';
+import type { Doc, Id } from '../../../convex/_generated/dataModel';
 
 // Mock the CountdownTimer since it has its own tests
 vi.mock('../CountdownTimer', () => ({
@@ -17,7 +17,7 @@ vi.mock('convex/react', () => ({
 
 describe('BiddingPanel', () => {
   const mockAuction = {
-    _id: 'auction123' as any,
+    _id: 'auction123' as Id<"auctions">,
     currentPrice: 50000,
     minIncrement: 500,
     endTime: Date.now() + 100000,
