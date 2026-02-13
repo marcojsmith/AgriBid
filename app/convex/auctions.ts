@@ -13,9 +13,56 @@ export const getActiveAuctions = query({
 });
 
 export const getAuctionById = query({
-  args: { id: v.id("auctions") },
+  args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    return await ctx.db.get(args.auctionId);
+  },
+});
+
+export const getAuctionBids = query({
+  args: { auctionId: v.id("auctions") },
+  handler: async (ctx, args) => {
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .order("desc")
+      .take(50);
+
+    const bidsWithUsers = await Promise.all(
+      bids.map(async (bid) => {
+        const user = await ctx.db
+          .query("user")
+          // Better Auth uses 'userId' as the external identifier
+          .withIndex("by_userId", (q) => q.eq("userId", bid.bidderId))
+          .first();
+        
+        return {
+          ...bid,
+          bidderName: user?.name || "Anonymous",
+        };
+      })
+    );
+
+    return bidsWithUsers;
+  },
+});
+
+export const getSellerInfo = query({
+  args: { sellerId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("user")
+      .withIndex("by_userId", (q) => q.eq("userId", args.sellerId))
+      .first();
+    
+    if (!user) return null;
+
+    return {
+      name: user.name,
+      isVerified: user.isVerified || false,
+      role: user.role || "Private Seller",
+      createdAt: user.createdAt,
+    };
   },
 });
 
@@ -45,19 +92,23 @@ export const placeBid = mutation({
     // Enforce Minimum Bid Increment
     const minimumRequired = auction.currentPrice + auction.minIncrement;
     if (args.amount < minimumRequired) {
-      throw new Error(`Bid must be at least £${minimumRequired}`);
+      throw new Error(`Bid must be at least R${minimumRequired}`);
     }
 
     // Extend auction if bid placed in final 2 minutes (Soft Close)
     const timeRemaining = auction.endTime - Date.now();
     let newEndTime = auction.endTime;
+    let isExtended = auction.isExtended || false;
+    
     if (timeRemaining < 120000) { // 2 minutes in ms
       newEndTime = Date.now() + 120000;
+      isExtended = true;
     }
 
     await ctx.db.patch(args.auctionId, {
       currentPrice: args.amount,
       endTime: newEndTime,
+      isExtended,
     });
 
     await ctx.db.insert("bids", {

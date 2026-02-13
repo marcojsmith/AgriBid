@@ -6,7 +6,7 @@ import { components } from "./_generated/api";
 import { query } from "./_generated/server";
 import type { GenericCtx } from "@convex-dev/better-auth";
 import type { DataModel } from "./_generated/dataModel";
-import { ALLOWED_ORIGINS } from "./config";
+import { ALLOWED_ORIGINS, requireEnv } from "./config";
 
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.
@@ -17,6 +17,7 @@ export const createAuth = (
   { optionsOnly } = { optionsOnly: false },
 ) => {
   const trustedOrigins = ALLOWED_ORIGINS;
+  const siteUrl = requireEnv("CONVEX_SITE_URL");
 
   return betterAuth({
     appName: "AgriBid",
@@ -25,8 +26,7 @@ export const createAuth = (
       disabled: optionsOnly,
     },
     // The site URL is needed for redirects and cookies
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    baseURL: (globalThis as any).process.env.CONVEX_SITE_URL || (globalThis as any).process.env.BETTER_AUTH_URL,
+    baseURL: siteUrl,
     basePath: "/api/auth",
     trustedOrigins,
     advanced: {
@@ -47,8 +47,7 @@ export const createAuth = (
         authConfig: { 
           providers: [{ 
             applicationID: "convex", 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            domain: (globalThis as any).process.env.CONVEX_SITE_URL || "" 
+            domain: siteUrl
           }] 
         } 
       }),

@@ -99,6 +99,7 @@ export default defineSchema({
     ),
     images: v.array(v.string()),
     conditionReportUrl: v.optional(v.string()),
+    isExtended: v.optional(v.boolean()),
   })
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])
