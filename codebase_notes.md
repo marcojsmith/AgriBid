@@ -29,3 +29,26 @@
 ## UI/UX Patterns
 - **Auth Form**: Uses a single form with a toggle state (`signin` | `signup`) to provide correct `autoComplete` attributes (`current-password` vs `new-password`) and a better user experience.
 - **Countdown Timer**: Uses a single `remainingMs` state and derives display strings during render for efficiency and simplicity.
+
+## Image Storage Architecture (Pending Implementation)
+
+### Current Status
+- As of 2026-02-13, the `ListingWizard` uses temporary local object URLs (`URL.createObjectURL`) for previews.
+- **Limitation**: These URLs are client-side only and ephemeral. They will not persist after a page refresh and cannot be viewed by other users.
+
+### Implementation Guide for Permanent Storage
+To migrate to permanent Convex File Storage, follow this pattern:
+
+1.  **Backend (Convex)**:
+    - Create a `generateUploadUrl` mutation in `convex/auctions.ts` that returns a secure upload destination using `ctx.storage.generateUploadUrl()`.
+    - Create a `getFileUrl` query that takes a `storageId` and returns a public URL using `ctx.storage.getUrl(storageId)`.
+
+2.  **Frontend (ListingWizard)**:
+    - When a user selects a file, call the `generateUploadUrl` mutation.
+    - `POST` the file binary data directly to the returned URL using `fetch(url, { method: "POST", body: file })`.
+    - Retrieve the `storageId` from the JSON response of the POST request.
+    - Save the `storageId` (string) into the `formData.images` array.
+
+3.  **Display**:
+    - Components rendering auction images (e.g., `AuctionCard`, `ImageGallery`) should use the `storageId` to fetch the public URL via the `getFileUrl` query or a dedicated resolver.
+

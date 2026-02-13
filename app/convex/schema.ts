@@ -93,6 +93,7 @@ export default defineSchema({
     sellerId: v.string(),
     status: v.union(
       v.literal("draft"),
+      v.literal("pending_review"),
       v.literal("active"),
       v.literal("sold"),
       v.literal("unsold")
@@ -100,6 +101,13 @@ export default defineSchema({
     images: v.array(v.string()),
     conditionReportUrl: v.optional(v.string()),
     isExtended: v.optional(v.boolean()),
+    conditionChecklist: v.optional(v.object({
+      engine: v.boolean(),
+      hydraulics: v.boolean(),
+      tires: v.boolean(),
+      serviceHistory: v.boolean(),
+      notes: v.optional(v.string()),
+    })),
   })
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])

@@ -47,6 +47,13 @@ export const getAuctionBids = query({
   },
 });
 
+export const getEquipmentMetadata = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("equipmentMetadata").collect();
+  },
+});
+
 export const getSellerInfo = query({
   args: { sellerId: v.string() },
   handler: async (ctx, args) => {
@@ -63,6 +70,86 @@ export const getSellerInfo = query({
       role: user.role || "Private Seller",
       createdAt: user.createdAt,
     };
+  },
+});
+
+export const createAuction = mutation({
+  args: {
+    title: v.string(),
+    make: v.string(),
+    model: v.string(),
+    year: v.number(),
+    operatingHours: v.number(),
+    location: v.string(),
+    startingPrice: v.number(),
+    reservePrice: v.number(),
+    images: v.array(v.string()),
+    conditionChecklist: v.object({
+      engine: v.boolean(),
+      hydraulics: v.boolean(),
+      tires: v.boolean(),
+      serviceHistory: v.boolean(),
+      notes: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.subject;
+
+    const auctionId = await ctx.db.insert("auctions", {
+      ...args,
+      sellerId: userId,
+      status: "pending_review",
+      currentPrice: args.startingPrice,
+      minIncrement: args.startingPrice < 10000 ? 100 : 500,
+      startTime: Date.now(), // Will be updated by admin upon approval
+      endTime: Date.now() + 7 * 24 * 60 * 60 * 1000, // Default 7 days
+    });
+
+    return auctionId;
+  },
+});
+
+export const approveAuction = mutation({
+  args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    
+    // Enforce admin authorization
+    // Note: Better Auth roles are mapped to identity.role in the Convex integration
+    if (identity.role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    // Validate durationDays
+    const durationDays = args.durationDays ?? 7;
+    if (durationDays <= 0 || durationDays > 365) {
+      throw new Error("Invalid duration: must be between 1 and 365 days");
+    }
+    
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) throw new Error("Auction not found");
+    if (auction.status !== "pending_review") {
+      throw new Error("Only auctions in pending_review can be approved");
+    }
+
+    const startTime = Date.now();
+    const durationMs = durationDays * 24 * 60 * 60 * 1000;
+    const endTime = startTime + durationMs;
+
+    await ctx.db.patch(args.auctionId, {
+      status: "active",
+      startTime,
+      endTime,
+    });
+
+    return { success: true };
   },
 });
 

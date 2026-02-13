@@ -8,7 +8,7 @@
 - [x] Configure Tailwind CSS with custom theme (Earth tones)
 - [x] Install and configure Shadcn/UI components
 - [x] Set up ESLint + Prettier with project rules (Husky + lint-staged)
-- [ ] Configure Vitest for unit testing
+- [x] Configure Vitest for unit testing
 - [x] Create `.env.example` with required variables
 - [x] Set up Git repository with `.gitignore`
 - [x] Create initial folder structure (`src/components`, `src/pages`, `src/lib`, etc.)
@@ -45,15 +45,15 @@
 
 ### Convex Queries
 - [x] `getActiveAuctions` - fetch all active auctions
-- [ ] `getAuctionById` - fetch single auction with full details
+- [x] `getAuctionById` - fetch single auction with full details
 - [ ] `getUserAuctions` - fetch auctions by seller (with status filter)
-- [ ] `getAuctionBids` - fetch bid history for an auction
+- [x] `getAuctionBids` - fetch bid history for an auction
 - [ ] `getUserBids` - fetch bids placed by a user
 - [ ] `getWatchlist` - fetch user's watched auctions
 - [ ] `searchAuctions` - implement search/filter logic
 
 ### Convex Mutations
-- [ ] `createAuction` - create new auction (seller only)
+- [x] `createAuction` - create new auction (seller only)
 - [ ] `updateAuction` - edit draft auction
 - [ ] `publishAuction` - change status from "draft" to "active"
 - [x] `placeBid` - place a bid with soft close logic
@@ -110,17 +110,17 @@
 - [ ] Pagination or infinite scroll
 
 ### Auction Detail Page (`/auction/:id`)
-- [ ] **ImageGallery** component
+- [x] **ImageGallery** component
 - [ ] **Equipment Specs Table**
-- [ ] **Bidding Panel**
-- [ ] **Seller Info**
+- [x] **Bidding Panel**
+- [x] **Seller Info**
 - [x] **Countdown Timer**
 
 ### Seller Dashboard (`/dashboard/seller`)
 - [ ] **My Listings Tabs**
 - [ ] **Analytics Panel**
 - [ ] **Create Listing Button**
-- [ ] **Create Listing Form** (Multi-Step)
+- [x] **Create Listing Form** (Multi-Step Wizard)
 
 ### Buyer Dashboard (`/dashboard/buyer`)
 - [ ] **Active Bids Tab**
@@ -138,8 +138,8 @@
 
 ### Real-Time Bidding
 - [ ] Implement optimistic updates for bid submission
-- [ ] Handle race conditions (multiple simultaneous bids)
-- [ ] Display error if bid fails (network issue)
+- [x] Handle race conditions (multiple simultaneous bids)
+- [x] Display error if bid fails (network issue)
 - [x] Show "Bid Accepted" success message
 - [ ] Implement retry logic (exponential backoff)
 
@@ -170,9 +170,6 @@
 - [x] Display format: "2d 5h 32m 15s" or "Ended"
 - [x] Change colour to red when < 1 hour remaining
 
-### Shipping Calculator
-- [ ] Integrate with haulage API (Shiply or uShip)
-
 ---
 
 ## Testing & Quality Assurance
@@ -181,7 +178,7 @@
 - [ ] Test Convex queries
 - [ ] Test Convex mutations
 - [ ] Test utility functions
-- [ ] Test React components
+- [x] Test React components
 
 ### Integration Tests
 - [ ] Test full bidding flow
@@ -200,16 +197,19 @@
 ### Convex Deployment
 - [ ] Deploy to Convex Cloud (`npx convex deploy`)
 
-### Frontend Deployment (Vercel/Netlify)
-- [ ] Connect GitHub repository
-- [ ] Configure build settings
+### Vercel Deployment
+- [ ] Connect GitHub repository to Vercel
+- [ ] Configure build settings (build command: `npm run build`, output directory: `dist/`)
+- [ ] Set environment variables in Vercel dashboard
+- [ ] Deploy staging environment for testing
+- [ ] Deploy production environment after testing
 
 ---
 
 ## Documentation
 
 ### Code Documentation
-- [ ] Add JSDoc comments to all functions
+- [x] Add JSDoc comments to all functions
 - [x] Document Convex schema fields
 - [ ] Create `CONTRIBUTING.md`
 - [ ] Create `CHANGELOG.md`
@@ -232,13 +232,13 @@
 
 ### NPM Packages
 - [x] `react`, `react-dom`
-- [ ] `react-router-dom`
+- [x] `react-router-dom`
 - [x] `convex`
 - [x] `@better-auth/cli`, `better-auth`
 - [x] `tailwindcss`
-- [x] `shadcn-ui`
+- [x] `shadcn-ui` (Radix UI primitives)
 - [ ] `date-fns` or `dayjs`
 - [ ] `zod`
 - [ ] `react-hook-form`
 - [x] `lucide-react`
-- [ ] `vitest`, `@testing-library/react`
+- [x] `vitest`, `@testing-library/react`

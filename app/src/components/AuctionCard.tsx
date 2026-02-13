@@ -10,6 +10,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
+import { BidConfirmation } from "./BidConfirmation";
 
 interface AuctionCardProps {
   auction: Doc<"auctions">;
@@ -18,20 +19,38 @@ interface AuctionCardProps {
 export const AuctionCard = ({ auction }: AuctionCardProps) => {
   const placeBid = useMutation(api.auctions.placeBid);
   const [isBidding, setIsBidding] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [pendingBid, setPendingBid] = useState<number | null>(null);
 
-  const handleBid = async (e: React.MouseEvent) => {
+  const handleBidInitiate = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const amount = auction.currentPrice + auction.minIncrement;
+    setPendingBid(amount);
+    setIsConfirmOpen(true);
+  };
+
+  const handleBidConfirm = async () => {
+    if (pendingBid === null) return;
+    
+    const minimum = auction.currentPrice + auction.minIncrement;
+    if (pendingBid < minimum) {
+      toast.error(`Price updated to R${minimum.toLocaleString()} due to a newer bid.`);
+      setPendingBid(minimum);
+      return;
+    }
+
+    setIsConfirmOpen(false);
     setIsBidding(true);
     try {
-      const bidAmount = auction.currentPrice + auction.minIncrement;
-      await placeBid({ auctionId: auction._id, amount: bidAmount });
+      await placeBid({ auctionId: auction._id, amount: pendingBid });
       toast.success("Bid placed successfully!");
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : "Failed to place bid");
     } finally {
       setIsBidding(false);
+      setPendingBid(null);
     }
   };
 
@@ -78,7 +97,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
         </CardContent>
       </Link>
       <CardFooter className="p-4 bg-muted/30 border-t flex gap-2">
-        <Button className="flex-1 font-bold" onClick={handleBid} disabled={isBidding || auction.status !== 'active'}>
+        <Button className="flex-1 font-bold" onClick={handleBidInitiate} disabled={isBidding || auction.status !== 'active'}>
           {isBidding ? "Processing..." : `Bid R${(auction.currentPrice + auction.minIncrement).toLocaleString()}`}
         </Button>
         <Button variant="outline" size="icon" className="shrink-0" aria-label="View auction details" asChild>
@@ -87,6 +106,16 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
           </Link>
         </Button>
       </CardFooter>
+
+      <BidConfirmation
+        isOpen={isConfirmOpen}
+        amount={pendingBid || 0}
+        onConfirm={handleBidConfirm}
+        onCancel={() => {
+          setIsConfirmOpen(false);
+          setPendingBid(null);
+        }}
+      />
     </Card>
   );
 };
