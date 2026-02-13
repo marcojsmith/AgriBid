@@ -1,56 +1,77 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '../Header';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
+import * as authClient from '../../lib/auth-client';
 
-// Mock Convex and Auth
+// Mock Convex
 vi.mock('convex/react', () => ({
   Authenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="auth">{children}</div>,
   Unauthenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="unauth">{children}</div>,
 }));
 
+// Mock auth client
 vi.mock('../../lib/auth-client', () => ({
-  useSession: () => ({ data: null }),
+  useSession: vi.fn(),
   signOut: vi.fn(),
 }));
 
 describe('Header', () => {
-  it('renders the brand name', () => {
-    render(
-      <BrowserRouter>
-        <Header />
-      </BrowserRouter>
-    );
-    expect(screen.getByText(/AGRIBID/i)).toBeInTheDocument();
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('renders navigation links', () => {
-    render(
+  const renderHeader = () => {
+    return render(
       <BrowserRouter>
         <Header />
       </BrowserRouter>
     );
+  };
+
+  it('renders the brand name and navigation links', () => {
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    renderHeader();
+    expect(screen.getByText(/AGRIBID/i)).toBeInTheDocument();
     expect(screen.getByText(/Marketplace/i)).toBeInTheDocument();
     expect(screen.getByText(/Sell/i)).toBeInTheDocument();
-    expect(screen.getByText(/Watchlist/i)).toBeInTheDocument();
+  });
+
+  it('renders sign in button when unauthenticated', () => {
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    renderHeader();
+    expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
+  });
+
+  it('renders user name and sign out button in mobile menu when authenticated', () => {
+    vi.mocked(authClient.useSession).mockReturnValue({ data: { user: { name: 'John Doe' } }, isPending: false } as any);
+    renderHeader();
+    expect(screen.getByText(/John Doe/i)).toBeInTheDocument();
+    
+    // Open mobile menu
+    const toggle = screen.getByLabelText(/Toggle menu/i);
+    fireEvent.click(toggle);
+    
+    // Sign out button should be in the mobile menu
+    expect(screen.getByText(/Sign Out/i)).toBeInTheDocument();
   });
 
   it('toggles mobile menu when clicked', () => {
-    render(
-      <BrowserRouter>
-        <Header />
-      </BrowserRouter>
-    );
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    renderHeader();
     
-    // Find menu toggle button (hamburger)
     const toggle = screen.getByLabelText(/Toggle menu/i);
-    expect(toggle).toBeInTheDocument();
-
-    // Click to open
     fireEvent.click(toggle);
     
-    // Check if mobile nav links are visible (they have different classes but same text)
+    // Links appear in mobile menu too
     const links = screen.getAllByText(/Marketplace/i);
-    expect(links.length).toBeGreaterThan(1); // One in desktop nav, one in mobile nav
+    expect(links.length).toBeGreaterThan(1);
+  });
+
+  it('has hybrid sticky classes', () => {
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    renderHeader();
+    const header = screen.getByRole('banner');
+    expect(header).toHaveClass('lg:sticky');
   });
 });

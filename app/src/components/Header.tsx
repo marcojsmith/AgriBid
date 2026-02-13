@@ -4,7 +4,15 @@ import { Authenticated, Unauthenticated } from "convex/react";
 import { useSession, signOut } from "../lib/auth-client";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
-import { Menu, X, User, LogOut, LayoutDashboard, Heart } from "lucide-react";
+import { Menu, X, User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Header = () => {
   const { data: session } = useSession();
@@ -41,20 +49,54 @@ export const Header = () => {
 
         <div className="flex items-center gap-2">
           {/* Desktop Auth */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center">
             <Authenticated>
-              <div className="flex flex-col items-end mr-2">
-                <span className="text-[10px] font-black uppercase text-muted-foreground leading-none">Verified User</span>
-                <span className="text-sm font-bold text-primary leading-none mt-1">{session?.user?.name}</span>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={async () => await signOut()}
-                className="font-bold uppercase text-[10px] tracking-widest rounded-lg border-2 h-9"
-              >
-                Sign Out
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-xl group">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-black uppercase text-muted-foreground leading-none">Verified User</span>
+                      <span className="text-sm font-bold text-primary leading-none mt-1">{session?.user?.name}</span>
+                    </div>
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 p-2 shadow-xl">
+                  <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest text-muted-foreground px-2 py-1.5">
+                    Account Menu
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide cursor-pointer focus:bg-primary focus:text-primary-foreground">
+                    <Link to="#" className="flex w-full items-center gap-2">
+                      <LayoutDashboard className="h-4 w-4" />
+                      My Bids
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide cursor-pointer focus:bg-primary focus:text-primary-foreground">
+                    <Link to="#" className="flex w-full items-center gap-2">
+                      <Heart className="h-4 w-4" />
+                      Watchlist
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide cursor-pointer focus:bg-primary focus:text-primary-foreground">
+                    <Link to="#" className="flex w-full items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={async () => await signOut()}
+                    className="rounded-lg font-black uppercase text-[10px] tracking-widest cursor-pointer focus:bg-destructive focus:text-destructive-foreground text-destructive"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </Authenticated>
             
             <Unauthenticated>
