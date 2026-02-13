@@ -33,12 +33,12 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Real-Time Bidding Panel' (Protocol in workflow.md) (7d34e18)
 
 ## Phase 4: Information Architecture & Seller Trust
-- [ ] Task: Implement Collapsible Bid History.
-    - [ ] Write tests for fetching and displaying the bid list.
-    - [ ] Create a collapsible/expandable section showing the latest bids (anonymized).
-- [ ] Task: Implement Seller Information section.
-    - [ ] Display seller name, verification badge, and location details.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Information Architecture & Seller Trust' (Protocol in workflow.md)
+- [x] Task: Implement Collapsible Bid History. (ab495dc)
+    - [x] Write tests for fetching and displaying the bid list.
+    - [x] Create a collapsible/expandable section showing the latest bids (anonymized).
+- [x] Task: Implement Seller Information section. (ab495dc)
+    - [x] Display seller name, verification badge, and location details.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Information Architecture & Seller Trust' (Protocol in workflow.md) (ab495dc)
 
 ## Phase 5: Polish & Edge Cases
 - [ ] Task: Implement Soft Close visual feedback.

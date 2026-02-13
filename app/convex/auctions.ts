@@ -19,6 +19,53 @@ export const getAuctionById = query({
   },
 });
 
+export const getAuctionBids = query({
+  args: { auctionId: v.id("auctions") },
+  handler: async (ctx, args) => {
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .order("desc")
+      .take(50);
+
+    const bidsWithUsers = await Promise.all(
+      bids.map(async (bid) => {
+        const user = await ctx.db
+          .query("user")
+          // Use filter because bidderId is a string from Better Auth
+          .filter((q) => q.eq(q.field("_id"), bid.bidderId))
+          .first();
+        
+        return {
+          ...bid,
+          bidderName: user?.name || "Anonymous",
+        };
+      })
+    );
+
+    return bidsWithUsers;
+  },
+});
+
+export const getSellerInfo = query({
+  args: { sellerId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("user")
+      .filter((q) => q.eq(q.field("_id"), args.sellerId))
+      .first();
+    
+    if (!user) return null;
+
+    return {
+      name: user.name,
+      isVerified: user.isVerified || false,
+      role: user.role || "Private Seller",
+      createdAt: user.createdAt,
+    };
+  },
+});
+
 export const placeBid = mutation({
   args: { auctionId: v.id("auctions"), amount: v.number() },
   handler: async (ctx, args) => {

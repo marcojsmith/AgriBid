@@ -7,6 +7,8 @@ import { ArrowLeft, Share2, Heart } from "lucide-react";
 import { AuctionHeader } from "../components/AuctionHeader";
 import { ImageGallery } from "../components/ImageGallery";
 import { BiddingPanel } from "../components/BiddingPanel";
+import { BidHistory } from "../components/BidHistory";
+import { SellerInfo } from "../components/SellerInfo";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export default function AuctionDetail() {
@@ -82,7 +84,13 @@ export default function AuctionDetail() {
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-card border-2 border-primary/20 rounded-2xl p-6 shadow-xl sticky top-24">
               <BiddingPanel auction={auction} />
+              
+              <div className="mt-6 border-t pt-4">
+                <BidHistory auctionId={auction._id} />
+              </div>
             </div>
+
+            <SellerInfo sellerId={auction.sellerId} />
           </div>
         </div>
       </main>
