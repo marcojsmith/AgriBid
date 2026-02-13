@@ -57,7 +57,7 @@ export default function AuctionDetail() {
   }
 
   return (
-    <main className="container mx-auto p-4 md:p-8">
+    <>
       <Button variant="ghost" asChild className="mb-6 -ml-4">
         <Link to="/" className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
@@ -98,6 +98,6 @@ export default function AuctionDetail() {
           </div>
         </div>
       </div>
-    </main>
+    </>
   );
 }

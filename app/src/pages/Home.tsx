@@ -46,7 +46,7 @@ export default function Home() {
   }
 
   return (
-    <main className="container mx-auto p-8">
+    <>
       <Authenticated>
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold tracking-tight">Active Auctions</h2>
@@ -192,6 +192,6 @@ export default function Home() {
           </form>
         </div>
       </Unauthenticated>
-    </main>
+    </>
   );
 }

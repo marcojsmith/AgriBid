@@ -76,10 +76,7 @@ describe('Header', () => {
   });
 
   it('handles search submission and redirects', () => {
-    const navigate = vi.fn();
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
-    // Need to mock useNavigate properly. In this test it's already using BrowserRouter.
-    // I will mock react-router-dom to spy on navigate.
     
     renderHeader();
     const searchInput = screen.getByPlaceholderText(/Search equipment/i);
