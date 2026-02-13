@@ -4,6 +4,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import * as authClient from '../../lib/auth-client';
 
+const mockNavigate = vi.fn();
+
+// Mock react-router-dom
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<any>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 // Mock Convex
 vi.mock('convex/react', () => ({
   Authenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="auth">{children}</div>,
@@ -79,11 +90,15 @@ describe('Header', () => {
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     
     renderHeader();
-    const searchInput = screen.getByPlaceholderText(/Search equipment/i);
+    const searchInput = screen.getByPlaceholderText(/Search equipment/i) as HTMLInputElement;
     fireEvent.change(searchInput, { target: { value: 'Tractor' } });
     fireEvent.submit(searchInput.closest('form')!);
     
-    // Check if the input is cleared or if navigation was triggered (verified via location change in integration)
+    // Assert navigation was triggered with the correct path
+    expect(mockNavigate).toHaveBeenCalledWith('/?q=Tractor');
+    
+    // Assert search input was cleared
+    expect(searchInput.value).toBe('');
   });
 
   it('renders search input in mobile menu', () => {

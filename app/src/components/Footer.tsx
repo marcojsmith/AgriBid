@@ -47,17 +47,30 @@ export const Footer = () => {
             <div key={section.title} className="space-y-6">
               <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">{section.title}</h3>
               <ul className="space-y-4">
-                {section.links.map((link) => (
-                  <li key={link.name}>
-                    <Link 
-                      to={link.href} 
-                      className="group flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground hover:text-primary transition-colors"
-                    >
+                {section.links.map((link) => {
+                  const isPlaceholder = link.href.startsWith("#");
+                  const content = (
+                    <>
                       <link.icon className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
                       {link.name}
-                    </Link>
-                  </li>
-                ))}
+                    </>
+                  );
+                  const className = "group flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground hover:text-primary transition-colors";
+
+                  return (
+                    <li key={link.name}>
+                      {isPlaceholder ? (
+                        <a href={link.href} className={className}>
+                          {content}
+                        </a>
+                      ) : (
+                        <Link to={link.href} className={className}>
+                          {content}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
@@ -83,8 +96,8 @@ export const Footer = () => {
             © {new Date().getFullYear()} AGRIBID. All rights reserved.
           </p>
           <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            <Link to="#" className="hover:text-primary transition-colors">Privacy Policy</Link>
-            <Link to="#" className="hover:text-primary transition-colors">Cookie Policy</Link>
+            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-primary transition-colors">Cookie Policy</a>
           </div>
         </div>
       </div>

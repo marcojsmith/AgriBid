@@ -6,7 +6,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
-*(No active tracks)*
+- [~] **Track: Global Navigation & Brand Layout**
+*Link: [./tracks/global_nav_layout_20260213/](./tracks/global_nav_layout_20260213/)*
 
 ---
 
@@ -19,6 +20,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./archive/seller_listing_flow_20260213/](./archive/seller_listing_flow_20260213/)*
 
 ---
-
-- [~] **Track: Global Navigation & Brand Layout**
-*Link: [./tracks/global_nav_layout_20260213/](./tracks/global_nav_layout_20260213/)*
