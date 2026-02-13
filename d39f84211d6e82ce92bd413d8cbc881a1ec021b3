@@ -1,0 +1,2 @@
+Task: Remove shadow from current bid card
+Changes: Removed 'shadow-xl' class from the BiddingPanel container in AuctionDetail.tsx to simplify the UI.
