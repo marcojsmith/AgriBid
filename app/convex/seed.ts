@@ -79,16 +79,22 @@ export const seedMockAuctions = mutation({
 
     // Create mock seller user for seeding (Idempotent)
     const email = "mock-seller@farm.com";
-    let mockUserId;
+    const mockExternalUserId = "mock-seller";
+    let mockUserId = mockExternalUserId;
+    
     const existingUser = await ctx.db
       .query("user")
       .filter((q) => q.eq(q.field("email"), email))
       .first();
 
     if (existingUser) {
-      mockUserId = existingUser._id;
+      mockUserId = existingUser.userId || mockExternalUserId;
+      if (!existingUser.userId) {
+        await ctx.db.patch(existingUser._id, { userId: mockExternalUserId });
+      }
     } else {
-      mockUserId = await ctx.db.insert("user", {
+      await ctx.db.insert("user", {
+        userId: mockExternalUserId,
         email,
         name: "Mock Seller",
         emailVerified: true,
