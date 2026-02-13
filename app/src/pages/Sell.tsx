@@ -5,9 +5,9 @@ import { Button } from "../components/ui/button";
 import { ListingWizard } from "../components/ListingWizard";
 
 /**
- * Page component that renders the "List Your Equipment" flow for authenticated users and an authentication prompt for unauthenticated users.
+ * Render the Sell page: show the listing wizard for authenticated users and an authentication prompt for unauthenticated users.
  *
- * @returns The JSX element for the Sell page, including the ListingWizard for authenticated users, and a login prompt for unauthenticated users.
+ * @returns The page's JSX element displaying the ListingWizard when authenticated, or an authentication prompt with a login CTA when unauthenticated.
  */
 export default function Sell() {
   return (
