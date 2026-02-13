@@ -1,0 +1,11 @@
+Feature: End-to-End Global Search
+Summary:
+- Added searchIndex 'search_title' to auctions table in schema.ts.
+- Updated getActiveAuctions in auctions.ts to handle optional search argument via Convex search index.
+- Refactored Home.tsx to consume 'q' query parameter from URL and display filtered results.
+- Added 'Results for...' header and 'Clear search' link to Home page.
+- Enhanced empty states for search results.
+Verification:
+- Manual search from Header redirects to Home with query.
+- Home page correctly filters and displays results.
+- Built and tested with 100% success rate.
