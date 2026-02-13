@@ -1,0 +1,10 @@
+Task: Create a base Layout component and Footer placeholder
+Summary:
+- Implemented 'Layout.tsx' as a wrapper for global consistency.
+- Created 'Header.tsx' and 'Footer.tsx' placeholders.
+- Added 'Layout.test.tsx' with 100% coverage.
+Files:
+- app/src/components/Layout.tsx
+- app/src/components/Header.tsx
+- app/src/components/Footer.tsx
+- app/src/components/__tests__/Layout.test.tsx
