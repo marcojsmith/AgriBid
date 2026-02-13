@@ -15,9 +15,9 @@ Establish the shared structural components and refactor the routing to use a cen
 ## Phase 2: Global Header & Auth Integration
 Implement the responsive navigation bar with authentication awareness and the "Hybrid Sticky" behavior.
 
-- [~] Task: Build the `Header` component structure and navigation links.
-    - [ ] Write tests for `Header` (Navigation links presence, mobile menu toggle).
-    - [ ] Implement `src/components/Header.tsx` with Marketplace, Sell, and Watchlist links.
+- [x] Task: Build the `Header` component structure and navigation links. (2a94711)
+    - [x] Write tests for `Header` (Navigation links presence, mobile menu toggle).
+    - [x] Implement `src/components/Header.tsx` with Marketplace, Sell, and Watchlist links.
 - [ ] Task: Implement "Hybrid Sticky" and Responsive behavior.
     - [ ] Add Tailwind classes for desktop sticky (`sticky top-0`) and mobile static positioning.
     - [ ] Implement mobile hamburger menu for small screens.
