@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '../Header';
 import { describe, it, expect, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
@@ -33,5 +33,24 @@ describe('Header', () => {
     expect(screen.getByText(/Marketplace/i)).toBeInTheDocument();
     expect(screen.getByText(/Sell/i)).toBeInTheDocument();
     expect(screen.getByText(/Watchlist/i)).toBeInTheDocument();
+  });
+
+  it('toggles mobile menu when clicked', () => {
+    render(
+      <BrowserRouter>
+        <Header />
+      </BrowserRouter>
+    );
+    
+    // Find menu toggle button (hamburger)
+    const toggle = screen.getByLabelText(/Toggle menu/i);
+    expect(toggle).toBeInTheDocument();
+
+    // Click to open
+    fireEvent.click(toggle);
+    
+    // Check if mobile nav links are visible (they have different classes but same text)
+    const links = screen.getAllByText(/Marketplace/i);
+    expect(links.length).toBeGreaterThan(1); // One in desktop nav, one in mobile nav
   });
 });
