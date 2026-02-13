@@ -1,12 +1,11 @@
 // app/src/components/AuctionCard.tsx
-import React from "react";
+import React, { useRef, useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -19,6 +18,7 @@ interface AuctionCardProps {
 export const AuctionCard = ({ auction }: AuctionCardProps) => {
   const placeBid = useMutation(api.auctions.placeBid);
   const [isBidding, setIsBidding] = useState(false);
+  const isBiddingRef = useRef(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingBid, setPendingBid] = useState<number | null>(null);
 
@@ -31,7 +31,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
   };
 
   const handleBidConfirm = async () => {
-    if (pendingBid === null) return;
+    if (pendingBid === null || isBiddingRef.current) return;
     
     const minimum = auction.currentPrice + auction.minIncrement;
     if (pendingBid < minimum) {
@@ -40,6 +40,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
       return;
     }
 
+    isBiddingRef.current = true;
     setIsConfirmOpen(false);
     setIsBidding(true);
     try {
@@ -50,6 +51,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
       toast.error(error instanceof Error ? error.message : "Failed to place bid");
     } finally {
       setIsBidding(false);
+      isBiddingRef.current = false;
       setPendingBid(null);
     }
   };

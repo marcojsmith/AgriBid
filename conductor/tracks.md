@@ -15,5 +15,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Auction Detail Page and Bid Submission Flow**
 *Link: [./archive/auction_detail_20260213/](./archive/auction_detail_20260213/)*
 
-- [x] **Track: seller listing flow. however consider that users can be both buyers and sellers. I am looking at a similar design to webuycars.co.za**
+- [x] **Track: Seller Listing Flow**
 *Link: [./archive/seller_listing_flow_20260213/](./archive/seller_listing_flow_20260213/)*

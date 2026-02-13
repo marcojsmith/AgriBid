@@ -9,7 +9,7 @@ vi.mock('convex/react', () => ({
     { make: 'John Deere', models: ['6155R', '8R 410'], category: 'Tractor' },
     { make: 'Case IH', models: ['Magnum 340'], category: 'Tractor' },
   ],
-  useMutation: () => vi.fn().mockReturnValue(vi.fn()),
+  useMutation: () => vi.fn().mockResolvedValue({}),
 }));
 
 describe('ListingWizard', () => {
@@ -34,9 +34,9 @@ describe('ListingWizard', () => {
     render(<ListingWizard />);
     
     // Fill required fields for Step 0
-    fireEvent.change(screen.getByPlaceholder(`e.g. 2023`), { target: { value: '2024' } });
-    fireEvent.change(screen.getByPlaceholder('e.g. PE11 2AA'), { target: { value: 'NG1 1AA' } });
-    fireEvent.change(screen.getByPlaceholder(/e.g. 2023 John Deere/), { target: { value: 'Test Auction Title' } });
+    fireEvent.change(screen.getByPlaceholderText(`e.g. 2023`), { target: { value: '2024' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. PE11 2AA'), { target: { value: 'NG1 1AA' } });
+    fireEvent.change(screen.getByPlaceholderText(/e.g. 2023 John Deere/), { target: { value: 'Test Auction Title' } });
     
     const nextButton = screen.getByText(/Next Step/i);
     fireEvent.click(nextButton);
@@ -49,9 +49,9 @@ describe('ListingWizard', () => {
     render(<ListingWizard />);
     
     // Fill Step 0
-    fireEvent.change(screen.getByPlaceholder(`e.g. 2023`), { target: { value: '2024' } });
-    fireEvent.change(screen.getByPlaceholder('e.g. PE11 2AA'), { target: { value: 'NG1 1AA' } });
-    fireEvent.change(screen.getByPlaceholder(/e.g. 2023 John Deere/), { target: { value: 'Test Auction Title' } });
+    fireEvent.change(screen.getByPlaceholderText(`e.g. 2023`), { target: { value: '2024' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. PE11 2AA'), { target: { value: 'NG1 1AA' } });
+    fireEvent.change(screen.getByPlaceholderText(/e.g. 2023 John Deere/), { target: { value: 'Test Auction Title' } });
     fireEvent.click(screen.getByText(/Next Step/i));
 
     // Step 1: Select Make
