@@ -2,6 +2,11 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Renders a styled input element with merged classes and forwarded props.
+ *
+ * @returns A JSX input element with computed classes, a `data-slot="input"` attribute, and all provided props forwarded.
+ */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input

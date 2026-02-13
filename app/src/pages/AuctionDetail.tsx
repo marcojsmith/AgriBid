@@ -11,6 +11,13 @@ import { BidHistory } from "../components/BidHistory";
 import { SellerInfo } from "../components/SellerInfo";
 import type { Id } from "../../convex/_generated/dataModel";
 
+/**
+ * Render the detailed auction page for the auction identified by the current route `id`.
+ *
+ * Renders a fullscreen loading spinner while the auction is being fetched, a "Auction Not Found" screen if no auction exists for the given id, and otherwise a two-column layout showing the auction header, image gallery, equipment description, bidding panel with bid history, and seller information.
+ *
+ * @returns The auction detail page as a JSX element.
+ */
 export default function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
   const auction = useQuery(api.auctions.getAuctionById, { 
