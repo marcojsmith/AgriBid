@@ -19,7 +19,7 @@
     - [x] Integrate a lightbox library or custom modal for full-screen inspection.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Equipment Inspection (Image Gallery)' (Protocol in workflow.md) (bf57d3a)
 
-## Phase 3: Real-Time Bidding Panel
+## Phase 3: Real-Time Bidding Panel [checkpoint: 7d34e18]
 - [x] Task: Implement the `BiddingPanel` component. (bf57d3a)
     - [x] Write tests for price and timer display updates.
     - [x] Display current price, minimum bid, and countdown timer using `useQuery` for real-time reactivity.
@@ -30,7 +30,7 @@
 - [x] Task: Implement Bid Confirmation Dialog. (bf57d3a)
     - [x] Write tests for confirmation flow (triggering mutation only after confirm).
     - [x] Create a confirmation modal/dialog to prevent accidental bids.
-- [x] Task: Conductor - User Manual Verification 'Phase 3: Real-Time Bidding Panel' (Protocol in workflow.md) (bf57d3a)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Real-Time Bidding Panel' (Protocol in workflow.md) (7d34e18)
 
 ## Phase 4: Information Architecture & Seller Trust
 - [ ] Task: Implement Collapsible Bid History.

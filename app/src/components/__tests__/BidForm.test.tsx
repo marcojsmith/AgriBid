@@ -31,8 +31,8 @@ describe('BidForm', () => {
   it('renders quick bid buttons with correct amounts', () => {
     render(<BidForm auction={mockAuction} onBid={vi.fn()} isLoading={false} />);
     
-    expect(screen.getByText('£50,500')).toBeInTheDocument();
-    expect(screen.getByText('£51,000')).toBeInTheDocument();
-    expect(screen.getByText('£53,000')).toBeInTheDocument();
+    expect(screen.getByText('R50,500')).toBeInTheDocument();
+    expect(screen.getByText('R51,000')).toBeInTheDocument();
+    expect(screen.getByText('R53,000')).toBeInTheDocument();
   });
 });

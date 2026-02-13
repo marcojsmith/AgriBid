@@ -34,7 +34,7 @@ export const BidConfirmation = ({ isOpen, amount, onConfirm, onCancel }: BidConf
           </div>
           <div className="bg-primary/5 border-2 border-primary/20 w-full py-6 rounded-2xl">
             <span className="text-4xl font-black text-primary tracking-tight">
-              £{amount.toLocaleString()}
+              R{amount.toLocaleString()}
             </span>
           </div>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest px-4">

@@ -45,7 +45,7 @@ export const placeBid = mutation({
     // Enforce Minimum Bid Increment
     const minimumRequired = auction.currentPrice + auction.minIncrement;
     if (args.amount < minimumRequired) {
-      throw new Error(`Bid must be at least £${minimumRequired}`);
+      throw new Error(`Bid must be at least R${minimumRequired}`);
     }
 
     // Extend auction if bid placed in final 2 minutes (Soft Close)

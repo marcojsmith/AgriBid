@@ -67,7 +67,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
           <div className="flex justify-between items-end mt-4">
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Current Bid</p>
-              <p className="text-2xl font-black text-primary tracking-tighter">£{auction.currentPrice.toLocaleString()}</p>
+              <p className="text-2xl font-black text-primary tracking-tighter">R{auction.currentPrice.toLocaleString()}</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Ends In</p>
@@ -78,7 +78,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
       </Link>
       <CardFooter className="p-4 bg-muted/30 border-t flex gap-2">
         <Button className="flex-1 font-bold" onClick={handleBid} disabled={isBidding || auction.status !== 'active'}>
-          {isBidding ? "Processing..." : `Bid £${(auction.currentPrice + auction.minIncrement).toLocaleString()}`}
+          {isBidding ? "Processing..." : `Bid R${(auction.currentPrice + auction.minIncrement).toLocaleString()}`}
         </Button>
         <Button variant="outline" size="icon" className="shrink-0" asChild>
           <Link to={`/auction/${auction._id}`}>

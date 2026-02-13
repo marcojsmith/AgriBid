@@ -27,9 +27,10 @@ describe('BiddingPanel', () => {
   it('renders current price and minimum bid correctly', () => {
     render(<BiddingPanel auction={mockAuction} />);
     
-    expect(screen.getByText((content) => content.includes('£50,000'))).toBeInTheDocument();
+    expect(screen.getByText((content) => content.includes('R50,000'))).toBeInTheDocument();
     expect(screen.getByText((content) => content.includes('Next minimum bid'))).toBeInTheDocument();
-    expect(screen.getByText('£50,500')).toBeInTheDocument();
+    // Use getAllByText because the next min bid appears in both the info text and the quick bid button
+    expect(screen.getAllByText('R50,500').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows ended state when auction is not active', () => {

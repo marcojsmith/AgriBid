@@ -20,7 +20,7 @@
 ### Industry Landscape:
 - **Inventory Consolidation**: Post-2024 supply chain normalisation has created a secondary market boom for used equipment
 - **Trust Gap**: Buyers of $50k–$500k machinery are hesitant about online-only transactions without inspection transparency
-- **Logistics Friction**: Transporting a combine harvester can cost £2,000–£10,000+, representing 10–30% of the final bid
+- **Logistics Friction**: Transporting a combine harvester can cost R2,000–R10,000+, representing 10–30% of the final bid
 
 ### Competitive Analysis:
 | Platform | Real-Time Bidding | Equipment Focus | Logistics Integration |
@@ -101,7 +101,7 @@ AgriBid bridges the trust gap through:
 
 3. **Real-Time Bidding (Convex)**
    - **Soft Close**: Auction extends by 2 minutes if bid placed in final 2 minutes
-   - Bid increments: £100 for items under £10k, £500 for items £10k+
+   - Bid increments: R100 for items under R10k, R500 for items R10k+
    - Live price updates via Convex reactive queries
 
 4. **Auction Dashboard**
@@ -309,7 +309,7 @@ export const placeBid = mutation({
     // Enforce Minimum Bid Increment
     const minimumRequired = auction.currentPrice + auction.minIncrement;
     if (args.amount < minimumRequired) {
-      throw new Error(`Bid must be at least £${minimumRequired}`);
+      throw new Error(`Bid must be at least R${minimumRequired}`);
     }
 
     // Extend auction if bid placed in final 2 minutes

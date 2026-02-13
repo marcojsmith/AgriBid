@@ -40,7 +40,7 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
               Quick Bid
             </span>
             <span className="text-base font-black tracking-tight">
-              £{amount.toLocaleString()}
+              R{amount.toLocaleString()}
             </span>
           </Button>
         ))}
@@ -54,7 +54,7 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
       {/* Manual Bid Input */}
       <div className="flex gap-3">
         <div className="relative flex-1">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">£</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">R</span>
           <Input
             type="number"
             value={manualAmount}
@@ -77,7 +77,7 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
       {!isManualValid && manualAmount !== "" && (
         <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
           <ArrowUpCircle className="h-3 w-3" />
-          Minimum bid required: £{nextMinBid.toLocaleString()}
+          Minimum bid required: R{nextMinBid.toLocaleString()}
         </p>
       )}
     </div>

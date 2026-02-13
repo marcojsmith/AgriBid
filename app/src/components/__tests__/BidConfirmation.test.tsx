@@ -18,7 +18,7 @@ describe('BidConfirmation', () => {
     );
     
     expect(screen.getByText(/Confirm your bid/i)).toBeInTheDocument();
-    expect(screen.getByText(/£50,500/)).toBeInTheDocument();
+    expect(screen.getByText(/R50,500/)).toBeInTheDocument();
     
     fireEvent.click(screen.getByRole('button', { name: /Confirm Bid/i }));
     expect(onConfirm).toHaveBeenCalled();
