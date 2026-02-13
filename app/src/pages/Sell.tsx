@@ -1,40 +1,27 @@
 // app/src/pages/Sell.tsx
 import { Authenticated, Unauthenticated } from "convex/react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import { ChevronLeft } from "lucide-react";
 import { ListingWizard } from "../components/ListingWizard";
 
 /**
  * Page component that renders the "List Your Equipment" flow for authenticated users and an authentication prompt for unauthenticated users.
  *
- * @returns The JSX element for the Sell page, including a header with navigation, the ListingWizard for authenticated users, and a login prompt for unauthenticated users.
+ * @returns The JSX element for the Sell page, including the ListingWizard for authenticated users, and a login prompt for unauthenticated users.
  */
 export default function Sell() {
-  const navigate = useNavigate();
-
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <>
       <Authenticated>
-        <header className="border-b bg-card px-8 py-4 flex justify-between items-center sticky top-0 z-50">
-          <Link to="/" className="text-2xl font-black tracking-tighter text-primary">AGRIBID</Link>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
-            <ChevronLeft className="h-4 w-4" />
-            Back to Marketplace
-          </Button>
-        </header>
-
-        <main className="container mx-auto p-8 max-w-4xl">
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-4xl font-black tracking-tight text-primary uppercase">List Your Equipment</h1>
-              <p className="text-muted-foreground mt-2">Complete the steps below to put your machinery in front of thousands of verified buyers.</p>
-            </div>
-
-            {/* Listing Wizard */}
-            <ListingWizard />
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight text-primary uppercase">List Your Equipment</h1>
+            <p className="text-muted-foreground mt-2">Complete the steps below to put your machinery in front of thousands of verified buyers.</p>
           </div>
-        </main>
+
+          {/* Listing Wizard */}
+          <ListingWizard />
+        </div>
       </Authenticated>
 
       <Unauthenticated>
@@ -46,6 +33,6 @@ export default function Sell() {
           </Button>
         </div>
       </Unauthenticated>
-    </div>
+    </>
   );
 }

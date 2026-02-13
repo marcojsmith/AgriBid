@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import AuctionDetail from "./pages/AuctionDetail";
 import Sell from "./pages/Sell";
+import { Layout } from "./components/Layout";
 
 /**
  * Mounts the application's client-side router with declared routes.
@@ -17,11 +18,13 @@ import Sell from "./pages/Sell";
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/auction/:id" element={<AuctionDetail />} />
-        <Route path="/sell" element={<Sell />} />
-      </Routes>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/auction/:id" element={<AuctionDetail />} />
+          <Route path="/sell" element={<Sell />} />
+        </Routes>
+      </Layout>
     </BrowserRouter>
   );
 }

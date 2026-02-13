@@ -3,8 +3,17 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const getActiveAuctions = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { search: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    if (args.search) {
+      return await ctx.db
+        .query("auctions")
+        .withSearchIndex("search_title", (q) => 
+          q.search("title", args.search!).eq("status", "active")
+        )
+        .collect();
+    }
+    
     return await ctx.db
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "active"))
