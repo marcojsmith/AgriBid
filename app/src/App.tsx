@@ -12,7 +12,7 @@ import Sell from "./pages/Sell";
  * - "/auction/:id" → AuctionDetail
  * - "/sell" → Sell
  *
- * @returns The root JSX element containing a BrowserRouter with the above routes
+ * @returns The root JSX element containing a BrowserRouter with the above routes.
  */
 function App() {
   return (

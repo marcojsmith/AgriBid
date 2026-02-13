@@ -31,8 +31,15 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
   };
 
   const handleBidConfirm = async () => {
-    if (!pendingBid) return;
+    if (pendingBid === null) return;
     
+    const minimum = auction.currentPrice + auction.minIncrement;
+    if (pendingBid < minimum) {
+      toast.error(`Price updated to R${minimum.toLocaleString()} due to a newer bid.`);
+      setPendingBid(minimum);
+      return;
+    }
+
     setIsConfirmOpen(false);
     setIsBidding(true);
     try {

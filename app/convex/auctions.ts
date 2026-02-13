@@ -113,6 +113,35 @@ export const createAuction = mutation({
   },
 });
 
+export const approveAuction = mutation({
+  args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    // In a real app, check for admin role here
+    
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) throw new Error("Auction not found");
+    if (auction.status !== "pending_review") {
+      throw new Error("Only auctions in pending_review can be approved");
+    }
+
+    const startTime = Date.now();
+    const durationMs = (args.durationDays ?? 7) * 24 * 60 * 60 * 1000;
+    const endTime = startTime + durationMs;
+
+    await ctx.db.patch(args.auctionId, {
+      status: "active",
+      startTime,
+      endTime,
+    });
+
+    return { success: true };
+  },
+});
+
 export const placeBid = mutation({
   args: { auctionId: v.id("auctions"), amount: v.number() },
   handler: async (ctx, args) => {

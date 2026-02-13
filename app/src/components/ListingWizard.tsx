@@ -1,5 +1,5 @@
 // app/src/components/ListingWizard.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight, ChevronLeft, Save, Search, Check, AlertCircle, Info, TrendingUp, Camera, X, CheckCircle2 } from "lucide-react";
@@ -25,10 +25,10 @@ const PHOTO_SLOTS = [
 ];
 
 interface ConditionChecklist {
-  engine: boolean;
-  hydraulics: boolean;
-  tires: boolean;
-  serviceHistory: boolean;
+  engine: boolean | null;
+  hydraulics: boolean | null;
+  tires: boolean | null;
+  serviceHistory: boolean | null;
   notes?: string;
 }
 
@@ -40,38 +40,47 @@ interface ListingFormData {
   operatingHours: number;
   title: string;
   conditionChecklist: ConditionChecklist;
-  images: string[];
+  images: Record<string, string>; // Slot ID -> Image URL
   startingPrice: number;
   reservePrice: number;
 }
+
+const DEFAULT_FORM_DATA: ListingFormData = {
+  year: new Date().getFullYear(),
+  make: "",
+  model: "",
+  location: "",
+  operatingHours: 0,
+  title: "",
+  conditionChecklist: {
+    engine: null,
+    hydraulics: null,
+    tires: null,
+    serviceHistory: null,
+    notes: "",
+  },
+  images: {},
+  startingPrice: 0,
+  reservePrice: 0,
+};
 
 export const ListingWizard = () => {
   const metadata = useQuery(api.auctions.getEquipmentMetadata);
   const createAuction = useMutation(api.auctions.createAuction);
   const [currentStep, setCurrentStep] = useState(0);
-  const [isSubmitting, setIsBidding] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
   const [formData, setFormData] = useState<ListingFormData>(() => {
     const saved = localStorage.getItem("agribid_listing_draft");
-    return saved ? JSON.parse(saved) : {
-      year: new Date().getFullYear(),
-      make: "",
-      model: "",
-      location: "",
-      operatingHours: 0,
-      title: "",
-      conditionChecklist: {
-        engine: false,
-        hydraulics: false,
-        tires: false,
-        serviceHistory: false,
-        notes: "",
-      },
-      images: [],
-      startingPrice: 0,
-      reservePrice: 0,
-    };
+    if (!saved) return DEFAULT_FORM_DATA;
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse listing draft", e);
+      localStorage.removeItem("agribid_listing_draft");
+      return DEFAULT_FORM_DATA;
+    }
   });
 
   useEffect(() => {
@@ -108,25 +117,81 @@ export const ListingWizard = () => {
     // For the prototype, we'll use a local object URL to show the image
     const imageUrl = URL.createObjectURL(file);
     
-    updateField("images", [...formData.images, imageUrl]);
+    setFormData(prev => ({
+      ...prev,
+      images: {
+        ...prev.images,
+        [slotId]: imageUrl
+      }
+    }));
     toast.success(`${slotId.toUpperCase()} photo added to listing`);
   };
 
-  const removeImage = (url: string) => {
-    updateField("images", formData.images.filter((img: string) => img !== url));
-    // Clean up memory
-    if (url.startsWith("blob:")) {
+  const removeImage = (slotId: string) => {
+    const url = formData.images[slotId];
+    if (url && url.startsWith("blob:")) {
       URL.revokeObjectURL(url);
+    }
+    
+    setFormData(prev => {
+      const newImages = { ...prev.images };
+      delete newImages[slotId];
+      return { ...prev, images: newImages };
+    });
+  };
+
+  const validateStep = (step: number) => {
+    switch (step) {
+      case 0:
+        return formData.year > 1900 && formData.location.length > 2 && formData.title.length > 5;
+      case 1:
+        return !!formData.make && !!formData.model;
+      case 2:
+        return formData.conditionChecklist.engine !== null &&
+               formData.conditionChecklist.hydraulics !== null &&
+               formData.conditionChecklist.tires !== null &&
+               formData.conditionChecklist.serviceHistory !== null;
+      case 3:
+        return Object.keys(formData.images).length > 0;
+      case 4:
+        return formData.startingPrice > 0;
+      default:
+        return true;
     }
   };
 
-  const next = () => setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+  const next = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+    } else {
+      toast.error("Please complete all required fields in this step.");
+    }
+  };
+  
   const prev = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
 
   const handleSubmit = async () => {
-    setIsBidding(true);
+    if (!validateStep(currentStep)) return;
+    
+    setIsSubmitting(true);
     try {
-      await createAuction(formData);
+      // Convert images Record to Array for the backend schema
+      const imagesArray = PHOTO_SLOTS
+        .map(slot => formData.images[slot.id])
+        .filter(Boolean);
+
+      await createAuction({
+        ...formData,
+        images: imagesArray,
+        conditionChecklist: {
+          ...formData.conditionChecklist,
+          engine: formData.conditionChecklist.engine ?? false,
+          hydraulics: formData.conditionChecklist.hydraulics ?? false,
+          tires: formData.conditionChecklist.tires ?? false,
+          serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
+        }
+      });
+      
       localStorage.removeItem("agribid_listing_draft");
       setIsSuccess(true);
       toast.success("Listing submitted for review!");
@@ -134,7 +199,7 @@ export const ListingWizard = () => {
       console.error(error);
       toast.error(error instanceof Error ? error.message : "Submission failed");
     } finally {
-      setIsBidding(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -185,7 +250,7 @@ export const ListingWizard = () => {
                 <Input 
                   type="number" 
                   value={formData.year} 
-                  onChange={(e) => updateField("year", parseInt(e.target.value))}
+                  onChange={(e) => updateField("year", parseInt(e.target.value) || 0)}
                   placeholder="e.g. 2023"
                   className="h-12 border-2 rounded-xl"
                 />
@@ -217,7 +282,7 @@ export const ListingWizard = () => {
               <Input 
                 type="number" 
                 value={formData.operatingHours} 
-                onChange={(e) => updateField("operatingHours", parseInt(e.target.value))}
+                onChange={(e) => updateField("operatingHours", parseInt(e.target.value) || 0)}
                 placeholder="e.g. 1200"
                 className="h-12 border-2 rounded-xl"
               />
@@ -301,7 +366,7 @@ export const ListingWizard = () => {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      variant={formData.conditionChecklist[item.id] ? "default" : "outline"}
+                      variant={formData.conditionChecklist[item.id] === true ? "default" : "outline"}
                       size="sm"
                       onClick={() => updateChecklist(item.id, true)}
                       className="rounded-lg font-bold w-16"
@@ -338,8 +403,7 @@ export const ListingWizard = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {PHOTO_SLOTS.map((slot) => {
-                const hasImage = formData.images.length > PHOTO_SLOTS.indexOf(slot);
-                const imageUrl = hasImage ? formData.images[PHOTO_SLOTS.indexOf(slot)] : null;
+                const imageUrl = formData.images[slot.id];
                 
                 return (
                   <div 
@@ -356,7 +420,7 @@ export const ListingWizard = () => {
                           <Button 
                             variant="destructive" 
                             size="sm" 
-                            onClick={() => removeImage(imageUrl)}
+                            onClick={() => removeImage(slot.id)}
                             className="rounded-xl font-bold gap-2"
                           >
                             <X className="h-4 w-4" />
@@ -396,11 +460,11 @@ export const ListingWizard = () => {
               })}
             </div>
             
-            {formData.images.length > 0 && formData.images.length < PHOTO_SLOTS.length && (
+            {Object.keys(formData.images).length < PHOTO_SLOTS.length && (
               <div className="bg-primary/5 p-4 rounded-xl flex items-center gap-3 border border-primary/10">
                 <Info className="h-5 w-5 text-primary shrink-0" />
                 <p className="text-[10px] font-black uppercase tracking-wide text-primary">
-                  Upload {PHOTO_SLOTS.length - formData.images.length} more photos to provide the best detail for buyers.
+                  Upload {PHOTO_SLOTS.length - Object.keys(formData.images).length} more photos to provide the best detail for buyers.
                 </p>
               </div>
             )}
@@ -418,7 +482,7 @@ export const ListingWizard = () => {
                     <Input 
                       type="number" 
                       value={formData.startingPrice} 
-                      onChange={(e) => updateField("startingPrice", parseInt(e.target.value))}
+                      onChange={(e) => updateField("startingPrice", parseInt(e.target.value) || 0)}
                       className="h-14 pl-10 text-xl font-black rounded-xl border-2"
                     />
                   </div>
@@ -434,7 +498,7 @@ export const ListingWizard = () => {
                     <Input 
                       type="number" 
                       value={formData.reservePrice} 
-                      onChange={(e) => updateField("reservePrice", parseInt(e.target.value))}
+                      onChange={(e) => updateField("reservePrice", parseInt(e.target.value) || 0)}
                       className="h-14 pl-10 text-xl font-black rounded-xl border-2 border-primary/20"
                     />
                   </div>
@@ -524,7 +588,7 @@ export const ListingWizard = () => {
         {currentStep === STEPS.length - 1 ? (
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || !formData.make || !formData.model || formData.images.length === 0}
+            disabled={isSubmitting || !validateStep(currentStep)}
             className="h-14 px-12 rounded-xl font-black text-xl gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all scale-105"
           >
             {isSubmitting ? "Submitting..." : "Submit Listing"}
