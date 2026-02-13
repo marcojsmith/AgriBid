@@ -1,12 +1,12 @@
 # Implementation Plan: Seller Listing Flow
 
 ## Phase 1: Foundation & Navigation
-- [ ] Task: Update navigation for unified account access.
-    - [ ] Add "Sell Equipment" button to main navigation (if not present).
-    - [ ] Implement protected route `/sell` using Better Auth middleware.
-- [ ] Task: Define Schema updates for Listing Moderation.
-    - [ ] Update `auctions` status to include `pending_review`.
-    - [ ] Add `conditionChecklist` object field to `auctions` table in `schema.ts`.
+- [x] Task: Update navigation for unified account access. (6b896f8)
+    - [x] Add "Sell Equipment" button to main navigation (if not present).
+    - [x] Implement protected route `/sell` using Better Auth middleware.
+- [x] Task: Define Schema updates for Listing Moderation. (6b896f8)
+    - [x] Update `auctions` status to include `pending_review`.
+    - [x] Add `conditionChecklist` object field to `auctions` table in `schema.ts`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Navigation' (Protocol in workflow.md)
 
 ## Phase 2: Listing Wizard - Equipment & Specs

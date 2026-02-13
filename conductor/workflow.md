@@ -30,7 +30,7 @@ All tasks follow a strict lifecycle:
    - Write the minimum amount of application code necessary to make the failing tests pass.
    - Run the test suite again and confirm that all tests now pass. This is the "Green" phase.
 
-5. **Refactor (Optional but Recommended):**
+5. **Refactor:**
    - With the safety of passing tests, refactor the implementation code and the test code to improve clarity, remove duplication, and enhance performance without changing the external behavior.
    - Rerun tests to ensure they still pass after refactoring.
 
@@ -47,6 +47,7 @@ All tasks follow a strict lifecycle:
    - Resume implementation
 
 8. **Commit Code Changes:**
+   - When implementing a new track, create a new branch and use appropriate naming conventions (e.g., `feat/calculate-sum`, `fix/bug-1234`).
    - Stage all code changes related to the task.
    - Propose a clear, concise commit message e.g, `feat(ui): Create basic HTML structure for calculator`.
    - Perform the commit.
