@@ -32,11 +32,11 @@ All tasks follow a strict lifecycle:
    - With the safety of passing tests, refactor the implementation code and the test code to improve clarity, remove duplication, and enhance performance without changing the external behavior.
    - Rerun tests to ensure they still pass after refactoring.
 
-6. **Verify Coverage:** Run coverage reports using the project's chosen tools. For example, in a Python project, this might look like:
+6. **Verify Coverage:** Run coverage reports using Vitest. For example:
    ```bash
-   pytest --cov=app --cov-report=html
+   npx vitest run --coverage
    ```
-   Target: >80% coverage for new code. The specific tools and commands will vary by language and framework.
+   Target: >80% coverage for new code. Note: Ensure the command matches the project's test tooling.
 
 7. **Document Deviations:** If implementation differs from tech stack:
    - **STOP** implementation
@@ -65,6 +65,15 @@ All tasks follow a strict lifecycle:
 11. **Commit Plan Update:**
     - **Action:** Stage the modified `plan.md` file.
     - **Action:** Commit this change with a descriptive message (e.g., `conductor(plan): Mark task 'Create user model' as complete`).
+
+12. **Announce Task Completion:** Inform the user that the task is complete and the commit has been made, with the summary attached as a git note.
+
+13. **Wait for CodeRabbit review feedback:**
+    - **PAUSE** and await any feedback from CodeRabbit. Do not proceed to the next task until you have received explicit confirmation that the current task is satisfactory.
+    - After each PR, as well as changes to open PR's, CodeRabbit will perform a code review and provide feedback. 
+    - You must address any feedback before moving on to the next task. This may involve additional commits to the same branch.
+    - You may have to repeat this process multiple times if CodeRabbit requests further changes. This is normal and expected. The goal is to ensure high code quality and alignment with project standards.
+    - Only once you have received explicit confirmation from CodeRabbit that the task is complete and satisfactory should you proceed to the next task in `plan.md`.
 
 ### Phase Completion Verification and Checkpointing Protocol
 
