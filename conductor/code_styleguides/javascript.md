@@ -35,7 +35,7 @@ This document summarizes key rules and best practices from the Google JavaScript
 - `with` keyword.
 - `eval()` or `Function(...string)`.
 - Automatic Semicolon Insertion.
-- Modifying builtin objects (`Array.prototype.foo = ...`).
+- Modifying built-in objects (`Array.prototype.foo = ...`).
 
 ## 6. Naming
 - **Classes:** `UpperCamelCase`.

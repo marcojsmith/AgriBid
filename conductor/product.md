@@ -27,3 +27,6 @@ Auction platform for WeBuyTractors
 - **Performance**: P95 bid submission latency under 200ms and total page load times under 2 seconds on 4G connections.
 - **Accessibility**: Compliance with WCAG 2.1 AA standards to ensure the platform is usable by all farmers, including those using assistive technologies.
 - **Security**: Implementation of secure password hashing, HTTPS-only traffic, and granular rate limiting to protect the integrity of every auction.
+- Mobile/Responsive Design: A fully responsive design that provides a seamless experience across desktop and mobile devices, recognizing that many farmers may access the platform from the field.
+- Privacy & Compliance: Adherence to relevant data protection regulations (e.g., GDPR) to safeguard user data and build trust with our audience.
+- Scalability: The platform must be designed to handle a growing user base and increasing auction volume without degradation in performance.

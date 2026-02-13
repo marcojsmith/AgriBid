@@ -92,7 +92,7 @@ All tasks follow a strict lifecycle:
     -   The plan you present to the user **must** follow this format:
 
         **For a Frontend Change:**
-        ```
+        ```text
         The automated tests have passed. For manual verification, please follow these steps:
 
         **Manual Verification Steps:**
@@ -102,7 +102,7 @@ All tasks follow a strict lifecycle:
         ```
 
         **For a Backend Change:**
-        ```
+        ```text
         The automated tests have passed. For manual verification, please follow these steps:
 
         **Manual Verification Steps:**
