@@ -89,7 +89,13 @@ export const Header = () => {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    onClick={async () => await signOut()}
+                    onClick={async () => {
+                      try {
+                        await signOut();
+                      } catch (error) {
+                        console.error('Sign out failed:', error);
+                      }
+                    }}
                     className="rounded-lg font-black uppercase text-[10px] tracking-widest cursor-pointer focus:bg-destructive focus:text-destructive-foreground text-destructive"
                   >
                     <LogOut className="h-4 w-4" />
@@ -173,8 +179,12 @@ export const Header = () => {
                     variant="destructive" 
                     className="w-full font-black uppercase text-xs tracking-widest h-12 rounded-xl"
                     onClick={async () => {
-                      await signOut();
-                      setIsMenuOpen(false);
+                      try {
+                        await signOut();
+                        setIsMenuOpen(false);
+                      } catch (error) {
+                        console.error('Sign out failed:', error);
+                      }
                     }}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
