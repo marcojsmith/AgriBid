@@ -12,7 +12,7 @@ Establish the shared structural components and refactor the routing to use a cen
     - [x] Verify that all pages still render correctly within the layout.
 - [x] Task: Conductor - User Manual Verification 'Core Layout Foundation' (Protocol in workflow.md) (23f58ee)
 
-## Phase 2: Global Header & Auth Integration
+## Phase 2: Global Header & Auth Integration [checkpoint: cc2fe62]
 Implement the responsive navigation bar with authentication awareness and the "Hybrid Sticky" behavior.
 
 - [x] Task: Build the `Header` component structure and navigation links. (2a94711)
@@ -29,7 +29,7 @@ Implement the responsive navigation bar with authentication awareness and the "H
 ## Phase 3: Global Search & Refinement
 Implement the navbar search bar and final branding refinements.
 
-- [ ] Task: Add the Global Search Bar to the Header.
+- [~] Task: Add the Global Search Bar to the Header.
     - [ ] Write tests for Search input (Typing, Form submission).
     - [ ] Implement the search input UI in `Header.tsx`.
     - [ ] Wire up search to redirect to `/` with query parameters.

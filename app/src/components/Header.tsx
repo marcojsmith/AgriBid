@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated } from "convex/react";
 import { useSession, signOut } from "../lib/auth-client";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
-import { Menu, X, User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings } from "lucide-react";
+import { Menu, X, User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,9 @@ import {
 export const Header = () => {
   const { data: session } = useSession();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const navLinks = [
     { name: "Marketplace", href: "/" },
@@ -25,13 +28,22 @@ export const Header = () => {
     { name: "Watchlist", href: "#" },
   ];
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setIsMenuOpen(false);
+    }
+  };
+
   return (
     <header className="border-b bg-card lg:sticky lg:top-0 z-50">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-8">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-8 shrink-0">
           <Link to="/" className="font-black text-2xl tracking-tighter text-primary">AGRIBID</Link>
           
-          <nav className="hidden md:flex gap-6 text-sm font-bold uppercase tracking-wider">
+          <nav className="hidden lg:flex gap-6 text-sm font-bold uppercase tracking-wider">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -47,7 +59,19 @@ export const Header = () => {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Global Search - Desktop */}
+        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search equipment (Make, Model, Year)..."
+            className="pl-10 h-10 bg-muted/50 border-2 rounded-xl focus-visible:ring-primary focus-visible:border-primary"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </form>
+
+        <div className="flex items-center gap-2 shrink-0">
           {/* Desktop Auth */}
           <div className="hidden md:flex items-center">
             <Authenticated>
@@ -133,6 +157,18 @@ export const Header = () => {
       {isMenuOpen && (
         <div className="md:hidden border-t bg-card animate-in slide-in-from-top-4 duration-200">
           <div className="container mx-auto px-4 py-6 space-y-6">
+            {/* Mobile Search */}
+            <form onSubmit={handleSearch} className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search equipment..."
+                className="pl-10 h-12 bg-muted/50 border-2 rounded-xl"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
+
             <nav className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <Link

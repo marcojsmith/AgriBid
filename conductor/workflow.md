@@ -49,7 +49,7 @@ All tasks follow a strict lifecycle:
     - `Checklist.md` if any items have been completed as part of this task.
     - `codebase_notes.md` with any relevant notes for future developers.
     - `README.md` if setup, usage instructions or feature list have changed.
-  - **CRITICAL:** If you deviate from the original task specification, you must document this clearly in `plan.md` with a dated note explaining the change and the rationale behind it. This ensures transparency and provides context for future reference.   - Add dated note explaining the change
+  - **CRITICAL:** If you deviate from the original task specification, you must document this clearly in `plan.md` with a dated note explaining the change and the rationale behind it. This ensures transparency and provides context for future reference.
    - Resume implementation
 
 8. **Commit Code Changes:**
