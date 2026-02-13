@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import { Menu, X, User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings, Search } from "lucide-react";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,16 @@ export const Header = () => {
       navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
       setIsMenuOpen(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Signed out successfully");
+    } catch (error) {
+      console.error('Sign out failed:', error);
+      toast.error("Failed to sign out. Please try again.");
     }
   };
 
@@ -119,13 +130,7 @@ export const Header = () => {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    onClick={async () => {
-                      try {
-                        await signOut();
-                      } catch (error) {
-                        console.error('Sign out failed:', error);
-                      }
-                    }}
+                    onClick={handleSignOut}
                     className="rounded-lg font-black uppercase text-[10px] tracking-widest cursor-pointer focus:bg-destructive focus:text-destructive-foreground text-destructive"
                   >
                     <LogOut className="h-4 w-4" />
@@ -229,12 +234,8 @@ export const Header = () => {
                     variant="destructive" 
                     className="w-full font-black uppercase text-xs tracking-widest h-12 rounded-xl"
                     onClick={async () => {
-                      try {
-                        await signOut();
-                        setIsMenuOpen(false);
-                      } catch (error) {
-                        console.error('Sign out failed:', error);
-                      }
+                      await handleSignOut();
+                      setIsMenuOpen(false);
                     }}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
@@ -258,3 +259,4 @@ export const Header = () => {
     </header>
   );
 };
+
