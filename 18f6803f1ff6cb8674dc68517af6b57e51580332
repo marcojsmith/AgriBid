@@ -1,0 +1,8 @@
+Task: Refactor App.tsx to use the Layout wrapper for all routes
+Summary:
+- Integrated Layout component into App.tsx.
+- All routes now automatically include the global Header and Footer.
+- Added 'App.test.tsx' to verify integration.
+Files:
+- app/src/App.tsx
+- app/src/App.test.tsx
