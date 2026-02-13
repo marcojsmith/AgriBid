@@ -29,11 +29,11 @@ Implement the responsive navigation bar with authentication awareness and the "H
 ## Phase 3: Global Search & Refinement
 Implement the navbar search bar and final branding refinements.
 
-- [~] Task: Add the Global Search Bar to the Header.
-    - [ ] Write tests for Search input (Typing, Form submission).
-    - [ ] Implement the search input UI in `Header.tsx`.
-    - [ ] Wire up search to redirect to `/` with query parameters.
-- [ ] Task: Implement the detailed Global Footer.
+- [x] Task: Add the Global Search Bar to the Header. (dac899c)
+    - [x] Write tests for Search input (Typing, Form submission).
+    - [x] Implement the search input UI in `Header.tsx`.
+    - [x] Wire up search to redirect to `/` with query parameters.
+- [~] Task: Implement the detailed Global Footer.
     - [ ] Write tests for `Footer` (Links: How it works, Safety, etc.).
     - [ ] Complete `src/components/Footer.tsx` with specified branding and link sections.
 - [ ] Task: Global Styling & Cleanup.
