@@ -111,7 +111,15 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])
-    .index("by_end_time", ["endTime"]),
+    .index("by_end_time", ["endTime"])
+    .searchIndex("search_title", {
+      searchField: "title",
+      filterFields: ["status"],
+    })
+    .searchIndex("search_make_model", {
+      searchField: "make",
+      filterFields: ["status", "model"],
+    }),
 
   bids: defineTable({
     auctionId: v.id("auctions"),

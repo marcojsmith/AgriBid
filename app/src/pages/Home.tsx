@@ -8,7 +8,7 @@ import { api } from "../../convex/_generated/api";
 import { AuctionCard } from "../components/AuctionCard";
 import type { Doc } from "../../convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 /**
  * Renders the AgriBid home page with a sticky navbar and conditional content for authenticated and unauthenticated users.
@@ -19,7 +19,10 @@ import { Link } from "react-router-dom";
  */
 export default function Home() {
   const { isPending } = useSession();
-  const auctions = useQuery(api.auctions.getActiveAuctions);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("q") || undefined;
+  
+  const auctions = useQuery(api.auctions.getActiveAuctions, { search: searchQuery });
   const seedMetadata = useMutation(api.seed.seedEquipmentMetadata);
   const seedAuctions = useMutation(api.seed.seedMockAuctions);
   
@@ -48,8 +51,21 @@ export default function Home() {
   return (
     <>
       <Authenticated>
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold tracking-tight">Active Auctions</h2>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">
+              {searchQuery ? `Results for "${searchQuery}"` : "Active Auctions"}
+            </h2>
+            {searchQuery && (
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-muted-foreground hover:text-primary"
+                asChild
+              >
+                <Link to="/">Clear search results</Link>
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleSeed}>
               Seed Mock Data
@@ -64,13 +80,22 @@ export default function Home() {
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
-        ) : auctions.length === 0 ? (
-          <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed">
-            <p className="text-muted-foreground mb-4">No active auctions at the moment.</p>
-            <Button onClick={handleSeed}>Populate Mock Auctions</Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  ) : auctions.length === 0 ? (
+                    <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed">
+                      <p className="text-muted-foreground mb-4">
+                        {searchQuery 
+                          ? `No auctions found matching "${searchQuery}".` 
+                          : "No active auctions at the moment."}
+                      </p>
+                      {searchQuery ? (
+                        <Button asChild>
+                          <Link to="/">View All Auctions</Link>
+                        </Button>
+                      ) : (
+                        <Button onClick={handleSeed}>Populate Mock Auctions</Button>
+                      )}
+                    </div>
+                  ) : (          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {auctions.map((auction: Doc<"auctions">) => (
               <AuctionCard key={auction._id} auction={auction} />
             ))}
