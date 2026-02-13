@@ -1,0 +1,10 @@
+Task: Add the Global Search Bar to the Header
+Summary:
+- Implemented Global Search form in Header.tsx.
+- On submit, redirects to home page with query param '?q=...'.
+- Integrated search into mobile menu overlay.
+- Added Search icon and refined Input styling.
+- Expanded Header.test.tsx to cover search scenarios.
+Files:
+- app/src/components/Header.tsx
+- app/src/components/__tests__/Header.test.tsx
