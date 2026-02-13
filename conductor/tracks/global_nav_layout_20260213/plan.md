@@ -1,6 +1,6 @@
 # Implementation Plan: Global Navigation & Brand Layout
 
-## Phase 1: Core Layout Foundation
+## Phase 1: Core Layout Foundation [checkpoint: 41760b3]
 Establish the shared structural components and refactor the routing to use a centralized Layout wrapper.
 
 - [x] Task: Create a base `Layout` component and `Footer` placeholder. (77f5753)
