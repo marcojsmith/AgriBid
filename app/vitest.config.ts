@@ -13,7 +13,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'convex/_generated': path.resolve(__dirname, './convex/_generated'),
+      'convex/_generated/api': path.resolve(__dirname, './src/test/mocks/convex-api.ts'),
+      'convex/_generated/dataModel': path.resolve(__dirname, './src/test/mocks/convex-dataModel.ts'),
     },
   },
 });
