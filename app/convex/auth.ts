@@ -17,7 +17,11 @@ export const createAuth = (
   { optionsOnly } = { optionsOnly: false },
 ) => {
   const trustedOrigins = ALLOWED_ORIGINS;
-  const siteUrl = requireEnv("CONVEX_SITE_URL");
+  const siteUrl = process.env.CONVEX_SITE_URL;
+
+  if (!siteUrl && !optionsOnly) {
+    throw new Error("Missing CONVEX_SITE_URL environment variable.");
+  }
 
   return betterAuth({
     appName: "AgriBid",
