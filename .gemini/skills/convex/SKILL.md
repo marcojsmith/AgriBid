@@ -13,10 +13,21 @@ To ensure successful automated deployments, follow these dashboard and codebase 
 
 ### Dashboard Settings
 - **Framework Preset**: `Vite`
-- **Root Directory**: `app/` (or the directory containing your frontend and `convex/` folder)
+- **Root Directory**: `app/`
 - **Build Command**: `npx convex deploy --cmd 'npm run build'` (Override: **ON**)
-- **Install Command**: `npm install` (or your preferred manager)
 - **Output Directory**: `dist`
+
+### Handling Preview Deployments (Dynamic URLs)
+Vercel Previews create fresh Convex backends. To make them work with Better Auth:
+1. **Convex Project Defaults**: In Convex Dashboard > Project Settings > Environment Variables, set `BETTER_AUTH_SECRET` as a **Project Default**. This ensures fresh preview backends inherit the secret.
+2. **Dynamic Base URL**: In `convex/auth.ts`, use `process.env.CONVEX_SITE_URL` for the `baseURL`.
+3. **Vite Config**: Use `VERCEL_URL` as a fallback for the frontend site URL to handle dynamic branch deployments.
+
+```typescript
+// app/vite.config.ts
+const siteUrl = env.VITE_CONVEX_SITE_URL || 
+               (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : 'http://localhost:5173');
+```
 
 ### Required Build Script Changes
 In `app/package.json`, ensure the `build` script includes `codegen` to generate types before TypeScript compilation:

@@ -30,9 +30,6 @@ yarn-error.log*
 .env.production.local
 app/.env.local
 
-# Convex
-app/convex/_generated/
-
 # Editor
 .vscode/
 .idea/
