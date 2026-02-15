@@ -4,9 +4,9 @@
 Connect the repository to Vercel and establish basic settings.
 
 - [x] Task: Link Git Repository to Vercel.
-- [x] Task: Configure Vercel Dashboard Settings (Root Directory: 'app', Build Command: 'npm run build', Output Directory: 'dist'). bf30e19
+- [x] Task: Configure Vercel Dashboard Settings (Root Directory: 'app', Output Directory: 'dist'). Ensure Build Command is NOT set in UI.
 - [x] Task: Manually verify/set Root Directory to 'app' in Vercel Dashboard.
-- [ ] Task: Ensure 'Build Command' override is DISABLED in Vercel Dashboard to use vercel.json.
+- [ ] Task: Ensure 'Build Command' override is DISABLED in Vercel Dashboard so Vercel uses canonical build command in vercel.json.
 - [ ] Task: Conductor - User Manual Verification 'Vercel Project Initialization' (Protocol in workflow.md)
 
 ## Phase 2: Build Script & Pipeline Integration

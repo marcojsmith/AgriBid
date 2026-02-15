@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd app && npx convex deploy --cmd 'npm run build'",
+  "installCommand": "cd app && npm install",
+  "outputDirectory": "app/dist"
+}
