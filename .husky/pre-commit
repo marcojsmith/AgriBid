@@ -1,1 +1,1 @@
-cd app && npx lint-staged
+cd app && npx lint-staged && npm run build
