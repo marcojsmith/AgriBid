@@ -6,7 +6,7 @@ import { components } from "./_generated/api";
 import { query } from "./_generated/server";
 import type { GenericCtx } from "@convex-dev/better-auth";
 import type { DataModel } from "./_generated/dataModel";
-import { ALLOWED_ORIGINS, requireEnv } from "./config";
+import { ALLOWED_ORIGINS } from "./config";
 
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.

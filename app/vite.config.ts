@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
     ],
+    define: {
+      'process.env.BETTER_AUTH_URL': JSON.stringify(siteUrl),
+    },
     server: {
       proxy: {
         '/api/auth': {
