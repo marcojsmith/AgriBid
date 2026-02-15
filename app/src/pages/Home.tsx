@@ -1,5 +1,5 @@
 // app/src/pages/Home.tsx
-import { Authenticated, Unauthenticated, useQuery, useMutation } from "convex/react";
+import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { useSession, signIn, signUp } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,7 +7,6 @@ import { useState } from "react";
 import { api } from "convex/_generated/api";
 import { AuctionCard } from "../components/AuctionCard";
 import type { Doc } from "convex/_generated/dataModel";
-import { toast } from "sonner";
 import { Link, useSearchParams } from "react-router-dom";
 
 /**
