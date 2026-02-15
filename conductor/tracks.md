@@ -9,6 +9,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [ ] **Track: deploy to vercel**
 *Link: [./tracks/vercel_deploy_20260213/](./tracks/vercel_deploy_20260213/)*
 
+- [ ] **Track: Listing Creation & Convex File Storage Integration**
+*Link: [./tracks/listing_storage_20260215/](./tracks/listing_storage_20260215/)*
+
 ---
 
 ## Archive
