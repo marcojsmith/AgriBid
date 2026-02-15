@@ -31,7 +31,7 @@ In `app/package.json`, ensure the `build` script includes `codegen` to generate 
 
 ## TypeScript & Path Resolution
 
-Convex generated files should be gitignored, which requires specific configuration to resolve types during build and development.
+Convex-generated files should be gitignored, which requires specific configuration to resolve types during build and development.
 
 ### path Aliases (`tsconfig.json` & `vite.config.ts`)
 Ensure the `convex/_generated` alias is defined:
