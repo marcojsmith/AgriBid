@@ -2,7 +2,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BidForm } from '../BidForm';
 import { describe, it, expect, vi } from 'vitest';
-import type { Doc, Id } from '../../../convex/_generated/dataModel';
+import type { Doc, Id } from 'convex/_generated/dataModel';
 
 describe('BidForm', () => {
   const mockAuction = {

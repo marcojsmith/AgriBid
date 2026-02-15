@@ -1,7 +1,7 @@
 // app/src/components/AuctionHeader.tsx
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, HardDrive } from "lucide-react";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { Doc } from "convex/_generated/dataModel";
 
 interface AuctionHeaderProps {
   auction: Doc<"auctions">;

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight, ChevronLeft, Save, Search, Check, AlertCircle, Info, TrendingUp, Camera, X, CheckCircle2 } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -313,13 +313,13 @@ export const ListingWizard = () => {
           </div>
         );
       case 1: {
-        const selectedMake = metadata?.find(m => m.make === formData.make);
+        const selectedMake = metadata?.find((m: { make: string }) => m.make === formData.make);
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="space-y-4">
               <label className="text-xs font-black uppercase text-muted-foreground ml-1">Select Manufacturer</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {metadata?.map((item) => (
+                {metadata?.map((item: { make: string }) => (
                   <Button
                     key={item.make}
                     variant={formData.make === item.make ? "default" : "outline"}
@@ -340,7 +340,7 @@ export const ListingWizard = () => {
               <div className="space-y-4 pt-4 border-t border-dashed">
                 <label className="text-xs font-black uppercase text-muted-foreground ml-1">Select Model</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {selectedMake?.models.map((model) => (
+                  {selectedMake?.models.map((model: string) => (
                     <Button
                       key={model}
                       variant={formData.model === model ? "default" : "outline"}

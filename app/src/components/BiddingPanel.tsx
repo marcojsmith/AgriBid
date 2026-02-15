@@ -1,9 +1,9 @@
 // app/src/components/BiddingPanel.tsx
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { CountdownTimer } from "./CountdownTimer";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { Doc } from "convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Gavel, Info } from "lucide-react";
 import { BidForm } from "./BidForm";
