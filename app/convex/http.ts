@@ -12,12 +12,25 @@ const http = httpRouter();
 
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") ?? "";
+  let hostname = "";
+  try {
+    hostname = new URL(origin).hostname;
+  } catch {
+    // If origin is not a valid URL, stay with empty hostname
+  }
   
   const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+    // Exact match for the full origin string
+    if (origin === allowed) return true;
+
+    // Wildcard/suffix matching based on hostname
     if (allowed.startsWith(".")) {
-      return origin.endsWith(allowed) || origin === allowed.substring(1);
+      const suffix = allowed.substring(1);
+      return hostname.endsWith(suffix) || hostname === suffix;
     }
-    return origin === allowed;
+
+    // Direct hostname match
+    return hostname === allowed;
   });
 
   const headers: Record<string, string> = {
