@@ -12,7 +12,13 @@ const http = httpRouter();
 
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") ?? "";
-  const isAllowed = ALLOWED_ORIGINS.includes(origin);
+  
+  const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+    if (allowed.startsWith(".")) {
+      return origin.endsWith(allowed) || origin === allowed.substring(1);
+    }
+    return origin === allowed;
+  });
 
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",

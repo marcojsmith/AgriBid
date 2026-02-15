@@ -24,8 +24,7 @@ export default function Home() {
   const searchQuery = rawQuery.trim() === "" ? undefined : rawQuery.trim();
   
   const auctions = useQuery(api.auctions.getActiveAuctions, { search: searchQuery });
-  const seedMetadata = useMutation(api.seed.seedEquipmentMetadata);
-  const seedAuctions = useMutation(api.seed.seedMockAuctions);
+  const runSeed = useMutation(api.seed.runSeed);
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,8 +40,7 @@ export default function Home() {
     }
     
     try {
-      await seedMetadata();
-      await seedAuctions();
+      await runSeed();
       toast.success("Mock data populated successfully");
     } catch (error) {
       console.error(error);
