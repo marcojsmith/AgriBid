@@ -19,7 +19,7 @@ export const createAuth = (
   const trustedOrigins = ALLOWED_ORIGINS;
   const siteUrl = process.env.CONVEX_SITE_URL;
 
-  if (!siteUrl && !optionsOnly) {
+  if (!siteUrl) {
     throw new Error("Missing CONVEX_SITE_URL environment variable.");
   }
 
@@ -51,7 +51,7 @@ export const createAuth = (
         authConfig: { 
           providers: [{ 
             applicationID: "convex", 
-            domain: siteUrl || "https://agribid-iota.vercel.app"
+            domain: siteUrl
           }] 
         } 
       }),
