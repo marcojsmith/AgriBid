@@ -6,7 +6,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
-*(No active tracks)*
+- [ ] **Track: deploy to vercel**
+*Link: [./tracks/vercel_deploy_20260213/](./tracks/vercel_deploy_20260213/)*
 
 ---
 

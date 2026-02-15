@@ -1,6 +1,6 @@
 // app/src/components/SellerInfo.tsx
 import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { UserCheck, ShieldCheck, Mail, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";

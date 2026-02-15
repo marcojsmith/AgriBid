@@ -1,7 +1,7 @@
 // app/src/pages/AuctionDetail.tsx
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { Button } from "../components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { AuctionHeader } from "../components/AuctionHeader";
@@ -9,7 +9,7 @@ import { ImageGallery } from "../components/ImageGallery";
 import { BiddingPanel } from "../components/BiddingPanel";
 import { BidHistory } from "../components/BidHistory";
 import { SellerInfo } from "../components/SellerInfo";
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Id } from "convex/_generated/dataModel";
 
 /**
  * Display the auction detail page for the auction identified by the current route `id`.

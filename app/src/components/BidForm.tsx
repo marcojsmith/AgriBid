@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Doc } from "../../convex/_generated/dataModel";
+import type { Doc } from "convex/_generated/dataModel";
 import { TrendingUp, ArrowUpCircle } from "lucide-react";
 
 interface BidFormProps {

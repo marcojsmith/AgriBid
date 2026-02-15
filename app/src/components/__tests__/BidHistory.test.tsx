@@ -2,7 +2,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BidHistory } from '../BidHistory';
 import { describe, it, expect, vi } from 'vitest';
-import type { Id } from '../../../convex/_generated/dataModel';
+import type { Id } from 'convex/_generated/dataModel';
 
 // Mock Convex hooks
 vi.mock('convex/react', () => ({

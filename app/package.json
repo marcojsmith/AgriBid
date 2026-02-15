@@ -5,15 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npx convex codegen && tsc -b && vite build",
     "lint": "eslint .",
-    "test": "vitest run",
+    "format": "prettier --write .",
     "preview": "vite preview",
+    "test": "vitest run",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
+    "*.{js,ts,tsx}": [
+      "prettier --write",
       "eslint --fix"
+    ],
+    "*.{css,json,md}": [
+      "prettier --write"
     ]
   },
   "dependencies": {

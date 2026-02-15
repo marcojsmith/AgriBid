@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { AuctionHeader } from '../AuctionHeader';
 import { describe, it, expect } from 'vitest';
-import type { Doc, Id } from '../../../convex/_generated/dataModel';
+import type { Doc, Id } from 'convex/_generated/dataModel';
 
 describe('AuctionHeader', () => {
   const mockAuction = {
