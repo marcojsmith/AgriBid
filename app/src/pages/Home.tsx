@@ -24,7 +24,6 @@ export default function Home() {
   const searchQuery = rawQuery.trim() === "" ? undefined : rawQuery.trim();
   
   const auctions = useQuery(api.auctions.getActiveAuctions, { search: searchQuery });
-  const runSeed = useMutation(api.seed.runSeed);
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,21 +31,6 @@ export default function Home() {
   const [signInLoading, setSignInLoading] = useState(false);
   const [signUpLoading, setSignUpLoading] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
-
-  const handleSeed = async () => {
-    if (!import.meta.env.DEV) {
-      toast.error("Seeding is only available in development mode.");
-      return;
-    }
-    
-    try {
-      await runSeed();
-      toast.success("Mock data populated successfully");
-    } catch (error) {
-      console.error(error);
-      toast.error(error instanceof Error ? error.message : "Failed to populate mock data");
-    }
-  };
 
   if (isPending) {
     return <div className="flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold">AGRIBID LOADING...</div>;
@@ -71,11 +55,6 @@ export default function Home() {
             )}
           </div>
           <div className="flex gap-2">
-            {import.meta.env.DEV && (
-              <Button variant="outline" size="sm" onClick={handleSeed}>
-                Seed Mock Data
-              </Button>
-            )}
             <Button size="sm" asChild>
               <Link to="/sell">Sell Equipment</Link>
             </Button>
@@ -93,13 +72,11 @@ export default function Home() {
                           ? `No auctions found matching "${searchQuery}".` 
                           : "No active auctions at the moment."}
                       </p>
-                      {searchQuery ? (
+                      {searchQuery && (
                         <Button asChild>
                           <Link to="/">View All Auctions</Link>
                         </Button>
-                      ) : import.meta.env.DEV ? (
-                        <Button onClick={handleSeed}>Populate Mock Auctions</Button>
-                      ) : null}
+                      )}
                     </div>
                   ) : (          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {auctions.map((auction: Doc<"auctions">) => (
