@@ -1,25 +1,31 @@
 // app/convex/seed.ts
+import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
 /**
  * Shared seeding logic for both local development and Vercel Previews.
  * This is idempotent: it checks for existing records before inserting.
  * 
- * SECURITY: This mutation is protected by an environment check and an optional SEED_SECRET.
+ * SECURITY: This mutation is protected by environment checks, admin status, 
+ * or a valid providedSeed matching process.env.SEED_SECRET.
  */
 export const runSeed = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    providedSeed: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     // --- SECURITY GUARD ---
     const isDev = process.env.NODE_ENV === "development";
-    const isPreview = !!process.env.VERCEL_URL;
+    const isPreview = process.env.VERCEL_ENV === "preview";
     const seedSecret = process.env.SEED_SECRET;
     const identity = await ctx.auth.getUserIdentity();
     const isAdmin = identity?.role === "admin";
 
-    // Allow if in dev/preview, or if caller is an admin, or if a valid SEED_SECRET is set (though not passed in args here for simplicity)
-    if (!isDev && !isPreview && !isAdmin && !seedSecret) {
-      throw new Error("Unauthorized: Seeding is only allowed in development, preview, or by admins.");
+    // Allow if in dev/preview, or if caller is an admin, or if matching seedSecret is provided
+    const isSecretMatch = seedSecret && args.providedSeed === seedSecret;
+    
+    if (!isDev && !isPreview && !isAdmin && !isSecretMatch) {
+      throw new Error("Unauthorized: Seeding is only allowed in development, preview, or with valid authorization.");
     }
     // -----------------------
 
@@ -52,7 +58,29 @@ export const runSeed = mutation({
       }
     }
 
-    // 2. Seed Mock Auctions
+    // 2. Create Mock Seller User (Idempotent)
+    const mockSellerEmail = "mock-seller@farm.com";
+    const mockSellerId = "mock-seller";
+    
+    let seller = await ctx.db
+      .query("user")
+      .filter((q) => q.eq(q.field("email"), mockSellerEmail))
+      .first();
+
+    if (!seller) {
+      await ctx.db.insert("user", {
+        userId: mockSellerId,
+        email: mockSellerEmail,
+        name: "Mock Seller",
+        emailVerified: true,
+        role: "seller",
+        isVerified: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+
+    // 3. Seed Mock Auctions
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     const mockAuctions = [
@@ -69,7 +97,7 @@ export const runSeed = mutation({
         minIncrement: 5000,
         startTime: now - oneDay,
         endTime: now + 3 * oneDay,
-        sellerId: "mock-seller",
+        sellerId: mockSellerId,
         status: "active" as const,
         images: [
           "https://www.deere.com/assets/images/region-4/products/tractors/row-crop-tractors/8r-8rt-row-crop-tractors/8r-410/8r_410_r4f063847_large_660c917945cea0af3aeb242ddf4c52b9540ef7cc.jpg",
@@ -90,7 +118,7 @@ export const runSeed = mutation({
         minIncrement: 2500,
         startTime: now - 2 * oneDay,
         endTime: now + 4 * oneDay,
-        sellerId: "mock-seller",
+        sellerId: mockSellerId,
         status: "active" as const,
         images: [
           "https://titanmachinery.bg/media/stenik_article/article/cache/2/image/9df78eab33525d08d6e5fb8d27136e95/1/4/14228766973.jpg",
@@ -111,7 +139,7 @@ export const runSeed = mutation({
         minIncrement: 2000,
         startTime: now - oneDay,
         endTime: now + 5 * oneDay,
-        sellerId: "mock-seller",
+        sellerId: mockSellerId,
         status: "active" as const,
         images: [
           "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/8938fcb66b3a4f48abced368ef3e49ae?v=8416d11a&t=size1100",
@@ -132,7 +160,7 @@ export const runSeed = mutation({
         minIncrement: 1500,
         startTime: now - 3 * oneDay,
         endTime: now + 2 * oneDay,
-        sellerId: "mock-seller",
+        sellerId: mockSellerId,
         status: "active" as const,
         images: [
           "https://www.scotagri.com/media/bz5dn5hz/image001-33.jpg",
@@ -153,7 +181,7 @@ export const runSeed = mutation({
         minIncrement: 10000,
         startTime: now - oneDay,
         endTime: now + 6 * oneDay,
-        sellerId: "mock-seller",
+        sellerId: mockSellerId,
         status: "active" as const,
         images: [
           "https://www.fendt.com/int/images/60cc414b69b3411a3a4b5114_1623998796_web_en.png",

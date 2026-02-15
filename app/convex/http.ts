@@ -26,7 +26,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
     // Wildcard/suffix matching based on hostname
     if (allowed.startsWith(".")) {
       const suffix = allowed.substring(1);
-      return hostname.endsWith(suffix) || hostname === suffix;
+      return hostname === suffix || hostname.endsWith("." + suffix);
     }
 
     // Direct hostname match
