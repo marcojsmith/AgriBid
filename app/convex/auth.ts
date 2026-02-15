@@ -51,7 +51,7 @@ export const createAuth = (
         authConfig: { 
           providers: [{ 
             applicationID: "convex", 
-            domain: siteUrl
+            domain: siteUrl || "https://agribid-iota.vercel.app"
           }] 
         } 
       }),
