@@ -11,6 +11,12 @@ interface RawImages {
   additional?: string[];
 }
 
+/**
+ * Resolve and normalize image references into accessible URLs.
+ *
+ * @param images - Image input in either legacy array form (treated as `additional`), a RawImages-like object, or any other value (treated as no images).
+ * @returns An object matching the RawImages shape where `front`, `engine`, `cabin`, and `rear` are resolved to URLs or `undefined`, and `additional` is an array of resolved HTTP URLs. Non-HTTP IDs are resolved via the provided storage; entries that cannot be resolved are omitted from `additional`.
+ */
 export async function resolveImageUrls(storage: QueryCtx["storage"], images: unknown) {
   const resolveUrl = async (id: string | undefined) => {
     if (!id) return undefined;
