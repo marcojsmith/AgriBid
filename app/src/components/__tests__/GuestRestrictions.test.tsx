@@ -16,7 +16,7 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useLocation: () => ({ pathname: '/auction/123' }),
+    useLocation: () => ({ pathname: '/auction/123', search: '', hash: '' }),
   };
 });
 
@@ -52,7 +52,7 @@ describe('Guest Restrictions - Phase 1: Navigation', () => {
     renderHeader();
     
     // Desktop nav
-    const desktopNav = screen.getByRole('navigation', { name: '' }); 
+    const desktopNav = screen.getByRole('navigation', { name: /main navigation/i }); 
     expect(desktopNav).toHaveTextContent(/Sell/i);
   });
 

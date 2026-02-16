@@ -47,8 +47,8 @@ Implement a robust state machine to handle transitions between steps with the fo
 ### 3. Submission & Bidding Integration
 - **Pre-Submission Validation**: Call a central validator to verify all steps are valid before enabling "Submit".
 - **Mutation Payload**: `createAuction` expects:
-    - `title`, `description`, `startingPrice`, `reservePrice`, `currency`, `metadata`.
-    - `storageIds`: Array of objects `{ id: string, provider: "convex", type: "image" }`.
+    - `title`, `description`, `make`, `model`, `year`, `location`, `operatingHours`, `startingPrice`, `reservePrice`, `duration`.
+    - `images`: Object `{ front, engine, cabin, rear, additional: string[] }`.
 - **Status**: New listings default to `pending_review`.
 - **Error Handling**: Map backend validation errors back to specific wizard fields. Implement exponential backoff for network-related failures.
 - **Feedback**: Show a success modal on completion and redirect to the Seller Dashboard.

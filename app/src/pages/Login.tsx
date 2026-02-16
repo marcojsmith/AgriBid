@@ -74,7 +74,7 @@ export default function Login() {
             try {
               const emailPrefix = email.split('@')[0] || "User";
               const name = emailPrefix
-                .replace(/[0-9._-]+$/, '')
+                .replace(/^[0-9._-]+|[0-9._-]+$/g, '')
                 .replace(/^[a-z]/, (char) => char.toUpperCase()) || "User";
               
               const { error } = await signUp.email({ 

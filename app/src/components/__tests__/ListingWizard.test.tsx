@@ -32,6 +32,8 @@ const originalFetch = global.fetch;
 
 describe('ListingWizard', () => {
   beforeEach(() => {
+    localStorage.removeItem("agribid_listing_step");
+    localStorage.removeItem("agribid_listing_draft");
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ storageId: 'test-storage-id' }),
@@ -41,6 +43,8 @@ describe('ListingWizard', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     vi.clearAllMocks();
+    localStorage.removeItem("agribid_listing_step");
+    localStorage.removeItem("agribid_listing_draft");
   });
 
   const renderWizard = () => render(

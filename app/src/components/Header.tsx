@@ -56,7 +56,7 @@ export const Header = () => {
         <div className="flex items-center gap-8 shrink-0">
           <Link to="/" className="font-black text-2xl tracking-tighter text-primary">AGRIBID</Link>
           
-          <nav className="hidden lg:flex gap-6 text-sm font-bold uppercase tracking-wider">
+          <nav aria-label="Main navigation" className="hidden lg:flex gap-6 text-sm font-bold uppercase tracking-wider">
             {navLinks.map((link) => (
               link.disabled ? (
                 <span
@@ -130,9 +130,11 @@ export const Header = () => {
                     <LayoutDashboard className="h-4 w-4" />
                     My Bids (Coming Soon)
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="rounded-lg font-bold uppercase text-[10px] tracking-wide opacity-50 cursor-not-allowed">
-                    <Heart className="h-4 w-4" />
-                    Watchlist (Coming Soon)
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
+                    <Link to="/watchlist" className="flex items-center gap-2 w-full">
+                      <Heart className="h-4 w-4" />
+                      Watchlist
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled className="rounded-lg font-bold uppercase text-[10px] tracking-wide opacity-50 cursor-not-allowed">
                     <Settings className="h-4 w-4" />

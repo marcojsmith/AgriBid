@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ListingFormData, ConditionChecklist } from "../types";
-import { DEFAULT_FORM_DATA } from "../constants";
+import { DEFAULT_FORM_DATA, STEPS } from "../constants";
 
 interface ListingWizardContextType {
   formData: ListingFormData;
@@ -25,7 +25,13 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentStep, setCurrentStep] = useState(() => {
     if (typeof window === "undefined") return 0;
     const saved = localStorage.getItem("agribid_listing_step");
-    return saved ? parseInt(saved, 10) : 0;
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (Number.isFinite(parsed) && parsed >= 0 && parsed < STEPS.length) {
+        return parsed;
+      }
+    }
+    return 0;
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);

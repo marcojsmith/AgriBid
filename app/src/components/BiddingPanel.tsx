@@ -18,7 +18,7 @@ interface BiddingPanelProps {
 }
 
 export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -31,10 +31,15 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
 
   const handleBidInitiate = (amount: number) => {
+    if (isPending) {
+      toast.info("Checking sign-in status...");
+      return;
+    }
+
     if (!session) {
       toast.info("Please sign in to place a bid");
       // Redirect to login page and provide a callback URL
-      const callbackUrl = encodeURIComponent(location.pathname);
+      const callbackUrl = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);
       navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
