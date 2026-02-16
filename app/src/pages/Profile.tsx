@@ -1,17 +1,27 @@
 // app/src/pages/Profile.tsx
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck, ShieldCheck, Calendar, Gavel, Award, ArrowLeft } from "lucide-react";
+import { UserCheck, ShieldCheck, Calendar, Gavel, Award, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/AuctionCard";
 
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
-  const profile = useQuery(api.auctions.getPublicProfile, { userId: userId || "" });
+  const sellerInfo = useQuery(api.auctions.getSellerInfo, { sellerId: userId || "" });
+  
+  const { 
+    results: listings, 
+    status, 
+    loadMore 
+  } = usePaginatedQuery(
+    api.auctions.getSellerListings, 
+    { userId: userId || "" }, 
+    { initialNumItems: 6 }
+  );
 
-  if (profile === undefined) {
+  if (sellerInfo === undefined || status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -19,7 +29,7 @@ export default function Profile() {
     );
   }
 
-  if (profile === null) {
+  if (sellerInfo === null) {
     return (
       <div className="max-w-4xl mx-auto py-24 text-center space-y-6">
         <h1 className="text-4xl font-black uppercase">User Not Found</h1>
@@ -31,8 +41,7 @@ export default function Profile() {
     );
   }
 
-  const { user, listings } = profile;
-  const memberSince = new Date(user.createdAt).getFullYear();
+  const memberSince = new Date(sellerInfo.createdAt).getFullYear();
   const activeListings = listings.filter(l => l.status === 'active');
   const soldListings = listings.filter(l => l.status === 'sold');
 
@@ -51,9 +60,9 @@ export default function Profile() {
             <div className="space-y-1">
               <div className="flex flex-col md:flex-row items-center gap-3">
                 <h1 className="text-4xl md:text-5xl font-black tracking-tight text-primary uppercase leading-none">
-                  {user.name}
+                  {sellerInfo.name}
                 </h1>
-                {user.isVerified && (
+                {sellerInfo.isVerified && (
                   <Badge className="bg-green-600 hover:bg-green-700 font-black uppercase tracking-widest px-3 py-1 flex items-center gap-1.5 h-8">
                     <ShieldCheck className="h-4 w-4" />
                     Verified Seller
@@ -61,7 +70,7 @@ export default function Profile() {
                 )}
               </div>
               <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-sm text-muted-foreground font-bold uppercase tracking-wide">
-                <span className="bg-primary/5 text-primary px-3 py-1 rounded-lg border border-primary/10">{user.role}</span>
+                <span className="bg-primary/5 text-primary px-3 py-1 rounded-lg border border-primary/10">{sellerInfo.role}</span>
                 <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> Joined {memberSince}</span>
               </div>
             </div>
@@ -73,7 +82,7 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="text-xl font-black leading-none">{activeListings.length}</p>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Active Ads</p>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Showing Active</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 border-l-2 border-primary/10 pl-6">
@@ -81,8 +90,8 @@ export default function Profile() {
                   <Award className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-xl font-black leading-none">{soldListings.length}</p>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Items Sold</p>
+                  <p className="text-xl font-black leading-none">{sellerInfo.itemsSold}</p>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Sold</p>
                 </div>
               </div>
             </div>
@@ -99,7 +108,7 @@ export default function Profile() {
           <h2 className="text-3xl font-black tracking-tight text-primary uppercase">Active Auctions</h2>
         </div>
 
-        {activeListings.length === 0 ? (
+        {activeListings.length === 0 && status === "Exhausted" ? (
           <div className="bg-muted/20 border-2 border-dashed rounded-[2rem] p-16 text-center">
             <p className="text-muted-foreground font-bold uppercase tracking-widest italic">No active auctions at this time.</p>
           </div>
@@ -113,7 +122,7 @@ export default function Profile() {
       </section>
 
       {/* Sold History Section */}
-      {soldListings.length > 0 && (
+      {(soldListings.length > 0 || status === "LoadingMore") && (
         <section className="space-y-8 opacity-80">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -128,6 +137,28 @@ export default function Profile() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* Pagination Control */}
+      {(status === "CanLoadMore" || status === "LoadingMore") && (
+        <div className="flex justify-center pt-8">
+          <Button 
+            variant="outline" 
+            size="lg" 
+            onClick={() => loadMore(6)}
+            disabled={status === "LoadingMore"}
+            className="rounded-2xl border-2 px-12 font-black uppercase tracking-widest"
+          >
+            {status === "LoadingMore" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load More Listings"
+            )}
+          </Button>
+        </div>
       )}
     </div>
   );
