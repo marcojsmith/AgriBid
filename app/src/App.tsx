@@ -18,8 +18,9 @@ const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
  * Global loading fallback for lazy-loaded routes.
  */
 const PageLoader = () => (
-  <div className="flex h-[60vh] items-center justify-center bg-background">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+  <div className="flex h-[60vh] items-center justify-center bg-background" role="status">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" aria-hidden="true"></div>
+    <span className="sr-only">Loading page...</span>
   </div>
 );
 

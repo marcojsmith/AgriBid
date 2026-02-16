@@ -2,6 +2,6 @@
   "id": "wizard_hardening_data_integrity_20260216",
   "title": "Wizard Hardening & Data Integrity",
   "description": "Harden Listing Wizard validation and improve input handling.",
-  "status": "in_progress",
+  "status": "Completed",
   "priority": "high"
 }
