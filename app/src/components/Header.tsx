@@ -25,10 +25,10 @@ export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const navLinks = [
+  const navLinks: { name: string; href: string; disabled?: boolean }[] = [
     { name: "Marketplace", href: "/" },
     ...(session ? [{ name: "Sell", href: "/sell" }] : []),
-    { name: "Watchlist", href: "#", disabled: true },
+    { name: "Watchlist", href: "/watchlist" },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
