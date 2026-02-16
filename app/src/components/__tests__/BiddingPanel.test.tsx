@@ -37,10 +37,11 @@ describe('BiddingPanel', () => {
       </BrowserRouter>
     );
     
-    expect(screen.getByText((content) => content.includes('R50,000'))).toBeInTheDocument();
-    expect(screen.getByText((content) => content.includes('Next minimum bid'))).toBeInTheDocument();
-    // Use getAllByText because the next min bid appears in both the info text and the quick bid button
-    expect(screen.getAllByText('R50,500').length).toBeGreaterThanOrEqual(1);
+    // Check for R and the price digits, allowing for different grouping symbols (space or comma)
+    expect(screen.getByText(/R.*50.000/)).toBeInTheDocument();
+    expect(screen.getByText(/Next minimum bid/i)).toBeInTheDocument();
+    // Check for R and the next bid digits
+    expect(screen.getAllByText(/R.*50.500/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows ended state when auction is not active', () => {
@@ -51,6 +52,6 @@ describe('BiddingPanel', () => {
       </BrowserRouter>
     );
     
-    expect(screen.getByText(/Auction Ended/i)).toBeInTheDocument();
+    expect(screen.getByText(/Auction SOLD/i)).toBeInTheDocument();
   });
 });

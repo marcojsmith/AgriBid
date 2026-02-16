@@ -10,6 +10,7 @@ vi.mock('./pages/Sell', () => ({ default: () => <div data-testid="sell-page">Sel
 
 // Mock Convex and Auth globally for App tests
 vi.mock('convex/react', () => ({
+  useQuery: vi.fn(() => []),
   Authenticated: ({ children }: { children: ReactNode }) => <div data-testid="auth">{children}</div>,
   Unauthenticated: ({ children }: { children: ReactNode }) => <div data-testid="unauth">{children}</div>,
 }));
