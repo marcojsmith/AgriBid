@@ -57,6 +57,8 @@
 - [ ] `updateAuction` - edit draft auction
 - [ ] `publishAuction` - change status from "draft" to "active"
 - [x] `placeBid` - place a bid with soft close logic
+- [x] `approveAuction` - admin approval to set active status
+- [x] `generateUploadUrl` - for Convex File Storage
 - [ ] `setProxyBid` - set maximum auto-bid amount
 - [ ] `addToWatchlist` / `removeFromWatchlist`
 - [ ] `uploadConditionReport` - upload PDF to Convex Storage
@@ -111,7 +113,7 @@
 
 ### Auction Detail Page (`/auction/:id`)
 - [x] **ImageGallery** component
-- [ ] **Equipment Specs Table**
+- [x] **Equipment Specs Table** (Included in Description section)
 - [x] **Bidding Panel**
 - [x] **Seller Info**
 - [x] **Countdown Timer**
@@ -128,7 +130,7 @@
 - [ ] **Won Auctions Tab**
 
 ### Admin Dashboard (`/admin`)
-- [ ] **Pending Verifications**
+- [x] **Pending Verifications** (Listing Moderation)
 - [ ] **Flagged Listings**
 - [ ] **Audit Logs**
 
@@ -158,7 +160,7 @@
 - [ ] Add/remove auctions from watchlist (mutation)
 
 ### Image Upload & Storage
-- [ ] Integrate Convex File Storage API
+- [x] Integrate Convex File Storage API
 
 ### Search & Filters
 - [x] Implement text search on title, make, model

@@ -30,25 +30,28 @@
 - **Auth Form**: Uses a single form with a toggle state (`signin` | `signup`) to provide correct `autoComplete` attributes (`current-password` vs `new-password`) and a better user experience.
 - **Countdown Timer**: Uses a single `remainingMs` state and derives display strings during render for efficiency and simplicity.
 
-## Image Storage Architecture (Pending Implementation)
+## Image Storage Architecture (Implemented)
 
-### Current Status
-- As of 2026-02-13, the `ListingWizard` uses temporary local object URLs (`URL.createObjectURL`) for previews.
-- **Limitation**: These URLs are client-side only and ephemeral. They will not persist after a page refresh and cannot be viewed by other users.
-
-### Implementation Guide for Permanent Storage
-To migrate to permanent Convex File Storage, follow this pattern:
+### Current Architecture
+The `ListingWizard` now uses permanent Convex File Storage for all equipment images.
 
 1.  **Backend (Convex)**:
-    - Create a `generateUploadUrl` mutation in `convex/auctions.ts` that returns a secure upload destination using `ctx.storage.generateUploadUrl()`.
-    - Create a `getFileUrl` query that takes a `storageId` and returns a public URL using `ctx.storage.getUrl(storageId)`.
+    - `app/convex/auctions.ts` provides a `generateUploadUrl` mutation that returns a secure, single-use upload destination.
+    - Auction images are stored as an object containing specific keys (`front`, `engine`, `cabin`, `rear`) and an `additional` array, all holding Convex `storageId` strings.
 
 2.  **Frontend (ListingWizard)**:
-    - When a user selects a file, call the `generateUploadUrl` mutation.
-    - `POST` the file binary data directly to the returned URL using `fetch(url, { method: "POST", body: file })`.
-    - Retrieve the `storageId` from the JSON response of the POST request.
-    - Save the `storageId` (string) into the `formData.images` array.
+    - **Upload Flow**: When a user selects a file, the component immediately generates a local `blob:` URL for instant preview. It then calls `generateUploadUrl`, POSTs the binary data to Convex, and saves the resulting `storageId` into the form state.
+    - **Cleanup**: Local blob URLs are revoked on image removal or component unmount to prevent memory leaks.
+    - **Descriptive Errors**: The wizard provides specific feedback (e.g., "Please upload at least one photo") using `sonner` toast notifications.
 
 3.  **Display**:
-    - Components rendering auction images (e.g., `AuctionCard`, `ImageGallery`) should use the `storageId` to fetch the public URL via the `getFileUrl` query or a dedicated resolver.
+    - **`AuctionCard` & `AuctionDetail`**: These components resolve the `storageId` strings to public URLs. (Note: For mock data, these fields may contain full HTTP URLs, which the components handle transparently).
+    - **Structured Images**: The schema transition from an array of strings to a structured object allows for more precise UI placement (e.g., showing the 'Front' view as the hero image).
+
+## Admin Moderation Workflow
+A dedicated Admin Dashboard (`/admin`) has been implemented to handle the lifecycle of new listings.
+- New auctions are created with a `pending_review` status.
+- Admins can review equipment details and condition checklists.
+- The `approveAuction` mutation updates the status to `active` and calculates the final auction end time.
+- Only users with the `admin` role (stored in the `user` table) can access these features.
 
