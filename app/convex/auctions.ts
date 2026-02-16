@@ -11,6 +11,14 @@ interface RawImages {
   additional?: string[];
 }
 
+/**
+ * Normalize image input and resolve any storage IDs to accessible URLs.
+ *
+ * Accepts either a RawImages-shaped object or a legacy array of image IDs; resolves each image field (`front`, `engine`, `cabin`, `rear`) and the `additional` array to HTTP URLs (leaving HTTP URLs unchanged). Unresolved or missing images are returned as `undefined`, and the `additional` array excludes any entries that could not be resolved.
+ *
+ * @param images - Either a `RawImages` object or a legacy `string[]` of image IDs
+ * @returns An object matching `RawImages` where each field is an HTTP URL or `undefined`, and `additional` is an array of resolved URLs (filtered to exclude unresolved entries)
+ */
 async function resolveImageUrls(storage: QueryCtx["storage"], images: unknown) {
   const resolveUrl = async (id: string | undefined) => {
     if (!id) return undefined;

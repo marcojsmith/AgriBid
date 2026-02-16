@@ -3,6 +3,13 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 
+/**
+ * Enforces environment- and role-based authorization for destructive operations.
+ *
+ * @param ctx - Mutation context used to obtain the caller's identity for authorization checks
+ * @throws Error if the caller is not an admin and both NODE_ENV and VERCEL_ENV are undefined
+ * @throws Error if the caller is not an admin and the environment is not `development` or Vercel `preview`
+ */
 async function checkDestructiveAccess(ctx: MutationCtx) {
   const nodeEnv = process.env.NODE_ENV;
   const vercelEnv = process.env.VERCEL_ENV;

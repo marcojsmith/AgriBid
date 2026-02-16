@@ -10,6 +10,16 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { Id } from "convex/_generated/dataModel";
 
+/**
+ * Render the admin listing moderation dashboard that displays pending auctions and moderation controls.
+ *
+ * Shows a loading view while pending auctions are being fetched, renders a card for each pending auction
+ * with preview, metadata, condition checklist, and actions to approve, reject, or view full details.
+ * Approve and reject actions invoke server mutations, present per-item loading indicators, and surface
+ * success or error toasts. When there are no pending auctions, displays an empty-queue notice.
+ *
+ * @returns The JSX element for the moderation dashboard and its interactive queue.
+ */
 export default function AdminDashboard() {
   const navigate = useNavigate();
   
