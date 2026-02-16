@@ -389,3 +389,63 @@ export const settleExpiredAuctions = internalMutation({
     }
   },
 });
+
+export const getMyBids = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+
+    // Get all bids by this user
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+      .collect();
+
+    // Group by auctionId to get the latest status per auction
+    const auctionIds = Array.from(new Set(bids.map((b) => b.auctionId)));
+
+    const auctions = await Promise.all(
+      auctionIds.map(async (id) => {
+        const auction = await ctx.db.get(id);
+        if (!auction) return null;
+        
+        // Find my highest bid on this auction
+        const myBids = bids.filter(b => b.auctionId === id);
+        const myHighestBid = Math.max(...myBids.map(b => b.amount));
+        
+        return {
+          ...auction,
+          images: await resolveImageUrls(ctx.storage, auction.images),
+          myHighestBid,
+          isWinning: auction.status === 'active' && myHighestBid === auction.currentPrice,
+          isWon: auction.status === 'sold' && myHighestBid === auction.currentPrice,
+        };
+      })
+    );
+
+    return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+  },
+});
+
+export const getMyListings = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+
+    const listings = await ctx.db
+      .query("auctions")
+      .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+      .collect();
+
+    return await Promise.all(
+      listings.map(async (auction) => ({
+        ...auction,
+        images: await resolveImageUrls(ctx.storage, auction.images),
+      }))
+    );
+  },
+});
