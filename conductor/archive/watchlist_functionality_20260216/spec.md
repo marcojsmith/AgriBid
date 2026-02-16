@@ -18,7 +18,7 @@ As a user, I want to keep track of auctions I'm interested in by adding them to 
 - **watchlist**:
     - `userId` (string): The ID of the watching user.
     - `auctionId` (Id<"auctions">): The ID of the watched auction.
-    - Index: `by_user_auction` (userId, auctionId) - unique constraint.
+    - Index: `by_user_auction` (userId, auctionId) - used for efficient lookup (uniqueness enforced by application logic).
     - Index: `by_user` (userId) - list retrieval.
 
 ## API Specification
