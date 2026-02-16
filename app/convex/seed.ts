@@ -281,10 +281,15 @@ export const runSeed = mutation({
         .withIndex("by_seedId", (q) => q.eq("seedId", auction.seedId))
         .first();
       
+      const auctionData = {
+        ...auction,
+        description: auction.description || "No description provided.",
+      };
+
       if (!existing) {
-        await ctx.db.insert("auctions", auction);
+        await ctx.db.insert("auctions", auctionData);
       } else {
-        await ctx.db.patch(existing._id, auction);
+        await ctx.db.patch(existing._id, auctionData);
       }
     }
 
