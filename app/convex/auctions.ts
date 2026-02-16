@@ -1,6 +1,7 @@
 // app/convex/auctions.ts
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
 
 interface RawImages {
@@ -171,7 +172,7 @@ export const getSellerInfo = query({
 });
 
 export const getSellerListings = query({
-  args: { userId: v.string(), paginationOpts: v.any() },
+  args: { userId: v.string(), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     const results = await ctx.db
       .query("auctions")

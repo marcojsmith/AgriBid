@@ -108,7 +108,7 @@ export default function Profile() {
           <h2 className="text-3xl font-black tracking-tight text-primary uppercase">Active Auctions</h2>
         </div>
 
-        {activeListings.length === 0 && status !== "LoadingMore" ? (
+        {activeListings.length === 0 && status === "Exhausted" ? (
           <div className="bg-muted/20 border-2 border-dashed rounded-[2rem] p-16 text-center">
             <p className="text-muted-foreground font-bold uppercase tracking-widest italic">No active auctions at this time.</p>
           </div>
