@@ -39,7 +39,9 @@ export const useListingMedia = () => {
 
       // Revoke from previews state
       Object.values(currentPreviews).forEach(url => {
-        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+        if (url && typeof url === "string" && url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
       });
     };
   }, []);
@@ -115,18 +117,21 @@ export const useListingMedia = () => {
     setFormData(prev => {
       const newImages = { ...prev.images };
       if (slotId === "additional" && typeof index === "number") {
+        if (!Array.isArray(newImages.additional)) return prev;
         const storageId = newImages.additional[index];
         newImages.additional = newImages.additional.filter((_, i) => i !== index);
         
         // Cleanup preview
-        setPreviews(prevP => {
-          const next = { ...prevP };
-          if (next[storageId]) {
-            URL.revokeObjectURL(next[storageId]);
-            delete next[storageId];
-          }
-          return next;
-        });
+        if (storageId) {
+          setPreviews(prevP => {
+            const next = { ...prevP };
+            if (next[storageId]) {
+              URL.revokeObjectURL(next[storageId]);
+              delete next[storageId];
+            }
+            return next;
+          });
+        }
       } else {
         const key = slotId as keyof Omit<typeof formData.images, "additional">;
         delete newImages[key];

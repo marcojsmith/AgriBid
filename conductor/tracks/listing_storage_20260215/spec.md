@@ -7,11 +7,12 @@ This track focuses on the end-to-end seller experience for creating equipment au
 
 ### 1. Multi-Step Listing Wizard (`ListingWizard.tsx`)
 - **State Management**: Implement a robust state machine to handle transitions between steps:
-    - **Step 1: Equipment Details**: Make, Model, Year, Hours, Location.
-    - **Step 2: Condition & Specs**: Condition checklist (Engine, Hydraulics, Tires, Service History) and free-text notes.
-    - **Step 3: Media Upload**: Drag-and-drop image interface.
-    - **Step 4: Pricing**: Starting price, Reserve price, and Auction duration.
-    - **Step 5: Review & Submit**: Final summary of all data before database insertion.
+    - **Step 1: General Info**: Year, Location, Title.
+    - **Step 2: Technical Specs**: Make, Model.
+    - **Step 3: Condition Checklist**: Engine, Hydraulics, Tires, Service History + notes.
+    - **Step 4: Media Gallery**: Drag-and-drop image interface.
+    - **Step 5: Pricing & Duration**: Starting price, Reserve price, and Auction duration.
+    - **Step 6: Review & Submit**: Final summary of all data before database insertion.
 - **Persistence**: Ensure form data is preserved if a user navigates between steps.
 
 ### 2. Media Management & Convex File Storage

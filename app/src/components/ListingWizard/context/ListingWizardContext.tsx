@@ -8,6 +8,7 @@ interface ListingWizardContextType {
   isSubmitting: boolean;
   isSuccess: boolean;
   previews: Record<string, string>;
+  draftSaved: boolean;
   setFormData: React.Dispatch<React.SetStateAction<ListingFormData>>;
   setCurrentStep: React.Dispatch<React.SetStateAction<number>>;
   setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>;
@@ -24,6 +25,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const [formData, setFormData] = useState<ListingFormData>(() => {
     const saved = localStorage.getItem("agribid_listing_draft");
@@ -43,13 +45,15 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
+    setDraftSaved(true);
   }, [formData]);
 
   const updateField = <K extends keyof ListingFormData>(field: K, value: ListingFormData[K]) => {
+    setDraftSaved(false);
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
       if (field === "make" || field === "model" || field === "year") {
-        const parts = [newData.year, newData.make, newData.model].filter(Boolean);
+        const parts = [newData.year, newData.make, newData.model].filter(v => v !== undefined && v !== null && v !== '');
         if (parts.length > 0) {
           newData.title = parts.join(" ");
         }
@@ -59,6 +63,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const updateChecklist = <K extends keyof ConditionChecklist>(field: K, value: ConditionChecklist[K]) => {
+    setDraftSaved(false);
     setFormData((prev) => ({
       ...prev,
       conditionChecklist: {
@@ -76,6 +81,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         isSubmitting,
         isSuccess,
         previews,
+        draftSaved,
         setFormData,
         setCurrentStep,
         setIsSubmitting,

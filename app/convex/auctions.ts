@@ -2,6 +2,27 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+async function resolveImageUrls(storage: any, images: any) {
+  const resolveUrl = async (id: string | undefined) => {
+    if (!id) return undefined;
+    if (id.startsWith("http")) return id;
+    return (await storage.getUrl(id)) ?? undefined;
+  };
+
+  return {
+    ...images,
+    front: await resolveUrl(images.front),
+    engine: await resolveUrl(images.engine),
+    cabin: await resolveUrl(images.cabin),
+    rear: await resolveUrl(images.rear),
+    additional: (await Promise.all(
+      (images.additional || []).map(async (id: string) => 
+        id.startsWith("http") ? id : await storage.getUrl(id)
+      )
+    )).filter((url: any): url is string => !!url),
+  };
+}
+
 export const getPendingAuctions = query({
   args: {},
   handler: async (ctx) => {
@@ -18,26 +39,7 @@ export const getPendingAuctions = query({
     return await Promise.all(
       auctions.map(async (auction) => ({
         ...auction,
-        images: {
-          ...auction.images,
-          front: (auction.images.front?.startsWith("http") 
-            ? auction.images.front 
-            : await (auction.images.front ? ctx.storage.getUrl(auction.images.front) : Promise.resolve(undefined))) ?? undefined,
-          engine: (auction.images.engine?.startsWith("http")
-            ? auction.images.engine
-            : await (auction.images.engine ? ctx.storage.getUrl(auction.images.engine) : Promise.resolve(undefined))) ?? undefined,
-          cabin: (auction.images.cabin?.startsWith("http")
-            ? auction.images.cabin
-            : await (auction.images.cabin ? ctx.storage.getUrl(auction.images.cabin) : Promise.resolve(undefined))) ?? undefined,
-          rear: (auction.images.rear?.startsWith("http")
-            ? auction.images.rear
-            : await (auction.images.rear ? ctx.storage.getUrl(auction.images.rear) : Promise.resolve(undefined))) ?? undefined,
-          additional: (await Promise.all(
-            (auction.images.additional || []).map(async (id) => 
-              id.startsWith("http") ? id : await ctx.storage.getUrl(id)
-            )
-          )).filter((url): url is string => !!url),
-        },
+        images: await resolveImageUrls(ctx.storage, auction.images),
       }))
     );
   },
@@ -64,26 +66,7 @@ export const getActiveAuctions = query({
     return await Promise.all(
       auctions.map(async (auction) => ({
         ...auction,
-        images: {
-          ...auction.images,
-          front: (auction.images.front?.startsWith("http") 
-            ? auction.images.front 
-            : await (auction.images.front ? ctx.storage.getUrl(auction.images.front) : Promise.resolve(undefined))) ?? undefined,
-          engine: (auction.images.engine?.startsWith("http")
-            ? auction.images.engine
-            : await (auction.images.engine ? ctx.storage.getUrl(auction.images.engine) : Promise.resolve(undefined))) ?? undefined,
-          cabin: (auction.images.cabin?.startsWith("http")
-            ? auction.images.cabin
-            : await (auction.images.cabin ? ctx.storage.getUrl(auction.images.cabin) : Promise.resolve(undefined))) ?? undefined,
-          rear: (auction.images.rear?.startsWith("http")
-            ? auction.images.rear
-            : await (auction.images.rear ? ctx.storage.getUrl(auction.images.rear) : Promise.resolve(undefined))) ?? undefined,
-          additional: (await Promise.all(
-            (auction.images.additional || []).map(async (id) => 
-              id.startsWith("http") ? id : await ctx.storage.getUrl(id)
-            )
-          )).filter((url): url is string => !!url),
-        },
+        images: await resolveImageUrls(ctx.storage, auction.images),
       }))
     );
   },
@@ -97,26 +80,7 @@ export const getAuctionById = query({
 
     return {
       ...auction,
-      images: {
-        ...auction.images,
-        front: (auction.images.front?.startsWith("http") 
-          ? auction.images.front 
-          : await (auction.images.front ? ctx.storage.getUrl(auction.images.front) : Promise.resolve(undefined))) ?? undefined,
-        engine: (auction.images.engine?.startsWith("http")
-          ? auction.images.engine
-          : await (auction.images.engine ? ctx.storage.getUrl(auction.images.engine) : Promise.resolve(undefined))) ?? undefined,
-        cabin: (auction.images.cabin?.startsWith("http")
-          ? auction.images.cabin
-          : await (auction.images.cabin ? ctx.storage.getUrl(auction.images.cabin) : Promise.resolve(undefined))) ?? undefined,
-        rear: (auction.images.rear?.startsWith("http")
-          ? auction.images.rear
-          : await (auction.images.rear ? ctx.storage.getUrl(auction.images.rear) : Promise.resolve(undefined))) ?? undefined,
-        additional: (await Promise.all(
-          (auction.images.additional || []).map(async (id) => 
-            id.startsWith("http") ? id : await ctx.storage.getUrl(id)
-          )
-        )).filter((url): url is string => !!url),
-      },
+      images: await resolveImageUrls(ctx.storage, auction.images),
     };
   },
 });

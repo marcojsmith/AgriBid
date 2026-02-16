@@ -31,6 +31,10 @@ export const DEFAULT_FORM_DATA: ListingFormData = {
     notes: "",
   },
   images: {
+    front: undefined,
+    engine: undefined,
+    cabin: undefined,
+    rear: undefined,
     additional: [],
   },
   startingPrice: 0,
