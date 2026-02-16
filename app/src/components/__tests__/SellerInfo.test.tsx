@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { SellerInfo } from '../SellerInfo';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 // Mock Convex hooks
 vi.mock('convex/react', () => ({
@@ -15,7 +16,11 @@ vi.mock('convex/react', () => ({
 
 describe('SellerInfo', () => {
   it('renders seller details correctly', () => {
-    render(<SellerInfo sellerId="seller123" />);
+    render(
+      <MemoryRouter>
+        <SellerInfo sellerId="seller123" />
+      </MemoryRouter>
+    );
     
     expect(screen.getByText('Verified Farmer')).toBeInTheDocument();
     expect(screen.getByText('Commercial Dealer')).toBeInTheDocument();

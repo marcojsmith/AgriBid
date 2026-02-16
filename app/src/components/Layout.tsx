@@ -15,7 +15,7 @@ export const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {session && <NotificationListener />}
       <Header />
-      <main className="flex-1 container mx-auto px-4 md:px-8 py-8">
+      <main className="flex-1 container mx-auto px-4 md:px-8 py-4 md:py-8">
         {children}
       </main>
       <Footer />

@@ -8,6 +8,7 @@ import { AuctionCard } from "../components/AuctionCard";
 import { FilterSidebar } from "../components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /**
  * Render the AgriBid home page displaying active auctions with a filter sidebar.
@@ -19,15 +20,25 @@ export default function Home() {
   const { isPending } = useSession();
   const [searchParams] = useSearchParams();
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<"compact" | "detailed">("detailed");
 
   // Extract filter params
   const searchQuery = searchParams.get("q") || undefined;
   const make = searchParams.get("make") || undefined;
-  const minYear = searchParams.get("minYear") ? parseInt(searchParams.get("minYear")!) : undefined;
-  const maxYear = searchParams.get("maxYear") ? parseInt(searchParams.get("maxYear")!) : undefined;
-  const minPrice = searchParams.get("minPrice") ? parseInt(searchParams.get("minPrice")!) : undefined;
-  const maxPrice = searchParams.get("maxPrice") ? parseInt(searchParams.get("maxPrice")!) : undefined;
-  const maxHours = searchParams.get("maxHours") ? parseInt(searchParams.get("maxHours")!) : undefined;
+  
+  const parseParam = (key: string) => {
+    const val = searchParams.get(key);
+    if (!val) return undefined;
+    const parsed = parseInt(val, 10);
+    return isNaN(parsed) ? undefined : parsed;
+  };
+
+  const minYear = parseParam("minYear");
+  const maxYear = parseParam("maxYear");
+  const minPrice = parseParam("minPrice");
+  const maxPrice = parseParam("maxPrice");
+  const maxHours = parseParam("maxHours");
   
   const auctions = useQuery(api.auctions.getActiveAuctions, { 
     search: searchQuery,
@@ -48,9 +59,11 @@ export default function Home() {
   return (
     <div className="flex flex-col lg:flex-row gap-8">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
-        <FilterSidebar />
-      </aside>
+      {isDesktopSidebarOpen && (
+        <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
+          <FilterSidebar />
+        </aside>
+      )}
 
       {/* Mobile Filter Overlay */}
       {isMobileFilterOpen && (
@@ -61,11 +74,12 @@ export default function Home() {
           <button 
             className="absolute inset-0 -z-10 w-full h-full"
             onClick={() => setIsMobileFilterOpen(false)}
+            aria-label="Close filters"
           />
         </div>
       )}
 
-      <div className="flex-1 space-y-8">
+      <div className="flex-1 space-y-6 md:space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-3xl font-black tracking-tight text-primary uppercase">
@@ -86,17 +100,48 @@ export default function Home() {
               )}
             </div>
           </div>
-          <div className="flex gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            {/* Sidebar Toggle (Desktop Only) */}
+            <Button
+              variant={isDesktopSidebarOpen ? "default" : "outline"}
+              onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
+              className="hidden lg:flex h-10 px-4 rounded-xl border-2 gap-2 font-bold uppercase text-xs"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {isDesktopSidebarOpen ? "Hide Filters" : "Show Filters"}
+            </Button>
+
+            {/* View Toggle */}
+            <div className="flex bg-muted p-1 rounded-xl border shrink-0">
+              <Button
+                variant={viewMode === "detailed" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("detailed")}
+                className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
+              >
+                Detailed
+              </Button>
+              <Button
+                variant={viewMode === "compact" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("compact")}
+                className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
+              >
+                Compact
+              </Button>
+            </div>
+
             <Button 
               variant="outline"
               onClick={() => setIsMobileFilterOpen(true)}
-              className="lg:hidden flex-1 md:flex-none font-bold uppercase tracking-wider h-10 px-6 rounded-xl border-2 gap-2"
+              className="lg:hidden h-10 w-10 p-0 rounded-xl border-2 flex items-center justify-center font-bold uppercase"
+              aria-label="Filters"
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Filters
             </Button>
+            
             <Button className="flex-1 md:flex-none font-bold uppercase tracking-wider h-10 px-6 rounded-xl shadow-lg shadow-primary/20" asChild>
-              <Link to="/sell">Sell Equipment</Link>
+              <Link to="/sell">Sell</Link>
             </Button>
           </div>
         </div>
@@ -118,9 +163,27 @@ export default function Home() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className={cn(
+            "grid",
+            viewMode === "compact" 
+              ? cn(
+                  "grid-cols-1 gap-2 sm:gap-3",
+                  isDesktopSidebarOpen 
+                    ? "md:grid-cols-2" 
+                    : "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
+                )
+              : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8"
+          )}>
             {auctions.map((auction) => (
-              <AuctionCard key={auction._id} auction={auction} />
+              <div key={auction._id} className={cn(
+                "w-full",
+                viewMode === "compact" && "max-w-[500px]"
+              )}>
+                <AuctionCard 
+                  auction={auction} 
+                  viewMode={viewMode}
+                />
+              </div>
             ))}
           </div>
         )}

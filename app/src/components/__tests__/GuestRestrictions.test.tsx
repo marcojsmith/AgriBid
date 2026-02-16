@@ -118,7 +118,7 @@ describe('Guest Restrictions - Phase 1: Navigation', () => {
       </MemoryRouter>
     );
 
-    const bidButton = screen.getByRole('button', { name: /Bid R101,000/i });
+    const bidButton = screen.getByRole('button', { name: /Bid R101[,\s\u00a0]000/i });
     fireEvent.click(bidButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('/login?callbackUrl=%2Fauction%2Fauction456');

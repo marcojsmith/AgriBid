@@ -15,7 +15,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const activeMakes = useQuery(api.auctions.getActiveMakes) || [];
 
   // Local state for debounced inputs
-  const [localFilters, setLocalState] = useState({
+  const [localFilters, setLocalFilters] = useState({
     make: searchParams.get("make") || "",
     minYear: searchParams.get("minYear") || "",
     maxYear: searchParams.get("maxYear") || "",
@@ -26,7 +26,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   // Sync local state when URL params change (e.g. on Reset)
   useEffect(() => {
-    setLocalState({
+    setLocalFilters({
       make: searchParams.get("make") || "",
       minYear: searchParams.get("minYear") || "",
       maxYear: searchParams.get("maxYear") || "",
@@ -37,7 +37,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   }, [searchParams]);
 
   const updateParam = (key: string, value: string) => {
-    setLocalState(prev => ({ ...prev, [key]: value }));
+    setLocalFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const applyFilters = () => {
@@ -100,6 +100,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             <Input 
               type="number" 
               placeholder="From" 
+              min={1900}
               value={localFilters.minYear}
               onChange={(e) => updateParam("minYear", e.target.value)}
               className="h-12 font-bold rounded-xl border-2"
@@ -107,6 +108,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             <Input 
               type="number" 
               placeholder="To" 
+              min={1900}
               value={localFilters.maxYear}
               onChange={(e) => updateParam("maxYear", e.target.value)}
               className="h-12 font-bold rounded-xl border-2"
