@@ -18,6 +18,7 @@ import {
 
 export const Header = () => {
   const { data: session } = useSession();
+  const user = session?.user ? (session.user as typeof session.user & { role?: string }) : undefined;
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -103,7 +104,7 @@ export const Header = () => {
                   <Button variant="ghost" className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-xl group">
                     <div className="flex flex-col items-end">
                       <span className="text-[10px] font-black uppercase text-muted-foreground leading-none">Verified User</span>
-                      <span className="text-sm font-bold text-primary leading-none mt-1">{session?.user?.name}</span>
+                      <span className="text-sm font-bold text-primary leading-none mt-1">{user?.name}</span>
                     </div>
                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                       <User className="h-4 w-4" />
@@ -116,6 +117,14 @@ export const Header = () => {
                     Account Menu
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {user?.role === "admin" && (
+                    <DropdownMenuItem asChild className="rounded-lg font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary">
+                      <Link to="/admin" className="flex items-center gap-2 w-full">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Admin Moderation
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem disabled className="rounded-lg font-bold uppercase text-[10px] tracking-wide opacity-50 cursor-not-allowed">
                     <LayoutDashboard className="h-4 w-4" />
                     My Bids (Coming Soon)
@@ -216,18 +225,22 @@ export const Header = () => {
                       <User className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-black uppercase leading-none">{session?.user?.name}</p>
+                      <p className="text-sm font-black uppercase leading-none">{user?.name}</p>
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Verified Member</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
+                    {user?.role === "admin" && (
+                      <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] border-primary/20 text-primary" asChild>
+                        <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
+                          <LayoutDashboard className="h-3.5 w-3.5" />
+                          Admin
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="outline" disabled className="justify-start gap-2 font-bold uppercase text-[10px] opacity-50 cursor-not-allowed" aria-disabled="true">
                       <LayoutDashboard className="h-3.5 w-3.5" />
                       My Bids
-                    </Button>
-                    <Button variant="outline" disabled className="justify-start gap-2 font-bold uppercase text-[10px] opacity-50 cursor-not-allowed" aria-disabled="true">
-                      <Heart className="h-3.5 w-3.5" />
-                      Watchlist
                     </Button>
                   </div>
                   <Button 
