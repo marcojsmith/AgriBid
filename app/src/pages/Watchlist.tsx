@@ -7,10 +7,11 @@ import { Heart } from "lucide-react";
 import { AuctionCard } from "../components/AuctionCard";
 
 /**
- * Render the Watchlist page. 
- * This page is protected by RoleProtectedRoute which redirects to login if unauthenticated.
- * 
- * @returns The Watchlist page JSX element
+ * Render the user's watchlist page.
+ *
+ * Displays a loading spinner while watched auctions are being fetched. If the user is not watching any auctions, shows an empty state with an "Explore Marketplace" action; otherwise renders a responsive grid of AuctionCard components for each watched auction.
+ *
+ * @returns The watchlist page JSX element
  */
 export default function Watchlist() {
   const watchedAuctions = useQuery(api.watchlist.getWatchedAuctions);
