@@ -155,10 +155,9 @@ export const getSellerInfo = query({
     
     if (!user) return null;
 
-    const soldCount = await ctx.db
+    const soldAuctions = await ctx.db
       .query("auctions")
-      .withIndex("by_seller", (q) => q.eq("sellerId", args.sellerId))
-      .filter((q) => q.eq(q.field("status"), "sold"))
+      .withIndex("by_seller_status", (q) => q.eq("sellerId", args.sellerId).eq("status", "sold"))
       .collect();
 
     return {
@@ -166,13 +165,13 @@ export const getSellerInfo = query({
       isVerified: user.isVerified || false,
       role: user.role || "Private Seller",
       createdAt: user.createdAt,
-      itemsSold: soldCount.length,
+      itemsSold: soldAuctions.length,
     };
   },
 });
 
 export const getPublicProfile = query({
-  args: { userId: v.string() },
+  args: { userId: v.string(), paginationOpts: v.any() },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("user")
@@ -181,7 +180,7 @@ export const getPublicProfile = query({
     
     if (!user) return null;
 
-    const listings = await ctx.db
+    const results = await ctx.db
       .query("auctions")
       .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
       .filter((q) => 
@@ -190,10 +189,10 @@ export const getPublicProfile = query({
           q.eq(q.field("status"), "sold")
         )
       )
-      .collect();
+      .paginate(args.paginationOpts);
 
-    const listingsWithImages = await Promise.all(
-      listings.map(async (auction) => ({
+    const page = await Promise.all(
+      results.page.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
       }))
@@ -206,7 +205,10 @@ export const getPublicProfile = query({
         role: user.role || "Private Seller",
         createdAt: user.createdAt,
       },
-      listings: listingsWithImages,
+      listings: {
+        ...results,
+        page,
+      },
     };
   },
 });
