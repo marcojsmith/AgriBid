@@ -11,9 +11,12 @@ import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Render the AgriBid home page displaying active auctions with a filter sidebar.
- * Accessible to both guest and authenticated users.
- * 
+ * Render the AgriBid home page showing active auctions with a filter sidebar, mobile filter overlay, and view-mode controls.
+ *
+ * Reads URL query parameters to apply search and filter criteria, fetches matching active auctions, and displays loading,
+ * empty, or results states. Supports toggling a persistent desktop sidebar, a mobile filter overlay, and compact/detailed
+ * auction list layouts.
+ *
  * @returns The Home page JSX element
  */
 export default function Home() {
