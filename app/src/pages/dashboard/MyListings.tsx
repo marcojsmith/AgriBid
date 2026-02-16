@@ -73,7 +73,7 @@ export default function MyListings() {
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <span className="font-medium">Reserve: R {auction.reservePrice.toLocaleString('en-ZA')}</span>
                   <span className="font-medium">Current: <span className="text-primary font-bold">R {auction.currentPrice.toLocaleString('en-ZA')}</span></span>
-                  <span>{new Date(auction.endTime).toLocaleDateString()}</span>
+                  <span>{new Date(auction.endTime).toLocaleDateString('en-ZA')}</span>
                 </div>
               </div>
 

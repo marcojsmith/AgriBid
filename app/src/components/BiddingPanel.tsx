@@ -43,7 +43,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
             Auction {auction.status.toUpperCase()}
           </Badge>
           <h3 className="text-3xl font-black text-primary tracking-tighter">
-            R {auction.currentPrice.toLocaleString()}
+            R {auction.currentPrice.toLocaleString('en-ZA')}
           </h3>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Final Price</p>
         </div>
@@ -117,7 +117,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
     
     try {
       await placeBid({ auctionId: auction._id, amount: pendingBid });
-      toast.success(`Bid of R${pendingBid.toLocaleString()} placed successfully!`);
+      toast.success(`Bid of R${pendingBid.toLocaleString('en-ZA')} placed successfully!`);
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : "Failed to place bid");
@@ -134,7 +134,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
           <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">Current Bid</p>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-black text-primary tracking-tighter">
-              R{auction.currentPrice.toLocaleString()}
+              R{auction.currentPrice.toLocaleString('en-ZA')}
             </span>
             {!isEnded && (
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 animate-pulse">
@@ -154,7 +154,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
       {isEnded ? (
         <div className="bg-muted/50 border-2 border-dashed rounded-xl p-6 text-center">
           <p className="font-bold text-muted-foreground uppercase tracking-widest text-sm">Auction Ended</p>
-          <p className="text-xs text-muted-foreground mt-1">Final Price: R{auction.currentPrice.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">Final Price: R{auction.currentPrice.toLocaleString('en-ZA')}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -170,7 +170,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
 
           <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground bg-muted/30 p-3 rounded-lg border">
             <Gavel className="h-4 w-4 text-primary" />
-            <span>Next minimum bid: <span className="text-foreground">R{nextMinBid.toLocaleString()}</span></span>
+            <span>Next minimum bid: <span className="text-foreground">R{nextMinBid.toLocaleString('en-ZA')}</span></span>
           </div>
           
           <BidForm 

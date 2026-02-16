@@ -31,8 +31,9 @@ export const NotificationListener = () => {
       // If the auction is settled and we haven't notified about it in this session
       if ((auction.status === 'sold' || auction.status === 'unsold') && !settledAuctionsRef.current.has(auctionId)) {
         
-        const isWinner = auction.winnerId === session.user.id;
-        const isSeller = auction.sellerId === session.user.id;
+        const currentUserId = session.user.id;
+        const isWinner = !!currentUserId && !!auction.winnerId && auction.winnerId === currentUserId;
+        const isSeller = !!currentUserId && !!auction.sellerId && auction.sellerId === currentUserId;
 
         if (auction.status === 'sold') {
           if (isWinner) {
