@@ -239,7 +239,7 @@ export const Header = () => {
                         </Link>
                       </Button>
                     ) : (
-                      <div className="aria-hidden:true" />
+                      <div aria-hidden="true" />
                     )}
                     <Button variant="outline" disabled className="justify-start gap-2 font-bold uppercase text-[10px] opacity-50 cursor-not-allowed" aria-disabled="true">
                       <LayoutDashboard className="h-3.5 w-3.5" />

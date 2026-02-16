@@ -17,7 +17,7 @@ export default function AdminDashboard() {
   const approveAuction = useMutation(api.auctions.approveAuction);
   const rejectAuction = useMutation(api.auctions.rejectAuction);
 
-  const [processingId, setProcessingId] = useState<Id<"auctions"> | null>(null);
+  const [processing, setProcessing] = useState<{ id: Id<"auctions">; action: "approve" | "reject" } | null>(null);
 
   if (pendingAuctions === undefined) {
     return (
@@ -31,26 +31,26 @@ export default function AdminDashboard() {
   }
 
   const handleApprove = async (id: Id<"auctions">) => {
-    setProcessingId(id);
+    setProcessing({ id, action: "approve" });
     try {
       await approveAuction({ auctionId: id });
       toast.success("Auction approved and live!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Approval failed");
     } finally {
-      setProcessingId(null);
+      setProcessing(null);
     }
   };
 
   const handleReject = async (id: Id<"auctions">) => {
-    setProcessingId(id);
+    setProcessing({ id, action: "reject" });
     try {
       await rejectAuction({ auctionId: id });
       toast.success("Auction rejected.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Rejection failed");
     } finally {
-      setProcessingId(null);
+      setProcessing(null);
     }
   };
 
@@ -159,25 +159,33 @@ export default function AdminDashboard() {
                 <Button 
                   className="h-12 px-8 rounded-xl font-black text-sm uppercase tracking-wider bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
                   onClick={() => handleApprove(auction._id)}
-                  disabled={!!processingId}
+                  disabled={!!processing}
                 >
-                  {processingId === auction._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+                  {processing?.id === auction._id && processing.action === "approve" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4 mr-2" />
+                  )}
                   Approve
                 </Button>
                 <Button 
                   variant="outline" 
                   className="h-12 px-8 rounded-xl font-black text-sm uppercase tracking-wider border-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40"
                   onClick={() => handleReject(auction._id)}
-                  disabled={!!processingId}
+                  disabled={!!processing}
                 >
-                  {processingId === auction._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
+                  {processing?.id === auction._id && processing.action === "reject" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4 mr-2" />
+                  )}
                   Reject
                 </Button>
                 <Button 
                   variant="ghost" 
                   className="h-12 px-8 rounded-xl font-bold text-xs uppercase tracking-widest gap-2"
                   onClick={() => navigate(`/auction/${auction._id}`)}
-                  disabled={!!processingId}
+                  disabled={!!processing}
                 >
                   <Eye className="h-4 w-4" />
                   Full Details

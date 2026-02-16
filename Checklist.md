@@ -81,17 +81,17 @@
 - [x] Create login page (`/login`) -> Implemented in `App.tsx` auth mode
 - [ ] Create password reset flow
 - [ ] Implement OAuth callback handler
-- [ ] Create protected route wrapper component
+- [x] Create protected route wrapper component (RoleProtectedRoute)
 
 ### User Profile
 - [ ] Create profile page (`/profile`)
 - [ ] Create seller verification flow
 
 ### Role-Based Access
-- [ ] Buyer role: can bid, watchlist, view auctions
-- [ ] Seller role: can create listings, view analytics
-- [ ] Admin role: can approve sellers, flag listings, view audit logs
-- [ ] Implement route guards for role-specific pages
+- [x] Buyer role: can bid, watchlist, view auctions
+- [x] Seller role: can create listings, view analytics
+- [x] Admin role: can approve sellers, flag listings, view audit logs
+- [x] Implement route guards for role-specific pages (AdminDashboard)
 
 ---
 

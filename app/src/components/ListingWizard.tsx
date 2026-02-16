@@ -22,6 +22,7 @@ const ListingWizardContent = () => {
     formData, 
     currentStep, 
     setIsSubmitting, 
+    isSubmitting,
     isSuccess, 
     setIsSuccess 
   } = useListingWizard();
@@ -30,6 +31,7 @@ const ListingWizardContent = () => {
   const createAuction = useMutation(api.auctions.createAuction);
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     const error = getStepError(currentStep);
     if (error) {
       toast.error(error);

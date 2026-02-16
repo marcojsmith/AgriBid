@@ -9,14 +9,19 @@ async function resolveImageUrls(storage: any, images: any) {
     return (await storage.getUrl(id)) ?? undefined;
   };
 
+  // Normalize legacy array format or non-object inputs
+  const normalizedImages = Array.isArray(images) 
+    ? { additional: images as string[] } 
+    : (images && typeof images === "object") ? images : { additional: [] };
+
   return {
-    ...images,
-    front: await resolveUrl(images.front),
-    engine: await resolveUrl(images.engine),
-    cabin: await resolveUrl(images.cabin),
-    rear: await resolveUrl(images.rear),
+    ...normalizedImages,
+    front: await resolveUrl(normalizedImages.front),
+    engine: await resolveUrl(normalizedImages.engine),
+    cabin: await resolveUrl(normalizedImages.cabin),
+    rear: await resolveUrl(normalizedImages.rear),
     additional: (await Promise.all(
-      (images.additional || []).map(async (id: string) => 
+      (normalizedImages.additional || []).map(async (id: string) => 
         id.startsWith("http") ? id : await storage.getUrl(id)
       )
     )).filter((url: any): url is string => !!url),
@@ -181,6 +186,10 @@ export const createAuction = mutation({
     const userId = identity.subject;
 
     const { durationDays, ...restArgs } = args;
+
+    if (durationDays <= 0 || durationDays > 365) {
+      throw new Error("Invalid duration: must be between 1 and 365 days");
+    }
 
     if (restArgs.images.additional && restArgs.images.additional.length > 6) {
       throw new Error("Additional images limit exceeded (max 6)");

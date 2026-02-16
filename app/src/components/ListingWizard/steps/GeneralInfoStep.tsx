@@ -52,12 +52,21 @@ export const GeneralInfoStep = () => {
             onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
             placeholder="e.g. Johannesburg, ZA or Gaborone, BW"
             className="h-12 border-2 rounded-xl"
+            aria-expanded={showLocationSuggestions && filteredLocations.length > 0}
+            aria-autocomplete="list"
+            aria-controls="location-suggestions"
           />
           {showLocationSuggestions && filteredLocations.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-card border-2 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+            <div 
+              id="location-suggestions"
+              role="listbox"
+              className="absolute z-50 w-full mt-1 bg-card border-2 rounded-xl shadow-xl max-h-48 overflow-y-auto"
+            >
               {filteredLocations.map(loc => (
                 <button
                   key={loc}
+                  role="option"
+                  aria-selected={formData.location === loc}
                   className="w-full px-4 py-3 text-left hover:bg-primary/10 font-bold text-sm border-b last:border-0 transition-colors"
                   onClick={() => {
                     updateField("location", loc);

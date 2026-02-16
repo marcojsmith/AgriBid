@@ -34,6 +34,7 @@ export const ConditionChecklistStep = () => {
                 size="sm"
                 onClick={() => updateChecklist(item.id, true)}
                 className="rounded-lg font-bold w-16"
+                aria-pressed={formData.conditionChecklist[item.id] === true}
               >
                 Yes
               </Button>
@@ -42,6 +43,7 @@ export const ConditionChecklistStep = () => {
                 size="sm"
                 onClick={() => updateChecklist(item.id, false)}
                 className="rounded-lg font-bold w-16"
+                aria-pressed={formData.conditionChecklist[item.id] === false}
               >
                 No
               </Button>
@@ -51,8 +53,9 @@ export const ConditionChecklistStep = () => {
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-black uppercase text-muted-foreground ml-1">Additional Condition Notes</label>
+        <label htmlFor="condition-notes" className="text-xs font-black uppercase text-muted-foreground ml-1">Additional Condition Notes</label>
         <textarea 
+          id="condition-notes"
           value={formData.conditionChecklist.notes}
           onChange={(e) => updateChecklist("notes", e.target.value)}
           placeholder="Mention any recent repairs, known issues, or upgrades..."

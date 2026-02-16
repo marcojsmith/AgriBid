@@ -55,17 +55,25 @@ export const runSeed = mutation({
     // -----------------------
 
     if (args.clear) {
-      // Parallel deletion for performance.
-      const auctions = await ctx.db.query("auctions").collect();
-      const bids = await ctx.db.query("bids").collect();
+      const BATCH_SIZE = 500;
       
-      // Parallelize deletion of all auctions and bids
-      await Promise.all([
-        ...auctions.map(a => ctx.db.delete(a._id)),
-        ...bids.map(b => ctx.db.delete(b._id))
+      const clearTable = async (tableName: "auctions" | "bids") => {
+        let deletedCount = 0;
+        while (true) {
+          const batch = await ctx.db.query(tableName).take(BATCH_SIZE);
+          if (batch.length === 0) break;
+          await Promise.all(batch.map(item => ctx.db.delete(item._id)));
+          deletedCount += batch.length;
+        }
+        return deletedCount;
+      };
+
+      const [auctionsCount, bidsCount] = await Promise.all([
+        clearTable("auctions"),
+        clearTable("bids")
       ]);
       
-      console.log(`Cleared ${auctions.length} auctions and ${bids.length} bids.`);
+      console.log(`Cleared ${auctionsCount} auctions and ${bidsCount} bids.`);
     }
 
     // 1. Seed Equipment Metadata
@@ -285,7 +293,18 @@ export const clearAuctions = mutation({
     await checkDestructiveAccess(ctx);
 
     const auctions = await ctx.db.query("auctions").collect();
-    await Promise.all(auctions.map(a => ctx.db.delete(a._id)));
-    return auctions.length;
+    const auctionsCount = auctions.length;
+    
+    // Delete auctions and their bids in parallel
+    await Promise.all(auctions.flatMap(a => [
+      ctx.db.delete(a._id),
+      // Also find and delete all bids for this auction
+      ctx.db.query("bids")
+        .withIndex("by_auction", (q) => q.eq("auctionId", a._id))
+        .collect()
+        .then(bids => Promise.all(bids.map(b => ctx.db.delete(b._id))))
+    ]));
+
+    return auctionsCount;
   },
 });

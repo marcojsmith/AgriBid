@@ -12,9 +12,9 @@ interface BidFormProps {
 }
 
 export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
-    const nextMinBid = auction.currentPrice + auction.minIncrement;
-    const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
-    const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
+  const nextMinBid = auction.currentPrice + auction.minIncrement;
+  const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
+  const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
 
   // Intentionally performing state updates during render to keep manualAmount in sync with nextMinBid.
   // This ensures that when the minimum bid increases (e.g., due to another user's bid), the 
