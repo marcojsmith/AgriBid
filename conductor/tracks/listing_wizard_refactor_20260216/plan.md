@@ -1,12 +1,12 @@
 # Implementation Plan: Refactor ListingWizard for Modularity
 
 ## Phase 1: Setup & Data Consolidation
-- [ ] Task: Create Directory Structure
-    - [ ] Create `app/src/components/ListingWizard/`
-    - [ ] Create sub-directories: `steps/`, `hooks/`, `context/`, `constants/`
-- [ ] Task: Extract Shared Types and Constants
-    - [ ] Move `ListingFormData`, `ConditionChecklist`, and related interfaces to `types.ts`
-    - [ ] Move `PHOTO_SLOTS`, `SA_LOCATIONS`, `STEPS`, and `DEFAULT_FORM_DATA` to `constants.ts`
+- [x] Task: Create Directory Structure
+    - [x] Create `app/src/components/ListingWizard/`
+    - [x] Create sub-directories: `steps/`, `hooks/`, `context/`, `constants/`
+- [x] Task: Extract Shared Types and Constants
+    - [x] Move `ListingFormData`, `ConditionChecklist`, and related interfaces to `types.ts`
+    - [x] Move `PHOTO_SLOTS`, `SA_LOCATIONS`, `STEPS`, and `DEFAULT_FORM_DATA` to `constants.ts`
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Setup & Consolidation' (Protocol in workflow.md)
 
 ## Phase 2: Core Logic & Context Extraction
@@ -20,7 +20,7 @@
 - [ ] Task: Extract useListingForm Hook
     - [ ] Move step navigation, validation (`getStepError`), and field update logic into `hooks/useListingForm.ts`
     - [ ] Implement TDD: Verify validation logic in isolation
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Logic Extraction' (Protocol in workflow.md)
+- [ ] Task: Conductor - Manual Verification using Chromedevtools 'Phase 2: Logic Extraction' (Protocol in workflow.md)
 
 ## Phase 3: Component Decomposition
 - [ ] Task: Create Step Components
@@ -33,7 +33,7 @@
 - [ ] Task: Create UI Utility Components
     - [ ] Create `StepIndicator.tsx` (Progress bar and step labels)
     - [ ] Create `WizardNavigation.tsx` (Previous/Next buttons)
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Decomposition' (Protocol in workflow.md)
+- [ ] Task: Conductor - Manual Verification using Chromedevtools 'Phase 3: Decomposition' (Protocol in workflow.md)
 
 ## Phase 4: Integration & Verification
 - [ ] Task: Reassemble ListingWizard
@@ -43,4 +43,4 @@
     - [ ] Run full test suite (`npm run test`)
     - [ ] Run production build (`npm run build`)
     - [ ] Perform manual end-to-end listing flow test
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Integration' (Protocol in workflow.md)
+- [ ] Task: Conductor - Manual Verification using Chromedevtools 'Phase 4: Integration' (Protocol in workflow.md)
