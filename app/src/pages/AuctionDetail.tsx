@@ -72,7 +72,7 @@ export default function AuctionDetail() {
           
           <ImageGallery 
             images={Array.isArray(auction.images) 
-              ? auction.images 
+              ? auction.images.filter((url): url is string => !!url) 
               : [
                   auction.images.front,
                   auction.images.engine,
