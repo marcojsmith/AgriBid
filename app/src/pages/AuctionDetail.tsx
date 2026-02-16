@@ -70,7 +70,16 @@ export default function AuctionDetail() {
         <div className="lg:col-span-8 space-y-8">
           <AuctionHeader auction={auction} />
           
-          <ImageGallery images={auction.images || []} title={auction.title} />
+          <ImageGallery 
+            images={[
+              auction.images.front,
+              auction.images.engine,
+              auction.images.cabin,
+              auction.images.rear,
+              ...(auction.images.additional || [])
+            ].filter((url): url is string => !!url)} 
+            title={auction.title} 
+          />
 
           {/* Description Section */}
           <div className="bg-card border-2 rounded-2xl p-8 space-y-4">

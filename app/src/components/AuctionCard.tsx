@@ -56,12 +56,14 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
     }
   };
 
+  const primaryImage = auction.images.front || auction.images.engine || auction.images.cabin || auction.images.rear || auction.images.additional?.[0];
+
   return (
     <Card className="overflow-hidden border-2 hover:border-primary transition-colors bg-card group">
       <Link to={`/auction/${auction._id}`}>
         <div className="aspect-video bg-muted flex items-center justify-center relative">
-          {auction.images && auction.images.length > 0 ? (
-            <img src={auction.images[0]} alt={auction.title} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
+          {primaryImage ? (
+            <img src={primaryImage} alt={auction.title} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
           ) : (
             <div className="text-muted-foreground flex flex-col items-center">
               <span className="text-4xl">🚜</span>

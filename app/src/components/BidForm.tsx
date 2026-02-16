@@ -1,5 +1,5 @@
 // app/src/components/BidForm.tsx
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Doc } from "convex/_generated/dataModel";
@@ -12,19 +12,22 @@ interface BidFormProps {
 }
 
 export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
-  const nextMinBid = auction.currentPrice + auction.minIncrement;
-  const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
-  const lastMinBidRef = useRef(nextMinBid);
+    const nextMinBid = auction.currentPrice + auction.minIncrement;
+    const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
+    const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
 
-  // Sync manualAmount with nextMinBid when it changes, 
+  // Reset manualAmount when nextMinBid increases, 
   // but only if user hasn't manually entered a higher value
-  useEffect(() => {
+  if (nextMinBid > prevNextMinBid) {
+    setPrevNextMinBid(nextMinBid);
     const currentManualNum = parseFloat(manualAmount) || 0;
-    if (nextMinBid > lastMinBidRef.current && currentManualNum < nextMinBid) {
+    if (currentManualNum < nextMinBid) {
       setManualAmount(nextMinBid.toString());
     }
-    lastMinBidRef.current = nextMinBid;
-  }, [nextMinBid, manualAmount]);
+  } else if (nextMinBid < prevNextMinBid) {
+    // Also sync if nextMinBid somehow decreases (though unlikely in an auction)
+    setPrevNextMinBid(nextMinBid);
+  }
 
   const currentManualNum = parseFloat(manualAmount) || 0;
   const isManualValid = currentManualNum >= nextMinBid;

@@ -9,7 +9,7 @@ const mockNavigate = vi.fn();
 
 // Mock react-router-dom
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<any>('react-router-dom');
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -42,6 +42,7 @@ describe('Header', () => {
   };
 
   it('renders the brand name and navigation links', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     renderHeader();
     expect(screen.getByText(/AGRIBID/i)).toBeInTheDocument();
@@ -50,12 +51,14 @@ describe('Header', () => {
   });
 
   it('renders sign in button when unauthenticated', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     renderHeader();
     expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
   });
 
   it('renders user name and sign out button in mobile menu when authenticated', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: { user: { name: 'John Doe' } }, isPending: false } as any);
     renderHeader();
     expect(screen.getByText(/John Doe/i)).toBeInTheDocument();
@@ -69,6 +72,7 @@ describe('Header', () => {
   });
 
   it('toggles mobile menu when clicked', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     renderHeader();
     
@@ -81,6 +85,7 @@ describe('Header', () => {
   });
 
   it('has hybrid sticky classes', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     renderHeader();
     const header = screen.getByRole('banner');
@@ -88,6 +93,7 @@ describe('Header', () => {
   });
 
   it('handles search submission and redirects', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     
     renderHeader();
@@ -103,6 +109,7 @@ describe('Header', () => {
   });
 
   it('renders search input in mobile menu', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     renderHeader();
     
