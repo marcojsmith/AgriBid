@@ -17,12 +17,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Refactor ListingWizard for Modularity**
 *Link: [./tracks/listing_wizard_refactor_20260216/](./tracks/listing_wizard_refactor_20260216/)*
 
-- [~] **Track: Watchlist Functionality**
-*Link: [./tracks/watchlist_functionality_20260216/](./tracks/watchlist_functionality_20260216/)*
-
 ---
 
 ## Archive
+
+- [x] **Track: Watchlist Functionality**
+*Link: [./archive/watchlist_functionality_20260216/](./archive/watchlist_functionality_20260216/)*
 
 - [x] **Track: Guest Access & Action Restrictions**
 *Link: [./archive/guest_restrictions_20260216/](./archive/guest_restrictions_20260216/)*

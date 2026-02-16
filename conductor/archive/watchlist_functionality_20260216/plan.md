@@ -25,5 +25,11 @@ This track implements user-specific auction tracking (Watchlist) to complete the
 
 ## Phase 3: Integration & Testing
 - [x] Verify functionality with `RoleProtectedRoute` and `Header` link.
-- [ ] Add tests for `isWatched` query and `toggleWatchlist` mutation.
-- [ ] Add integration tests for `Watchlist.tsx` page rendering and `AuctionCard` interactions.
+- [x] Add tests for `isWatched` query and `toggleWatchlist` mutation.
+- [x] Add integration tests for `Watchlist.tsx` page rendering and `AuctionCard` interactions.
+
+## Phase 4: Security & Quality Hardening (Completed)
+- [x] Implement `isValidCallbackUrl` utility to prevent open redirect vulnerabilities.
+- [x] Refactor all UI tests to use `MemoryRouter` for better routing isolation.
+- [x] Fix `useQuery` test mocks to return correct data types (booleans/arrays) instead of functions.
+- [x] Improve Heart icon visibility for better UX on light backgrounds.
