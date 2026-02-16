@@ -10,16 +10,16 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Setup & Consolidation' (Protocol in workflow.md)
 
 ## Phase 2: Core Logic & Context Extraction
-- [ ] Task: Implement ListingWizardContext
-    - [ ] Create `ListingWizardContext.tsx`
-    - [ ] Define context state and update handlers
-    - [ ] Create a `ListingWizardProvider` component
-- [ ] Task: Extract useListingMedia Hook
-    - [ ] Move Convex upload logic, preview handling, and cleanup logic into `hooks/useListingMedia.ts`
-    - [ ] Ensure unit tests cover storage ID resolution and blob cleanup
-- [ ] Task: Extract useListingForm Hook
-    - [ ] Move step navigation, validation (`getStepError`), and field update logic into `hooks/useListingForm.ts`
-    - [ ] Implement TDD: Verify validation logic in isolation
+- [x] Task: Implement ListingWizardContext
+    - [x] Create `ListingWizardContext.tsx`
+    - [x] Define context state and update handlers
+    - [x] Create a `ListingWizardProvider` component
+- [x] Task: Extract useListingMedia Hook
+    - [x] Move Convex upload logic, preview handling, and cleanup logic into `hooks/useListingMedia.ts`
+    - [x] Ensure unit tests cover storage ID resolution and blob cleanup
+- [x] Task: Extract useListingForm Hook
+    - [x] Move step navigation, validation (`getStepError`), and field update logic into `hooks/useListingForm.ts`
+    - [x] Implement TDD: Verify validation logic in isolation
 - [ ] Task: Conductor - Manual Verification using Chromedevtools 'Phase 2: Logic Extraction' (Protocol in workflow.md)
 
 ## Phase 3: Component Decomposition
