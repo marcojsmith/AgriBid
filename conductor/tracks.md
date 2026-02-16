@@ -9,7 +9,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: deploy to vercel**
 *Link: [./tracks/vercel_deploy_20260213/](./tracks/vercel_deploy_20260213/)*
 
-- [~] **Track: Refactor ListingWizard for Modularity**
+- [x] **Track: Refactor ListingWizard for Modularity**
 *Link: [./tracks/listing_wizard_refactor_20260216/](./tracks/listing_wizard_refactor_20260216/)*
 
 ---
