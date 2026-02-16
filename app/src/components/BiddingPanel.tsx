@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { useSession } from "../lib/auth-client";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +18,9 @@ interface BiddingPanelProps {
 }
 
 export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
+  const { data: session } = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingBid, setPendingBid] = useState<number | null>(null);
   const [isBidding, setIsBidding] = useState(false);
@@ -26,6 +31,21 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
 
   const handleBidInitiate = (amount: number) => {
+    if (!session) {
+      toast.info("Please sign in to place a bid");
+      // Redirect to home page (where login is) and provide a callback URL
+      const callbackUrl = encodeURIComponent(location.pathname);
+      navigate(`/?callbackUrl=${callbackUrl}`);
+      
+      // Delay scrolling to ensure page transition if needed
+      setTimeout(() => {
+        const authForm = document.getElementById('auth-form');
+        if (authForm) {
+          authForm.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+      return;
+    }
     setPendingBid(amount);
     setIsConfirmOpen(true);
   };

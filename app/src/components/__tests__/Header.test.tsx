@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '../Header';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -42,24 +43,21 @@ describe('Header', () => {
   };
 
   it('renders the brand name and navigation links', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as unknown as any);
     renderHeader();
     expect(screen.getByText(/AGRIBID/i)).toBeInTheDocument();
     expect(screen.getByText(/Marketplace/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sell/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Sell/i)).not.toBeInTheDocument();
   });
 
   it('renders sign in button when unauthenticated', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as unknown as any);
     renderHeader();
-    expect(screen.getByText(/Sign In/i)).toBeInTheDocument();
+    expect(screen.getByText(/Login \/ Register/i)).toBeInTheDocument();
   });
 
   it('renders user name and sign out button in mobile menu when authenticated', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(authClient.useSession).mockReturnValue({ data: { user: { name: 'John Doe' } }, isPending: false } as any);
+    vi.mocked(authClient.useSession).mockReturnValue({ data: { user: { name: 'John Doe' } }, isPending: false } as unknown as any);
     renderHeader();
     expect(screen.getByText(/John Doe/i)).toBeInTheDocument();
     
@@ -72,8 +70,7 @@ describe('Header', () => {
   });
 
   it('toggles mobile menu when clicked', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as unknown as any);
     renderHeader();
     
     const toggle = screen.getByLabelText(/Toggle menu/i);
@@ -85,16 +82,14 @@ describe('Header', () => {
   });
 
   it('has hybrid sticky classes', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as unknown as any);
     renderHeader();
     const header = screen.getByRole('banner');
     expect(header).toHaveClass('lg:sticky');
   });
 
   it('handles search submission and redirects', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as unknown as any);
     
     renderHeader();
     const searchInput = screen.getByPlaceholderText(/Search equipment/i) as HTMLInputElement;
@@ -109,8 +104,7 @@ describe('Header', () => {
   });
 
   it('renders search input in mobile menu', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
+    vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as unknown as any);
     renderHeader();
     
     const toggle = screen.getByLabelText(/Toggle menu/i);
@@ -121,11 +115,10 @@ describe('Header', () => {
   });
 
   it('renders admin link when user has admin role', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ 
       data: { user: { name: 'Admin User', role: 'admin' } }, 
       isPending: false 
-    } as any);
+    } as unknown as any);
     
     renderHeader();
     

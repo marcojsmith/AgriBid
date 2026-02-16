@@ -1,5 +1,5 @@
 // app/src/pages/Home.tsx
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { Unauthenticated, useQuery } from "convex/react";
 import { useSession, signIn, signUp } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -37,53 +37,52 @@ export default function Home() {
 
   return (
     <>
-      <Authenticated>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
-              {searchQuery ? `Results for "${searchQuery}"` : "Active Auctions"}
-            </h2>
-            {searchQuery && (
-              <Button 
-                variant="link" 
-                className="p-0 h-auto text-muted-foreground hover:text-primary"
-                asChild
-              >
-                <Link to="/">Clear search results</Link>
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" asChild>
-              <Link to="/sell">Sell Equipment</Link>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">
+            {searchQuery ? `Results for "${searchQuery}"` : "Active Auctions"}
+          </h2>
+          {searchQuery && (
+            <Button 
+              variant="link" 
+              className="p-0 h-auto text-muted-foreground hover:text-primary"
+              asChild
+            >
+              <Link to="/">Clear search results</Link>
             </Button>
-          </div>
+          )}
         </div>
+        <div className="flex gap-2">
+          <Button size="sm" asChild>
+            <Link to="/sell">Sell Equipment</Link>
+          </Button>
+        </div>
+      </div>
 
-        {!auctions ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-                  ) : auctions.length === 0 ? (
-                    <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed">
-                      <p className="text-muted-foreground mb-4">
-                        {searchQuery 
-                          ? `No auctions found matching "${searchQuery}".` 
-                          : "No active auctions at the moment."}
-                      </p>
-                      {searchQuery && (
-                        <Button asChild>
-                          <Link to="/">View All Auctions</Link>
-                        </Button>
-                      )}
-                    </div>
-                  ) : (          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {auctions.map((auction: Doc<"auctions">) => (
-              <AuctionCard key={auction._id} auction={auction} />
-            ))}
-          </div>
-        )}
-      </Authenticated>
+      {!auctions ? (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      ) : auctions.length === 0 ? (
+        <div className="text-center py-20 bg-muted/30 rounded-xl border-2 border-dashed">
+          <p className="text-muted-foreground mb-4">
+            {searchQuery 
+              ? `No auctions found matching "${searchQuery}".` 
+              : "No active auctions at the moment."}
+          </p>
+          {searchQuery && (
+            <Button asChild>
+              <Link to="/">View All Auctions</Link>
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {auctions.map((auction: Doc<"auctions">) => (
+            <AuctionCard key={auction._id} auction={auction} />
+          ))}
+        </div>
+      )}
 
       <Unauthenticated>
         <div id="auth-form" className="max-w-md mx-auto mt-20 space-y-8 border-2 border-primary/20 p-8 rounded-2xl bg-card shadow-xl">
@@ -102,7 +101,11 @@ export default function Home() {
                 setSignInLoading(true);
                 setAuthError("");
                 try {
-                  const { error } = await signIn.email({ email, password });
+                  const { error } = await signIn.email({ 
+                    email, 
+                    password,
+                    callbackUrl: searchParams.get("callbackUrl") || undefined
+                  });
                   if (error) {
                     setAuthError(error.message || "Sign in failed");
                   }
@@ -123,7 +126,12 @@ export default function Home() {
                     .replace(/[0-9._-]+$/, '')
                     .replace(/^[a-z]/, (char) => char.toUpperCase()) || "User";
                   
-                  const { error } = await signUp.email({ email, password, name });
+                  const { error } = await signUp.email({ 
+                    email, 
+                    password, 
+                    name,
+                    callbackUrl: searchParams.get("callbackUrl") || undefined
+                  });
                   if (error) {
                     setAuthError(error.message || "Registration failed");
                   }

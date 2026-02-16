@@ -27,7 +27,7 @@ export const Header = () => {
 
   const navLinks = [
     { name: "Marketplace", href: "/" },
-    { name: "Sell", href: "/sell" },
+    ...(session ? [{ name: "Sell", href: "/sell" }] : []),
     { name: "Watchlist", href: "#", disabled: true },
   ];
 
@@ -156,7 +156,7 @@ export const Header = () => {
                 asChild
                 className="font-bold uppercase text-[10px] tracking-widest rounded-lg h-9 shadow-lg shadow-primary/20"
               >
-                <Link to="/">Sign In</Link>
+                <Link to="/">Login / Register</Link>
               </Button>
             </Unauthenticated>
           </div>
@@ -265,7 +265,7 @@ export const Header = () => {
                   className="w-full h-14 text-lg font-black uppercase tracking-tight rounded-2xl shadow-xl shadow-primary/20"
                   asChild
                 >
-                  <Link to="/" onClick={() => setIsMenuOpen(false)}>Sign In to AgriBid</Link>
+                  <Link to="/" onClick={() => setIsMenuOpen(false)}>Login / Register</Link>
                 </Button>
               </Unauthenticated>
             </div>
