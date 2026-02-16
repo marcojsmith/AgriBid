@@ -3,13 +3,31 @@ import { v } from "convex/values";
 import { mutation, MutationCtx } from "./_generated/server";
 
 async function checkDestructiveAccess(ctx: MutationCtx) {
-  const isDev = process.env.NODE_ENV === "development";
-  const isPreview = process.env.VERCEL_ENV === "preview";
+  const nodeEnv = process.env.NODE_ENV;
+  const vercelEnv = process.env.VERCEL_ENV;
   const identity = await ctx.auth.getUserIdentity();
   const isAdmin = identity?.role === "admin";
 
-  if (!isDev && !isPreview && !isAdmin) {
-    throw new Error("Unauthorized: Destructive operations are only allowed in development, preview, or by admins.");
+  // Admin bypass: Admins are always allowed to perform destructive operations
+  if (isAdmin) return;
+
+  // SECURITY: Explicitly validate environment variables to prevent silent degradation.
+  // These variables must be set in the Convex dashboard or via CLI (e.g., npx convex env set NODE_ENV development).
+  if (nodeEnv === undefined && vercelEnv === undefined) {
+    throw new Error(
+      "Unauthorized: Deployment environment is indeterminate (NODE_ENV and VERCEL_ENV are undefined). " +
+      "Destructive operations are blocked for non-admins to prevent accidental data loss in production."
+    );
+  }
+
+  const isDev = nodeEnv === "development";
+  const isPreview = vercelEnv === "preview";
+
+  if (!isDev && !isPreview) {
+    throw new Error(
+      `Unauthorized: Destructive operations are only allowed in development or preview environments. ` +
+      `Current environment: ${nodeEnv || vercelEnv}.`
+    );
   }
 }
 

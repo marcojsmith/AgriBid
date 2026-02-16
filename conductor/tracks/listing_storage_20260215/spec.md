@@ -37,7 +37,7 @@ This track focuses on the end-to-end seller experience for creating equipment au
 - **Security**: Enforce that only the listing owner or an admin can modify/delete files associated with the listing.
 
 ## Acceptance Criteria
-- [ ] Users can navigate from Step 1 to Step 5 without losing data.
+- [ ] Users can navigate from Step 1 to Step 6 without losing data.
 - [ ] Multiple high-resolution images can be uploaded and correctly stored in Convex.
 - [ ] The `images` field in the `auctions` table contains valid Convex Storage IDs.
 - [ ] A submitted auction is visible in the "Pending" state and NOT visible on the public Home page.
