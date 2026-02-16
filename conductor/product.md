@@ -4,6 +4,7 @@ Auction platform for WeBuyTractors
 # Product Definition: AgriBid
 
 ## Target Audience
+- **Guests**: Potential buyers and sellers exploring the marketplace before committing to an account.
 - **Buyers**: Farmers and equipment dealers looking to purchase used tractors and machinery with confidence.
 - **Sellers**: Farmers or companies looking to liquidate machinery quickly at fair market value through a national buyer base.
 - **Administrators**: Platform staff responsible for maintaining marketplace integrity, moderating disputes, and reviewing listings.

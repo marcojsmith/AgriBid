@@ -25,10 +25,10 @@ export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const navLinks = [
+  const navLinks: { name: string; href: string; disabled?: boolean }[] = [
     { name: "Marketplace", href: "/" },
     { name: "Sell", href: "/sell" },
-    { name: "Watchlist", href: "#", disabled: true },
+    { name: "Watchlist", href: "/watchlist" },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -56,7 +56,7 @@ export const Header = () => {
         <div className="flex items-center gap-8 shrink-0">
           <Link to="/" className="font-black text-2xl tracking-tighter text-primary">AGRIBID</Link>
           
-          <nav className="hidden lg:flex gap-6 text-sm font-bold uppercase tracking-wider">
+          <nav aria-label="Main navigation" className="hidden lg:flex gap-6 text-sm font-bold uppercase tracking-wider">
             {navLinks.map((link) => (
               link.disabled ? (
                 <span
@@ -130,9 +130,11 @@ export const Header = () => {
                     <LayoutDashboard className="h-4 w-4" />
                     My Bids (Coming Soon)
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="rounded-lg font-bold uppercase text-[10px] tracking-wide opacity-50 cursor-not-allowed">
-                    <Heart className="h-4 w-4" />
-                    Watchlist (Coming Soon)
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
+                    <Link to="/watchlist" className="flex items-center gap-2 w-full">
+                      <Heart className="h-4 w-4" />
+                      Watchlist
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled className="rounded-lg font-bold uppercase text-[10px] tracking-wide opacity-50 cursor-not-allowed">
                     <Settings className="h-4 w-4" />
@@ -156,7 +158,7 @@ export const Header = () => {
                 asChild
                 className="font-bold uppercase text-[10px] tracking-widest rounded-lg h-9 shadow-lg shadow-primary/20"
               >
-                <Link to="/">Sign In</Link>
+                <Link to="/login">Login / Register</Link>
               </Button>
             </Unauthenticated>
           </div>
@@ -265,7 +267,7 @@ export const Header = () => {
                   className="w-full h-14 text-lg font-black uppercase tracking-tight rounded-2xl shadow-xl shadow-primary/20"
                   asChild
                 >
-                  <Link to="/" onClick={() => setIsMenuOpen(false)}>Sign In to AgriBid</Link>
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>Login / Register</Link>
                 </Button>
               </Unauthenticated>
             </div>

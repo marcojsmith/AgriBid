@@ -1,9 +1,10 @@
 // app/src/components/RoleProtectedRoute.tsx
 import type { ReactNode } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "./ui/button";
 import type { UserWithRole } from "@/types/auth";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 interface RoleProtectedRouteProps {
   children: ReactNode;
@@ -13,6 +14,7 @@ interface RoleProtectedRouteProps {
 export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) => {
   const { data: session, isPending } = useSession();
   const user = session?.user as UserWithRole | undefined;
+  const location = useLocation();
 
   if (isPending) {
     return (
@@ -23,10 +25,12 @@ export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRoute
   }
 
   if (!session) {
-    return <Navigate to="/" replace />;
+    const rawUrl = `${location.pathname}${location.search}${location.hash}`;
+    const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
+    return <Navigate to={`/login?callbackUrl=${callbackUrl}`} replace />;
   }
 
-  if (user?.role !== allowedRole) {
+  if (allowedRole !== "any" && user?.role !== allowedRole) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center space-y-4">
         <h1 className="text-2xl font-bold uppercase">Access Denied</h1>

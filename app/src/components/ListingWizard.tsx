@@ -1,9 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { useSession } from "../lib/auth-client";
 import { toast } from "sonner";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 import { ListingWizardProvider, useListingWizard } from "./ListingWizard/context/ListingWizardContext";
 import { useListingForm } from "./ListingWizard/hooks/useListingForm";
@@ -27,11 +29,27 @@ const ListingWizardContent = () => {
     setIsSuccess 
   } = useListingWizard();
   
+  const { data: session, isPending } = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { getStepError } = useListingForm();
   const createAuction = useMutation(api.auctions.createAuction);
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
+
+    if (isPending) {
+      toast.info("Checking your session...");
+      return;
+    }
+    if (!session) {
+      toast.info("Please sign in to submit your listing");
+      const rawUrl = location.pathname;
+      const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
+      navigate(`/login?callbackUrl=${callbackUrl}`);
+      return;
+    }
+
     const error = getStepError(currentStep);
     if (error) {
       toast.error(error);
@@ -66,6 +84,7 @@ const ListingWizardContent = () => {
       });
       
       localStorage.removeItem("agribid_listing_draft");
+      localStorage.removeItem("agribid_listing_step");
       setIsSuccess(true);
       toast.success("Listing submitted for review!");
     } catch (error) {

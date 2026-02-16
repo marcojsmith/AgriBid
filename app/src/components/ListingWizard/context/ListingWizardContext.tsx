@@ -1,6 +1,7 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ListingFormData, ConditionChecklist } from "../types";
-import { DEFAULT_FORM_DATA } from "../constants";
+import { DEFAULT_FORM_DATA, STEPS } from "../constants";
 
 interface ListingWizardContextType {
   formData: ListingFormData;
@@ -21,7 +22,17 @@ interface ListingWizardContextType {
 const ListingWizardContext = createContext<ListingWizardContextType | undefined>(undefined);
 
 export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const saved = localStorage.getItem("agribid_listing_step");
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (Number.isFinite(parsed) && parsed >= 0 && parsed < STEPS.length) {
+        return parsed;
+      }
+    }
+    return 0;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [previews, setPreviews] = useState<Record<string, string>>({});
@@ -50,11 +61,12 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const timer = setTimeout(() => {
       localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
+      localStorage.setItem("agribid_listing_step", currentStep.toString());
       setDraftSaved(true);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [formData]);
+  }, [formData, currentStep]);
 
   const updateField = <K extends keyof ListingFormData>(field: K, value: ListingFormData[K]) => {
     setDraftSaved(false);

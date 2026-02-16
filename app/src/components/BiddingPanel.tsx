@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { useSession } from "../lib/auth-client";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +12,16 @@ import { BidForm } from "./BidForm";
 import { BidConfirmation } from "./BidConfirmation";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;
 }
 
 export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
+  const { data: session, isPending } = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingBid, setPendingBid] = useState<number | null>(null);
   const [isBidding, setIsBidding] = useState(false);
@@ -26,6 +32,19 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
 
   const handleBidInitiate = (amount: number) => {
+    if (isPending) {
+      toast.info("Checking sign-in status...");
+      return;
+    }
+
+    if (!session) {
+      toast.info("Please sign in to place a bid");
+      // Redirect to login page and provide a callback URL
+      const rawUrl = `${location.pathname}${location.search}${location.hash}`;
+      const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
+      navigate(`/login?callbackUrl=${callbackUrl}`);
+      return;
+    }
     setPendingBid(amount);
     setIsConfirmOpen(true);
   };

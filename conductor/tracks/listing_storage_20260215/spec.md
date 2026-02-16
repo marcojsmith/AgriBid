@@ -6,44 +6,87 @@ This track focuses on the end-to-end seller experience for creating equipment au
 ## Functional Requirements
 
 ### 1. Multi-Step Listing Wizard (`ListingWizard.tsx`)
-- **State Management**: Implement a robust state machine to handle transitions between steps:
-    - **Step 1: General Info**: Year, Location, Title.
-    - **Step 2: Technical Specs**: Make, Model.
-    - **Step 3: Condition Checklist**: Engine, Hydraulics, Tires, Service History + notes.
-    - **Step 4: Media Gallery**: Drag-and-drop image interface.
-    - **Step 5: Pricing & Duration**: Starting price, Reserve price, and Auction duration.
-    - **Step 6: Review & Submit**: Final summary of all data before database insertion.
-- **Persistence**: Ensure form data is preserved if a user navigates between steps.
+Implement a robust state machine to handle transitions between steps with the following validation rules:
+
+#### Step 1: Equipment Details
+- **Year**: Required. Integer between 1900 and (Current Year + 1). 
+    - *Note*: Validation is authoritatively enforced by the server using its current UTC year. Client-side validation is advisory for UX only.
+- **Make/Model**: Required. Non-empty strings.
+- **Location**: Required. Free-text format (e.g., "City, State/Province").
+- **Title**: Auto-generated from Year + Make + Model, but editable.
+
+#### Step 2: Condition & Specs
+- **Condition Checklist**: Boolean flags for Engine, Hydraulics, and Tires. All must be toggled (Yes/No).
+- **Service History**: Required. Boolean flag indicating if records exist.
+- **Summary**: Required *only if* Service History is true. Otherwise, optional.
+- **Validation**: Ensure all checklist items are selected and summary is provided if records exist before proceeding.
+
+#### Step 3: Media Gallery
+- **Slots**: The following slots are mandatory: `front`, `engine`, `cabin`, `rear`. Each must have a valid image.
+- **Limits**: MAX_ADDITIONAL_IMAGES: 6.
+- **File Constraints**: MAX_SIZE_PER_IMAGE: 5MB. MAX_TOTAL_SIZE: 50MB.
+- **Optimization**: Mandatory client-side resize to 1920x1080 (max width/height) at 80% quality (JPEG/WebP) to reduce bandwidth and storage costs.
+
+#### Step 4: Pricing & Duration
+- **Starting Price**: Required. Positive number, currency format (max 2 decimals).
+- **Reserve Price**: Optional. If provided, must be >= Starting Price.
+- **Auction Duration**: Required. Selection from predefined list (3, 5, 7, 10 days).
+
+#### Step 5: Review & Submit
+- **Summary**: Final display of all gathered data and image previews.
+- **Persistence**: Form state must survive browser refresh and back/forward navigation within the wizard.
 
 ### 2. Media Management & Convex File Storage
-- **Image Processing**: Implement client-side validation (file size, type) and potential optimization before upload.
 - **Upload Flow**: 
-    - Use `generateUploadUrl` (Convex action/mutation) to get a secure destination.
-    - Perform direct-to-Convex uploads for each image.
-    - Maintain a list of Convex Storage IDs to associate with the final auction record.
-- **Preview UI**: Provide a responsive grid of thumbnails for selected images with the ability to remove/reorder.
+    - Use `generateUploadUrl` to obtain a secure destination.
+    - Implement robust error handling: 3 retries for transient failures, 30s timeout per upload.
+    - Display per-image progress indicators. Partial failures (some images failing) block final submission until resolved.
+- **Lifecycle & Cleanup**:
+    - Mark storage IDs as "pending" until auction creation.
+    - Implement a background garbage-collection TTL for orphaned storage IDs (e.g., from abandoned wizards).
+    - Remove/Clean up storage IDs on listing rejection if resubmission is not expected.
+- **Server-Side Validation**: Backend must enforce MIME type (image/jpeg, image/png), size limits, and basic content scanning.
 
 ### 3. Submission & Bidding Integration
-- **Mutation Link**: Connect the "Submit" action to the `createAuction` mutation, passing the gathered form state and storage IDs.
-- **Status Transition**: New listings must default to `pending_review`.
+- **Pre-Submission Validation**: Call a central validator to verify all steps are valid before enabling "Submit".
+- **Mutation Payload**: `createAuction` expects:
+    - `title`, `description`, `make`, `model`, `year`, `location`, `operatingHours`, `startingPrice`, `reservePrice`, `duration`.
+    - `images`: Object `{ front, engine, cabin, rear, additional: string[] }`.
+- **Status**: New listings default to `pending_review`.
+- **Error Handling**: Map backend validation errors back to specific wizard fields. Implement exponential backoff for network-related failures.
+- **Feedback**: Show a success modal on completion and redirect to the Seller Dashboard.
 
 ### 4. Admin/Developer Approval Workflow
-- **Approval Interface**: Create a basic UI (accessible to Admin roles or via a hidden dev toggle) to list `pending_review` auctions.
-- **Activation Logic**: Implement a control to trigger the `approveAuction` mutation, which sets the status to `active` and calculates the final `endTime`.
+- **RBAC**: Access to approval tools is restricted to users with `Admin` or `Developer` roles.
+- **Mutations**:
+    - `approveAuction(auctionId)`: Sets status to `active`. Computes `endTime = currentTime + durationDays`.
+    - `rejectAuction(auctionId, rejectionReason)`: Sets status to `rejected`.
+- **Audit Trail**: Every approve/reject action must log an entry in the `audit_logs` table (who, what, when, reason).
+- **Notifications**: Trigger a "Listing Outcome" event to notify the seller via their preferred channel (Internal/Email) with the reason if rejected.
 
 ## Non-Functional Requirements
-- **Performance**: Image upload progress indicators to maintain perceived speed.
-- **User Experience**: Clear validation errors at each step to prevent submission failure.
-- **Security**: Enforce that only the listing owner or an admin can modify/delete files associated with the listing.
+- **Security**: 
+    - Enforce ownership/admin checks in ALL listing-related mutations and queries.
+    - Implement rate limiting for file uploads and form submissions.
+    - Sanitize all text inputs and ensure XSS output-encoding for location/notes.
+- **Accessibility**: 
+    - WCAG 2.1 AA compliance.
+    - Full keyboard navigation for the wizard.
+    - ARIA roles/labels for all form controls and focus management on step transitions.
+- **Performance**: 
+    - Step transitions < 200ms.
+    - Image thumbnails must load in < 1s on 4G networks.
 
 ## Acceptance Criteria
-- [ ] Users can navigate from Step 1 to Step 6 without losing data.
-- [ ] Multiple high-resolution images can be uploaded and correctly stored in Convex.
-- [ ] The `images` field in the `auctions` table contains valid Convex Storage IDs.
-- [ ] A submitted auction is visible in the "Pending" state and NOT visible on the public Home page.
-- [ ] An Admin can successfully "Approve" an auction, making it appear in the public active list.
+- [ ] Users can navigate through all steps without losing data, even after a page refresh.
+- [ ] Images are client-side optimized and correctly stored as Convex Storage IDs in the `auctions.images` field.
+- [ ] Upload failures and validation errors (e.g., Reserve < Starting) are clearly communicated and block submission.
+- [ ] A submitted auction is in "Pending" state and is filtered out from the public Home page.
+- [ ] Only authorized Admins can view/approve/reject pending auctions.
+- [ ] Rejections capture a reason, log an audit entry, and notify the seller.
+- [ ] The wizard is fully navigable via keyboard and accessible to screen readers.
 
 ## Out of Scope
-- Advanced AI-powered pricing suggestions (Phase 4).
-- Post-auction logistics and shipping calculator integration (Phase 3).
+- Advanced AI-powered pricing suggestions (Future Phase).
+- Post-auction logistics and shipping calculator integration (Future Phase).
 - Video upload support.

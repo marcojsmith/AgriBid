@@ -1,0 +1,8 @@
+{
+  "track_id": "guest_restrictions_20260216",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-16T12:00:00Z",
+  "updated_at": "2026-02-16T12:00:00Z",
+  "description": "logged out users should still be able to see the auctions, but they should be prevented from performing certain actions (through hiding of buttons and/or error messages) until they have logged in. for example, placing a bid, or completing the sell wizard (they should be able to fill in all the info, but when they want to save they need to first log in and then they can continue where they left off)."
+}

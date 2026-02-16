@@ -6,16 +6,21 @@ import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { useSession } from "../lib/auth-client";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Eye, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BidConfirmation } from "./BidConfirmation";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 interface AuctionCardProps {
   auction: Doc<"auctions">;
 }
 
 export const AuctionCard = ({ auction }: AuctionCardProps) => {
+  const { data: session } = useSession();
+  const navigate = useNavigate();
   const placeBid = useMutation(api.auctions.placeBid);
   const [isBidding, setIsBidding] = useState(false);
   const isBiddingRef = useRef(false);
@@ -25,6 +30,15 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
   const handleBidInitiate = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!session) {
+      toast.info("Please sign in to place a bid");
+      const rawUrl = `/auction/${auction._id}`;
+      const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
+      navigate(`/login?callbackUrl=${callbackUrl}`);
+      return;
+    }
+
     const amount = auction.currentPrice + auction.minIncrement;
     setPendingBid(amount);
     setIsConfirmOpen(true);

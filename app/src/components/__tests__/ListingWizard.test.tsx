@@ -2,6 +2,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ListingWizard } from '../ListingWizard';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 
 // Mock Convex hooks
 vi.mock('convex/react', () => ({
@@ -9,8 +10,9 @@ vi.mock('convex/react', () => ({
     { make: 'John Deere', models: ['6155R', '8R 410'], category: 'Tractor' },
     { make: 'Case IH', models: ['Magnum 340'], category: 'Tractor' },
   ],
-  useMutation: (apiFunc: any) => {
-    const path = typeof apiFunc === 'string' ? apiFunc : apiFunc?._path || "";
+  useMutation: (apiFunc: unknown) => {
+    const func = apiFunc as { _path?: string } | string;
+    const path = typeof func === 'string' ? func : func?._path || "";
     const isUpload = typeof path === 'string' && path.includes('generateUploadUrl');
     
     if (isUpload) {
@@ -20,11 +22,18 @@ vi.mock('convex/react', () => ({
   },
 }));
 
+// Mock auth client
+vi.mock('../../lib/auth-client', () => ({
+  useSession: vi.fn(() => ({ data: { user: { name: 'Test Seller' } }, isPending: false })),
+}));
+
 // Mock browser APIs
 const originalFetch = global.fetch;
 
 describe('ListingWizard', () => {
   beforeEach(() => {
+    localStorage.removeItem("agribid_listing_step");
+    localStorage.removeItem("agribid_listing_draft");
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ storageId: 'test-storage-id' }),
@@ -34,8 +43,15 @@ describe('ListingWizard', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     vi.clearAllMocks();
+    localStorage.removeItem("agribid_listing_step");
+    localStorage.removeItem("agribid_listing_draft");
   });
 
+  const renderWizard = () => render(
+    <MemoryRouter>
+      <ListingWizard />
+    </MemoryRouter>
+  );
   const navigateToStep4 = () => {
     fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), { target: { value: '2024' } });
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Pretoria, ZA' } });
@@ -54,14 +70,14 @@ describe('ListingWizard', () => {
   };
 
   it('renders the first step by default', () => {
-    render(<ListingWizard />);
+    renderWizard();
     
     expect(screen.getAllByText(/General Information/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
   });
 
   it('navigates to step 2 when fields are filled', () => {
-    render(<ListingWizard />);
+    renderWizard();
     
     fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), { target: { value: '2024' } });
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Pretoria, ZA' } });
@@ -74,7 +90,7 @@ describe('ListingWizard', () => {
   });
 
   it('requires all condition checklist items to be filled', () => {
-    render(<ListingWizard />);
+    renderWizard();
     
     // Fill Step 1
     fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), { target: { value: '2024' } });
@@ -101,7 +117,7 @@ describe('ListingWizard', () => {
   });
 
   it('validates required image slots', async () => {
-    render(<ListingWizard />);
+    renderWizard();
     
     navigateToStep4();
 
