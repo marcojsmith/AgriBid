@@ -11,9 +11,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
-- [~] **Track: Auction Lifecycle & Settlement**
-*Link: [./tracks/auction_lifecycle_settlement_20260216/](./tracks/auction_lifecycle_settlement_20260216/)*
-
 - [x] **Track: deploy to vercel**
 *Link: [./tracks/vercel_deploy_20260213/](./tracks/vercel_deploy_20260213/)*
 
@@ -23,6 +20,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 ## Archive
+
+- [x] **Track: Auction Lifecycle & Settlement**
+*Link: [./tracks/auction_lifecycle_settlement_20260216/](./tracks/auction_lifecycle_settlement_20260216/)*
 
 - [x] **Track: Watchlist Functionality**
 *Link: [./archive/watchlist_functionality_20260216/](./archive/watchlist_functionality_20260216/)*
