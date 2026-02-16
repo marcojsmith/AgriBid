@@ -115,7 +115,7 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
               size="icon"
               className={cn(
                 "h-8 w-8 rounded-full shadow-md bg-background/80 backdrop-blur hover:bg-background transition-all",
-                isWatched && "text-red-500"
+                isWatched ? "text-red-500" : "text-zinc-500"
               )}
               onClick={handleWatchlistToggle}
             >

@@ -58,7 +58,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
           size="lg"
           className={cn(
             "rounded-xl border-2 font-black uppercase text-xs tracking-widest gap-2 h-12 px-6 transition-all shrink-0",
-            isWatched ? "border-red-500/50 text-red-500 hover:bg-red-50 hover:text-red-600" : "hover:border-primary hover:text-primary"
+            isWatched ? "border-red-500/50 text-red-500 hover:bg-red-50 hover:text-red-600" : "text-zinc-500 hover:border-primary hover:text-primary"
           )}
           onClick={handleWatchlistToggle}
         >
