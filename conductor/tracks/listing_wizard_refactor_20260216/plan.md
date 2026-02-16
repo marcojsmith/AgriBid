@@ -1,13 +1,13 @@
 # Implementation Plan: Refactor ListingWizard for Modularity
 
-## Phase 1: Setup & Data Consolidation
+## Phase 1: Setup & Data Consolidation [checkpoint: 7b82a3f]
 - [x] Task: Create Directory Structure
     - [x] Create `app/src/components/ListingWizard/`
     - [x] Create sub-directories: `steps/`, `hooks/`, `context/`, `constants/`
 - [x] Task: Extract Shared Types and Constants
     - [x] Move `ListingFormData`, `ConditionChecklist`, and related interfaces to `types.ts`
     - [x] Move `PHOTO_SLOTS`, `SA_LOCATIONS`, `STEPS`, and `DEFAULT_FORM_DATA` to `constants.ts`
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Setup & Consolidation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Setup & Consolidation' (Protocol in workflow.md)
 
 ## Phase 2: Core Logic & Context Extraction
 - [ ] Task: Implement ListingWizardContext
