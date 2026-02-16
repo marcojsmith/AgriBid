@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useListingWizard } from "../context/ListingWizardContext";
 import { SA_LOCATIONS } from "../constants";
 
@@ -27,13 +28,15 @@ export const GeneralInfoStep = () => {
             value={formData.year || ""} 
             onChange={(e) => {
               const val = e.target.value;
+              // Allow empty string for clearing
               if (val === "") {
                 updateField("year", 0);
                 return;
               }
               const parsed = parseInt(val);
-              if (!isNaN(parsed)) {
-                updateField("year", parsed);
+              // Only update if it's a number and doesn't exceed 4 digits (to prevent accidental large numbers)
+              if (!isNaN(parsed) && val.length <= 4) {
+                updateField("year", Math.max(0, parsed));
               }
             }}
             placeholder={`e.g. ${new Date().getFullYear()}`}
@@ -80,6 +83,18 @@ export const GeneralInfoStep = () => {
           )}
         </div>
       </div>
+      
+      <div className="space-y-2">
+        <label htmlFor="description" className="text-xs font-black uppercase text-muted-foreground ml-1">Equipment Description</label>
+        <Textarea 
+          id="description"
+          value={formData.description} 
+          onChange={(e) => updateField("description", e.target.value)}
+          placeholder="Describe the condition, key features, and any recent maintenance..."
+          className="min-h-[120px] border-2 rounded-xl resize-none"
+        />
+      </div>
+
       <div className="space-y-2">
         <label htmlFor="title" className="text-xs font-black uppercase text-muted-foreground ml-1">Listing Title</label>
         <Input 
@@ -99,8 +114,19 @@ export const GeneralInfoStep = () => {
           id="hours"
           type="number" 
           inputMode="numeric"
+          min="0"
           value={formData.operatingHours || ""} 
-          onChange={(e) => updateField("operatingHours", parseInt(e.target.value) || 0)}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "") {
+              updateField("operatingHours", 0);
+              return;
+            }
+            const parsed = parseInt(val);
+            if (!isNaN(parsed)) {
+              updateField("operatingHours", Math.max(0, parsed));
+            }
+          }}
           placeholder="e.g. 1200"
           className="h-12 border-2 rounded-xl"
         />

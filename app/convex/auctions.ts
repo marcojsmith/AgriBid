@@ -1,6 +1,6 @@
 // app/convex/auctions.ts
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 
 interface RawImages {
@@ -180,6 +180,7 @@ export const createAuction = mutation({
     year: v.number(),
     operatingHours: v.number(),
     location: v.string(),
+    description: v.string(),
     startingPrice: v.number(),
     reservePrice: v.number(),
     durationDays: v.number(),
@@ -351,5 +352,115 @@ export const placeBid = mutation({
     });
 
     return { success: true };
+  },
+});
+
+/**
+ * Internal mutation to settle auctions that have reached their end time.
+ * Transitions status to 'sold' if reserve is met, or 'unsold' otherwise.
+ */
+export const settleExpiredAuctions = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const expiredAuctions = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) => q.lte(q.field("endTime"), now))
+      .collect();
+
+    for (const auction of expiredAuctions) {
+      // Check if there are any bids and if the currentPrice >= reservePrice
+      const bids = await ctx.db
+        .query("bids")
+        .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+        .collect();
+
+      const hasBids = bids.length > 0;
+      const reserveMet = auction.currentPrice >= auction.reservePrice;
+
+      const finalStatus = (hasBids && reserveMet) ? "sold" : "unsold";
+      
+      let winnerId = undefined;
+      if (finalStatus === "sold") {
+        // Find the highest bid to determine the winner.
+        // Tie-break: earlier bid wins if amounts are equal.
+        const highestBid = bids.reduce((prev, current) => {
+          if (current.amount > prev.amount) return current;
+          if (current.amount === prev.amount) {
+            return current.timestamp < prev.timestamp ? current : prev;
+          }
+          return prev;
+        });
+        winnerId = highestBid.bidderId;
+      }
+
+      await ctx.db.patch(auction._id, {
+        status: finalStatus,
+        winnerId,
+      });
+
+      console.log(`Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`);
+    }
+  },
+});
+
+export const getMyBids = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+
+    // Get all bids by this user
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+      .collect();
+
+    // Group by auctionId to get the latest status per auction
+    const auctionIds = Array.from(new Set(bids.map((b) => b.auctionId)));
+
+    const auctions = await Promise.all(
+      auctionIds.map(async (id) => {
+        const auction = await ctx.db.get(id);
+        if (!auction) return null;
+        
+        // Find my highest bid on this auction
+        const myBids = bids.filter(b => b.auctionId === id);
+        const myHighestBid = Math.max(...myBids.map(b => b.amount));
+        
+        return {
+          ...auction,
+          images: await resolveImageUrls(ctx.storage, auction.images),
+          myHighestBid,
+          isWinning: auction.status === 'active' && myHighestBid === auction.currentPrice,
+          isWon: auction.status === 'sold' && auction.winnerId === userId,
+        };
+      })
+    );
+
+    return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+  },
+});
+
+export const getMyListings = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+
+    const listings = await ctx.db
+      .query("auctions")
+      .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+      .collect();
+
+    return await Promise.all(
+      listings.map(async (auction) => ({
+        ...auction,
+        images: await resolveImageUrls(ctx.storage, auction.images),
+      }))
+    );
   },
 });

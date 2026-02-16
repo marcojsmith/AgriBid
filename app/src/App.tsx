@@ -6,6 +6,8 @@ import Sell from "./pages/Sell";
 import AdminDashboard from "./pages/AdminDashboard";
 import Watchlist from "./pages/Watchlist";
 import Login from "./pages/Login";
+import MyBids from "./pages/dashboard/MyBids";
+import MyListings from "./pages/dashboard/MyListings";
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 
@@ -19,6 +21,8 @@ import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
  * - "/sell" → Sell
  * - "/admin" → AdminDashboard (Protected)
  * - "/watchlist" → Watchlist (Protected)
+ * - "/dashboard/bids" → MyBids (Protected)
+ * - "/dashboard/listings" → MyListings (Protected)
  *
  * @returns The root JSX element containing a BrowserRouter with the above routes.
  */
@@ -36,6 +40,22 @@ function App() {
             element={
               <RoleProtectedRoute allowedRole="any">
                 <Watchlist />
+              </RoleProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/bids" 
+            element={
+              <RoleProtectedRoute allowedRole="any">
+                <MyBids />
+              </RoleProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/listings" 
+            element={
+              <RoleProtectedRoute allowedRole="any">
+                <MyListings />
               </RoleProtectedRoute>
             } 
           />

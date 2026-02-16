@@ -41,6 +41,10 @@ export const ReviewSubmitStep = () => {
                 <p className="font-bold">{formData.location}</p>
               </div>
             </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-muted-foreground">Description</p>
+              <p className="text-sm line-clamp-3">{formData.description || "No description provided."}</p>
+            </div>
           </div>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">

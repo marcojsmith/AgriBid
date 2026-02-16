@@ -126,9 +126,11 @@ export const Header = () => {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem disabled className="rounded-lg font-bold uppercase text-[10px] tracking-wide opacity-50 cursor-not-allowed">
-                    <LayoutDashboard className="h-4 w-4" />
-                    My Bids (Coming Soon)
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
+                    <Link to="/dashboard/bids" className="flex items-center gap-2 w-full">
+                      <LayoutDashboard className="h-4 w-4" />
+                      My Bids
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
                     <Link to="/watchlist" className="flex items-center gap-2 w-full">
@@ -136,9 +138,11 @@ export const Header = () => {
                       Watchlist
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="rounded-lg font-bold uppercase text-[10px] tracking-wide opacity-50 cursor-not-allowed">
-                    <Settings className="h-4 w-4" />
-                    Settings (Coming Soon)
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
+                    <Link to="/dashboard/listings" className="flex items-center gap-2 w-full">
+                      <Settings className="h-4 w-4" />
+                      My Listings
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
@@ -243,9 +247,17 @@ export const Header = () => {
                     ) : (
                       <div aria-hidden="true" />
                     )}
-                    <Button variant="outline" disabled className="justify-start gap-2 font-bold uppercase text-[10px] opacity-50 cursor-not-allowed" aria-disabled="true">
-                      <LayoutDashboard className="h-3.5 w-3.5" />
-                      My Bids
+                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
+                      <Link to="/dashboard/bids" onClick={() => setIsMenuOpen(false)}>
+                        <LayoutDashboard className="h-3.5 w-3.5" />
+                        My Bids
+                      </Link>
+                    </Button>
+                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
+                      <Link to="/dashboard/listings" onClick={() => setIsMenuOpen(false)}>
+                        <Settings className="h-3.5 w-3.5" />
+                        My Listings
+                      </Link>
                     </Button>
                   </div>
                   <Button 

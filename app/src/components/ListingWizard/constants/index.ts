@@ -21,6 +21,7 @@ export const DEFAULT_FORM_DATA: ListingFormData = {
   make: "",
   model: "",
   location: "",
+  description: "",
   operatingHours: 0,
   title: "",
   conditionChecklist: {

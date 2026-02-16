@@ -11,6 +11,7 @@ export interface ListingFormData {
   make: string;
   model: string;
   location: string;
+  description: string;
   operatingHours: number;
   title: string;
   conditionChecklist: ConditionChecklist;

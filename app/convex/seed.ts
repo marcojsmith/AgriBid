@@ -161,6 +161,7 @@ export const runSeed = mutation({
         year: 2023,
         operatingHours: 450,
         location: "Moline, IL",
+        description: "This 2023 John Deere 8R 410 is in excellent condition with low hours. Features the Row Crop Titan package, premium cab, and advanced telemetry. Full service history available. Perfect for large-scale production.",
         reservePrice: 385000,
         startingPrice: 250000,
         currentPrice: 275000,
@@ -184,6 +185,7 @@ export const runSeed = mutation({
         year: 2022,
         operatingHours: 820,
         location: "Racine, WI",
+        description: "A 2022 Case IH Magnum 380, the ultimate Prairie Powerhouse. Features the CVXDrive transmission, luxury AFS Connect cab, and dual wheels for maximum traction. Exceptionally well-maintained unit.",
         reservePrice: 320000,
         startingPrice: 200000,
         currentPrice: 215000,
@@ -207,6 +209,7 @@ export const runSeed = mutation({
         year: 2023,
         operatingHours: 210,
         location: "Basildon, UK",
+        description: "The 2023 New Holland T7.315 Blue Diamond edition. Low operating hours, heavy-duty rear hitch, and PLM Intelligence. Versatile machine for both tillage and transport work.",
         reservePrice: 245000,
         startingPrice: 150000,
         currentPrice: 165000,
@@ -230,6 +233,7 @@ export const runSeed = mutation({
         year: 2024,
         operatingHours: 15,
         location: "Beauvais, FR",
+        description: "Virtually new 2024 Massey Ferguson 8S.305. The Crimson Legend features the innovative Protect-U design, Dyna-VT transmission, and exceptional visibility. Demonstration unit with only 15 delivery hours.",
         reservePrice: 210000,
         startingPrice: 140000,
         currentPrice: 142000,
@@ -253,6 +257,7 @@ export const runSeed = mutation({
         year: 2023,
         operatingHours: 580,
         location: "Marktoberdorf, DE",
+        description: "2023 Fendt 1050 Vario, the peak of German Precision engineering. Fendt iD low engine speed concept, VarioDrive, and LifeCab. A powerhouse for the most demanding agricultural tasks.",
         reservePrice: 450000,
         startingPrice: 300000,
         currentPrice: 325000,
@@ -276,10 +281,15 @@ export const runSeed = mutation({
         .withIndex("by_seedId", (q) => q.eq("seedId", auction.seedId))
         .first();
       
+      const auctionData = {
+        ...auction,
+        description: auction.description || "No description provided.",
+      };
+
       if (!existing) {
-        await ctx.db.insert("auctions", auction);
+        await ctx.db.insert("auctions", auctionData);
       } else {
-        await ctx.db.patch(existing._id, auction);
+        await ctx.db.patch(existing._id, auctionData);
       }
     }
 
