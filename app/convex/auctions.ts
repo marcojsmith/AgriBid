@@ -170,16 +170,9 @@ export const getSellerInfo = query({
   },
 });
 
-export const getPublicProfile = query({
+export const getSellerListings = query({
   args: { userId: v.string(), paginationOpts: v.any() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("user")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .first();
-    
-    if (!user) return null;
-
     const results = await ctx.db
       .query("auctions")
       .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
@@ -199,16 +192,8 @@ export const getPublicProfile = query({
     );
 
     return {
-      user: {
-        name: user.name,
-        isVerified: user.isVerified || false,
-        role: user.role || "Private Seller",
-        createdAt: user.createdAt,
-      },
-      listings: {
-        ...results,
-        page,
-      },
+      ...results,
+      page,
     };
   },
 });

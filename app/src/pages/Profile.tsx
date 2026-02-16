@@ -16,7 +16,7 @@ export default function Profile() {
     status, 
     loadMore 
   } = usePaginatedQuery(
-    api.auctions.getPublicProfile, 
+    api.auctions.getSellerListings, 
     { userId: userId || "" }, 
     { initialNumItems: 6 }
   );
