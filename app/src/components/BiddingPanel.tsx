@@ -13,6 +13,8 @@ import { BidConfirmation } from "./BidConfirmation";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { isValidCallbackUrl } from "@/lib/utils";
+import { Button } from "./ui/button";
+import { Link } from "react-router-dom";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;
@@ -30,6 +32,56 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
 
   const isEnded = auction.status !== "active" || auction.endTime <= Date.now();
   const nextMinBid = auction.currentPrice + auction.minIncrement;
+
+  if (auction.status !== 'active') {
+    const isWon = session?.user?.id === auction.winnerId;
+    
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="text-center space-y-2">
+          <Badge variant={auction.status === 'sold' ? "default" : "destructive"} className="font-black uppercase tracking-widest px-4 py-1.5 text-xs mb-2">
+            Auction {auction.status.toUpperCase()}
+          </Badge>
+          <h3 className="text-3xl font-black text-primary tracking-tighter">
+            R {auction.currentPrice.toLocaleString()}
+          </h3>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Final Price</p>
+        </div>
+
+        <div className="bg-muted/30 border-2 rounded-2xl p-6 text-center space-y-4">
+          {auction.status === 'sold' ? (
+            <>
+              <div className="h-16 w-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
+                <Gavel className="h-8 w-8 text-green-600" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-black uppercase text-sm">Winning Bid Confirmed</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                  {isWon ? "Congratulations, you are the buyer!" : "This item has found a new owner."}
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="h-16 w-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+                <Info className="h-8 w-8 text-destructive" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-black uppercase text-sm">Auction Closed</p>
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                  Reserve price was not met.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
+        <Button variant="outline" className="w-full h-14 rounded-xl font-black uppercase tracking-tight border-2" asChild>
+          <Link to="/">Explore Other Auctions</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const handleBidInitiate = (amount: number) => {
     if (isPending) {

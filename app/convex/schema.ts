@@ -100,6 +100,7 @@ export default defineSchema({
       v.literal("unsold"),
       v.literal("rejected")
     ),
+    winnerId: v.optional(v.string()),
     images: v.object({
       front: v.optional(v.string()), // storageId
       engine: v.optional(v.string()), // storageId

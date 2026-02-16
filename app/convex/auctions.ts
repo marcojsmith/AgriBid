@@ -380,12 +380,21 @@ export const settleExpiredAuctions = internalMutation({
       const reserveMet = auction.currentPrice >= auction.reservePrice;
 
       const finalStatus = (hasBids && reserveMet) ? "sold" : "unsold";
+      
+      let winnerId = undefined;
+      if (finalStatus === "sold") {
+        // Find the highest bid to determine the winner
+        // Since bids are ordered by timestamp, we sort by amount to be safe
+        const highestBid = bids.reduce((prev, current) => (prev.amount > current.amount) ? prev : current);
+        winnerId = highestBid.bidderId;
+      }
 
       await ctx.db.patch(auction._id, {
         status: finalStatus,
+        winnerId,
       });
 
-      console.log(`Auction ${auction._id} (${auction.title}) settled as ${finalStatus}`);
+      console.log(`Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? ` (Winner: ${winnerId})` : ""}`);
     }
   },
 });
