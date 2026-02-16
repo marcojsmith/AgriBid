@@ -21,7 +21,7 @@ export default function Profile() {
     { initialNumItems: 6 }
   );
 
-  if (sellerInfo === undefined) {
+  if (sellerInfo === undefined || status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
