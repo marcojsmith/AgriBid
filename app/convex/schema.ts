@@ -98,7 +98,13 @@ export default defineSchema({
       v.literal("sold"),
       v.literal("unsold")
     ),
-    images: v.array(v.string()),
+    images: v.object({
+      front: v.optional(v.string()), // storageId
+      engine: v.optional(v.string()), // storageId
+      cabin: v.optional(v.string()), // storageId
+      rear: v.optional(v.string()), // storageId
+      additional: v.optional(v.array(v.string())), // array of storageIds
+    }),
     conditionReportUrl: v.optional(v.string()),
     isExtended: v.optional(v.boolean()),
     conditionChecklist: v.optional(v.object({
