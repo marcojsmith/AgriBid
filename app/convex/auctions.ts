@@ -155,11 +155,58 @@ export const getSellerInfo = query({
     
     if (!user) return null;
 
+    const soldCount = await ctx.db
+      .query("auctions")
+      .withIndex("by_seller", (q) => q.eq("sellerId", args.sellerId))
+      .filter((q) => q.eq(q.field("status"), "sold"))
+      .collect();
+
     return {
       name: user.name,
       isVerified: user.isVerified || false,
       role: user.role || "Private Seller",
       createdAt: user.createdAt,
+      itemsSold: soldCount.length,
+    };
+  },
+});
+
+export const getPublicProfile = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("user")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+    
+    if (!user) return null;
+
+    const listings = await ctx.db
+      .query("auctions")
+      .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "sold")
+        )
+      )
+      .collect();
+
+    const listingsWithImages = await Promise.all(
+      listings.map(async (auction) => ({
+        ...auction,
+        images: await resolveImageUrls(ctx.storage, auction.images),
+      }))
+    );
+
+    return {
+      user: {
+        name: user.name,
+        isVerified: user.isVerified || false,
+        role: user.role || "Private Seller",
+        createdAt: user.createdAt,
+      },
+      listings: listingsWithImages,
     };
   },
 });

@@ -9,13 +9,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## Active Tracks
-
-(None)
-
----
-
 ## Archive
+
+- [x] **Track: Seller Profiles & Verification**
+*Link: [./tracks/seller_profiles_verification_20260216/](./tracks/seller_profiles_verification_20260216/)*
 
 - [x] **Track: Wizard Hardening & Data Integrity**
 *Link: [./tracks/listing_integrity_technical_documentation_20260216/](./tracks/listing_integrity_technical_documentation_20260216/)*

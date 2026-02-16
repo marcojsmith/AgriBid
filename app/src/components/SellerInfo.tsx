@@ -2,8 +2,9 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck, ShieldCheck, Mail, Calendar } from "lucide-react";
+import { UserCheck, ShieldCheck, Mail, Calendar, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface SellerInfoProps {
   sellerId: string;
@@ -50,13 +51,17 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
                 <ShieldCheck className="h-5 w-5 text-green-600 fill-green-50" />
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider py-0 px-2 h-5 border-primary/20 bg-primary/5 text-primary">
                 {seller.role}
               </Badge>
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase">
                 <Calendar className="h-3 w-3" />
                 Member since {memberSince}
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-primary font-black uppercase">
+                <TrendingUp className="h-3 w-3" />
+                {seller.itemsSold} Items Sold
               </div>
             </div>
           </div>
@@ -76,8 +81,9 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
           variant="secondary" 
           className="h-11 font-bold rounded-xl border-2 border-transparent hover:border-muted-foreground/20 transition-all"
           aria-label={`View ${seller.name}'s profile`}
+          asChild
         >
-          View Profile
+          <Link to={`/profile/${sellerId}`}>View Profile</Link>
         </Button>
       </div>
       
