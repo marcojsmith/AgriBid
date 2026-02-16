@@ -6,14 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Eye, Clock, MapPin, Hammer, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
-import { useSession } from "@/lib/auth-client";
-import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import type { Id } from "convex/_generated/dataModel";
 
 export default function AdminDashboard() {
-  const { data: session, isPending } = useSession();
-  const user = session?.user ? (session.user as typeof session.user & { role?: string }) : undefined;
   const navigate = useNavigate();
   
   const pendingAuctions = useQuery(api.auctions.getPendingAuctions);
@@ -53,30 +50,7 @@ export default function AdminDashboard() {
   };
 
   // TODO: Compute from real review data when available
-  const avgReviewTime = useMemo(() => {
-    if (!pendingAuctions) return "—";
-    return "2.4h";
-  }, [pendingAuctions]);
-
-  if (isPending) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold">
-        VERIFYING PERMISSIONS...
-      </div>
-    );
-  }
-
-  if (user?.role !== "admin") {
-    return (
-      <div className="flex flex-col h-[80vh] items-center justify-center space-y-4">
-        <h1 className="text-2xl font-bold">Unauthorized</h1>
-        <p className="text-muted-foreground">You do not have permission to access this page.</p>
-        <Button asChild>
-          <Link to="/">Go Home</Link>
-        </Button>
-      </div>
-    );
-  }
+  const avgReviewTime = "2.4h";
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-12">
@@ -174,7 +148,7 @@ export default function AdminDashboard() {
                 <Button 
                   className="h-12 px-8 rounded-xl font-black text-sm uppercase tracking-wider bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
                   onClick={() => handleApprove(auction._id)}
-                  disabled={processingId !== null}
+                  disabled={processingId === auction._id}
                 >
                   {processingId === auction._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
                   Approve
@@ -183,7 +157,7 @@ export default function AdminDashboard() {
                   variant="outline" 
                   className="h-12 px-8 rounded-xl font-black text-sm uppercase tracking-wider border-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40"
                   onClick={() => handleReject(auction._id)}
-                  disabled={processingId !== null}
+                  disabled={processingId === auction._id}
                 >
                   <X className="h-4 w-4 mr-2" />
                   Reject

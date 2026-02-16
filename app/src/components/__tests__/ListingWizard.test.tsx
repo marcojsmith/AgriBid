@@ -1,7 +1,7 @@
 // app/src/components/__tests__/ListingWizard.test.tsx
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ListingWizard } from '../ListingWizard';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock Convex hooks
 vi.mock('convex/react', () => ({
@@ -19,12 +19,38 @@ vi.mock('convex/react', () => ({
 }));
 
 // Mock browser APIs
-global.fetch = vi.fn().mockResolvedValue({
-  ok: true,
-  json: () => Promise.resolve({ storageId: 'test-storage-id' }),
-});
+const originalFetch = global.fetch;
 
 describe('ListingWizard', () => {
+  beforeEach(() => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: 'test-storage-id' }),
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.clearAllMocks();
+  });
+
+  const navigateToStep4 = () => {
+    fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), { target: { value: '2024' } });
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Pretoria, ZA' } });
+    fireEvent.change(screen.getByLabelText(/Listing Title/i), { target: { value: 'Test Auction Title' } });
+    fireEvent.click(screen.getByText(/Next Step/i));
+    
+    fireEvent.click(screen.getByText('John Deere'));
+    fireEvent.click(screen.getByText('6155R'));
+    fireEvent.click(screen.getByText(/Next Step/i));
+    
+    const yesButtons = screen.getAllByText('Yes');
+    yesButtons.forEach(btn => {
+      fireEvent.click(btn);
+    });
+    fireEvent.click(screen.getByText(/Next Step/i));
+  };
+
   it('renders the first step by default', () => {
     render(<ListingWizard />);
     
@@ -75,19 +101,7 @@ describe('ListingWizard', () => {
   it('validates required image slots', async () => {
     render(<ListingWizard />);
     
-    // Fast forward to Step 4 (Media Gallery)
-    fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), { target: { value: '2024' } });
-    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Pretoria, ZA' } });
-    fireEvent.change(screen.getByLabelText(/Listing Title/i), { target: { value: 'Test Auction Title' } });
-    fireEvent.click(screen.getByText(/Next Step/i));
-    fireEvent.click(screen.getByText('John Deere'));
-    fireEvent.click(screen.getByText('6155R'));
-    fireEvent.click(screen.getByText(/Next Step/i));
-    const yesButtons = screen.getAllByText('Yes');
-    yesButtons.forEach(btn => {
-      fireEvent.click(btn);
-    });
-    fireEvent.click(screen.getByText(/Next Step/i));
+    navigateToStep4();
 
     expect(screen.getByText(/Media Gallery/i)).toBeInTheDocument();
 

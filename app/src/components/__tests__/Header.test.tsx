@@ -119,4 +119,21 @@ describe('Header', () => {
     const mobileSearchInputs = screen.getAllByPlaceholderText(/Search equipment/i);
     expect(mobileSearchInputs.length).toBeGreaterThan(1);
   });
+
+  it('renders admin dashboard link when user has admin role', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(authClient.useSession).mockReturnValue({ 
+      data: { user: { name: 'Admin User', role: 'admin' } }, 
+      isPending: false 
+    } as any);
+    
+    renderHeader();
+    
+    // Open mobile menu
+    const toggle = screen.getByLabelText(/Toggle menu/i);
+    fireEvent.click(toggle);
+    
+    // Admin link should be in the mobile menu
+    expect(screen.getByRole('link', { name: /Admin/i })).toBeInTheDocument();
+  });
 });

@@ -121,31 +121,39 @@ export const ListingWizard = () => {
   );
 
   const imagesRef = useRef(formData.images);
+  const previewsRef = useRef(previews);
+
   useEffect(() => {
     imagesRef.current = formData.images;
   }, [formData.images]);
 
   useEffect(() => {
-    return () => {
-      // Defensive cleanup for blob URLs
-      const images = imagesRef.current;
-      if (!images || typeof images !== 'object' || Array.isArray(images)) return;
-      
-      const { additional, ...slots } = images;
-      const allUrls = [...Object.values(slots), ...(additional || [])];
-      
-      allUrls.forEach(url => {
-        if (typeof url === "string" && url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
+    previewsRef.current = previews;
+  }, [previews]);
 
-      // Also cleanup local previews
-      Object.values(previews).forEach(url => {
+  // Unmount cleanup for all blob URLs
+  useEffect(() => {
+    return () => {
+      const images = imagesRef.current;
+      const currentPreviews = previewsRef.current;
+
+      // Revoke from images state
+      if (images && typeof images === 'object' && !Array.isArray(images)) {
+        const { additional, ...slots } = images;
+        const allUrls = [...Object.values(slots), ...(additional || [])];
+        allUrls.forEach(url => {
+          if (typeof url === "string" && url.startsWith("blob:")) {
+            URL.revokeObjectURL(url);
+          }
+        });
+      }
+
+      // Revoke from previews state
+      Object.values(currentPreviews).forEach(url => {
         if (url.startsWith("blob:")) URL.revokeObjectURL(url);
       });
     };
-  }, [previews]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
@@ -432,6 +440,7 @@ export const ListingWizard = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {PHOTO_SLOTS.map(slot => {
               const storageId = formData.images[slot.id as keyof Omit<ListingFormData["images"], "additional">];
+              // Backward compatibility: Check if stored ID is a legacy HTTP URL
               const previewUrl = previews[slot.id] || (storageId?.startsWith("http") ? storageId : null);
               
               return (
@@ -691,6 +700,7 @@ export const ListingWizard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {PHOTO_SLOTS.map((slot) => {
                 const storageId = formData.images[slot.id as keyof Omit<ListingFormData["images"], "additional">];
+                // Backward compatibility: Check if stored ID is a legacy HTTP URL
                 const previewUrl = previews[slot.id] || (storageId?.startsWith("http") ? storageId : null);
                 
                 return (

@@ -1,7 +1,8 @@
 // app/src/components/RoleProtectedRoute.tsx
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
+import { Button } from "./ui/button";
 
 interface RoleProtectedRouteProps {
   children: ReactNode;
@@ -20,8 +21,20 @@ export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRoute
     );
   }
 
-  if (!session || user?.role !== allowedRole) {
+  if (!session) {
     return <Navigate to="/" replace />;
+  }
+
+  if (user?.role !== allowedRole) {
+    return (
+      <div className="flex flex-col h-[80vh] items-center justify-center space-y-4">
+        <h1 className="text-2xl font-bold uppercase">Access Denied</h1>
+        <p className="text-muted-foreground font-medium">You do not have the required permissions to view this page.</p>
+        <Button asChild>
+          <Link to="/">Go Home</Link>
+        </Button>
+      </div>
+    );
   }
 
   return <>{children}</>;

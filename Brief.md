@@ -292,9 +292,10 @@ export default defineSchema({
   user: defineTable({
     name: v.string(),
     email: v.string(),
-    // ... Better Auth fields
+    // Better Auth fields (some are optional/null depending on provider)
+    userId: v.optional(v.union(v.null(), v.string())), 
     role: v.optional(v.string()),
-  }).index("by_userId", ["userId"]),
+  }).index("by_userId", ["userId"]), // Note: Index excludes records where userId is null/undefined
 });
 ```
 

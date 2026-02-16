@@ -199,7 +199,7 @@ export const createAuction = mutation({
       engine: v.optional(v.string()),
       cabin: v.optional(v.string()),
       rear: v.optional(v.string()),
-      additional: v.array(v.string()),
+      additional: v.optional(v.array(v.string())),
     }),
     conditionChecklist: v.object({
       engine: v.boolean(),
@@ -218,7 +218,7 @@ export const createAuction = mutation({
 
     const { durationDays, ...restArgs } = args;
 
-    if (restArgs.images.additional.length > 6) {
+    if (restArgs.images.additional && restArgs.images.additional.length > 6) {
       throw new Error("Additional images limit exceeded (max 6)");
     }
 
@@ -318,7 +318,7 @@ export const approveAuction = mutation({
 });
 
 export const rejectAuction = mutation({
-  args: { auctionId: v.id("auctions"), reason: v.optional(v.string()) },
+  args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity || identity.role !== "admin") {
