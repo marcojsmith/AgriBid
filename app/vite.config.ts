@@ -38,9 +38,17 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-convex': ['convex'],
-            'vendor-ui': ['lucide-react'],
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-convex': ['convex', '@convex-dev/better-auth'],
+            'vendor-auth': ['better-auth'],
+            'vendor-ui': [
+              'lucide-react', 
+              '@radix-ui/react-accordion',
+              '@radix-ui/react-alert-dialog',
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-slot',
+              'sonner'
+            ],
           },
         },
       },
