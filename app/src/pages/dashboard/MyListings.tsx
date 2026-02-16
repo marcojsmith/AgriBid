@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, Plus, Edit } from "lucide-react";
 
+/**
+ * Render the current user's listings dashboard.
+ *
+ * Shows a centered loading spinner while listings are being fetched. After loading, displays a header with a "Create Listing" CTA; if the user has no listings, renders an empty-state panel with a prominent start-selling action; otherwise renders a list of listing cards that include media, status, reserve/current prices, end date, and per-listing actions.
+ *
+ * @returns A JSX element containing the listings dashboard UI
+ */
 export default function MyListings() {
   const listings = useQuery(api.auctions.getMyListings);
 
