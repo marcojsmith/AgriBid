@@ -21,7 +21,17 @@ export const PricingDurationStep = () => {
                 inputMode="numeric"
                 min="0"
                 value={formData.startingPrice || ""} 
-                onChange={(e) => updateField("startingPrice", parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    updateField("startingPrice", 0);
+                    return;
+                  }
+                  const parsed = parseInt(val);
+                  if (!isNaN(parsed)) {
+                    updateField("startingPrice", Math.max(0, parsed));
+                  }
+                }}
                 className="h-14 pl-10 text-xl font-black rounded-xl border-2"
               />
             </div>
@@ -39,7 +49,17 @@ export const PricingDurationStep = () => {
                 inputMode="numeric"
                 min="0"
                 value={formData.reservePrice || ""} 
-                onChange={(e) => updateField("reservePrice", parseInt(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    updateField("reservePrice", 0);
+                    return;
+                  }
+                  const parsed = parseInt(val);
+                  if (!isNaN(parsed)) {
+                    updateField("reservePrice", Math.max(0, parsed));
+                  }
+                }}
                 className={cn(
                   "h-14 pl-10 text-xl font-black rounded-xl border-2",
                   formData.reservePrice !== 0 && formData.reservePrice < formData.startingPrice ? "border-destructive focus-visible:ring-destructive" : "border-primary/20"

@@ -28,12 +28,14 @@ export const GeneralInfoStep = () => {
             value={formData.year || ""} 
             onChange={(e) => {
               const val = e.target.value;
+              // Allow empty string for clearing
               if (val === "") {
                 updateField("year", 0);
                 return;
               }
               const parsed = parseInt(val);
-              if (!isNaN(parsed)) {
+              // Only update if it's a number and doesn't exceed 4 digits (to prevent accidental large numbers)
+              if (!isNaN(parsed) && val.length <= 4) {
                 updateField("year", parsed);
               }
             }}
@@ -112,8 +114,19 @@ export const GeneralInfoStep = () => {
           id="hours"
           type="number" 
           inputMode="numeric"
+          min="0"
           value={formData.operatingHours || ""} 
-          onChange={(e) => updateField("operatingHours", parseInt(e.target.value) || 0)}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "") {
+              updateField("operatingHours", 0);
+              return;
+            }
+            const parsed = parseInt(val);
+            if (!isNaN(parsed)) {
+              updateField("operatingHours", Math.max(0, parsed));
+            }
+          }}
           placeholder="e.g. 1200"
           className="h-12 border-2 rounded-xl"
         />
