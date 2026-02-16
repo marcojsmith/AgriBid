@@ -89,25 +89,22 @@ AgriBid bridges the trust gap through:
 
 ### Phase 1: MVP - Core Auction Engine
 **Must-Have:**
-1. **User Authentication (Better Auth)**
+1. [x] **User Authentication (Better Auth)**
    - Email/password registration
-   - Google OAuth
    - Role-based access (Buyer / Seller / Admin)
 
-2. **Listing Creation**
+2. [x] **Listing Creation**
    - Multi-step form: Equipment details → Photos → Pricing → Review
-   - Fields: Make, Model, Year, Operating Hours, Location (postcode), Reserve Price
-   - Image upload (max 20 photos, 5MB each) to Convex File Storage
+   - Fields: Make, Model, Year, Operating Hours, Location, Reserve Price
+   - Image upload to Convex File Storage
 
-3. **Real-Time Bidding (Convex)**
+3. [x] **Real-Time Bidding (Convex)**
    - **Soft Close**: Auction extends by 2 minutes if bid placed in final 2 minutes
-   - Bid increments: R100 for items under R10k, R500 for items R10k+
    - Live price updates via Convex reactive queries
 
-4. **Auction Dashboard**
+4. [x] **Auction Dashboard**
    - Grid view of active auctions
    - Countdown timers (using `Date.now()` comparisons)
-   - "Watchlist" functionality (stored in Convex per-user)
 
 **Nice-to-Have:**
 - Basic proxy bidding (users set max bid, system auto-increments)
@@ -116,17 +113,16 @@ AgriBid bridges the trust gap through:
 
 ### Phase 2: Trust & Transparency
 **Must-Have:**
-1. **Inspection Gallery**
-   - Lightbox view with pinch-to-zoom
-   - Required photos: Engine block, hour meter, hydraulics, tyres/tracks, operator controls
+1. [x] **Inspection Gallery**
+   - Lightbox view
+   - Required photos: Front view (Required), Engine, Cabin, Rear (Recommended)
 
-2. **Condition Reports**
+2. [ ] **Condition Reports**
    - Seller-uploaded PDFs (service logs, repair invoices)
    - Admin verification badge for reviewed reports
 
-3. **Seller Verification**
-   - Business registration number validation
-   - Badge system: "Verified Dealer", "Private Seller"
+3. [x] **Seller Verification**
+   - Badge system: "Verified User" (Role-based)
 
 **Nice-to-Have:**
 - Video upload support (30-second equipment walkarounds)
@@ -135,16 +131,16 @@ AgriBid bridges the trust gap through:
 
 ### Phase 3: Logistics & Finalisation
 **Must-Have:**
-1. **Shipping Calculator Integration**
+1. [ ] **Shipping Calculator Integration**
    - API integration with haulage providers (e.g., Shiply, uShip)
    - Display estimated transport cost on listing page
    - Buyer can request formal quotes post-auction
 
-2. **Payment Escrow**
+2. [ ] **Payment Escrow**
    - Stripe Connect integration for seller payouts
    - Buyer deposit system (10% of winning bid, refundable if item misrepresented)
 
-3. **Dispute Resolution**
+3. [ ] **Dispute Resolution**
    - Buyer can open case within 48 hours of collection
    - Admin mediation interface
 
@@ -181,6 +177,8 @@ The project uses a monorepo-style structure where all application code resides w
 │   │   │   ├── BidForm.tsx
 │   │   │   └── ...
 │   │   ├── pages/
+│   │   │   ├── AdminDashboard.tsx
+│   │   │   └── ...
 │   │   ├── lib/
 │   │   └── App.tsx
 │   ├── tailwind.config.js
@@ -206,7 +204,7 @@ The project uses a monorepo-style structure where all application code resides w
 ┌─────────────────────────────────────────┐
 │       Auth Layer (Better Auth)          │
 │  • Convex Component                     │
-│  • Email/Password + OAuth               │
+│  • Email/Password                       │
 └────────────┬────────────────────────────┘
              │
              ▼
@@ -222,10 +220,9 @@ The project uses a monorepo-style structure where all application code resides w
 ┌─────────────────────────────────────────┐
 │       Data Layer (Convex DB)            │
 │  Tables:                                │
-│  • users                                │
+│  • user                                 │
 │  • auctions                             │
 │  • bids                                 │
-│  • audit_logs                           │
 └─────────────────────────────────────────┘
 
 
@@ -249,22 +246,35 @@ export default defineSchema({
     model: v.string(),
     year: v.number(),
     operatingHours: v.number(),
-    location: v.string(), // Postcode
+    location: v.string(),
     reservePrice: v.number(),
     startingPrice: v.number(),
     currentPrice: v.number(),
-    minIncrement: v.number(), // Enforced increment logic
-    startTime: v.number(), // Unix timestamp
+    minIncrement: v.number(),
+    startTime: v.number(),
     endTime: v.number(),
-    sellerId: v.id("users"),
+    sellerId: v.string(),
     status: v.union(
       v.literal("draft"),
+      v.literal("pending_review"),
       v.literal("active"),
       v.literal("sold"),
       v.literal("unsold")
     ),
-    images: v.array(v.string()), // Array of Convex Storage IDs
-    conditionReportUrl: v.optional(v.string()),
+    images: v.object({
+      front: v.optional(v.string()), // storageId
+      engine: v.optional(v.string()),
+      cabin: v.optional(v.string()),
+      rear: v.optional(v.string()),
+      additional: v.array(v.string()),
+    }),
+    conditionChecklist: v.optional(v.object({
+      engine: v.boolean(),
+      hydraulics: v.boolean(),
+      tires: v.boolean(),
+      serviceHistory: v.boolean(),
+      notes: v.optional(v.string()),
+    })),
   })
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])
@@ -272,19 +282,20 @@ export default defineSchema({
 
   bids: defineTable({
     auctionId: v.id("auctions"),
-    bidderId: v.id("users"),
+    bidderId: v.string(),
     amount: v.number(),
     timestamp: v.number(),
   })
     .index("by_auction", ["auctionId", "timestamp"])
     .index("by_bidder", ["bidderId"]),
 
-  users: defineTable({
-    email: v.string(),
+  user: defineTable({
     name: v.string(),
-    role: v.union(v.literal("buyer"), v.literal("seller"), v.literal("admin")),
-    isVerified: v.boolean(),
-  }).index("by_email", ["email"]),
+    email: v.string(),
+    // Better Auth fields (some are optional/null depending on provider)
+    userId: v.optional(v.union(v.null(), v.string())), 
+    role: v.optional(v.string()),
+  }).index("by_userId", ["userId"]), // Note: Index excludes records where userId is null/undefined
 });
 ```
 

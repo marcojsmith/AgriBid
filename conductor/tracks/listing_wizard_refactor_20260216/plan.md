@@ -1,0 +1,46 @@
+# Implementation Plan: Refactor ListingWizard for Modularity
+
+## Phase 1: Setup & Data Consolidation [checkpoint: 7b82a3f]
+- [x] Task: Create Directory Structure
+    - [x] Create `app/src/components/ListingWizard/`
+    - [x] Create sub-directories: `steps/`, `hooks/`, `context/`, `constants/`
+- [x] Task: Extract Shared Types and Constants
+    - [x] Move `ListingFormData`, `ConditionChecklist`, and related interfaces to `types.ts`
+    - [x] Move `PHOTO_SLOTS`, `SA_LOCATIONS`, `STEPS`, and `DEFAULT_FORM_DATA` to `constants.ts`
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Setup & Consolidation' (Protocol in workflow.md)
+
+## Phase 2: Core Logic & Context Extraction [checkpoint: 396b97d]
+- [x] Task: Implement ListingWizardContext
+    - [x] Create `ListingWizardContext.tsx`
+    - [x] Define context state and update handlers
+    - [x] Create a `ListingWizardProvider` component
+- [x] Task: Extract useListingMedia Hook
+    - [x] Move Convex upload logic, preview handling, and cleanup logic into `hooks/useListingMedia.ts`
+    - [x] Ensure unit tests cover storage ID resolution and blob cleanup
+- [x] Task: Extract useListingForm Hook
+    - [x] Move step navigation, validation (`getStepError`), and field update logic into `hooks/useListingForm.ts`
+    - [x] Implement TDD: Verify validation logic in isolation
+- [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 2: Logic Extraction' (Protocol in workflow.md)
+
+## Phase 3: Component Decomposition [checkpoint: c7a0d27]
+- [x] Task: Create Step Components
+    - [x] Create `GeneralInfoStep.tsx`
+    - [x] Create `TechnicalSpecsStep.tsx`
+    - [x] Create `ConditionChecklistStep.tsx`
+    - [x] Create `MediaGalleryStep.tsx`
+    - [x] Create `PricingDurationStep.tsx`
+    - [x] Create `ReviewSubmitStep.tsx`
+- [x] Task: Create UI Utility Components
+    - [x] Create `StepIndicator.tsx` (Progress bar and step labels)
+    - [x] Create `WizardNavigation.tsx` (Previous/Next buttons)
+- [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 3: Decomposition' (Protocol in workflow.md)
+
+## Phase 4: Integration & Verification [checkpoint: 84281d0]
+- [x] Task: Reassemble ListingWizard
+    - [x] Update `ListingWizard.tsx` to use the `ListingWizardProvider` and sub-components
+    - [x] Reduce main component file size to < 150 lines
+- [x] Task: Final Verification
+    - [x] Run full test suite (`npm run test`)
+    - [x] Run production build (`npm run build`)
+    - [x] Perform manual end-to-end listing flow test
+- [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 4: Integration' (Protocol in workflow.md)

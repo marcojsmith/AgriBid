@@ -1,30 +1,106 @@
 // app/convex/auctions.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+
+interface RawImages {
+  front?: string;
+  engine?: string;
+  cabin?: string;
+  rear?: string;
+  additional?: string[];
+}
+
+async function resolveImageUrls(storage: QueryCtx["storage"], images: unknown) {
+  const resolveUrl = async (id: string | undefined) => {
+    if (!id) return undefined;
+    if (id.startsWith("http")) return id;
+    return (await storage.getUrl(id)) ?? undefined;
+  };
+
+  // Normalize legacy array format or non-object inputs
+  let normalizedImages: RawImages;
+  if (Array.isArray(images)) {
+    normalizedImages = { additional: images as string[] };
+  } else if (images && typeof images === "object") {
+    normalizedImages = images as RawImages;
+  } else {
+    normalizedImages = { additional: [] };
+  }
+
+  return {
+    ...normalizedImages,
+    front: await resolveUrl(normalizedImages.front),
+    engine: await resolveUrl(normalizedImages.engine),
+    cabin: await resolveUrl(normalizedImages.cabin),
+    rear: await resolveUrl(normalizedImages.rear),
+    additional: (await Promise.all(
+      (normalizedImages.additional || []).map(async (id: string) => 
+        id.startsWith("http") ? id : await storage.getUrl(id)
+      )
+    )).filter((url: string | null | undefined): url is string => !!url),
+  };
+}
+
+export const getPendingAuctions = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    const auctions = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "pending_review"))
+      .collect();
+
+    return await Promise.all(
+      auctions.map(async (auction) => ({
+        ...auction,
+        images: await resolveImageUrls(ctx.storage, auction.images),
+      }))
+    );
+  },
+});
 
 export const getActiveAuctions = query({
   args: { search: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    let auctions;
     if (args.search) {
-      return await ctx.db
+      auctions = await ctx.db
         .query("auctions")
         .withSearchIndex("search_title", (q) => 
           q.search("title", args.search!).eq("status", "active")
         )
         .collect();
+    } else {
+      auctions = await ctx.db
+        .query("auctions")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .collect();
     }
-    
-    return await ctx.db
-      .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+
+    return await Promise.all(
+      auctions.map(async (auction) => ({
+        ...auction,
+        images: await resolveImageUrls(ctx.storage, auction.images),
+      }))
+    );
   },
 });
 
 export const getAuctionById = query({
   args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.auctionId);
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) return null;
+
+    return {
+      ...auction,
+      images: await resolveImageUrls(ctx.storage, auction.images),
+    };
   },
 });
 
@@ -82,6 +158,14 @@ export const getSellerInfo = query({
   },
 });
 
+export const generateUploadUrl = mutation(async (ctx) => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Not authenticated");
+  }
+  return await ctx.storage.generateUploadUrl();
+});
+
 export const createAuction = mutation({
   args: {
     title: v.string(),
@@ -92,7 +176,14 @@ export const createAuction = mutation({
     location: v.string(),
     startingPrice: v.number(),
     reservePrice: v.number(),
-    images: v.array(v.string()),
+    durationDays: v.number(),
+    images: v.object({
+      front: v.optional(v.string()),
+      engine: v.optional(v.string()),
+      cabin: v.optional(v.string()),
+      rear: v.optional(v.string()),
+      additional: v.optional(v.array(v.string())),
+    }),
     conditionChecklist: v.object({
       engine: v.boolean(),
       hydraulics: v.boolean(),
@@ -108,14 +199,31 @@ export const createAuction = mutation({
     }
     const userId = identity.subject;
 
+    const { durationDays, ...restArgs } = args;
+
+    if (durationDays <= 0 || durationDays > 365) {
+      throw new Error("Invalid duration: must be between 1 and 365 days");
+    }
+
+    if (restArgs.images.additional && restArgs.images.additional.length > 6) {
+      throw new Error("Additional images limit exceeded (max 6)");
+    }
+
+    // Default additional to empty array if not provided (though validator requires it currently)
+    const images = {
+      ...restArgs.images,
+      additional: restArgs.images.additional || [],
+    };
+
     const auctionId = await ctx.db.insert("auctions", {
-      ...args,
+      ...restArgs,
+      images,
       sellerId: userId,
       status: "pending_review",
       currentPrice: args.startingPrice,
       minIncrement: args.startingPrice < 10000 ? 100 : 500,
       startTime: Date.now(), // Will be updated by admin upon approval
-      endTime: Date.now() + 7 * 24 * 60 * 60 * 1000, // Default 7 days
+      endTime: Date.now() + durationDays * 24 * 60 * 60 * 1000,
     });
 
     return auctionId;
@@ -156,6 +264,28 @@ export const approveAuction = mutation({
       status: "active",
       startTime,
       endTime,
+    });
+
+    return { success: true };
+  },
+});
+
+export const rejectAuction = mutation({
+  args: { auctionId: v.id("auctions") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) throw new Error("Auction not found");
+    if (auction.status !== "pending_review") {
+      throw new Error("Only auctions in pending_review can be rejected");
+    }
+
+    await ctx.db.patch(args.auctionId, {
+      status: "rejected", 
     });
 
     return { success: true };

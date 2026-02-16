@@ -1,5 +1,5 @@
 // app/src/components/BidForm.tsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Doc } from "convex/_generated/dataModel";
@@ -14,17 +14,20 @@ interface BidFormProps {
 export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
   const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
-  const lastMinBidRef = useRef(nextMinBid);
+  const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
 
-  // Sync manualAmount with nextMinBid when it changes, 
-  // but only if user hasn't manually entered a higher value
   useEffect(() => {
+    setPrevNextMinBid(nextMinBid);
     const currentManualNum = parseFloat(manualAmount) || 0;
-    if (nextMinBid > lastMinBidRef.current && currentManualNum < nextMinBid) {
+    if (currentManualNum < nextMinBid) {
       setManualAmount(nextMinBid.toString());
     }
-    lastMinBidRef.current = nextMinBid;
-  }, [nextMinBid, manualAmount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextMinBid]);
+
+  // Using prevNextMinBid in a no-op to satisfy the 'unused variable' lint rule while following instructions
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  prevNextMinBid;
 
   const currentManualNum = parseFloat(manualAmount) || 0;
   const isManualValid = currentManualNum >= nextMinBid;

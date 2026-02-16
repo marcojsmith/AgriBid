@@ -1,6 +1,36 @@
 // app/convex/seed.ts
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+
+async function checkDestructiveAccess(ctx: MutationCtx) {
+  const nodeEnv = process.env.NODE_ENV;
+  const vercelEnv = process.env.VERCEL_ENV;
+  const identity = await ctx.auth.getUserIdentity();
+  const isAdmin = identity?.role === "admin";
+
+  // Admin bypass: Admins are always allowed to perform destructive operations
+  if (isAdmin) return;
+
+  // SECURITY: Explicitly validate environment variables to prevent silent degradation.
+  // These variables must be set in the Convex dashboard or via CLI (e.g., npx convex env set NODE_ENV development).
+  if (nodeEnv === undefined && vercelEnv === undefined) {
+    throw new Error(
+      "Unauthorized: Deployment environment is indeterminate (NODE_ENV and VERCEL_ENV are undefined). " +
+      "Destructive operations are blocked for non-admins to prevent accidental data loss in production."
+    );
+  }
+
+  const isDev = nodeEnv === "development";
+  const isPreview = vercelEnv === "preview";
+
+  if (!isDev && !isPreview) {
+    throw new Error(
+      `Unauthorized: Destructive operations are only allowed in development or preview environments. ` +
+      `Current environment: ${nodeEnv || vercelEnv}.`
+    );
+  }
+}
 
 /**
  * Shared seeding logic for both local development and Vercel Previews.
@@ -12,22 +42,39 @@ import { mutation } from "./_generated/server";
 export const runSeed = mutation({
   args: {
     providedSeed: v.optional(v.string()),
+    clear: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // --- SECURITY GUARD ---
-    const isDev = process.env.NODE_ENV === "development";
-    const isPreview = process.env.VERCEL_ENV === "preview";
     const seedSecret = process.env.SEED_SECRET;
-    const identity = await ctx.auth.getUserIdentity();
-    const isAdmin = identity?.role === "admin";
-
-    // Allow if in dev/preview, or if caller is an admin, or if matching seedSecret is provided
     const isSecretMatch = seedSecret && args.providedSeed === seedSecret;
     
-    if (!isDev && !isPreview && !isAdmin && !isSecretMatch) {
-      throw new Error("Unauthorized: Seeding is only allowed in development, preview, or with valid authorization.");
+    if (!isSecretMatch) {
+      await checkDestructiveAccess(ctx);
     }
     // -----------------------
+
+    if (args.clear) {
+      const BATCH_SIZE = 500;
+      
+      const clearTable = async (tableName: "auctions" | "bids") => {
+        let deletedCount = 0;
+        while (true) {
+          const batch = await ctx.db.query(tableName).take(BATCH_SIZE);
+          if (batch.length === 0) break;
+          await Promise.all(batch.map(item => ctx.db.delete(item._id)));
+          deletedCount += batch.length;
+        }
+        return deletedCount;
+      };
+
+      const [auctionsCount, bidsCount] = await Promise.all([
+        clearTable("auctions"),
+        clearTable("bids")
+      ]);
+      
+      console.log(`Cleared ${auctionsCount} auctions and ${bidsCount} bids.`);
+    }
 
     // 1. Seed Equipment Metadata
     const metadataItems = [
@@ -62,9 +109,9 @@ export const runSeed = mutation({
     const mockSellerEmail = "mock-seller@farm.com";
     const mockSellerId = "mock-seller";
     
-    let seller = await ctx.db
+    const seller = await ctx.db
       .query("user")
-      .filter((q) => q.eq(q.field("email"), mockSellerEmail))
+      .withIndex("by_email", (q) => q.eq("email", mockSellerEmail))
       .first();
 
     if (!seller) {
@@ -80,11 +127,34 @@ export const runSeed = mutation({
       });
     }
 
+    // 2.5. Create Mock Admin User (Idempotent)
+    const mockAdminEmail = "admin@agribid.com";
+    const mockAdminId = "mock-admin";
+    
+    const admin = await ctx.db
+      .query("user")
+      .withIndex("by_email", (q) => q.eq("email", mockAdminEmail))
+      .first();
+
+    if (!admin) {
+      await ctx.db.insert("user", {
+        userId: mockAdminId,
+        email: mockAdminEmail,
+        name: "System Admin",
+        emailVerified: true,
+        role: "admin",
+        isVerified: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+
     // 3. Seed Mock Auctions
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     const mockAuctions = [
       {
+        seedId: "jd-8r-410",
         title: "John Deere 8R 410 — Row Crop Titan",
         make: "John Deere",
         model: "8R 410",
@@ -99,13 +169,15 @@ export const runSeed = mutation({
         endTime: now + 3 * oneDay,
         sellerId: mockSellerId,
         status: "active" as const,
-        images: [
-          "https://www.deere.com/assets/images/region-4/products/tractors/row-crop-tractors/8r-8rt-row-crop-tractors/8r-410/8r_410_r4f063847_large_660c917945cea0af3aeb242ddf4c52b9540ef7cc.jpg",
-          "https://photos.machinefinder.com/06/10805006/70729678_large.jpg",
-          "https://www.deere.asia/assets/images/region-2/products/tractors/large/8r-series/2_8r410_joskin_slurrytank_dsc2539_large_large_7a4506d66221ef20112cf11f13bf7ffc898ffec6.jpg"
-        ],
+        images: {
+          front: "https://www.deere.com/assets/images/region-4/products/tractors/row-crop-tractors/8r-8rt-row-crop-tractors/8r-410/8r_410_r4f063847_large_660c917945cea0af3aeb242ddf4c52b9540ef7cc.jpg",
+          engine: "https://photos.machinefinder.com/06/10805006/70729678_large.jpg",
+          cabin: "https://www.deere.asia/assets/images/region-2/products/tractors/large/8r-series/2_8r410_joskin_slurrytank_dsc2539_large_large_7a4506d66221ef20112cf11f13bf7ffc898ffec6.jpg",
+          additional: []
+        },
       },
       {
+        seedId: "case-magnum-380",
         title: "Case IH Magnum 380 — Prairie Powerhouse",
         make: "Case IH",
         model: "Magnum 380",
@@ -120,13 +192,15 @@ export const runSeed = mutation({
         endTime: now + 4 * oneDay,
         sellerId: mockSellerId,
         status: "active" as const,
-        images: [
-          "https://titanmachinery.bg/media/stenik_article/article/cache/2/image/9df78eab33525d08d6e5fb8d27136e95/1/4/14228766973.jpg",
-          "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/a74b2445b23f440bacd99ab8eaf177cc?v=abc51e43",
-          "https://www.lectura-specs.com/models/renamed/orig/4wd-tractors-magnum-380-cvxdrive-case-ih.jpg"
-        ],
+        images: {
+          front: "https://titanmachinery.bg/media/stenik_article/article/cache/2/image/9df78eab33525d08d6e5fb8d27136e95/1/4/14228766973.jpg",
+          engine: "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/a74b2445b23f440bacd99ab8eaf177cc?v=abc51e43",
+          cabin: "https://www.lectura-specs.com/models/renamed/orig/4wd-tractors-magnum-380-cvxdrive-case-ih.jpg",
+          additional: []
+        },
       },
       {
+        seedId: "nh-t7-315",
         title: "New Holland T7.315 — Blue Diamond",
         make: "New Holland",
         model: "T7.315",
@@ -141,13 +215,15 @@ export const runSeed = mutation({
         endTime: now + 5 * oneDay,
         sellerId: mockSellerId,
         status: "active" as const,
-        images: [
-          "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/8938fcb66b3a4f48abced368ef3e49ae?v=8416d11a&t=size1100",
-          "https://rollinsmachinery.com/wp-content/uploads/2024/02/Right-Side-T7.315.jpg",
-          "https://www.worldtractors.co.uk/wp-content/uploads/2025/03/IMG_0131-scaled.jpeg"
-        ],
+        images: {
+          front: "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/8938fcb66b3a4f48abced368ef3e49ae?v=8416d11a&t=size1100",
+          engine: "https://rollinsmachinery.com/wp-content/uploads/2024/02/Right-Side-T7.315.jpg",
+          cabin: "https://www.worldtractors.co.uk/wp-content/uploads/2025/03/IMG_0131-scaled.jpeg",
+          additional: []
+        },
       },
       {
+        seedId: "mf-8s-305",
         title: "Massey Ferguson 8S.305 — Crimson Legend",
         make: "Massey Ferguson",
         model: "8S.305",
@@ -162,13 +238,15 @@ export const runSeed = mutation({
         endTime: now + 2 * oneDay,
         sellerId: mockSellerId,
         status: "active" as const,
-        images: [
-          "https://www.scotagri.com/media/bz5dn5hz/image001-33.jpg",
-          "https://ik.imagekit.io/efarm/images/f1e19830-278d-4d3c-894b-18101ec963ec.jpg?tr=w-600%2Cl-image%2Ci-%40%40website-machine-images-watermarks%40%40watermark_DZDDMXPYs_M9F2mQxfH.png%2Clx-6%2Cly-6%2Cw-90%2Cl-end",
-          "https://heavyequipmentspecs.s3.amazonaws.com/tractors/massey-ferguson-8s.305/massey-ferguson-8s.305_1.jpg"
-        ],
+        images: {
+          front: "https://www.scotagri.com/media/bz5dn5hz/image001-33.jpg",
+          engine: "https://ik.imagekit.io/efarm/images/f1e19830-278d-4d3c-894b-18101ec963ec.jpg?tr=w-600%2Cl-image%2Ci-%40%40website-machine-images-watermarks%40%40watermark_DZDDMXPYs_M9F2mQxfH.png%2Clx-6%2Cly-6%2Cw-90%2Cl-end",
+          cabin: "https://heavyequipmentspecs.s3.amazonaws.com/tractors/massey-ferguson-8s.305/massey-ferguson-8s.305_1.jpg",
+          additional: []
+        },
       },
       {
+        seedId: "fendt-1050",
         title: "Fendt 1050 Vario — German Precision",
         make: "Fendt",
         model: "1050 Vario",
@@ -183,25 +261,50 @@ export const runSeed = mutation({
         endTime: now + 6 * oneDay,
         sellerId: mockSellerId,
         status: "active" as const,
-        images: [
-          "https://www.fendt.com/int/images/60cc414b69b3411a3a4b5114_1623998796_web_en.png",
-          "https://cdn.gebrauchtmaschinen.de/data/listing/img/vga/ms/97/53/16247668-01.jpg?v=1717573999",
-          "https://media.sandhills.com/img.axd?id=9026328987&wid=4326185391&rwl=False&p=&ext=&w=350&h=220&t=&lp=&c=True&wt=False&sz=Cover&rt=0&checksum=42ysNVTRQ48SZVTD4%2BotMVL9yMULXnb1mnh8ao7tBzk%3D"
-        ],
+        images: {
+          front: "https://www.fendt.com/int/images/60cc414b69b3411a3a4b5114_1623998796_web_en.png",
+          engine: "https://cdn.gebrauchtmaschinen.de/data/listing/img/vga/ms/97/53/16247668-01.jpg?v=1717573999",
+          cabin: "https://media.sandhills.com/img.axd?id=9026328987&wid=4326185391&rwl=False&p=&ext=&w=350&h=220&t=&lp=&c=True&wt=False&sz=Cover&rt=0&checksum=42ysNVTRQ48SZVTD4%2BotMVL9yMULXnb1mnh8ao7tBzk%3D",
+          additional: []
+        },
       }
     ];
 
     for (const auction of mockAuctions) {
       const existing = await ctx.db
         .query("auctions")
-        .filter((q) => q.eq(q.field("title"), auction.title))
+        .withIndex("by_seedId", (q) => q.eq("seedId", auction.seedId))
         .first();
       
       if (!existing) {
         await ctx.db.insert("auctions", auction);
+      } else {
+        await ctx.db.patch(existing._id, auction);
       }
     }
 
     console.log("Seeding completed successfully.");
+  },
+});
+
+export const clearAuctions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await checkDestructiveAccess(ctx);
+
+    const auctions = await ctx.db.query("auctions").collect();
+    const auctionsCount = auctions.length;
+    
+    // Delete auctions and their bids in parallel
+    await Promise.all(auctions.flatMap(a => [
+      ctx.db.delete(a._id),
+      // Also find and delete all bids for this auction
+      ctx.db.query("bids")
+        .withIndex("by_auction", (q) => q.eq("auctionId", a._id))
+        .collect()
+        .then(bids => Promise.all(bids.map(b => ctx.db.delete(b._id))))
+    ]));
+
+    return auctionsCount;
   },
 });

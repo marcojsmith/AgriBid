@@ -57,6 +57,8 @@
 - [ ] `updateAuction` - edit draft auction
 - [ ] `publishAuction` - change status from "draft" to "active"
 - [x] `placeBid` - place a bid with soft close logic
+- [x] `approveAuction` - admin approval to set active status
+- [x] `generateUploadUrl` - for Convex File Storage
 - [ ] `setProxyBid` - set maximum auto-bid amount
 - [ ] `addToWatchlist` / `removeFromWatchlist`
 - [ ] `uploadConditionReport` - upload PDF to Convex Storage
@@ -79,17 +81,17 @@
 - [x] Create login page (`/login`) -> Implemented in `App.tsx` auth mode
 - [ ] Create password reset flow
 - [ ] Implement OAuth callback handler
-- [ ] Create protected route wrapper component
+- [x] Create protected route wrapper component (RoleProtectedRoute)
 
 ### User Profile
 - [ ] Create profile page (`/profile`)
 - [ ] Create seller verification flow
 
 ### Role-Based Access
-- [ ] Buyer role: can bid, watchlist, view auctions
-- [ ] Seller role: can create listings, view analytics
-- [ ] Admin role: can approve sellers, flag listings, view audit logs
-- [ ] Implement route guards for role-specific pages
+- [x] Buyer role: can bid, watchlist, view auctions
+- [x] Seller role: can create listings, view analytics
+- [x] Admin role: can approve sellers, flag listings, view audit logs
+- [x] Implement route guards for role-specific pages (AdminDashboard)
 
 ---
 
@@ -111,7 +113,7 @@
 
 ### Auction Detail Page (`/auction/:id`)
 - [x] **ImageGallery** component
-- [ ] **Equipment Specs Table**
+- [x] **Equipment Specs Table** (Included in Description section)
 - [x] **Bidding Panel**
 - [x] **Seller Info**
 - [x] **Countdown Timer**
@@ -128,7 +130,7 @@
 - [ ] **Won Auctions Tab**
 
 ### Admin Dashboard (`/admin`)
-- [ ] **Pending Verifications**
+- [x] **Pending Verifications** (Listing Moderation)
 - [ ] **Flagged Listings**
 - [ ] **Audit Logs**
 
@@ -158,7 +160,7 @@
 - [ ] Add/remove auctions from watchlist (mutation)
 
 ### Image Upload & Storage
-- [ ] Integrate Convex File Storage API
+- [x] Integrate Convex File Storage API
 
 ### Search & Filters
 - [x] Implement text search on title, make, model

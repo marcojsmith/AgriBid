@@ -1,0 +1,8 @@
+{
+  "track_id": "listing_storage_20260215",
+  "type": "feature",
+  "status": "completed",
+  "created_at": "2026-02-15T18:15:00Z",
+  "updated_at": "2026-02-15T18:15:00Z",
+  "description": "Implement the multi-step seller listing flow and integrate Convex File Storage for machinery images."
+}

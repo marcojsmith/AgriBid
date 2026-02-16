@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { ConvexProvider, ConvexReactClient } from "convex/react"
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react"
 import { authClient } from "./lib/auth-client"
+import { Toaster } from "sonner"
 import './index.css'
 import App from './App.tsx'
 
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')!).render(
     <ConvexProvider client={convex}>
       <ConvexBetterAuthProvider client={convex} authClient={authClient}>
         <App />
+        <Toaster position="top-center" richColors />
       </ConvexBetterAuthProvider>
     </ConvexProvider>
   </StrictMode>,
