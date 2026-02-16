@@ -16,6 +16,11 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
   const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
   const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
 
+  /**
+   * Sync manualAmount with nextMinBid whenever the current price updates.
+   * This ensures the user always starts with a valid minimum bid amount,
+   * but doesn't clobber their input if they've already typed a higher value.
+   */
   useEffect(() => {
     setPrevNextMinBid(nextMinBid);
     const currentManualNum = parseFloat(manualAmount) || 0;

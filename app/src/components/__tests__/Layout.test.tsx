@@ -12,6 +12,19 @@ vi.mock('../Footer', () => ({
   Footer: () => <footer data-testid="mock-footer">Footer</footer>
 }));
 
+// Mock Convex hooks for NotificationListener inside Layout
+vi.mock('convex/react', () => ({
+  useQuery: vi.fn(() => []),
+  useMutation: vi.fn(),
+  Authenticated: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Unauthenticated: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+// Mock auth client for NotificationListener
+vi.mock('../../lib/auth-client', () => ({
+  useSession: vi.fn(() => ({ data: null, isPending: false })),
+}));
+
 describe('Layout', () => {
   it('renders children and includes Header and Footer', () => {
     render(
