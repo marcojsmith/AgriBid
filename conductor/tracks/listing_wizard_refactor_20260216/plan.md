@@ -9,7 +9,7 @@
     - [x] Move `PHOTO_SLOTS`, `SA_LOCATIONS`, `STEPS`, and `DEFAULT_FORM_DATA` to `constants.ts`
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Setup & Consolidation' (Protocol in workflow.md)
 
-## Phase 2: Core Logic & Context Extraction
+## Phase 2: Core Logic & Context Extraction [checkpoint: 396b97d]
 - [x] Task: Implement ListingWizardContext
     - [x] Create `ListingWizardContext.tsx`
     - [x] Define context state and update handlers
@@ -20,7 +20,7 @@
 - [x] Task: Extract useListingForm Hook
     - [x] Move step navigation, validation (`getStepError`), and field update logic into `hooks/useListingForm.ts`
     - [x] Implement TDD: Verify validation logic in isolation
-- [ ] Task: Conductor - Manual Verification using Chromedevtools 'Phase 2: Logic Extraction' (Protocol in workflow.md)
+- [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 2: Logic Extraction' (Protocol in workflow.md)
 
 ## Phase 3: Component Decomposition
 - [ ] Task: Create Step Components
