@@ -1,9 +1,9 @@
 // app/src/components/ListingWizard.tsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, ChevronLeft, Save, Search, Check, AlertCircle, Info, TrendingUp, Camera, X, CheckCircle2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, Save, Search, Check, AlertCircle, Info, TrendingUp, Camera, X, CheckCircle2, Plus } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,8 @@ const STEPS = [
   "Technical Specifications",
   "Condition Checklist",
   "Media Gallery",
-  "Pricing & Strategy",
+  "Pricing & Duration",
+  "Review & Submit",
 ];
 
 const PHOTO_SLOTS = [
@@ -41,9 +42,16 @@ interface ListingFormData {
   operatingHours: number;
   title: string;
   conditionChecklist: ConditionChecklist;
-  images: Record<string, string>; // Slot ID -> Image URL
+  images: {
+    front?: string;
+    engine?: string;
+    cabin?: string;
+    rear?: string;
+    additional: string[];
+  };
   startingPrice: number;
   reservePrice: number;
+  durationDays: number;
 }
 
 const DEFAULT_FORM_DATA: ListingFormData = {
@@ -60,29 +68,57 @@ const DEFAULT_FORM_DATA: ListingFormData = {
     serviceHistory: null,
     notes: "",
   },
-  images: {},
+  images: {
+    additional: [],
+  },
   startingPrice: 0,
   reservePrice: 0,
+  durationDays: 7,
 };
+
+const SA_LOCATIONS = [
+  "Johannesburg, ZA", "Cape Town, ZA", "Durban, ZA", "Pretoria, ZA", "Port Elizabeth, ZA",
+  "Bloemfontein, ZA", "East London, ZA", "Sandton, ZA", "Soweto, ZA", "Polokwane, ZA",
+  "Nelspruit, ZA", "Kimberley, ZA", "George, ZA", "Pietermaritzburg, ZA", "Paarl, ZA",
+  "Gaborone, BW", "Windhoek, NA", "Maputo, MZ", "Harare, ZW", "Maseru, LS", "Mbabane, SZ"
+].sort();
 
 export const ListingWizard = () => {
   const metadata = useQuery(api.auctions.getEquipmentMetadata);
   const createAuction = useMutation(api.auctions.createAuction);
+  const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
+  
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+
   const [formData, setFormData] = useState<ListingFormData>(() => {
     const saved = localStorage.getItem("agribid_listing_draft");
     if (!saved) return DEFAULT_FORM_DATA;
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Basic migration/validation: if images is an array or missing 'additional', reset
+      if (Array.isArray(parsed.images) || !parsed.images?.additional) {
+        return DEFAULT_FORM_DATA;
+      }
+      return parsed;
     } catch (e) {
       console.error("Failed to parse listing draft", e);
       localStorage.removeItem("agribid_listing_draft");
       return DEFAULT_FORM_DATA;
     }
   });
+
+  const filteredLocations = useMemo(() => 
+    SA_LOCATIONS.filter(loc => 
+      loc.toLowerCase().includes(formData.location.toLowerCase()) && 
+      formData.location.length > 1
+    ),
+    [formData.location]
+  );
 
   const imagesRef = useRef(formData.images);
   useEffect(() => {
@@ -91,13 +127,25 @@ export const ListingWizard = () => {
 
   useEffect(() => {
     return () => {
-      Object.values(imagesRef.current).forEach(url => {
-        if (url.startsWith("blob:")) {
+      // Defensive cleanup for blob URLs
+      const images = imagesRef.current;
+      if (!images || typeof images !== 'object' || Array.isArray(images)) return;
+      
+      const { additional, ...slots } = images;
+      const allUrls = [...Object.values(slots), ...(additional || [])];
+      
+      allUrls.forEach(url => {
+        if (typeof url === "string" && url.startsWith("blob:")) {
           URL.revokeObjectURL(url);
         }
       });
+
+      // Also cleanup local previews
+      Object.values(previews).forEach(url => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
     };
-  }, []);
+  }, [previews]);
 
   useEffect(() => {
     localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
@@ -126,92 +174,178 @@ export const ListingWizard = () => {
     }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, slotId: string) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, slotId: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Revoke previous URL if it exists to avoid memory leaks
-    const prevUrl = formData.images[slotId];
-    if (prevUrl && prevUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(prevUrl);
+    // Create local preview immediately
+    const blobUrl = URL.createObjectURL(file);
+    if (slotId !== "additional") {
+      setPreviews(prev => ({ ...prev, [slotId]: blobUrl }));
     }
 
-    // For the prototype, we'll use a local object URL to show the image
-    const imageUrl = URL.createObjectURL(file);
-    
-    setFormData(prev => ({
-      ...prev,
-      images: {
-        ...prev.images,
-        [slotId]: imageUrl
+    try {
+      setUploadingSlot(slotId);
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!result.ok) {
+        throw new Error(`Upload failed: ${result.statusText}`);
       }
-    }));
-    toast.success(`${slotId.toUpperCase()} photo added to listing`);
+
+      const { storageId } = await result.json();
+
+      setFormData(prev => {
+        const currentImages = prev.images || { additional: [] };
+        if (slotId === "additional") {
+          return {
+            ...prev,
+            images: {
+              ...currentImages,
+              additional: [...(currentImages.additional || []), storageId]
+            }
+          };
+        }
+        return {
+          ...prev,
+          images: {
+            ...currentImages,
+            [slotId]: storageId
+          }
+        };
+      });
+
+      // For additional photos, we track previews by storageId after upload
+      if (slotId === "additional") {
+        setPreviews(prev => ({ ...prev, [storageId]: blobUrl }));
+      }
+
+      toast.success(`${slotId.toUpperCase()} photo uploaded`);
+    } catch (error) {
+      console.error(error);
+      URL.revokeObjectURL(blobUrl);
+      if (slotId !== "additional") {
+        setPreviews(prev => {
+          const next = { ...prev };
+          delete next[slotId];
+          return next;
+        });
+      }
+      toast.error("Upload failed");
+    } finally {
+      setUploadingSlot(null);
+    }
   };
 
-  const removeImage = (slotId: string) => {
-    const url = formData.images[slotId];
-    if (url && url.startsWith("blob:")) {
-      URL.revokeObjectURL(url);
-    }
-    
+  const removeImage = (slotId: string, index?: number) => {
     setFormData(prev => {
       const newImages = { ...prev.images };
-      delete newImages[slotId];
+      if (slotId === "additional" && typeof index === "number") {
+        const storageId = newImages.additional[index];
+        newImages.additional = newImages.additional.filter((_, i) => i !== index);
+        
+        // Cleanup preview
+        setPreviews(prevP => {
+          const next = { ...prevP };
+          if (next[storageId]) {
+            URL.revokeObjectURL(next[storageId]);
+            delete next[storageId];
+          }
+          return next;
+        });
+      } else {
+        const key = slotId as keyof Omit<ListingFormData["images"], "additional">;
+        delete newImages[key];
+
+        // Cleanup preview
+        setPreviews(prevP => {
+          const next = { ...prevP };
+          if (next[slotId]) {
+            URL.revokeObjectURL(next[slotId]);
+            delete next[slotId];
+          }
+          return next;
+        });
+      }
       return { ...prev, images: newImages };
     });
   };
 
-  const validateStep = (step: number) => {
+  const getStepError = (step: number): string | null => {
     switch (step) {
       case 0:
-        return formData.year > 1900 && formData.location.length > 2 && formData.title.length > 5;
+        if (formData.year <= 1900) return "Please enter a valid manufacturing year.";
+        if (formData.location.length <= 2) return "Please enter a valid location.";
+        if (formData.title.length <= 5) return "Please enter a more descriptive title.";
+        return null;
       case 1:
-        return !!formData.make && !!formData.model;
+        if (!formData.make) return "Please select a manufacturer.";
+        if (!formData.model) return "Please select a model.";
+        return null;
       case 2:
-        return formData.conditionChecklist.engine !== null &&
-               formData.conditionChecklist.hydraulics !== null &&
-               formData.conditionChecklist.tires !== null &&
-               formData.conditionChecklist.serviceHistory !== null;
-      case 3:
-        return Object.keys(formData.images).length > 0;
+        if (formData.conditionChecklist.engine === null) return "Please specify the engine condition.";
+        if (formData.conditionChecklist.hydraulics === null) return "Please specify the hydraulics condition.";
+        if (formData.conditionChecklist.tires === null) return "Please specify the tires condition.";
+        if (formData.conditionChecklist.serviceHistory === null) return "Please specify the service history.";
+        return null;
+      case 3: {
+        const { additional, ...slots } = formData.images;
+        const hasImages = Object.values(slots).some(Boolean) || (additional && additional.length > 0);
+        return hasImages ? null : "Please upload at least one photo of the equipment.";
+      }
       case 4:
-        return formData.startingPrice > 0 &&
-               (formData.reservePrice === 0 || formData.reservePrice >= formData.startingPrice);
+        if (formData.startingPrice <= 0) return "Starting price must be greater than R 0.";
+        if (formData.reservePrice !== 0 && formData.reservePrice < formData.startingPrice) {
+          return "Reserve price cannot be lower than the starting price.";
+        }
+        if (formData.durationDays <= 0) return "Please select an auction duration.";
+        return null;
       default:
-        return true;
+        return null;
     }
   };
 
   const next = () => {
-    if (validateStep(currentStep)) {
+    const error = getStepError(currentStep);
+    if (!error) {
       setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
     } else {
-      toast.error("Please complete all required fields in this step.");
+      toast.error(error);
     }
   };
   
   const prev = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
 
   const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return;
+    const error = getStepError(currentStep);
+    if (error) {
+      toast.error(error);
+      return;
+    }
     
     setIsSubmitting(true);
     try {
-      // Convert images Record to Array for the backend schema
-      const imagesArray = PHOTO_SLOTS
-        .map(slot => formData.images[slot.id])
-        .filter(Boolean);
-
       await createAuction({
-        ...formData,
-        images: imagesArray,
+        title: formData.title,
+        make: formData.make,
+        model: formData.model,
+        year: formData.year,
+        operatingHours: formData.operatingHours,
+        location: formData.location,
+        startingPrice: formData.startingPrice,
+        reservePrice: formData.reservePrice,
+        images: formData.images,
+        durationDays: formData.durationDays,
         conditionChecklist: {
-          ...formData.conditionChecklist,
           engine: formData.conditionChecklist.engine ?? false,
           hydraulics: formData.conditionChecklist.hydraulics ?? false,
           tires: formData.conditionChecklist.tires ?? false,
           serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
+          notes: formData.conditionChecklist.notes,
         }
       });
       
@@ -224,6 +358,107 @@ export const ListingWizard = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const renderReviewStep = () => {
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="bg-primary/5 border-2 border-primary/10 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Info className="h-5 w-5 text-primary" />
+            <h3 className="font-black uppercase tracking-tight">Listing Summary</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground">Title</p>
+                <p className="font-bold">{formData.title}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Make/Model</p>
+                  <p className="font-bold">{formData.make} {formData.model}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Year</p>
+                  <p className="font-bold">{formData.year}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Hours</p>
+                  <p className="font-bold">{formData.operatingHours} hrs</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Location</p>
+                  <p className="font-bold">{formData.location}</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Starting Price</p>
+                  <p className="font-bold text-primary">R {formData.startingPrice.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Reserve Price</p>
+                  <p className="font-bold">R {formData.reservePrice.toLocaleString()}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground">Duration</p>
+                <p className="font-bold">{formData.durationDays} Days</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground">Condition Checklist</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {Object.entries(formData.conditionChecklist).map(([key, value]) => {
+                    if (key === "notes" || value === null) return null;
+                    return (
+                      <Badge key={key} variant={value ? "default" : "destructive"} className="uppercase text-[9px] font-black">
+                        {key}: {value ? "YES" : "NO"}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <p className="text-[10px] font-black uppercase text-muted-foreground ml-1">Media Gallery Preview</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {PHOTO_SLOTS.map(slot => {
+              const storageId = formData.images[slot.id as keyof Omit<ListingFormData["images"], "additional">];
+              const previewUrl = previews[slot.id] || (storageId?.startsWith("http") ? storageId : null);
+              
+              return (
+                <div key={slot.id} className="aspect-video rounded-xl border-2 overflow-hidden bg-muted relative group shadow-sm">
+                  {storageId ? (
+                    <div className="w-full h-full flex items-center justify-center bg-primary/5">
+                      {previewUrl ? (
+                        <img src={previewUrl} alt={slot.label} className="w-full h-full object-cover" />
+                      ) : (
+                        <CheckCircle2 className="h-8 w-8 text-primary/40" />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center opacity-20">
+                      <Camera className="h-6 w-6" />
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[8px] font-black uppercase p-1.5 text-center backdrop-blur-sm">
+                    {slot.label}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (isSuccess) {
@@ -269,28 +504,52 @@ export const ListingWizard = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-muted-foreground ml-1">Manufacturing Year</label>
+                <label htmlFor="year" className="text-xs font-black uppercase text-muted-foreground ml-1">Manufacturing Year</label>
                 <Input 
+                  id="year"
                   type="number" 
-                  value={formData.year} 
+                  inputMode="numeric"
+                  value={formData.year || ""} 
                   onChange={(e) => updateField("year", parseInt(e.target.value) || 0)}
-                  placeholder="e.g. 2023"
+                  placeholder={`e.g. ${new Date().getFullYear()}`}
                   className="h-12 border-2 rounded-xl"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-muted-foreground ml-1">Location (Area Code)</label>
+              <div className="space-y-2 relative">
+                <label htmlFor="location" className="text-xs font-black uppercase text-muted-foreground ml-1">Location (Town / City / Country)</label>
                 <Input 
+                  id="location"
                   value={formData.location} 
-                  onChange={(e) => updateField("location", e.target.value)}
-                  placeholder="e.g. PE11 2AA"
+                  onChange={(e) => {
+                    updateField("location", e.target.value);
+                    setShowLocationSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
+                  placeholder="e.g. Johannesburg, ZA or Gaborone, BW"
                   className="h-12 border-2 rounded-xl"
                 />
+                {showLocationSuggestions && filteredLocations.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-card border-2 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                    {filteredLocations.map(loc => (
+                      <button
+                        key={loc}
+                        className="w-full px-4 py-3 text-left hover:bg-primary/10 font-bold text-sm border-b last:border-0 transition-colors"
+                        onClick={() => {
+                          updateField("location", loc);
+                          setShowLocationSuggestions(false);
+                        }}
+                      >
+                        {loc}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase text-muted-foreground ml-1">Listing Title</label>
+              <label htmlFor="title" className="text-xs font-black uppercase text-muted-foreground ml-1">Listing Title</label>
               <Input 
+                id="title"
                 value={formData.title} 
                 onChange={(e) => updateField("title", e.target.value)}
                 placeholder="e.g. 2023 John Deere 6155R Premium"
@@ -301,10 +560,12 @@ export const ListingWizard = () => {
               </p>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase text-muted-foreground ml-1">Operating Hours</label>
+              <label htmlFor="hours" className="text-xs font-black uppercase text-muted-foreground ml-1">Operating Hours</label>
               <Input 
+                id="hours"
                 type="number" 
-                value={formData.operatingHours} 
+                inputMode="numeric"
+                value={formData.operatingHours || ""} 
                 onChange={(e) => updateField("operatingHours", parseInt(e.target.value) || 0)}
                 placeholder="e.g. 1200"
                 className="h-12 border-2 rounded-xl"
@@ -313,24 +574,27 @@ export const ListingWizard = () => {
           </div>
         );
       case 1: {
-        const selectedMake = metadata?.find((m: { make: string }) => m.make === formData.make);
+        const uniqueMakes = Array.from(new Set(metadata?.map((m) => m.make))).sort();
+        const selectedMakeData = metadata?.filter((m) => m.make === formData.make);
+        const availableModels = Array.from(new Set(selectedMakeData?.flatMap((m) => m.models))).sort();
+
         return (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="space-y-4">
               <label className="text-xs font-black uppercase text-muted-foreground ml-1">Select Manufacturer</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {metadata?.map((item: { make: string }) => (
+                {uniqueMakes.map((make) => (
                   <Button
-                    key={item.make}
-                    variant={formData.make === item.make ? "default" : "outline"}
+                    key={make}
+                    variant={formData.make === make ? "default" : "outline"}
                     onClick={() => {
-                      updateField("make", item.make);
+                      updateField("make", make);
                       updateField("model", ""); 
                     }}
                     className="h-12 font-bold rounded-xl border-2 transition-all"
                   >
-                    {item.make}
-                    {formData.make === item.make && <Check className="ml-2 h-4 w-4" />}
+                    {make}
+                    {formData.make === make && <Check className="ml-2 h-4 w-4" />}
                   </Button>
                 ))}
               </div>
@@ -340,7 +604,7 @@ export const ListingWizard = () => {
               <div className="space-y-4 pt-4 border-t border-dashed">
                 <label className="text-xs font-black uppercase text-muted-foreground ml-1">Select Model</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {selectedMake?.models.map((model: string) => (
+                  {availableModels.map((model) => (
                     <Button
                       key={model}
                       variant={formData.model === model ? "default" : "outline"}
@@ -426,19 +690,26 @@ export const ListingWizard = () => {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {PHOTO_SLOTS.map((slot) => {
-                const imageUrl = formData.images[slot.id];
+                const storageId = formData.images[slot.id as keyof Omit<ListingFormData["images"], "additional">];
+                const previewUrl = previews[slot.id] || (storageId?.startsWith("http") ? storageId : null);
                 
                 return (
                   <div 
                     key={slot.id} 
                     className={cn(
                       "relative group aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-4 transition-all overflow-hidden",
-                      imageUrl ? "border-primary/40 bg-muted" : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"
+                      storageId ? "border-primary/40 bg-muted" : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"
                     )}
                   >
-                    {imageUrl ? (
+                    {storageId ? (
                       <>
-                        <img src={imageUrl} alt={slot.label} className="absolute inset-0 w-full h-full object-cover" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-primary/5">
+                          {previewUrl ? (
+                            <img src={previewUrl} alt={slot.label} className="w-full h-full object-cover" />
+                          ) : (
+                            <CheckCircle2 className="h-12 w-12 text-primary/40" />
+                          )}
+                        </div>
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button 
                             variant="destructive" 
@@ -450,9 +721,9 @@ export const ListingWizard = () => {
                             Remove
                           </Button>
                         </div>
-                        <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                        <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
                           <Check className="h-3 w-3 text-green-600" />
-                          {slot.label}
+                          {slot.label} (UPLOADED)
                         </div>
                       </>
                     ) : (
@@ -463,16 +734,26 @@ export const ListingWizard = () => {
                           className="hidden"
                           id={`file-upload-${slot.id}`}
                           onChange={(e) => handleImageUpload(e, slot.id)}
+                          disabled={!!uploadingSlot}
                         />
                         <label 
                           htmlFor={`file-upload-${slot.id}`}
-                          className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer outline-none"
+                          className={cn(
+                            "w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer outline-none",
+                            uploadingSlot === slot.id && "animate-pulse"
+                          )}
                         >
                           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Camera className="h-6 w-6 text-primary" />
+                            {uploadingSlot === slot.id ? (
+                              <TrendingUp className="h-6 w-6 text-primary" />
+                            ) : (
+                              <Camera className="h-6 w-6 text-primary" />
+                            )}
                           </div>
                           <div className="text-center">
-                            <p className="text-sm font-black uppercase tracking-tight">{slot.label}</p>
+                            <p className="text-sm font-black uppercase tracking-tight">
+                              {uploadingSlot === slot.id ? "Uploading..." : slot.label}
+                            </p>
                             <p className="text-[10px] text-muted-foreground font-medium uppercase">{slot.desc}</p>
                           </div>
                         </label>
@@ -482,15 +763,62 @@ export const ListingWizard = () => {
                 );
               })}
             </div>
-            
-            {Object.keys(formData.images).length < PHOTO_SLOTS.length && (
-              <div className="bg-primary/5 p-4 rounded-xl flex items-center gap-3 border border-primary/10">
-                <Info className="h-5 w-5 text-primary shrink-0" />
-                <p className="text-[10px] font-black uppercase tracking-wide text-primary">
-                  Upload {PHOTO_SLOTS.length - Object.keys(formData.images).length} more photos to provide the best detail for buyers.
-                </p>
+
+            <div className="space-y-4">
+              <label className="text-xs font-black uppercase text-muted-foreground ml-1">Additional Photos (Optional)</label>
+              <div className="flex flex-wrap gap-4">
+                {formData.images.additional.map((id, index) => {
+                  const previewUrl = previews[id] || (id.startsWith("http") ? id : null);
+                  return (
+                    <div key={id} className="relative h-24 w-24 rounded-xl border-2 border-primary/20 bg-primary/5 flex items-center justify-center group overflow-hidden">
+                      {previewUrl ? (
+                        <img src={previewUrl} alt={`Additional ${index + 1}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <CheckCircle2 className="h-8 w-8 text-primary/40" />
+                      )}
+                      <button 
+                        onClick={() => removeImage("additional", index)}
+                        className="absolute -top-1 -right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+                {formData.images.additional.length < 6 && (
+                  <div className="relative h-24 w-24 rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5 transition-all">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      id="file-upload-additional"
+                      onChange={(e) => handleImageUpload(e, "additional")}
+                      disabled={!!uploadingSlot}
+                    />
+                    <label 
+                      htmlFor="file-upload-additional"
+                      className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {uploadingSlot === "additional" ? (
+                        <TrendingUp className="h-5 w-5 text-primary animate-pulse" />
+                      ) : (
+                        <>
+                          <Plus className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-[8px] font-bold uppercase">Add Photo</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+            
+            <div className="bg-primary/5 p-4 rounded-xl flex items-center gap-3 border border-primary/10">
+              <Info className="h-5 w-5 text-primary shrink-0" />
+              <p className="text-[10px] font-black uppercase tracking-wide text-primary">
+                Required: At least one photo. Recommended: Front, Engine, Cabin, Rear. Clear photos increase trust.
+              </p>
+            </div>
           </div>
         );
       case 4:
@@ -504,7 +832,8 @@ export const ListingWizard = () => {
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-lg">R</span>
                     <Input 
                       type="number" 
-                      value={formData.startingPrice} 
+                      inputMode="numeric"
+                      value={formData.startingPrice || ""} 
                       onChange={(e) => updateField("startingPrice", parseInt(e.target.value) || 0)}
                       className="h-14 pl-10 text-xl font-black rounded-xl border-2"
                     />
@@ -520,7 +849,8 @@ export const ListingWizard = () => {
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-lg">R</span>
                     <Input 
                       type="number" 
-                      value={formData.reservePrice} 
+                      inputMode="numeric"
+                      value={formData.reservePrice || ""} 
                       onChange={(e) => updateField("reservePrice", parseInt(e.target.value) || 0)}
                       className="h-14 pl-10 text-xl font-black rounded-xl border-2 border-primary/20"
                     />
@@ -528,6 +858,22 @@ export const ListingWizard = () => {
                   <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
                     The minimum price you are willing to accept.
                   </p>
+                </div>
+
+                <div className="space-y-2 pt-4">
+                  <label className="text-xs font-black uppercase text-muted-foreground ml-1">Auction Duration</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[3, 7, 14].map((days) => (
+                      <Button
+                        key={days}
+                        variant={formData.durationDays === days ? "default" : "outline"}
+                        onClick={() => updateField("durationDays", days)}
+                        className="h-12 font-black rounded-xl border-2"
+                      >
+                        {days} DAYS
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -564,6 +910,8 @@ export const ListingWizard = () => {
             </div>
           </div>
         );
+      case 5:
+        return renderReviewStep();
       default:
         return null;
     }
@@ -611,7 +959,7 @@ export const ListingWizard = () => {
         {currentStep === STEPS.length - 1 ? (
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || !validateStep(currentStep)}
+            disabled={isSubmitting || !!getStepError(currentStep)}
             className="h-14 px-12 rounded-xl font-black text-xl gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all scale-105"
           >
             {isSubmitting ? "Submitting..." : "Submit Listing"}
