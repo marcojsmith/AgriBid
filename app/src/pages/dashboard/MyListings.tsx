@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, Plus, Edit } from "lucide-react";
 
+/**
+ * Renders the "My Listings" dashboard page showing the current user's auction listings.
+ *
+ * Displays a centered loading spinner while listings are being fetched. When data is available,
+ * shows a header with a "Create Listing" action, an empty-state call-to-action if there are no
+ * listings, or a list of auction cards with image, title, status badge, reserve/current prices,
+ * end date, and actions (View; Edit shown but disabled for drafts).
+ *
+ * @returns The React element tree for the My Listings dashboard page.
+ */
 export default function MyListings() {
   const listings = useQuery(api.auctions.getMyListings);
 

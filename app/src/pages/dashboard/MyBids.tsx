@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Gavel } from "lucide-react";
 
+/**
+ * Render the current user's auction bids dashboard.
+ *
+ * Renders a spinner while bids are loading; if no bids exist shows a call-to-action to browse auctions; otherwise displays a responsive grid of auction cards with status badges, bid amounts, and links to each auction.
+ *
+ * @returns A JSX element that displays the loading state, empty state, or a grid of the user's auctions with status badges and action buttons.
+ */
 export default function MyBids() {
   const auctions = useQuery(api.auctions.getMyBids);
 
