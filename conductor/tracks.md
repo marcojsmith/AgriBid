@@ -17,12 +17,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Refactor ListingWizard for Modularity**
 *Link: [./tracks/listing_wizard_refactor_20260216/](./tracks/listing_wizard_refactor_20260216/)*
 
-- [x] **Track: Guest Access & Action Restrictions**
-*Link: [./tracks/guest_restrictions_20260216/](./tracks/guest_restrictions_20260216/)*
-
 ---
 
 ## Archive
+
+- [x] **Track: Guest Access & Action Restrictions**
+*Link: [./archive/guest_restrictions_20260216/](./archive/guest_restrictions_20260216/)*
 
 - [x] **Track: Listing Creation & Convex File Storage Integration**
 *Link: [./tracks/listing_storage_20260215/](./tracks/listing_storage_20260215/)*
