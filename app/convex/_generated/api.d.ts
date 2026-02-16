@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as config from "../config.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
+import type * as watchlist from "../watchlist.js";
 
 import type {
   ApiFromModules,
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   config: typeof config;
   http: typeof http;
   seed: typeof seed;
+  watchlist: typeof watchlist;
 }>;
 
 /**

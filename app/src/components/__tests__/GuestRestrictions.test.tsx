@@ -25,6 +25,12 @@ vi.mock('convex/react', () => ({
   Authenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="auth">{children}</div>,
   Unauthenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="unauth">{children}</div>,
   useMutation: () => vi.fn(),
+  useQuery: (apiFunc: any) => {
+    const path = typeof apiFunc === 'string' ? apiFunc : apiFunc?._path;
+    const pathStr = typeof path === 'string' ? path : "";
+    if (pathStr.includes("isWatched")) return false;
+    return [];
+  },
 }));
 
 // Mock auth client
