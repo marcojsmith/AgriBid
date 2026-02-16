@@ -23,16 +23,16 @@
 - [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 2: Logic Extraction' (Protocol in workflow.md)
 
 ## Phase 3: Component Decomposition
-- [ ] Task: Create Step Components
-    - [ ] Create `GeneralInfoStep.tsx`
-    - [ ] Create `TechnicalSpecsStep.tsx`
-    - [ ] Create `ConditionChecklistStep.tsx`
-    - [ ] Create `MediaGalleryStep.tsx`
-    - [ ] Create `PricingDurationStep.tsx`
-    - [ ] Create `ReviewSubmitStep.tsx`
-- [ ] Task: Create UI Utility Components
-    - [ ] Create `StepIndicator.tsx` (Progress bar and step labels)
-    - [ ] Create `WizardNavigation.tsx` (Previous/Next buttons)
+- [x] Task: Create Step Components
+    - [x] Create `GeneralInfoStep.tsx`
+    - [x] Create `TechnicalSpecsStep.tsx`
+    - [x] Create `ConditionChecklistStep.tsx`
+    - [x] Create `MediaGalleryStep.tsx`
+    - [x] Create `PricingDurationStep.tsx`
+    - [x] Create `ReviewSubmitStep.tsx`
+- [x] Task: Create UI Utility Components
+    - [x] Create `StepIndicator.tsx` (Progress bar and step labels)
+    - [x] Create `WizardNavigation.tsx` (Previous/Next buttons)
 - [ ] Task: Conductor - Manual Verification using Chromedevtools 'Phase 3: Decomposition' (Protocol in workflow.md)
 
 ## Phase 4: Integration & Verification
