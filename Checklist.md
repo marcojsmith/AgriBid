@@ -46,10 +46,10 @@
 ### Convex Queries
 - [x] `getActiveAuctions` - fetch all active auctions
 - [x] `getAuctionById` - fetch single auction with full details
-- [ ] `getUserAuctions` - fetch auctions by seller (with status filter)
+- [x] `getUserAuctions` - fetch auctions by seller (with status filter) -> \`getMyListings\`
 - [x] `getAuctionBids` - fetch bid history for an auction
-- [ ] `getUserBids` - fetch bids placed by a user
-- [ ] `getWatchlist` - fetch user's watched auctions
+- [x] `getUserBids` - fetch bids placed by a user -> \`getMyBids\`
+- [x] `getWatchlist` - fetch user's watched auctions -> \`getWatchedAuctions\`
 - [x] `searchAuctions` - implement search/filter logic (integrated into getActiveAuctions)
 
 ### Convex Mutations
@@ -60,12 +60,12 @@
 - [x] `approveAuction` - admin approval to set active status
 - [x] `generateUploadUrl` - for Convex File Storage
 - [ ] `setProxyBid` - set maximum auto-bid amount
-- [ ] `addToWatchlist` / `removeFromWatchlist`
+- [x] `addToWatchlist` / `removeFromWatchlist` -> \`toggleWatchlist\`
 - [ ] `uploadConditionReport` - upload PDF to Convex Storage
 - [ ] `flagAuction` - report suspicious listing (buyer/admin)
 
 ### Scheduled Functions (Cron)
-- [ ] `settleExpiredAuctions` - run every 1 minute
+- [x] `settleExpiredAuctions` - run every 1 minute
 - [ ] `cleanupDrafts` - run daily to delete old drafts (>30 days)
 
 ### Convex Actions (External API Calls)
@@ -119,15 +119,15 @@
 - [x] **Countdown Timer**
 
 ### Seller Dashboard (`/dashboard/seller`)
-- [ ] **My Listings Tabs**
+- [x] **My Listings Tabs** -> \`/dashboard/listings\`
 - [ ] **Analytics Panel**
 - [ ] **Create Listing Button**
 - [x] **Create Listing Form** (Multi-Step Wizard)
 
 ### Buyer Dashboard (`/dashboard/buyer`)
-- [ ] **Active Bids Tab**
-- [ ] **Watchlist Tab**
-- [ ] **Won Auctions Tab**
+- [x] **Active Bids Tab** -> \`/dashboard/bids\`
+- [x] **Watchlist Tab** -> \`/watchlist\`
+- [x] **Won Auctions Tab** -> Integrated into \`/dashboard/bids\`
 
 ### Admin Dashboard (`/admin`)
 - [x] **Pending Verifications** (Listing Moderation)
@@ -157,7 +157,7 @@
 - [ ] Auto-increment bid by minimum increment when outbid
 
 ### Watchlist
-- [ ] Add/remove auctions from watchlist (mutation)
+- [x] Add/remove auctions from watchlist (mutation)
 
 ### Image Upload & Storage
 - [x] Integrate Convex File Storage API
