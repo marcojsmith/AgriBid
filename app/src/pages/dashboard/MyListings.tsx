@@ -58,8 +58,11 @@ export default function MyListings() {
           {listings.map((auction) => (
             <div key={auction._id} className="bg-card border-2 rounded-2xl p-4 flex flex-col md:flex-row gap-6 items-start md:items-center group hover:border-primary/50 transition-colors">
               <div className="w-full md:w-48 aspect-video bg-muted rounded-xl overflow-hidden shrink-0">
-                {auction.images.front && (
+                {(!Array.isArray(auction.images) && auction.images.front) && (
                   <img src={auction.images.front} alt={auction.title} className="w-full h-full object-cover" />
+                )}
+                {Array.isArray(auction.images) && auction.images[0] && (
+                  <img src={auction.images[0]} alt={auction.title} className="w-full h-full object-cover" />
                 )}
               </div>
               
