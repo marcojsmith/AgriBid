@@ -101,13 +101,16 @@ export default defineSchema({
       v.literal("rejected")
     ),
     winnerId: v.optional(v.string()),
-    images: v.object({
-      front: v.optional(v.string()), // storageId
-      engine: v.optional(v.string()), // storageId
-      cabin: v.optional(v.string()), // storageId
-      rear: v.optional(v.string()), // storageId
-      additional: v.optional(v.array(v.string())), // array of storageIds
-    }),
+    images: v.union(
+      v.object({
+        front: v.optional(v.string()), // storageId
+        engine: v.optional(v.string()), // storageId
+        cabin: v.optional(v.string()), // storageId
+        rear: v.optional(v.string()), // storageId
+        additional: v.optional(v.array(v.string())), // array of storageIds
+      }),
+      v.array(v.string()) // legacy format
+    ),
     description: v.optional(v.string()),
     conditionReportUrl: v.optional(v.string()),
     isExtended: v.optional(v.boolean()),

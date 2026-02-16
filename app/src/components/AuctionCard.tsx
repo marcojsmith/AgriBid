@@ -92,7 +92,10 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
     }
   };
 
-  const primaryImage = auction.images.front || auction.images.engine || auction.images.cabin || auction.images.rear || auction.images.additional?.[0];
+  const images = auction.images;
+  const primaryImage = Array.isArray(images) 
+    ? images[0] 
+    : (images.front || images.engine || images.cabin || images.rear || images.additional?.[0]);
 
   return (
     <Card className="overflow-hidden border-2 hover:border-primary transition-colors bg-card group">

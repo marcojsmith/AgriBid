@@ -94,7 +94,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col md:flex-row gap-8">
               {/* Visual Preview */}
               <div className="w-full md:w-64 h-48 bg-muted rounded-xl border-2 flex items-center justify-center relative overflow-hidden">
-                {auction.images.front ? (
+                {(!Array.isArray(auction.images) && auction.images.front) ? (
                   <img 
                     src={auction.images.front} 
                     alt={auction.title} 
