@@ -29,7 +29,7 @@ const ListingWizardContent = () => {
     setIsSuccess 
   } = useListingWizard();
   
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const { getStepError } = useListingForm();
@@ -38,6 +38,10 @@ const ListingWizardContent = () => {
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
+    if (isPending) {
+      toast.info("Checking your session...");
+      return;
+    }
     if (!session) {
       toast.info("Please sign in to submit your listing");
       const rawUrl = location.pathname;
