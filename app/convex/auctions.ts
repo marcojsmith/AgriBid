@@ -1,8 +1,17 @@
 // app/convex/auctions.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 
-async function resolveImageUrls(storage: any, images: any) {
+interface RawImages {
+  front?: string;
+  engine?: string;
+  cabin?: string;
+  rear?: string;
+  additional?: string[];
+}
+
+async function resolveImageUrls(storage: QueryCtx["storage"], images: unknown) {
   const resolveUrl = async (id: string | undefined) => {
     if (!id) return undefined;
     if (id.startsWith("http")) return id;
@@ -10,9 +19,14 @@ async function resolveImageUrls(storage: any, images: any) {
   };
 
   // Normalize legacy array format or non-object inputs
-  const normalizedImages = Array.isArray(images) 
-    ? { additional: images as string[] } 
-    : (images && typeof images === "object") ? images : { additional: [] };
+  let normalizedImages: RawImages;
+  if (Array.isArray(images)) {
+    normalizedImages = { additional: images as string[] };
+  } else if (images && typeof images === "object") {
+    normalizedImages = images as RawImages;
+  } else {
+    normalizedImages = { additional: [] };
+  }
 
   return {
     ...normalizedImages,
@@ -24,7 +38,7 @@ async function resolveImageUrls(storage: any, images: any) {
       (normalizedImages.additional || []).map(async (id: string) => 
         id.startsWith("http") ? id : await storage.getUrl(id)
       )
-    )).filter((url: any): url is string => !!url),
+    )).filter((url: string | null | undefined): url is string => !!url),
   };
 }
 
@@ -213,39 +227,6 @@ export const createAuction = mutation({
     });
 
     return auctionId;
-  },
-});
-
-/**
- * Migration mutation to convert 'images' from array to object format.
- * Run this once after schema relaxation.
- */
-export const migrateImages = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity?.role !== "admin") {
-      throw new Error("Unauthorized: Admin only");
-    }
-
-    const auctions = await ctx.db.query("auctions").collect();
-    let migratedCount = 0;
-
-    for (const auction of auctions) {
-      if (Array.isArray(auction.images)) {
-        const imagesPatch = {
-          front: undefined,
-          engine: undefined,
-          cabin: undefined,
-          rear: undefined,
-          additional: auction.images as string[],
-        };
-        await ctx.db.patch(auction._id, { images: imagesPatch });
-        migratedCount++;
-      }
-    }
-
-    return { migratedCount };
   },
 });
 

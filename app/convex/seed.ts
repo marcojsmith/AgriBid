@@ -131,7 +131,7 @@ export const runSeed = mutation({
     const mockAdminEmail = "admin@agribid.com";
     const mockAdminId = "mock-admin";
     
-    let admin = await ctx.db
+    const admin = await ctx.db
       .query("user")
       .withIndex("by_email", (q) => q.eq("email", mockAdminEmail))
       .first();
