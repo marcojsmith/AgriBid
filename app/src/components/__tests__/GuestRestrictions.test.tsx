@@ -25,6 +25,7 @@ vi.mock('convex/react', () => ({
   Authenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="auth">{children}</div>,
   Unauthenticated: ({ children }: { children: React.ReactNode }) => <div data-testid="unauth">{children}</div>,
   useMutation: () => vi.fn(),
+  useQuery: () => vi.fn(),
 }));
 
 // Mock auth client

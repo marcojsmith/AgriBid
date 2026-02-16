@@ -140,6 +140,13 @@ export default defineSchema({
     .index("by_auction", ["auctionId", "timestamp"])
     .index("by_bidder", ["bidderId"]),
 
+  watchlist: defineTable({
+    userId: v.string(),
+    auctionId: v.id("auctions"),
+  })
+    .index("by_user_auction", ["userId", "auctionId"])
+    .index("by_user", ["userId"]),
+
   // Standard Better Auth extra tables
   jwks: defineTable({
     publicKey: v.string(),

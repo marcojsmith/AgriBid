@@ -1,8 +1,20 @@
 // app/src/components/__tests__/AuctionHeader.test.tsx
 import { render, screen } from '@testing-library/react';
 import { AuctionHeader } from '../AuctionHeader';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { Doc, Id } from 'convex/_generated/dataModel';
+import { MemoryRouter } from 'react-router-dom';
+
+// Mock Convex
+vi.mock('convex/react', () => ({
+  useQuery: vi.fn(),
+  useMutation: () => vi.fn(),
+}));
+
+// Mock auth client
+vi.mock('../../lib/auth-client', () => ({
+  useSession: () => ({ data: null, isPending: false }),
+}));
 
 describe('AuctionHeader', () => {
   const mockAuction = {
@@ -16,7 +28,11 @@ describe('AuctionHeader', () => {
   } as Doc<"auctions">;
 
   it('renders auction details correctly', () => {
-    render(<AuctionHeader auction={mockAuction} />);
+    render(
+      <MemoryRouter>
+        <AuctionHeader auction={mockAuction} />
+      </MemoryRouter>
+    );
     
     expect(screen.getByText('John Deere 8RX 410')).toBeInTheDocument();
     expect(screen.getByText('2022 John Deere')).toBeInTheDocument();

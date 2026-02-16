@@ -4,15 +4,15 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Eye, Clock, MapPin } from "lucide-react";
+import { Eye, Clock, MapPin, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BidConfirmation } from "./BidConfirmation";
-import { isValidCallbackUrl } from "@/lib/utils";
+import { isValidCallbackUrl, cn } from "@/lib/utils";
 
 interface AuctionCardProps {
   auction: Doc<"auctions">;
@@ -22,10 +22,32 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const placeBid = useMutation(api.auctions.placeBid);
+  const isWatched = useQuery(api.watchlist.isWatched, { auctionId: auction._id });
+  const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
   const [isBidding, setIsBidding] = useState(false);
   const isBiddingRef = useRef(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingBid, setPendingBid] = useState<number | null>(null);
+
+  const handleWatchlistToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!session) {
+      toast.info("Please sign in to watch an auction");
+      const rawUrl = `/auction/${auction._id}`;
+      const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
+      navigate(`/login?callbackUrl=${callbackUrl}`);
+      return;
+    }
+
+    try {
+      const nowWatched = await toggleWatchlist({ auctionId: auction._id });
+      toast.success(nowWatched ? "Added to watchlist" : "Removed from watchlist");
+    } catch {
+      toast.error("Failed to update watchlist");
+    }
+  };
 
   const handleBidInitiate = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,8 +106,21 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
               <span className="text-xs mt-2 italic text-center px-4">Image Pending (Seller Inspection in Progress)</span>
             </div>
           )}
-          <div className="absolute top-2 right-2 bg-background/80 backdrop-blur px-2 py-1 rounded text-xs font-semibold">
-            {auction.year} {auction.make}
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-2">
+            <div className="bg-background/80 backdrop-blur px-2 py-1 rounded text-xs font-semibold">
+              {auction.year} {auction.make}
+            </div>
+            <Button
+              variant="secondary"
+              size="icon"
+              className={cn(
+                "h-8 w-8 rounded-full shadow-md bg-background/80 backdrop-blur hover:bg-background transition-all",
+                isWatched && "text-red-500"
+              )}
+              onClick={handleWatchlistToggle}
+            >
+              <Heart className={cn("h-4 w-4", isWatched && "fill-current")} />
+            </Button>
           </div>
         </div>
         <CardHeader className="p-4 pb-2">

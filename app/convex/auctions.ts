@@ -11,7 +11,7 @@ interface RawImages {
   additional?: string[];
 }
 
-async function resolveImageUrls(storage: QueryCtx["storage"], images: unknown) {
+export async function resolveImageUrls(storage: QueryCtx["storage"], images: unknown) {
   const resolveUrl = async (id: string | undefined) => {
     if (!id) return undefined;
     if (id.startsWith("http")) return id;
