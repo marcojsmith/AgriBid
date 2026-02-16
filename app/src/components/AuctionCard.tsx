@@ -33,15 +33,8 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
 
     if (!session) {
       toast.info("Please sign in to place a bid");
-      const callbackUrl = encodeURIComponent(location.pathname);
-      navigate(`/?callbackUrl=${callbackUrl}`);
-      
-      setTimeout(() => {
-        const authForm = document.getElementById('auth-form');
-        if (authForm) {
-          authForm.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
+      const callbackUrl = encodeURIComponent(`/auction/${auction._id}`);
+      navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
 

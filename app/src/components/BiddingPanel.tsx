@@ -33,17 +33,9 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
   const handleBidInitiate = (amount: number) => {
     if (!session) {
       toast.info("Please sign in to place a bid");
-      // Redirect to home page (where login is) and provide a callback URL
+      // Redirect to login page and provide a callback URL
       const callbackUrl = encodeURIComponent(location.pathname);
-      navigate(`/?callbackUrl=${callbackUrl}`);
-      
-      // Delay scrolling to ensure page transition if needed
-      setTimeout(() => {
-        const authForm = document.getElementById('auth-form');
-        if (authForm) {
-          authForm.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
+      navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
     setPendingBid(amount);

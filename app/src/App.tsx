@@ -5,6 +5,7 @@ import AuctionDetail from "./pages/AuctionDetail";
 import Sell from "./pages/Sell";
 import AdminDashboard from "./pages/AdminDashboard";
 import Watchlist from "./pages/Watchlist";
+import Login from "./pages/Login";
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 
@@ -13,6 +14,7 @@ import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
  *
  * Routes:
  * - "/" → Home
+ * - "/login" → Login
  * - "/auction/:id" → AuctionDetail
  * - "/sell" → Sell
  * - "/admin" → AdminDashboard (Protected)
@@ -26,6 +28,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/auction/:id" element={<AuctionDetail />} />
           <Route path="/sell" element={<Sell />} />
           <Route 

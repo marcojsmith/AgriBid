@@ -40,14 +40,7 @@ const ListingWizardContent = () => {
     if (!session) {
       toast.info("Please sign in to submit your listing");
       const callbackUrl = encodeURIComponent(location.pathname);
-      navigate(`/?callbackUrl=${callbackUrl}`);
-      
-      setTimeout(() => {
-        const authForm = document.getElementById('auth-form');
-        if (authForm) {
-          authForm.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
+      navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
 

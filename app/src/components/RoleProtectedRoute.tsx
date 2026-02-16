@@ -25,7 +25,7 @@ export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRoute
 
   if (!session) {
     const callbackUrl = encodeURIComponent(location.pathname);
-    return <Navigate to={`/?callbackUrl=${callbackUrl}`} replace />;
+    return <Navigate to={`/login?callbackUrl=${callbackUrl}`} replace />;
   }
 
   if (allowedRole !== "any" && user?.role !== allowedRole) {
