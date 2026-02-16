@@ -20,7 +20,10 @@ export const NotificationListener = () => {
   useEffect(() => {
     if (!session) return;
 
-    const allRelevant = [...myBids, ...watched];
+    // Deduplicate auctions by ID
+    const allRelevant = Array.from(
+      new Map([...myBids, ...watched].map(a => [a._id.toString(), a])).values()
+    );
     
     for (const auction of allRelevant) {
       const auctionId = auction._id.toString();
@@ -35,16 +38,16 @@ export const NotificationListener = () => {
           if (isWinner) {
             toast.success(`Congratulations! You won the auction for ${auction.title}!`, {
               duration: 10000,
-              description: `Winning Bid: R ${auction.currentPrice.toLocaleString()}`
+              description: `Winning Bid: R ${auction.currentPrice.toLocaleString('en-ZA')}`
             });
           } else if (isSeller) {
             toast.success(`Success! Your equipment ${auction.title} has been sold!`, {
               duration: 10000,
-              description: `Final Price: R ${auction.currentPrice.toLocaleString()}`
+              description: `Final Price: R ${auction.currentPrice.toLocaleString('en-ZA')}`
             });
           } else {
             toast.info(`Auction ended: ${auction.title} has been sold.`, {
-              description: `Final Price: R ${auction.currentPrice.toLocaleString()}`
+              description: `Final Price: R ${auction.currentPrice.toLocaleString('en-ZA')}`
             });
           }
         } else {

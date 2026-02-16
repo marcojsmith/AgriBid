@@ -8,6 +8,18 @@ import { cn } from "@/lib/utils";
 export const PricingDurationStep = () => {
   const { formData, updateField } = useListingWizard();
 
+  const handlePriceChange = (field: "startingPrice" | "reservePrice") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === "") {
+      updateField(field, 0);
+      return;
+    }
+    const parsed = parseInt(val);
+    if (!isNaN(parsed)) {
+      updateField(field, Math.max(0, parsed));
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -21,17 +33,7 @@ export const PricingDurationStep = () => {
                 inputMode="numeric"
                 min="0"
                 value={formData.startingPrice || ""} 
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "") {
-                    updateField("startingPrice", 0);
-                    return;
-                  }
-                  const parsed = parseInt(val);
-                  if (!isNaN(parsed)) {
-                    updateField("startingPrice", Math.max(0, parsed));
-                  }
-                }}
+                onChange={handlePriceChange("startingPrice")}
                 className="h-14 pl-10 text-xl font-black rounded-xl border-2"
               />
             </div>
@@ -49,17 +51,7 @@ export const PricingDurationStep = () => {
                 inputMode="numeric"
                 min="0"
                 value={formData.reservePrice || ""} 
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "") {
-                    updateField("reservePrice", 0);
-                    return;
-                  }
-                  const parsed = parseInt(val);
-                  if (!isNaN(parsed)) {
-                    updateField("reservePrice", Math.max(0, parsed));
-                  }
-                }}
+                onChange={handlePriceChange("reservePrice")}
                 className={cn(
                   "h-14 pl-10 text-xl font-black rounded-xl border-2",
                   formData.reservePrice !== 0 && formData.reservePrice < formData.startingPrice ? "border-destructive focus-visible:ring-destructive" : "border-primary/20"

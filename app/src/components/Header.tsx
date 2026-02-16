@@ -251,6 +251,12 @@ export const Header = () => {
                       <LayoutDashboard className="h-3.5 w-3.5" />
                       My Bids
                     </Button>
+                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
+                      <Link to="/dashboard/listings" onClick={() => setIsMenuOpen(false)}>
+                        <Settings className="h-3.5 w-3.5" />
+                        My Listings
+                      </Link>
+                    </Button>
                   </div>
                   <Button 
                     variant="destructive" 

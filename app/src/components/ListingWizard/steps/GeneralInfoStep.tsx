@@ -36,7 +36,7 @@ export const GeneralInfoStep = () => {
               const parsed = parseInt(val);
               // Only update if it's a number and doesn't exceed 4 digits (to prevent accidental large numbers)
               if (!isNaN(parsed) && val.length <= 4) {
-                updateField("year", parsed);
+                updateField("year", Math.max(0, parsed));
               }
             }}
             placeholder={`e.g. ${new Date().getFullYear()}`}

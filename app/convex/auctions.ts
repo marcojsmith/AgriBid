@@ -383,9 +383,15 @@ export const settleExpiredAuctions = internalMutation({
       
       let winnerId = undefined;
       if (finalStatus === "sold") {
-        // Find the highest bid to determine the winner
-        // Since bids are ordered by timestamp, we sort by amount to be safe
-        const highestBid = bids.reduce((prev, current) => (prev.amount > current.amount) ? prev : current);
+        // Find the highest bid to determine the winner.
+        // Tie-break: earlier bid wins if amounts are equal.
+        const highestBid = bids.reduce((prev, current) => {
+          if (current.amount > prev.amount) return current;
+          if (current.amount === prev.amount) {
+            return current.timestamp < prev.timestamp ? current : prev;
+          }
+          return prev;
+        });
         winnerId = highestBid.bidderId;
       }
 
@@ -394,7 +400,7 @@ export const settleExpiredAuctions = internalMutation({
         winnerId,
       });
 
-      console.log(`Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? ` (Winner: ${winnerId})` : ""}`);
+      console.log(`Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`);
     }
   },
 });
@@ -429,7 +435,7 @@ export const getMyBids = query({
           images: await resolveImageUrls(ctx.storage, auction.images),
           myHighestBid,
           isWinning: auction.status === 'active' && myHighestBid === auction.currentPrice,
-          isWon: auction.status === 'sold' && myHighestBid === auction.currentPrice,
+          isWon: auction.status === 'sold' && auction.winnerId === userId,
         };
       })
     );

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Gavel } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function MyBids() {
   const auctions = useQuery(api.auctions.getMyBids);
@@ -40,7 +41,7 @@ export default function MyBids() {
           {auctions.map((auction) => {
             const isWinning = auction.isWinning;
             const isWon = auction.isWon;
-            const isLost = auction.status === 'sold' && !isWon;
+            const isLost = (auction.status === 'sold' && !isWon) || auction.status === 'unsold';
 
             return (
               <div key={auction._id} className="bg-card border-2 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -51,11 +52,14 @@ export default function MyBids() {
                   <div className="absolute top-2 right-2">
                     <Badge variant={
                       isWon ? "default" : 
-                      isWinning ? "default" : 
+                      isWinning ? "secondary" : 
                       isLost ? "destructive" : 
                       "outline"
-                    } className="font-bold uppercase tracking-wider">
-                      {isWon ? "WON" : isWinning ? "WINNING" : isLost ? "OUTBID / SOLD" : auction.status}
+                    } className={cn(
+                      "font-bold uppercase tracking-wider",
+                      isWon && "bg-green-600 hover:bg-green-700"
+                    )}>
+                      {isWon ? "WON" : isWinning ? "WINNING" : auction.status === 'unsold' ? "RESERVE NOT MET" : isLost ? "OUTBID / SOLD" : auction.status}
                     </Badge>
                   </div>
                 </div>
@@ -64,11 +68,11 @@ export default function MyBids() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-[10px] text-muted-foreground uppercase font-black">My Max Bid</p>
-                      <p className="font-bold">R {auction.myHighestBid.toLocaleString()}</p>
+                      <p className="font-bold">R {auction.myHighestBid.toLocaleString('en-ZA')}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-muted-foreground uppercase font-black">Current Price</p>
-                      <p className="font-bold text-primary">R {auction.currentPrice.toLocaleString()}</p>
+                      <p className="font-bold text-primary">R {auction.currentPrice.toLocaleString('en-ZA')}</p>
                     </div>
                   </div>
                   <Button className="w-full font-bold" variant="outline" asChild>

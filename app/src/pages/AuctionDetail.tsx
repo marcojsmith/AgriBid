@@ -85,7 +85,7 @@ export default function AuctionDetail() {
           <div className="bg-card border-2 rounded-2xl p-8 space-y-4">
             <h3 className="text-xl font-bold uppercase tracking-tight">Equipment Description</h3>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {auction.description}
+              {auction.description || "No description provided."}
             </p>
           </div>
         </div>

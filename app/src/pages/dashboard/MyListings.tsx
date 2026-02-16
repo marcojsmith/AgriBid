@@ -61,8 +61,8 @@ export default function MyListings() {
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <span className="font-medium">Reserve: R {auction.reservePrice.toLocaleString()}</span>
-                  <span className="font-medium">Current: <span className="text-primary font-bold">R {auction.currentPrice.toLocaleString()}</span></span>
+                  <span className="font-medium">Reserve: R {auction.reservePrice.toLocaleString('en-ZA')}</span>
+                  <span className="font-medium">Current: <span className="text-primary font-bold">R {auction.currentPrice.toLocaleString('en-ZA')}</span></span>
                   <span>{new Date(auction.endTime).toLocaleDateString()}</span>
                 </div>
               </div>
@@ -74,7 +74,7 @@ export default function MyListings() {
                 {auction.status === 'draft' && (
                   <Button variant="secondary" className="flex-1 md:flex-none font-bold" disabled>
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit
+                    Edit (Soon)
                   </Button>
                 )}
               </div>

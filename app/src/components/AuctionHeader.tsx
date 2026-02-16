@@ -1,6 +1,6 @@
 // app/src/components/AuctionHeader.tsx
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Calendar, HardDrive, Heart } from "lucide-react";
+import { MapPin, Calendar, HardDrive, Heart, Gavel } from "lucide-react";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -21,8 +21,8 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   const isWatched = useQuery(api.watchlist.isWatched, { auctionId: auction._id });
   const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
 
-  const isWinner = session?.user?.id === auction.winnerId;
-  const isSeller = session?.user?.id === auction.sellerId;
+  const isWinner = !!session?.user?.id && !!auction.winnerId && session.user.id === auction.winnerId;
+  const isSeller = !!session?.user?.id && session.user.id === auction.sellerId;
 
   const handleWatchlistToggle = async () => {
     if (!session) {
@@ -97,7 +97,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       {!isWinner && isSeller && auction.status === 'sold' && (
         <div className="bg-primary/10 border-2 border-primary/20 text-primary-foreground p-4 rounded-xl flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
-            <Heart className="h-5 w-5 fill-current" />
+            <Gavel className="h-5 w-5" />
           </div>
           <div>
             <p className="font-black uppercase text-sm leading-tight text-primary">Item Sold</p>
