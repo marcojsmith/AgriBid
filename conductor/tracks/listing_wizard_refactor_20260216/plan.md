@@ -35,12 +35,12 @@
     - [x] Create `WizardNavigation.tsx` (Previous/Next buttons)
 - [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 3: Decomposition' (Protocol in workflow.md)
 
-## Phase 4: Integration & Verification
+## Phase 4: Integration & Verification [checkpoint: 84281d0]
 - [x] Task: Reassemble ListingWizard
     - [x] Update `ListingWizard.tsx` to use the `ListingWizardProvider` and sub-components
     - [x] Reduce main component file size to < 150 lines
-- [~] Task: Final Verification
-    - [ ] Run full test suite (`npm run test`)
-    - [ ] Run production build (`npm run build`)
-    - [ ] Perform manual end-to-end listing flow test
-- [ ] Task: Conductor - Manual Verification using Chromedevtools 'Phase 4: Integration' (Protocol in workflow.md)
+- [x] Task: Final Verification
+    - [x] Run full test suite (`npm run test`)
+    - [x] Run production build (`npm run build`)
+    - [x] Perform manual end-to-end listing flow test
+- [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 4: Integration' (Protocol in workflow.md)
