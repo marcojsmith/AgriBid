@@ -96,7 +96,8 @@ export const useListingMedia = () => {
         setPreviews(prev => ({ ...prev, [storageId]: blobUrl }));
       }
 
-      toast.success(`${slotId.toUpperCase()} photo uploaded`);
+      const successMessage = slotId === "additional" ? "Additional photo uploaded" : `${slotId.toUpperCase()} photo uploaded`;
+      toast.success(successMessage);
     } catch (error) {
       console.error(error);
       URL.revokeObjectURL(blobUrl);
@@ -114,40 +115,34 @@ export const useListingMedia = () => {
   };
 
   const removeImage = (slotId: string, index?: number) => {
+    let storageIdToCleanup: string | undefined;
+
     setFormData(prev => {
       const newImages = { ...prev.images };
       if (slotId === "additional" && typeof index === "number") {
         if (!Array.isArray(newImages.additional)) return prev;
-        const storageId = newImages.additional[index];
+        storageIdToCleanup = newImages.additional[index];
         newImages.additional = newImages.additional.filter((_, i) => i !== index);
-        
-        // Cleanup preview
-        if (storageId) {
-          setPreviews(prevP => {
-            const next = { ...prevP };
-            if (next[storageId]) {
-              URL.revokeObjectURL(next[storageId]);
-              delete next[storageId];
-            }
-            return next;
-          });
-        }
       } else {
         const key = slotId as keyof Omit<typeof formData.images, "additional">;
+        storageIdToCleanup = newImages[key];
         delete newImages[key];
-
-        // Cleanup preview
-        setPreviews(prevP => {
-          const next = { ...prevP };
-          if (next[slotId]) {
-            URL.revokeObjectURL(next[slotId]);
-            delete next[slotId];
-          }
-          return next;
-        });
       }
       return { ...prev, images: newImages };
     });
+
+    // Cleanup preview in a separate update to avoid stale closures and ensure functional updates
+    const targetId = slotId === "additional" ? storageIdToCleanup : slotId;
+    if (targetId) {
+      setPreviews(prevP => {
+        const next = { ...prevP };
+        if (next[targetId]) {
+          URL.revokeObjectURL(next[targetId]);
+          delete next[targetId];
+        }
+        return next;
+      });
+    }
   };
 
   return {

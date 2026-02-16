@@ -38,6 +38,11 @@ const ListingWizardContent = () => {
     
     setIsSubmitting(true);
     try {
+      const images = {
+        ...formData.images,
+        additional: Array.isArray(formData.images.additional) ? formData.images.additional : [],
+      };
+
       await createAuction({
         title: formData.title,
         make: formData.make,
@@ -47,7 +52,7 @@ const ListingWizardContent = () => {
         location: formData.location,
         startingPrice: formData.startingPrice,
         reservePrice: formData.reservePrice,
-        images: formData.images,
+        images,
         durationDays: formData.durationDays,
         conditionChecklist: {
           engine: formData.conditionChecklist.engine ?? false,

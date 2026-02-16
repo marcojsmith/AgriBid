@@ -25,7 +25,17 @@ export const GeneralInfoStep = () => {
             type="number" 
             inputMode="numeric"
             value={formData.year || ""} 
-            onChange={(e) => updateField("year", parseInt(e.target.value) || 0)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "") {
+                updateField("year", 0);
+                return;
+              }
+              const parsed = parseInt(val);
+              if (!isNaN(parsed)) {
+                updateField("year", parsed);
+              }
+            }}
             placeholder={`e.g. ${new Date().getFullYear()}`}
             className="h-12 border-2 rounded-xl"
           />

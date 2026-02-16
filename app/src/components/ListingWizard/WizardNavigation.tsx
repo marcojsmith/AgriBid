@@ -36,6 +36,7 @@ export const WizardNavigation = ({ onFinalSubmit }: WizardNavigationProps) => {
       ) : (
         <Button
           onClick={next}
+          disabled={!!getStepError(currentStep)}
           className="h-12 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
         >
           Next Step

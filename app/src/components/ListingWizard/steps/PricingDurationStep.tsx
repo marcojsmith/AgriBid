@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { TrendingUp, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useListingWizard } from "../context/ListingWizardContext";
+import { cn } from "@/lib/utils";
 
 export const PricingDurationStep = () => {
   const { formData, updateField } = useListingWizard();
@@ -18,6 +19,7 @@ export const PricingDurationStep = () => {
               <Input 
                 type="number" 
                 inputMode="numeric"
+                min="0"
                 value={formData.startingPrice || ""} 
                 onChange={(e) => updateField("startingPrice", parseInt(e.target.value) || 0)}
                 className="h-14 pl-10 text-xl font-black rounded-xl border-2"
@@ -35,12 +37,21 @@ export const PricingDurationStep = () => {
               <Input 
                 type="number" 
                 inputMode="numeric"
+                min="0"
                 value={formData.reservePrice || ""} 
                 onChange={(e) => updateField("reservePrice", parseInt(e.target.value) || 0)}
-                className="h-14 pl-10 text-xl font-black rounded-xl border-2 border-primary/20"
+                className={cn(
+                  "h-14 pl-10 text-xl font-black rounded-xl border-2",
+                  formData.reservePrice !== 0 && formData.reservePrice < formData.startingPrice ? "border-destructive focus-visible:ring-destructive" : "border-primary/20"
+                )}
               />
             </div>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
+            {formData.reservePrice !== 0 && formData.reservePrice < formData.startingPrice && (
+              <p className="text-[10px] text-destructive font-black uppercase px-1 mt-1">
+                Reserve price cannot be lower than the starting price.
+              </p>
+            )}
+            <p className="text-[10px] text-muted-foreground font-medium uppercase px-1 mt-1">
               The minimum price you are willing to accept.
             </p>
           </div>

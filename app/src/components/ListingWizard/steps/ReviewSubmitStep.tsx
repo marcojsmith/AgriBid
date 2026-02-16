@@ -42,18 +42,17 @@ export const ReviewSubmitStep = () => {
               </div>
             </div>
           </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground">Starting Price</p>
-                <p className="font-bold text-primary">R {formData.startingPrice.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground">Reserve Price</p>
-                <p className="font-bold">R {formData.reservePrice.toLocaleString()}</p>
-              </div>
-            </div>
-            <div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-muted-foreground">Starting Price</p>
+                            <p className="font-bold text-primary">R {formData.startingPrice.toLocaleString('en-ZA')}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-muted-foreground">Reserve Price</p>
+                            <p className="font-bold">R {formData.reservePrice.toLocaleString('en-ZA')}</p>
+                          </div>
+                        </div>            <div>
               <p className="text-[10px] font-black uppercase text-muted-foreground">Duration</p>
               <p className="font-bold">{formData.durationDays} Days</p>
             </div>

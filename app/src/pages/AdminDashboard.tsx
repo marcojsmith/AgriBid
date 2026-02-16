@@ -19,6 +19,17 @@ export default function AdminDashboard() {
 
   const [processingId, setProcessingId] = useState<Id<"auctions"> | null>(null);
 
+  if (pendingAuctions === undefined) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background animate-in fade-in duration-500">
+        <Loader2 className="h-12 w-12 animate-spin text-primary/40" />
+        <p className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">
+          Loading Moderation Queue...
+        </p>
+      </div>
+    );
+  }
+
   const handleApprove = async (id: Id<"auctions">) => {
     setProcessingId(id);
     try {
@@ -67,7 +78,7 @@ export default function AdminDashboard() {
         <div className="bg-card border-2 rounded-2xl p-4 flex gap-8">
           <div className="text-center">
             <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Pending</p>
-            <p className="text-2xl font-black text-primary">{pendingAuctions?.length || 0}</p>
+            <p className="text-2xl font-black text-primary">{pendingAuctions.length}</p>
           </div>
           <div className="w-px bg-border h-full" />
           <div className="text-center">
@@ -78,7 +89,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {pendingAuctions?.map((auction) => (
+        {pendingAuctions.map((auction) => (
           <Card key={auction._id} className="p-6 border-2 hover:border-primary/40 transition-all bg-card/50 backdrop-blur-sm">
             <div className="flex flex-col md:flex-row gap-8">
               {/* Visual Preview */}
@@ -148,7 +159,7 @@ export default function AdminDashboard() {
                 <Button 
                   className="h-12 px-8 rounded-xl font-black text-sm uppercase tracking-wider bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
                   onClick={() => handleApprove(auction._id)}
-                  disabled={processingId === auction._id}
+                  disabled={!!processingId}
                 >
                   {processingId === auction._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
                   Approve
@@ -157,15 +168,16 @@ export default function AdminDashboard() {
                   variant="outline" 
                   className="h-12 px-8 rounded-xl font-black text-sm uppercase tracking-wider border-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40"
                   onClick={() => handleReject(auction._id)}
-                  disabled={processingId === auction._id}
+                  disabled={!!processingId}
                 >
-                  <X className="h-4 w-4 mr-2" />
+                  {processingId === auction._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
                   Reject
                 </Button>
                 <Button 
                   variant="ghost" 
                   className="h-12 px-8 rounded-xl font-bold text-xs uppercase tracking-widest gap-2"
                   onClick={() => navigate(`/auction/${auction._id}`)}
+                  disabled={!!processingId}
                 >
                   <Eye className="h-4 w-4" />
                   Full Details
@@ -175,7 +187,7 @@ export default function AdminDashboard() {
           </Card>
         ))}
 
-        {pendingAuctions?.length === 0 && (
+        {pendingAuctions.length === 0 && (
           <div className="bg-card border-2 border-dashed rounded-3xl p-24 text-center space-y-4">
             <div className="h-20 w-20 rounded-full bg-primary/5 flex items-center justify-center mx-auto">
               <Check className="h-10 w-10 text-primary/40" />

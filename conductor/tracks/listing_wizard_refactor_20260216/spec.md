@@ -21,9 +21,9 @@ The `ListingWizard.tsx` component has grown into a "mega-component" (~990 lines)
 
 ## Acceptance Criteria
 - [x] `app/src/components/ListingWizard/` follows the agreed folder structure.
-- [ ] `ListingWizard.tsx` acts only as a thin orchestrator.
-- [ ] All existing functionality (multi-step navigation, file uploads, validation, submission) remains identical.
-- [ ] All current unit tests in `ListingWizard.test.tsx` pass without modification to the test logic.
+- [x] `ListingWizard.tsx` acts only as a thin orchestrator.
+- [x] All existing functionality (multi-step navigation, file uploads, validation, submission) remains identical.
+- [x] All current unit tests in `ListingWizard.test.tsx` pass without modification to the test logic.
 
 ## Out of Scope
 - Adding new steps or changing existing form fields.

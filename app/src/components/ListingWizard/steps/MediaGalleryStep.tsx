@@ -50,18 +50,18 @@ export const MediaGalleryStep = () => {
                   </div>
                 </>
               ) : (
-                <div className="w-full h-full">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    id={`file-upload-${slot.id}`}
-                    onChange={(e) => handleImageUpload(e, slot.id)}
-                    disabled={!!uploadingSlot}
-                  />
-                  <label 
-                    htmlFor={`file-upload-${slot.id}`}
-                    className={cn(
+                                  <div className="w-full h-full">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      id={`file-upload-${slot.id}`}
+                                      aria-label={`Upload image for slot ${slot.label}`}
+                                      onChange={(e) => handleImageUpload(e, slot.id)}
+                                      disabled={!!uploadingSlot}
+                                    />
+                                    <label 
+                                      htmlFor={`file-upload-${slot.id}`}                    className={cn(
                       "w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer outline-none",
                       uploadingSlot === slot.id && "animate-pulse"
                     )}
@@ -109,18 +109,18 @@ export const MediaGalleryStep = () => {
             );
           })}
           {formData.images.additional.length < 6 && (
-            <div className="relative h-24 w-24 rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5 transition-all">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="file-upload-additional"
-                onChange={(e) => handleImageUpload(e, "additional")}
-                disabled={!!uploadingSlot}
-              />
-              <label 
-                htmlFor="file-upload-additional"
-                className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer"
+                              <div className="relative h-24 w-24 rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5 transition-all">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  id="file-upload-additional"
+                                  aria-label="Upload additional photo"
+                                  onChange={(e) => handleImageUpload(e, "additional")}
+                                  disabled={!!uploadingSlot}
+                                />
+                                <label 
+                                  htmlFor="file-upload-additional"                className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer"
               >
                 {uploadingSlot === "additional" ? (
                   <TrendingUp className="h-5 w-5 text-primary animate-pulse" />

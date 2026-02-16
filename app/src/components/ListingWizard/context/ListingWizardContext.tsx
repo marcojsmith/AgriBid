@@ -28,6 +28,8 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   const [draftSaved, setDraftSaved] = useState(false);
 
   const [formData, setFormData] = useState<ListingFormData>(() => {
+    if (typeof window === "undefined") return DEFAULT_FORM_DATA;
+    
     const saved = localStorage.getItem("agribid_listing_draft");
     if (!saved) return DEFAULT_FORM_DATA;
     try {
@@ -44,8 +46,14 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   useEffect(() => {
-    localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
-    setDraftSaved(true);
+    if (typeof window === "undefined") return;
+
+    const timer = setTimeout(() => {
+      localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
+      setDraftSaved(true);
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [formData]);
 
   const updateField = <K extends keyof ListingFormData>(field: K, value: ListingFormData[K]) => {

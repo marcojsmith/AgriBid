@@ -1,6 +1,17 @@
 // app/convex/seed.ts
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, MutationCtx } from "./_generated/server";
+
+async function checkDestructiveAccess(ctx: MutationCtx) {
+  const isDev = process.env.NODE_ENV === "development";
+  const isPreview = process.env.VERCEL_ENV === "preview";
+  const identity = await ctx.auth.getUserIdentity();
+  const isAdmin = identity?.role === "admin";
+
+  if (!isDev && !isPreview && !isAdmin) {
+    throw new Error("Unauthorized: Destructive operations are only allowed in development, preview, or by admins.");
+  }
+}
 
 /**
  * Shared seeding logic for both local development and Vercel Previews.
@@ -16,25 +27,26 @@ export const runSeed = mutation({
   },
   handler: async (ctx, args) => {
     // --- SECURITY GUARD ---
-    const isDev = process.env.NODE_ENV === "development";
-    const isPreview = process.env.VERCEL_ENV === "preview";
     const seedSecret = process.env.SEED_SECRET;
-    const identity = await ctx.auth.getUserIdentity();
-    const isAdmin = identity?.role === "admin";
-
-    // Allow if in dev/preview, or if caller is an admin, or if matching seedSecret is provided
     const isSecretMatch = seedSecret && args.providedSeed === seedSecret;
     
-    if (!isDev && !isPreview && !isAdmin && !isSecretMatch) {
-      throw new Error("Unauthorized: Seeding is only allowed in development, preview, or with valid authorization.");
+    if (!isSecretMatch) {
+      await checkDestructiveAccess(ctx);
     }
     // -----------------------
 
     if (args.clear) {
+      // Parallel deletion for performance.
       const auctions = await ctx.db.query("auctions").collect();
-      for (const a of auctions) await ctx.db.delete(a._id);
       const bids = await ctx.db.query("bids").collect();
-      for (const b of bids) await ctx.db.delete(b._id);
+      
+      // Parallelize deletion of all auctions and bids
+      await Promise.all([
+        ...auctions.map(a => ctx.db.delete(a._id)),
+        ...bids.map(b => ctx.db.delete(b._id))
+      ]);
+      
+      console.log(`Cleared ${auctions.length} auctions and ${bids.length} bids.`);
     }
 
     // 1. Seed Equipment Metadata
@@ -244,21 +256,10 @@ export const runSeed = mutation({
 export const clearAuctions = mutation({
   args: {},
   handler: async (ctx) => {
-    // --- SECURITY GUARD ---
-    const isDev = process.env.NODE_ENV === "development";
-    const isPreview = process.env.VERCEL_ENV === "preview";
-    const identity = await ctx.auth.getUserIdentity();
-    const isAdmin = identity?.role === "admin";
-
-    if (!isDev && !isPreview && !isAdmin) {
-      throw new Error("Unauthorized: Destructive operations are only allowed in development, preview, or by admins.");
-    }
-    // -----------------------
+    await checkDestructiveAccess(ctx);
 
     const auctions = await ctx.db.query("auctions").collect();
-    for (const a of auctions) {
-      await ctx.db.delete(a._id);
-    }
+    await Promise.all(auctions.map(a => ctx.db.delete(a._id)));
     return auctions.length;
   },
 });

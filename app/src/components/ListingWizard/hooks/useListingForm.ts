@@ -2,6 +2,9 @@ import { toast } from "sonner";
 import { useListingWizard } from "../context/ListingWizardContext";
 import { STEPS } from "../constants";
 
+const MIN_YEAR = 1901;
+const TITLE_MIN_LENGTH = 5;
+
 export const useListingForm = () => {
   const { 
     formData, 
@@ -12,9 +15,9 @@ export const useListingForm = () => {
   const getStepError = (step: number): string | null => {
     switch (step) {
       case 0:
-        if (formData.year <= 1900) return "Please enter a valid manufacturing year.";
+        if (formData.year < MIN_YEAR) return `Please enter a year since ${MIN_YEAR}.`;
         if (formData.location.length <= 2) return "Please enter a valid location.";
-        if (formData.title.length <= 5) return "Please enter a more descriptive title.";
+        if (formData.title.length < TITLE_MIN_LENGTH) return "Please enter a more descriptive title.";
         return null;
       case 1:
         if (!formData.make) return "Please select a manufacturer.";

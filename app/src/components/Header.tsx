@@ -7,6 +7,7 @@ import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import { Menu, X, User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings, Search } from "lucide-react";
 import { toast } from "sonner";
+import type { UserWithRole } from "../types/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,7 @@ import {
 
 export const Header = () => {
   const { data: session } = useSession();
-  const user = session?.user ? (session.user as typeof session.user & { role?: string }) : undefined;
+  const user = session?.user as UserWithRole | undefined;
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -230,13 +231,15 @@ export const Header = () => {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {user?.role === "admin" && (
+                    {user?.role === "admin" ? (
                       <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] border-primary/20 text-primary" asChild>
                         <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                           <LayoutDashboard className="h-3.5 w-3.5" />
                           Admin
                         </Link>
                       </Button>
+                    ) : (
+                      <div className="aria-hidden:true" />
                     )}
                     <Button variant="outline" disabled className="justify-start gap-2 font-bold uppercase text-[10px] opacity-50 cursor-not-allowed" aria-disabled="true">
                       <LayoutDashboard className="h-3.5 w-3.5" />

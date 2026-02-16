@@ -96,7 +96,8 @@ export default defineSchema({
       v.literal("pending_review"),
       v.literal("active"),
       v.literal("sold"),
-      v.literal("unsold")
+      v.literal("unsold"),
+      v.literal("rejected")
     ),
     images: v.object({
       front: v.optional(v.string()), // storageId

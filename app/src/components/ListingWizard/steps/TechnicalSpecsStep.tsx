@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Search, Check } from "lucide-react";
+import { Check, Loader2, Search } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useListingWizard } from "../context/ListingWizardContext";
@@ -8,9 +8,18 @@ export const TechnicalSpecsStep = () => {
   const { formData, updateField } = useListingWizard();
   const metadata = useQuery(api.auctions.getEquipmentMetadata);
 
-  const uniqueMakes = Array.from(new Set(metadata?.map((m) => m.make))).sort();
-  const selectedMakeData = metadata?.filter((m) => m.make === formData.make);
-  const availableModels = Array.from(new Set(selectedMakeData?.flatMap((m) => m.models))).sort();
+  if (metadata === undefined) {
+    return (
+      <div className="h-[300px] flex flex-col items-center justify-center gap-4 text-muted-foreground animate-in fade-in duration-500">
+        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+        <p className="text-xs font-black uppercase tracking-widest">Fetching Specifications...</p>
+      </div>
+    );
+  }
+
+  const uniqueMakes = Array.from(new Set(metadata.map((m) => m.make))).sort();
+  const selectedMakeData = metadata.filter((m) => m.make === formData.make);
+  const availableModels = Array.from(new Set(selectedMakeData.flatMap((m) => m.models))).sort();
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">

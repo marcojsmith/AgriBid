@@ -224,15 +224,14 @@ export const migrateImages = mutation({
 
     for (const auction of auctions) {
       if (Array.isArray(auction.images)) {
-        await ctx.db.patch(auction._id, {
-          images: {
-            front: undefined,
-            engine: undefined,
-            cabin: undefined,
-            rear: undefined,
-            additional: auction.images,
-          },
-        } as any);
+        const imagesPatch = {
+          front: undefined,
+          engine: undefined,
+          cabin: undefined,
+          rear: undefined,
+          additional: auction.images as string[],
+        };
+        await ctx.db.patch(auction._id, { images: imagesPatch });
         migratedCount++;
       }
     }
@@ -296,7 +295,7 @@ export const rejectAuction = mutation({
     }
 
     await ctx.db.patch(args.auctionId, {
-      status: "unsold", // Using 'unsold' as rejection status for now
+      status: "rejected", 
     });
 
     return { success: true };

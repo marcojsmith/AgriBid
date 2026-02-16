@@ -16,8 +16,11 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
     const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
     const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
 
-  // Reset manualAmount when nextMinBid increases, 
-  // but only if user hasn't manually entered a higher value
+  // Intentionally performing state updates during render to keep manualAmount in sync with nextMinBid.
+  // This ensures that when the minimum bid increases (e.g., due to another user's bid), the 
+  // input field automatically updates to the new minimum, but ONLY if the user hasn't 
+  // already manually typed in a higher value. This pattern avoids an extra re-render cycle 
+  // that would occur if using useEffect.
   if (nextMinBid > prevNextMinBid) {
     setPrevNextMinBid(nextMinBid);
     const currentManualNum = parseFloat(manualAmount) || 0;

@@ -120,7 +120,7 @@ describe('Header', () => {
     expect(mobileSearchInputs.length).toBeGreaterThan(1);
   });
 
-  it('renders admin dashboard link when user has admin role', () => {
+  it('renders admin link when user has admin role', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ 
       data: { user: { name: 'Admin User', role: 'admin' } }, 

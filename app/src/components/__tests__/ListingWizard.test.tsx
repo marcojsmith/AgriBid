@@ -9,9 +9,11 @@ vi.mock('convex/react', () => ({
     { make: 'John Deere', models: ['6155R', '8R 410'], category: 'Tractor' },
     { make: 'Case IH', models: ['Magnum 340'], category: 'Tractor' },
   ],
-  useMutation: (apiFunc: string | { _path?: string }) => {
-    const path = typeof apiFunc === 'string' ? apiFunc : apiFunc?._path;
-    if (path === 'auctions:generateUploadUrl' || path === 'auctions/generateUploadUrl') {
+  useMutation: (apiFunc: any) => {
+    const path = typeof apiFunc === 'string' ? apiFunc : apiFunc?._path || "";
+    const isUpload = typeof path === 'string' && path.includes('generateUploadUrl');
+    
+    if (isUpload) {
       return vi.fn().mockResolvedValue('http://upload.url');
     }
     return vi.fn().mockResolvedValue({});
