@@ -47,7 +47,7 @@ describe('Header', () => {
     renderHeader();
     expect(screen.getByText(/AGRIBID/i)).toBeInTheDocument();
     expect(screen.getByText(/Marketplace/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Sell/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Sell/i)).toBeInTheDocument();
   });
 
   it('renders sign in button when unauthenticated', () => {

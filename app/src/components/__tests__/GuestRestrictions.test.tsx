@@ -46,14 +46,14 @@ describe('Guest Restrictions - Phase 1: Navigation', () => {
     );
   };
 
-  it('hides Sell link from guests', () => {
+  it('shows Sell link for guests', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
     renderHeader();
     
     // Desktop nav
     const desktopNav = screen.getByRole('navigation', { name: '' }); 
-    expect(desktopNav).not.toHaveTextContent(/Sell/i);
+    expect(desktopNav).toHaveTextContent(/Sell/i);
   });
 
   it('hides Admin link from guests', () => {

@@ -27,7 +27,7 @@ export const Header = () => {
 
   const navLinks: { name: string; href: string; disabled?: boolean }[] = [
     { name: "Marketplace", href: "/" },
-    ...(session ? [{ name: "Sell", href: "/sell" }] : []),
+    { name: "Sell", href: "/sell" },
     { name: "Watchlist", href: "/watchlist" },
   ];
 
