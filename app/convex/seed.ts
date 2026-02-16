@@ -103,7 +103,7 @@ export const runSeed = mutation({
     
     const seller = await ctx.db
       .query("user")
-      .filter((q) => q.eq(q.field("email"), mockSellerEmail))
+      .withIndex("by_email", (q) => q.eq("email", mockSellerEmail))
       .first();
 
     if (!seller) {
@@ -125,7 +125,7 @@ export const runSeed = mutation({
     
     let admin = await ctx.db
       .query("user")
-      .filter((q) => q.eq(q.field("email"), mockAdminEmail))
+      .withIndex("by_email", (q) => q.eq("email", mockAdminEmail))
       .first();
 
     if (!admin) {
@@ -146,6 +146,7 @@ export const runSeed = mutation({
     const oneDay = 24 * 60 * 60 * 1000;
     const mockAuctions = [
       {
+        seedId: "jd-8r-410",
         title: "John Deere 8R 410 — Row Crop Titan",
         make: "John Deere",
         model: "8R 410",
@@ -168,6 +169,7 @@ export const runSeed = mutation({
         },
       },
       {
+        seedId: "case-magnum-380",
         title: "Case IH Magnum 380 — Prairie Powerhouse",
         make: "Case IH",
         model: "Magnum 380",
@@ -190,6 +192,7 @@ export const runSeed = mutation({
         },
       },
       {
+        seedId: "nh-t7-315",
         title: "New Holland T7.315 — Blue Diamond",
         make: "New Holland",
         model: "T7.315",
@@ -212,6 +215,7 @@ export const runSeed = mutation({
         },
       },
       {
+        seedId: "mf-8s-305",
         title: "Massey Ferguson 8S.305 — Crimson Legend",
         make: "Massey Ferguson",
         model: "8S.305",
@@ -234,6 +238,7 @@ export const runSeed = mutation({
         },
       },
       {
+        seedId: "fendt-1050",
         title: "Fendt 1050 Vario — German Precision",
         make: "Fendt",
         model: "1050 Vario",
@@ -260,11 +265,13 @@ export const runSeed = mutation({
     for (const auction of mockAuctions) {
       const existing = await ctx.db
         .query("auctions")
-        .filter((q) => q.eq(q.field("title"), auction.title))
+        .withIndex("by_seedId", (q) => q.eq("seedId", auction.seedId))
         .first();
       
       if (!existing) {
         await ctx.db.insert("auctions", auction);
+      } else {
+        await ctx.db.patch(existing._id, auction);
       }
     }
 

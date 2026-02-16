@@ -22,6 +22,7 @@ export default defineSchema({
     isVerified: v.optional(v.boolean()), // Custom field
   })
     .index("email_name", ["email", "name"])
+    .index("by_email", ["email"])
     .index("name", ["name"])
     .index("by_userId", ["userId"])
     .index("username", ["username"])
@@ -108,6 +109,7 @@ export default defineSchema({
     }),
     conditionReportUrl: v.optional(v.string()),
     isExtended: v.optional(v.boolean()),
+    seedId: v.optional(v.string()),
     conditionChecklist: v.optional(v.object({
       engine: v.boolean(),
       hydraulics: v.boolean(),
@@ -119,6 +121,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])
     .index("by_end_time", ["endTime"])
+    .index("by_seedId", ["seedId"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["status"],
