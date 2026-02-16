@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
+import { isValidCallbackUrl } from "../lib/utils";
 
 /**
  * Render a dedicated Login/Registration page.
@@ -21,7 +22,8 @@ export default function Login() {
   const [signUpLoading, setSignUpLoading] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
-  const callbackURL = searchParams.get("callbackUrl") || "/";
+  const rawCallback = searchParams.get("callbackUrl");
+  const callbackURL = isValidCallbackUrl(rawCallback) ? rawCallback : "/";
 
   // If already logged in, redirect to the callback URL
   if (session) {

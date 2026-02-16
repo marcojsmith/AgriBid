@@ -12,6 +12,7 @@ import { BidForm } from "./BidForm";
 import { BidConfirmation } from "./BidConfirmation";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;
@@ -39,7 +40,8 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
     if (!session) {
       toast.info("Please sign in to place a bid");
       // Redirect to login page and provide a callback URL
-      const callbackUrl = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);
+      const rawUrl = `${location.pathname}${location.search}${location.hash}`;
+      const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
       navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }

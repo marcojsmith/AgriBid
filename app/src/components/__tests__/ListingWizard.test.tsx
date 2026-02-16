@@ -2,7 +2,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ListingWizard } from '../ListingWizard';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 
 // Mock Convex hooks
 vi.mock('convex/react', () => ({
@@ -48,11 +48,10 @@ describe('ListingWizard', () => {
   });
 
   const renderWizard = () => render(
-    <BrowserRouter>
+    <MemoryRouter>
       <ListingWizard />
-    </BrowserRouter>
+    </MemoryRouter>
   );
-
   const navigateToStep4 = () => {
     fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), { target: { value: '2024' } });
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Pretoria, ZA' } });

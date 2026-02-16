@@ -5,6 +5,7 @@ import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
 import { toast } from "sonner";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 import { ListingWizardProvider, useListingWizard } from "./ListingWizard/context/ListingWizardContext";
 import { useListingForm } from "./ListingWizard/hooks/useListingForm";
@@ -39,7 +40,8 @@ const ListingWizardContent = () => {
 
     if (!session) {
       toast.info("Please sign in to submit your listing");
-      const callbackUrl = encodeURIComponent(location.pathname);
+      const rawUrl = location.pathname;
+      const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
       navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }

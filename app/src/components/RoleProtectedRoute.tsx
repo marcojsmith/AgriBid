@@ -4,6 +4,7 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "./ui/button";
 import type { UserWithRole } from "@/types/auth";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 interface RoleProtectedRouteProps {
   children: ReactNode;
@@ -24,7 +25,8 @@ export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRoute
   }
 
   if (!session) {
-    const callbackUrl = encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);
+    const rawUrl = `${location.pathname}${location.search}${location.hash}`;
+    const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
     return <Navigate to={`/login?callbackUrl=${callbackUrl}`} replace />;
   }
 

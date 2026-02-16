@@ -3,7 +3,7 @@ import { Header } from '../Header';
 import { BiddingPanel } from '../BiddingPanel';
 import { AuctionCard } from '../AuctionCard';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import * as authClient from '../../lib/auth-client';
 import * as React from 'react';
 import type { Doc, Id } from 'convex/_generated/dataModel';
@@ -40,9 +40,9 @@ describe('Guest Restrictions - Phase 1: Navigation', () => {
 
   const renderHeader = () => {
     return render(
-      <BrowserRouter>
+      <MemoryRouter>
         <Header />
-      </BrowserRouter>
+      </MemoryRouter>
     );
   };
 
@@ -77,9 +77,9 @@ describe('Guest Restrictions - Phase 1: Navigation', () => {
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
 
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/auction/123']}>
         <BiddingPanel auction={mockAuction} />
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     const bidButton = screen.getByRole('button', { name: /Place Bid/i });
@@ -107,9 +107,9 @@ describe('Guest Restrictions - Phase 1: Navigation', () => {
     vi.mocked(authClient.useSession).mockReturnValue({ data: null, isPending: false } as any);
 
     render(
-      <BrowserRouter>
+      <MemoryRouter>
         <AuctionCard auction={mockAuction} />
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     const bidButton = screen.getByRole('button', { name: /Bid R101,000/i });

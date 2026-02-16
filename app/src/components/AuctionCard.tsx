@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Eye, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BidConfirmation } from "./BidConfirmation";
+import { isValidCallbackUrl } from "@/lib/utils";
 
 interface AuctionCardProps {
   auction: Doc<"auctions">;
@@ -32,7 +33,8 @@ export const AuctionCard = ({ auction }: AuctionCardProps) => {
 
     if (!session) {
       toast.info("Please sign in to place a bid");
-      const callbackUrl = encodeURIComponent(`/auction/${auction._id}`);
+      const rawUrl = `/auction/${auction._id}`;
+      const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
       navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }

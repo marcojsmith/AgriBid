@@ -9,18 +9,21 @@ This track focuses on the end-to-end seller experience for creating equipment au
 Implement a robust state machine to handle transitions between steps with the following validation rules:
 
 #### Step 1: Equipment Details
-- **Year**: Required. Integer between 1900 and (Current Year + 1).
+- **Year**: Required. Integer between 1900 and (Current Year + 1). 
+    - *Note*: Validation is authoritatively enforced by the server using its current UTC year. Client-side validation is advisory for UX only.
 - **Make/Model**: Required. Non-empty strings.
 - **Location**: Required. Free-text format (e.g., "City, State/Province").
 - **Title**: Auto-generated from Year + Make + Model, but editable.
 
 #### Step 2: Condition & Specs
 - **Condition Checklist**: Boolean flags for Engine, Hydraulics, and Tires. All must be toggled (Yes/No).
-- **Service History**: Required. Boolean flag indicating if records exist, plus a structured text field for brief summary/notes.
-- **Validation**: Ensure all checklist items are selected before proceeding.
+- **Service History**: Required. Boolean flag indicating if records exist.
+- **Summary**: Required *only if* Service History is true. Otherwise, optional.
+- **Validation**: Ensure all checklist items are selected and summary is provided if records exist before proceeding.
 
 #### Step 3: Media Gallery
-- **Limits**: MIN_IMAGES: 1, MAX_IMAGES: 10.
+- **Slots**: The following slots are mandatory: `front`, `engine`, `cabin`, `rear`. Each must have a valid image.
+- **Limits**: MAX_ADDITIONAL_IMAGES: 6.
 - **File Constraints**: MAX_SIZE_PER_IMAGE: 5MB. MAX_TOTAL_SIZE: 50MB.
 - **Optimization**: Mandatory client-side resize to 1920x1080 (max width/height) at 80% quality (JPEG/WebP) to reduce bandwidth and storage costs.
 
