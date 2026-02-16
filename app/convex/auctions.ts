@@ -72,21 +72,49 @@ export const getPendingAuctions = query({
 });
 
 export const getActiveAuctions = query({
-  args: { search: v.optional(v.string()) },
+  args: { 
+    search: v.optional(v.string()),
+    make: v.optional(v.string()),
+    minYear: v.optional(v.number()),
+    maxYear: v.optional(v.number()),
+    minPrice: v.optional(v.number()),
+    maxPrice: v.optional(v.number()),
+    maxHours: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    let query = ctx.db.query("auctions");
     let auctions;
+
     if (args.search) {
-      auctions = await ctx.db
-        .query("auctions")
+      auctions = await query
         .withSearchIndex("search_title", (q) => 
           q.search("title", args.search!).eq("status", "active")
         )
         .collect();
     } else {
-      auctions = await ctx.db
-        .query("auctions")
+      auctions = await query
         .withIndex("by_status", (q) => q.eq("status", "active"))
         .collect();
+    }
+
+    // Apply additional filters in memory for now (can be optimized with indexes later if needed)
+    if (args.make) {
+      auctions = auctions.filter(a => a.make === args.make);
+    }
+    if (args.minYear) {
+      auctions = auctions.filter(a => a.year >= args.minYear!);
+    }
+    if (args.maxYear) {
+      auctions = auctions.filter(a => a.year <= args.maxYear!);
+    }
+    if (args.minPrice) {
+      auctions = auctions.filter(a => a.currentPrice >= args.minPrice!);
+    }
+    if (args.maxPrice) {
+      auctions = auctions.filter(a => a.currentPrice <= args.maxPrice!);
+    }
+    if (args.maxHours !== undefined) {
+      auctions = auctions.filter(a => a.operatingHours <= args.maxHours!);
     }
 
     return await Promise.all(
@@ -95,6 +123,19 @@ export const getActiveAuctions = query({
         images: await resolveImageUrls(ctx.storage, auction.images),
       }))
     );
+  },
+});
+
+export const getActiveMakes = query({
+  args: {},
+  handler: async (ctx) => {
+    const activeAuctions = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+    
+    const makes = Array.from(new Set(activeAuctions.map(a => a.make))).sort();
+    return makes;
   },
 });
 
