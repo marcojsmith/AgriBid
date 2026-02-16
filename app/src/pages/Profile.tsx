@@ -140,7 +140,7 @@ export default function Profile() {
       )}
 
       {/* Pagination Control */}
-      {status !== "Exhausted" && (
+      {(status === "CanLoadMore" || status === "LoadingMore") && (
         <div className="flex justify-center pt-8">
           <Button 
             variant="outline" 
