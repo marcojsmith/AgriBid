@@ -84,9 +84,8 @@ export default function AuctionDetail() {
           {/* Description Section */}
           <div className="bg-card border-2 rounded-2xl p-8 space-y-4">
             <h3 className="text-xl font-bold uppercase tracking-tight">Equipment Description</h3>
-            <p className="text-muted-foreground leading-relaxed">
-              This {auction.year} {auction.make} {auction.model} is in excellent condition with only {auction.operatingHours.toLocaleString()} operating hours. 
-              Full service history available and verified by our engineering team. Located in {auction.location}.
+            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {auction.description}
             </p>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useListingWizard } from "../context/ListingWizardContext";
 import { SA_LOCATIONS } from "../constants";
 
@@ -80,6 +81,18 @@ export const GeneralInfoStep = () => {
           )}
         </div>
       </div>
+      
+      <div className="space-y-2">
+        <label htmlFor="description" className="text-xs font-black uppercase text-muted-foreground ml-1">Equipment Description</label>
+        <Textarea 
+          id="description"
+          value={formData.description} 
+          onChange={(e) => updateField("description", e.target.value)}
+          placeholder="Describe the condition, key features, and any recent maintenance..."
+          className="min-h-[120px] border-2 rounded-xl resize-none"
+        />
+      </div>
+
       <div className="space-y-2">
         <label htmlFor="title" className="text-xs font-black uppercase text-muted-foreground ml-1">Listing Title</label>
         <Input 

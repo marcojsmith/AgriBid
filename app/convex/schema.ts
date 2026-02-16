@@ -107,6 +107,7 @@ export default defineSchema({
       rear: v.optional(v.string()), // storageId
       additional: v.optional(v.array(v.string())), // array of storageIds
     }),
+    description: v.string(),
     conditionReportUrl: v.optional(v.string()),
     isExtended: v.optional(v.boolean()),
     seedId: v.optional(v.string()),

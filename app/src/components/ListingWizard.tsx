@@ -70,6 +70,7 @@ const ListingWizardContent = () => {
         year: formData.year,
         operatingHours: formData.operatingHours,
         location: formData.location,
+        description: formData.description,
         startingPrice: formData.startingPrice,
         reservePrice: formData.reservePrice,
         images,

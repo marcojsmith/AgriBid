@@ -11,6 +11,7 @@
 import type * as auctions from "../auctions.js";
 import type * as auth from "../auth.js";
 import type * as config from "../config.js";
+import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
 import type * as watchlist from "../watchlist.js";
@@ -25,6 +26,7 @@ declare const fullApi: ApiFromModules<{
   auctions: typeof auctions;
   auth: typeof auth;
   config: typeof config;
+  crons: typeof crons;
   http: typeof http;
   seed: typeof seed;
   watchlist: typeof watchlist;

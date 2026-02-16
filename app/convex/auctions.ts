@@ -1,6 +1,6 @@
 // app/convex/auctions.ts
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 
 interface RawImages {
@@ -180,6 +180,7 @@ export const createAuction = mutation({
     year: v.number(),
     operatingHours: v.number(),
     location: v.string(),
+    description: v.string(),
     startingPrice: v.number(),
     reservePrice: v.number(),
     durationDays: v.number(),
@@ -351,5 +352,40 @@ export const placeBid = mutation({
     });
 
     return { success: true };
+  },
+});
+
+/**
+ * Internal mutation to settle auctions that have reached their end time.
+ * Transitions status to 'sold' if reserve is met, or 'unsold' otherwise.
+ */
+export const settleExpiredAuctions = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const expiredAuctions = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) => q.lte(q.field("endTime"), now))
+      .collect();
+
+    for (const auction of expiredAuctions) {
+      // Check if there are any bids and if the currentPrice >= reservePrice
+      const bids = await ctx.db
+        .query("bids")
+        .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+        .collect();
+
+      const hasBids = bids.length > 0;
+      const reserveMet = auction.currentPrice >= auction.reservePrice;
+
+      const finalStatus = (hasBids && reserveMet) ? "sold" : "unsold";
+
+      await ctx.db.patch(auction._id, {
+        status: finalStatus,
+      });
+
+      console.log(`Auction ${auction._id} (${auction.title}) settled as ${finalStatus}`);
+    }
   },
 });
