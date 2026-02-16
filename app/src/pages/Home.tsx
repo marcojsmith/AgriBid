@@ -104,7 +104,7 @@ export default function Home() {
                   const { error } = await signIn.email({ 
                     email, 
                     password,
-                    callbackUrl: searchParams.get("callbackUrl") || undefined
+                    callbackURL: searchParams.get("callbackUrl") || undefined
                   });
                   if (error) {
                     setAuthError(error.message || "Sign in failed");
@@ -130,7 +130,7 @@ export default function Home() {
                     email, 
                     password, 
                     name,
-                    callbackUrl: searchParams.get("callbackUrl") || undefined
+                    callbackURL: searchParams.get("callbackUrl") || undefined
                   });
                   if (error) {
                     setAuthError(error.message || "Registration failed");
