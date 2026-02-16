@@ -7,7 +7,7 @@ import type { Doc } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Eye, Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -19,7 +19,6 @@ interface AuctionCardProps {
 
 export const AuctionCard = ({ auction }: AuctionCardProps) => {
   const { data: session } = useSession();
-  const location = useLocation();
   const navigate = useNavigate();
   const placeBid = useMutation(api.auctions.placeBid);
   const [isBidding, setIsBidding] = useState(false);
