@@ -67,10 +67,14 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
                 <Info className="h-8 w-8 text-destructive" />
               </div>
               <div className="space-y-1">
-                <p className="font-black uppercase text-sm">Auction Closed</p>
-                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-                  {auction.currentPrice === auction.startingPrice ? "No bids received." : "Reserve price was not met."}
-                </p>
+                <div className="space-y-1">
+                  <p className="font-black uppercase text-sm">Auction Closed</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                    {auction.currentPrice === auction.startingPrice 
+                      ? "No bids were placed." 
+                      : "Reserve price was not met."}
+                  </p>
+                </div>
               </div>
             </>
           )}
