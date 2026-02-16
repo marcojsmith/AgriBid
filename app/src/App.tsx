@@ -11,6 +11,7 @@ const Sell = lazy(() => import("./pages/Sell"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
+const Profile = lazy(() => import("./pages/Profile"));
 const MyBids = lazy(() => import("./pages/dashboard/MyBids"));
 const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
 
@@ -31,6 +32,7 @@ const PageLoader = () => (
  * - "/" → Home
  * - "/login" → Login
  * - "/auction/:id" → AuctionDetail
+ * - "/profile/:userId" → Profile
  * - "/sell" → Sell
  * - "/watchlist" → Watchlist (protected)
  * - "/dashboard/bids" → MyBids (protected)
@@ -48,6 +50,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auction/:id" element={<AuctionDetail />} />
+            <Route path="/profile/:userId" element={<Profile />} />
             <Route path="/sell" element={<Sell />} />
             <Route 
               path="/watchlist" 

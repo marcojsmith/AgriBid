@@ -118,6 +118,12 @@ export const Header = () => {
                     Account Menu
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
+                    <Link to={`/profile/${session?.user?.id}`} className="flex items-center gap-2 w-full">
+                      <User className="h-4 w-4" />
+                      Public Profile
+                    </Link>
+                  </DropdownMenuItem>
                   {user?.role === "admin" && (
                     <DropdownMenuItem asChild className="rounded-lg font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary">
                       <Link to="/admin" className="flex items-center gap-2 w-full">
@@ -236,17 +242,24 @@ export const Header = () => {
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Verified Member</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {user?.role === "admin" ? (
+                  <div className={cn(
+                    "grid gap-3",
+                    user?.role === "admin" ? "grid-cols-2" : "grid-cols-1"
+                  )}>
+                    {user?.role === "admin" && (
                       <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] border-primary/20 text-primary" asChild>
                         <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                           <LayoutDashboard className="h-3.5 w-3.5" />
                           Admin
                         </Link>
                       </Button>
-                    ) : (
-                      <div aria-hidden="true" />
                     )}
+                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
+                      <Link to={`/profile/${session?.user?.id}`} onClick={() => setIsMenuOpen(false)}>
+                        <User className="h-3.5 w-3.5" />
+                        Profile
+                      </Link>
+                    </Button>
                     <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
                       <Link to="/dashboard/bids" onClick={() => setIsMenuOpen(false)}>
                         <LayoutDashboard className="h-3.5 w-3.5" />
@@ -289,4 +302,3 @@ export const Header = () => {
     </header>
   );
 };
-
