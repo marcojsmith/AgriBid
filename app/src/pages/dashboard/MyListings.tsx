@@ -67,7 +67,7 @@ export default function MyListings() {
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="font-bold text-xl leading-tight">{auction.title}</h3>
                   <Badge variant="outline" className="font-bold uppercase tracking-wider shrink-0">
-                    {auction.status.replace('_', ' ')}
+                    {auction.status.replaceAll('_', ' ')}
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
