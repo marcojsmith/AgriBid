@@ -419,7 +419,16 @@ export const getMyBids = query({
       .collect();
 
     // Group by auctionId to get the latest status per auction
-    const auctionIds = Array.from(new Set(bids.map((b) => b.auctionId)));
+    const bidsByAuction = new Map<typeof bids[number]["auctionId"], typeof bids>();
+    for (const bid of bids) {
+      const existing = bidsByAuction.get(bid.auctionId);
+      if (existing) {
+        existing.push(bid);
+      } else {
+        bidsByAuction.set(bid.auctionId, [bid]);
+      }
+    }
+    const auctionIds = Array.from(bidsByAuction.keys());
 
     const auctions = await Promise.all(
       auctionIds.map(async (id) => {
@@ -427,7 +436,7 @@ export const getMyBids = query({
         if (!auction) return null;
         
         // Find my highest bid on this auction
-        const myBids = bids.filter(b => b.auctionId === id);
+        const myBids = bidsByAuction.get(id) ?? [];
         const myHighestBid = Math.max(...myBids.map(b => b.amount));
         
         return {

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { isValidCallbackUrl } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { Link } from "react-router-dom";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;
@@ -40,7 +39,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
       <div className="space-y-6 animate-in fade-in duration-500">
         <div className="text-center space-y-2">
           <Badge variant={auction.status === 'sold' ? "default" : "destructive"} className="font-black uppercase tracking-widest px-4 py-1.5 text-xs mb-2">
-            Auction {auction.status.toUpperCase()}
+            Auction {auction.status}
           </Badge>
           <h3 className="text-3xl font-black text-primary tracking-tighter">
             R {auction.currentPrice.toLocaleString('en-ZA')}

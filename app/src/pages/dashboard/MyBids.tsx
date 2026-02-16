@@ -8,11 +8,9 @@ import { Gavel } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Render the current user's auction bids dashboard.
+ * Renders the "My Bids" dashboard page for the current user, showing a loading spinner while bids are fetched, an empty-state call-to-action when no bids exist, or a responsive grid of bid cards with status badges, bid amounts, and links to each auction.
  *
- * Renders a spinner while bids are loading; if no bids exist shows a call-to-action to browse auctions; otherwise displays a responsive grid of auction cards with status badges, bid amounts, and links to each auction.
- *
- * @returns A JSX element that displays the loading state, empty state, or a grid of the user's auctions with status badges and action buttons.
+ * @returns The React element representing the My Bids page.
  */
 export default function MyBids() {
   const auctions = useQuery(api.auctions.getMyBids);
@@ -50,6 +48,25 @@ export default function MyBids() {
             const isWon = auction.isWon;
             const isLost = (auction.status === 'sold' && !isWon) || auction.status === 'unsold';
 
+            // Extract badge logic for readability
+            const statusLabel = isWon 
+              ? "WON" 
+              : isWinning 
+                ? "WINNING" 
+                : auction.status === 'unsold' 
+                  ? "RESERVE NOT MET" 
+                  : isLost 
+                    ? "OUTBID / SOLD" 
+                    : auction.status;
+
+            const statusVariant = isWon 
+              ? "default" 
+              : isWinning 
+                ? "secondary" 
+                : isLost 
+                  ? "destructive" 
+                  : "outline";
+
             return (
               <div key={auction._id} className="bg-card border-2 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div className="aspect-video bg-muted relative">
@@ -57,16 +74,11 @@ export default function MyBids() {
                     <img src={auction.images.front} alt={auction.title} className="w-full h-full object-cover" />
                   )}
                   <div className="absolute top-2 right-2">
-                    <Badge variant={
-                      isWon ? "default" : 
-                      isWinning ? "secondary" : 
-                      isLost ? "destructive" : 
-                      "outline"
-                    } className={cn(
+                    <Badge variant={statusVariant} className={cn(
                       "font-bold uppercase tracking-wider",
                       isWon && "bg-green-600 hover:bg-green-700"
                     )}>
-                      {isWon ? "WON" : isWinning ? "WINNING" : auction.status === 'unsold' ? "RESERVE NOT MET" : isLost ? "OUTBID / SOLD" : auction.status}
+                      {statusLabel}
                     </Badge>
                   </div>
                 </div>

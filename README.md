@@ -4,7 +4,7 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 
 ## 🚀 Key Features
 
-- **Real-Time Bidding**: Powered by Convex's reactive architecture for sub-200ms latency.
+- **Real-Time Bidding**: Powered by Convex's reactive architecture for low-latency updates (typically under 200ms in our tests).
 - **Auction Lifecycle Management**:
   - **Soft Close (Anti-Sniping)**: Automatically extends auctions by 2 minutes if a bid is placed in the final 2 minutes.
   - **Automated Settlement**: Integrated cron jobs to finalize auctions as "Sold" (if reserve is met) or "Unsold".

@@ -17,6 +17,12 @@ export const NotificationListener = () => {
   // Keep track of auction statuses we've already "seen" as settled
   const settledAuctionsRef = useRef<Set<string>>(new Set());
 
+  // Clear cache if user changes (e.g. logout/login)
+  const userId = session?.user?.id;
+  useEffect(() => {
+    settledAuctionsRef.current.clear();
+  }, [userId]);
+
   useEffect(() => {
     if (!session) return;
 
