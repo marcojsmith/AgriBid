@@ -8,11 +8,9 @@ import { Gavel } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Render the current user's auction bids dashboard.
+ * Renders the "My Bids" dashboard page for the current user, showing a loading spinner while bids are fetched, an empty-state call-to-action when no bids exist, or a responsive grid of bid cards with status badges, bid amounts, and links to each auction.
  *
- * Renders a spinner while bids are loading; if no bids exist shows a call-to-action to browse auctions; otherwise displays a responsive grid of auction cards with status badges, bid amounts, and links to each auction.
- *
- * @returns A JSX element that displays the loading state, empty state, or a grid of the user's auctions with status badges and action buttons.
+ * @returns The React element representing the My Bids page.
  */
 export default function MyBids() {
   const auctions = useQuery(api.auctions.getMyBids);
