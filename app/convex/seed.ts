@@ -79,7 +79,7 @@ export const runSeed = mutation({
         let isDone = false;
         let cursor: string | null = null;
         while (!isDone) {
-          const result = await ctx.runMutation(components.auth.adapter.deleteMany, {
+          const result: { isDone: boolean; continueCursor?: string | null } = await ctx.runMutation(components.auth.adapter.deleteMany, {
             input: {
               model,
               where: [] // Clear all
