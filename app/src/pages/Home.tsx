@@ -12,27 +12,33 @@ import { cn } from "@/lib/utils";
 
 /**
  * Custom hook to detect media query matches.
+ * Initialises synchronously to avoid layout jumps.
  */
 function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(false);
+  const [matches, setMatches] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia(query).matches;
+    }
+    return false;
+  });
 
   useEffect(() => {
     const media = window.matchMedia(query);
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
     const listener = () => setMatches(media.matches);
     media.addEventListener("change", listener);
     return () => media.removeEventListener("change", listener);
-  }, [matches, query]);
+  }, [query]);
 
   return matches;
 }
 
 /**
- * Render the AgriBid home page displaying active auctions with a filter sidebar.
- * Accessible to both guest and authenticated users.
- * 
+ * Render the AgriBid home page showing active auctions with a filter sidebar, mobile filter overlay, and view-mode controls.
+ *
+ * Reads URL query parameters to apply search and filter criteria, fetches matching active auctions, and displays loading,
+ * empty, or results states. Supports toggling a persistent desktop sidebar, a mobile filter overlay, and compact/detailed
+ * auction list layouts.
+ *
  * @returns The Home page JSX element
  */
 export default function Home() {
@@ -41,15 +47,18 @@ export default function Home() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
-  const [viewMode, setViewMode] = useState<"compact" | "detailed">("detailed");
-
-  // Set default view mode based on device on initial load
-  useEffect(() => {
-    if (isMobile) {
-      setViewMode("compact");
-    } else {
-      setViewMode("detailed");
+  
+  // Use lazy initializer to avoid layout jump on initial load
+  const [viewMode, setViewMode] = useState<"compact" | "detailed">(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches) {
+      return "compact";
     }
+    return "detailed";
+  });
+
+  // Respond to dynamic device changes
+  useEffect(() => {
+    setViewMode(isMobile ? "compact" : "detailed");
   }, [isMobile]);
 
   // Extract filter params
