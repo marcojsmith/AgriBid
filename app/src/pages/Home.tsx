@@ -1,5 +1,5 @@
 // app/src/pages/Home.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { useSession } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
@@ -11,6 +11,25 @@ import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
+ * Custom hook to detect media query matches.
+ */
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = () => setMatches(media.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [matches, query]);
+
+  return matches;
+}
+
+/**
  * Render the AgriBid home page displaying active auctions with a filter sidebar.
  * Accessible to both guest and authenticated users.
  * 
@@ -19,9 +38,19 @@ import { cn } from "@/lib/utils";
 export default function Home() {
   const { isPending } = useSession();
   const [searchParams] = useSearchParams();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [viewMode, setViewMode] = useState<"compact" | "detailed">("detailed");
+
+  // Set default view mode based on device on initial load
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode("compact");
+    } else {
+      setViewMode("detailed");
+    }
+  }, [isMobile]);
 
   // Extract filter params
   const searchQuery = searchParams.get("q") || undefined;
