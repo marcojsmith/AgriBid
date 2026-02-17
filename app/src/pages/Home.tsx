@@ -47,7 +47,7 @@ export default function Home() {
   const [searchParams] = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(false);
   
   // Use lazy initializer to avoid layout jump on initial load
   const [viewMode, setViewMode] = useState<"compact" | "detailed">(() => {
