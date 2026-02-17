@@ -76,13 +76,19 @@ export const runSeed = mutation({
       // Clear Auth Component tables
       const authModels = ["user", "account", "session", "verification"] as const;
       for (const model of authModels) {
-        await ctx.runMutation(components.auth.adapter.deleteMany, {
-          input: {
-            model,
-            where: [] // Clear all
-          },
-          paginationOpts: { cursor: null, numItems: 100 }
-        });
+        let isDone = false;
+        let cursor: string | null = null;
+        while (!isDone) {
+          const result = await ctx.runMutation(components.auth.adapter.deleteMany, {
+            input: {
+              model,
+              where: [] // Clear all
+            },
+            paginationOpts: { cursor, numItems: 100 }
+          });
+          isDone = result.isDone;
+          cursor = result.continueCursor ?? null;
+        }
         console.log(`Requested wipe of auth model: ${model}`);
       }
     }
