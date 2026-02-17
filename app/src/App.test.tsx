@@ -21,10 +21,10 @@ vi.mock('./lib/auth-client', () => ({
 }));
 
 describe('App', () => {
-  it('renders within the Layout (contains AGRIBID header)', () => {
+  it('renders within the Layout (contains AGRIBID header)', async () => {
     render(<App />);
     // The Header and Footer placeholders both contain "AGRIBID"
     expect(screen.getAllByText(/AGRIBID/i).length).toBeGreaterThan(0);
-    expect(screen.getByTestId('home-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('home-page')).toBeInTheDocument();
   });
 });
