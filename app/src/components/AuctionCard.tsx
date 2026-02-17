@@ -102,8 +102,7 @@ export const AuctionCard = ({ auction, viewMode = "detailed" }: AuctionCardProps
 
   return (
     <Card className={cn(
-      "overflow-hidden border-2 hover:border-primary transition-colors bg-card group rounded-lg",
-      isCompact ? "h-auto" : "h-full"
+      "overflow-hidden border-2 hover:border-primary transition-colors bg-card group rounded-lg h-full shadow-none"
     )}>
       <Link to={`/auction/${auction._id}`} className={cn(
         "flex h-full",
@@ -138,6 +137,8 @@ export const AuctionCard = ({ auction, viewMode = "detailed" }: AuctionCardProps
               <Button
                 variant="secondary"
                 size="icon"
+                aria-label={isWatched ? "Remove from watchlist" : "Add to watchlist"}
+                aria-pressed={!!isWatched}
                 className={cn(
                   "rounded-full shadow-md bg-background/80 backdrop-blur hover:bg-background transition-all",
                   isCompact ? "h-7 w-7" : "h-9 w-9",
@@ -165,12 +166,9 @@ export const AuctionCard = ({ auction, viewMode = "detailed" }: AuctionCardProps
             isCompact ? "h-12 border-t" : "hidden"
           )}>
             <div className={cn(
-              "font-black whitespace-nowrap leading-none tracking-tight px-1.5",
+              "font-black whitespace-nowrap leading-none",
               isCompact ? "text-sm sm:text-base" : "text-[10px]"
             )}>
-              {!isCompact && (
-                <p className="text-[7px] text-muted-foreground uppercase tracking-tighter mb-0.5">Ends In</p>
-              )}
               <CountdownTimer endTime={auction.endTime} />
             </div>
           </div>
