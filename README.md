@@ -2,9 +2,11 @@
 
 AgriBid is a real-time auction platform purpose-built for the agricultural machinery marketplace. It leverages modern web technologies to deliver a fast, secure, and transparent bidding experience for buyers and sellers of heavy equipment.
 
-## 🚀 Key Features
+## 🚀 Key Features (Implemented)
 
-- **Real-Time Bidding**: Powered by Convex's reactive architecture for low-latency updates (typically under 200ms in our tests).
+- **Real-Time Bidding**: Powered by Convex's reactive architecture for low-latency updates.
+- **Dynamic Density Views**: Marketplace supports a **View Toggle** (Detailed vs. Compact). The Compact view is optimized for mobile and high-density browsing.
+- **Advanced Filtering**: Multi-parameter search including Manufacturer (Make), Year Range, Price Range, and Max Operating Hours.
 - **Auction Lifecycle Management**:
   - **Soft Close (Anti-Sniping)**: Automatically extends auctions by 2 minutes if a bid is placed in the final 2 minutes.
   - **Automated Settlement**: Integrated cron jobs to finalize auctions as "Sold" (if reserve is met) or "Unsold".
@@ -12,13 +14,22 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 - **User Dashboards**:
   - **Buyer Dashboard**: Track active bids, winning items, and lost auctions.
   - **Seller Dashboard**: Manage equipment inventory, track listing status, and view sales.
-- **Watchlist Functionality**: Save and monitor auctions with real-time status updates.
+- **Watchlist Functionality**: Save and monitor auctions with real-time status updates and accessibility-optimized toggles.
 - **Live Notifications**: Instant toast notifications for outbids, auction extensions, and final settlement results.
 - **Admin Moderation**: Dedicated dashboard for reviewing and approving/rejecting equipment listings.
 - **Security & Integrity**: 
   - Role-Based Access Control (RBAC).
   - Open Redirect protection on all authentication flows.
-  - Immutable bid history logs.
+  - Immutable bid history logs and NaN-safe parameter parsing.
+
+## 🗺️ Roadmap (Upcoming Features)
+
+- [ ] **Proxy Bidding**: Set maximum bid amounts and allow the system to auto-bid on your behalf.
+- [ ] **Shipping Calculator**: Integration with uShip/Shiply APIs for instant haulage quotes.
+- [ ] **Seller Verification**: Enhanced verification flow for commercial dealers.
+- [ ] **Optimistic Updates**: Further latency reduction for bid placement UI.
+- [ ] **Infinite Scroll**: Enhanced performance for large marketplace listings.
+- [ ] **PDF Condition Reports**: Generate and download printable equipment inspection summaries.
 
 ## 🛠 Tech Stack
 
