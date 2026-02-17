@@ -1,8 +1,9 @@
-// app/convex/auctions.ts
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
+import { components } from "./_generated/api";
+import { getCallerRole } from "./users";
 
 interface RawImages {
   front?: string;
@@ -52,8 +53,8 @@ export async function resolveImageUrls(storage: QueryCtx["storage"], images: unk
 export const getPendingAuctions = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity || identity.role !== "admin") {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
       throw new Error("Not authorized: Admin privileges required");
     }
 
@@ -82,17 +83,17 @@ export const getActiveAuctions = query({
     maxHours: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let query = ctx.db.query("auctions");
+    const auctionsQuery = ctx.db.query("auctions");
     let auctions;
 
     if (args.search) {
-      auctions = await query
+      auctions = await auctionsQuery
         .withSearchIndex("search_title", (q) => 
           q.search("title", args.search!).eq("status", "active")
         )
         .collect();
     } else {
-      auctions = await query
+      auctions = await auctionsQuery
         .withIndex("by_status", (q) => q.eq("status", "active"))
         .collect();
     }
@@ -152,20 +153,33 @@ export const getAuctionBids = query({
       .order("desc")
       .take(50);
 
-    const bidsWithUsers = await Promise.all(
-      bids.map(async (bid) => {
-        const user = await ctx.db
-          .query("user")
-          // Better Auth uses 'userId' as the external identifier
-          .withIndex("by_userId", (q) => q.eq("userId", bid.bidderId))
-          .first();
+    const uniqueBidderIds = Array.from(new Set(bids.map((b) => b.bidderId)));
+    const bidderNames = new Map<string, string>();
+
+    await Promise.all(
+      uniqueBidderIds.map(async (bidderId) => {
+        let user = await ctx.runQuery(components.auth.adapter.findOne, {
+          model: "user",
+          where: [{ field: "userId", operator: "eq", value: bidderId }]
+        });
+
+        if (!user) {
+          user = await ctx.runQuery(components.auth.adapter.findOne, {
+            model: "user",
+            where: [{ field: "_id", operator: "eq", value: bidderId }]
+          });
+        }
         
-        return {
-          ...bid,
-          bidderName: user?.name || "Anonymous",
-        };
+        if (user) {
+          bidderNames.set(bidderId, user.name);
+        }
       })
     );
+
+    const bidsWithUsers = bids.map((bid) => ({
+      ...bid,
+      bidderName: bidderNames.get(bid.bidderId) || "Anonymous",
+    }));
 
     return bidsWithUsers;
   },
@@ -181,12 +195,27 @@ export const getEquipmentMetadata = query({
 export const getSellerInfo = query({
   args: { sellerId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("user")
-      .withIndex("by_userId", (q) => q.eq("userId", args.sellerId))
-      .first();
+    // Query user details from the auth component's adapter
+    let user = await ctx.runQuery(components.auth.adapter.findOne, {
+      model: "user",
+      where: [{ field: "userId", operator: "eq", value: args.sellerId }]
+    });
+
+    if (!user) {
+      user = await ctx.runQuery(components.auth.adapter.findOne, {
+        model: "user",
+        where: [{ field: "_id", operator: "eq", value: args.sellerId }]
+      });
+    }
     
     if (!user) return null;
+
+    const linkId = user.userId ?? user._id;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", linkId))
+      .unique();
 
     const soldAuctions = await ctx.db
       .query("auctions")
@@ -195,8 +224,8 @@ export const getSellerInfo = query({
 
     return {
       name: user.name,
-      isVerified: user.isVerified || false,
-      role: user.role || "Private Seller",
+      isVerified: profile?.isVerified || false,
+      role: profile?.role || "Private Seller",
       createdAt: user.createdAt,
       itemsSold: soldAuctions.length,
     };
@@ -307,14 +336,8 @@ export const createAuction = mutation({
 export const approveAuction = mutation({
   args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-    
-    // Enforce admin authorization
-    // Note: Better Auth roles are mapped to identity.role in the Convex integration
-    if (identity.role !== "admin") {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
       throw new Error("Not authorized: Admin privileges required");
     }
 
@@ -347,8 +370,8 @@ export const approveAuction = mutation({
 export const rejectAuction = mutation({
   args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity || identity.role !== "admin") {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
       throw new Error("Not authorized: Admin privileges required");
     }
 

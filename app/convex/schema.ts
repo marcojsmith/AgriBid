@@ -3,74 +3,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Better Auth Tables (Manually defined as export is missing)
-  user: defineTable({
-    name: v.string(),
-    email: v.string(),
-    emailVerified: v.boolean(),
-    image: v.optional(v.union(v.null(), v.string())),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    twoFactorEnabled: v.optional(v.union(v.null(), v.boolean())),
-    isAnonymous: v.optional(v.union(v.null(), v.boolean())),
-    username: v.optional(v.union(v.null(), v.string())),
-    displayUsername: v.optional(v.union(v.null(), v.string())),
-    phoneNumber: v.optional(v.union(v.null(), v.string())),
-    phoneNumberVerified: v.optional(v.union(v.null(), v.boolean())),
-    userId: v.optional(v.union(v.null(), v.string())),
-    role: v.optional(v.string()), // Custom field
-    isVerified: v.optional(v.boolean()), // Custom field
-  })
-    .index("email_name", ["email", "name"])
-    .index("by_email", ["email"])
-    .index("name", ["name"])
-    .index("by_userId", ["userId"])
-    .index("username", ["username"])
-    .index("phoneNumber", ["phoneNumber"]),
-
-  session: defineTable({
-    expiresAt: v.number(),
-    token: v.string(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    ipAddress: v.optional(v.union(v.null(), v.string())),
-    userAgent: v.optional(v.union(v.null(), v.string())),
-    userId: v.string(),
-  })
-    .index("expiresAt", ["expiresAt"])
-    .index("expiresAt_userId", ["expiresAt", "userId"])
-    .index("token", ["token"])
-    .index("userId", ["userId"]),
-
-  account: defineTable({
-    accountId: v.string(),
-    providerId: v.string(),
-    userId: v.string(),
-    accessToken: v.optional(v.union(v.null(), v.string())),
-    refreshToken: v.optional(v.union(v.null(), v.string())),
-    idToken: v.optional(v.union(v.null(), v.string())),
-    accessTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
-    refreshTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
-    scope: v.optional(v.union(v.null(), v.string())),
-    password: v.optional(v.union(v.null(), v.string())),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("accountId", ["accountId"])
-    .index("accountId_providerId", ["accountId", "providerId"])
-    .index("providerId_userId", ["providerId", "userId"])
-    .index("userId", ["userId"]),
-
-  verification: defineTable({
-    identifier: v.string(),
-    value: v.string(),
-    expiresAt: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("expiresAt", ["expiresAt"])
-    .index("identifier", ["identifier"]),
-
   // AgriBid Tables
   equipmentMetadata: defineTable({
     make: v.string(),
@@ -153,16 +85,15 @@ export default defineSchema({
     .index("by_user_auction", ["userId", "auctionId"])
     .index("by_user", ["userId"]),
 
-  // Standard Better Auth extra tables
-  jwks: defineTable({
-    publicKey: v.string(),
-    privateKey: v.string(),
+  // Application Profiles (Links Auth User to App Metadata)
+  profiles: defineTable({
+    userId: v.string(),
+    role: v.union(v.literal("buyer"), v.literal("seller"), v.literal("admin")),
+    isVerified: v.boolean(),
+    bio: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    companyName: v.optional(v.string()),
     createdAt: v.number(),
-  }),
-  rateLimit: defineTable({
-    id: v.string(),
-    key: v.string(),
-    count: v.int64(),
-    lastRequest: v.int64(),
-  }).index("key", ["key"]),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });
