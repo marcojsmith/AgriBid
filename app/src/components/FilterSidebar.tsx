@@ -80,8 +80,14 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {/* Manufacturer Filter */}
         <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Manufacturer</label>
+          <label 
+            htmlFor="filter-make"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
+            Manufacturer
+          </label>
           <select 
+            id="filter-make"
             value={localFilters.make}
             onChange={(e) => updateParam("make", e.target.value)}
             className="w-full h-12 rounded-xl border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
@@ -95,9 +101,15 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Year Range */}
         <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Year Model</label>
+          <label 
+            htmlFor="filter-year-from"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
+            Year Model
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <Input 
+              id="filter-year-from"
               type="number" 
               placeholder="From" 
               min={1900}
@@ -106,6 +118,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
               className="h-12 font-bold rounded-xl border-2"
             />
             <Input 
+              id="filter-year-to"
               type="number" 
               placeholder="To" 
               min={1900}
@@ -118,11 +131,17 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Price Range */}
         <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Price Range (ZAR)</label>
+          <label 
+            htmlFor="filter-price-min"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
+            Price Range (ZAR)
+          </label>
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">R</span>
               <Input 
+                id="filter-price-min"
                 type="number" 
                 placeholder="Min" 
                 value={localFilters.minPrice}
@@ -133,6 +152,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">R</span>
               <Input 
+                id="filter-price-max"
                 type="number" 
                 placeholder="Max" 
                 value={localFilters.maxPrice}
@@ -145,9 +165,15 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Operating Hours */}
         <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Max Operating Hours</label>
+          <label 
+            htmlFor="filter-hours"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
+            Max Operating Hours
+          </label>
           <div className="relative">
             <Input 
+              id="filter-hours"
               type="number" 
               placeholder="e.g. 5000" 
               value={localFilters.maxHours}

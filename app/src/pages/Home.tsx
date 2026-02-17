@@ -1,5 +1,5 @@
 // app/src/pages/Home.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { useSession } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
@@ -9,6 +9,29 @@ import { FilterSidebar } from "../components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/**
+ * Custom hook to detect media query matches.
+ * Initialises synchronously to avoid layout jumps.
+ */
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia(query).matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia(query);
+    const listener = () => setMatches(media.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [query]);
+
+  return matches;
+}
 
 /**
  * Render the AgriBid home page showing active auctions with a filter sidebar, mobile filter overlay, and view-mode controls.
@@ -22,26 +45,39 @@ import { cn } from "@/lib/utils";
 export default function Home() {
   const { isPending } = useSession();
   const [searchParams] = useSearchParams();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
-  const [viewMode, setViewMode] = useState<"compact" | "detailed">("detailed");
+  
+  // Use lazy initializer to avoid layout jump on initial load
+  const [viewMode, setViewMode] = useState<"compact" | "detailed">(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches) {
+      return "compact";
+    }
+    return "detailed";
+  });
+
+  // Respond to dynamic device changes
+  useEffect(() => {
+    setViewMode(isMobile ? "compact" : "detailed");
+  }, [isMobile]);
 
   // Extract filter params
   const searchQuery = searchParams.get("q") || undefined;
   const make = searchParams.get("make") || undefined;
   
-  const parseParam = (key: string) => {
+  const parseFiniteInt = (key: string) => {
     const val = searchParams.get(key);
-    if (!val) return undefined;
+    if (val === null) return undefined;
     const parsed = parseInt(val, 10);
-    return isNaN(parsed) ? undefined : parsed;
+    return Number.isFinite(parsed) ? parsed : undefined;
   };
 
-  const minYear = parseParam("minYear");
-  const maxYear = parseParam("maxYear");
-  const minPrice = parseParam("minPrice");
-  const maxPrice = parseParam("maxPrice");
-  const maxHours = parseParam("maxHours");
+  const minYear = parseFiniteInt("minYear");
+  const maxYear = parseFiniteInt("maxYear");
+  const minPrice = parseFiniteInt("minPrice");
+  const maxPrice = parseFiniteInt("maxPrice");
+  const maxHours = parseFiniteInt("maxHours");
   
   const auctions = useQuery(api.auctions.getActiveAuctions, { 
     search: searchQuery,
@@ -57,7 +93,12 @@ export default function Home() {
     return <div className="flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold">AGRIBID LOADING...</div>;
   }
 
-  const hasActiveFilters = make || minYear || maxYear || minPrice || maxPrice || maxHours;
+  const hasActiveFilters = make !== undefined || 
+    minYear !== undefined || 
+    maxYear !== undefined || 
+    minPrice !== undefined || 
+    maxPrice !== undefined || 
+    maxHours !== undefined;
 
   return (
     <div className="flex flex-col lg:flex-row gap-8">
@@ -70,15 +111,17 @@ export default function Home() {
 
       {/* Mobile Filter Overlay */}
       {isMobileFilterOpen && (
-        <div className="fixed inset-0 z-[100] lg:hidden bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80">
-            <FilterSidebar onClose={() => setIsMobileFilterOpen(false)} />
-          </div>
+        <div className="fixed inset-0 z-[100] lg:hidden animate-in fade-in duration-300">
+          {/* Clickable Backdrop */}
           <button 
-            className="absolute inset-0 -z-10 w-full h-full"
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 w-full h-full cursor-default"
             onClick={() => setIsMobileFilterOpen(false)}
             aria-label="Close filters"
           />
+          {/* Sidebar Container */}
+          <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80 z-20">
+            <FilterSidebar onClose={() => setIsMobileFilterOpen(false)} />
+          </div>
         </div>
       )}
 
@@ -179,7 +222,7 @@ export default function Home() {
           )}>
             {auctions.map((auction) => (
               <div key={auction._id} className={cn(
-                "w-full",
+                "w-full h-full",
                 viewMode === "compact" && "max-w-[500px]"
               )}>
                 <AuctionCard 

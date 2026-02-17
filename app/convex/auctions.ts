@@ -98,24 +98,15 @@ export const getActiveAuctions = query({
     }
 
     // Apply additional filters in memory for now (can be optimized with indexes later if needed)
-    if (args.make) {
-      auctions = auctions.filter(a => a.make === args.make);
-    }
-    if (args.minYear) {
-      auctions = auctions.filter(a => a.year >= args.minYear!);
-    }
-    if (args.maxYear) {
-      auctions = auctions.filter(a => a.year <= args.maxYear!);
-    }
-    if (args.minPrice) {
-      auctions = auctions.filter(a => a.currentPrice >= args.minPrice!);
-    }
-    if (args.maxPrice) {
-      auctions = auctions.filter(a => a.currentPrice <= args.maxPrice!);
-    }
-    if (args.maxHours !== undefined) {
-      auctions = auctions.filter(a => a.operatingHours <= args.maxHours!);
-    }
+    auctions = auctions.filter(a => {
+      if (args.make && a.make !== args.make) return false;
+      if (args.minYear !== undefined && a.year < args.minYear) return false;
+      if (args.maxYear !== undefined && a.year > args.maxYear) return false;
+      if (args.minPrice !== undefined && a.currentPrice < args.minPrice) return false;
+      if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice) return false;
+      if (args.maxHours !== undefined && a.operatingHours > args.maxHours) return false;
+      return true;
+    });
 
     return await Promise.all(
       auctions.map(async (auction) => ({
