@@ -155,10 +155,17 @@ export const getAuctionBids = query({
 
     const bidsWithUsers = await Promise.all(
       bids.map(async (bid) => {
-        const user = await ctx.runQuery(components.auth.adapter.findOne, {
+        let user = await ctx.runQuery(components.auth.adapter.findOne, {
           model: "user",
           where: [{ field: "userId", operator: "eq", value: bid.bidderId }]
         });
+
+        if (!user) {
+          user = await ctx.runQuery(components.auth.adapter.findOne, {
+            model: "user",
+            where: [{ field: "_id", operator: "eq", value: bid.bidderId }]
+          });
+        }
         
         return {
           ...bid,
@@ -182,10 +189,17 @@ export const getSellerInfo = query({
   args: { sellerId: v.string() },
   handler: async (ctx, args) => {
     // Query user details from the auth component's adapter
-    const user = await ctx.runQuery(components.auth.adapter.findOne, {
+    let user = await ctx.runQuery(components.auth.adapter.findOne, {
       model: "user",
       where: [{ field: "userId", operator: "eq", value: args.sellerId }]
     });
+
+    if (!user) {
+      user = await ctx.runQuery(components.auth.adapter.findOne, {
+        model: "user",
+        where: [{ field: "_id", operator: "eq", value: args.sellerId }]
+      });
+    }
     
     if (!user) return null;
 

@@ -19,6 +19,7 @@ import {
 
 export const Header = () => {
   const userData = useQuery(api.users.getMyProfile);
+  const profileId = userData?.profile?.userId;
   const role = userData?.profile?.role;
   const location = useLocation();
   const navigate = useNavigate();
@@ -119,7 +120,14 @@ export const Header = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
-                    <Link to={`/profile/${userData?.profile?.userId}`} className="flex items-center gap-2 w-full">
+                    <Link 
+                      to={profileId ? `/profile/${profileId}` : "#"} 
+                      aria-disabled={!profileId}
+                      onClick={(e) => {
+                        if (!profileId) e.preventDefault();
+                      }}
+                      className="flex items-center gap-2 w-full"
+                    >
                       <User className="h-4 w-4" />
                       Public Profile
                     </Link>
@@ -255,7 +263,17 @@ export const Header = () => {
                       </Button>
                     )}
                     <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
-                      <Link to={`/profile/${userData?.profile?.userId}`} onClick={() => setIsMenuOpen(false)}>
+                      <Link 
+                        to={profileId ? `/profile/${profileId}` : "#"} 
+                        aria-disabled={!profileId}
+                        onClick={(e) => {
+                          if (!profileId) {
+                            e.preventDefault();
+                            return;
+                          }
+                          setIsMenuOpen(false);
+                        }}
+                      >
                         <User className="h-3.5 w-3.5" />
                         Profile
                       </Link>

@@ -145,6 +145,14 @@ export const runSeed = mutation({
           }
         }
       });
+    }
+
+    const existingSellerProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", mockSellerId))
+      .first();
+
+    if (!existingSellerProfile) {
       await ctx.db.insert("profiles", {
         userId: mockSellerId,
         role: "seller",
@@ -177,6 +185,14 @@ export const runSeed = mutation({
           }
         }
       });
+    }
+
+    const existingAdminProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", mockAdminId))
+      .first();
+
+    if (!existingAdminProfile) {
       await ctx.db.insert("profiles", {
         userId: mockAdminId,
         role: "admin",
@@ -377,11 +393,18 @@ export const clearAllData = mutation({
 
     let totalDeleted = 0;
     
+    const BATCH_SIZE = 500;
+    
     // Clear App Tables
     for (const tableName of appTables) {
-      const records = await ctx.db.query(tableName).collect();
-      await Promise.all(records.map(r => ctx.db.delete(r._id)));
-      totalDeleted += records.length;
+      let deletedCount = 0;
+      while (true) {
+        const batch = await ctx.db.query(tableName).take(BATCH_SIZE);
+        if (batch.length === 0) break;
+        await Promise.all(batch.map(r => ctx.db.delete(r._id)));
+        deletedCount += batch.length;
+      }
+      totalDeleted += deletedCount;
     }
 
     // Clear Auth Tables via component adapter

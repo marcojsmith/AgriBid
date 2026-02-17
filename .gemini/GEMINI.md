@@ -30,8 +30,8 @@ Determine the best course of action for the user based on the current state of t
         - `app/convex/seed.ts`: Contains seed data for the database.
         - `app/convex/http.ts`: Handles HTTP requests and API routes.
 - **Authentication:** BetterAuth (for user authentication and management).
-    - Important to note, the BetterAuth logic is implemented in the `convex/auth.ts` and `convex/auth.config.ts` files, which are part of the Convex backend. This means that user authentication and management are handled on the server side, ensuring secure access to the application.
-    - Also, the BetterAuth component is defined in `convex/convex.config.ts`, which is the main configuration file for the Convex backend. This allows for seamless integration of authentication features into the overall application architecture.
+    - Important to note, the BetterAuth logic is implemented in the `app/convex/auth.ts` and `app/convex/auth.config.ts` files, which are part of the Convex backend. This means that user authentication and management are handled on the server side, ensuring secure access to the application.
+    - Also, the BetterAuth component is defined in `app/convex/convex.config.ts`, which is the main configuration file for the Convex backend. This allows for seamless integration of authentication features into the overall application architecture.
 - **Architecture:** `src/core` contains pure business logic, isolated from UI/Backend.
 - **Testing:** Chrome DevTools MCP (E2E/UI), Vitest.
 
