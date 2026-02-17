@@ -7,6 +7,8 @@ import { getCallerRole } from "./users";
 
 type TableNames = "auctions" | "bids" | "profiles" | "watchlist" | "equipmentMetadata";
 
+const BATCH_SIZE = 500;
+
 async function checkDestructiveAccess(ctx: MutationCtx) {
   const nodeEnv = process.env.NODE_ENV;
   const vercelEnv = process.env.VERCEL_ENV;
@@ -59,8 +61,6 @@ export const runSeed = mutation({
     // -----------------------
 
     if (args.clear) {
-      const BATCH_SIZE = 500;
-      
       const tablesToClear: TableNames[] = ["auctions", "bids", "profiles", "watchlist"];
       for (const tableName of tablesToClear) {
         let deletedCount = 0;
@@ -393,8 +393,6 @@ export const clearAllData = mutation({
 
     let totalDeleted = 0;
     
-    const BATCH_SIZE = 500;
-    
     // Clear App Tables
     for (const tableName of appTables) {
       let deletedCount = 0;
@@ -409,16 +407,22 @@ export const clearAllData = mutation({
 
     // Clear Auth Tables via component adapter
     for (const model of authModels) {
-      const result = (await ctx.runMutation(components.auth.adapter.deleteMany, {
-        input: {
-          model,
-          where: []
-        },
-        paginationOpts: { cursor: null, numItems: 1000 }
-      })) as { count: number };
-      
-      totalDeleted += (result?.count ?? 0);
-      console.log(`Requested wipe of auth model: ${model} (${result?.count ?? 0} deleted)`);
+      let isDone = false;
+      let cursor: string | null = null;
+      while (!isDone) {
+        const result = (await ctx.runMutation(components.auth.adapter.deleteMany, {
+          input: {
+            model,
+            where: []
+          },
+          paginationOpts: { cursor, numItems: 1000 }
+        })) as { count: number; isDone: boolean; continueCursor?: string | null };
+        
+        totalDeleted += (result?.count ?? 0);
+        isDone = result.isDone;
+        cursor = result.continueCursor ?? null;
+        console.log(`Wiped batch of auth model: ${model} (${result?.count ?? 0} deleted)`);
+      }
     }
 
     return totalDeleted;

@@ -153,26 +153,33 @@ export const getAuctionBids = query({
       .order("desc")
       .take(50);
 
-    const bidsWithUsers = await Promise.all(
-      bids.map(async (bid) => {
+    const uniqueBidderIds = Array.from(new Set(bids.map((b) => b.bidderId)));
+    const bidderNames = new Map<string, string>();
+
+    await Promise.all(
+      uniqueBidderIds.map(async (bidderId) => {
         let user = await ctx.runQuery(components.auth.adapter.findOne, {
           model: "user",
-          where: [{ field: "userId", operator: "eq", value: bid.bidderId }]
+          where: [{ field: "userId", operator: "eq", value: bidderId }]
         });
 
         if (!user) {
           user = await ctx.runQuery(components.auth.adapter.findOne, {
             model: "user",
-            where: [{ field: "_id", operator: "eq", value: bid.bidderId }]
+            where: [{ field: "_id", operator: "eq", value: bidderId }]
           });
         }
         
-        return {
-          ...bid,
-          bidderName: user?.name || "Anonymous",
-        };
+        if (user) {
+          bidderNames.set(bidderId, user.name);
+        }
       })
     );
+
+    const bidsWithUsers = bids.map((bid) => ({
+      ...bid,
+      bidderName: bidderNames.get(bid.bidderId) || "Anonymous",
+    }));
 
     return bidsWithUsers;
   },
