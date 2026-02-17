@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Authenticated, Unauthenticated } from "convex/react";
-import { useSession, signOut } from "../lib/auth-client";
+import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { signOut } from "../lib/auth-client";
+import { api } from "convex/_generated/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import { Menu, X, User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings, Search } from "lucide-react";
 import { toast } from "sonner";
-import type { UserWithRole } from "../types/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export const Header = () => {
-  const { data: session } = useSession();
-  const user = session?.user as UserWithRole | undefined;
+  const userData = useQuery(api.users.getMyProfile);
+  const role = userData?.profile?.role;
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -105,7 +105,7 @@ export const Header = () => {
                   <Button variant="ghost" className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-xl group">
                     <div className="flex flex-col items-end">
                       <span className="text-[10px] font-black uppercase text-muted-foreground leading-none">Verified User</span>
-                      <span className="text-sm font-bold text-primary leading-none mt-1">{user?.name}</span>
+                      <span className="text-sm font-bold text-primary leading-none mt-1">{userData?.name}</span>
                     </div>
                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                       <User className="h-4 w-4" />
@@ -119,12 +119,12 @@ export const Header = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
-                    <Link to={`/profile/${session?.user?.id}`} className="flex items-center gap-2 w-full">
+                    <Link to={`/profile/${userData?._id}`} className="flex items-center gap-2 w-full">
                       <User className="h-4 w-4" />
                       Public Profile
                     </Link>
                   </DropdownMenuItem>
-                  {user?.role === "admin" && (
+                  {role === "admin" && (
                     <DropdownMenuItem asChild className="rounded-lg font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary">
                       <Link to="/admin" className="flex items-center gap-2 w-full">
                         <LayoutDashboard className="h-4 w-4" />
@@ -238,15 +238,15 @@ export const Header = () => {
                       <User className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-black uppercase leading-none">{user?.name}</p>
+                      <p className="text-sm font-black uppercase leading-none">{userData?.name}</p>
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Verified Member</p>
                     </div>
                   </div>
                   <div className={cn(
                     "grid gap-3",
-                    user?.role === "admin" ? "grid-cols-2" : "grid-cols-1"
+                    role === "admin" ? "grid-cols-2" : "grid-cols-1"
                   )}>
-                    {user?.role === "admin" && (
+                    {role === "admin" && (
                       <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] border-primary/20 text-primary" asChild>
                         <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                           <LayoutDashboard className="h-3.5 w-3.5" />
@@ -255,7 +255,7 @@ export const Header = () => {
                       </Button>
                     )}
                     <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
-                      <Link to={`/profile/${session?.user?.id}`} onClick={() => setIsMenuOpen(false)}>
+                      <Link to={`/profile/${userData?._id}`} onClick={() => setIsMenuOpen(false)}>
                         <User className="h-3.5 w-3.5" />
                         Profile
                       </Link>

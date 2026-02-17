@@ -19,9 +19,29 @@ Determine the best course of action for the user based on the current state of t
 
 # Rules & Guidelines
 
+## Tech stack
+- **Frontend:** React (Vite), TypeScript.
+- **Backend/Database:** Convex (Real-time auction state synchronization).
+    - Important files to consider:
+        - `convex/auction.ts`: Contains the auction logic and database schema.
+        - `convex/auth.ts`, `convex/auth.config.ts`: Handles user authentication and management.
+        - `convex/convex.config.ts`, `convex/config.ts`: Convex configuration file.
+        - `convex/schemas.ts`: Defines the database schemas for the application.
+        - `convex/seed.ts`: Contains seed data for the database.
+        - `convex/http.ts`: Handles HTTP requests and API routes.
+- **Authentication:** BetterAuth (for user authentication and management).
+    - Important to note, the BetterAuth logic is implemented in the `convex/auth.ts` and `convex/auth.config.ts` files, which are part of the Convex backend. This means that user authentication and management are handled on the server side, ensuring secure access to the application.
+    - Also, the BetterAuth component is defined in `convex/convex.config.ts`, which is the main configuration file for the Convex backend. This allows for seamless integration of authentication features into the overall application architecture.
+- **Architecture:** `src/core` contains pure business logic, isolated from UI/Backend.
+- **Testing:** Chrome DevTools MCP (E2E/UI), Vitest.
+
+
 ## Operational Rules
 - **Running development server:** 
     - Assume the development and convex servers are already running when making changes.
+- **Legacy code and data:**
+    - We are developing a new digital prototype, so there is no legacy code or data to consider. All code and data should be treated as new and can be modified freely.
+    - Change code could cause data issues, so be mindful of any data-related changes that need to be made as part of code changes and ensure that they are properly tested.
 - **commits and branches:**
     - Follow the commit message format specified in `Checklist.md` for all commits.
     - Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.

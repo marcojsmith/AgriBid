@@ -2,12 +2,16 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
+import { components } from "./_generated/api";
+import { getCallerRole } from "./users";
+
+type TableNames = "auctions" | "bids" | "profiles" | "watchlist" | "equipmentMetadata";
 
 async function checkDestructiveAccess(ctx: MutationCtx) {
   const nodeEnv = process.env.NODE_ENV;
   const vercelEnv = process.env.VERCEL_ENV;
-  const identity = await ctx.auth.getUserIdentity();
-  const isAdmin = identity?.role === "admin";
+  const role = await getCallerRole(ctx);
+  const isAdmin = role === "admin";
 
   // Admin bypass: Admins are always allowed to perform destructive operations
   if (isAdmin) return;
@@ -57,7 +61,8 @@ export const runSeed = mutation({
     if (args.clear) {
       const BATCH_SIZE = 500;
       
-      const clearTable = async (tableName: "auctions" | "bids") => {
+      const tablesToClear: TableNames[] = ["auctions", "bids", "profiles", "watchlist"];
+      for (const tableName of tablesToClear) {
         let deletedCount = 0;
         while (true) {
           const batch = await ctx.db.query(tableName).take(BATCH_SIZE);
@@ -65,15 +70,21 @@ export const runSeed = mutation({
           await Promise.all(batch.map(item => ctx.db.delete(item._id)));
           deletedCount += batch.length;
         }
-        return deletedCount;
-      };
+        console.log(`Cleared ${deletedCount} records from ${tableName}.`);
+      }
 
-      const [auctionsCount, bidsCount] = await Promise.all([
-        clearTable("auctions"),
-        clearTable("bids")
-      ]);
-      
-      console.log(`Cleared ${auctionsCount} auctions and ${bidsCount} bids.`);
+      // Clear Auth Component tables
+      const authModels = ["user", "account", "session", "verification"] as const;
+      for (const model of authModels) {
+        await ctx.runMutation(components.auth.adapter.deleteMany, {
+          input: {
+            model,
+            where: [] // Clear all
+          },
+          paginationOpts: { cursor: null, numItems: 100 }
+        });
+        console.log(`Requested wipe of auth model: ${model}`);
+      }
     }
 
     // 1. Seed Equipment Metadata
@@ -109,17 +120,27 @@ export const runSeed = mutation({
     const mockSellerEmail = "mock-seller@farm.com";
     const mockSellerId = "mock-seller";
     
-    const seller = await ctx.db
-      .query("user")
-      .withIndex("by_email", (q) => q.eq("email", mockSellerEmail))
-      .first();
+    const seller = await ctx.runQuery(components.auth.adapter.findOne, {
+      model: "user",
+      where: [{ field: "email", operator: "eq", value: mockSellerEmail }]
+    });
 
     if (!seller) {
-      await ctx.db.insert("user", {
+      await ctx.runMutation(components.auth.adapter.create, {
+        input: {
+          model: "user",
+          data: {
+            userId: mockSellerId,
+            email: mockSellerEmail,
+            name: "Mock Seller",
+            emailVerified: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }
+        }
+      });
+      await ctx.db.insert("profiles", {
         userId: mockSellerId,
-        email: mockSellerEmail,
-        name: "Mock Seller",
-        emailVerified: true,
         role: "seller",
         isVerified: true,
         createdAt: Date.now(),
@@ -131,17 +152,27 @@ export const runSeed = mutation({
     const mockAdminEmail = "admin@agribid.com";
     const mockAdminId = "mock-admin";
     
-    const admin = await ctx.db
-      .query("user")
-      .withIndex("by_email", (q) => q.eq("email", mockAdminEmail))
-      .first();
+    const admin = await ctx.runQuery(components.auth.adapter.findOne, {
+      model: "user",
+      where: [{ field: "email", operator: "eq", value: mockAdminEmail }]
+    });
 
     if (!admin) {
-      await ctx.db.insert("user", {
+      await ctx.runMutation(components.auth.adapter.create, {
+        input: {
+          model: "user",
+          data: {
+            userId: mockAdminId,
+            email: mockAdminEmail,
+            name: "System Admin",
+            emailVerified: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }
+        }
+      });
+      await ctx.db.insert("profiles", {
         userId: mockAdminId,
-        email: mockAdminEmail,
-        name: "System Admin",
-        emailVerified: true,
         role: "admin",
         isVerified: true,
         createdAt: Date.now(),
@@ -316,5 +347,49 @@ export const clearAuctions = mutation({
     ]));
 
     return auctionsCount;
+  },
+});
+
+/**
+ * Wipe all user and application data.
+ * USE WITH CAUTION.
+ */
+export const clearAllData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await checkDestructiveAccess(ctx);
+
+    const appTables: TableNames[] = [
+      "auctions", 
+      "bids", 
+      "profiles", 
+      "watchlist", 
+    ];
+
+    const authModels = ["user", "session", "account", "verification"] as const;
+
+    let totalDeleted = 0;
+    
+    // Clear App Tables
+    for (const tableName of appTables) {
+      const records = await ctx.db.query(tableName).collect();
+      await Promise.all(records.map(r => ctx.db.delete(r._id)));
+      totalDeleted += records.length;
+    }
+
+    // Clear Auth Tables via component adapter
+    for (const model of authModels) {
+      const result = await ctx.runMutation(components.auth.adapter.deleteMany, {
+        input: {
+          model,
+          where: []
+        },
+        paginationOpts: { cursor: null, numItems: 1000 }
+      });
+      totalDeleted += (result?.count ?? 0);
+      console.log(`Requested wipe of auth model: ${model} (${result?.count ?? 0} deleted)`);
+    }
+
+    return totalDeleted;
   },
 });
