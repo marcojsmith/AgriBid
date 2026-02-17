@@ -23,6 +23,7 @@ function useMediaQuery(query: string) {
   });
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const media = window.matchMedia(query);
     const listener = () => setMatches(media.matches);
     media.addEventListener("change", listener);
