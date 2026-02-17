@@ -23,12 +23,12 @@ Determine the best course of action for the user based on the current state of t
 - **Frontend:** React (Vite), TypeScript.
 - **Backend/Database:** Convex (Real-time auction state synchronization).
     - Important files to consider:
-        - `convex/auction.ts`: Contains the auction logic and database schema.
-        - `convex/auth.ts`, `convex/auth.config.ts`: Handles user authentication and management.
-        - `convex/convex.config.ts`, `convex/config.ts`: Convex configuration file.
-        - `convex/schemas.ts`: Defines the database schemas for the application.
-        - `convex/seed.ts`: Contains seed data for the database.
-        - `convex/http.ts`: Handles HTTP requests and API routes.
+        - `app/convex/auctions.ts`: Contains the auction logic.
+        - `app/convex/auth.ts`, `app/convex/auth.config.ts`: Handles user authentication and management.
+        - `app/convex/convex.config.ts`, `app/convex/config.ts`: Convex configuration files.
+        - `app/convex/schema.ts`: Defines the database schema for the application.
+        - `app/convex/seed.ts`: Contains seed data for the database.
+        - `app/convex/http.ts`: Handles HTTP requests and API routes.
 - **Authentication:** BetterAuth (for user authentication and management).
     - Important to note, the BetterAuth logic is implemented in the `convex/auth.ts` and `convex/auth.config.ts` files, which are part of the Convex backend. This means that user authentication and management are handled on the server side, ensuring secure access to the application.
     - Also, the BetterAuth component is defined in `convex/convex.config.ts`, which is the main configuration file for the Convex backend. This allows for seamless integration of authentication features into the overall application architecture.
