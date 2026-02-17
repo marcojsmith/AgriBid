@@ -370,6 +370,7 @@ export const clearAllData = mutation({
       "bids", 
       "profiles", 
       "watchlist", 
+      "equipmentMetadata",
     ];
 
     const authModels = ["user", "session", "account", "verification"] as const;
@@ -385,13 +386,14 @@ export const clearAllData = mutation({
 
     // Clear Auth Tables via component adapter
     for (const model of authModels) {
-      const result = await ctx.runMutation(components.auth.adapter.deleteMany, {
+      const result = (await ctx.runMutation(components.auth.adapter.deleteMany, {
         input: {
           model,
           where: []
         },
         paginationOpts: { cursor: null, numItems: 1000 }
-      });
+      })) as { count: number };
+      
       totalDeleted += (result?.count ?? 0);
       console.log(`Requested wipe of auth model: ${model} (${result?.count ?? 0} deleted)`);
     }
