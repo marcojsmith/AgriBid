@@ -42,7 +42,7 @@ import {
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
-import type { Id } from "convex/_generated/dataModel";
+import type { Id, Doc } from "convex/_generated/dataModel";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -63,6 +63,18 @@ import { FinanceTab } from "@/components/admin/FinanceTab";
 import { SupportTab } from "@/components/admin/SupportTab";
 import { AuditTab } from "@/components/admin/AuditTab";
 import { BidMonitor } from "@/components/admin/BidMonitor";
+
+interface KycReviewUser extends Doc<"profiles"> {
+    name?: string;
+    email?: string;
+    image?: string;
+    firstName?: string;
+    lastName?: string;
+    idNumber?: string;
+    phoneNumber?: string;
+    kycEmail?: string;
+    kycDocuments?: string[];
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -89,7 +101,7 @@ export default function AdminDashboard() {
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   
   // KYC Review State
-  const [kycReviewUser, setKycReviewUser] = useState<any | null>(null);
+  const [kycReviewUser, setKycReviewUser] = useState<KycReviewUser | null>(null);
   const [kycRejectionReason, setKycRejectionReason] = useState("");
 
   // Announcement State
@@ -155,8 +167,12 @@ export default function AdminDashboard() {
   };
 
   const handleSendAnnouncement = async () => {
+    if (!announcementTitle.trim() || !announcementMessage.trim()) {
+      toast.error("Title and message cannot be empty");
+      return;
+    }
     try {
-        await createAnnouncement({ title: announcementTitle, message: announcementMessage });
+        await createAnnouncement({ title: announcementTitle.trim(), message: announcementMessage.trim() });
         toast.success("Announcement sent");
         setAnnouncementOpen(false);
         setAnnouncementTitle("");
@@ -239,7 +255,7 @@ export default function AdminDashboard() {
                 <StatCard label="Live Auctions" value={stats.activeAuctions} icon={<Gavel className="h-4 w-4" />} color="text-green-500" />
                 <StatCard label="Total Users" value={stats.totalUsers} icon={<Users className="h-4 w-4" />} />
                 <StatCard label="Moderation" value={stats.pendingReview} icon={<Clock className="h-4 w-4" />} color={stats.pendingReview > 0 ? "text-yellow-500" : ""} />
-                <StatCard label="Platform Growth" value="+12%" icon={<TrendingUp className="h-4 w-4" />} color="text-primary" />
+                <StatCard label="Platform Growth" value="—" icon={<TrendingUp className="h-4 w-4" />} color="text-primary" />
             </div>
             )}
         </div>
@@ -445,10 +461,16 @@ export default function AdminDashboard() {
                             <Eye className="h-4 w-4" /> View Details
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-primary focus:text-primary font-bold rounded-lg gap-2">
+                          <DropdownMenuItem 
+                            className="text-primary focus:text-primary font-bold rounded-lg gap-2"
+                            onClick={() => toast.info("Bidding editor coming soon")}
+                          >
                             <Hammer className="h-4 w-4" /> Edit Bidding
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive font-bold rounded-lg gap-2">
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive font-bold rounded-lg gap-2"
+                            onClick={() => toast.info("Force end logic pending implementation")}
+                          >
                             <AlertCircle className="h-4 w-4" /> Force End
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -531,7 +553,14 @@ export default function AdminDashboard() {
                             size="sm" 
                             variant="outline" 
                             className="h-8 border-2 font-black uppercase text-[10px] tracking-wider"
-                            onClick={() => verifyUser({ userId: p.userId })}
+                            onClick={async () => {
+                              try {
+                                await verifyUser({ userId: p.userId });
+                                toast.success("User verified");
+                              } catch (e) {
+                                toast.error("Verification failed");
+                              }
+                            }}
                           >
                             Verify
                           </Button>
@@ -541,7 +570,14 @@ export default function AdminDashboard() {
                             size="sm" 
                             variant="outline" 
                             className="h-8 border-2 font-black uppercase text-[10px] tracking-wider"
-                            onClick={() => promoteToAdmin({ userId: p.userId })}
+                            onClick={async () => {
+                              try {
+                                await promoteToAdmin({ userId: p.userId });
+                                toast.success("Promoted to Admin");
+                              } catch (e) {
+                                toast.error("Promotion failed");
+                              }
+                            }}
                           >
                             Promote
                           </Button>
@@ -608,10 +644,14 @@ export default function AdminDashboard() {
                                 <Fingerprint className="h-3 w-3" /> Personal Details
                             </h3>
                             <div className="space-y-3">
-                                <DetailItem label="Full Names" value={`${kycReviewUser.firstName} ${kycReviewUser.lastName}`} icon={<UserCheck className="h-4 w-4" />} />
-                                <DetailItem label="ID/Passport" value={kycReviewUser.idNumber} icon={<Fingerprint className="h-4 w-4" />} />
-                                <DetailItem label="Phone" value={kycReviewUser.phoneNumber} icon={<Phone className="h-4 w-4" />} />
-                                <DetailItem label="Email" value={kycReviewUser.kycEmail} icon={<Mail className="h-4 w-4" />} />
+                                <DetailItem 
+                                    label="Full Names" 
+                                    value={[kycReviewUser.firstName, kycReviewUser.lastName].filter(Boolean).join(' ') || '—'} 
+                                    icon={<UserCheck className="h-4 w-4" />} 
+                                />
+                                <DetailItem label="ID/Passport" value={kycReviewUser.idNumber || 'Not Provided'} icon={<Fingerprint className="h-4 w-4" />} />
+                                <DetailItem label="Phone" value={kycReviewUser.phoneNumber || 'Not Provided'} icon={<Phone className="h-4 w-4" />} />
+                                <DetailItem label="Email" value={kycReviewUser.kycEmail || 'Not Provided'} icon={<Mail className="h-4 w-4" />} />
                             </div>
                         </div>
                         <div className="space-y-4">
@@ -620,8 +660,19 @@ export default function AdminDashboard() {
                             </h3>
                             <div className="space-y-2">
                                 {/* Note: In a real app we'd fetch the URLs here. For the prototype we show placeholders or indices */}
-                                {kycReviewUser.kycDocuments?.map((_: any, i: number) => (
-                                    <Button key={i} variant="outline" className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2" onClick={() => window.open(_, '_blank')}>
+                                {kycReviewUser.kycDocuments?.map((url: string, i: number) => (
+                                    <Button 
+                                        key={i} 
+                                        variant="outline" 
+                                        className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2" 
+                                        onClick={() => {
+                                            if (url && typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://'))) {
+                                                window.open(url, '_blank', 'noopener,noreferrer');
+                                            } else {
+                                                toast.error("Invalid or restricted document link");
+                                            }
+                                        }}
+                                    >
                                         <Eye className="h-3 w-3" /> View Document {i + 1}
                                     </Button>
                                 ))}
@@ -695,7 +746,7 @@ function StatCard({ label, value, icon, color = "" }: { label: string; value: nu
   );
 }
 
-function ModerationCard({ auction, onApprove, onReject, onView }: { auction: any, onApprove: () => void, onReject: () => void, onView: () => void }) {
+function ModerationCard({ auction, onApprove, onReject, onView }: { auction: Doc<"auctions"> & { images: any }, onApprove: () => void, onReject: () => void, onView: () => void }) {
   return (
     <Card className="p-5 border-2 hover:border-primary/40 transition-all bg-card/40 backdrop-blur-md group">
       <div className="flex flex-col md:flex-row gap-8">

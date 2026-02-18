@@ -86,7 +86,7 @@ export default function Support() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest">Priority</Label>
-                            <Select value={priority} onValueChange={(v: any) => setPriority(v)}>
+                            <Select value={priority} onValueChange={(v: "low" | "medium" | "high") => setPriority(v)}>
                                 <SelectTrigger className="h-12 border-2 rounded-xl">
                                     <SelectValue />
                                 </SelectTrigger>

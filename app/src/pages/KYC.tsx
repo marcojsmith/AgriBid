@@ -7,8 +7,37 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, Upload, AlertCircle, Clock, FileText, User, Phone, Mail, Fingerprint } from "lucide-react";
+import { 
+  Loader2, 
+  ShieldCheck, 
+  Upload, 
+  AlertCircle, 
+  Clock, 
+  FileText, 
+  User, 
+  Phone, 
+  Mail, 
+  Fingerprint,
+  Check
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const isValidEmail = (email: string) => {
+  // Base regex for format
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) return false;
+  
+  const [local, domain] = email.split('@');
+  
+  // Stricter dot checks
+  if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
+  if (domain.startsWith('.') || domain.endsWith('.') || domain.includes('..')) return false;
+  
+  // Ensure domain labels are non-empty and don't start/end with hyphens
+  const domainLabels = domain.split('.');
+  if (domainLabels.some(label => label.length === 0 || label.startsWith('-') || label.endsWith('-'))) return false;
+  
+  return true;
+};
 
 export default function KYC() {
   const navigate = useNavigate();
@@ -37,6 +66,11 @@ export default function KYC() {
       return;
     }
 
+    if (!isValidEmail(formData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     if (formData.email !== formData.confirmEmail) {
       toast.error("Emails do not match");
       return;
@@ -58,6 +92,11 @@ export default function KYC() {
           headers: { "Content-Type": file.type },
           body: file,
         });
+        
+        if (!result.ok) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+        
         const { storageId } = await result.json();
         storageIds.push(storageId);
       }
@@ -80,7 +119,7 @@ export default function KYC() {
 
   const status = profile.profile?.kycStatus || "none";
 
-  const updateField = (field: string, value: string) => {
+  const updateField = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -285,8 +324,4 @@ function ListItem({ text }: { text: string }) {
             {text}
         </li>
     );
-}
-
-function Check({ className }: { className?: string }) {
-    return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>;
 }

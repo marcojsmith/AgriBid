@@ -147,12 +147,21 @@ export const Header = () => {
                         </DropdownMenuItem>
                     )}
 
-                    <DropdownMenuItem asChild className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10">
-                        <Link to={profileId ? `/profile/${profileId}` : "#"} className="flex items-center gap-2 w-full">
-                        <User className="h-4 w-4" />
-                        Public Profile
-                        </Link>
-                    </DropdownMenuItem>
+                    {profileId ? (
+                        <DropdownMenuItem asChild className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10">
+                            <Link to={`/profile/${profileId}`} className="flex items-center gap-2 w-full">
+                            <User className="h-4 w-4" />
+                            Public Profile
+                            </Link>
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem disabled className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10 opacity-50">
+                            <div className="flex items-center gap-2 w-full">
+                            <User className="h-4 w-4" />
+                            Public Profile (Syncing...)
+                            </div>
+                        </DropdownMenuItem>
+                    )}
 
                     {role === "admin" && (
                         <DropdownMenuItem asChild className="rounded-xl font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary h-10">
@@ -293,12 +302,25 @@ export const Header = () => {
                         </Link>
                       </Button>
                     )}
-                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl" asChild>
-                      <Link to={profileId ? `/profile/${profileId}` : "#"} onClick={() => setIsMenuOpen(false)}>
+                    {profileId ? (
+                      <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl" asChild>
+                        <Link to={`/profile/${profileId}`} onClick={() => setIsMenuOpen(false)}>
+                          <User className="h-3.5 w-3.5" />
+                          Profile
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        disabled 
+                        className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl opacity-50"
+                        aria-busy={true}
+                        aria-label="Profile syncing"
+                      >
                         <User className="h-3.5 w-3.5" />
-                        Profile
-                      </Link>
-                    </Button>
+                        Profile (Syncing...)
+                      </Button>
+                    )}
                     <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl" asChild>
                       <Link to="/dashboard/bids" onClick={() => setIsMenuOpen(false)}>
                         <LayoutDashboard className="h-3.5 w-3.5" />
