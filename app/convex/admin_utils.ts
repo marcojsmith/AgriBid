@@ -22,7 +22,10 @@ export async function logAudit(
   }
 ) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return;
+  if (!identity) {
+    console.warn(`logAudit called without identity for action: ${args.action}`);
+    return;
+  }
 
   await ctx.db.insert("auditLogs", {
     adminId: identity.subject,
