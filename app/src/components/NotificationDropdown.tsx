@@ -9,9 +9,11 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell, CheckCircle2, AlertCircle, Info, XCircle, Clock } from "lucide-react";
+import { Bell, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { getNotificationIcon, handleNotificationClick } from "@/lib/notifications";
+import { toast } from "sonner";
 
 export function NotificationDropdown() {
   const navigate = useNavigate();
@@ -20,20 +22,6 @@ export function NotificationDropdown() {
   const markAllRead = useMutation(api.notifications.markAllRead);
 
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
-
-  const handleNotificationClick = async (id: any, link?: string) => {
-    await markRead({ notificationId: id });
-    if (link) navigate(link);
-  };
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "success": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "error": return <XCircle className="h-4 w-4 text-destructive" />;
-      case "warning": return <AlertCircle className="h-4 w-4 text-orange-500" />;
-      default: return <Info className="h-4 w-4 text-primary" />;
-    }
-  };
 
   return (
     <DropdownMenu>
@@ -77,10 +65,17 @@ export function NotificationDropdown() {
                 "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
                 !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
               )}
-              onClick={() => handleNotificationClick(n._id, n.link)}
+              onClick={async () => {
+                try {
+                    await handleNotificationClick(n._id, n.link, navigate, markRead);
+                } catch (e) {
+                    console.error("Notification action failed:", e);
+                    toast.error("Failed to process notification");
+                }
+              }}
             >
               <div className="flex items-center gap-2 w-full">
-                {getIcon(n.type)}
+                {getNotificationIcon(n.type)}
                 <span className="font-black uppercase text-[10px] tracking-tight flex-1 truncate">{n.title}</span>
                 <span className="text-[8px] font-bold text-muted-foreground">{new Date(n.createdAt).toLocaleDateString()}</span>
               </div>
@@ -92,7 +87,13 @@ export function NotificationDropdown() {
             <>
                 <DropdownMenuSeparator />
                 <div className="p-1">
-                    <Button variant="ghost" className="w-full h-9 text-[10px] font-black uppercase tracking-widest text-muted-foreground">View Archive</Button>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full h-9 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+                      onClick={() => navigate("/notifications")}
+                    >
+                      View Archive
+                    </Button>
                 </div>
             </>
         )}

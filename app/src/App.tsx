@@ -16,6 +16,7 @@ const MyBids = lazy(() => import("./pages/dashboard/MyBids"));
 const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
 const KYC = lazy(() => import("./pages/KYC"));
 const Support = lazy(() => import("./pages/Support"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 
 /**
  * Global loading fallback for lazy-loaded routes.
@@ -99,6 +100,14 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <Support />
+                </RoleProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/notifications" 
+              element={
+                <RoleProtectedRoute allowedRole="any">
+                  <Notifications />
                 </RoleProtectedRoute>
               } 
             />

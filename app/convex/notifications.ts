@@ -28,11 +28,42 @@ export const getMyNotifications = query({
   },
 });
 
+export const getNotificationArchive = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+    const userId = identity.subject;
+
+    const personal = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient", (q) => q.eq("recipientId", userId))
+      .order("desc")
+      .take(args.limit || 100);
+
+    const announcements = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+      .order("desc")
+      .take(args.limit || 50);
+
+    return [...personal, ...announcements]
+      .sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
 export const markAsRead = mutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+    const userId = identity.subject;
+
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification) throw new Error("Notification not found");
+    if (notification.recipientId !== userId && notification.recipientId !== "all") {
+      throw new Error("Unauthorized: This notification does not belong to you");
+    }
 
     await ctx.db.patch(args.notificationId, { isRead: true });
   },
