@@ -58,9 +58,14 @@ if (ENCRYPTION_KEY_STR) {
 }
 
 // Only allow fallback to temporary dev key when not in production
+const DEV_FALLBACK_KEY = "temporary-dev-key-32-chars-long!";
 const FINAL_KEY_STR = (IS_PRODUCTION || ENCRYPTION_KEY_STR)
   ? (ENCRYPTION_KEY_STR || "")
-  : "temporary-dev-key-32-chars-long!";
+  : DEV_FALLBACK_KEY;
+
+if (FINAL_KEY_STR === DEV_FALLBACK_KEY) {
+  console.warn("⚠️ PII encryption using development fallback key. Do NOT use in production.");
+}
 
 /**
  * Derives a CryptoKey for AES-GCM encryption/decryption from the module's final key string.
