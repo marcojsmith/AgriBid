@@ -274,6 +274,18 @@ export const createAnnouncement = mutation({
             createdAt: Date.now(),
         });
         
+        const adminIdentity = await ctx.auth.getUserIdentity();
+        if (adminIdentity) {
+            await ctx.db.insert("auditLogs", {
+                adminId: adminIdentity.subject,
+                action: "CREATE_ANNOUNCEMENT",
+                targetId: "all",
+                targetType: "announcement",
+                details: args.title,
+                timestamp: Date.now(),
+            });
+        }
+
         return { success: true };
     }
 });

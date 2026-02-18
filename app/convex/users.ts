@@ -167,6 +167,17 @@ export const verifyUser = mutation({
       updatedAt: now,
     });
 
+    const adminIdentity = await ctx.auth.getUserIdentity();
+    if (adminIdentity) {
+        await ctx.db.insert("auditLogs", {
+            adminId: adminIdentity.subject,
+            action: "VERIFY_USER",
+            targetId: userId,
+            targetType: "user",
+            timestamp: Date.now(),
+        });
+    }
+
     return { success: true };
   },
 });
@@ -194,6 +205,17 @@ export const promoteToAdmin = mutation({
       role: "admin",
       updatedAt: now,
     });
+
+    const adminIdentity = await ctx.auth.getUserIdentity();
+    if (adminIdentity) {
+        await ctx.db.insert("auditLogs", {
+            adminId: adminIdentity.subject,
+            action: "PROMOTE_ADMIN",
+            targetId: userId,
+            targetType: "user",
+            timestamp: Date.now(),
+        });
+    }
 
     return { success: true };
   },

@@ -557,6 +557,18 @@ export const adminUpdateAuction = mutation({
 
     await ctx.db.patch(args.auctionId, args.updates);
 
+    const adminIdentity = await ctx.auth.getUserIdentity();
+    if (adminIdentity) {
+        await ctx.db.insert("auditLogs", {
+            adminId: adminIdentity.subject,
+            action: "UPDATE_AUCTION",
+            targetId: args.auctionId,
+            targetType: "auction",
+            details: JSON.stringify(args.updates),
+            timestamp: Date.now(),
+        });
+    }
+
     return { success: true };
   },
 });
@@ -592,6 +604,18 @@ export const bulkUpdateAuctions = mutation({
       if (auction) {
         await ctx.db.patch(id, args.updates);
       }
+    }
+
+    const adminIdentity = await ctx.auth.getUserIdentity();
+    if (adminIdentity) {
+        await ctx.db.insert("auditLogs", {
+            adminId: adminIdentity.subject,
+            action: "BULK_UPDATE_AUCTIONS",
+            targetId: args.auctionIds.join(","),
+            targetType: "auction",
+            details: JSON.stringify(args.updates),
+            timestamp: Date.now(),
+        });
     }
 
     return { success: true };

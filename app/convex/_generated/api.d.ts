@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as admin_debug from "../admin_debug.js";
 import type * as auctions from "../auctions.js";
 import type * as auth from "../auth.js";
@@ -15,6 +16,7 @@ import type * as config from "../config.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
+import type * as support from "../support.js";
 import type * as users from "../users.js";
 import type * as watchlist from "../watchlist.js";
 
@@ -25,6 +27,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   admin_debug: typeof admin_debug;
   auctions: typeof auctions;
   auth: typeof auth;
@@ -32,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   seed: typeof seed;
+  support: typeof support;
   users: typeof users;
   watchlist: typeof watchlist;
 }>;

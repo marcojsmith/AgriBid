@@ -51,10 +51,21 @@ Determine the best course of action for the user based on the current state of t
     - Ensure that all automated tests pass before requesting a review.
 
 ## UI Design Rules
-- **Clarity:** Ensure all UI elements are clear and intuitive.
-- **Consistency:** Maintain a consistent design language throughout the application.
+- **Clarity:** 
+    - Ensure all UI elements are clear and intuitive. 
+    - For example, using clear labels for buttons and form fields, and providing tooltips or help text where necessary to guide users through the interface.
+    - Make sure that the layout is organized and that important information is prominently displayed, such as the current highest bid in an auction or the time remaining for bidding.
+- **Consistency:** 
+    - Maintain a consistent design language throughout the application. 
+    - For example, using the same button styles, colors, and typography across all pages and components.
+    - Follow the design guidelines provided in `conductor/product-guidelines.md` to ensure a cohesive and user-friendly interface.
 - **Accessibility:** Follow best practices for accessibility (e.g., ARIA roles, keyboard navigation).
-- **Responsiveness:** Design for various screen sizes and devices.
+- **Responsiveness:** 
+    - Design for the following screen sizes:
+        - Mobile: 375px width, 812px height (e.g., iPhone 14 Pro).
+        - Tablet: 768px width, 1024px height (e.g., iPad).
+        - Desktop: 1440px width, 900px height (e.g., MacBook Pro).
+    - Use responsive design techniques (e.g., media queries, flexible layouts) to ensure the application looks and functions well on all devices.
 - **Feedback:** Provide users with clear feedback for their actions (e.g., loading indicators, success/error messages).
 - **Simplicity:** Avoid clutter and unnecessary elements.
 - **Theming:** 
@@ -63,6 +74,13 @@ Determine the best course of action for the user based on the current state of t
     - If a new theme style is needed, define it in the theme configuration.
 - **skills:**
     - Use the frontend, react-best-practice, react-composition-patterns, shadcn, and web-design-guidelines skills to inform your UI design decisions and implementation.
+- **Componentization:** 
+    - Break down the UI into reusable components, following React best practices and composition patterns.
+    - When a component is needed, install it from shadcn if available, and customize it as needed to fit the design and functionality requirements of the application.
+    - Ensure that components are well-documented and maintainable, with clear props definitions and usage examples.
+- **Testing & Verification:** 
+    - UI and UX is hard, and it's easy to make mistakes or overlook important details. Always test your UI changes thoroughly, and use tools like Chrome DevTools MCP to verify that the UI functions correctly and provides a good user experience across different devices and screen sizes.
+    - Do not assume that your first attempt at implementing a UI change is correct or suitable. Always verify and test your changes, and be open to making adjustments and experimenting with different approaches to achieve the best possible outcome for the user.
 
 # Digital Prototype Tech Stack
 - **Frontend:** React (Vite), TypeScript.
