@@ -21,6 +21,24 @@
 - **`CONVEX_SITE_URL`**: Critical for both backend (Better Auth baseURL) and OIDC validation (domain).
 - **`ALLOWED_ORIGINS`**: Comma-separated list of frontend URLs for CORS.
 - **`BETTER_AUTH_SECRET`**: Required by Better Auth for signing tokens.
+- **`PII_ENCRYPTION_KEY`**: A 32-character string used for AES-256-GCM encryption of sensitive user data (e.g., ID numbers).
+
+## PII Protection & Encryption
+Sensitive user data, such as `idNumber` collected during KYC, is protected using **AES-256-GCM** encryption via the **Web Crypto API**.
+- **Implementation**: Located in `app/convex/admin_utils.ts`.
+- **Key Validation**: The `PII_ENCRYPTION_KEY` must be exactly 32 bytes. In production, the system throws a critical error if the key is missing or invalid.
+- **Data Integrity**: Decryption includes authentication tag validation. Legacy plaintext values are handled gracefully during the transition period.
+
+## Administrative Audit Logging
+All administrative mutations (e.g., voiding bids, reviewing KYC, bulk updating auctions) are automatically recorded in the `auditLogs` table.
+- **Helper**: Use the centralized `logAudit` helper in `app/convex/admin_utils.ts`.
+- **Metadata**: Logs capture the admin identity, action type (SCREAMING_CASE), target ID, target type, and a JSON-serialized summary of the changes.
+- **Performance**: Large bulk updates are summarized (e.g., count and sample IDs) to keep log entries within reasonable size limits.
+
+## Bidding Verification Gate
+To maintain marketplace integrity, bidding is restricted to verified users.
+- **Backend Enforcement**: The `placeBid` mutation in `app/convex/auctions.ts` checks `profile.isVerified`.
+- **Frontend Feedback**: The `BiddingPanel` detects the user's verification status and displays a high-visibility alert with a link to the KYC flow if they are unverified or pending review.
 
 ### React Component Purity
 - Impure functions like `Date.now()` must not be used directly in the render body or as immediate initial state values.
