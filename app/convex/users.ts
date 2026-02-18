@@ -1,8 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import type { QueryCtx, MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { authComponent } from "./auth";
 import { components } from "./_generated/api";
+import { logAudit, encryptPII, decryptPII } from "./admin_utils";
 
 /**
  * Synchronise the authenticated user with their application profile.
@@ -118,7 +118,8 @@ export const listAllProfiles = query({
 
     const profiles = await ctx.db.query("profiles").collect();
 
-    return await Promise.all(
+    // Parallelize user lookups
+    const profilesWithUsers = await Promise.all(
       profiles.map(async (p) => {
         let user = await ctx.runQuery(components.auth.adapter.findOne, {
           model: "user",
@@ -137,16 +138,12 @@ export const listAllProfiles = query({
           name: user?.name,
           email: user?.email,
           image: user?.image,
-          firstName: p.firstName,
-          lastName: p.lastName,
-          idNumber: p.idNumber,
-          kycEmail: p.kycEmail,
-          phoneNumber: p.phoneNumber,
-          kycStatus: p.kycStatus,
-          kycDocuments: p.kycDocuments,
+          idNumber: p.idNumber ? await decryptPII(p.idNumber) : undefined,
         };
       })
     );
+
+    return profilesWithUsers;
   },
 });
 
@@ -174,16 +171,11 @@ export const verifyUser = mutation({
       updatedAt: now,
     });
 
-    const adminIdentity = await ctx.auth.getUserIdentity();
-    if (adminIdentity) {
-        await ctx.db.insert("auditLogs", {
-            adminId: adminIdentity.subject,
-            action: "VERIFY_USER",
-            targetId: userId,
-            targetType: "user",
-            timestamp: Date.now(),
-        });
-    }
+    await logAudit(ctx, {
+        action: "VERIFY_USER",
+        targetId: userId,
+        targetType: "user",
+    });
 
     return { success: true };
   },
@@ -213,16 +205,11 @@ export const promoteToAdmin = mutation({
       updatedAt: now,
     });
 
-    const adminIdentity = await ctx.auth.getUserIdentity();
-    if (adminIdentity) {
-        await ctx.db.insert("auditLogs", {
-            adminId: adminIdentity.subject,
-            action: "PROMOTE_ADMIN",
-            targetId: userId,
-            targetType: "user",
-            timestamp: Date.now(),
-        });
-    }
+    await logAudit(ctx, {
+        action: "PROMOTE_ADMIN",
+        targetId: userId,
+        targetType: "user",
+    });
 
     return { success: true };
   },
@@ -241,9 +228,9 @@ export const submitKYC = mutation({
     email: v.string()
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const userId = authUser.userId ?? authUser._id;
 
     const profile = await ctx.db
       .query("profiles")
@@ -258,7 +245,7 @@ export const submitKYC = mutation({
       firstName: args.firstName,
       lastName: args.lastName,
       phoneNumber: args.phoneNumber,
-      idNumber: args.idNumber,
+      idNumber: await encryptPII(args.idNumber),
       kycEmail: args.email,
       updatedAt: Date.now(),
     });
