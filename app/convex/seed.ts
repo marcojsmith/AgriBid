@@ -7,6 +7,12 @@ import { getCallerRole } from "./users";
 
 type TableNames = "auctions" | "bids" | "profiles" | "watchlist" | "equipmentMetadata";
 
+interface DeleteManyResult {
+  count: number;
+  isDone: boolean;
+  continueCursor?: string | null;
+}
+
 const BATCH_SIZE = 500;
 
 async function checkDestructiveAccess(ctx: MutationCtx) {
@@ -79,13 +85,13 @@ export const runSeed = mutation({
         let isDone = false;
         let cursor: string | null = null;
         while (!isDone) {
-          const result: { isDone: boolean; continueCursor?: string | null } = await ctx.runMutation(components.auth.adapter.deleteMany, {
+          const result = (await ctx.runMutation(components.auth.adapter.deleteMany, {
             input: {
               model,
               where: [] // Clear all
             },
             paginationOpts: { cursor, numItems: 100 }
-          });
+          })) as DeleteManyResult;
           isDone = result.isDone;
           cursor = result.continueCursor ?? null;
         }
@@ -355,19 +361,26 @@ export const clearAuctions = mutation({
   handler: async (ctx) => {
     await checkDestructiveAccess(ctx);
 
-    const auctions = await ctx.db.query("auctions").collect();
-    const auctionsCount = auctions.length;
-    
-    // Delete auctions and their bids in parallel
-    await Promise.all(auctions.flatMap(a => [
-      ctx.db.delete(a._id),
-      // Also find and delete all bids for this auction
-      ctx.db.query("bids")
-        .withIndex("by_auction", (q) => q.eq("auctionId", a._id))
-        .collect()
-        .then(bids => Promise.all(bids.map(b => ctx.db.delete(b._id))))
-    ]));
+    let totalBidsDeleted = 0;
+    let auctionsCount = 0;
 
+    // 1. Sweep and delete all bids first to avoid nested loops/long mutations
+    while (true) {
+        const bidsBatch = await ctx.db.query("bids").take(BATCH_SIZE);
+        if (bidsBatch.length === 0) break;
+        await Promise.all(bidsBatch.map(b => ctx.db.delete(b._id)));
+        totalBidsDeleted += bidsBatch.length;
+    }
+
+    // 2. Delete auctions in batches
+    while (true) {
+        const auctionsBatch = await ctx.db.query("auctions").take(BATCH_SIZE);
+        if (auctionsBatch.length === 0) break;
+        await Promise.all(auctionsBatch.map(a => ctx.db.delete(a._id)));
+        auctionsCount += auctionsBatch.length;
+    }
+
+    console.log(`Cleared ${auctionsCount} auctions and ${totalBidsDeleted} bids.`);
     return auctionsCount;
   },
 });
@@ -416,7 +429,7 @@ export const clearAllData = mutation({
             where: []
           },
           paginationOpts: { cursor, numItems: 1000 }
-        })) as { count: number; isDone: boolean; continueCursor?: string | null };
+        })) as DeleteManyResult;
         
         totalDeleted += (result?.count ?? 0);
         isDone = result.isDone;

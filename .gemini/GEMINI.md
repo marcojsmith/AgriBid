@@ -13,7 +13,9 @@ Additional documentation can be found in the following folders and files:
 - conductor/workflow.md
 - conductor/tech-stack.md
 - conductor/tracks.md
+- conductor/code_styleguides/typescript.md
 - conductor/code_styleguides/javascript.md
+- conductor/code_styleguides/html-css.md
 
 Determine the best course of action for the user based on the current state of the project and the defined rules and guidelines. Provide clear and concise instructions, code snippets, and explanations to help the user achieve their goals effectively. Always ensure that your suggestions align with the project's objectives and adhere to best practices in software development.
 
@@ -43,12 +45,32 @@ Determine the best course of action for the user based on the current state of t
     - We are developing a new digital prototype, so there is no legacy code or data to consider. All code and data should be treated as new and can be modified freely.
     - Change code could cause data issues, so be mindful of any data-related changes that need to be made as part of code changes and ensure that they are properly tested.
 - **commits and branches:**
-    - Follow the commit message format specified in `Checklist.md` for all commits.
+    - Follow the commit message format specified in `Checklist.md` for all commits. Ensure the commit message is clear, concise, and accurately describes the changes made in the commit.
     - Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
+    - When committing changes, group the changes by functionality or related changes, and avoid making large commits that include unrelated changes. This will make it easier to review and understand the changes being made.
 - **Pull Requests:**
     - Open a pull request for each completed feature or bug fix.
     - Include a clear description of the changes made and reference any relevant issues or tasks.
     - Ensure that all automated tests pass before requesting a review.
+- **Cohesive Code Changes:**
+    - When making code changes, ensure that they are cohesive and related to a single feature or bug fix. Avoid making unrelated changes in the same commit or pull request, as this can make it difficult to review and understand the changes.
+    - If you need to make multiple unrelated changes, consider breaking them into separate commits or pull requests to maintain clarity and ease of review.
+    - Make sure when adding a feature or fixing a bug, you consider all the necessary changes that need to be made across the codebase, including any related data changes, and ensure that they are all included in the same cohesive set of changes. Consider frontend changes, backend changes, database schema or seed data, security implications, testing changes, documentation updates, and any other relevant changes that are necessary to fully implement the feature or fix the bug in a cohesive manner.
+- **Code Reviews:**
+    - When performing code reviews, focus on the following aspects:
+        - Code quality and readability.
+        - Adherence to coding standards and best practices.
+        - Proper testing and coverage.
+        - Security implications of the changes.
+        - Overall impact on the project and any potential issues or improvements.
+        - Unused imports or variables, and any opportunities to clean up the codebase.
+        - Refactoring opportunities to improve code structure and maintainability.
+        - Unfinished or placeholder code that may have been left in the codebase, and ensuring that all code is complete and ready for production.
+        - Documentation updates that may be necessary as part of the changes, and ensuring that all relevant documentation is updated accordingly. Including the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder.
+    - **Step 1:** Create a list in a markdown file of all the important files and folders to investigate. Update this list regularly to keep track of the most relevant parts of the codebase and to keep track of which files you have already reviewed and which ones you still need to review.
+    - **Step 2:** For each file, review the code and identify any potential issues, improvements, or important information that is relevant to the changes being made. Document your findings in the markdown file, including any specific lines of code or sections that are noteworthy.
+    - **Step 3:** After reviewing all the relevant files, compile your findings into a clear and concise summary that can be shared with the author of the changes. This summary should highlight any important issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
+    - Provide constructive feedback and suggestions for improvement, and be open to discussion and collaboration with the author of the changes. Always aim to improve the overall quality of the codebase and ensure that the changes align with the project's goals and standards.
 
 ## UI Design Rules
 - **Clarity:** 
