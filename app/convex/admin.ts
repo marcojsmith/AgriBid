@@ -138,10 +138,30 @@ export const reviewKYC = mutation({
         kycStatus: "verified",
         isVerified: true,
       });
+      // Send Success Notification
+      await ctx.db.insert("notifications", {
+        recipientId: args.userId,
+        type: "success",
+        title: "Verification Approved",
+        message: "Your seller verification is complete. You can now list equipment.",
+        link: "/sell",
+        isRead: false,
+        createdAt: Date.now(),
+      });
     } else {
       await ctx.db.patch(profile._id, {
         kycStatus: "rejected",
         kycRejectionReason: args.reason,
+      });
+      // Send Rejection Notification
+      await ctx.db.insert("notifications", {
+        recipientId: args.userId,
+        type: "error",
+        title: "Verification Rejected",
+        message: args.reason || "Your KYC application was rejected. Please review and try again.",
+        link: "/kyc",
+        isRead: false,
+        createdAt: Date.now(),
       });
     }
 

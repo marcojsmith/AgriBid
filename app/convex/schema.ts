@@ -99,6 +99,10 @@ export default defineSchema({
     )),
     kycDocuments: v.optional(v.array(v.string())), // storageIds
     kycRejectionReason: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    idNumber: v.optional(v.string()),
+    kycEmail: v.optional(v.string()),
     bio: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
     companyName: v.optional(v.string()),

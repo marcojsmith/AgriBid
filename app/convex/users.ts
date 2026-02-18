@@ -137,6 +137,13 @@ export const listAllProfiles = query({
           name: user?.name,
           email: user?.email,
           image: user?.image,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          idNumber: p.idNumber,
+          kycEmail: p.kycEmail,
+          phoneNumber: p.phoneNumber,
+          kycStatus: p.kycStatus,
+          kycDocuments: p.kycDocuments,
         };
       })
     );
@@ -225,7 +232,14 @@ export const promoteToAdmin = mutation({
  * User: Submit KYC documents for verification.
  */
 export const submitKYC = mutation({
-  args: { documents: v.array(v.string()) }, // storageIds
+  args: { 
+    documents: v.array(v.string()), 
+    firstName: v.string(),
+    lastName: v.string(),
+    phoneNumber: v.string(),
+    idNumber: v.string(),
+    email: v.string()
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -241,6 +255,11 @@ export const submitKYC = mutation({
     await ctx.db.patch(profile._id, {
       kycStatus: "pending",
       kycDocuments: args.documents,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      phoneNumber: args.phoneNumber,
+      idNumber: args.idNumber,
+      kycEmail: args.email,
       updatedAt: Date.now(),
     });
 

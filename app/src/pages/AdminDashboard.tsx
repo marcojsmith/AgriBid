@@ -33,7 +33,11 @@ import {
   MessageSquare,
   DollarSign,
   FileText,
-  Megaphone
+  Megaphone,
+  Fingerprint,
+  Phone,
+  Mail,
+  UserCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -75,6 +79,7 @@ export default function AdminDashboard() {
   const verifyUser = useMutation(api.users.verifyUser);
   const promoteToAdmin = useMutation(api.users.promoteToAdmin);
   const createAnnouncement = useMutation(api.admin.createAnnouncement);
+  const reviewKYC = useMutation(api.admin.reviewKYC);
 
   // State
   const [activeTab, setActiveTab] = useState("moderation");
@@ -83,6 +88,10 @@ export default function AdminDashboard() {
   const [selectedAuctions, setSelectedAuctions] = useState<Id<"auctions">[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   
+  // KYC Review State
+  const [kycReviewUser, setKycReviewUser] = useState<any | null>(null);
+  const [kycRejectionReason, setKycRejectionReason] = useState("");
+
   // Announcement State
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState("");
@@ -103,7 +112,9 @@ export default function AdminDashboard() {
     return allProfiles.filter(p => 
       (p.name?.toLowerCase() || "").includes(userSearch.toLowerCase()) ||
       (p.email?.toLowerCase() || "").includes(userSearch.toLowerCase()) ||
-      p.userId.toLowerCase().includes(userSearch.toLowerCase())
+      p.userId.toLowerCase().includes(userSearch.toLowerCase()) ||
+      (p.firstName?.toLowerCase() || "").includes(userSearch.toLowerCase()) ||
+      (p.lastName?.toLowerCase() || "").includes(userSearch.toLowerCase())
     );
   }, [allProfiles, userSearch]);
 
@@ -139,7 +150,6 @@ export default function AdminDashboard() {
     } catch (error) {
       toast.error("Bulk update failed");
     } finally {
-      setIsBulkProcessing(null as any); 
       setIsBulkProcessing(false);
     }
   };
@@ -153,6 +163,22 @@ export default function AdminDashboard() {
         setAnnouncementMessage("");
     } catch (e) {
         toast.error("Failed to send");
+    }
+  };
+
+  const handleKycReview = async (decision: "approve" | "reject") => {
+    if (!kycReviewUser) return;
+    try {
+        await reviewKYC({ 
+            userId: kycReviewUser.userId, 
+            decision, 
+            reason: decision === "reject" ? kycRejectionReason : undefined 
+        });
+        toast.success(`KYC ${decision === "approve" ? "Approved" : "Rejected"}`);
+        setKycReviewUser(null);
+        setKycRejectionReason("");
+    } catch (e) {
+        toast.error("Review failed");
     }
   };
 
@@ -182,7 +208,6 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex gap-4 items-center">
-            {/* Announcement Dialog */}
             <Dialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
                 <DialogTrigger asChild>
                     <Button variant="outline" className="gap-2 border-2 rounded-xl">
@@ -482,7 +507,7 @@ export default function AdminDashboard() {
                         )}
                         {/* KYC Status Display */}
                         {p.kycStatus === "pending" && (
-                            <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase">KYC Pending</Badge>
+                            <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase cursor-pointer" onClick={() => setKycReviewUser(p)}>KYC Pending</Badge>
                         )}
                       </div>
                     </TableCell>
@@ -491,7 +516,17 @@ export default function AdminDashboard() {
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <div className="flex justify-end gap-2">
-                        {!p.isVerified && (
+                        {p.kycStatus === "pending" && (
+                            <Button 
+                                size="sm" 
+                                variant="default" 
+                                className="h-8 font-black uppercase text-[10px] tracking-wider bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20"
+                                onClick={() => setKycReviewUser(p)}
+                            >
+                                Review KYC
+                            </Button>
+                        )}
+                        {!p.isVerified && p.kycStatus !== "pending" && (
                           <Button 
                             size="sm" 
                             variant="outline" 
@@ -524,15 +559,12 @@ export default function AdminDashboard() {
         </TabsContent>
 
         {/* --- NEW TABS --- */}
-        
         <TabsContent value="finance">
             <FinanceTab />
         </TabsContent>
-        
         <TabsContent value="support">
             <SupportTab />
         </TabsContent>
-
         <TabsContent value="audit">
             <AuditTab />
         </TabsContent>
@@ -561,8 +593,90 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* --- KYC REVIEW DIALOG --- */}
+      <Dialog open={!!kycReviewUser} onOpenChange={(open) => !open && setKycReviewUser(null)}>
+        <DialogContent className="max-w-2xl">
+            <DialogHeader>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tight">KYC Verification Review</DialogTitle>
+            </DialogHeader>
+            {kycReviewUser && (
+                <div className="space-y-6 py-4">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                                <Fingerprint className="h-3 w-3" /> Personal Details
+                            </h3>
+                            <div className="space-y-3">
+                                <DetailItem label="Full Names" value={`${kycReviewUser.firstName} ${kycReviewUser.lastName}`} icon={<UserCheck className="h-4 w-4" />} />
+                                <DetailItem label="ID/Passport" value={kycReviewUser.idNumber} icon={<Fingerprint className="h-4 w-4" />} />
+                                <DetailItem label="Phone" value={kycReviewUser.phoneNumber} icon={<Phone className="h-4 w-4" />} />
+                                <DetailItem label="Email" value={kycReviewUser.kycEmail} icon={<Mail className="h-4 w-4" />} />
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                                <FileText className="h-3 w-3" /> Submitted Documents
+                            </h3>
+                            <div className="space-y-2">
+                                {/* Note: In a real app we'd fetch the URLs here. For the prototype we show placeholders or indices */}
+                                {kycReviewUser.kycDocuments?.map((_: any, i: number) => (
+                                    <Button key={i} variant="outline" className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2" onClick={() => window.open(_, '_blank')}>
+                                        <Eye className="h-3 w-3" /> View Document {i + 1}
+                                    </Button>
+                                ))}
+                                {(!kycReviewUser.kycDocuments || kycReviewUser.kycDocuments.length === 0) && (
+                                    <p className="text-xs text-muted-foreground font-medium italic">No documents uploaded.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 border-t pt-4">
+                        <Label className="text-[10px] font-black uppercase tracking-widest">Rejection Reason (Required for Reject)</Label>
+                        <Textarea 
+                            placeholder="e.g. Documents are blurry or ID number doesn't match..." 
+                            value={kycRejectionReason}
+                            onChange={(e) => setKycRejectionReason(e.target.value)}
+                            className="border-2 rounded-xl"
+                        />
+                    </div>
+                </div>
+            )}
+            <DialogFooter className="gap-2">
+                <Button 
+                    variant="outline" 
+                    className="border-2 font-black uppercase text-xs h-12 px-8 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => handleKycReview("reject")}
+                    disabled={!kycRejectionReason}
+                >
+                    <X className="h-4 w-4 mr-2" /> Reject Application
+                </Button>
+                <Button 
+                    className="font-black uppercase text-xs h-12 px-8 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
+                    onClick={() => handleKycReview("approve")}
+                >
+                    <Check className="h-4 w-4 mr-2" /> Approve & Verify
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+function DetailItem({ label, value, icon }: { label: string, value: string, icon: React.ReactNode }) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground border">
+                {icon}
+            </div>
+            <div>
+                <p className="text-[8px] font-black uppercase text-muted-foreground leading-none mb-0.5">{label}</p>
+                <p className="text-sm font-bold tracking-tight">{value || "Not Provided"}</p>
+            </div>
+        </div>
+    );
 }
 
 // --- HELPER COMPONENTS ---

@@ -15,6 +15,7 @@ import type * as auth from "../auth.js";
 import type * as config from "../config.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
+import type * as notifications from "../notifications.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
 import type * as users from "../users.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   config: typeof config;
   crons: typeof crons;
   http: typeof http;
+  notifications: typeof notifications;
   seed: typeof seed;
   support: typeof support;
   users: typeof users;

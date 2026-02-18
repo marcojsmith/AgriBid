@@ -6,7 +6,7 @@ import { api } from "convex/_generated/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
-import { Menu, X, User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings, Search } from "lucide-react";
+import { User, LogOut, LayoutDashboard, Heart, ChevronDown, Settings, Search, ShieldAlert, MessageSquare, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -16,11 +16,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationDropdown } from "./NotificationDropdown";
+import { Badge } from "./ui/badge";
 
 export const Header = () => {
   const userData = useQuery(api.users.getMyProfile);
   const profileId = userData?.profile?.userId;
   const role = userData?.profile?.role;
+  const isVerified = userData?.profile?.isVerified;
+  const kycStatus = userData?.profile?.kycStatus;
+  
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -29,7 +34,7 @@ export const Header = () => {
   const navLinks: { name: string; href: string; disabled?: boolean }[] = [
     { name: "Marketplace", href: "/" },
     { name: "Sell", href: "/sell" },
-    { name: "Watchlist", href: "/watchlist" },
+    { name: "Support", href: "/support" },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -90,113 +95,140 @@ export const Header = () => {
           <Input
             id="search-desktop"
             type="search"
-            placeholder="Search equipment (Make, Model, Year)..."
-            className="pl-10 h-10 bg-muted/50 border-2 rounded-xl focus-visible:ring-primary focus-visible:border-primary"
+            placeholder="Search equipment..."
+            className="pl-10 h-10 bg-muted/50 border-2 rounded-xl focus-visible:ring-primary focus-visible:border-primary font-medium"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </form>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Desktop Auth */}
-          <div className="hidden md:flex items-center">
-            <Authenticated>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-xl group">
-                    <div className="flex flex-col items-end">
-                      <span className="text-[10px] font-black uppercase text-muted-foreground leading-none">Verified User</span>
-                      <span className="text-sm font-bold text-primary leading-none mt-1">{userData?.name}</span>
-                    </div>
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <User className="h-4 w-4" />
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 p-2 shadow-xl">
-                  <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest text-muted-foreground px-2 py-1.5">
-                    Account Menu
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
-                    <Link 
-                      to={profileId ? `/profile/${profileId}` : "#"} 
-                      aria-disabled={!profileId}
-                      onClick={(e) => {
-                        if (!profileId) e.preventDefault();
-                      }}
-                      className="flex items-center gap-2 w-full"
-                    >
-                      <User className="h-4 w-4" />
-                      Public Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  {role === "admin" && (
-                    <DropdownMenuItem asChild className="rounded-lg font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary">
-                      <Link to="/admin" className="flex items-center gap-2 w-full">
-                        <LayoutDashboard className="h-4 w-4" />
-                        Admin Moderation
-                      </Link>
+          <Authenticated>
+            <div className="flex items-center gap-2">
+                <NotificationDropdown />
+                
+                {/* User Menu */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-xl group">
+                        <div className="flex flex-col items-end hidden sm:flex">
+                        <div className="flex items-center gap-1.5">
+                            {isVerified ? (
+                                <Badge variant="secondary" className="h-4 px-1 text-[8px] font-black bg-green-500/10 text-green-600 border-green-500/20 uppercase">Verified</Badge>
+                            ) : (
+                                <Badge variant="secondary" className="h-4 px-1 text-[8px] font-black bg-orange-500/10 text-orange-600 border-orange-500/20 uppercase">
+                                    {kycStatus === "pending" ? "Pending Review" : "Unverified"}
+                                </Badge>
+                            )}
+                        </div>
+                        <span className="text-sm font-bold text-primary leading-none mt-1">{userData?.name}</span>
+                        </div>
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors border-2 border-primary/20">
+                        <User className="h-4.5 w-4.5" />
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
+                    </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64 rounded-2xl border-2 p-2 shadow-2xl">
+                    <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest text-muted-foreground px-2 py-2">
+                        Account Terminal
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    
+                    {!isVerified && kycStatus !== "pending" && (
+                        <DropdownMenuItem asChild className="bg-orange-500/10 text-orange-600 focus:bg-orange-500/20 focus:text-orange-700 rounded-xl mb-1 border border-orange-500/20 p-3">
+                            <Link to="/kyc" className="flex items-center gap-3 w-full">
+                                <ShieldAlert className="h-5 w-5" />
+                                <div className="flex flex-col">
+                                    <span className="font-black text-[10px] uppercase tracking-tighter leading-none">Identity Required</span>
+                                    <span className="text-[9px] font-bold opacity-80 mt-0.5">Complete KYC to start selling</span>
+                                </div>
+                            </Link>
+                        </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuItem asChild className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10">
+                        <Link to={profileId ? `/profile/${profileId}` : "#"} className="flex items-center gap-2 w-full">
+                        <User className="h-4 w-4" />
+                        Public Profile
+                        </Link>
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
-                    <Link to="/dashboard/bids" className="flex items-center gap-2 w-full">
-                      <LayoutDashboard className="h-4 w-4" />
-                      My Bids
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
-                    <Link to="/watchlist" className="flex items-center gap-2 w-full">
-                      <Heart className="h-4 w-4" />
-                      Watchlist
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="rounded-lg font-bold uppercase text-[10px] tracking-wide">
-                    <Link to="/dashboard/listings" className="flex items-center gap-2 w-full">
-                      <Settings className="h-4 w-4" />
-                      My Listings
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={handleSignOut}
-                    className="rounded-lg font-black uppercase text-[10px] tracking-widest cursor-pointer focus:bg-destructive focus:text-destructive-foreground text-destructive"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </Authenticated>
-            
-            <Unauthenticated>
-              <Button 
-                size="sm" 
-                asChild
-                className="font-bold uppercase text-[10px] tracking-widest rounded-lg h-9 shadow-lg shadow-primary/20"
-              >
-                <Link to="/login">Login / Register</Link>
-              </Button>
-            </Unauthenticated>
-          </div>
+
+                    {role === "admin" && (
+                        <DropdownMenuItem asChild className="rounded-xl font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary h-10">
+                        <Link to="/admin" className="flex items-center gap-2 w-full">
+                            <LayoutDashboard className="h-4 w-4" />
+                            Admin Moderation
+                        </Link>
+                        </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuSeparator />
+                    
+                    <DropdownMenuItem asChild className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10">
+                        <Link to="/dashboard/bids" className="flex items-center gap-2 w-full">
+                        <LayoutDashboard className="h-4 w-4" />
+                        My Bids
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10">
+                        <Link to="/watchlist" className="flex items-center gap-2 w-full">
+                        <Heart className="h-4 w-4" />
+                        Watchlist
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10">
+                        <Link to="/dashboard/listings" className="flex items-center gap-2 w-full">
+                        <Settings className="h-4 w-4" />
+                        My Listings
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10">
+                        <Link to="/support" className="flex items-center gap-2 w-full">
+                        <MessageSquare className="h-4 w-4" />
+                        Support Tickets
+                        </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                        onClick={handleSignOut}
+                        className="rounded-xl font-black uppercase text-[10px] tracking-widest cursor-pointer focus:bg-destructive/10 focus:text-destructive text-destructive h-10"
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Sign Out
+                    </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+          </Authenticated>
+          
+          <Unauthenticated>
+            <Button 
+              size="sm" 
+              asChild
+              className="font-bold uppercase text-[10px] tracking-widest rounded-xl h-10 px-6 shadow-lg shadow-primary/20"
+            >
+              <Link to="/login">Login / Register</Link>
+            </Button>
+          </Unauthenticated>
 
           {/* Mobile Menu Toggle */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden h-10 w-10 border-2 rounded-xl"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >
-            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
       </div>
 
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
-        <div className="md:hidden border-t bg-card animate-in slide-in-from-top-4 duration-200">
+        <div className="md:hidden border-t bg-card animate-in slide-in-from-top-4 duration-200 shadow-2xl">
           <div className="container mx-auto px-4 py-6 space-y-6">
             {/* Mobile Search */}
             <form onSubmit={handleSearch} className="relative">
@@ -206,7 +238,7 @@ export const Header = () => {
                 id="search-mobile"
                 type="search"
                 placeholder="Search equipment..."
-                className="pl-10 h-12 bg-muted/50 border-2 rounded-xl"
+                className="pl-10 h-12 bg-muted/50 border-2 rounded-xl font-medium"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -214,77 +246,66 @@ export const Header = () => {
 
             <nav className="flex flex-col gap-4">
               {navLinks.map((link) => (
-                link.disabled ? (
-                  <span
-                    key={link.name}
-                    className="text-lg font-black uppercase tracking-tight text-muted-foreground/50 cursor-not-allowed"
-                    aria-disabled="true"
-                  >
-                    {link.name}
-                  </span>
-                ) : (
-                  <Link
+                <Link
                     key={link.name}
                     to={link.href}
                     onClick={() => setIsMenuOpen(false)}
                     className={cn(
-                      "text-lg font-black uppercase tracking-tight",
-                      location.pathname === link.href ? "text-primary" : "text-muted-foreground"
+                        "text-lg font-black uppercase tracking-tight p-4 rounded-2xl bg-muted/30 border-2 border-transparent hover:border-primary/20 transition-all",
+                        location.pathname === link.href ? "text-primary border-primary/20" : "text-muted-foreground"
                     )}
-                  >
+                >
                     {link.name}
-                  </Link>
-                )
+                </Link>
               ))}
             </nav>
 
             <div className="pt-6 border-t">
               <Authenticated>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-3 p-2 bg-muted/20 rounded-2xl">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
+                      <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                       <p className="text-sm font-black uppercase leading-none">{userData?.name}</p>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Verified Member</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                        {isVerified ? "Verified Member" : "Unverified"}
+                      </p>
                     </div>
                   </div>
-                  <div className={cn(
-                    "grid gap-3",
-                    role === "admin" ? "grid-cols-2" : "grid-cols-1"
-                  )}>
+                  
+                  {!isVerified && kycStatus !== "pending" && (
+                    <Button className="w-full bg-orange-500 hover:bg-orange-600 font-black uppercase text-xs h-12 rounded-xl gap-2" asChild>
+                        <Link to="/kyc" onClick={() => setIsMenuOpen(false)}>
+                            <ShieldAlert className="h-4 w-4" />
+                            Complete Verification
+                        </Link>
+                    </Button>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
                     {role === "admin" && (
-                      <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] border-primary/20 text-primary" asChild>
+                      <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl border-primary/20 text-primary" asChild>
                         <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                           <LayoutDashboard className="h-3.5 w-3.5" />
                           Admin
                         </Link>
                       </Button>
                     )}
-                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
-                      <Link 
-                        to={profileId ? `/profile/${profileId}` : "#"} 
-                        aria-disabled={!profileId}
-                        onClick={(e) => {
-                          if (!profileId) {
-                            e.preventDefault();
-                            return;
-                          }
-                          setIsMenuOpen(false);
-                        }}
-                      >
+                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl" asChild>
+                      <Link to={profileId ? `/profile/${profileId}` : "#"} onClick={() => setIsMenuOpen(false)}>
                         <User className="h-3.5 w-3.5" />
                         Profile
                       </Link>
                     </Button>
-                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
+                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl" asChild>
                       <Link to="/dashboard/bids" onClick={() => setIsMenuOpen(false)}>
                         <LayoutDashboard className="h-3.5 w-3.5" />
                         My Bids
                       </Link>
                     </Button>
-                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px]" asChild>
+                    <Button variant="outline" className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl" asChild>
                       <Link to="/dashboard/listings" onClick={() => setIsMenuOpen(false)}>
                         <Settings className="h-3.5 w-3.5" />
                         My Listings
@@ -293,7 +314,7 @@ export const Header = () => {
                   </div>
                   <Button 
                     variant="destructive" 
-                    className="w-full font-black uppercase text-xs tracking-widest h-12 rounded-xl"
+                    className="w-full font-black uppercase text-xs tracking-widest h-14 rounded-xl shadow-lg shadow-destructive/10"
                     onClick={async () => {
                       await handleSignOut();
                       setIsMenuOpen(false);
@@ -307,7 +328,7 @@ export const Header = () => {
 
               <Unauthenticated>
                 <Button 
-                  className="w-full h-14 text-lg font-black uppercase tracking-tight rounded-2xl shadow-xl shadow-primary/20"
+                  className="w-full h-16 text-lg font-black uppercase tracking-tight rounded-2xl shadow-xl shadow-primary/20"
                   asChild
                 >
                   <Link to="/login" onClick={() => setIsMenuOpen(false)}>Login / Register</Link>

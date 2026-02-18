@@ -15,7 +15,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, Clock, CheckCircle2, AlertCircle, HelpCircle } from "lucide-react";
+import { Loader2, MessageSquare, Clock, CheckCircle2, HelpCircle } from "lucide-react";
 
 export default function Support() {
   const tickets = useQuery(api.support.getMyTickets);
