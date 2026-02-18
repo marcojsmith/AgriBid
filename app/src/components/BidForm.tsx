@@ -9,9 +9,10 @@ interface BidFormProps {
   auction: Doc<"auctions">;
   onBid: (amount: number) => void;
   isLoading: boolean;
+  isVerified?: boolean;
 }
 
-export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
+export const BidForm = ({ auction, onBid, isLoading, isVerified = true }: BidFormProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
   const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
   const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
@@ -53,7 +54,7 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
             variant="outline"
             className="h-14 flex flex-col items-center justify-center gap-0.5 border-2 hover:border-primary hover:bg-primary/5 transition-all group"
             onClick={() => onBid(amount)}
-            disabled={isLoading}
+            disabled={isLoading || !isVerified}
           >
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
               Quick Bid
@@ -85,7 +86,7 @@ export const BidForm = ({ auction, onBid, isLoading }: BidFormProps) => {
         </div>
         <Button 
           className="h-14 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
-          disabled={!isManualValid || isLoading}
+          disabled={!isManualValid || isLoading || !isVerified}
           onClick={() => onBid(currentManualNum)}
         >
           <TrendingUp className="h-5 w-5" />

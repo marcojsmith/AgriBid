@@ -1,13 +1,13 @@
 // app/src/components/BiddingPanel.tsx
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
-import { Gavel, Info } from "lucide-react";
+import { Gavel, Info, ShieldAlert } from "lucide-react";
 import { BidForm } from "./BidForm";
 import { BidConfirmation } from "./BidConfirmation";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ interface BiddingPanelProps {
 
 export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
   const { data: session, isPending } = useSession();
+  const userData = useQuery(api.users.getMyProfile);
   const location = useLocation();
   const navigate = useNavigate();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -31,6 +32,8 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
 
   const isEnded = auction.status !== "active" || auction.endTime <= Date.now();
   const nextMinBid = auction.currentPrice + auction.minIncrement;
+  const isVerified = userData?.profile?.isVerified;
+  const kycStatus = userData?.profile?.kycStatus;
 
   if (auction.status !== 'active') {
     const isWon = session?.user?.id === auction.winnerId;
@@ -100,6 +103,13 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
       navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
+
+    if (!isVerified) {
+      toast.error("Account verification required to place bids");
+      navigate("/kyc");
+      return;
+    }
+
     setPendingBid(amount);
     setIsConfirmOpen(true);
   };
@@ -175,11 +185,32 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
             <Gavel className="h-4 w-4 text-primary" />
             <span>Next minimum bid: <span className="text-foreground">R{nextMinBid.toLocaleString('en-ZA')}</span></span>
           </div>
+
+          {!isVerified && session && (
+            <Alert variant="destructive" className="bg-orange-50 border-orange-200 text-orange-900 rounded-xl py-4 border-2">
+              <ShieldAlert className="h-5 w-5 text-orange-600" />
+              <div className="space-y-1 ml-2">
+                <AlertTitle className="text-xs font-black uppercase tracking-widest mb-1">Verification Required</AlertTitle>
+                <AlertDescription className="text-[10px] font-bold leading-relaxed opacity-90 uppercase">
+                  {kycStatus === "pending" 
+                    ? "Your identity verification is currently under review. Bidding will be enabled once approved."
+                    : "To ensure marketplace integrity, you must complete identity verification before placing bids."
+                  }
+                </AlertDescription>
+                {kycStatus !== "pending" && (
+                  <Button variant="link" className="p-0 h-auto text-[10px] font-black uppercase text-orange-700 underline underline-offset-4" asChild>
+                    <Link to="/kyc">Complete KYC Now</Link>
+                  </Button>
+                )}
+              </div>
+            </Alert>
+          )}
           
           <BidForm 
             auction={auction} 
             onBid={handleBidInitiate} 
             isLoading={isBidding} 
+            isVerified={isVerified}
           />
         </div>
       )}
