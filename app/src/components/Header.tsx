@@ -123,8 +123,8 @@ export const Header = () => {
                         </div>
                         <span className="text-sm font-bold text-primary leading-none mt-1">{userData?.name}</span>
                         </div>
-                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors border-2 border-primary/20">
-                        <User className="h-4.5 w-4.5" />
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all border-2 border-primary/20">
+                        <User className="h-4.5 w-4.5 transition-colors" />
                         </div>
                         <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
                     </Button>
@@ -264,7 +264,7 @@ export const Header = () => {
               <Authenticated>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-2 bg-muted/20 rounded-2xl">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 transition-all">
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
