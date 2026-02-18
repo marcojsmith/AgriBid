@@ -72,7 +72,9 @@ Determine the best course of action for the user based on the current state of t
     - **Step 3:** After reviewing all the relevant files, compile your findings into a clear and concise summary that can be shared with the author of the changes. This summary should highlight any important issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
     - Provide constructive feedback and suggestions for improvement, and be open to discussion and collaboration with the author of the changes. Always aim to improve the overall quality of the codebase and ensure that the changes align with the project's goals and standards.
 
-## UI Design Rules
+     - Provide constructive feedback and suggestions for improvement, and be open to discussion and collaboration with the author of the changes. Always aim to improve the overall quality of the codebase and ensure that the changes align with the project's goals and standards.
+
+ ## UI Design Rules
 - **Clarity:** 
     - Ensure all UI elements are clear and intuitive. 
     - For example, using clear labels for buttons and form fields, and providing tooltips or help text where necessary to guide users through the interface.
