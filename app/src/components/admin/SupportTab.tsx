@@ -8,6 +8,16 @@ import { Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
+/**
+ * Renders an admin support tab that lists support tickets and allows resolving open tickets.
+ *
+ * The component fetches support tickets, shows a loading spinner until data is available, and
+ * displays each ticket's status, subject, message, and priority in a table. For tickets with
+ * status "open" it provides a Resolve action that marks the ticket resolved and shows a success
+ * or error toast based on the operation result.
+ *
+ * @returns The rendered support tab UI containing either a centered loading spinner or a table of tickets.
+ */
 export function SupportTab() {
   const tickets = useQuery(api.admin.getTickets, {});
   const resolveTicket = useMutation(api.admin.resolveTicket);

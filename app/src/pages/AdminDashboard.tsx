@@ -76,6 +76,13 @@ interface KycReviewUser extends Doc<"profiles"> {
     kycDocuments?: string[];
 }
 
+/**
+ * Render the Admin Dashboard interface for managing auctions, users, finance, support, audit, and system settings.
+ *
+ * Displays tabbed views for Moderation, Marketplace, Users, Finance, Support, Audit, and Settings; fetches auction and user data and exposes administrative actions such as approving/rejecting auctions, bulk status updates, user verification and promotion, KYC review with document viewing, and sending broadcast announcements.
+ *
+ * @returns The Admin Dashboard React element
+ */
 export default function AdminDashboard() {
   const navigate = useNavigate();
   
@@ -716,6 +723,14 @@ export default function AdminDashboard() {
   );
 }
 
+/**
+ * Renders a labeled detail row with a square icon and a value.
+ *
+ * @param label - The uppercase label displayed above the value.
+ * @param value - The primary text shown for the detail; displays `"Not Provided"` when empty.
+ * @param icon - A React node rendered inside the square icon container.
+ * @returns A JSX element containing the icon, label, and value arranged horizontally.
+ */
 function DetailItem({ label, value, icon }: { label: string, value: string, icon: React.ReactNode }) {
     return (
         <div className="flex items-center gap-3">
@@ -730,7 +745,15 @@ function DetailItem({ label, value, icon }: { label: string, value: string, icon
     );
 }
 
-// --- HELPER COMPONENTS ---
+/**
+ * Renders a compact statistic card showing a label, a prominent value, and an icon.
+ *
+ * @param label - Short uppercase label displayed above the value
+ * @param value - Numeric or string statistic shown prominently
+ * @param icon - Visual icon displayed on the right side of the card
+ * @param color - Optional CSS class applied to the value for color/styling
+ * @returns A Card element containing the labeled statistic and icon
+ */
 
 function StatCard({ label, value, icon, color = "" }: { label: string; value: number | string; icon: React.ReactNode; color?: string }) {
   return (
@@ -746,6 +769,15 @@ function StatCard({ label, value, icon, color = "" }: { label: string; value: nu
   );
 }
 
+/**
+ * Render a moderation card for a single auction with actions to approve, reject, or view details.
+ *
+ * @param auction - Auction document (includes images, year, title, make, location, startingPrice, and conditionChecklist) used to populate the card UI
+ * @param onApprove - Callback invoked when the Approve button is clicked
+ * @param onReject - Callback invoked when the Reject button is clicked
+ * @param onView - Callback invoked when the Details button is clicked
+ * @returns A React element representing the moderation card
+ */
 function ModerationCard({ auction, onApprove, onReject, onView }: { auction: Doc<"auctions"> & { images: any }, onApprove: () => void, onReject: () => void, onView: () => void }) {
   return (
     <Card className="p-5 border-2 hover:border-primary/40 transition-all bg-card/40 backdrop-blur-md group">
@@ -792,6 +824,13 @@ function ModerationCard({ auction, onApprove, onReject, onView }: { auction: Doc
   );
 }
 
+/**
+ * Render a compact labeled condition indicator that visually shows whether a condition passed or failed.
+ *
+ * @param label - Short label describing the condition
+ * @param value - If `true`, the condition is shown as "PASS" with a success icon; if `false` or omitted, it is shown as "FAIL" with a failure icon
+ * @returns The rendered condition indicator element
+ */
 function ConditionItem({ label, value }: { label: string, value?: boolean }) {
   return (
     <div className="space-y-1 text-center md:text-left">
@@ -804,6 +843,15 @@ function ConditionItem({ label, value }: { label: string, value?: boolean }) {
   );
 }
 
+/**
+ * Renders an interactive settings card that displays an icon, title, and description and invokes an action when clicked.
+ *
+ * @param title - Visible card title shown in uppercase
+ * @param description - Supporting descriptive text displayed below the title
+ * @param icon - Visual icon node shown in the card header area
+ * @param action - Callback executed when the card is clicked
+ * @returns A Card element containing the provided icon, title, and description that calls `action` on click
+ */
 function SettingsCard({ title, description, icon, action }: { title: string, description: string, icon: React.ReactNode, action: () => void }) {
   return (
     <Card className="p-6 border-2 hover:border-primary/40 transition-all cursor-pointer group flex flex-col justify-between h-48 bg-card/30" onClick={action}>
@@ -820,6 +868,13 @@ function SettingsCard({ title, description, icon, action }: { title: string, des
   );
 }
 
+/**
+ * Displays a stylized empty-state placeholder containing an icon and a label.
+ *
+ * @param label - Primary uppercase label text shown below the icon
+ * @param icon - Icon node rendered inside the circular icon container
+ * @returns The placeholder element showing the provided icon and label
+ */
 function EmptyState({ label, icon }: { label: string, icon: React.ReactNode }) {
   return (
     <div className="bg-card/30 border-2 border-dashed rounded-3xl p-20 text-center space-y-4">

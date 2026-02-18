@@ -7,6 +7,15 @@ import { Loader2, Ban, Gavel } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
+/**
+ * Render an admin real-time feed of recent bids and controls to void individual bids.
+ *
+ * Fetches up to 20 recent bids and displays them in a table with time, auction title, bidder, and amount.
+ * Rows for voided bids are visually de-emphasized and show the amount struck through.
+ * Provides a per-row action to void a bid; voiding prompts for confirmation and shows a success or error toast.
+ *
+ * @returns A JSX element containing the real-time bids table with void controls and loading state handling.
+ */
 export function BidMonitor() {
   const bids = useQuery(api.admin.getRecentBids, { limit: 20 });
   const voidBid = useMutation(api.admin.voidBid);

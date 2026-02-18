@@ -15,6 +15,15 @@ import { getNotificationIcon, handleNotificationClick } from "@/lib/notification
 import type { Id } from "convex/_generated/dataModel";
 import { toast } from "sonner";
 
+/**
+ * Render the Notification Archive page with a list of user notifications and controls.
+ *
+ * Displays a loading state while notifications sync, an empty state when there are no notifications,
+ * and a scrollable list of notifications with icons, timestamps, messages, and optional detail links.
+ * Provides actions to mark an individual notification as read when opened and to mark all notifications as read.
+ *
+ * @returns The Notifications page JSX element containing the header, "Mark all as read" action, and the notification list UI.
+ */
 export default function Notifications() {
   const navigate = useNavigate();
   const notifications = useQuery(api.notifications.getNotificationArchive, {});

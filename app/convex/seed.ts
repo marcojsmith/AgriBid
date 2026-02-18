@@ -15,6 +15,13 @@ interface DeleteManyResult {
 
 const BATCH_SIZE = 500;
 
+/**
+ * Enforces that destructive operations are permitted only for admin callers or when running in a safe environment.
+ *
+ * @param ctx - Mutation context used to determine the caller's role for access validation.
+ * @throws Error if the caller is not an admin and both NODE_ENV and VERCEL_ENV are undefined.
+ * @throws Error if the caller is not an admin and the current environment is neither "development" nor Vercel "preview".
+ */
 async function checkDestructiveAccess(ctx: MutationCtx) {
   const nodeEnv = process.env.NODE_ENV;
   const vercelEnv = process.env.VERCEL_ENV;

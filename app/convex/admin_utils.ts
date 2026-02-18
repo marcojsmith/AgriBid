@@ -1,7 +1,15 @@
 import type { MutationCtx } from "./_generated/server";
 
 /**
- * Centralized audit logging helper.
+ * Record an audit log entry for the current authenticated admin.
+ *
+ * If there is no authenticated user identity, the function returns without creating a log.
+ *
+ * @param args.action - Short identifier of the action performed (e.g., "delete_user", "update_settings")
+ * @param args.targetId - Optional identifier of the target resource affected by the action
+ * @param args.targetType - Optional type/category of the target resource (e.g., "user", "project")
+ * @param args.details - Optional free-form details about the action or context
+ * @param args.targetCount - Optional number of targets affected by the action
  */
 export async function logAudit(
   ctx: MutationCtx, 
@@ -51,7 +59,11 @@ const FINAL_KEY_STR = (IS_PRODUCTION || ENCRYPTION_KEY_STR)
   ? (ENCRYPTION_KEY_STR || "")
   : "temporary-dev-key-32-chars-long!";
 
-// Helper to get CryptoKey
+/**
+ * Derives a CryptoKey for AES-GCM encryption/decryption from the module's final key string.
+ *
+ * @returns A CryptoKey configured for AES-GCM usable for both encryption and decryption
+ */
 async function getCryptoKey() {
   const enc = new TextEncoder();
   const keyData = enc.encode(FINAL_KEY_STR);
@@ -64,6 +76,12 @@ async function getCryptoKey() {
   );
 }
 
+/**
+ * Encode an ArrayBuffer or Uint8Array as a base64 string.
+ *
+ * @param buffer - The input bytes to encode, provided as an ArrayBuffer or Uint8Array
+ * @returns The base64-encoded representation of `buffer`
+ */
 function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = "";
@@ -75,10 +93,23 @@ function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   return btoa(binary);
 }
 
+/**
+ * Decode a base64-encoded string into a byte buffer.
+ *
+ * @param base64 - A base64-encoded string representing binary data
+ * @returns A `Uint8Array` containing the decoded bytes
+ */
 function base64ToArrayBuffer(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
+/**
+ * Encrypts a plaintext string (PII) using AES-GCM and returns a compact encoded form.
+ *
+ * @param value - The plaintext to encrypt. If `undefined` or `null`, the function returns `undefined`.
+ * @returns The encrypted result formatted as `ivBase64.encryptedBase64`, or `undefined` when input is `undefined`/`null`.
+ * @throws Error when encryption fails (message prefixed with `encryptPII failed:`).
+ */
 export async function encryptPII(value: string | undefined): Promise<string | undefined> {
   if (value === undefined || value === null) return undefined;
   
@@ -106,6 +137,16 @@ export async function encryptPII(value: string | undefined): Promise<string | un
   }
 }
 
+/**
+ * Decrypts a PII string produced by the matching encryptPII function.
+ *
+ * If `encrypted` is `undefined` or `null`, returns `undefined`. If `encrypted` does not match the expected
+ * encrypted format (`iv.encryptedBase64`), the original input is returned unchanged (legacy/plaintext passthrough).
+ *
+ * @param encrypted - The value to decrypt, expected in the `iv.encryptedBase64` format produced by encryption; may be plaintext or `undefined`.
+ * @returns The decrypted plaintext string, the original input when it is not in the expected encrypted format, or `undefined` when input is `undefined`/`null`.
+ * @throws Error when decryption is attempted but fails (e.g., authentication/tag mismatch or key errors).
+ */
 export async function decryptPII(encrypted: string | undefined): Promise<string | undefined> {
   if (encrypted === undefined || encrypted === null) return undefined;
   

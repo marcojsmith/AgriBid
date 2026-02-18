@@ -15,6 +15,14 @@ import { cn } from "@/lib/utils";
 import { getNotificationIcon, handleNotificationClick } from "@/lib/notifications";
 import { toast } from "sonner";
 
+/**
+ * Render a bell button and notifications dropdown for the current user.
+ *
+ * Displays an unread count badge, a scrollable list of notifications (with title, date, message, and an icon),
+ * and controls to mark individual notifications or all notifications as read and to navigate to the full archive.
+ *
+ * @returns The notifications dropdown UI as a JSX element
+ */
 export function NotificationDropdown() {
   const navigate = useNavigate();
   const notifications = useQuery(api.notifications.getMyNotifications);

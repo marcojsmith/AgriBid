@@ -6,6 +6,13 @@ import { Checkbox as CheckboxPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * A styled checkbox component that wraps Radix UI's Checkbox primitive.
+ *
+ * @param className - Additional CSS classes to merge with the component's base styling
+ * @param props - All other props are forwarded to the underlying Radix `CheckboxPrimitive.Root`
+ * @returns The rendered checkbox element with a centered check indicator
+ */
 function Checkbox({
   className,
   ...props
