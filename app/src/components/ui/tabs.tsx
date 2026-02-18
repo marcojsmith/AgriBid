@@ -4,6 +4,13 @@ import { Tabs as TabsPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Render a Tabs root element with configurable orientation and composed className.
+ *
+ * @param className - Additional CSS class names to apply to the root element
+ * @param orientation - Layout orientation; `"horizontal"` or `"vertical"`. Defaults to `"horizontal"`.
+ * @returns The configured Tabs root element
+ */
 function Tabs({
   className,
   orientation = "horizontal",
@@ -38,6 +45,13 @@ const tabsListVariants = cva(
   }
 )
 
+/**
+ * Render a Tabs.List wrapper that applies variant-based styling and forwards props.
+ *
+ * @param className - Additional class names to append to the computed list classes
+ * @param variant - Visual variant for the list; `"default"` or `"line"` (defaults to `"default"`)
+ * @returns A TabsPrimitive.List element with `data-slot="tabs-list"`, `data-variant`, and the composed className
+ */
 function TabsList({
   className,
   variant = "default",
@@ -54,6 +68,12 @@ function TabsList({
   )
 }
 
+/**
+ * Renders a styled tab trigger element that adapts its layout and appearance based on orientation, variant, and active state.
+ *
+ * @param className - Optional additional CSS classes to merge with the component's default styles
+ * @returns The rendered `TabsPrimitive.Trigger` element with composed classes and forwarded props
+ */
 function TabsTrigger({
   className,
   ...props
@@ -73,6 +93,12 @@ function TabsTrigger({
   )
 }
 
+/**
+ * Renders a Tabs content panel with default layout classes and any custom classes merged.
+ *
+ * @param className - Additional CSS class names to merge with the default `flex-1 outline-none`
+ * @returns The Tabs content element with merged classes
+ */
 function TabsContent({
   className,
   ...props

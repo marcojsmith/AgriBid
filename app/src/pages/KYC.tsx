@@ -39,6 +39,16 @@ const isValidEmail = (email: string) => {
   return true;
 };
 
+/**
+ * Render the Seller Verification (KYC) page with status-aware UI and document submission.
+ *
+ * Renders a KYC workflow that shows verified/pending/rejected states and, when applicable,
+ * displays a personal-information form, document upload area, compliance guidance, and a
+ * submit action. Manages local form state, validates required fields and email consistency,
+ * uploads selected documents to pre-signed URLs, and submits KYC data for review.
+ *
+ * @returns The page's JSX element for the KYC flow
+ */
 export default function KYC() {
   const navigate = useNavigate();
   const profile = useQuery(api.users.getMyProfile);
@@ -317,6 +327,12 @@ export default function KYC() {
   );
 }
 
+/**
+ * Renders a list item with a check icon and the given label styled for compliance rules.
+ *
+ * @param text - The label to display next to the check icon
+ * @returns A JSX list item element containing a check icon and the provided text
+ */
 function ListItem({ text }: { text: string }) {
     return (
         <li className="flex items-start gap-2 text-[11px] font-bold uppercase text-muted-foreground leading-tight">

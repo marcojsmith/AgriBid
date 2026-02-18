@@ -4,6 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, TrendingUp, DollarSign, Calendar } from "lucide-react";
 
+/**
+ * Render an admin finance overview showing total sales, estimated commission, auctions settled, and a table of recent transactions.
+ *
+ * Displays a centered loading spinner while financial stats are being fetched.
+ *
+ * @returns The rendered JSX containing a stats grid and a recent transactions table
+ */
 export function FinanceTab() {
   const stats = useQuery(api.admin.getFinancialStats);
 
@@ -62,7 +69,16 @@ export function FinanceTab() {
   );
 }
 
-function StatCard({ label, value, icon, color = "" }: { label: string; value: number | string; icon: React.ReactNode; color?: string }) {
+/**
+   * Render a compact statistic card that displays a label, a prominent value, and an icon.
+   *
+   * @param label - Short uppercase label describing the metric
+   * @param value - Numeric or string value to display prominently
+   * @param icon - Icon to show in a rounded tile on the right side
+   * @param color - Optional Tailwind CSS color classes applied to the value text
+   * @returns A JSX element rendering the styled statistic card
+   */
+  function StatCard({ label, value, icon, color = "" }: { label: string; value: number | string; icon: React.ReactNode; color?: string }) {
     return (
       <Card className="p-6 border-2 flex items-center justify-between bg-card/50 backdrop-blur-sm">
         <div className="space-y-1">

@@ -79,8 +79,9 @@ export const getMyProfile = query({
 });
 
 /**
- * Helper to get the role of the current caller.
- * Internal use for other mutations/queries.
+ * Retrieve the current caller's role from their profile.
+ *
+ * @returns The caller's role (for example, `"admin"` or `"buyer"`), or `null` if the caller is not authenticated or no profile exists.
  */
 export async function getCallerRole(ctx: QueryCtx | MutationCtx) {
   try {

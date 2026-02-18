@@ -29,7 +29,7 @@ const PageLoader = () => (
 );
 
 /**
- * Mounts the application's client-side router and declares all application routes.
+ * Mounts the client-side router and declares all application routes.
  *
  * Declared routes:
  * - "/" → Home
@@ -41,8 +41,11 @@ const PageLoader = () => (
  * - "/dashboard/bids" → MyBids (protected)
  * - "/dashboard/listings" → MyListings (protected)
  * - "/admin" → AdminDashboard (protected, admin only)
+ * - "/kyc" → KYC (protected)
+ * - "/support" → Support (protected)
+ * - "/notifications" → Notifications (protected)
  *
- * @returns The root JSX element containing the application's BrowserRouter, layout, and route definitions
+ * @returns The root JSX element containing the BrowserRouter, layout, and route definitions
  */
 function App() {
   return (

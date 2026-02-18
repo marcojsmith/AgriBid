@@ -4,6 +4,15 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 
+/**
+ * Render a table view of admin audit logs with a loading state.
+ *
+ * Displays a centered spinner while audit logs are being fetched. Once available,
+ * shows a card containing a table of logs with columns: Timestamp, Admin ID,
+ * Action, Target, and Details.
+ *
+ * @returns A React element that displays the loading spinner or the audit logs table.
+ */
 export function AuditTab() {
   const logs = useQuery(api.admin.getAuditLogs, {});
 

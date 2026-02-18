@@ -17,6 +17,15 @@ import {
 import { toast } from "sonner";
 import { Loader2, MessageSquare, Clock, CheckCircle2, HelpCircle } from "lucide-react";
 
+/**
+ * Render the Support page that lets users create new support tickets and view their existing tickets.
+ *
+ * The component fetches the current user's tickets, displays a form for creating a ticket (subject, priority, message),
+ * handles form submission with loading state and success/error toasts, resets form fields on success, and renders a ticket
+ * list with status, date, subject, and message. Shows an empty-state placeholder when no tickets are available.
+ *
+ * @returns The Support page React component as a JSX.Element
+ */
 export default function Support() {
   const tickets = useQuery(api.support.getMyTickets);
   const createTicket = useMutation(api.support.createTicket);
