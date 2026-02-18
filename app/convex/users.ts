@@ -1,6 +1,8 @@
+import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { authComponent } from "./auth";
+import { components } from "./_generated/api";
 
 /**
  * Synchronise the authenticated user with their application profile.
@@ -101,3 +103,125 @@ export async function getCallerRole(ctx: QueryCtx | MutationCtx) {
     return null;
   }
 }
+
+/**
+ * Admin: List all profiles for moderation and management.
+ * Restricted to callers with `admin` role.
+ */
+export const listAllProfiles = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Unauthorized");
+    }
+
+    const profiles = await ctx.db.query("profiles").collect();
+
+    return await Promise.all(
+      profiles.map(async (p) => {
+        let user = await ctx.runQuery(components.auth.adapter.findOne, {
+          model: "user",
+          where: [{ field: "userId", operator: "eq", value: p.userId }]
+        });
+
+        if (!user) {
+          user = await ctx.runQuery(components.auth.adapter.findOne, {
+            model: "user",
+            where: [{ field: "_id", operator: "eq", value: p.userId }]
+          });
+        }
+
+        return {
+          ...p,
+          name: user?.name,
+          email: user?.email,
+          image: user?.image,
+        };
+      })
+    );
+  },
+});
+
+/**
+ * Admin: Mark a profile as verified.
+ */
+export const verifyUser = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Unauthorized");
+    }
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    
+    if (!profile) throw new Error("Profile not found");
+
+    const now = Date.now();
+    await ctx.db.patch(profile._id, {
+      isVerified: true,
+      updatedAt: now,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Admin: Promote a user to admin role.
+ */
+export const promoteToAdmin = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Unauthorized");
+    }
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    
+    if (!profile) throw new Error("Profile not found");
+
+    const now = Date.now();
+    await ctx.db.patch(profile._id, {
+      role: "admin",
+      updatedAt: now,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * User: Submit KYC documents for verification.
+ */
+export const submitKYC = mutation({
+  args: { documents: v.array(v.string()) }, // storageIds
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const userId = identity.subject;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    
+    if (!profile) throw new Error("Profile not found");
+
+    await ctx.db.patch(profile._id, {
+      kycStatus: "pending",
+      kycDocuments: args.documents,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});

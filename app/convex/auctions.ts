@@ -495,6 +495,109 @@ export const settleExpiredAuctions = internalMutation({
   },
 });
 
+/**
+ * Admin: List all auctions for full management.
+ */
+export const getAllAuctions = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Not authorized");
+    }
+
+    const auctions = await ctx.db.query("auctions").collect();
+
+    return await Promise.all(
+      auctions.map(async (auction) => ({
+        ...auction,
+        images: await resolveImageUrls(ctx.storage, auction.images),
+      }))
+    );
+  },
+});
+
+/**
+ * Admin: Update any field of an auction.
+ */
+export const adminUpdateAuction = mutation({
+  args: {
+    auctionId: v.id("auctions"),
+    updates: v.object({
+      title: v.optional(v.string()),
+      make: v.optional(v.string()),
+      model: v.optional(v.string()),
+      year: v.optional(v.number()),
+      operatingHours: v.optional(v.number()),
+      location: v.optional(v.string()),
+      description: v.optional(v.string()),
+      startingPrice: v.optional(v.number()),
+      reservePrice: v.optional(v.number()),
+      status: v.optional(v.union(
+        v.literal("draft"),
+        v.literal("pending_review"),
+        v.literal("active"),
+        v.literal("sold"),
+        v.literal("unsold"),
+        v.literal("rejected")
+      )),
+      startTime: v.optional(v.number()),
+      endTime: v.optional(v.number()),
+      currentPrice: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Not authorized");
+    }
+
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) throw new Error("Auction not found");
+
+    await ctx.db.patch(args.auctionId, args.updates);
+
+    return { success: true };
+  },
+});
+
+/**
+ * Admin: Bulk update multiple auctions.
+ */
+export const bulkUpdateAuctions = mutation({
+  args: {
+    auctionIds: v.array(v.id("auctions")),
+    updates: v.object({
+      status: v.optional(v.union(
+        v.literal("draft"),
+        v.literal("pending_review"),
+        v.literal("active"),
+        v.literal("sold"),
+        v.literal("unsold"),
+        v.literal("rejected")
+      )),
+      startTime: v.optional(v.number()),
+      endTime: v.optional(v.number()),
+      startingPrice: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Not authorized");
+    }
+
+    for (const id of args.auctionIds) {
+      const auction = await ctx.db.get(id);
+      if (auction) {
+        await ctx.db.patch(id, args.updates);
+      }
+    }
+
+    return { success: true };
+  },
+});
+
 export const getMyBids = query({
   args: {},
   handler: async (ctx) => {
