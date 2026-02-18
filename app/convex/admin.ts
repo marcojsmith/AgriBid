@@ -1,23 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { getCallerRole } from "./users";
-
-// --- Internal Helper: Audit Logging ---
-export const logAdminAction = internalMutation({
-  args: {
-    adminId: v.string(),
-    action: v.string(),
-    targetId: v.optional(v.string()),
-    targetType: v.optional(v.string()),
-    details: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.insert("auditLogs", {
-      ...args,
-      timestamp: Date.now(),
-    });
-  },
-});
+import type { Id } from "./_generated/dataModel";
+import { logAudit } from "./admin_utils";
 
 // --- Bid Moderation ---
 
@@ -76,19 +61,12 @@ export const voidBid = mutation({
     }
 
     // Log Action
-    // Note: In a real app, we'd use `ctx.runMutation` or similar for the internal log, 
-    // but here we can just insert directly since we are in a mutation.
-    const adminIdentity = await ctx.auth.getUserIdentity();
-    if (adminIdentity) {
-      await ctx.db.insert("auditLogs", {
-        adminId: adminIdentity.subject,
-        action: "VOID_BID",
-        targetId: args.bidId,
-        targetType: "bid",
-        details: `Reason: ${args.reason}. New Price: ${highestBid ? highestBid.amount : 'Reset to Start'}`,
-        timestamp: Date.now(),
-      });
-    }
+    await logAudit(ctx, {
+      action: "VOID_BID",
+      targetId: args.bidId,
+      targetType: "bid",
+      details: `Reason: ${args.reason}. New Price: ${highestBid ? highestBid.amount : 'Reset to Start'}`,
+    });
 
     return { success: true };
   },
@@ -104,13 +82,13 @@ export const getPendingKYC = query({
 
     const profiles = await ctx.db
       .query("profiles")
-      .filter((q) => q.eq(q.field("kycStatus"), "pending"))
+      .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
       .collect();
 
     return await Promise.all(
         profiles.map(async (p) => ({
             ...p,
-            kycDocuments: p.kycDocuments ? await Promise.all(p.kycDocuments.map(id => ctx.storage.getUrl(id))) : [],
+            kycDocuments: p.kycDocuments ? await Promise.all(p.kycDocuments.map(id => ctx.storage.getUrl(id as Id<"_storage">))) : [],
         }))
     );
   },
@@ -165,17 +143,12 @@ export const reviewKYC = mutation({
       });
     }
 
-    const adminIdentity = await ctx.auth.getUserIdentity();
-    if (adminIdentity) {
-        await ctx.db.insert("auditLogs", {
-            adminId: adminIdentity.subject,
-            action: `KYC_${args.decision.toUpperCase()}`,
-            targetId: args.userId,
-            targetType: "user",
-            details: args.reason,
-            timestamp: Date.now(),
-        });
-    }
+    await logAudit(ctx, {
+        action: `KYC_${args.decision.toUpperCase()}`,
+        targetId: args.userId,
+        targetType: "user",
+        details: args.reason,
+    });
 
     return { success: true };
   },
@@ -227,8 +200,12 @@ export const getTickets = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
+    const allowedStatuses = new Set(["open", "resolved", "closed"]);
     let tickets;
     if (args.status) {
+        if (!allowedStatuses.has(args.status)) {
+            throw new Error(`Invalid status: ${args.status}`);
+        }
         tickets = await ctx.db
             .query("supportTickets")
             .withIndex("by_status", q => q.eq("status", args.status as any))
@@ -255,7 +232,12 @@ export const resolveTicket = mutation({
         resolvedBy: adminIdentity?.subject
     });
 
-    // Notify user? (Future)
+    await logAudit(ctx, {
+        action: "RESOLVE_TICKET",
+        targetId: args.ticketId,
+        targetType: "supportTicket",
+        details: JSON.stringify({ resolution: args.resolution }),
+    });
     
     return { success: true };
   },
@@ -285,26 +267,31 @@ export const createAnnouncement = mutation({
         const role = await getCallerRole(ctx);
         if (role !== "admin") throw new Error("Unauthorized");
 
+        const title = args.title.trim();
+        const message = args.message.trim();
+
+        if (title.length === 0 || title.length > 200) {
+            throw new Error("Title must be between 1 and 200 characters");
+        }
+        if (message.length === 0 || message.length > 2000) {
+            throw new Error("Message must be between 1 and 2000 characters");
+        }
+
         await ctx.db.insert("notifications", {
             recipientId: "all",
             type: "info",
-            title: args.title,
-            message: args.message,
+            title,
+            message,
             isRead: false,
             createdAt: Date.now(),
         });
         
-        const adminIdentity = await ctx.auth.getUserIdentity();
-        if (adminIdentity) {
-            await ctx.db.insert("auditLogs", {
-                adminId: adminIdentity.subject,
-                action: "CREATE_ANNOUNCEMENT",
-                targetId: "all",
-                targetType: "announcement",
-                details: args.title,
-                timestamp: Date.now(),
-            });
-        }
+        await logAudit(ctx, {
+            action: "CREATE_ANNOUNCEMENT",
+            targetId: "all",
+            targetType: "announcement",
+            details: title,
+        });
 
         return { success: true };
     }

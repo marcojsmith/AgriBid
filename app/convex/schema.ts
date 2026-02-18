@@ -108,7 +108,9 @@ export default defineSchema({
     companyName: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_kycStatus", ["kycStatus"]),
 
   // New Admin Features
   auditLogs: defineTable({
@@ -117,8 +119,11 @@ export default defineSchema({
     targetId: v.optional(v.string()),
     targetType: v.optional(v.string()),
     details: v.optional(v.string()),
+    targetCount: v.optional(v.number()),
     timestamp: v.number(),
-  }).index("by_timestamp", ["timestamp"]),
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_adminId", ["adminId"]),
 
   supportTickets: defineTable({
     userId: v.string(),
@@ -144,7 +149,8 @@ export default defineSchema({
     timestamp: v.number(),
   })
     .index("by_auction", ["auctionId"])
-    .index("by_seller", ["sellerId"]),
+    .index("by_seller", ["sellerId"])
+    .index("by_buyer", ["buyerId"]),
 
   notifications: defineTable({
     recipientId: v.string(), // "all" for announcements

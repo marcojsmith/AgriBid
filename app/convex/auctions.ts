@@ -4,6 +4,8 @@ import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
 import { components } from "./_generated/api";
 import { getCallerRole } from "./users";
+import type { Id } from "./_generated/dataModel";
+import { logAudit } from "./admin_utils";
 
 interface RawImages {
   front?: string;
@@ -398,6 +400,16 @@ export const placeBid = mutation({
     }
     const userId = identity.subject;
 
+    // Check Verification Status
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    
+    if (!profile?.isVerified) {
+      throw new Error("Account verification required to place bids. Please complete KYC.");
+    }
+
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
     if (auction.status !== "active") throw new Error("Auction not active");
@@ -557,17 +569,12 @@ export const adminUpdateAuction = mutation({
 
     await ctx.db.patch(args.auctionId, args.updates);
 
-    const adminIdentity = await ctx.auth.getUserIdentity();
-    if (adminIdentity) {
-        await ctx.db.insert("auditLogs", {
-            adminId: adminIdentity.subject,
-            action: "UPDATE_AUCTION",
-            targetId: args.auctionId,
-            targetType: "auction",
-            details: JSON.stringify(args.updates),
-            timestamp: Date.now(),
-        });
-    }
+    await logAudit(ctx, {
+        action: "UPDATE_AUCTION",
+        targetId: args.auctionId,
+        targetType: "auction",
+        details: JSON.stringify(args.updates),
+    });
 
     return { success: true };
   },
@@ -599,26 +606,33 @@ export const bulkUpdateAuctions = mutation({
       throw new Error("Not authorized");
     }
 
+    const updated: Id<"auctions">[] = [];
+    const skipped: Id<"auctions">[] = [];
     for (const id of args.auctionIds) {
       const auction = await ctx.db.get(id);
       if (auction) {
         await ctx.db.patch(id, args.updates);
+        updated.push(id);
+      } else {
+        skipped.push(id);
       }
     }
 
-    const adminIdentity = await ctx.auth.getUserIdentity();
-    if (adminIdentity) {
-        await ctx.db.insert("auditLogs", {
-            adminId: adminIdentity.subject,
-            action: "BULK_UPDATE_AUCTIONS",
-            targetId: args.auctionIds.join(","),
-            targetType: "auction",
-            details: JSON.stringify(args.updates),
-            timestamp: Date.now(),
-        });
-    }
+    await logAudit(ctx, {
+        action: "BULK_UPDATE_AUCTIONS",
+        targetId: args.auctionIds.length > 3 
+            ? `${args.auctionIds.slice(0, 3).join(",")},...` 
+            : args.auctionIds.join(","),
+        targetType: "auction",
+        targetCount: args.auctionIds.length,
+        details: JSON.stringify({ 
+            count: args.auctionIds.length,
+            updates: Object.keys(args.updates),
+            preview: args.auctionIds.slice(0, 3)
+        }),
+    });
 
-    return { success: true };
+    return { success: true, updated, skipped };
   },
 });
 
