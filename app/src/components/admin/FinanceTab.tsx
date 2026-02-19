@@ -48,6 +48,15 @@ function StatCard({
   );
 }
 
+/**
+ * Render the finance overview tab showing key statistics and a recent transactions table.
+ *
+ * Displays a centered loading indicator while financial stats are being fetched. When data is available,
+ * renders three statistic cards (total sales volume, estimated commission, auctions settled) and a
+ * table of recent sales with date, title, sale amount, and commission.
+ *
+ * @returns A React element containing the finance statistics and recent transactions UI.
+ */
 export function FinanceTab() {
   const stats = useQuery(api.admin.getFinancialStats);
 

@@ -21,12 +21,12 @@ import {
 import { toast } from "sonner";
 
 /**
- * Render a bell button and notifications dropdown for the current user.
+ * Show a bell button with an unread badge and a dropdown listing the current user's notifications.
  *
- * Displays an unread count badge, a scrollable list of notifications (with title, date, message, and an icon),
- * and controls to mark individual notifications or all notifications as read and to navigate to the full archive.
+ * The dropdown presents notification items (icon, title, date, message), lets the user mark individual
+ * notifications or all notifications as read, and provides access to the full notifications archive.
  *
- * @returns The notifications dropdown UI as a JSX element
+ * @returns A JSX element containing the notifications dropdown UI
  */
 export function NotificationDropdown() {
   const navigate = useNavigate();

@@ -8,12 +8,12 @@ import { LayoutDashboard, Plus, Edit } from "lucide-react";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
 /**
- * Renders the "My Listings" dashboard page showing the current user's auction listings.
+ * Displays the current user's auction listings on the dashboard.
  *
- * Displays a centered loading spinner while listings are being fetched. When data is available,
- * shows a header with a "Create Listing" action, an empty-state call-to-action if there are no
- * listings, or a list of auction cards with image, title, status badge, reserve/current prices,
- * end date, and actions (View; Edit shown but disabled for drafts).
+ * Shows a loading indicator while listings are being fetched. If there are no listings,
+ * renders an empty-state call-to-action; otherwise renders a list of auction cards
+ * containing image, title, status badge, reserve and current prices, end date, and
+ * action buttons (View; Edit is shown but disabled for drafts).
  *
  * @returns The React element tree for the My Listings dashboard page.
  */
