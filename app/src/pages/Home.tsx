@@ -9,6 +9,7 @@ import { FilterSidebar } from "../components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LoadingIndicator, LoadingPage } from "../components/ui/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.
@@ -85,11 +86,7 @@ export default function Home() {
   });
 
   if (isPending) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold">
-        AGRIBID LOADING...
-      </div>
-    );
+    return <LoadingPage message="Loading..." />;
   }
 
   const hasActiveFilters =
@@ -202,7 +199,7 @@ export default function Home() {
 
         {!auctions ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <LoadingIndicator />
           </div>
         ) : auctions.length === 0 ? (
           <div className="text-center py-24 bg-card rounded-3xl border-2 border-dashed border-primary/10">

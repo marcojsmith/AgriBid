@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Gavel } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
 interface StatusDisplay {
   label: string;
@@ -47,7 +48,7 @@ export default function MyBids() {
   if (auctions === undefined) {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <LoadingIndicator />
       </div>
     );
   }

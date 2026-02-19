@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell, Clock, Loader2 } from "lucide-react";
+import { Bell, Clock } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -82,7 +83,7 @@ export function NotificationDropdown() {
               disabled={isMarkingAllRead}
             >
               {isMarkingAllRead ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                <LoadingIndicator size="sm" className="mr-1" />
               ) : null}
               Mark all read
             </Button>
@@ -92,7 +93,7 @@ export function NotificationDropdown() {
         <div className="max-h-[400px] overflow-y-auto space-y-1 py-1">
           {notifications === undefined ? (
             <div className="py-12 text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary/40 mx-auto" />
+              <LoadingIndicator className="mx-auto" />
               <p className="text-[10px] font-black uppercase text-muted-foreground mt-2">
                 Syncing...
               </p>

@@ -16,12 +16,12 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Loader2,
   MessageSquare,
   Clock,
   CheckCircle2,
   HelpCircle,
 } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
 /**
  * Render the Support page that lets users create new support tickets and view their existing tickets.
@@ -171,7 +171,7 @@ export default function Support() {
                 disabled={isSubmitting || tickets === undefined}
               >
                 {isSubmitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <LoadingIndicator size="sm" className="border-white" />
                 ) : (
                   "Submit Support Ticket"
                 )}
@@ -188,7 +188,7 @@ export default function Support() {
           <div className="space-y-4">
             {tickets === undefined ? (
               <div className="flex justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+                <LoadingIndicator size="sm" />
               </div>
             ) : (
               <>

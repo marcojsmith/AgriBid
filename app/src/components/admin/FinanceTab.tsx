@@ -9,7 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, TrendingUp, DollarSign, Calendar } from "lucide-react";
+import { TrendingUp, DollarSign, Calendar } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,7 +54,7 @@ export function FinanceTab() {
   if (!stats) {
     return (
       <div className="flex justify-center p-8">
-        <Loader2 className="animate-spin text-primary/40" />
+        <LoadingIndicator />
       </div>
     );
   }

@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { History, User } from "lucide-react";
+import { LoadingIndicator } from "./ui/LoadingIndicator";
 
 interface BidHistoryProps {
   auctionId: Id<"auctions">;
@@ -55,7 +56,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
         <AccordionContent className="pt-2 pb-6">
           {!bids ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <LoadingIndicator size="sm" />
             </div>
           ) : bids.length === 0 ? (
             <div className="text-center py-12 bg-muted/20 rounded-xl border-2 border-dashed">

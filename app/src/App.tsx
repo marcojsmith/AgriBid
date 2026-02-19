@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
+import { LoadingIndicator } from "./components/ui/LoadingIndicator";
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));
@@ -22,15 +23,8 @@ const Notifications = lazy(() => import("./pages/Notifications"));
  * Global loading fallback for lazy-loaded routes.
  */
 const PageLoader = () => (
-  <div
-    className="flex h-[60vh] items-center justify-center bg-background"
-    role="status"
-  >
-    <div
-      className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"
-      aria-hidden="true"
-    ></div>
-    <span className="sr-only">Loading page...</span>
+  <div className="flex h-[60vh] items-center justify-center bg-background">
+    <LoadingIndicator />
   </div>
 );
 

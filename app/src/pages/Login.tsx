@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { isValidCallbackUrl } from "../lib/utils";
+import { LoadingPage } from "../components/ui/LoadingIndicator";
 
 /**
  * Render a dedicated Login/Registration page.
@@ -31,11 +32,7 @@ export default function Login() {
   }
 
   if (isPending) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold">
-        AGRIBID AUTHENTICATING...
-      </div>
-    );
+    return <LoadingPage message="Authenticating..." />;
   }
 
   return (
