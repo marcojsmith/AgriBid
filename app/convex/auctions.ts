@@ -2,8 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
-import { components } from "./_generated/api";
-import { getCallerRole } from "./users";
+import { getCallerRole, findUserById } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit } from "./admin_utils";
 
@@ -21,7 +20,10 @@ interface RawImages {
  * @param images - Image input in either legacy array form (treated as `additional`), a RawImages-like object, or any other value (treated as no images).
  * @returns An object matching the RawImages shape where `front`, `engine`, `cabin`, and `rear` are resolved to URLs or `undefined`, and `additional` is an array of resolved HTTP URLs. Non-HTTP IDs are resolved via the provided storage; entries that cannot be resolved are omitted from `additional`.
  */
-export async function resolveImageUrls(storage: QueryCtx["storage"], images: unknown) {
+export async function resolveImageUrls(
+  storage: QueryCtx["storage"],
+  images: unknown,
+) {
   const resolveUrl = async (id: string | undefined) => {
     if (!id) return undefined;
     if (id.startsWith("http")) return id;
@@ -44,11 +46,13 @@ export async function resolveImageUrls(storage: QueryCtx["storage"], images: unk
     engine: await resolveUrl(normalizedImages.engine),
     cabin: await resolveUrl(normalizedImages.cabin),
     rear: await resolveUrl(normalizedImages.rear),
-    additional: (await Promise.all(
-      (normalizedImages.additional || []).map(async (id: string) => 
-        id.startsWith("http") ? id : await storage.getUrl(id)
+    additional: (
+      await Promise.all(
+        (normalizedImages.additional || []).map(async (id: string) =>
+          id.startsWith("http") ? id : await storage.getUrl(id),
+        ),
       )
-    )).filter((url: string | null | undefined): url is string => !!url),
+    ).filter((url: string | null | undefined): url is string => !!url),
   };
 }
 
@@ -69,13 +73,13 @@ export const getPendingAuctions = query({
       auctions.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      })),
     );
   },
 });
 
 export const getActiveAuctions = query({
-  args: { 
+  args: {
     search: v.optional(v.string()),
     make: v.optional(v.string()),
     minYear: v.optional(v.number()),
@@ -90,8 +94,8 @@ export const getActiveAuctions = query({
 
     if (args.search) {
       auctions = await auctionsQuery
-        .withSearchIndex("search_title", (q) => 
-          q.search("title", args.search!).eq("status", "active")
+        .withSearchIndex("search_title", (q) =>
+          q.search("title", args.search!).eq("status", "active"),
         )
         .collect();
     } else {
@@ -101,13 +105,16 @@ export const getActiveAuctions = query({
     }
 
     // Apply additional filters in memory for now (can be optimized with indexes later if needed)
-    auctions = auctions.filter(a => {
+    auctions = auctions.filter((a) => {
       if (args.make && a.make !== args.make) return false;
       if (args.minYear !== undefined && a.year < args.minYear) return false;
       if (args.maxYear !== undefined && a.year > args.maxYear) return false;
-      if (args.minPrice !== undefined && a.currentPrice < args.minPrice) return false;
-      if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice) return false;
-      if (args.maxHours !== undefined && a.operatingHours > args.maxHours) return false;
+      if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
+        return false;
+      if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
+        return false;
+      if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
+        return false;
       return true;
     });
 
@@ -115,7 +122,7 @@ export const getActiveAuctions = query({
       auctions.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      })),
     );
   },
 });
@@ -127,8 +134,8 @@ export const getActiveMakes = query({
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
-    
-    const makes = Array.from(new Set(activeAuctions.map(a => a.make))).sort();
+
+    const makes = Array.from(new Set(activeAuctions.map((a) => a.make))).sort();
     return makes;
   },
 });
@@ -160,22 +167,14 @@ export const getAuctionBids = query({
 
     await Promise.all(
       uniqueBidderIds.map(async (bidderId) => {
-        let user = await ctx.runQuery(components.auth.adapter.findOne, {
-          model: "user",
-          where: [{ field: "userId", operator: "eq", value: bidderId }]
-        });
+        const user = await findUserById(ctx, bidderId);
 
-        if (!user) {
-          user = await ctx.runQuery(components.auth.adapter.findOne, {
-            model: "user",
-            where: [{ field: "_id", operator: "eq", value: bidderId }]
-          });
-        }
-        
         if (user) {
-          bidderNames.set(bidderId, user.name);
+          bidderNames.set(bidderId, user.name ?? "Anonymous");
+        } else {
+          bidderNames.set(bidderId, "Anonymous");
         }
-      })
+      }),
     );
 
     const bidsWithUsers = bids.map((bid) => ({
@@ -198,21 +197,12 @@ export const getSellerInfo = query({
   args: { sellerId: v.string() },
   handler: async (ctx, args) => {
     // Query user details from the auth component's adapter
-    let user = await ctx.runQuery(components.auth.adapter.findOne, {
-      model: "user",
-      where: [{ field: "userId", operator: "eq", value: args.sellerId }]
-    });
+    const user = await findUserById(ctx, args.sellerId);
 
-    if (!user) {
-      user = await ctx.runQuery(components.auth.adapter.findOne, {
-        model: "user",
-        where: [{ field: "_id", operator: "eq", value: args.sellerId }]
-      });
-    }
-    
     if (!user) return null;
 
     const linkId = user.userId ?? user._id;
+    if (!linkId) return null;
 
     const profile = await ctx.db
       .query("profiles")
@@ -221,7 +211,9 @@ export const getSellerInfo = query({
 
     const soldAuctions = await ctx.db
       .query("auctions")
-      .withIndex("by_seller_status", (q) => q.eq("sellerId", args.sellerId).eq("status", "sold"))
+      .withIndex("by_seller_status", (q) =>
+        q.eq("sellerId", args.sellerId).eq("status", "sold"),
+      )
       .collect();
 
     return {
@@ -240,11 +232,11 @@ export const getSellerListings = query({
     const results = await ctx.db
       .query("auctions")
       .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
-      .filter((q) => 
+      .filter((q) =>
         q.or(
           q.eq(q.field("status"), "active"),
-          q.eq(q.field("status"), "sold")
-        )
+          q.eq(q.field("status"), "sold"),
+        ),
       )
       .paginate(args.paginationOpts);
 
@@ -252,7 +244,7 @@ export const getSellerListings = query({
       results.page.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      })),
     );
 
     return {
@@ -268,6 +260,27 @@ export const generateUploadUrl = mutation(async (ctx) => {
     throw new Error("Not authenticated");
   }
   return await ctx.storage.generateUploadUrl();
+});
+
+export const deleteUpload = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Unauthorized: Only admins can delete storage items");
+    }
+
+    // Verify existence before deletion
+    const url = await ctx.storage.getUrl(args.storageId);
+    if (!url) {
+      console.warn(
+        `Attempted to delete non-existent storage item: ${args.storageId}`,
+      );
+      return;
+    }
+
+    await ctx.storage.delete(args.storageId);
+  },
 });
 
 export const createAuction = mutation({
@@ -348,7 +361,7 @@ export const approveAuction = mutation({
     if (durationDays <= 0 || durationDays > 365) {
       throw new Error("Invalid duration: must be between 1 and 365 days");
     }
-    
+
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
     if (auction.status !== "pending_review") {
@@ -384,7 +397,7 @@ export const rejectAuction = mutation({
     }
 
     await ctx.db.patch(args.auctionId, {
-      status: "rejected", 
+      status: "rejected",
     });
 
     return { success: true };
@@ -405,9 +418,11 @@ export const placeBid = mutation({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    
+
     if (!profile?.isVerified) {
-      throw new Error("Account verification required to place bids. Please complete KYC.");
+      throw new Error(
+        "Account verification required to place bids. Please complete KYC.",
+      );
     }
 
     const auction = await ctx.db.get(args.auctionId);
@@ -418,12 +433,12 @@ export const placeBid = mutation({
     if (auction.sellerId === userId) {
       throw new Error("Sellers cannot bid on their own auction");
     }
-    
+
     // Check if auction has expired
     if (auction.endTime <= Date.now()) {
       throw new Error("Auction ended");
     }
-    
+
     // Enforce Minimum Bid Increment
     const minimumRequired = auction.currentPrice + auction.minIncrement;
     if (args.amount < minimumRequired) {
@@ -434,8 +449,9 @@ export const placeBid = mutation({
     const timeRemaining = auction.endTime - Date.now();
     let newEndTime = auction.endTime;
     let isExtended = auction.isExtended || false;
-    
-    if (timeRemaining < 120000) { // 2 minutes in ms
+
+    if (timeRemaining < 120000) {
+      // 2 minutes in ms
       newEndTime = Date.now() + 120000;
       isExtended = true;
     }
@@ -481,8 +497,8 @@ export const settleExpiredAuctions = internalMutation({
       const hasBids = bids.length > 0;
       const reserveMet = auction.currentPrice >= auction.reservePrice;
 
-      const finalStatus = (hasBids && reserveMet) ? "sold" : "unsold";
-      
+      const finalStatus = hasBids && reserveMet ? "sold" : "unsold";
+
       let winnerId = undefined;
       if (finalStatus === "sold") {
         // Find the highest bid to determine the winner.
@@ -502,7 +518,9 @@ export const settleExpiredAuctions = internalMutation({
         winnerId,
       });
 
-      console.log(`Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`);
+      console.log(
+        `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`,
+      );
     }
   },
 });
@@ -511,21 +529,32 @@ export const settleExpiredAuctions = internalMutation({
  * Admin: List all auctions for full management.
  */
 export const getAllAuctions = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    paginationOpts: v.optional(paginationOptsValidator),
+  },
+  handler: async (ctx, args) => {
+    console.log("getAllAuctions received args:", args);
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
       throw new Error("Not authorized");
     }
 
-    const auctions = await ctx.db.query("auctions").collect();
+    const opts = args.paginationOpts || { numItems: 50, cursor: null };
 
-    return await Promise.all(
-      auctions.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
-    );
+    const auctions = await ctx.db
+      .query("auctions")
+      .order("desc")
+      .paginate(opts);
+
+    return {
+      ...auctions,
+      page: await Promise.all(
+        auctions.page.map(async (auction) => ({
+          ...auction,
+          images: await resolveImageUrls(ctx.storage, auction.images),
+        })),
+      ),
+    };
   },
 });
 
@@ -545,14 +574,16 @@ export const adminUpdateAuction = mutation({
       description: v.optional(v.string()),
       startingPrice: v.optional(v.number()),
       reservePrice: v.optional(v.number()),
-      status: v.optional(v.union(
-        v.literal("draft"),
-        v.literal("pending_review"),
-        v.literal("active"),
-        v.literal("sold"),
-        v.literal("unsold"),
-        v.literal("rejected")
-      )),
+      status: v.optional(
+        v.union(
+          v.literal("draft"),
+          v.literal("pending_review"),
+          v.literal("active"),
+          v.literal("sold"),
+          v.literal("unsold"),
+          v.literal("rejected"),
+        ),
+      ),
       startTime: v.optional(v.number()),
       endTime: v.optional(v.number()),
       currentPrice: v.optional(v.number()),
@@ -570,10 +601,10 @@ export const adminUpdateAuction = mutation({
     await ctx.db.patch(args.auctionId, args.updates);
 
     await logAudit(ctx, {
-        action: "UPDATE_AUCTION",
-        targetId: args.auctionId,
-        targetType: "auction",
-        details: JSON.stringify(args.updates),
+      action: "UPDATE_AUCTION",
+      targetId: args.auctionId,
+      targetType: "auction",
+      details: JSON.stringify(args.updates),
     });
 
     return { success: true };
@@ -583,18 +614,22 @@ export const adminUpdateAuction = mutation({
 /**
  * Admin: Bulk update multiple auctions.
  */
+const MAX_BULK_UPDATE_SIZE = 50;
+
 export const bulkUpdateAuctions = mutation({
   args: {
     auctionIds: v.array(v.id("auctions")),
     updates: v.object({
-      status: v.optional(v.union(
-        v.literal("draft"),
-        v.literal("pending_review"),
-        v.literal("active"),
-        v.literal("sold"),
-        v.literal("unsold"),
-        v.literal("rejected")
-      )),
+      status: v.optional(
+        v.union(
+          v.literal("draft"),
+          v.literal("pending_review"),
+          v.literal("active"),
+          v.literal("sold"),
+          v.literal("unsold"),
+          v.literal("rejected"),
+        ),
+      ),
       startTime: v.optional(v.number()),
       endTime: v.optional(v.number()),
       startingPrice: v.optional(v.number()),
@@ -604,6 +639,12 @@ export const bulkUpdateAuctions = mutation({
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
       throw new Error("Not authorized");
+    }
+
+    if (args.auctionIds.length > MAX_BULK_UPDATE_SIZE) {
+      throw new Error(
+        `Bulk update exceeds limit of ${MAX_BULK_UPDATE_SIZE} auctions`,
+      );
     }
 
     const updated: Id<"auctions">[] = [];
@@ -619,17 +660,15 @@ export const bulkUpdateAuctions = mutation({
     }
 
     await logAudit(ctx, {
-        action: "BULK_UPDATE_AUCTIONS",
-        targetId: args.auctionIds.length > 3 
-            ? `${args.auctionIds.slice(0, 3).join(",")},...` 
-            : args.auctionIds.join(","),
-        targetType: "auction",
-        targetCount: args.auctionIds.length,
-        details: JSON.stringify({ 
-            count: args.auctionIds.length,
-            updates: Object.keys(args.updates),
-            preview: args.auctionIds.slice(0, 3)
-        }),
+      action: "BULK_UPDATE_AUCTIONS",
+      targetId: args.auctionIds.join(","),
+      targetType: "auction",
+      targetCount: args.auctionIds.length,
+      details: JSON.stringify({
+        count: args.auctionIds.length,
+        updates: Object.keys(args.updates),
+        preview: args.auctionIds.slice(0, 3),
+      }),
     });
 
     return { success: true, updated, skipped };
@@ -650,7 +689,10 @@ export const getMyBids = query({
       .collect();
 
     // Group by auctionId to get the latest status per auction
-    const bidsByAuction = new Map<typeof bids[number]["auctionId"], typeof bids>();
+    const bidsByAuction = new Map<
+      (typeof bids)[number]["auctionId"],
+      typeof bids
+    >();
     for (const bid of bids) {
       const existing = bidsByAuction.get(bid.auctionId);
       if (existing) {
@@ -665,19 +707,21 @@ export const getMyBids = query({
       auctionIds.map(async (id) => {
         const auction = await ctx.db.get(id);
         if (!auction) return null;
-        
+
         // Find my highest bid on this auction
         const myBids = bidsByAuction.get(id) ?? [];
-        const myHighestBid = Math.max(...myBids.map(b => b.amount));
-        
+        const myHighestBid = Math.max(...myBids.map((b) => b.amount));
+
         return {
           ...auction,
           images: await resolveImageUrls(ctx.storage, auction.images),
           myHighestBid,
-          isWinning: auction.status === 'active' && myHighestBid === auction.currentPrice,
-          isWon: auction.status === 'sold' && auction.winnerId === userId,
+          isWinning:
+            auction.status === "active" &&
+            myHighestBid === auction.currentPrice,
+          isWon: auction.status === "sold" && auction.winnerId === userId,
         };
-      })
+      }),
     );
 
     return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
@@ -700,7 +744,7 @@ export const getMyListings = query({
       listings.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      })),
     );
   },
 });

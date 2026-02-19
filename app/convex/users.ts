@@ -1,8 +1,32 @@
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { authComponent } from "./auth";
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII } from "./admin_utils";
+
+/**
+ * Helper to find a user by ID, checking both internal _id and shared userId.
+ */
+export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
+  let user = await ctx.runQuery(components.auth.adapter.findOne, {
+    model: "user",
+    where: [{ field: "userId", operator: "eq", value: id }],
+  });
+
+  if (!user) {
+    user = await ctx.runQuery(components.auth.adapter.findOne, {
+      model: "user",
+      where: [{ field: "_id", operator: "eq", value: id }],
+    });
+  }
+  return user;
+}
 
 /**
  * Synchronise the authenticated user with their application profile.
@@ -47,7 +71,7 @@ export const syncUser = mutation({
 });
 
 /**
- * Fetch the full profile for the authenticated user, 
+ * Fetch the full profile for the authenticated user,
  * merging core identity and application metadata.
  */
 export const getMyProfile = query({
@@ -110,41 +134,90 @@ export async function getCallerRole(ctx: QueryCtx | MutationCtx) {
  * Restricted to callers with `admin` role.
  */
 export const listAllProfiles = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    paginationOpts: v.optional(paginationOptsValidator),
+  },
+  handler: async (ctx, args) => {
+    console.log("listAllProfiles received args:", args);
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
       throw new Error("Unauthorized");
     }
 
-    const profiles = await ctx.db.query("profiles").collect();
+    const opts = args.paginationOpts || { numItems: 50, cursor: null };
+
+    const profiles = await ctx.db
+      .query("profiles")
+      .order("desc")
+      .paginate(opts);
 
     // Parallelize user lookups
-    const profilesWithUsers = await Promise.all(
-      profiles.map(async (p) => {
-        let user = await ctx.runQuery(components.auth.adapter.findOne, {
-          model: "user",
-          where: [{ field: "userId", operator: "eq", value: p.userId }]
-        });
-
-        if (!user) {
-          user = await ctx.runQuery(components.auth.adapter.findOne, {
-            model: "user",
-            where: [{ field: "_id", operator: "eq", value: p.userId }]
-          });
-        }
+    const page = await Promise.all(
+      profiles.page.map(async (p) => {
+        const user = await findUserById(ctx, p.userId);
 
         return {
           ...p,
           name: user?.name,
           email: user?.email,
           image: user?.image,
-          idNumber: p.idNumber ? await decryptPII(p.idNumber) : undefined,
+          idNumber: p.idNumber ? "****" : undefined, // Mask ID number in listings
         };
-      })
+      }),
     );
 
-    return profilesWithUsers;
+    return {
+      ...profiles,
+      page,
+    };
+  },
+});
+
+/**
+ * Admin: Fetch a full profile with decrypted PII for KYC review.
+ */
+export const getProfileForKYC = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Unauthorized");
+    }
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (!profile) return null;
+
+    const user = await findUserById(ctx, userId);
+
+    const [decIdNumber, decFirstName, decLastName, decPhone, decEmail] =
+      await Promise.all([
+        decryptPII(profile.idNumber),
+        decryptPII(profile.firstName),
+        decryptPII(profile.lastName),
+        decryptPII(profile.phoneNumber),
+        decryptPII(profile.kycEmail),
+      ]);
+
+    await logAudit(ctx, {
+      action: "VIEW_KYC_DETAILS",
+      targetId: userId,
+      targetType: "user",
+    });
+
+    return {
+      ...profile,
+      name: user?.name,
+      email: user?.email,
+      firstName: decFirstName,
+      lastName: decLastName,
+      phoneNumber: decPhone,
+      kycEmail: decEmail,
+      idNumber: decIdNumber,
+    };
   },
 });
 
@@ -163,8 +236,18 @@ export const verifyUser = mutation({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    
+
     if (!profile) throw new Error("Profile not found");
+
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    // Enforce KYC flow unless overridden (Admin override should be rare)
+    if (profile.kycStatus !== "verified") {
+      console.warn(
+        `Admin ${identity.subject} is manually verifying user ${userId} without completed KYC review.`,
+      );
+    }
 
     const now = Date.now();
     await ctx.db.patch(profile._id, {
@@ -173,9 +256,9 @@ export const verifyUser = mutation({
     });
 
     await logAudit(ctx, {
-        action: "VERIFY_USER",
-        targetId: userId,
-        targetType: "user",
+      action: "VERIFY_USER",
+      targetId: userId,
+      targetType: "user",
     });
 
     return { success: true };
@@ -188,17 +271,23 @@ export const verifyUser = mutation({
 export const promoteToAdmin = mutation({
   args: { userId: v.string() },
   handler: async (ctx, { userId }) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
+    const callerRole = await getCallerRole(ctx);
+    if (callerRole !== "admin") {
       throw new Error("Unauthorized");
+    }
+
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity?.subject === userId) {
+      throw new Error("Cannot change own role");
     }
 
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    
+
     if (!profile) throw new Error("Profile not found");
+    if (profile.role === "admin") return { success: true }; // No-op
 
     const now = Date.now();
     await ctx.db.patch(profile._id, {
@@ -207,9 +296,9 @@ export const promoteToAdmin = mutation({
     });
 
     await logAudit(ctx, {
-        action: "PROMOTE_ADMIN",
-        targetId: userId,
-        targetType: "user",
+      action: "PROMOTE_ADMIN",
+      targetId: userId,
+      targetType: "user",
     });
 
     return { success: true };
@@ -220,34 +309,51 @@ export const promoteToAdmin = mutation({
  * User: Submit KYC documents for verification.
  */
 export const submitKYC = mutation({
-  args: { 
-    documents: v.array(v.string()), 
+  args: {
+    documents: v.array(v.id("_storage")),
     firstName: v.string(),
     lastName: v.string(),
     phoneNumber: v.string(),
     idNumber: v.string(),
-    email: v.string()
+    email: v.string(),
   },
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
+    // Validate documents are actual storage IDs
+    for (const id of args.documents) {
+      const url = await ctx.storage.getUrl(id);
+      if (!url) {
+        throw new Error(`Invalid storage ID provided: ${id}`);
+      }
+    }
+
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
-    
+
     if (!profile) throw new Error("Profile not found");
+
+    const [encFirstName, encLastName, encPhone, encIdNumber, encEmail] =
+      await Promise.all([
+        encryptPII(args.firstName),
+        encryptPII(args.lastName),
+        encryptPII(args.phoneNumber),
+        encryptPII(args.idNumber),
+        encryptPII(args.email),
+      ]);
 
     await ctx.db.patch(profile._id, {
       kycStatus: "pending",
       kycDocuments: args.documents,
-      firstName: args.firstName,
-      lastName: args.lastName,
-      phoneNumber: args.phoneNumber,
-      idNumber: await encryptPII(args.idNumber),
-      kycEmail: args.email,
+      firstName: encFirstName,
+      lastName: encLastName,
+      phoneNumber: encPhone,
+      idNumber: encIdNumber,
+      kycEmail: encEmail,
       updatedAt: Date.now(),
     });
 

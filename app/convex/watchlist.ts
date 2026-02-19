@@ -6,7 +6,7 @@ import { resolveImageUrls } from "./auctions";
 /**
  * Toggle an auction in the user's watchlist.
  * If already watched, remove it. If not, add it.
- * 
+ *
  * @param auctionId - The ID of the auction to toggle
  * @returns boolean - true if now watched, false if removed
  */
@@ -20,7 +20,7 @@ export const toggleWatchlist = mutation({
     const existing = await ctx.db
       .query("watchlist")
       .withIndex("by_user_auction", (q) =>
-        q.eq("userId", userId).eq("auctionId", args.auctionId)
+        q.eq("userId", userId).eq("auctionId", args.auctionId),
       )
       .first();
 
@@ -50,7 +50,7 @@ export const isWatched = query({
     const existing = await ctx.db
       .query("watchlist")
       .withIndex("by_user_auction", (q) =>
-        q.eq("userId", userId).eq("auctionId", args.auctionId)
+        q.eq("userId", userId).eq("auctionId", args.auctionId),
       )
       .first();
 
@@ -81,7 +81,7 @@ export const getWatchedAuctions = query({
           ...auction,
           images: await resolveImageUrls(ctx.storage, auction.images),
         };
-      })
+      }),
     );
 
     return auctions.filter((a): a is NonNullable<typeof a> => a !== null);

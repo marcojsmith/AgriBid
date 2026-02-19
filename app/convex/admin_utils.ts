@@ -12,19 +12,20 @@ import type { MutationCtx } from "./_generated/server";
  * @param args.targetCount - Optional number of targets affected by the action
  */
 export async function logAudit(
-  ctx: MutationCtx, 
-  args: { 
-    action: string; 
-    targetId?: string; 
-    targetType?: string; 
+  ctx: MutationCtx,
+  args: {
+    action: string;
+    targetId?: string;
+    targetType?: string;
     details?: string;
     targetCount?: number;
-  }
+  },
 ) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
-    console.warn(`logAudit called without identity for action: ${args.action}`);
-    return;
+    const errorContext = `Audit Log Failure: Missing identity for action ${args.action} on ${args.targetType}:${args.targetId}`;
+    console.error(errorContext);
+    throw new Error(errorContext);
   }
 
   await ctx.db.insert("auditLogs", {
@@ -44,27 +45,42 @@ export async function logAudit(
  */
 const ENCRYPTION_KEY_STR = process.env.PII_ENCRYPTION_KEY;
 const IS_PRODUCTION = !!process.env.CONVEX_CLOUD_URL;
+const ALLOW_DEV_FALLBACK = process.env.ALLOW_PII_DEV_FALLBACK === "true";
 
 // Validation: Key must exist in production and must be 32 bytes
 if (IS_PRODUCTION && !ENCRYPTION_KEY_STR) {
-  throw new Error("CRITICAL: PII_ENCRYPTION_KEY environment variable is missing in production.");
+  throw new Error(
+    "CRITICAL: PII_ENCRYPTION_KEY environment variable is missing in production.",
+  );
 }
 
 if (ENCRYPTION_KEY_STR) {
   const keyBytes = new TextEncoder().encode(ENCRYPTION_KEY_STR);
   if (keyBytes.length !== 32) {
-    throw new Error(`CRITICAL: PII_ENCRYPTION_KEY must be exactly 32 bytes. Current byte length: ${keyBytes.length}`);
+    throw new Error(
+      `CRITICAL: PII_ENCRYPTION_KEY must be exactly 32 bytes. Current byte length: ${keyBytes.length}`,
+    );
   }
 }
 
-// Only allow fallback to temporary dev key when not in production
+// Only allow fallback to temporary dev key when explicitly opted-in via env
 const DEV_FALLBACK_KEY = "temporary-dev-key-32-chars-long!";
-const FINAL_KEY_STR = (IS_PRODUCTION || ENCRYPTION_KEY_STR)
-  ? (ENCRYPTION_KEY_STR || "")
-  : DEV_FALLBACK_KEY;
+const FINAL_KEY_STR = ENCRYPTION_KEY_STR
+  ? ENCRYPTION_KEY_STR
+  : ALLOW_DEV_FALLBACK && !IS_PRODUCTION
+    ? DEV_FALLBACK_KEY
+    : "";
+
+if (!FINAL_KEY_STR) {
+  throw new Error(
+    "CRITICAL: PII_ENCRYPTION_KEY is required. Development fallback is only allowed with ALLOW_PII_DEV_FALLBACK=true outside of production.",
+  );
+}
 
 if (FINAL_KEY_STR === DEV_FALLBACK_KEY) {
-  console.warn("⚠️ PII encryption using development fallback key. Do NOT use in production.");
+  console.warn(
+    "⚠️ SECURITY WARNING: Using hardcoded development PII encryption key. DO NOT USE THIS IN PRODUCTION.",
+  );
 }
 
 /**
@@ -80,7 +96,7 @@ async function getCryptoKey() {
     keyData,
     { name: "AES-GCM" },
     false,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -118,30 +134,36 @@ function base64ToArrayBuffer(base64: string): Uint8Array {
  * @returns The encrypted result formatted as `ivBase64.encryptedBase64`, or `undefined` when input is `undefined`/`null`.
  * @throws Error when encryption fails (message prefixed with `encryptPII failed:`).
  */
-export async function encryptPII(value: string | undefined): Promise<string | undefined> {
+export async function encryptPII(
+  value: string | undefined,
+): Promise<string | undefined> {
   if (value === undefined || value === null) return undefined;
-  
+
   try {
     const enc = new TextEncoder();
     const data = enc.encode(value);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await getCryptoKey();
-    
+
     const encryptedBuffer = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: iv as any },
+      { name: "AES-GCM", iv: iv as BufferSource },
       key,
-      data as any
+      data as BufferSource,
     );
-    
+
     // Use exact bytes of the Uint8Array/ArrayBuffer for conversion
     const ivBase64 = arrayBufferToBase64(iv);
-    const encryptedBase64 = arrayBufferToBase64(new Uint8Array(encryptedBuffer));
-    
+    const encryptedBase64 = arrayBufferToBase64(
+      new Uint8Array(encryptedBuffer),
+    );
+
     // Format: iv.encryptedContentWithTag
     return `${ivBase64}.${encryptedBase64}`;
   } catch (err) {
     console.error("Encryption error:", err);
-    throw new Error(`encryptPII failed: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(
+      `encryptPII failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
@@ -155,32 +177,50 @@ export async function encryptPII(value: string | undefined): Promise<string | un
  * @returns The decrypted plaintext string, the original input when it is not in the expected encrypted format, or `undefined` when input is `undefined`/`null`.
  * @throws Error when decryption is attempted but fails (e.g., authentication/tag mismatch or key errors).
  */
-export async function decryptPII(encrypted: string | undefined): Promise<string | undefined> {
+export async function decryptPII(
+  encrypted: string | undefined,
+): Promise<string | undefined> {
   if (encrypted === undefined || encrypted === null) return undefined;
-  
+
   // Check if it looks like our encrypted format (iv.encryptedContentWithTag)
   const parts = encrypted.split(".");
   if (parts.length !== 2) {
-    // Return original for legacy/plaintext
+    return encrypted;
+  }
+
+  const [ivBase64, encryptedBase64] = parts;
+
+  // Basic Base64 validation to avoid misclassifying plaintext (e.g. "john.doe")
+  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+  if (!base64Regex.test(ivBase64) || !base64Regex.test(encryptedBase64)) {
     return encrypted;
   }
 
   try {
-    const [ivBase64, encryptedBase64] = parts;
     const iv = base64ToArrayBuffer(ivBase64);
     const data = base64ToArrayBuffer(encryptedBase64);
+
+    // AES-GCM IV is exactly 12 bytes
+    if (iv.length !== 12) {
+      return encrypted;
+    }
+
     const key = await getCryptoKey();
-    
+
     const decryptedBuffer = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: iv as any },
+      { name: "AES-GCM", iv: iv as BufferSource },
       key,
-      data as any
+      data as BufferSource,
     );
-    
+
     const dec = new TextDecoder();
     return dec.decode(decryptedBuffer);
   } catch (err) {
     console.error("Decryption error:", err);
-    throw new Error(`Decryption failed: ${err instanceof Error ? err.message : String(err)}`);
+    // If it looked like encrypted but failed to decrypt (e.g. wrong key),
+    // it's safer to throw than to return garbage or the "fake" encrypted string.
+    throw new Error(
+      `Decryption failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

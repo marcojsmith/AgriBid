@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit } from "./admin_utils";
+import { COMMISSION_RATE } from "./config";
 
 // --- Bid Moderation ---
 
@@ -12,10 +13,12 @@ export const getRecentBids = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
+    const limit = Math.max(1, Math.min(args.limit || 50, 100));
+
     const bids = await ctx.db
       .query("bids")
       .order("desc")
-      .take(args.limit || 50);
+      .take(limit);
 
     return await Promise.all(
       bids.map(async (bid) => {
@@ -24,7 +27,7 @@ export const getRecentBids = query({
           ...bid,
           auctionTitle: auction?.title || "Unknown Auction",
         };
-      })
+      }),
     );
   },
 });
@@ -37,12 +40,16 @@ export const voidBid = mutation({
 
     const bid = await ctx.db.get(args.bidId);
     if (!bid) throw new Error("Bid not found");
+    if (bid.status === "voided") return { success: true }; // Already voided
 
     // Mark as void
     await ctx.db.patch(args.bidId, { status: "voided" });
 
     // Recalculate Auction Price (Simple approach: find next highest valid bid)
-    // In a real high-frequency system, this would be more complex.
+    // Convex mutations are atomic, but we fetch current state to ensure consistency.
+    const auction = await ctx.db.get(bid.auctionId);
+    if (!auction) throw new Error("Auction not found");
+
     const validBids = await ctx.db
       .query("bids")
       .withIndex("by_auction", (q) => q.eq("auctionId", bid.auctionId))
@@ -51,21 +58,18 @@ export const voidBid = mutation({
 
     // Re-sort in memory just to be safe (descending amount)
     validBids.sort((a, b) => b.amount - a.amount);
-    
-    const highestBid = validBids[0];
-    const auction = await ctx.db.get(bid.auctionId);
 
-    if (auction) {
-        const newPrice = highestBid ? highestBid.amount : auction.startingPrice;
-        await ctx.db.patch(bid.auctionId, { currentPrice: newPrice });
-    }
+    const highestBid = validBids[0];
+    const newPrice = highestBid ? highestBid.amount : auction.startingPrice;
+
+    await ctx.db.patch(bid.auctionId, { currentPrice: newPrice });
 
     // Log Action
     await logAudit(ctx, {
       action: "VOID_BID",
       targetId: args.bidId,
       targetType: "bid",
-      details: `Reason: ${args.reason}. New Price: ${highestBid ? highestBid.amount : 'Reset to Start'}`,
+      details: `Reason: ${args.reason}. New Price: ${newPrice}`,
     });
 
     return { success: true };
@@ -86,19 +90,39 @@ export const getPendingKYC = query({
       .collect();
 
     return await Promise.all(
-        profiles.map(async (p) => ({
-            ...p,
-            kycDocuments: p.kycDocuments ? await Promise.all(p.kycDocuments.map(id => ctx.storage.getUrl(id as Id<"_storage">))) : [],
-        }))
+      profiles.map(async (p) => {
+        const missingIds: string[] = [];
+        const urls = p.kycDocuments
+          ? await Promise.all(
+              p.kycDocuments.map(async (id) => {
+                const url = await ctx.storage.getUrl(id as Id<"_storage">);
+                if (url === null) {
+                  missingIds.push(id);
+                  console.error(
+                    `Missing KYC document ${id} for profile ${p._id}`,
+                  );
+                }
+                return url;
+              }),
+            )
+          : [];
+
+        return {
+          ...p,
+          kycDocuments: urls.filter((url): url is string => url !== null),
+          hasMissingKycDocuments: missingIds.length > 0,
+          missingKycDocumentIds: missingIds,
+        };
+      }),
     );
   },
 });
 
 export const reviewKYC = mutation({
-  args: { 
-    userId: v.string(), 
-    decision: v.union(v.literal("approve"), v.literal("reject")), 
-    reason: v.optional(v.string()) 
+  args: {
+    userId: v.string(),
+    decision: v.union(v.literal("approve"), v.literal("reject")),
+    reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
@@ -121,22 +145,28 @@ export const reviewKYC = mutation({
         recipientId: args.userId,
         type: "success",
         title: "Verification Approved",
-        message: "Your seller verification is complete. You can now list equipment.",
+        message:
+          "Your seller verification is complete. You can now list equipment.",
         link: "/sell",
         isRead: false,
         createdAt: Date.now(),
       });
     } else {
+      const reason = args.reason?.trim();
+      if (!reason) {
+        throw new Error("Rejection reason is required");
+      }
+
       await ctx.db.patch(profile._id, {
         kycStatus: "rejected",
-        kycRejectionReason: args.reason,
+        kycRejectionReason: reason,
       });
       // Send Rejection Notification
       await ctx.db.insert("notifications", {
         recipientId: args.userId,
         type: "error",
         title: "Verification Rejected",
-        message: args.reason || "Your KYC application was rejected. Please review and try again.",
+        message: reason,
         link: "/kyc",
         isRead: false,
         createdAt: Date.now(),
@@ -144,10 +174,10 @@ export const reviewKYC = mutation({
     }
 
     await logAudit(ctx, {
-        action: `KYC_${args.decision.toUpperCase()}`,
-        targetId: args.userId,
-        targetType: "user",
-        details: args.reason,
+      action: `KYC_${args.decision.toUpperCase()}`,
+      targetId: args.userId,
+      targetType: "user",
+      details: args.reason,
     });
 
     return { success: true };
@@ -168,26 +198,30 @@ export const getFinancialStats = query({
       .withIndex("by_status", (q) => q.eq("status", "sold"))
       .collect();
 
-    const totalSalesVolume = soldAuctions.reduce((sum, a) => sum + a.currentPrice, 0);
-    // Assuming flat 5% commission for prototype
-    const estimatedCommission = totalSalesVolume * 0.05; 
-    
+    const totalSalesVolume = soldAuctions.reduce(
+      (sum, a) => sum + a.currentPrice,
+      0,
+    );
+    const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
+
     // Recent Transactions
     const recentSales = soldAuctions
-        .sort((a, b) => b.endTime - a.endTime)
-        .slice(0, 10)
-        .map(a => ({
-            id: a._id,
-            title: a.title,
-            amount: a.currentPrice,
-            date: a.endTime
-        }));
+      .sort((a, b) => b.endTime - a.endTime)
+      .slice(0, 10)
+      .map((a) => ({
+        id: a._id,
+        title: a.title,
+        amount: a.currentPrice,
+        estimatedCommission: a.currentPrice * COMMISSION_RATE,
+        date: a.endTime,
+      }));
 
     return {
       totalSalesVolume,
       estimatedCommission,
+      commissionRate: COMMISSION_RATE,
       recentSales,
-      auctionCount: soldAuctions.length
+      auctionCount: soldAuctions.length,
     };
   },
 });
@@ -195,26 +229,28 @@ export const getFinancialStats = query({
 // --- Support / Disputes ---
 
 export const getTickets = query({
-  args: { status: v.optional(v.string()) },
+  args: { status: v.optional(v.string()), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const allowedStatuses = new Set(["open", "resolved", "closed"]);
-    let tickets;
-    if (args.status) {
-        if (!allowedStatuses.has(args.status)) {
-            throw new Error(`Invalid status: ${args.status}`);
-        }
-        tickets = await ctx.db
-            .query("supportTickets")
-            .withIndex("by_status", q => q.eq("status", args.status as any))
-            .collect();
-    } else {
-        tickets = await ctx.db.query("supportTickets").collect();
-    }
+    const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
-    return tickets;
+    const allowedStatuses = ["open", "resolved", "closed"] as const;
+    type TicketStatus = (typeof allowedStatuses)[number];
+
+    if (args.status) {
+      if (!allowedStatuses.includes(args.status as TicketStatus)) {
+        throw new Error(`Invalid status: ${args.status}`);
+      }
+      const status = args.status as TicketStatus;
+      return await ctx.db
+        .query("supportTickets")
+        .withIndex("by_status", (q) => q.eq("status", status))
+        .take(limit);
+    } else {
+      return await ctx.db.query("supportTickets").take(limit);
+    }
   },
 });
 
@@ -225,74 +261,81 @@ export const resolveTicket = mutation({
     if (role !== "admin") throw new Error("Unauthorized");
 
     const adminIdentity = await ctx.auth.getUserIdentity();
-    
+    if (!adminIdentity || !adminIdentity.subject) {
+      throw new Error("Admin identity not found or invalid");
+    }
+
     await ctx.db.patch(args.ticketId, {
-        status: "resolved",
-        updatedAt: Date.now(),
-        resolvedBy: adminIdentity?.subject
+      status: "resolved",
+      updatedAt: Date.now(),
+      resolvedBy: adminIdentity.subject,
     });
 
     await logAudit(ctx, {
-        action: "RESOLVE_TICKET",
-        targetId: args.ticketId,
-        targetType: "supportTicket",
-        details: JSON.stringify({ resolution: args.resolution }),
+      action: "RESOLVE_TICKET",
+      targetId: args.ticketId,
+      targetType: "supportTicket",
+      details: JSON.stringify({ resolution: args.resolution }),
     });
-    
+
     return { success: true };
   },
 });
 
 // --- Audit Logs ---
 
-export const getAuditLogs = query({
-    args: { limit: v.optional(v.number()) },
-    handler: async (ctx, args) => {
-        const role = await getCallerRole(ctx);
-        if (role !== "admin") throw new Error("Unauthorized");
+const MAX_AUDIT_LOG_LIMIT = 100;
 
-        return await ctx.db
-            .query("auditLogs")
-            .withIndex("by_timestamp")
-            .order("desc")
-            .take(args.limit || 50);
-    }
+export const getAuditLogs = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const limit = Math.min(args.limit || 50, MAX_AUDIT_LOG_LIMIT);
+
+    return await ctx.db
+      .query("auditLogs")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .take(limit);
+  },
 });
 
 // --- Communication ---
 
 export const createAnnouncement = mutation({
-    args: { title: v.string(), message: v.string() },
-    handler: async (ctx, args) => {
-        const role = await getCallerRole(ctx);
-        if (role !== "admin") throw new Error("Unauthorized");
+  args: { title: v.string(), message: v.string() },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
 
-        const title = args.title.trim();
-        const message = args.message.trim();
+    const title = args.title.trim();
+    const message = args.message.trim();
 
-        if (title.length === 0 || title.length > 200) {
-            throw new Error("Title must be between 1 and 200 characters");
-        }
-        if (message.length === 0 || message.length > 2000) {
-            throw new Error("Message must be between 1 and 2000 characters");
-        }
-
-        await ctx.db.insert("notifications", {
-            recipientId: "all",
-            type: "info",
-            title,
-            message,
-            isRead: false,
-            createdAt: Date.now(),
-        });
-        
-        await logAudit(ctx, {
-            action: "CREATE_ANNOUNCEMENT",
-            targetId: "all",
-            targetType: "announcement",
-            details: title,
-        });
-
-        return { success: true };
+    if (title.length === 0 || title.length > 200) {
+      throw new Error("Title must be between 1 and 200 characters");
     }
+    if (message.length === 0 || message.length > 2000) {
+      throw new Error("Message must be between 1 and 2000 characters");
+    }
+
+    await ctx.db.insert("notifications", {
+      recipientId: "all",
+      type: "info",
+      title,
+      message,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      action: "CREATE_ANNOUNCEMENT",
+      targetId: "all",
+      targetType: "announcement",
+      details: title,
+    });
+
+    return { success: true };
+  },
 });

@@ -47,13 +47,15 @@ export const createAuth = (
     },
     plugins: [
       // The Convex plugin is required for Convex compatibility
-      convex({ 
-        authConfig: { 
-          providers: [{ 
-            applicationID: "convex", 
-            domain: siteUrl
-          }] 
-        } 
+      convex({
+        authConfig: {
+          providers: [
+            {
+              applicationID: "convex",
+              domain: siteUrl,
+            },
+          ],
+        },
       }),
     ],
   });
