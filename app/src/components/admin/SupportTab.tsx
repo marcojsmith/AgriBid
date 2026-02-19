@@ -1,10 +1,18 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, Check, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
@@ -21,18 +29,33 @@ import type { Id } from "convex/_generated/dataModel";
 export function SupportTab() {
   const tickets = useQuery(api.admin.getTickets, {});
   const resolveTicket = useMutation(api.admin.resolveTicket);
+  const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
 
   const handleResolve = async (ticketId: Id<"supportTickets">) => {
+    setResolvingIds((prev) => new Set(prev).add(ticketId));
     try {
-        await resolveTicket({ ticketId, resolution: "Admin marked as resolved" });
-        toast.success("Ticket resolved");
-    } catch (e) {
-        toast.error("Failed to resolve ticket");
+      await resolveTicket({ ticketId, resolution: "Admin marked as resolved" });
+      toast.success("Ticket resolved");
+    } catch (err) {
+      console.error("Failed to resolve ticket:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to resolve ticket",
+      );
+    } finally {
+      setResolvingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(ticketId);
+        return next;
+      });
     }
   };
 
   if (!tickets) {
-    return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary/40" /></div>;
+    return (
+      <div className="flex justify-center p-8">
+        <Loader2 className="animate-spin text-primary/40" />
+      </div>
+    );
   }
 
   return (
@@ -49,25 +72,57 @@ export function SupportTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tickets.map((ticket) => (
-              <TableRow key={ticket._id}>
-                <TableCell>
-                    <Badge variant={ticket.status === "open" ? "destructive" : "outline"}>
-                        {ticket.status}
-                    </Badge>
-                </TableCell>
-                <TableCell className="font-medium">{ticket.subject}</TableCell>
-                <TableCell className="max-w-[300px] truncate">{ticket.message}</TableCell>
-                <TableCell className="uppercase text-xs font-bold">{ticket.priority}</TableCell>
-                <TableCell className="text-right">
-                    {ticket.status === "open" && (
-                        <Button size="sm" onClick={() => handleResolve(ticket._id)}>
-                            <Check className="h-4 w-4 mr-2" /> Resolve
-                        </Button>
-                    )}
+            {tickets.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <MessageSquare className="h-8 w-8 opacity-20" />
+                    <p className="font-black uppercase text-xs tracking-widest">
+                      No support tickets
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              tickets.map((ticket) => (
+                <TableRow key={ticket._id}>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        ticket.status === "open" ? "destructive" : "outline"
+                      }
+                    >
+                      {ticket.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {ticket.subject}
+                  </TableCell>
+                  <TableCell className="max-w-[300px] truncate">
+                    {ticket.message}
+                  </TableCell>
+                  <TableCell className="uppercase text-xs font-bold">
+                    {ticket.priority}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {ticket.status === "open" && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleResolve(ticket._id)}
+                        disabled={resolvingIds.has(ticket._id)}
+                      >
+                        {resolvingIds.has(ticket._id) ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Check className="h-4 w-4 mr-2" />
+                        )}
+                        Resolve
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </Card>
