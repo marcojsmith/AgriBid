@@ -8,9 +8,9 @@ import { AuctionCard } from "../components/AuctionCard";
 import { LoadingIndicator } from "../components/ui/LoadingIndicator";
 
 /**
- * Render the user's watchlist page.
+ * Renders the user's watchlist page.
  *
- * Displays a loading spinner while watched auctions are being fetched. If the user is not watching any auctions, shows an empty state with an "Explore Marketplace" action; otherwise renders a responsive grid of AuctionCard components for each watched auction.
+ * Shows a loading state while watched auctions are being fetched. If the user is not watching any auctions, displays an empty state with an "Explore Marketplace" action; otherwise renders a responsive grid of AuctionCard components for each watched auction.
  *
  * @returns The watchlist page JSX element
  */

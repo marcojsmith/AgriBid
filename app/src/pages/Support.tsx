@@ -24,13 +24,12 @@ import {
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
 /**
- * Render the Support page that lets users create new support tickets and view their existing tickets.
+ * Render the Help & Support page that lets users create new support tickets and view their existing tickets.
  *
- * The component fetches the current user's tickets, displays a form for creating a ticket (subject, priority, message),
- * handles form submission with loading state and success/error toasts, resets form fields on success, and renders a ticket
- * list with status, date, subject, and message. Shows an empty-state placeholder when no tickets are available.
+ * Provides a form to submit tickets (subject, priority, message), displays the current user's tickets with status and date,
+ * and shows loading indicators and toast feedback for submission results.
  *
- * @returns The Support page React component as a JSX.Element
+ * @returns The Support page component as a JSX.Element
  */
 export default function Support() {
   const tickets = useQuery(api.support.getMyTickets, {});
