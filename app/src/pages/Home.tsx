@@ -5,11 +5,12 @@ import { useSession } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
 import { api } from "convex/_generated/api";
 import { AuctionCard } from "../components/AuctionCard";
+import { AuctionCardSkeleton } from "../components/AuctionCardSkeleton";
 import { FilterSidebar } from "../components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LoadingIndicator, LoadingPage } from "../components/ui/LoadingIndicator";
+import { LoadingPage } from "../components/ui/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.
@@ -198,8 +199,30 @@ export default function Home() {
         </div>
 
         {!auctions ? (
-          <div className="flex justify-center py-20">
-            <LoadingIndicator />
+          <div
+            className={cn(
+              "grid",
+              viewMode === "compact"
+                ? cn(
+                    "grid-cols-1 gap-2 sm:gap-3",
+                    isDesktopSidebarOpen
+                      ? "md:grid-cols-2"
+                      : "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3",
+                  )
+                : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8",
+            )}
+          >
+            {Array.from({ length: 9 }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-full h-full",
+                  viewMode === "compact" && "max-w-[500px]",
+                )}
+              >
+                <AuctionCardSkeleton viewMode={viewMode} />
+              </div>
+            ))}
           </div>
         ) : auctions.length === 0 ? (
           <div className="text-center py-24 bg-card rounded-3xl border-2 border-dashed border-primary/10">
