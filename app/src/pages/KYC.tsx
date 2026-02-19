@@ -56,7 +56,7 @@ export default function KYC() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isFormTouched, setIsFormTouched] = useState(false);
+  const [isFormInitialized, setIsFormInitialized] = useState(false);
   const isMounted = useRef(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -72,6 +72,13 @@ export default function KYC() {
     };
   }, []);
 
+  // Reset initialization when leaving edit mode
+  useEffect(() => {
+    if (!isEditMode) {
+      setIsFormInitialized(false);
+    }
+  }, [isEditMode]);
+
   // Form State
   const [formData, setFormData] = useState({
     firstName: "",
@@ -82,9 +89,9 @@ export default function KYC() {
     confirmEmail: "",
   });
 
-  // Populate form when entering edit mode, but only if pristine
+  // Populate form when entering edit mode, but only once
   useEffect(() => {
-    if (isEditMode && myKycDetails && !isFormTouched) {
+    if (isEditMode && myKycDetails && !isFormInitialized) {
       setFormData({
         firstName: myKycDetails.firstName || "",
         lastName: myKycDetails.lastName || "",
@@ -94,8 +101,9 @@ export default function KYC() {
         confirmEmail: myKycDetails.kycEmail || "",
       });
       setExistingDocuments(myKycDetails.kycDocuments || []);
+      setIsFormInitialized(true);
     }
-  }, [isEditMode, myKycDetails, isFormTouched]);
+  }, [isEditMode, myKycDetails, isFormInitialized]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -289,7 +297,6 @@ export default function KYC() {
   const status = profile.profile?.kycStatus || "none";
 
   const updateField = (field: keyof typeof formData, value: string) => {
-    setIsFormTouched(true);
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -685,7 +692,13 @@ export default function KYC() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          setShowDeleteConfirm(open);
+          if (!open) setDocToDelete(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document?</AlertDialogTitle>

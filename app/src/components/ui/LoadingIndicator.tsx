@@ -51,6 +51,9 @@ export function LoadingPage({
         "flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold uppercase tracking-widest",
         className,
       )}
+      role="status"
+      aria-live="polite"
+      aria-label={message}
     >
       {message}
     </div>
