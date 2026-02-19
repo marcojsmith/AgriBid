@@ -25,6 +25,13 @@ import { useAdminDashboard } from "../context/useAdminDashboard";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+/**
+ * Renders the Marketplace admin "Auctions" tab UI for viewing, selecting, and performing actions on auctions.
+ *
+ * Displays a selectable table of auctions with per-row status badges, details, pricing, end time, per-item actions, bulk action controls when items are selected, and an optional "Load More Auctions" control.
+ *
+ * @returns A React element containing the marketplace auctions management user interface.
+ */
 export function MarketplaceTab() {
   const {
     filteredAuctions,

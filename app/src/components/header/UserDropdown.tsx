@@ -33,6 +33,24 @@ interface UserDropdownProps {
   onSignOut: () => Promise<void>;
 }
 
+/**
+ * Render a user account dropdown with profile status, navigation links, and a sign-out action.
+ *
+ * Displays a trigger button that shows loading state, verification badge, user name, and avatar.
+ * The dropdown menu includes KYC prompt (when needed), public profile link (or syncing state),
+ * optional admin moderation link, common navigation items (My Bids, Watchlist, My Listings, Support),
+ * and a Sign Out item that invokes the provided sign-out callback.
+ *
+ * @param userData - Optional user data object (may include display name and profile information)
+ * @param isLoadingProfile - Whether profile data is currently loading; disables interaction and shows placeholders
+ * @param isVerified - Whether the user's identity/KYC has been verified
+ * @param kycStatus - KYC status string (e.g., "pending"); used to determine KYC-related UI states
+ * @param profileId - Public profile identifier; when present, enables the Public Profile link
+ * @param role - User role (e.g., "admin"); used to conditionally show admin links
+ * @param onSignOut - Callback invoked when the user selects "Sign Out"
+ *
+ * @returns The dropdown menu JSX containing the trigger and account-related menu items
+ */
 export function UserDropdown({
   userData,
   isLoadingProfile,

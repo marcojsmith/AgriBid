@@ -23,6 +23,17 @@ interface VerificationStatusSectionProps {
   onEdit: () => void;
 }
 
+/**
+ * Render a verification status panel showing identity, contact, and document details or a pending notice.
+ *
+ * Renders a detailed "verified" card when `status` is "verified" and `myKycDetails` is provided, a pending review card when `status` is "pending", and nothing for other statuses.
+ *
+ * @param status - Verification state; expected values include `"verified"` and `"pending"`.
+ * @param myKycDetails - User's KYC details (may be `null` or `undefined` while loading).
+ * @param userId - User identifier used to build the public profile link.
+ * @param onEdit - Callback invoked when the "Edit Details" action is triggered.
+ * @returns The JSX element for the verification status UI, or `null` if the `status` is not handled.
+ */
 export function VerificationStatusSection({
   status,
   myKycDetails,

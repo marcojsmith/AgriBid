@@ -26,6 +26,22 @@ interface MobileMenuProps {
   onSignOut: () => Promise<void>;
 }
 
+/**
+ * Renders a mobile navigation dialog with search, navigation links, and authenticated user actions.
+ *
+ * Displays nothing when closed; when open it traps focus, handles Escape to close, and focuses the search input.
+ *
+ * @param isOpen - Whether the mobile menu is visible
+ * @param onClose - Callback to close the menu
+ * @param navLinks - Navigation items rendered as links; each item should include `name` and `href`
+ * @param userData - Current user information (may be null/undefined when unauthenticated)
+ * @param isVerified - Whether the current user is verification-complete
+ * @param kycStatus - KYC workflow status (e.g., `"pending"`) used to gate the verification CTA
+ * @param role - User role (e.g., `"admin"`) used to show role-specific actions
+ * @param profileId - ID used to construct the profile route; absence shows a disabled "Profile (Syncing...)" button
+ * @param onSignOut - Async function invoked when the user chooses to sign out
+ * @returns The menu element when open, or `null` when closed
+ */
 export function MobileMenu({
   isOpen,
   onClose,

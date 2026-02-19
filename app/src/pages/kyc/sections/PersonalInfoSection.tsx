@@ -10,6 +10,15 @@ interface PersonalInfoSectionProps {
   updateField: (field: keyof KYCFormData, value: string) => void;
 }
 
+/**
+ * Render the "Personal Information" form section with controlled inputs for name, ID, phone, and email.
+ *
+ * The inputs are bound to `formData` and invoke `updateField` with the corresponding field key and the new string value when changed.
+ *
+ * @param formData - Current KYC form values for the fields displayed in this section
+ * @param updateField - Callback to update a specific `KYCFormData` field: called with the field key and the new string value
+ * @returns The JSX element for the personal information form section
+ */
 export function PersonalInfoSection({
   formData,
   updateField,

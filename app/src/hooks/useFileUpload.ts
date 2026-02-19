@@ -11,6 +11,19 @@ interface UseFileUploadOptions {
   maxFiles?: number;
 }
 
+/**
+ * Manage file selection, validation, uploading to presigned URLs, and cleanup for client-side file uploads.
+ *
+ * @param options - Optional configuration: `maxSize` in bytes (default 10MB), `allowedTypes` array of MIME types (default ["image/png","image/jpeg","application/pdf"]), and `maxFiles` maximum number of files (default 10).
+ * @returns An object with:
+ *  - `isUploading`: boolean indicating an ongoing upload operation
+ *  - `files`: currently selected `File[]`
+ *  - `setFiles`: state setter for the `files` array
+ *  - `handleFileChange`: input change handler to validate and append selected files
+ *  - `removeFile`: remove a file by index from the `files` array
+ *  - `uploadFiles`: async function that uploads provided files (defaults to current `files`) and returns an array of `storageId` strings on full success, or `null` on failure/partial failure
+ *  - `cleanupUploads`: async function to delete uploads given an array of `storageId` strings
+ */
 export function useFileUpload(options: UseFileUploadOptions = {}) {
   const {
     maxSize = 10 * 1024 * 1024, // Default 10MB

@@ -35,6 +35,16 @@ import { DetailItem } from "@/components/admin";
 import { useAdminDashboard } from "./context/useAdminDashboard";
 import { toast } from "sonner";
 
+/**
+ * Render modal and confirmation dialogs used on the admin dashboard:
+ * broadcast announcement, KYC verification review, bulk status update confirmation,
+ * and promote-to-admin confirmation.
+ *
+ * The dialogs are driven by state and handlers from the admin dashboard context
+ * (open flags, form values, validation, loading states, and action callbacks).
+ *
+ * @returns The React element tree that renders the admin dialogs
+ */
 export function AdminDialogs() {
   const {
     announcementOpen,

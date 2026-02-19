@@ -2,11 +2,12 @@
 import React from "react";
 
 /**
- * Displays a stylized empty-state placeholder containing an icon and a label.
+ * Render a stylized empty-state placeholder with an icon, a primary label, and a subtitle.
  *
  * @param label - Primary uppercase label text shown below the icon
  * @param icon - Icon node rendered inside the circular icon container
- * @returns The placeholder element showing the provided icon and label
+ * @param subtitle - Secondary uppercase subtitle shown beneath the label; defaults to "Operational Equilibrium Reached"
+ * @returns The empty-state JSX element containing the icon, label, and subtitle
  */
 export function EmptyState({ 
   label, 
