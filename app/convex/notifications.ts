@@ -4,7 +4,11 @@ import { authComponent } from "./auth";
 import type { Doc } from "./_generated/dataModel";
 
 /**
- * Shared helper to merge announcements with their read status for a specific user.
+ * Augments a list of announcement notifications with a per-user `isRead` flag.
+ *
+ * @param userId - ID of the user whose read status will be applied
+ * @param announcements - Announcement notification documents to enrich
+ * @returns The provided announcements where each item includes `isRead`: `true` if the user has a read receipt for that notification, `false` otherwise
  */
 async function getAnnouncementsWithReadStatus(
   ctx: QueryCtx,
