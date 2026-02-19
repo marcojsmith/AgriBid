@@ -10,10 +10,15 @@ export interface SettingsCardProps {
 }
 
 /**
- * Renders an interactive settings card that displays an icon, title, and description and invokes an action when clicked.
+ * Render an interactive settings card showing an icon, title, and description.
  *
- * @param props - Component properties
- * @returns A Card element containing the provided icon, title, and description that calls `action` on click or key press
+ * The card invokes the provided `action` when activated (click or Enter/Space) and exposes a button role with an ARIA label composed from the title and description.
+ *
+ * @param title - Visible card title
+ * @param description - Supporting description shown below the title
+ * @param icon - Visual node rendered in the icon container
+ * @param action - Callback invoked when the card is activated
+ * @returns A Card element that visually represents the setting and invokes `action` on activation
  */
 export function SettingsCard({
   title,

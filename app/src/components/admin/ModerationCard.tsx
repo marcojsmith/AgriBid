@@ -8,13 +8,13 @@ import { ConditionItem } from "./ConditionItem";
 import type { Doc } from "convex/_generated/dataModel";
 
 /**
- * Render a moderation card for a single auction with actions to approve, reject, or view details.
+ * Renders a moderation card for a single auction with actions to approve, reject, or view details.
  *
- * @param auction - Auction document (includes images, year, title, make, location, startingPrice, and conditionChecklist) used to populate the card UI
+ * @param auction - Auction document providing images, year, title, make, location, startingPrice, and conditionChecklist
  * @param onApprove - Callback invoked when the Approve button is clicked
  * @param onReject - Callback invoked when the Reject button is clicked
  * @param onView - Callback invoked when the Details button is clicked
- * @returns A React element representing the moderation card
+ * @returns The moderation card React element
  */
 export function ModerationCard({
   auction,

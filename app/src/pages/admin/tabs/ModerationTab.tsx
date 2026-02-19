@@ -8,6 +8,17 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
+/**
+ * Renders the admin moderation interface with a pending-review list and live auction monitor.
+ *
+ * Shows a centered loading state while pending auctions are loading. Once loaded, displays:
+ * - A "Pending Review" column with a badge count and one ModerationCard per pending auction.
+ *   Each card exposes actions to approve, reject, or view the auction. Approve/reject actions
+ *   invoke the corresponding dashboard handlers, show success/error toasts, and log errors on failure.
+ * - A "Live Auction Monitor" column containing the BidMonitor and an "Active" badge.
+ *
+ * @returns The component's rendered JSX element.
+ */
 export function ModerationTab() {
   const { pendingAuctions, approveAuction, rejectAuction } = useAdminDashboard();
   const navigate = useNavigate();

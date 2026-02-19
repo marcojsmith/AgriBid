@@ -2,12 +2,12 @@
 import React from "react";
 
 /**
- * Renders a labeled detail item with an icon and value.
+ * Render a labeled detail row with an icon and a value.
  *
- * @param label - The label for the detail item
- * @param value - The value to display
- * @param icon - The icon to display next to the label
- * @returns A React element for the detail item
+ * @param label - Text label displayed above the value
+ * @param value - Value to display; if `null` or `undefined`, displays "Not Provided"
+ * @param icon - Icon element shown inside the square icon container
+ * @returns The detail item as a React element
  */
 export function DetailItem({
   label,

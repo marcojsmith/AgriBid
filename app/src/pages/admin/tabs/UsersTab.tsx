@@ -16,6 +16,13 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { useAdminDashboard } from "../context/useAdminDashboard";
 import { toast } from "sonner";
 
+/**
+ * Render the Users administration tab with a table of user profiles and controls for KYC review, verification, promotion, and pagination.
+ *
+ * Displays an empty state when no users are present, shows per-user identity, role, verification and KYC status, join date, and context-sensitive action buttons (Review KYC, Verify, Promote, navigate). When available, shows a "Load More Users" control.
+ *
+ * @returns A JSX element representing the Users tab UI.
+ */
 export function UsersTab() {
   const {
     filteredUsers,

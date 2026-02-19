@@ -10,6 +10,18 @@ export interface KYCFormData {
   confirmEmail: string;
 }
 
+/**
+ * Manages KYC form state, initialization from optional data, and field validation helpers.
+ *
+ * @param initialData - Optional partial form values used once to prefill the form; any missing fields default to empty strings
+ * @returns An object exposing:
+ *  - `formData`: current KYC form values,
+ *  - `updateField(field, value)`: update a single field,
+ *  - `resetForm()`: clear all fields and reset initialization state,
+ *  - `validate()`: returns `{ valid: true }` when all fields pass validation or `{ valid: false, message: string }` describing the first validation error,
+ *  - `isFormInitialized`: whether initialData has been applied,
+ *  - `setIsFormInitialized`: setter to control the initialization flag
+ */
 export function useKYCForm(initialData?: Partial<KYCFormData>) {
   const [formData, setFormData] = useState<KYCFormData>({
     firstName: "",

@@ -11,6 +11,17 @@ interface SearchBarProps {
   id?: string;
 }
 
+/**
+ * Render a search form with an input and leading search icon that navigates to the root path
+ * including the entered query as the `q` query parameter when submitted.
+ *
+ * When a non-empty query is submitted the input is cleared and the optional `onSearch` callback
+ * is invoked.
+ *
+ * @param onSearch - Optional callback invoked after a successful search submission
+ * @param className - Optional additional CSS classes applied to the root form element
+ * @param id - Optional id for the input element (default: `"search"`)
+ */
 export function SearchBar({ onSearch, className, id = "search" }: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();

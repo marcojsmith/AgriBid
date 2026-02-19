@@ -14,6 +14,16 @@ interface DocumentUploadSectionProps {
   onDeleteDocument: (docId: string) => void;
 }
 
+/**
+ * Render a document upload section with an upload area, badges for existing and newly selected files, and optional delete controls.
+ *
+ * @param files - Newly selected File objects to display as upload previews.
+ * @param existingDocuments - IDs of documents already stored; each is shown as an existing-document badge.
+ * @param isEditMode - When true, shows a delete control for each existing document.
+ * @param onFileChange - Handler invoked when the hidden file input changes (user selects files).
+ * @param onDeleteDocument - Callback invoked with a document ID to remove that existing document.
+ * @returns The rendered JSX element for the supporting documents upload section.
+ */
 export function DocumentUploadSection({
   files,
   existingDocuments,

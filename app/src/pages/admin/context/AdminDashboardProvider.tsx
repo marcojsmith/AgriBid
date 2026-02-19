@@ -6,6 +6,11 @@ import { toast } from "sonner";
 import type { Id, Doc } from "convex/_generated/dataModel";
 import { AdminDashboardContext, type KycReviewUser, type AdminProfile } from "./AdminDashboardContext";
 
+/**
+ * Provides admin dashboard state, data fetching, and action handlers via AdminDashboardContext to its children.
+ *
+ * @returns A React context provider element exposing admin queries, mutations, UI state, derived data, and action handlers.
+ */
 export function AdminDashboardProvider({ children }: { children: React.ReactNode }) {
   // Queries
   const pendingAuctions = useQuery(api.auctions.getPendingAuctions);

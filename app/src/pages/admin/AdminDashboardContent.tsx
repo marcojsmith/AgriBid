@@ -29,6 +29,13 @@ import { SupportTab } from "@/components/admin/SupportTab";
 import { AuditTab } from "@/components/admin/AuditTab";
 import { AdminDialogs } from "./AdminDialogs";
 
+/**
+ * Render the admin portal UI that displays a header, quick statistics, and a tabbed interface for moderation, marketplace, users, finance, support, audit, and system settings.
+ *
+ * Renders a full-screen initializing state while essential dashboard data is loading, then shows the main layout with search/filter controls, contextual stat cards, tab triggers (including pending counts), tab content components, and admin dialogs.
+ *
+ * @returns The Admin Dashboard content element containing header, stats, tabbed navigation, and dialogs.
+ */
 export function AdminDashboardContent() {
   const {
     pendingAuctions,
