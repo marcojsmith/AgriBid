@@ -38,9 +38,9 @@ function getStatusDisplay(auction: AuctionWithBid): StatusDisplay {
 }
 
 /**
- * Renders the "My Bids" dashboard page for the current user, showing a loading spinner while bids are fetched, an empty-state call-to-action when no bids exist, or a responsive grid of bid cards with status badges, bid amounts, and links to each auction.
+ * Render the current user's "My Bids" dashboard, showing a loading indicator while bids are fetched, an empty-state call-to-action when no bids exist, or a responsive grid of bid cards with status badges, bid amounts, and links to each auction.
  *
- * @returns The React element representing the My Bids page.
+ * @returns The React element for the My Bids dashboard page
  */
 export default function MyBids() {
   const auctions = useQuery(api.auctions.getMyBids);

@@ -28,14 +28,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 /**
- * Renders an admin support tab that lists support tickets and allows resolving open tickets.
+ * Render the admin Support tab that lists support tickets and provides a UI to resolve open tickets.
  *
- * The component fetches support tickets, shows a loading spinner until data is available, and
- * displays each ticket's status, subject, message, and priority in a table. For tickets with
- * status "open" it provides a Resolve action that marks the ticket resolved and shows a success
- * or error toast based on the operation result.
- *
- * @returns The rendered support tab UI containing either a centered loading spinner or a table of tickets.
+ * @returns A React element showing a centered loading indicator while tickets are loading, or a table of tickets with per-ticket status, subject, message, priority, and controls to open a resolution dialog for open tickets.
  */
 export function SupportTab() {
   const tickets = useQuery(api.admin.getTickets, {});
