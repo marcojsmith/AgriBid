@@ -12,6 +12,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
+- [~] **Track: Admin Portal Refactor (Issues #62, #57, #56, #58)**
+*Link: [./tracks/admin_route_refactor_20260220/](./tracks/admin_route_refactor_20260220/)*
+
 - [x] **Track: Comprehensive Codebase Modularization & Refactor**
 *Link: [./tracks/modularization_refactor_20260219/](./tracks/modularization_refactor_20260219/)*
 
