@@ -451,7 +451,12 @@ export const deleteMyKYCDocument = mutation({
     });
 
     // Delete from storage
-    await ctx.storage.delete(storageId);
+    try {
+      await ctx.storage.delete(storageId);
+    } catch (err) {
+      console.error(`Failed to delete storage ${storageId}, may be orphaned:`, err);
+      // Profile update succeeded; storage deletion failure is non-critical
+    }
 
     return { success: true };
   },
