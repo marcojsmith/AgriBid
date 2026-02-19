@@ -269,12 +269,13 @@ export async function updateCounter(
     });
   } else {
     // Initialize if it doesn't exist
+    const initialValue = Math.max(0, delta);
     await ctx.db.insert("counters", {
       name,
-      total: field === "total" ? delta : 0,
-      active: field === "active" ? delta : 0,
-      pending: field === "pending" ? delta : 0,
-      verified: field === "verified" ? delta : 0,
+      total: field === "total" ? initialValue : 0,
+      active: field === "active" ? initialValue : 0,
+      pending: field === "pending" ? initialValue : 0,
+      verified: field === "verified" ? initialValue : 0,
       updatedAt: Date.now(),
     });
   }
