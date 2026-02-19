@@ -8,7 +8,7 @@ import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Gavel, Info, ShieldAlert } from "lucide-react";
-import { BidForm } from "./BidForm";
+import { BidForm } from "./bidding/BidForm";
 import { BidConfirmation } from "./BidConfirmation";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

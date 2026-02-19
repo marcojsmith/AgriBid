@@ -9,6 +9,14 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## Active Tracks
+
+- [x] **Track: Comprehensive Codebase Modularization & Refactor**
+*Link: [./tracks/modularization_refactor_20260219/](./tracks/modularization_refactor_20260219/)*
+
+
+---
+
 ## Archive
 
 - [x] **Track: Seller Profiles & Verification**

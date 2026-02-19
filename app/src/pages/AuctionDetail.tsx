@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { AuctionHeader } from "../components/AuctionHeader";
 import { ImageGallery } from "../components/ImageGallery";
 import { BiddingPanel } from "../components/BiddingPanel";
-import { BidHistory } from "../components/BidHistory";
+import { BidHistory } from "../components/bidding/BidHistory";
 import { SellerInfo } from "../components/SellerInfo";
 import { LoadingIndicator } from "../components/ui/LoadingIndicator";
 import type { Id } from "convex/_generated/dataModel";

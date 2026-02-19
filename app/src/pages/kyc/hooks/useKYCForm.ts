@@ -1,0 +1,108 @@
+// app/src/pages/kyc/hooks/useKYCForm.ts
+import { useState, useEffect } from "react";
+
+export interface KYCFormData {
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  idNumber: string;
+  email: string;
+  confirmEmail: string;
+}
+
+export function useKYCForm(initialData?: Partial<KYCFormData>) {
+  const [formData, setFormData] = useState<KYCFormData>({
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    idNumber: "",
+    email: "",
+    confirmEmail: "",
+  });
+
+  const [isFormInitialized, setIsFormInitialized] = useState(false);
+
+  useEffect(() => {
+    if (initialData && !isFormInitialized) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFormData({
+        firstName: initialData.firstName || "",
+        lastName: initialData.lastName || "",
+        phoneNumber: initialData.phoneNumber || "",
+        idNumber: initialData.idNumber || "",
+        email: initialData.email || "",
+        confirmEmail: initialData.email || "",
+      });
+      setIsFormInitialized(true);
+    }
+  }, [initialData, isFormInitialized]);
+
+  const updateField = (field: keyof KYCFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+      idNumber: "",
+      email: "",
+      confirmEmail: "",
+    });
+    setIsFormInitialized(false);
+  };
+
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const isValidPhoneNumber = (phone: string) => {
+    // Basic validation for South African numbers or international format
+    // Allows +27, 0, and digits. Needs at least 10 digits.
+    const cleanPhone = phone.replace(/\D/g, "");
+    return cleanPhone.length >= 10 && cleanPhone.length <= 15;
+  };
+
+  const isValidIdNumber = (id: string) => {
+    // Basic validation for SA ID (13 digits)
+    const cleanId = id.replace(/\D/g, "");
+    return cleanId.length === 13;
+  };
+
+  const validate = () => {
+    if (!isValidEmail(formData.email)) {
+      return { valid: false, message: "Please enter a valid email address" };
+    }
+
+    if (formData.email !== formData.confirmEmail) {
+      return { valid: false, message: "Emails do not match" };
+    }
+
+    if (!isValidPhoneNumber(formData.phoneNumber)) {
+      return { valid: false, message: "Please enter a valid phone number (at least 10 digits)" };
+    }
+
+    if (!isValidIdNumber(formData.idNumber)) {
+      return { valid: false, message: "Please enter a valid 13-digit ID number" };
+    }
+
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim()
+    ) {
+      return { valid: false, message: "Please fill in all personal details" };
+    }
+
+    return { valid: true };
+  };
+
+  return {
+    formData,
+    updateField,
+    resetForm,
+    validate,
+    isFormInitialized,
+    setIsFormInitialized,
+  };
+}

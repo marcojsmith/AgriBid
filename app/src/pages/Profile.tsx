@@ -30,7 +30,8 @@ import { AuctionCard } from "@/components/AuctionCard";
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
   const myProfile = useQuery(api.users.getMyProfile);
-  const isOwner = myProfile?.userId === userId || myProfile?._id === userId;
+  const isProfileLoading = myProfile === undefined;
+  const isOwner = !isProfileLoading && (myProfile?.userId === userId || myProfile?._id === userId);
 
   const sellerInfo = useQuery(api.auctions.getSellerInfo, {
     sellerId: userId || "",

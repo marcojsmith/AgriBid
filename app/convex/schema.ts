@@ -115,7 +115,8 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_kycStatus", ["kycStatus"])
-    .index("by_role", ["role"]),
+    .index("by_role", ["role"])
+    .index("by_isVerified", ["isVerified"]),
 
   // New Admin Features
   auditLogs: defineTable({

@@ -299,6 +299,38 @@ export const getAuditLogs = query({
   },
 });
 
+// --- Dashboard Stats ---
+
+export const getAdminStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const [
+      totalAuctions,
+      activeAuctions,
+      pendingReview,
+      totalUsers,
+      verifiedSellers,
+    ] = await Promise.all([
+      ctx.db.query("auctions").collect().then(res => res.length),
+      ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "active")).collect().then(res => res.length),
+      ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "pending_review")).collect().then(res => res.length),
+      ctx.db.query("profiles").collect().then(res => res.length),
+      ctx.db.query("profiles").withIndex("by_isVerified", q => q.eq("isVerified", true)).collect().then(res => res.length),
+    ]);
+
+    return {
+      totalAuctions,
+      activeAuctions,
+      pendingReview,
+      totalUsers,
+      verifiedSellers,
+    };
+  },
+});
+
 // --- Communication ---
 
 export const createAnnouncement = mutation({
