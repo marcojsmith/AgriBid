@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  Loader2,
   ShieldCheck,
   Upload,
   AlertCircle,
@@ -32,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { LoadingIndicator, LoadingPage } from "@/components/ui/LoadingIndicator";
 
 const isValidEmail = (email: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -122,11 +122,7 @@ export default function KYC() {
   };
 
   if (!profile)
-    return (
-      <div className="flex justify-center p-20">
-        <Loader2 className="animate-spin" />
-      </div>
-    );
+    return <LoadingPage />;
 
   const confirmDelete = async () => {
     if (!docToDelete) return;
@@ -291,8 +287,8 @@ export default function KYC() {
 
       {status === "verified" && !isEditMode ? (
         !myKycDetails ? (
-          <div className="flex justify-center p-20">
-            <Loader2 className="animate-spin" />
+          <div className="flex justify-center py-20">
+            <LoadingIndicator />
           </div>
         ) : (
           <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
@@ -623,7 +619,7 @@ export default function KYC() {
                 disabled={isUploading || (files.length === 0 && existingDocuments.length === 0)}
               >
                 {isUploading ? (
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  <LoadingIndicator size="sm" className="mr-2 border-white" />
                 ) : (
                   <ShieldCheck className="h-5 w-5 mr-2" />
                 )}
