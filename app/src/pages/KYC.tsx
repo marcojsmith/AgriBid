@@ -28,14 +28,12 @@ const isValidEmail = (email: string) => {
 };
 
 /**
- * Render the Seller Verification (KYC) page with status-aware UI and document submission.
+ * Renders the Seller Verification (KYC) page and orchestrates the KYC user flow.
  *
- * Renders a KYC workflow that shows verified/pending/rejected states and, when applicable,
- * displays a personal-information form, document upload area, compliance guidance, and a
- * submit action. Manages local form state, validates required fields and email consistency,
- * uploads selected documents to pre-signed URLs, and submits KYC data for review.
+ * Displays UI for verified, pending, rejected, and unverified states; provides a form
+ * for personal information, a document upload area, and controls to submit or edit KYC details.
  *
- * @returns The page's JSX element for the KYC flow
+ * @returns The JSX element for the KYC page
  */
 export default function KYC() {
   const navigate = useNavigate();
