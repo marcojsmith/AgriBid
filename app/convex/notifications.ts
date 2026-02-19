@@ -1,100 +1,118 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { authComponent } from "./auth";
+import type { Doc } from "./_generated/dataModel";
+
+/**
+ * Shared helper to merge announcements with their read status for a specific user.
+ */
+async function getAnnouncementsWithReadStatus(
+  ctx: QueryCtx,
+  userId: string,
+  announcements: Doc<"notifications">[],
+) {
+  if (announcements.length === 0) return [];
+
+  // Fetch read receipts only for the provided announcements to keep it bounded
+  const readReceipts = await Promise.all(
+    announcements.map((a) =>
+      ctx.db
+        .query("readReceipts")
+        .withIndex("by_user_notification", (q) =>
+          q.eq("userId", userId).eq("notificationId", a._id),
+        )
+        .unique(),
+    ),
+  );
+
+  const readNotificationIds = new Set(
+    readReceipts
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .map((r) => r.notificationId),
+  );
+
+  return announcements.map((a) => ({
+    ...a,
+    isRead: readNotificationIds.has(a._id),
+  }));
+}
 
 export const getMyNotifications = query({
   args: {},
   handler: async (ctx) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    // Fetch personal notifications
-    const personal = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
-      .order("desc")
-      .take(20);
+      // Fetch personal notifications
+      const personal = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
+        .order("desc")
+        .take(20);
 
-    // Fetch global announcements
-    const announcements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
-      .order("desc")
-      .take(10);
+      // Fetch global announcements
+      const announcements = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
+        .order("desc")
+        .take(10);
 
-    // Fetch read receipts only for the fetched announcements to keep it bounded
-    const readReceipts = await Promise.all(
-      announcements.map((a) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_user_notification", (q) =>
-            q.eq("userId", userId).eq("notificationId", a._id),
-          )
-          .unique(),
-      ),
-    );
+      const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
+        ctx,
+        userId,
+        announcements,
+      );
 
-    const readNotificationIds = new Set(
-      readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
-    );
+      // Merge and sort, applying read status for announcements
+      const merged = [...personal, ...enrichedAnnouncements];
 
-    // Merge and sort, applying read status for announcements
-    const merged = [
-      ...personal,
-      ...announcements.map((a) => ({
-        ...a,
-        isRead: readNotificationIds.has(a._id),
-      })),
-    ];
-
-    return merged.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+      return merged.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getMyNotifications failure:", err);
+      }
+      return [];
+    }
   },
 });
 
 export const getNotificationArchive = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    const personal = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
-      .order("desc")
-      .take(args.limit || 100);
+      const personal = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
+        .order("desc")
+        .take(args.limit || 100);
 
-    const announcements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
-      .order("desc")
-      .take(args.limit || 50);
+      const announcements = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
+        .order("desc")
+        .take(args.limit || 50);
 
-    const readReceipts = await Promise.all(
-      announcements.map((a) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_user_notification", (q) =>
-            q.eq("userId", userId).eq("notificationId", a._id),
-          )
-          .unique(),
-      ),
-    );
+      const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
+        ctx,
+        userId,
+        announcements,
+      );
 
-    const readNotificationIds = new Set(
-      readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
-    );
+      const merged = [...personal, ...enrichedAnnouncements];
 
-    const merged = [
-      ...personal,
-      ...announcements.map((a) => ({
-        ...a,
-        isRead: readNotificationIds.has(a._id),
-      })),
-    ];
-
-    return merged.sort((a, b) => b.createdAt - a.createdAt);
+      return merged.sort((a, b) => b.createdAt - a.createdAt);
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getNotificationArchive failure:", err);
+      }
+      return [];
+    }
   },
 });
 
