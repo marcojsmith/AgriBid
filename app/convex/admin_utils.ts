@@ -255,15 +255,23 @@ export async function updateCounter(
 
   if (counter) {
     const currentValue = (counter[field] as number | undefined) ?? 0;
+    const newValue = currentValue + delta;
+
+    if (newValue < 0) {
+      console.warn(
+        `Counter underflow detected: counter=${counter._id}, name=${name}, field=${field}, currentValue=${currentValue}, delta=${delta}. Clamping to 0.`,
+      );
+    }
+
     await ctx.db.patch(counter._id, {
-      [field]: Math.max(0, currentValue + delta),
+      [field]: Math.max(0, newValue),
       updatedAt: Date.now(),
     });
   } else {
     // Initialize if it doesn't exist
     await ctx.db.insert("counters", {
       name,
-      total: name === "auctions" || name === "profiles" ? (field === "total" ? delta : 0) : 0,
+      total: field === "total" ? delta : 0,
       active: field === "active" ? delta : 0,
       pending: field === "pending" ? delta : 0,
       verified: field === "verified" ? delta : 0,

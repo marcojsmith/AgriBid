@@ -86,7 +86,11 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     if (storageIds.length === 0) return;
     
     if (cleanupHandler) {
-      await cleanupHandler(storageIds);
+      try {
+        await cleanupHandler(storageIds);
+      } catch (err) {
+        console.error("Injected cleanupHandler failed:", err);
+      }
     } else {
       const results = await Promise.allSettled(
         storageIds.map((id) =>

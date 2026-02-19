@@ -1,5 +1,5 @@
 // app/src/components/Header.tsx
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { signOut } from "../lib/auth-client";
@@ -27,6 +27,10 @@ export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleCloseMenu = useCallback(() => {
+    setIsMenuOpen(false);
+  }, []);
 
   const navLinks: { name: string; href: string; disabled?: boolean }[] = [
     { name: "Marketplace", href: "/" },
@@ -135,7 +139,7 @@ export const Header = () => {
 
       <MobileMenu
         isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
+        onClose={handleCloseMenu}
         navLinks={navLinks}
         userData={userData}
         isVerified={isVerified ?? false}

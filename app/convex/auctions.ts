@@ -671,12 +671,16 @@ export const bulkUpdateAuctions = mutation({
         updated.push(id);
 
         if (newStatus && oldStatus !== newStatus) {
-          // Adjust counters
-          if (oldStatus === "active") await updateCounter(ctx, "auctions", "active", -1);
-          if (oldStatus === "pending_review") await updateCounter(ctx, "auctions", "pending", -1);
-          
-          if (newStatus === "active") await updateCounter(ctx, "auctions", "active", 1);
-          if (newStatus === "pending_review") await updateCounter(ctx, "auctions", "pending", 1);
+          const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+            active: "active",
+            pending_review: "pending",
+          };
+
+          const oldKey = statusToCounterKey[oldStatus];
+          const newKey = statusToCounterKey[newStatus];
+
+          if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
+          if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
         }
       } else {
         skipped.push(id);

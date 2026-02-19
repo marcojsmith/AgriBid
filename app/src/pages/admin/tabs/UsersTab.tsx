@@ -159,7 +159,7 @@ export function UsersTab() {
                           variant="default"
                           className="h-8 font-black uppercase text-[10px] tracking-wider bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20"
                           onClick={() => handleReviewKYCClick(p.userId)}
-                          disabled={isFetchingKYC}
+                          disabled={isFetchingKYC && fetchingKycUserId === p.userId}
                         >
                           {isFetchingKYC && fetchingKycUserId === p.userId ? (
                             <LoadingIndicator size="sm" className="mr-2" />

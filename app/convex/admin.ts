@@ -305,7 +305,25 @@ export const getAuditLogs = query({
 // --- Dashboard Stats ---
 
 /**
- * Recalculates all counters from scratch. 
+ * Helper to count results of a query using pagination to avoid memory issues.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function countQuery(query: any) {
+  let count = 0;
+  const PAGE_SIZE = 500;
+  let results = await query.take(PAGE_SIZE);
+  count += results.length;
+
+  while (results.length === PAGE_SIZE) {
+    const lastItem = results[results.length - 1];
+    results = await query.after(lastItem._id).take(PAGE_SIZE);
+    count += results.length;
+  }
+  return count;
+}
+
+/**
+ * Recalculates all counters from scratch.
  * Should only be run manually or during migration.
  */
 export const initializeCounters = mutation({
@@ -321,11 +339,28 @@ export const initializeCounters = mutation({
       totalUsers,
       verifiedSellers,
     ] = await Promise.all([
-      ctx.db.query("auctions").collect().then(res => res.length),
-      ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "active")).collect().then(res => res.length),
-      ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "pending_review")).collect().then(res => res.length),
-      ctx.db.query("profiles").collect().then(res => res.length),
-      ctx.db.query("profiles").withIndex("by_isVerified", q => q.eq("isVerified", true)).collect().then(res => res.length),
+      countQuery(ctx.db.query("auctions")),
+      countQuery(
+        ctx.db
+          .query("auctions")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_status", (q: any) => q.eq("status", "active")),
+      ),
+      countQuery(
+        ctx.db
+          .query("auctions")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_status", (q: any) =>
+            q.eq("status", "pending_review"),
+          ),
+      ),
+      countQuery(ctx.db.query("profiles")),
+      countQuery(
+        ctx.db
+          .query("profiles")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true)),
+      ),
     ]);
 
     // Update or insert auction counters

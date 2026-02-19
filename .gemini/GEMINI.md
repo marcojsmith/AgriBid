@@ -65,7 +65,9 @@ Determine the best course of action for the user based on the current state of t
     - When making code changes, ensure that they are cohesive and related to a single feature or bug fix. Avoid making unrelated changes in the same commit or pull request, as this can make it difficult to review and understand the changes.
     - If you need to make multiple unrelated changes, consider breaking them into separate commits or pull requests to maintain clarity and ease of review.
     - Make sure when adding a feature or fixing a bug, you consider all the necessary changes that need to be made across the codebase, including any related data changes, and ensure that they are all included in the same cohesive set of changes. Consider frontend changes, backend changes, database schema or seed data, security implications, testing changes, documentation updates, and any other relevant changes that are necessary to fully implement the feature or fix the bug in a cohesive manner.
-- **Code Reviews:**
+
+### Code Reviews:
+
     - When performing code reviews, focus on the following aspects:
         - Code quality and readability.
         - Adherence to coding standards and best practices.
@@ -91,7 +93,7 @@ Determine the best course of action for the user based on the current state of t
         - This summary should highlight any important issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
     - **Step 5: Updating documentation**
 
-- **PR review:**
+### PR review:
 
     - CodeRabbit performs a review of all PRs submitted to the repository, providing feedback on code quality, adherence to coding standards, testing, security implications, and overall impact on the project. The review process is designed to ensure that all changes meet the project's standards and align with its goals.
     - When a PR is submitted, CodeRabbit will perform a code review that you must then review and resolve. The review will include feedback on any issues or improvements that were identified during the review process, as well as any relevant information that may impact the changes being made.
@@ -118,6 +120,13 @@ Determine the best course of action for the user based on the current state of t
     - **Step 7: Finalize PR**
         - Commit and push changes: Once all comments have been addressed and the necessary changes have been made, finalize the PR by pushing the changes to the branch. This will allow CodeRabbit to verify that all issues and improvements have been properly addressed and that the changes meet the project's standards.
         - Do not commit findings: Do not commit the `prXX_review_findings.md` file to the repository, as this file is only meant for your reference during the PR review process and should not be included in the final codebase.
+
+### Committing Changes:
+
+    - When committing changes, ensure that your commit message accurately describes the changes made in the commit.
+    - Group related changes together in a single commit to maintain cohesion and clarity in the commit history. Avoid making large commits that include unrelated changes, as this can make it difficult to review and understand the changes being made.
+    - Before committing, ensure that all tests are passing and that there are no linting errors in the codebase. This will help maintain code quality and ensure that the changes being committed meet the project's standards.
+    - After committing, push the changes to the appropriate branch to allow for code review and integration into the main codebase.
 
 ## Coding Rules
 
