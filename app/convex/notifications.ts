@@ -1,6 +1,45 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { authComponent } from "./auth";
+import type { Doc } from "./_generated/dataModel";
+
+/**
+ * Augments a list of announcement notifications with a per-user `isRead` flag.
+ *
+ * @param userId - ID of the user whose read status will be applied
+ * @param announcements - Announcement notification documents to enrich
+ * @returns The provided announcements where each item includes `isRead`: `true` if the user has a read receipt for that notification, `false` otherwise
+ */
+async function getAnnouncementsWithReadStatus(
+  ctx: QueryCtx,
+  userId: string,
+  announcements: Doc<"notifications">[],
+) {
+  if (announcements.length === 0) return [];
+
+  // Fetch read receipts only for the provided announcements to keep it bounded
+  const readReceipts = await Promise.all(
+    announcements.map((a) =>
+      ctx.db
+        .query("readReceipts")
+        .withIndex("by_user_notification", (q) =>
+          q.eq("userId", userId).eq("notificationId", a._id),
+        )
+        .unique(),
+    ),
+  );
+
+  const readNotificationIds = new Set(
+    readReceipts
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .map((r) => r.notificationId),
+  );
+
+  return announcements.map((a) => ({
+    ...a,
+    isRead: readNotificationIds.has(a._id),
+  }));
+}
 
 export const getMyNotifications = query({
   args: {},
@@ -24,37 +63,21 @@ export const getMyNotifications = query({
         .order("desc")
         .take(10);
 
-      // Fetch read receipts only for the fetched announcements to keep it bounded
-      const readReceipts = await Promise.all(
-        announcements.map((a) =>
-          ctx.db
-            .query("readReceipts")
-            .withIndex("by_user_notification", (q) =>
-              q.eq("userId", userId).eq("notificationId", a._id),
-            )
-            .unique(),
-        ),
-      );
-
-      const readNotificationIds = new Set(
-        readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
+      const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
+        ctx,
+        userId,
+        announcements,
       );
 
       // Merge and sort, applying read status for announcements
-      const merged = [
-        ...personal,
-        ...announcements.map((a) => ({
-          ...a,
-          isRead: readNotificationIds.has(a._id),
-        })),
-      ];
+      const merged = [...personal, ...enrichedAnnouncements];
 
       return merged.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthenticated")) {
-        return [];
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getMyNotifications failure:", err);
       }
-      throw err;
+      return [];
     }
   },
 });
@@ -79,38 +102,24 @@ export const getNotificationArchive = query({
         .order("desc")
         .take(args.limit || 50);
 
-      const readReceipts = await Promise.all(
-        announcements.map((a) =>
-          ctx.db
-            .query("readReceipts")
-            .withIndex("by_user_notification", (q) =>
-              q.eq("userId", userId).eq("notificationId", a._id),
-            )
-            .unique(),
-        ),
+      const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
+        ctx,
+        userId,
+        announcements,
       );
 
-      const readNotificationIds = new Set(
-        readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
-      );
-
-      const merged = [
-        ...personal,
-        ...announcements.map((a) => ({
-          ...a,
-          isRead: readNotificationIds.has(a._id),
-        })),
-      ];
+      const merged = [...personal, ...enrichedAnnouncements];
 
       return merged.sort((a, b) => b.createdAt - a.createdAt);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthenticated")) {
-        return [];
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getNotificationArchive failure:", err);
       }
-      throw err;
+      return [];
     }
   },
 });
+
 export const markAsRead = mutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, args) => {

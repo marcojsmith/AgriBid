@@ -713,7 +713,7 @@ export const getMyBids = query({
 
           // Find my highest bid on this auction
           const myBids = bidsByAuction.get(id) ?? [];
-          const myHighestBid = Math.max(...myBids.map((b) => b.amount));
+          const myHighestBid = myBids.length > 0 ? Math.max(...myBids.map((b) => b.amount)) : 0;
 
           return {
             ...auction,
@@ -729,10 +729,10 @@ export const getMyBids = query({
 
       return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthenticated")) {
-        return [];
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getMyBids failure:", err);
       }
-      throw err;
+      return [];
     }
   },
 });
@@ -757,10 +757,10 @@ export const getMyListings = query({
         })),
       );
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthenticated")) {
-        return [];
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getMyListings failure:", err);
       }
-      throw err;
+      return [];
     }
   },
 });

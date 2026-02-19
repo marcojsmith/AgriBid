@@ -58,10 +58,10 @@ export const isWatched = query({
 
       return !!existing;
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthenticated")) {
-        return false;
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error(`isWatched failure for auction ${args.auctionId}:`, err);
       }
-      throw err;
+      return false;
     }
   },
 });
@@ -95,10 +95,10 @@ export const getWatchedAuctions = query({
 
       return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Unauthenticated")) {
-        return [];
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getWatchedAuctions failure:", err);
       }
-      throw err;
+      return [];
     }
   },
 });
