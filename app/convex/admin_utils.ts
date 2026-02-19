@@ -4,9 +4,9 @@ import { authComponent } from "./auth";
 /**
  * Record an audit log entry for the current authenticated admin.
  *
- * If there is no authenticated user identity, the function returns without creating a log.
+ * If there is no authenticated user identity, the function throws to prevent unaudited admin actions.
  *
- * @param args.action - Short identifier of the action performed (e.g., "delete_user", "update_settings")
+ * `@param` args.action - Short identifier of the action performed (e.g., "delete_user", "update_settings")
  * @param args.targetId - Optional identifier of the target resource affected by the action
  * @param args.targetType - Optional type/category of the target resource (e.g., "user", "project")
  * @param args.details - Optional free-form details about the action or context
