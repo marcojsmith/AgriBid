@@ -1,0 +1,5 @@
+Task: Cleanup redundant CSS in Home page
+Summary: Removed redundant xl:grid-cols-3 breakpoint class in getGridClasses.
+Files:
+- app/src/pages/Home.tsx (Modified)
+Why: To clean up the Tailwind class strings and avoid redundant breakpoint overrides.
