@@ -64,6 +64,7 @@ export const Header = () => {
     try {
       await signOut();
       toast.success("Signed out successfully");
+      navigate("/");
     } catch (err) {
       console.error("Sign out failed:", err);
       toast.error("Failed to sign out. Please try again.");

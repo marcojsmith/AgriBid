@@ -44,18 +44,25 @@ export const toggleWatchlist = mutation({
 export const isWatched = query({
   args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return false;
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return false;
+      const userId = authUser.userId ?? authUser._id;
 
-    const existing = await ctx.db
-      .query("watchlist")
-      .withIndex("by_user_auction", (q) =>
-        q.eq("userId", userId).eq("auctionId", args.auctionId),
-      )
-      .first();
+      const existing = await ctx.db
+        .query("watchlist")
+        .withIndex("by_user_auction", (q) =>
+          q.eq("userId", userId).eq("auctionId", args.auctionId),
+        )
+        .first();
 
-    return !!existing;
+      return !!existing;
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error(`isWatched failure for auction ${args.auctionId}:`, err);
+      }
+      return false;
+    }
   },
 });
 
@@ -65,26 +72,33 @@ export const isWatched = query({
 export const getWatchedAuctions = query({
   args: {},
   handler: async (ctx) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    const watchlist = await ctx.db
-      .query("watchlist")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+      const watchlist = await ctx.db
+        .query("watchlist")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
 
-    const auctions = await Promise.all(
-      watchlist.map(async (item) => {
-        const auction = await ctx.db.get(item.auctionId);
-        if (!auction) return null;
-        return {
-          ...auction,
-          images: await resolveImageUrls(ctx.storage, auction.images),
-        };
-      }),
-    );
+      const auctions = await Promise.all(
+        watchlist.map(async (item) => {
+          const auction = await ctx.db.get(item.auctionId);
+          if (!auction) return null;
+          return {
+            ...auction,
+            images: await resolveImageUrls(ctx.storage, auction.images),
+          };
+        }),
+      );
 
-    return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+      return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getWatchedAuctions failure:", err);
+      }
+      return [];
+    }
   },
 });

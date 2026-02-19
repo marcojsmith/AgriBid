@@ -42,16 +42,23 @@ export const createTicket = mutation({
 export const getMyTickets = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    const limit = Math.max(1, Math.min(args.limit || 50, 100));
+      const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
-    return await ctx.db
-      .query("supportTickets")
-      .withIndex("by_user_updatedAt", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(limit);
+      return await ctx.db
+        .query("supportTickets")
+        .withIndex("by_user_updatedAt", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(limit);
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getMyTickets query failed:", err);
+      }
+      return [];
+    }
   },
 });

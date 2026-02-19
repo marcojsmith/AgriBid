@@ -64,6 +64,13 @@ export const createAuth = (
 export const getAuthUser = query({
   args: {},
   handler: async (ctx) => {
-    return authComponent.getAuthUser(ctx);
+    try {
+      return await authComponent.getAuthUser(ctx);
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("authComponent.getAuthUser failure:", err);
+      }
+      return null;
+    }
   },
 });
