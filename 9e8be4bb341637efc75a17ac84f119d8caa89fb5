@@ -1,0 +1,6 @@
+Task: Address review findings for skeleton loading
+Summary: Improved accessibility and deduplicated grid layout logic.
+Files:
+- app/src/components/AuctionCardSkeleton.tsx (Modified: Added aria-hidden)
+- app/src/pages/Home.tsx (Modified: Extracted grid helper functions)
+Why: To comply with accessibility best practices and improve codebase maintainability.
