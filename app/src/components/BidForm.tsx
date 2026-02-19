@@ -12,9 +12,16 @@ interface BidFormProps {
   isVerified?: boolean;
 }
 
-export const BidForm = ({ auction, onBid, isLoading, isVerified = true }: BidFormProps) => {
+export const BidForm = ({
+  auction,
+  onBid,
+  isLoading,
+  isVerified = true,
+}: BidFormProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
-  const [manualAmount, setManualAmount] = useState<string>(nextMinBid.toString());
+  const [manualAmount, setManualAmount] = useState<string>(
+    nextMinBid.toString(),
+  );
   const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
 
   /**
@@ -67,33 +74,43 @@ export const BidForm = ({ auction, onBid, isLoading, isVerified = true }: BidFor
       </div>
 
       <div className="relative">
-        <div className="absolute inset-0 flex items-center"><span className="w-full border-t"></span></div>
-        <div className="relative flex justify-center text-[10px] uppercase"><span className="bg-card px-2 text-muted-foreground font-black tracking-[0.2em]">Or Enter Custom Amount</span></div>
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t"></span>
+        </div>
+        <div className="relative flex justify-center text-[10px] uppercase">
+          <span className="bg-card px-2 text-muted-foreground font-black tracking-[0.2em]">
+            Or Enter Custom Amount
+          </span>
+        </div>
       </div>
 
       {/* Manual Bid Input */}
-      <div className="flex gap-3">
-        <div className="relative flex-1">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">R</span>
-          <Input
-            type="number"
-            value={manualAmount}
-            onChange={(e) => setManualAmount(e.target.value)}
-            placeholder="Enter amount"
-            className="h-14 pl-8 text-lg font-bold rounded-xl border-2 focus-visible:ring-primary"
-            disabled={isLoading}
-          />
+      <div className="space-y-3">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
+              R
+            </span>
+            <Input
+              type="number"
+              value={manualAmount}
+              onChange={(e) => setManualAmount(e.target.value)}
+              placeholder="Enter amount"
+              className="h-14 pl-8 text-lg font-bold rounded-xl border-2 focus-visible:ring-primary"
+              disabled={isLoading || !isVerified}
+            />
+          </div>
+          <Button
+            className="h-14 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
+            disabled={!isManualValid || isLoading || !isVerified}
+            onClick={() => onBid(currentManualNum)}
+          >
+            <TrendingUp className="h-5 w-5" />
+            {isLoading ? "Processing..." : "Place Bid"}
+          </Button>
         </div>
-        <Button 
-          className="h-14 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
-          disabled={!isManualValid || isLoading || !isVerified}
-          onClick={() => onBid(currentManualNum)}
-        >
-          <TrendingUp className="h-5 w-5" />
-          {isLoading ? "Processing..." : "Place Bid"}
-        </Button>
       </div>
-      
+
       {!isManualValid && manualAmount !== "" && (
         <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
           <ArrowUpCircle className="h-3 w-3" />
