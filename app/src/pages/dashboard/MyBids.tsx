@@ -19,6 +19,12 @@ interface AuctionWithBid {
   isWinning?: boolean;
 }
 
+/**
+ * Determine the user-facing badge label and visual variant for an auction's bid status.
+ *
+ * @param auction - Auction data that includes `status`, and optional `isWon` / `isWinning` flags
+ * @returns A StatusDisplay object with `label` (badge text) and `variant` (badge style). Possible labels include `WON`, `WINNING`, `RESERVE NOT MET`, `OUTBID / SOLD`, or the auction's `status` uppercased.
+ */
 function getStatusDisplay(auction: AuctionWithBid): StatusDisplay {
   const isWon = auction.isWon;
   const isWinning = auction.isWinning;
