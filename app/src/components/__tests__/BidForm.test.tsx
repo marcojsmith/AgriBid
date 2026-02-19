@@ -54,7 +54,7 @@ describe("BidForm", () => {
 
     // Assert quick bid buttons are disabled
     const quickBidButtons = screen.getAllByRole("button").filter(
-      (btn) => btn !== submitButton && btn.textContent?.startsWith("R"),
+      (btn) => btn !== submitButton && btn.textContent?.includes("Quick Bid"),
     );
     quickBidButtons.forEach((btn) => expect(btn).toBeDisabled());
   });
