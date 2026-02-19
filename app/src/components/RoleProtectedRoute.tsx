@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "./ui/button";
 import { isValidCallbackUrl } from "@/lib/utils";
+import { LoadingPage } from "./ui/LoadingIndicator";
 
 interface RoleProtectedRouteProps {
   children: ReactNode;
@@ -22,11 +23,7 @@ export const RoleProtectedRoute = ({
   const isPending = isAuthPending || (session && userData === undefined);
 
   if (isPending) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold">
-        VERIFYING PERMISSIONS...
-      </div>
-    );
+    return <LoadingPage message="Verifying permissions..." />;
   }
 
   if (!session) {

@@ -19,7 +19,6 @@ import {
   Eye,
   Clock,
   Hammer,
-  Loader2,
   Users,
   ShieldCheck,
   Gavel,
@@ -39,6 +38,7 @@ import {
   Mail,
   UserCheck,
 } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
@@ -215,7 +215,7 @@ export default function AdminDashboard() {
   ) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary/40" />
+        <LoadingIndicator />
         <p className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">
           Initializing Terminal...
         </p>
@@ -877,7 +877,7 @@ export default function AdminDashboard() {
                             onClick={() => handleReviewKYCClick(p.userId)}
                           >
                             {isFetchingKYC && kycReviewUser?.userId === p.userId ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <LoadingIndicator size="sm" />
                             ) : (
                               "KYC Pending"
                             )}
@@ -901,7 +901,7 @@ export default function AdminDashboard() {
                             disabled={isFetchingKYC}
                           >
                             {isFetchingKYC && kycReviewUser?.userId === p.userId ? (
-                              <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                              <LoadingIndicator size="sm" className="mr-2" />
                             ) : null}
                             Review KYC
                           </Button>
@@ -1179,7 +1179,7 @@ export default function AdminDashboard() {
               className="rounded-xl bg-primary text-primary-foreground font-black uppercase text-[10px]"
             >
               {isBulkProcessing ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                <LoadingIndicator size="sm" className="mr-2" />
               ) : null}
               Confirm Update
             </AlertDialogAction>
@@ -1220,7 +1220,7 @@ export default function AdminDashboard() {
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-black uppercase text-[10px]"
             >
               {isPromoting ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                <LoadingIndicator size="sm" className="mr-2" />
               ) : null}
               Confirm Promotion
             </AlertDialogAction>

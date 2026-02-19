@@ -9,6 +9,7 @@ import { ImageGallery } from "../components/ImageGallery";
 import { BiddingPanel } from "../components/BiddingPanel";
 import { BidHistory } from "../components/BidHistory";
 import { SellerInfo } from "../components/SellerInfo";
+import { LoadingIndicator } from "../components/ui/LoadingIndicator";
 import type { Id } from "convex/_generated/dataModel";
 
 /**
@@ -40,7 +41,7 @@ export default function AuctionDetail() {
   if (auction === undefined) {
     return (
       <div className="flex h-[80vh] items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <LoadingIndicator />
       </div>
     );
   }

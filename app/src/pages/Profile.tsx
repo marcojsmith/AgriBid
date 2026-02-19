@@ -10,8 +10,8 @@ import {
   Gavel,
   Award,
   ArrowLeft,
-  Loader2,
 } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/AuctionCard";
 
@@ -49,7 +49,7 @@ export default function Profile() {
   if (sellerInfo === undefined || status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <LoadingIndicator />
       </div>
     );
   }
@@ -212,7 +212,7 @@ export default function Profile() {
           >
             {status === "LoadingMore" ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <LoadingIndicator size="sm" className="mr-2" />
                 Loading...
               </>
             ) : (

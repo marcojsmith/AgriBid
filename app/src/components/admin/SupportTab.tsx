@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Check, MessageSquare } from "lucide-react";
+import { Check, MessageSquare } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 import {
@@ -79,7 +80,7 @@ export function SupportTab() {
   if (!tickets) {
     return (
       <div className="flex justify-center p-8">
-        <Loader2 className="animate-spin text-primary/40" />
+        <LoadingIndicator />
       </div>
     );
   }
@@ -138,7 +139,7 @@ export function SupportTab() {
                         disabled={resolvingIds.has(ticket._id)}
                       >
                         {resolvingIds.has(ticket._id) ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          <LoadingIndicator size="sm" className="mr-2" />
                         ) : (
                           <Check className="h-4 w-4 mr-2" />
                         )}
@@ -182,7 +183,7 @@ export function SupportTab() {
               disabled={!resolutionText.trim() || (selectedTicketId ? resolvingIds.has(selectedTicketId) : false)}
             >
               {selectedTicketId && resolvingIds.has(selectedTicketId) && (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <LoadingIndicator size="sm" className="mr-2" />
               )}
               Confirm Resolution
             </Button>

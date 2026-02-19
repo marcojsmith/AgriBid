@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, Search } from "lucide-react";
+import { Check, Search } from "lucide-react";
+import { LoadingIndicator } from "../../ui/LoadingIndicator";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useListingWizard } from "../context/ListingWizardContext";
@@ -11,7 +12,7 @@ export const TechnicalSpecsStep = () => {
   if (metadata === undefined) {
     return (
       <div className="h-[300px] flex flex-col items-center justify-center gap-4 text-muted-foreground animate-in fade-in duration-500">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+        <LoadingIndicator />
         <p className="text-xs font-black uppercase tracking-widest">
           Fetching Specifications...
         </p>

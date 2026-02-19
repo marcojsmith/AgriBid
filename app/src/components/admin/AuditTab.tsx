@@ -10,7 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -29,7 +30,7 @@ export function AuditTab() {
   if (!logs) {
     return (
       <div className="flex justify-center p-8">
-        <Loader2 className="animate-spin text-primary/40" />
+        <LoadingIndicator />
       </div>
     );
   }

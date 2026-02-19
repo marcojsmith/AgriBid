@@ -11,7 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2, Ban, Gavel } from "lucide-react";
+import { Ban, Gavel } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 import {
@@ -57,7 +58,7 @@ export function BidMonitor() {
   if (!bids) {
     return (
       <div className="flex justify-center p-8">
-        <Loader2 className="animate-spin text-primary/40" />
+        <LoadingIndicator />
       </div>
     );
   }
@@ -175,7 +176,7 @@ export function BidMonitor() {
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-black uppercase text-[10px]"
             >
               {isVoiding ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                <LoadingIndicator size="sm" className="mr-2" />
               ) : null}
               Confirm Void
             </Button>

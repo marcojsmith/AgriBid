@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, Plus, Edit } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
 /**
  * Renders the "My Listings" dashboard page showing the current user's auction listings.
@@ -22,7 +23,7 @@ export default function MyListings() {
   if (listings === undefined) {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <LoadingIndicator />
       </div>
     );
   }

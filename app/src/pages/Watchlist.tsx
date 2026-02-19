@@ -5,6 +5,7 @@ import { api } from "convex/_generated/api";
 import { Button } from "../components/ui/button";
 import { Heart } from "lucide-react";
 import { AuctionCard } from "../components/AuctionCard";
+import { LoadingIndicator } from "../components/ui/LoadingIndicator";
 
 /**
  * Render the user's watchlist page.
@@ -19,7 +20,7 @@ export default function Watchlist() {
   if (watchedAuctions === undefined) {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <LoadingIndicator />
       </div>
     );
   }

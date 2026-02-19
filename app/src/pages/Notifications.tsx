@@ -4,7 +4,8 @@ import { api } from "convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, ArrowRight, Inbox, Loader2 } from "lucide-react";
+import { Clock, ArrowRight, Inbox } from "lucide-react";
+import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -81,7 +82,7 @@ export default function Notifications() {
             disabled={isMarkingAllRead}
           >
             {isMarkingAllRead ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-2" />
+              <LoadingIndicator size="sm" className="mr-2" />
             ) : null}
             Mark all as read
           </Button>
@@ -94,7 +95,7 @@ export default function Notifications() {
             if (notifications === undefined) {
               return (
                 <div className="py-24 text-center">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary/40 mx-auto" />
+                  <LoadingIndicator className="mx-auto" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-4">
                     Syncing History...
                   </p>

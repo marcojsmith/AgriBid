@@ -18,8 +18,8 @@ import {
   MessageSquare,
   Menu,
   X,
-  Loader2,
 } from "lucide-react";
+import { LoadingIndicator } from "./ui/LoadingIndicator";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -176,7 +176,7 @@ export const Header = () => {
                     </div>
                     <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all border-2 border-primary/20">
                       {isLoadingProfile ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <LoadingIndicator size="sm" />
                       ) : (
                         <User className="h-4.5 w-4.5 transition-colors" />
                       )}
