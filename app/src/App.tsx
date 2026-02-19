@@ -22,8 +22,14 @@ const Notifications = lazy(() => import("./pages/Notifications"));
  * Global loading fallback for lazy-loaded routes.
  */
 const PageLoader = () => (
-  <div className="flex h-[60vh] items-center justify-center bg-background" role="status">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" aria-hidden="true"></div>
+  <div
+    className="flex h-[60vh] items-center justify-center bg-background"
+    role="status"
+  >
+    <div
+      className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"
+      aria-hidden="true"
+    ></div>
     <span className="sr-only">Loading page...</span>
   </div>
 );
@@ -58,61 +64,61 @@ function App() {
             <Route path="/auction/:id" element={<AuctionDetail />} />
             <Route path="/profile/:userId" element={<Profile />} />
             <Route path="/sell" element={<Sell />} />
-            <Route 
-              path="/watchlist" 
+            <Route
+              path="/watchlist"
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <Watchlist />
                 </RoleProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/dashboard/bids" 
+            <Route
+              path="/dashboard/bids"
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <MyBids />
                 </RoleProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/dashboard/listings" 
+            <Route
+              path="/dashboard/listings"
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <MyListings />
                 </RoleProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/admin" 
+            <Route
+              path="/admin"
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminDashboard />
                 </RoleProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/kyc" 
+            <Route
+              path="/kyc"
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <KYC />
                 </RoleProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/support" 
+            <Route
+              path="/support"
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <Support />
                 </RoleProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/notifications" 
+            <Route
+              path="/notifications"
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <Notifications />
                 </RoleProtectedRoute>
-              } 
+              }
             />
           </Routes>
         </Suspense>

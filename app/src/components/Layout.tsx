@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
@@ -14,14 +14,20 @@ interface LayoutProps {
 export const Layout = ({ children }: LayoutProps) => {
   const { data: session } = useSession();
   const syncUser = useMutation(api.users.syncUser);
+  const userId = session?.user?.id;
+  const syncUserRef = useRef(syncUser);
 
   useEffect(() => {
-    if (session) {
-      syncUser().catch((error) => {
+    syncUserRef.current = syncUser;
+  });
+
+  useEffect(() => {
+    if (userId) {
+      syncUserRef.current().catch((error) => {
         console.error("Failed to sync user:", error);
       });
     }
-  }, [session, syncUser]);
+  }, [userId]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">

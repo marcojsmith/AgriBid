@@ -11,9 +11,9 @@ import { useSession } from "../lib/auth-client";
  */
 export const NotificationListener = () => {
   const { data: session } = useSession();
-  const myBids = useQuery(api.auctions.getMyBids) || [];
-  const watched = useQuery(api.watchlist.getWatchedAuctions) || [];
-  
+  const myBids = useQuery(api.auctions.getMyBids);
+  const watched = useQuery(api.watchlist.getWatchedAuctions);
+
   // Keep track of auction statuses we've already "seen" as settled
   const settledAuctionsRef = useRef<Set<string>>(new Set());
 
@@ -24,48 +24,67 @@ export const NotificationListener = () => {
   }, [userId]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || !myBids || !watched) return;
 
     // Deduplicate auctions by ID
     const allRelevant = Array.from(
-      new Map([...myBids, ...watched].map(a => [a._id.toString(), a])).values()
+      new Map(
+        [...myBids, ...watched].map((a) => [a._id.toString(), a]),
+      ).values(),
     );
-    
+
     for (const auction of allRelevant) {
       const auctionId = auction._id.toString();
-      
-      // If the auction is settled and we haven't notified about it in this session
-      if ((auction.status === 'sold' || auction.status === 'unsold') && !settledAuctionsRef.current.has(auctionId)) {
-        
-        const currentUserId = session.user.id;
-        const isWinner = !!currentUserId && !!auction.winnerId && auction.winnerId === currentUserId;
-        const isSeller = !!currentUserId && !!auction.sellerId && auction.sellerId === currentUserId;
 
-        if (auction.status === 'sold') {
+      // If the auction is settled and we haven't notified about it in this session
+      if (
+        (auction.status === "sold" || auction.status === "unsold") &&
+        !settledAuctionsRef.current.has(auctionId)
+      ) {
+        const currentUserId = session.user.id;
+        const isWinner =
+          !!currentUserId &&
+          !!auction.winnerId &&
+          auction.winnerId === currentUserId;
+        const isSeller =
+          !!currentUserId &&
+          !!auction.sellerId &&
+          auction.sellerId === currentUserId;
+
+        if (auction.status === "sold") {
           if (isWinner) {
-            toast.success(`Congratulations! You won the auction for ${auction.title}!`, {
-              duration: 10000,
-              description: `Winning Bid: R ${auction.currentPrice.toLocaleString('en-ZA')}`
-            });
+            toast.success(
+              `Congratulations! You won the auction for ${auction.title}!`,
+              {
+                duration: 10000,
+                description: `Winning Bid: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
+              },
+            );
           } else if (isSeller) {
-            toast.success(`Success! Your equipment ${auction.title} has been sold!`, {
-              duration: 10000,
-              description: `Final Price: R ${auction.currentPrice.toLocaleString('en-ZA')}`
-            });
+            toast.success(
+              `Success! Your equipment ${auction.title} has been sold!`,
+              {
+                duration: 10000,
+                description: `Final Price: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
+              },
+            );
           } else {
             toast.info(`Auction ended: ${auction.title} has been sold.`, {
-              description: `Final Price: R ${auction.currentPrice.toLocaleString('en-ZA')}`
+              description: `Final Price: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
             });
           }
         } else {
           // Unsold
           if (isSeller) {
-            toast.error(`Auction ended: ${auction.title} did not meet reserve.`, {
-              duration: 8000
-            });
+            toast.error(
+              `Auction ended: ${auction.title} did not meet reserve.`,
+              {
+                duration: 8000,
+              },
+            );
           } else {
             toast.info(`Auction ended: ${auction.title} was not sold.`, {
-              description: "Reserve price not met."
+              description: "Reserve price not met.",
             });
           }
         }
