@@ -27,10 +27,10 @@ export const useListingMedia = () => {
       const currentPreviews = previewsRef.current;
 
       // Revoke from images state (if they are blobs)
-      if (images && typeof images === 'object' && !Array.isArray(images)) {
+      if (images && typeof images === "object" && !Array.isArray(images)) {
         const { additional, ...slots } = images;
         const allUrls = [...Object.values(slots), ...(additional || [])];
-        allUrls.forEach(url => {
+        allUrls.forEach((url) => {
           if (typeof url === "string" && url.startsWith("blob:")) {
             URL.revokeObjectURL(url);
           }
@@ -38,7 +38,7 @@ export const useListingMedia = () => {
       }
 
       // Revoke from previews state
-      Object.values(currentPreviews).forEach(url => {
+      Object.values(currentPreviews).forEach((url) => {
         if (url && typeof url === "string" && url.startsWith("blob:")) {
           URL.revokeObjectURL(url);
         }
@@ -46,14 +46,17 @@ export const useListingMedia = () => {
     };
   }, []);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, slotId: string) => {
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    slotId: string,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Create local preview immediately
     const blobUrl = URL.createObjectURL(file);
     if (slotId !== "additional") {
-      setPreviews(prev => ({ ...prev, [slotId]: blobUrl }));
+      setPreviews((prev) => ({ ...prev, [slotId]: blobUrl }));
     }
 
     try {
@@ -71,38 +74,41 @@ export const useListingMedia = () => {
 
       const { storageId } = await result.json();
 
-      setFormData(prev => {
+      setFormData((prev) => {
         const currentImages = prev.images || { additional: [] };
         if (slotId === "additional") {
           return {
             ...prev,
             images: {
               ...currentImages,
-              additional: [...(currentImages.additional || []), storageId]
-            }
+              additional: [...(currentImages.additional || []), storageId],
+            },
           };
         }
         return {
           ...prev,
           images: {
             ...currentImages,
-            [slotId]: storageId
-          }
+            [slotId]: storageId,
+          },
         };
       });
 
       // For additional photos, we track previews by storageId after upload
       if (slotId === "additional") {
-        setPreviews(prev => ({ ...prev, [storageId]: blobUrl }));
+        setPreviews((prev) => ({ ...prev, [storageId]: blobUrl }));
       }
 
-      const successMessage = slotId === "additional" ? "Additional photo uploaded" : `${slotId.toUpperCase()} photo uploaded`;
+      const successMessage =
+        slotId === "additional"
+          ? "Additional photo uploaded"
+          : `${slotId.toUpperCase()} photo uploaded`;
       toast.success(successMessage);
     } catch (error) {
       console.error(error);
       URL.revokeObjectURL(blobUrl);
       if (slotId !== "additional") {
-        setPreviews(prev => {
+        setPreviews((prev) => {
           const next = { ...prev };
           delete next[slotId];
           return next;
@@ -117,12 +123,14 @@ export const useListingMedia = () => {
   const removeImage = (slotId: string, index?: number) => {
     let storageIdToCleanup: string | undefined;
 
-    setFormData(prev => {
+    setFormData((prev) => {
       const newImages = { ...prev.images };
       if (slotId === "additional" && typeof index === "number") {
         if (!Array.isArray(newImages.additional)) return prev;
         storageIdToCleanup = newImages.additional[index];
-        newImages.additional = newImages.additional.filter((_, i) => i !== index);
+        newImages.additional = newImages.additional.filter(
+          (_, i) => i !== index,
+        );
       } else {
         const key = slotId as keyof Omit<typeof formData.images, "additional">;
         storageIdToCleanup = newImages[key];
@@ -134,7 +142,7 @@ export const useListingMedia = () => {
     // Cleanup preview in a separate update to avoid stale closures and ensure functional updates
     const targetId = slotId === "additional" ? storageIdToCleanup : slotId;
     if (targetId) {
-      setPreviews(prevP => {
+      setPreviews((prevP) => {
         const next = { ...prevP };
         if (next[targetId]) {
           URL.revokeObjectURL(next[targetId]);

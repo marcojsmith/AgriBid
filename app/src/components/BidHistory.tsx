@@ -59,47 +59,59 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
             </div>
           ) : bids.length === 0 ? (
             <div className="text-center py-12 bg-muted/20 rounded-xl border-2 border-dashed">
-              <p className="text-muted-foreground text-sm font-medium">No bids have been placed yet.</p>
-              <p className="text-[10px] text-muted-foreground uppercase mt-1">Be the first to bid on this item!</p>
+              <p className="text-muted-foreground text-sm font-medium">
+                No bids have been placed yet.
+              </p>
+              <p className="text-[10px] text-muted-foreground uppercase mt-1">
+                Be the first to bid on this item!
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {[...bids].sort((a, b) => b.amount - a.amount).map((bid, index) => (
-                <div 
-                  key={bid._id} 
-                  className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
-                    index === 0 
-                      ? "bg-primary/5 border-primary/20 shadow-sm" 
-                      : "bg-card border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                      index === 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                    }`}>
-                      <User className="h-4 w-4" />
+              {[...bids]
+                .sort((a, b) => b.amount - a.amount)
+                .map((bid, index) => (
+                  <div
+                    key={bid._id}
+                    className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                      index === 0
+                        ? "bg-primary/5 border-primary/20 shadow-sm"
+                        : "bg-card border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                          index === 0
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-bold tracking-tight">
+                          {anonymizeName(bid.bidderName)}
+                          {index === 0 && (
+                            <span className="ml-2 text-[9px] uppercase bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-black tracking-widest">
+                              Highest
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase">
+                          {formatTime(bid.timestamp)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-bold tracking-tight">
-                        {anonymizeName(bid.bidderName)}
-                        {index === 0 && (
-                          <span className="ml-2 text-[9px] uppercase bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-black tracking-widest">
-                            Highest
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground font-medium uppercase">
-                        {formatTime(bid.timestamp)}
+                    <div className="text-right">
+                      <p
+                        className={`text-base font-black tracking-tight ${index === 0 ? "text-primary" : "text-foreground"}`}
+                      >
+                        R {bid.amount.toLocaleString("en-ZA")}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-base font-black tracking-tight ${index === 0 ? "text-primary" : "text-foreground"}`}>
-                      R{bid.amount.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </AccordionContent>

@@ -8,24 +8,31 @@ export const GeneralInfoStep = () => {
   const { formData, updateField } = useListingWizard();
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
 
-  const filteredLocations = useMemo(() => 
-    SA_LOCATIONS.filter(loc => 
-      loc.toLowerCase().includes(formData.location.toLowerCase()) && 
-      formData.location.length > 1
-    ),
-    [formData.location]
+  const filteredLocations = useMemo(
+    () =>
+      SA_LOCATIONS.filter(
+        (loc) =>
+          loc.toLowerCase().includes(formData.location.toLowerCase()) &&
+          formData.location.length > 1,
+      ),
+    [formData.location],
   );
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label htmlFor="year" className="text-xs font-black uppercase text-muted-foreground ml-1">Manufacturing Year</label>
-          <Input 
+          <label
+            htmlFor="year"
+            className="text-xs font-black uppercase text-muted-foreground ml-1"
+          >
+            Manufacturing Year
+          </label>
+          <Input
             id="year"
-            type="number" 
+            type="number"
             inputMode="numeric"
-            value={formData.year || ""} 
+            value={formData.year || ""}
             onChange={(e) => {
               const val = e.target.value;
               // Allow empty string for clearing
@@ -44,28 +51,37 @@ export const GeneralInfoStep = () => {
           />
         </div>
         <div className="space-y-2 relative">
-          <label htmlFor="location" className="text-xs font-black uppercase text-muted-foreground ml-1">Location (Town / City / Country)</label>
-          <Input 
+          <label
+            htmlFor="location"
+            className="text-xs font-black uppercase text-muted-foreground ml-1"
+          >
+            Location (Town / City / Country)
+          </label>
+          <Input
             id="location"
-            value={formData.location} 
+            value={formData.location}
             onChange={(e) => {
               updateField("location", e.target.value);
               setShowLocationSuggestions(true);
             }}
-            onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
+            onBlur={() =>
+              setTimeout(() => setShowLocationSuggestions(false), 200)
+            }
             placeholder="e.g. Johannesburg, ZA or Gaborone, BW"
             className="h-12 border-2 rounded-xl"
-            aria-expanded={showLocationSuggestions && filteredLocations.length > 0}
+            aria-expanded={
+              showLocationSuggestions && filteredLocations.length > 0
+            }
             aria-autocomplete="list"
             aria-controls="location-suggestions"
           />
           {showLocationSuggestions && filteredLocations.length > 0 && (
-            <div 
+            <div
               id="location-suggestions"
               role="listbox"
               className="absolute z-50 w-full mt-1 bg-card border-2 rounded-xl shadow-xl max-h-48 overflow-y-auto"
             >
-              {filteredLocations.map(loc => (
+              {filteredLocations.map((loc) => (
                 <button
                   key={loc}
                   role="option"
@@ -83,12 +99,17 @@ export const GeneralInfoStep = () => {
           )}
         </div>
       </div>
-      
+
       <div className="space-y-2">
-        <label htmlFor="description" className="text-xs font-black uppercase text-muted-foreground ml-1">Equipment Description</label>
-        <Textarea 
+        <label
+          htmlFor="description"
+          className="text-xs font-black uppercase text-muted-foreground ml-1"
+        >
+          Equipment Description
+        </label>
+        <Textarea
           id="description"
-          value={formData.description} 
+          value={formData.description}
           onChange={(e) => updateField("description", e.target.value)}
           placeholder="Describe the condition, key features, and any recent maintenance..."
           className="min-h-[120px] border-2 rounded-xl resize-none"
@@ -96,10 +117,15 @@ export const GeneralInfoStep = () => {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="title" className="text-xs font-black uppercase text-muted-foreground ml-1">Listing Title</label>
-        <Input 
+        <label
+          htmlFor="title"
+          className="text-xs font-black uppercase text-muted-foreground ml-1"
+        >
+          Listing Title
+        </label>
+        <Input
           id="title"
-          value={formData.title} 
+          value={formData.title}
           onChange={(e) => updateField("title", e.target.value)}
           placeholder="e.g. 2023 John Deere 6155R Premium"
           className="h-12 border-2 rounded-xl"
@@ -109,13 +135,18 @@ export const GeneralInfoStep = () => {
         </p>
       </div>
       <div className="space-y-2">
-        <label htmlFor="hours" className="text-xs font-black uppercase text-muted-foreground ml-1">Operating Hours</label>
-        <Input 
+        <label
+          htmlFor="hours"
+          className="text-xs font-black uppercase text-muted-foreground ml-1"
+        >
+          Operating Hours
+        </label>
+        <Input
           id="hours"
-          type="number" 
+          type="number"
           inputMode="numeric"
           min="0"
-          value={formData.operatingHours || ""} 
+          value={formData.operatingHours || ""}
           onChange={(e) => {
             const val = e.target.value;
             if (val === "") {

@@ -11,7 +11,10 @@ interface RoleProtectedRouteProps {
   allowedRole: string;
 }
 
-export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) => {
+export const RoleProtectedRoute = ({
+  children,
+  allowedRole,
+}: RoleProtectedRouteProps) => {
   const { data: session, isPending: isAuthPending } = useSession();
   const userData = useQuery(api.users.getMyProfile);
   const location = useLocation();
@@ -28,15 +31,21 @@ export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRoute
 
   if (!session) {
     const rawUrl = `${location.pathname}${location.search}${location.hash}`;
-    const callbackUrl = isValidCallbackUrl(rawUrl) ? encodeURIComponent(rawUrl) : "/";
+    const callbackUrl = isValidCallbackUrl(rawUrl)
+      ? encodeURIComponent(rawUrl)
+      : "/";
     return <Navigate to={`/login?callbackUrl=${callbackUrl}`} replace />;
   }
 
   if (session && userData === null) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center space-y-4">
-        <h1 className="text-2xl font-bold uppercase text-destructive">Access Error</h1>
-        <p className="text-muted-foreground font-medium">Failed to load your profile. Please try refreshing the page.</p>
+        <h1 className="text-2xl font-bold uppercase text-destructive">
+          Access Error
+        </h1>
+        <p className="text-muted-foreground font-medium">
+          Failed to load your profile. Please try refreshing the page.
+        </p>
         <Button onClick={() => window.location.reload()}>Retry</Button>
       </div>
     );
@@ -48,7 +57,9 @@ export const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRoute
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center space-y-4">
         <h1 className="text-2xl font-bold uppercase">Access Denied</h1>
-        <p className="text-muted-foreground font-medium">You do not have the required permissions to view this page.</p>
+        <p className="text-muted-foreground font-medium">
+          You do not have the required permissions to view this page.
+        </p>
         <Button asChild>
           <Link to="/">Go Home</Link>
         </Button>

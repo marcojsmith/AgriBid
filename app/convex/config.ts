@@ -4,7 +4,11 @@
  * Utility to get an environment variable in the Convex runtime.
  */
 export function getEnv(key: string): string | undefined {
-  const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;
+  const env = (
+    globalThis as unknown as {
+      process: { env: Record<string, string | undefined> };
+    }
+  ).process.env;
   return env[key];
 }
 
@@ -25,6 +29,18 @@ export function requireEnv(key: string): string {
  * Defaults to http://localhost:5173 for local development.
  */
 export const ALLOWED_ORIGINS = (
-  getEnv("ALLOWED_ORIGINS") ?? 
-  "http://localhost:5173"
-).split(",").map(origin => origin.trim()).filter(Boolean);
+  getEnv("ALLOWED_ORIGINS") ?? "http://localhost:5173"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+/**
+ * Business Logic Constants
+ */
+export const COMMISSION_RATE = (() => {
+  const envVal = getEnv("COMMISSION_RATE");
+  if (!envVal) return 0.05;
+  const parsed = parseFloat(envVal);
+  return isNaN(parsed) ? 0.05 : parsed;
+})();

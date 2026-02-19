@@ -23,7 +23,7 @@ export const WizardNavigation = ({ onFinalSubmit }: WizardNavigationProps) => {
         <ChevronLeft className="h-4 w-4" />
         Previous
       </Button>
-      
+
       {currentStep === STEPS.length - 1 ? (
         <Button
           onClick={onFinalSubmit}

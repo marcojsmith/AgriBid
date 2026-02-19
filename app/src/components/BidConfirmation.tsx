@@ -19,9 +19,16 @@ interface BidConfirmationProps {
   onCancel: () => void;
 }
 
-export const BidConfirmation = ({ isOpen, amount, onConfirm, onCancel }: BidConfirmationProps) => {
+export const BidConfirmation = ({
+  isOpen,
+  amount,
+  onConfirm,
+  onCancel,
+}: BidConfirmationProps) => {
   const isConfirmingRef = useRef(false);
-  const formattedAmount = new Intl.NumberFormat("en-ZA", { maximumFractionDigits: 0 }).format(amount);
+  const formattedAmount = new Intl.NumberFormat("en-ZA", {
+    maximumFractionDigits: 0,
+  }).format(amount);
 
   const handleConfirm = () => {
     isConfirmingRef.current = true;
@@ -46,26 +53,29 @@ export const BidConfirmation = ({ isOpen, amount, onConfirm, onCancel }: BidConf
             <Gavel className="h-8 w-8 text-primary" />
           </div>
           <div className="space-y-2">
-            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">Confirm your bid</AlertDialogTitle>
+            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">
+              Confirm your bid
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-medium">
               You are about to place a bid for
             </AlertDialogDescription>
           </div>
           <div className="bg-primary/5 border-2 border-primary/20 w-full py-6 rounded-2xl">
             <span className="text-4xl font-black text-primary tracking-tight">
-              R{formattedAmount}
+              R {formattedAmount}
             </span>
           </div>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest px-4">
-            By confirming, you agree to purchase this equipment at this price if you are the winning bidder.
+            By confirming, you agree to purchase this equipment at this price if
+            you are the winning bidder.
           </p>
         </AlertDialogHeader>
         <AlertDialogFooter className="grid grid-cols-2 gap-3 sm:space-x-0 mt-4">
           <AlertDialogCancel className="h-12 font-bold rounded-xl border-2">
             Cancel
           </AlertDialogCancel>
-          <AlertDialogAction 
-            onClick={handleConfirm} 
+          <AlertDialogAction
+            onClick={handleConfirm}
             className="h-12 font-black rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
           >
             Confirm Bid

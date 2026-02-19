@@ -6,7 +6,9 @@ interface CountdownTimerProps {
 }
 
 export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
-  const [remainingMs, setRemainingMs] = useState<number>(() => endTime - Date.now());
+  const [remainingMs, setRemainingMs] = useState<number>(
+    () => endTime - Date.now(),
+  );
 
   useEffect(() => {
     const calculateTime = () => {
@@ -26,7 +28,9 @@ export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
   }
 
   const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const hours = Math.floor(
+    (remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+  );
   const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
 
@@ -38,7 +42,9 @@ export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
   const timeLeft = parts.join(" ");
 
   return (
-    <span className={`font-mono font-bold ${isLowTime ? "text-red-600 animate-pulse" : "text-primary"}`}>
+    <span
+      className={`font-mono font-bold ${isLowTime ? "text-red-600 animate-pulse" : "text-primary"}`}
+    >
       {timeLeft}
     </span>
   );

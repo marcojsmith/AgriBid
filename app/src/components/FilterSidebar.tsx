@@ -24,8 +24,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     maxHours: searchParams.get("maxHours") || "",
   });
 
-  // Sync local state when URL params change (e.g. on Reset)
+  // Sync local state when URL params change (e.g. back button)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalFilters({
       make: searchParams.get("make") || "",
       minYear: searchParams.get("minYear") || "",
@@ -37,7 +38,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   }, [searchParams]);
 
   const updateParam = (key: string, value: string) => {
-    setLocalFilters(prev => ({ ...prev, [key]: value }));
+    setLocalFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const applyFilters = () => {
@@ -61,17 +62,24 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     if (onClose) onClose();
   };
 
-  const hasFilters = Object.values(localFilters).some(v => v !== "");
+  const hasFilters = Object.values(localFilters).some((v) => v !== "");
 
   return (
     <div className="flex flex-col h-full bg-card border-2 rounded-3xl overflow-hidden shadow-xl shadow-primary/5 animate-in slide-in-from-left-4 duration-300">
       <div className="p-6 border-b flex justify-between items-center bg-muted/30">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-primary" />
-          <h2 className="font-black uppercase tracking-tight text-sm">Filter Equipment</h2>
+          <h2 className="font-black uppercase tracking-tight text-sm">
+            Filter Equipment
+          </h2>
         </div>
         {onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8 rounded-full"
+          >
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -80,47 +88,49 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
         {/* Manufacturer Filter */}
         <div className="space-y-3">
-          <label 
+          <label
             htmlFor="filter-make"
             className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
           >
             Manufacturer
           </label>
-          <select 
+          <select
             id="filter-make"
             value={localFilters.make}
             onChange={(e) => updateParam("make", e.target.value)}
             className="w-full h-12 rounded-xl border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="">All Manufacturers</option>
-            {activeMakes.map(make => (
-              <option key={make} value={make}>{make}</option>
+            {activeMakes.map((make) => (
+              <option key={make} value={make}>
+                {make}
+              </option>
             ))}
           </select>
         </div>
 
         {/* Year Range */}
         <div className="space-y-3">
-          <label 
+          <label
             htmlFor="filter-year-from"
             className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
           >
             Year Model
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <Input 
+            <Input
               id="filter-year-from"
-              type="number" 
-              placeholder="From" 
+              type="number"
+              placeholder="From"
               min={1900}
               value={localFilters.minYear}
               onChange={(e) => updateParam("minYear", e.target.value)}
               className="h-12 font-bold rounded-xl border-2"
             />
-            <Input 
+            <Input
               id="filter-year-to"
-              type="number" 
-              placeholder="To" 
+              type="number"
+              placeholder="To"
               min={1900}
               value={localFilters.maxYear}
               onChange={(e) => updateParam("maxYear", e.target.value)}
@@ -131,7 +141,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Price Range */}
         <div className="space-y-3">
-          <label 
+          <label
             htmlFor="filter-price-min"
             className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
           >
@@ -139,22 +149,26 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           </label>
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">R</span>
-              <Input 
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">
+                R
+              </span>
+              <Input
                 id="filter-price-min"
-                type="number" 
-                placeholder="Min" 
+                type="number"
+                placeholder="Min"
                 value={localFilters.minPrice}
                 onChange={(e) => updateParam("minPrice", e.target.value)}
                 className="h-12 pl-7 font-bold rounded-xl border-2"
               />
             </div>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">R</span>
-              <Input 
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">
+                R
+              </span>
+              <Input
                 id="filter-price-max"
-                type="number" 
-                placeholder="Max" 
+                type="number"
+                placeholder="Max"
                 value={localFilters.maxPrice}
                 onChange={(e) => updateParam("maxPrice", e.target.value)}
                 className="h-12 pl-7 font-bold rounded-xl border-2"
@@ -165,29 +179,31 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Operating Hours */}
         <div className="space-y-3">
-          <label 
+          <label
             htmlFor="filter-hours"
             className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
           >
             Max Operating Hours
           </label>
           <div className="relative">
-            <Input 
+            <Input
               id="filter-hours"
-              type="number" 
-              placeholder="e.g. 5000" 
+              type="number"
+              placeholder="e.g. 5000"
               value={localFilters.maxHours}
               onChange={(e) => updateParam("maxHours", e.target.value)}
               className="h-12 pr-12 font-bold rounded-xl border-2"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-black uppercase">HRS</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-black uppercase">
+              HRS
+            </span>
           </div>
         </div>
       </div>
 
       <div className="p-6 border-t bg-muted/10 grid grid-cols-2 gap-3">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={clearFilters}
           className="h-12 rounded-xl font-black uppercase tracking-tight border-2 gap-2"
           disabled={!hasFilters}
@@ -195,7 +211,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        <Button 
+        <Button
           onClick={applyFilters}
           className="h-12 rounded-xl font-black uppercase tracking-tight shadow-lg shadow-primary/20"
         >

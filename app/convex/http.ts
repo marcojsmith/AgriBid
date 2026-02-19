@@ -18,8 +18,8 @@ function getCorsHeaders(request: Request): Record<string, string> {
   } catch {
     // If origin is not a valid URL, stay with empty hostname
   }
-  
-  const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+
+  const isAllowed = ALLOWED_ORIGINS.some((allowed) => {
     // Exact match for the full origin string
     if (origin === allowed) return true;
 
@@ -35,9 +35,10 @@ function getCorsHeaders(request: Request): Record<string, string> {
 
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie, X-Requested-With",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, Cookie, X-Requested-With",
     "Access-Control-Allow-Credentials": "true",
-    "Vary": "Origin",
+    Vary: "Origin",
   };
 
   if (isAllowed) {

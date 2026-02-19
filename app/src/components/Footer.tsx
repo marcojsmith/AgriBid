@@ -1,5 +1,13 @@
 import { Link } from "react-router-dom";
-import { ShieldCheck, HelpCircle, BookOpen, Scale, Mail, Phone, MapPin } from "lucide-react";
+import {
+  ShieldCheck,
+  HelpCircle,
+  BookOpen,
+  Scale,
+  Mail,
+  Phone,
+  MapPin,
+} from "lucide-react";
 
 export const Footer = () => {
   const footerSections = [
@@ -27,17 +35,22 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand Column */}
           <div className="space-y-6">
-            <div className="font-black text-3xl tracking-tighter text-primary">AGRIBID</div>
+            <div className="font-black text-3xl tracking-tighter text-primary">
+              AGRIBID
+            </div>
             <p className="text-xs text-muted-foreground leading-relaxed uppercase font-bold tracking-wide">
-              The national marketplace for heavy machinery. Built for farmers, by farmers. 
-              We provide a transparent, high-integrity platform for equipment liquidation.
+              The national marketplace for heavy machinery. Built for farmers,
+              by farmers. We provide a transparent, high-integrity platform for
+              equipment liquidation.
             </p>
             <div className="flex gap-4">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <ShieldCheck className="h-4 w-4" />
               </div>
               <p className="text-[10px] font-black uppercase text-primary leading-tight">
-                Verified Seller<br />Network
+                Verified Seller
+                <br />
+                Network
               </p>
             </div>
           </div>
@@ -45,7 +58,9 @@ export const Footer = () => {
           {/* Navigation Sections */}
           {footerSections.map((section) => (
             <div key={section.title} className="space-y-6">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">{section.title}</h3>
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+                {section.title}
+              </h3>
               <ul className="space-y-4">
                 {section.links.map((link) => {
                   const isPlaceholder = link.href.startsWith("#");
@@ -55,7 +70,8 @@ export const Footer = () => {
                       {link.name}
                     </>
                   );
-                  const className = "group flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground hover:text-primary transition-colors";
+                  const className =
+                    "group flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground hover:text-primary transition-colors";
 
                   return (
                     <li key={link.name}>
@@ -77,11 +93,17 @@ export const Footer = () => {
 
           {/* Contact Info */}
           <div className="space-y-6">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Headquarters</h3>
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+              Headquarters
+            </h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-xs font-bold uppercase text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>123 Harvest Road<br />Agricultural Hub, ZA 4500</span>
+                <span>
+                  123 Harvest Road
+                  <br />
+                  Agricultural Hub, ZA 4500
+                </span>
               </li>
               <li className="flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground">
                 <Phone className="h-3.5 w-3.5" />
@@ -96,8 +118,12 @@ export const Footer = () => {
             © {new Date().getFullYear()} AGRIBID. All rights reserved.
           </p>
           <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-primary transition-colors">Cookie Policy</a>
+            <a href="#" className="hover:text-primary transition-colors">
+              Privacy Policy
+            </a>
+            <a href="#" className="hover:text-primary transition-colors">
+              Cookie Policy
+            </a>
           </div>
         </div>
       </div>

@@ -30,7 +30,9 @@ export default function Watchlist() {
         <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
           <Heart className="h-6 w-6 text-primary fill-current" />
         </div>
-        <h1 className="text-4xl font-black tracking-tight text-primary uppercase">My Watchlist</h1>
+        <h1 className="text-4xl font-black tracking-tight text-primary uppercase">
+          My Watchlist
+        </h1>
       </div>
 
       {watchedAuctions.length === 0 ? (
@@ -40,7 +42,11 @@ export default function Watchlist() {
               You are not watching any auctions yet.
             </p>
           </div>
-          <Button size="lg" className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20" asChild>
+          <Button
+            size="lg"
+            className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20"
+            asChild
+          >
             <Link to="/">Explore Marketplace</Link>
           </Button>
         </div>

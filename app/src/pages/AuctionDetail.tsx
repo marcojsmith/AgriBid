@@ -20,10 +20,10 @@ import type { Id } from "convex/_generated/dataModel";
  */
 export default function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
-  
+
   const auction = useQuery(
-    api.auctions.getAuctionById, 
-    id ? { auctionId: id as Id<"auctions"> } : "skip"
+    api.auctions.getAuctionById,
+    id ? { auctionId: id as Id<"auctions"> } : "skip",
   );
 
   if (id === undefined) {
@@ -69,24 +69,27 @@ export default function AuctionDetail() {
         {/* Left Column: Images & Info */}
         <div className="lg:col-span-8 space-y-8">
           <AuctionHeader auction={auction} />
-          
-          <ImageGallery 
-            images={Array.isArray(auction.images) 
-              ? auction.images.filter((url): url is string => !!url) 
-              : [
-                  auction.images.front,
-                  auction.images.engine,
-                  auction.images.cabin,
-                  auction.images.rear,
-                  ...(auction.images.additional || [])
-                ].filter((url): url is string => !!url)
-            } 
-            title={auction.title} 
+
+          <ImageGallery
+            images={
+              Array.isArray(auction.images)
+                ? auction.images.filter((url): url is string => !!url)
+                : [
+                    auction.images.front,
+                    auction.images.engine,
+                    auction.images.cabin,
+                    auction.images.rear,
+                    ...(auction.images.additional || []),
+                  ].filter((url): url is string => !!url)
+            }
+            title={auction.title}
           />
 
           {/* Description Section */}
           <div className="bg-card border-2 rounded-2xl p-8 space-y-4">
-            <h3 className="text-xl font-bold uppercase tracking-tight">Equipment Description</h3>
+            <h3 className="text-xl font-bold uppercase tracking-tight">
+              Equipment Description
+            </h3>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
               {auction.description || "No description provided."}
             </p>
@@ -101,7 +104,9 @@ export default function AuctionDetail() {
             </div>
 
             <div className="bg-card border-2 rounded-2xl p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">Bid History</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">
+                Bid History
+              </h3>
               <BidHistory auctionId={auction._id} />
             </div>
 

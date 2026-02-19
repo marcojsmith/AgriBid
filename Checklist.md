@@ -41,7 +41,7 @@
 - [x] Define `auctions` table with indexes
 - [x] Define `bids` table with indexes
 - [x] Define `watchlist` table
-- [x] Define `audit_logs` table (for admin)
+- [x] Define `auditLogs` table (for admin)
 
 ### Convex Queries
 - [x] `getActiveAuctions` - fetch all active auctions
@@ -84,8 +84,8 @@
 - [x] Create protected route wrapper component (RoleProtectedRoute)
 
 ### User Profile
-- [ ] Create profile page (`/profile`)
-- [ ] Create seller verification flow
+- [x] Create profile page (`/profile`)
+- [x] Create seller verification flow
 
 ### Role-Based Access
 - [x] Buyer role: can bid, watchlist, view auctions
@@ -100,6 +100,7 @@
 ### Global Components
 - [x] **Header** (`src/components/Header.tsx`)
 - [x] **Footer** (`src/components/Footer.tsx`)
+- [x] **Notifications** (Archive and Toast)
 - [ ] **LoadingSpinner** (`src/components/LoadingSpinner.tsx`)
 - [ ] **ErrorBoundary** (`src/components/ErrorBoundary.tsx`)
 - [x] **Toast** notifications (Shadcn Toast/Sonner)
@@ -131,8 +132,10 @@
 
 ### Admin Dashboard (`/admin`)
 - [x] **Pending Verifications** (Listing Moderation)
-- [ ] **Flagged Listings**
-- [ ] **Audit Logs**
+- [x] **Seller KYC Approval**
+- [x] **Audit Logs**
+- [x] **Financial Oversight**
+- [x] **Support Management**
 
 ---
 

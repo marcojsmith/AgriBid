@@ -33,14 +33,15 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
   }
 
   const nextImage = () => setActiveIndex((prev) => (prev + 1) % images.length);
-  const prevImage = () => setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
+  const prevImage = () =>
+    setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
 
   return (
     <div className="space-y-4">
       {/* Main Hero Image with Lightbox Trigger */}
       <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
         <DialogTrigger asChild>
-          <button 
+          <button
             className="w-full aspect-[16/10] bg-muted rounded-2xl flex items-center justify-center border-2 overflow-hidden group relative cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Open full-screen gallery"
           >
@@ -54,49 +55,57 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
             </div>
           </button>
         </DialogTrigger>
-        
+
         <DialogContent className="max-w-[95vw] h-[90vh] p-0 bg-black/95 border-none flex flex-col items-center justify-center">
           <DialogTitle className="sr-only">{title} - Full Gallery</DialogTitle>
-          <div className="sr-only">Full-screen high-resolution image gallery for {title}</div>
+          <div className="sr-only">
+            Full-screen high-resolution image gallery for {title}
+          </div>
           <div className="relative w-full h-full flex items-center justify-center">
             <img
               src={images[activeIndex]}
               alt={`${title} - Full Screen`}
               className="max-w-full max-h-full object-contain"
             />
-            
+
             {/* Lightbox Controls */}
             {images.length > 1 && (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="absolute left-4 text-white hover:bg-white/10 h-12 w-12 rounded-full"
-                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevImage();
+                  }}
                   aria-label="Previous image"
                 >
                   <ChevronLeft className="h-8 w-8" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="absolute right-4 text-white hover:bg-white/10 h-12 w-12 rounded-full"
-                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextImage();
+                  }}
                   aria-label="Next image"
                 >
                   <ChevronRight className="h-8 w-8" />
                 </Button>
               </>
             )}
-            
+
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
               {images.map((_, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className={cn(
                     "h-1.5 w-1.5 rounded-full transition-all",
-                    activeIndex === idx ? "bg-white w-4" : "bg-white/40"
-                  )} 
+                    activeIndex === idx ? "bg-white w-4" : "bg-white/40",
+                  )}
                 />
               ))}
             </div>
@@ -113,9 +122,9 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
               onClick={() => setActiveIndex(index)}
               className={cn(
                 "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                activeIndex === index 
-                  ? "border-primary ring-2 ring-primary/20 scale-95" 
-                  : "border-transparent hover:border-primary/40"
+                activeIndex === index
+                  ? "border-primary ring-2 ring-primary/20 scale-95"
+                  : "border-transparent hover:border-primary/40",
               )}
               aria-label={`View image ${index + 1}`}
             >
