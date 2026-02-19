@@ -1,0 +1,6 @@
+Task: Implement skeleton loading for marketplace page
+Summary: Replaced the centered loading spinner on the home page with content-shaped skeleton placeholders.
+Files:
+- app/src/components/AuctionCardSkeleton.tsx (Created)
+- app/src/pages/Home.tsx (Modified)
+Why: To improve perceived performance and provide a smoother transition from loading to content state.
