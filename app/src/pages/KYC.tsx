@@ -22,6 +22,16 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Id } from "convex/_generated/dataModel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const isValidEmail = (email: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -46,6 +56,9 @@ export default function KYC() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [existingDocuments, setExistingDocuments] = useState<string[]>([]);
 
@@ -115,7 +128,33 @@ export default function KYC() {
       </div>
     );
 
-  const handleUpload = async () => {
+  const confirmDelete = async () => {
+    if (!docToDelete) return;
+
+    const originalDocs = [...existingDocuments];
+    const targetId = docToDelete;
+
+    // Optimistic update
+    setExistingDocuments((prev) => prev.filter((id) => id !== targetId));
+    setShowDeleteConfirm(false);
+    setDocToDelete(null);
+
+    try {
+      await deleteMyKYCDocument({
+        storageId: targetId as Id<"_storage">,
+      });
+      toast.success("Document deleted");
+    } catch (err) {
+      // Rollback on failure
+      setExistingDocuments(originalDocs);
+      toast.error(
+        "Failed to delete document: " +
+          (err instanceof Error ? err.message : "Unknown error"),
+      );
+    }
+  };
+
+  const handleUpload = async (skipConfirm = false) => {
     if (files.length === 0 && existingDocuments.length === 0) {
       toast.error("Please select at least one document");
       return;
@@ -142,11 +181,9 @@ export default function KYC() {
       return;
     }
 
-    if (isEditMode) {
-      const confirmed = window.confirm(
-        "Are you sure you want to update your verified details? This will reset your verification status to 'Pending' and you will need to be re-verified before you can continue listing.",
-      );
-      if (!confirmed) return;
+    if (isEditMode && !skipConfirm) {
+      setShowConfirmModal(true);
+      return;
     }
 
     setIsUploading(true);
@@ -253,88 +290,94 @@ export default function KYC() {
       </div>
 
       {status === "verified" && !isEditMode ? (
-        <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
-          <div className="text-center space-y-4">
-            <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
-              <ShieldCheck className="h-8 w-8 text-white" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
-              <p className="text-muted-foreground font-medium">
-                Your account is fully verified. Thank you for maintaining
-                marketplace integrity.
-              </p>
-            </div>
+        !myKycDetails ? (
+          <div className="flex justify-center p-20">
+            <Loader2 className="animate-spin" />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-green-500/10 pt-8">
-            <div className="space-y-4">
+        ) : (
+          <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
+            <div className="text-center space-y-4">
+              <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
+                <ShieldCheck className="h-8 w-8 text-white" />
+              </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  Full Name
-                </Label>
-                <p className="font-bold">
-                  {myKycDetails?.firstName} {myKycDetails?.lastName}
+                <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
+                <p className="text-muted-foreground font-medium">
+                  Your account is fully verified. Thank you for maintaining
+                  marketplace integrity.
                 </p>
               </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  ID Number
-                </Label>
-                <p className="font-bold">{myKycDetails?.idNumber}</p>
-              </div>
             </div>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  Contact Details
-                </Label>
-                <div className="space-y-1">
-                  <p className="font-bold flex items-center gap-2">
-                    <Mail className="h-3 w-3" /> {myKycDetails?.kycEmail}
-                  </p>
-                  <p className="font-bold flex items-center gap-2">
-                    <Phone className="h-3 w-3" /> {myKycDetails?.phoneNumber}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  Verified Documents
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {myKycDetails?.kycDocuments.map((docId, idx) => (
-                    <Badge
-                      key={docId}
-                      variant="secondary"
-                      className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
-                    >
-                      <FileText className="h-3 w-3" />
-                      Document {idx + 1}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
-            <Button
-              onClick={() => navigate("/profile/" + profile.userId)}
-              variant="outline"
-              className="border-2 font-bold uppercase h-12 px-8"
-            >
-              View Public Profile
-            </Button>
-            <Button
-              onClick={() => setIsEditMode(true)}
-              variant="secondary"
-              className="border-2 font-bold uppercase h-12 px-8"
-            >
-              Edit Details
-            </Button>
-          </div>
-        </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-green-500/10 pt-8">
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Full Name
+                  </Label>
+                  <p className="font-bold">
+                    {myKycDetails.firstName} {myKycDetails.lastName}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    ID Number
+                  </Label>
+                  <p className="font-bold">{myKycDetails.idNumber}</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Contact Details
+                  </Label>
+                  <div className="space-y-1">
+                    <p className="font-bold flex items-center gap-2">
+                      <Mail className="h-3 w-3" /> {myKycDetails.kycEmail}
+                    </p>
+                    <p className="font-bold flex items-center gap-2">
+                      <Phone className="h-3 w-3" /> {myKycDetails.phoneNumber}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Verified Documents
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {myKycDetails.kycDocuments.map((docId, idx) => (
+                      <Badge
+                        key={docId}
+                        variant="secondary"
+                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Document {idx + 1}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
+              <Button
+                onClick={() => navigate("/profile/" + profile.userId)}
+                variant="outline"
+                className="border-2 font-bold uppercase h-12 px-8"
+              >
+                View Public Profile
+              </Button>
+              <Button
+                onClick={() => setIsEditMode(true)}
+                variant="secondary"
+                className="border-2 font-bold uppercase h-12 px-8"
+              >
+                Edit Details
+              </Button>
+            </div>
+          </Card>
+        )
       ) : status === "pending" ? (
         <Card className="p-12 border-2 border-orange-500/20 bg-orange-500/5 text-center space-y-4">
           <div className="h-16 w-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto animate-pulse shadow-lg shadow-orange-500/20">
@@ -532,35 +575,9 @@ export default function KYC() {
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                            onClick={async () => {
-                              if (
-                                !window.confirm(
-                                  "Are you sure you want to permanently delete this document?",
-                                )
-                              )
-                                return;
-
-                              const originalDocs = [...existingDocuments];
-                              // Optimistic update
-                              setExistingDocuments((prev) =>
-                                prev.filter((id) => id !== docId),
-                              );
-
-                              try {
-                                await deleteMyKYCDocument({
-                                  storageId: docId as Id<"_storage">,
-                                });
-                                toast.success("Document deleted");
-                              } catch (err) {
-                                // Rollback on failure
-                                setExistingDocuments(originalDocs);
-                                toast.error(
-                                  "Failed to delete document: " +
-                                    (err instanceof Error
-                                      ? err.message
-                                      : "Unknown error"),
-                                );
-                              }
+                            onClick={() => {
+                              setDocToDelete(docId);
+                              setShowDeleteConfirm(true);
                             }}
                           >
                             ×
@@ -602,7 +619,7 @@ export default function KYC() {
 
               <Button
                 className="w-full h-16 rounded-2xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/20"
-                onClick={handleUpload}
+                onClick={() => handleUpload()}
                 disabled={isUploading || (files.length === 0 && existingDocuments.length === 0)}
               >
                 {isUploading ? (
@@ -630,6 +647,58 @@ export default function KYC() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Verified Details?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to update your verified details? This will
+              reset your verification status to "Pending" and you will need to
+              be re-verified before you can continue listing.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConfirmModal(false);
+                handleUpload(true);
+              }}
+            >
+              Confirm Update
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this document from
+              your profile?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDocToDelete(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={confirmDelete}
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
