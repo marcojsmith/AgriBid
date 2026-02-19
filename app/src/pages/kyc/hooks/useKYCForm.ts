@@ -43,7 +43,7 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
         phoneNumber: initialData.phoneNumber || "",
         idNumber: initialData.idNumber || "",
         email: initialData.email || "",
-        confirmEmail: initialData.email || "",
+        confirmEmail: initialData.confirmEmail ?? initialData.email ?? "",
       });
       setIsFormInitialized(true);
     }
@@ -132,6 +132,13 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
   };
 
   const validate = () => {
+    if (
+      !formData.firstName.trim() ||
+      !formData.lastName.trim()
+    ) {
+      return { valid: false, message: "Please fill in all personal details" };
+    }
+
     if (!isValidEmail(formData.email)) {
       return { valid: false, message: "Please enter a valid email address" };
     }
@@ -146,13 +153,6 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
 
     if (!isValidIdNumber(formData.idNumber)) {
       return { valid: false, message: "Please enter a valid 13-digit South African ID number" };
-    }
-
-    if (
-      !formData.firstName.trim() ||
-      !formData.lastName.trim()
-    ) {
-      return { valid: false, message: "Please fill in all personal details" };
     }
 
     return { valid: true };

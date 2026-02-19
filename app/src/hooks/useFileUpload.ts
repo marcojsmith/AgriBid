@@ -100,7 +100,24 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       
       results.forEach((result, index) => {
         if (result.status === "rejected") {
-          console.error(`Failed to delete orphaned upload ${storageIds[index]}:`, result.reason);
+          const reason = result.reason;
+          const isAuthError =
+            reason instanceof Error &&
+            (reason.message.toLowerCase().includes("unauthorized") ||
+              reason.message.toLowerCase().includes("not authorized"));
+
+          if (isAuthError) {
+            console.warn(
+              `Authorization failure while deleting orphaned upload ${storageIds[index]}. ` +
+                `This usually happens when a non-admin caller omits a 'cleanupHandler'. ` +
+                `Please provide a custom cleanupHandler for this context.`,
+            );
+          } else {
+            console.error(
+              `Failed to delete orphaned upload ${storageIds[index]}:`,
+              reason,
+            );
+          }
         }
       });
     }

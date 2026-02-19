@@ -1,6 +1,5 @@
 // app/src/pages/admin/tabs/UsersTab.tsx
 import { useState } from "react";
-import { TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +18,16 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
 /**
- * Render the Users administration tab with a table of user profiles and controls for KYC review, verification, promotion, and pagination.
+ * Renders the admin users management tab with verification status, roles, and identity details.
  *
- * Displays an empty state when no users are present, shows per-user identity, role, verification and KYC status, join date, and context-sensitive action buttons (Review KYC, Verify, Promote, navigate). When available, shows a "Load More Users" control.
+ * Provides functionality to:
+ * - Review pending KYC applications (displays a loading indicator for the specific user being fetched).
+ * - Manually verify users (with per-user loading and disabled states to prevent double-clicks).
+ * - Promote users to administrative roles.
+ * - Navigate to detailed user profiles.
+ * - Load additional user records from Convex.
  *
- * @returns A JSX element representing the Users tab UI.
+ * @returns The user management tab's JSX element.
  */
 export function UsersTab() {
   const {
@@ -59,10 +63,7 @@ export function UsersTab() {
   };
 
   return (
-    <TabsContent
-      value="users"
-      className="space-y-6 animate-in fade-in slide-in-from-bottom-4"
-    >
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       <Card className="border-2 overflow-hidden">
         <Table>
           <TableHeader className="bg-muted/50">
@@ -227,6 +228,6 @@ export function UsersTab() {
           </div>
         )}
       </Card>
-    </TabsContent>
+    </div>
   );
 }

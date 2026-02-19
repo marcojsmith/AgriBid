@@ -1,5 +1,4 @@
 // app/src/pages/admin/tabs/ModerationTab.tsx
-import { TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
 import { ModerationCard, EmptyState, BidMonitor } from "@/components/admin";
@@ -25,17 +24,14 @@ export function ModerationTab() {
 
   if (pendingAuctions === undefined) {
     return (
-      <TabsContent value="moderation" className="h-64 flex items-center justify-center">
+      <div className="h-64 flex items-center justify-center">
         <LoadingIndicator />
-      </TabsContent>
+      </div>
     );
   }
 
   return (
-    <TabsContent
-      value="moderation"
-      className="space-y-6 animate-in fade-in slide-in-from-bottom-4"
-    >
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -89,6 +85,6 @@ export function ModerationTab() {
           <BidMonitor />
         </div>
       </div>
-    </TabsContent>
+    </div>
   );
 }

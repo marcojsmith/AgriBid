@@ -76,16 +76,25 @@ export function MobileMenu({
       }
 
       if (e.key === "Tab" && menuRef.current) {
-        const focusableElements = menuRef.current.querySelectorAll(
+        const allFocusable = menuRef.current.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         
+        // Filter out elements that are disabled, hidden, or have negative tabindex
+        const focusableElements = Array.from(allFocusable).filter((el) => {
+          const element = el as HTMLElement;
+          return (
+            !element.hasAttribute("disabled") &&
+            element.getAttribute("aria-hidden") !== "true" &&
+            element.tabIndex !== -1 &&
+            element.offsetParent !== null // basic visibility check
+          );
+        }) as HTMLElement[];
+        
         if (focusableElements.length === 0) return;
 
-        const firstElement = focusableElements[0] as HTMLElement;
-        const lastElement = focusableElements[
-          focusableElements.length - 1
-        ] as HTMLElement;
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
 
         if (e.shiftKey) {
           if (document.activeElement === firstElement) {
@@ -150,12 +159,21 @@ export function MobileMenu({
                   <User className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-black uppercase leading-none">
-                    {userData?.name}
-                  </p>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                    {isVerified ? "Verified Member" : "Unverified"}
-                  </p>
+                  {userData ? (
+                    <>
+                      <p className="text-sm font-black uppercase leading-none">
+                        {userData.name}
+                      </p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                        {isVerified ? "Verified Member" : "Unverified"}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                      <div className="h-2 w-16 bg-muted animate-pulse rounded" />
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -1,5 +1,4 @@
 // app/src/pages/admin/tabs/MarketplaceTab.tsx
-import { TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,15 +22,19 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, MoreVertical, Eye, Hammer, AlertCircle, Search } from "lucide-react";
 import { useAdminDashboard } from "../context/useAdminDashboard";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { useMemo } from "react";
+import { formatCurrency } from "@/lib/currency";
+import { toast } from "sonner";
 
 /**
- * Renders the Marketplace admin "Auctions" tab UI for viewing, selecting, and performing actions on auctions.
+ * Renders the admin marketplace management table with search, filtering, and bulk status updates.
  *
- * Displays a selectable table of auctions with per-row status badges, details, pricing, end time, per-item actions, bulk action controls when items are selected, and an optional "Load More Auctions" control.
+ * Computes selection state (isAllSelected, isPartiallySelected) based on visible auctions.
+ * Renders a table of filtered auctions with status badges, item details, price summaries,
+ * and per-item action menus. If items are selected, displays a bulk actions header.
+ * Provides a "Load More" button when additional data is available from Convex.
  *
- * @returns A React element containing the marketplace auctions management user interface.
+ * @returns The marketplace management tab's JSX element.
  */
 export function MarketplaceTab() {
   const {
@@ -92,15 +95,11 @@ export function MarketplaceTab() {
     return {
       isAllSelected: filteredAuctions.length > 0 && visibleSelectedCount === filteredAuctions.length,
       isPartiallySelected: visibleSelectedCount > 0 && visibleSelectedCount < filteredAuctions.length,
-      visibleSelectedCount
     };
   }, [selectedAuctions, filteredAuctions]);
 
   return (
-    <TabsContent
-      value="auctions"
-      className="space-y-6 animate-in fade-in slide-in-from-bottom-4"
-    >
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       <Card className="border-2 overflow-hidden bg-card/50">
         {selectedAuctions.length > 0 && (
           <div className="bg-primary/10 border-b-2 p-4 flex items-center justify-between animate-in slide-in-from-top-4">
@@ -244,16 +243,16 @@ export function MarketplaceTab() {
                         title="Starting"
                         className="text-muted-foreground"
                       >
-                        R {a.startingPrice.toLocaleString()}
+                        {formatCurrency(a.startingPrice)}
                       </span>
                       <span
                         title="Reserve"
                         className="text-primary border-x px-2"
                       >
-                        R {a.reservePrice.toLocaleString()}
+                        {formatCurrency(a.reservePrice)}
                       </span>
                       <span title="Current" className="text-green-600">
-                        R {a.currentPrice.toLocaleString()}
+                        {formatCurrency(a.currentPrice)}
                       </span>
                     </div>
                   </TableCell>
@@ -327,6 +326,6 @@ export function MarketplaceTab() {
           </div>
         )}
       </Card>
-    </TabsContent>
+    </div>
   );
 }

@@ -610,7 +610,23 @@ export const adminUpdateAuction = mutation({
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
 
+    const oldStatus = auction.status;
+    const newStatus = args.updates.status;
+
     await ctx.db.patch(args.auctionId, args.updates);
+
+    if (newStatus && oldStatus !== newStatus) {
+      const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+        active: "active",
+        pending_review: "pending",
+      };
+
+      const oldKey = statusToCounterKey[oldStatus];
+      const newKey = statusToCounterKey[newStatus];
+
+      if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
+      if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
+    }
 
     await logAudit(ctx, {
       action: "UPDATE_AUCTION",

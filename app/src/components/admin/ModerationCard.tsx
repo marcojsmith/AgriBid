@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { normalizeAuctionImages, type AuctionImages } from "@/lib/auction-utils";
+import { formatCurrency } from "@/lib/currency";
 import { ConditionItem } from "./ConditionItem";
 import type { Doc } from "convex/_generated/dataModel";
 
@@ -76,7 +77,7 @@ export function ModerationCard({
                 Starting At
               </p>
               <p className="text-xl font-black text-primary">
-                R {auction.startingPrice.toLocaleString("en-ZA")}
+                {formatCurrency(auction.startingPrice)}
               </p>
             </div>
           </div>

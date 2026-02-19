@@ -367,37 +367,39 @@ export const initializeCounters = mutation({
 
     // Update or insert auction counters
     const auctionCounter = await ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "auctions")).unique();
+    const auctionPayload = {
+      total: totalAuctions,
+      active: activeAuctions,
+      pending: pendingAuctions,
+      verified: 0, // Auctions don't use verified
+      updatedAt: Date.now(),
+    };
+
     if (auctionCounter) {
-      await ctx.db.patch(auctionCounter._id, {
-        total: totalAuctions,
-        active: activeAuctions,
-        pending: pendingAuctions,
-        updatedAt: Date.now(),
-      });
+      await ctx.db.patch(auctionCounter._id, auctionPayload);
     } else {
       await ctx.db.insert("counters", {
         name: "auctions",
-        total: totalAuctions,
-        active: activeAuctions,
-        pending: pendingAuctions,
-        updatedAt: Date.now(),
+        ...auctionPayload,
       });
     }
 
     // Update or insert profile counters
     const profileCounter = await ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "profiles")).unique();
+    const profilePayload = {
+      total: totalUsers,
+      verified: verifiedSellers,
+      active: 0, // Profiles don't use active/pending in this context currently
+      pending: 0,
+      updatedAt: Date.now(),
+    };
+
     if (profileCounter) {
-      await ctx.db.patch(profileCounter._id, {
-        total: totalUsers,
-        verified: verifiedSellers,
-        updatedAt: Date.now(),
-      });
+      await ctx.db.patch(profileCounter._id, profilePayload);
     } else {
       await ctx.db.insert("counters", {
         name: "profiles",
-        total: totalUsers,
-        verified: verifiedSellers,
-        updatedAt: Date.now(),
+        ...profilePayload,
       });
     }
 

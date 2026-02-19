@@ -23,7 +23,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
  * Global loading fallback for lazy-loaded routes.
  */
 const PageLoader = () => (
-  <div className="flex h-[60vh] items-center justify-center bg-background" aria-live="polite">
+  <div className="flex h-[60vh] items-center justify-center bg-background">
     <LoadingIndicator />
   </div>
 );

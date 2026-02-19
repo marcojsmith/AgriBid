@@ -1,26 +1,23 @@
 // app/src/pages/admin/tabs/SettingsTab.tsx
-import { TabsContent } from "@/components/ui/tabs";
 import { Hammer, TrendingUp, ShieldCheck } from "lucide-react";
 import { SettingsCard } from "@/components/admin";
 import { useAdminDashboard } from "../context/useAdminDashboard";
 import { toast } from "sonner";
 
 /**
- * Render the admin Settings tab containing cards for Equipment Metadata, Platform Fees, and Security Logs.
+ * Renders the admin system settings tab with management controls for metadata, fees, and security logs.
  *
- * Each card displays a title, description, and icon; the first two cards show informational toasts when activated,
- * and the Security Logs card switches the active admin tab to "audit".
+ * Provides quick-action cards that:
+ * - Redirect to external GitHub issues for Equipment Metadata and Platform Fees (placeholder behavior).
+ * - Switch to the "Audit" tab for viewing security logs.
  *
- * @returns The tab panel JSX element containing three SettingsCard components wired to their respective actions.
+ * @returns The system settings tab's JSX element.
  */
 export function SettingsTab() {
   const { setActiveTab } = useAdminDashboard();
 
   return (
-    <TabsContent
-      value="settings"
-      className="space-y-6 animate-in fade-in slide-in-from-bottom-4"
-    >
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <SettingsCard
           title="Equipment Metadata"
@@ -49,6 +46,6 @@ export function SettingsTab() {
           action={() => setActiveTab("audit")}
         />
       </div>
-    </TabsContent>
+    </div>
   );
 }

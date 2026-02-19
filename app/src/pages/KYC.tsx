@@ -296,9 +296,19 @@ export default function KYC() {
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={() => {
-                if (docToDelete) executeDeleteDocument(docToDelete);
-                setShowDeleteConfirm(false);
+              onClick={async (e) => {
+                e.preventDefault();
+                if (docToDelete) {
+                  try {
+                    const success = await executeDeleteDocument(docToDelete);
+                    if (success) {
+                      setShowDeleteConfirm(false);
+                      setDocToDelete(null);
+                    }
+                  } catch (err) {
+                    console.error("Delete document failed:", err);
+                  }
+                }
               }}
             >
               Delete Permanently
