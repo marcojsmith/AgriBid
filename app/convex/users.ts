@@ -9,6 +9,7 @@ import {
 import { authComponent } from "./auth";
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII } from "./admin_utils";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * Helper to find a user by ID, checking both internal _id and shared userId.
@@ -193,13 +194,19 @@ export const getProfileForKYC = mutation({
 
     const user = await findUserById(ctx, userId);
 
-    const [decIdNumber, decFirstName, decLastName, decPhone, decEmail] =
+    const [decIdNumber, decFirstName, decLastName, decPhone, decEmail, kycDocUrls] =
       await Promise.all([
         decryptPII(profile.idNumber),
         decryptPII(profile.firstName),
         decryptPII(profile.lastName),
         decryptPII(profile.phoneNumber),
         decryptPII(profile.kycEmail),
+        Promise.all(
+          (profile.kycDocuments || []).map(async (id) => {
+            const url = await ctx.storage.getUrl(id as Id<"_storage">);
+            return url;
+          }),
+        ),
       ]);
 
     await logAudit(ctx, {
@@ -217,6 +224,7 @@ export const getProfileForKYC = mutation({
       phoneNumber: decPhone,
       kycEmail: decEmail,
       idNumber: decIdNumber,
+      kycDocuments: kycDocUrls.filter((url): url is string => url !== null),
     };
   },
 });

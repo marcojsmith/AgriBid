@@ -142,6 +142,7 @@ export default function AdminDashboard() {
   const promoteToAdmin = useMutation(api.users.promoteToAdmin);
   const createAnnouncement = useMutation(api.admin.createAnnouncement);
   const reviewKYC = useMutation(api.admin.reviewKYC);
+  const getProfileForKYC = useMutation(api.users.getProfileForKYC);
 
   // State
   const [activeTab, setActiveTab] = useState("moderation");
@@ -159,6 +160,7 @@ export default function AdminDashboard() {
   const [kycReviewUser, setKycReviewUser] = useState<KycReviewUser | null>(
     null,
   );
+  const [isFetchingKYC, setIsFetchingKYC] = useState(false);
   const [kycRejectionReason, setKycRejectionReason] = useState("");
   const [showFullId, setShowFullId] = useState(false);
   const [promoteTarget, setPromoteTarget] = useState<KycReviewUser | null>(
@@ -220,6 +222,24 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const handleReviewKYCClick = async (userId: string) => {
+    setIsFetchingKYC(true);
+    try {
+      const fullProfile = await getProfileForKYC({ userId });
+      if (fullProfile) {
+        setKycReviewUser(fullProfile as KycReviewUser);
+        setShowFullId(false);
+      } else {
+        toast.error("Could not fetch profile details");
+      }
+    } catch (err) {
+      console.error("KYC Fetch Error:", err);
+      toast.error("Failed to load KYC details");
+    } finally {
+      setIsFetchingKYC(false);
+    }
+  };
 
   const handleBulkStatusUpdate = async () => {
     if (selectedAuctions.length === 0 || !bulkStatusTarget) return;
@@ -854,12 +874,13 @@ export default function AdminDashboard() {
                         {p.kycStatus === "pending" && (
                           <Badge
                             className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase cursor-pointer"
-                            onClick={() => {
-                              setKycReviewUser(p);
-                              setShowFullId(false);
-                            }}
+                            onClick={() => handleReviewKYCClick(p.userId)}
                           >
-                            KYC Pending
+                            {isFetchingKYC && kycReviewUser?.userId === p.userId ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              "KYC Pending"
+                            )}
                           </Badge>
                         )}
                       </div>
@@ -876,11 +897,12 @@ export default function AdminDashboard() {
                             size="sm"
                             variant="default"
                             className="h-8 font-black uppercase text-[10px] tracking-wider bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20"
-                            onClick={() => {
-                              setKycReviewUser(p);
-                              setShowFullId(false);
-                            }}
+                            onClick={() => handleReviewKYCClick(p.userId)}
+                            disabled={isFetchingKYC}
                           >
+                            {isFetchingKYC && kycReviewUser?.userId === p.userId ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                            ) : null}
                             Review KYC
                           </Button>
                         )}
