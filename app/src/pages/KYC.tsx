@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -56,11 +56,21 @@ export default function KYC() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isFormTouched, setIsFormTouched] = useState(false);
+  const isMounted = useRef(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [docToDelete, setDocToDelete] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [existingDocuments, setExistingDocuments] = useState<string[]>([]);
+
+  // Track mount status
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -72,9 +82,9 @@ export default function KYC() {
     confirmEmail: "",
   });
 
-  // Populate form when entering edit mode
+  // Populate form when entering edit mode, but only if pristine
   useEffect(() => {
-    if (isEditMode && myKycDetails) {
+    if (isEditMode && myKycDetails && !isFormTouched) {
       setFormData({
         firstName: myKycDetails.firstName || "",
         lastName: myKycDetails.lastName || "",
@@ -85,7 +95,7 @@ export default function KYC() {
       });
       setExistingDocuments(myKycDetails.kycDocuments || []);
     }
-  }, [isEditMode, myKycDetails]);
+  }, [isEditMode, myKycDetails, isFormTouched]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -124,7 +134,12 @@ export default function KYC() {
   if (!profile)
     return <LoadingPage />;
 
-  const confirmDelete = async () => {
+  const handleDeleteDocument = (docId: string) => {
+    setDocToDelete(docId);
+    setShowDeleteConfirm(true);
+  };
+
+  const executeDeleteDocument = async () => {
     if (!docToDelete) return;
 
     const originalDocs = [...existingDocuments];
@@ -139,14 +154,18 @@ export default function KYC() {
       await deleteMyKYCDocument({
         storageId: targetId as Id<"_storage">,
       });
-      toast.success("Document deleted");
+      if (isMounted.current) {
+        toast.success("Document deleted");
+      }
     } catch (err) {
       // Rollback on failure
-      setExistingDocuments(originalDocs);
-      toast.error(
-        "Failed to delete document: " +
-          (err instanceof Error ? err.message : "Unknown error"),
-      );
+      if (isMounted.current) {
+        setExistingDocuments(originalDocs);
+        toast.error(
+          "Failed to delete document: " +
+            (err instanceof Error ? err.message : "Unknown error"),
+        );
+      }
     }
   };
 
@@ -270,6 +289,7 @@ export default function KYC() {
   const status = profile.profile?.kycStatus || "none";
 
   const updateField = (field: keyof typeof formData, value: string) => {
+    setIsFormTouched(true);
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -312,14 +332,14 @@ export default function KYC() {
                     Full Name
                   </Label>
                   <p className="font-bold">
-                    {myKycDetails.firstName} {myKycDetails.lastName}
+                    {myKycDetails?.firstName} {myKycDetails?.lastName}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     ID Number
                   </Label>
-                  <p className="font-bold">{myKycDetails.idNumber}</p>
+                  <p className="font-bold">{myKycDetails?.idNumber}</p>
                 </div>
               </div>
               <div className="space-y-4">
@@ -329,10 +349,10 @@ export default function KYC() {
                   </Label>
                   <div className="space-y-1">
                     <p className="font-bold flex items-center gap-2">
-                      <Mail className="h-3 w-3" /> {myKycDetails.kycEmail}
+                      <Mail className="h-3 w-3" /> {myKycDetails?.kycEmail}
                     </p>
                     <p className="font-bold flex items-center gap-2">
-                      <Phone className="h-3 w-3" /> {myKycDetails.phoneNumber}
+                      <Phone className="h-3 w-3" /> {myKycDetails?.phoneNumber}
                     </p>
                   </div>
                 </div>
@@ -341,7 +361,7 @@ export default function KYC() {
                     Verified Documents
                   </Label>
                   <div className="flex flex-wrap gap-2">
-                    {myKycDetails.kycDocuments.map((docId, idx) => (
+                    {(myKycDetails?.kycDocuments ?? []).map((docId, idx) => (
                       <Badge
                         key={docId}
                         variant="secondary"
@@ -571,10 +591,7 @@ export default function KYC() {
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                            onClick={() => {
-                              setDocToDelete(docId);
-                              setShowDeleteConfirm(true);
-                            }}
+                            onClick={() => handleDeleteDocument(docId)}
                           >
                             ×
                           </Button>
@@ -688,7 +705,7 @@ export default function KYC() {
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={confirmDelete}
+              onClick={executeDeleteDocument}
             >
               Delete Permanently
             </AlertDialogAction>

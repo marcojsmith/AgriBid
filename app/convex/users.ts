@@ -438,6 +438,10 @@ export const deleteMyKYCDocument = mutation({
 
     if (!profile) throw new Error("Profile not found");
 
+    if (profile.kycStatus === "pending") {
+      throw new Error("Cannot delete document while KYC is pending");
+    }
+
     const kycDocuments = profile.kycDocuments || [];
     if (!kycDocuments.includes(storageId)) {
       throw new Error("Document not found in your profile");
