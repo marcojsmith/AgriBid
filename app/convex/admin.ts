@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
-import { logAudit } from "./admin_utils";
+import { logAudit, updateCounter } from "./admin_utils";
 import { COMMISSION_RATE } from "./config";
 import { authComponent } from "./auth";
 
@@ -16,10 +16,7 @@ export const getRecentBids = query({
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
-    const bids = await ctx.db
-      .query("bids")
-      .order("desc")
-      .take(limit);
+    const bids = await ctx.db.query("bids").order("desc").take(limit);
 
     return await Promise.all(
       bids.map(async (bid) => {
@@ -57,7 +54,9 @@ export const voidBid = mutation({
       .order("desc")
       .first();
 
-    const newPrice = latestValidBid ? latestValidBid.amount : auction.startingPrice;
+    const newPrice = latestValidBid
+      ? latestValidBid.amount
+      : auction.startingPrice;
 
     await ctx.db.patch(bid.auctionId, { currentPrice: newPrice });
 
@@ -133,10 +132,17 @@ export const reviewKYC = mutation({
     if (!profile) throw new Error("Profile not found");
 
     if (args.decision === "approve") {
+      const wasVerified = profile.isVerified;
+
       await ctx.db.patch(profile._id, {
         kycStatus: "verified",
         isVerified: true,
       });
+
+      if (!wasVerified) {
+        await updateCounter(ctx, "profiles", "verified", 1);
+      }
+
       // Send Success Notification
       await ctx.db.insert("notifications", {
         recipientId: args.userId,
@@ -296,6 +302,142 @@ export const getAuditLogs = query({
       .withIndex("by_timestamp")
       .order("desc")
       .take(limit);
+  },
+});
+
+// --- Dashboard Stats ---
+
+/**
+ * Helper to count results of a query using pagination to avoid memory issues.
+ * @param query - A Convex query object (e.g., ctx.db.query("table"))
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function countQuery(query: { paginate: (opts: any) => Promise<any> }) {
+  let count = 0;
+  let cursor: string | null = null;
+  let isDone = false;
+
+  while (!isDone) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const page: any = await query.paginate({ numItems: 500, cursor });
+    count += page.page.length;
+    cursor = page.continueCursor;
+    isDone = page.isDone;
+  }
+  return count;
+}
+
+/**
+ * Recalculates all counters from scratch.
+ * Should only be run manually or during migration.
+ */
+export const initializeCounters = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const [
+      totalAuctions,
+      activeAuctions,
+      pendingAuctions,
+      totalUsers,
+      verifiedSellers,
+    ] = await Promise.all([
+      countQuery(ctx.db.query("auctions")),
+      countQuery(
+        ctx.db
+          .query("auctions")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_status", (q: any) => q.eq("status", "active")),
+      ),
+      countQuery(
+        ctx.db
+          .query("auctions")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_status", (q: any) => q.eq("status", "pending_review")),
+      ),
+      countQuery(ctx.db.query("profiles")),
+      countQuery(
+        ctx.db
+          .query("profiles")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true)),
+      ),
+    ]);
+
+    // Update or insert auction counters
+    const auctionCounter = await ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "auctions"))
+      .unique();
+    const auctionPayload = {
+      total: totalAuctions,
+      active: activeAuctions,
+      pending: pendingAuctions,
+      verified: 0, // Auctions don't use verified
+      updatedAt: Date.now(),
+    };
+
+    if (auctionCounter) {
+      await ctx.db.patch(auctionCounter._id, auctionPayload);
+    } else {
+      await ctx.db.insert("counters", {
+        name: "auctions",
+        ...auctionPayload,
+      });
+    }
+
+    // Update or insert profile counters
+    const profileCounter = await ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "profiles"))
+      .unique();
+    const profilePayload = {
+      total: totalUsers,
+      verified: verifiedSellers,
+      active: 0, // Profiles don't use active/pending in this context currently
+      pending: 0,
+      updatedAt: Date.now(),
+    };
+
+    if (profileCounter) {
+      await ctx.db.patch(profileCounter._id, profilePayload);
+    } else {
+      await ctx.db.insert("counters", {
+        name: "profiles",
+        ...profilePayload,
+      });
+    }
+
+    return { success: true };
+  },
+});
+
+export const getAdminStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const [auctionCounter, profileCounter] = await Promise.all([
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "auctions"))
+        .unique(),
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "profiles"))
+        .unique(),
+    ]);
+
+    return {
+      totalAuctions: auctionCounter?.total ?? 0,
+      activeAuctions: auctionCounter?.active ?? 0,
+      pendingReview: auctionCounter?.pending ?? 0,
+      totalUsers: profileCounter?.total ?? 0,
+      verifiedSellers: profileCounter?.verified ?? 0,
+    };
   },
 });
 

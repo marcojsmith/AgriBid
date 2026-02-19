@@ -16,3 +16,23 @@ export type UserWithRole = User & {
 export type SessionWithRole = Session & {
   user: UserWithRole;
 };
+
+export interface UserProfileMetadata {
+  _id: string;
+  userId: string;
+  role: "admin" | "seller" | "buyer" | string;
+  isVerified: boolean;
+  kycStatus?: "none" | "pending" | "verified" | "rejected";
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UserDataWithProfile {
+  _id?: string | null;
+  userId?: string | null;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  profile?: UserProfileMetadata | null;
+}
+

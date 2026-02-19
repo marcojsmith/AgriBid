@@ -6,8 +6,11 @@ interface LoadingIndicatorProps {
 }
 
 /**
- * Standard loading indicator component.
- * Conforms to the marketplace page loading style (spinner).
+ * Renders a marketplace-style spinner used to indicate a loading state.
+ *
+ * @param className - Optional additional CSS classes to apply to the spinner container
+ * @param size - Visual size of the spinner; one of "sm", "md", or "lg"
+ * @returns A focusable spinner element with role="status", an accessible label, and a hidden "Loading..." announcement for screen readers
  */
 export function LoadingIndicator({
   className,
@@ -28,7 +31,9 @@ export function LoadingIndicator({
       )}
       role="status"
       aria-label="Loading"
-    />
+    >
+      <span className="sr-only">Loading...</span>
+    </div>
   );
 }
 

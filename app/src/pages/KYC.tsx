@@ -1,25 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+// app/src/pages/KYC.tsx
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   ShieldCheck,
-  Upload,
   AlertCircle,
-  Clock,
-  FileText,
-  User,
-  Phone,
-  Mail,
-  Fingerprint,
-  Check,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import type { Id } from "convex/_generated/dataModel";
 import {
   AlertDialog,
@@ -32,10 +21,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoadingIndicator, LoadingPage } from "@/components/ui/LoadingIndicator";
-
-const isValidEmail = (email: string) => {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-};
+import { useKYCForm } from "./kyc/hooks/useKYCForm";
+import { useKYCFileUpload } from "./kyc/hooks/useKYCFileUpload";
+import { VerificationStatusSection } from "./kyc/sections/VerificationStatusSection";
+import { PersonalInfoSection } from "./kyc/sections/PersonalInfoSection";
+import { DocumentUploadSection } from "./kyc/sections/DocumentUploadSection";
+import { ListItem } from "@/components/kyc/ListItem";
 
 /**
  * Renders the Seller Verification (KYC) page and orchestrates the KYC user flow.
@@ -46,135 +37,58 @@ const isValidEmail = (email: string) => {
  * @returns The JSX element for the KYC page
  */
 export default function KYC() {
-  const navigate = useNavigate();
   const profile = useQuery(api.users.getMyProfile);
   const myKycDetails = useQuery(api.users.getMyKYCDetails);
-  const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
-  const deleteUpload = useMutation(api.auctions.deleteUpload);
-  const deleteMyKYCDocument = useMutation(api.users.deleteMyKYCDocument);
   const submitKYC = useMutation(api.users.submitKYC);
 
-  const [isUploading, setIsUploading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isFormInitialized, setIsFormInitialized] = useState(false);
-  const isMounted = useRef(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [docToDelete, setDocToDelete] = useState<string | null>(null);
-  const [files, setFiles] = useState<File[]>([]);
-  const [existingDocuments, setExistingDocuments] = useState<string[]>([]);
 
-  // Track mount status
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+  const {
+    formData,
+    updateField,
+    validate,
+    setIsFormInitialized,
+  } = useKYCForm(isEditMode && myKycDetails ? {
+    firstName: myKycDetails.firstName,
+    lastName: myKycDetails.lastName,
+    phoneNumber: myKycDetails.phoneNumber,
+    idNumber: myKycDetails.idNumber,
+    email: myKycDetails.kycEmail,
+  } : undefined);
+
+  const {
+    isUploading,
+    files,
+    existingDocuments,
+    setExistingDocuments,
+    handleFileChange,
+    executeDeleteDocument,
+    uploadFiles,
+    cleanupUploads,
+  } = useKYCFileUpload();
 
   // Reset initialization when leaving edit mode
   useEffect(() => {
     if (!isEditMode) {
       setIsFormInitialized(false);
     }
-  }, [isEditMode]);
+  }, [isEditMode, setIsFormInitialized]);
 
-  // Form State
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    phoneNumber: "",
-    idNumber: "",
-    email: "",
-    confirmEmail: "",
-  });
-
-  // Populate form when entering edit mode, but only once
+  // Populate existing documents when myKycDetails loads
   useEffect(() => {
-    if (isEditMode && myKycDetails && !isFormInitialized) {
-      setFormData({
-        firstName: myKycDetails.firstName || "",
-        lastName: myKycDetails.lastName || "",
-        phoneNumber: myKycDetails.phoneNumber || "",
-        idNumber: myKycDetails.idNumber || "",
-        email: myKycDetails.kycEmail || "",
-        confirmEmail: myKycDetails.kycEmail || "",
-      });
-      setExistingDocuments(myKycDetails.kycDocuments || []);
-      setIsFormInitialized(true);
+    if (myKycDetails?.kycDocuments) {
+      setExistingDocuments(myKycDetails.kycDocuments);
     }
-  }, [isEditMode, myKycDetails, isFormInitialized]);
+  }, [myKycDetails, setExistingDocuments]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    const ALLOWED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
-
-    const validFiles: File[] = [];
-    let hasError = false;
-
-    for (const file of selectedFiles) {
-      if (file.size > MAX_SIZE) {
-        toast.error(`${file.name} exceeds 10MB limit`);
-        hasError = true;
-        continue;
-      }
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error(
-          `${file.name} is not a supported format (PNG, JPG, PDF only)`,
-        );
-        hasError = true;
-        continue;
-      }
-      validFiles.push(file);
-    }
-
-    if (validFiles.length > 0) {
-      setFiles(validFiles);
-    } else if (hasError) {
-      setFiles([]);
-    }
-
-    // Reset input so the same file can be selected again if needed
-    e.target.value = "";
-  };
-
-  if (!profile)
-    return <LoadingPage />;
+  if (!profile) return <LoadingPage />;
 
   const handleDeleteDocument = (docId: string) => {
     setDocToDelete(docId);
     setShowDeleteConfirm(true);
-  };
-
-  const executeDeleteDocument = async () => {
-    if (!docToDelete) return;
-
-    const originalDocs = [...existingDocuments];
-    const targetId = docToDelete;
-
-    // Optimistic update
-    setExistingDocuments((prev) => prev.filter((id) => id !== targetId));
-    setShowDeleteConfirm(false);
-    setDocToDelete(null);
-
-    try {
-      await deleteMyKYCDocument({
-        storageId: targetId as Id<"_storage">,
-      });
-      if (isMounted.current) {
-        toast.success("Document deleted");
-      }
-    } catch (err) {
-      // Rollback on failure
-      if (isMounted.current) {
-        setExistingDocuments(originalDocs);
-        toast.error(
-          "Failed to delete document: " +
-            (err instanceof Error ? err.message : "Unknown error"),
-        );
-      }
-    }
   };
 
   const handleUpload = async (skipConfirm = false) => {
@@ -183,24 +97,9 @@ export default function KYC() {
       return;
     }
 
-    if (!isValidEmail(formData.email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    if (formData.email !== formData.confirmEmail) {
-      toast.error("Emails do not match");
-      return;
-    }
-
-    // Basic validation
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.phoneNumber ||
-      !formData.idNumber
-    ) {
-      toast.error("Please fill in all personal details");
+    const validation = validate();
+    if (!validation.valid) {
+      toast.error(validation.message);
       return;
     }
 
@@ -209,96 +108,38 @@ export default function KYC() {
       return;
     }
 
-    setIsUploading(true);
-    let storageIds: string[] = [];
+    // Pass autoClear=true to clear file selection on success
+    const storageIds = await uploadFiles(files, true);
+    if (!storageIds && files.length > 0) return; // Error handled in hook
+
     try {
-      // Phase 1: Parallel Uploads with allSettled to track partial successes
-      const uploadResults = await Promise.allSettled(
-        files.map(async (file) => {
-          const postUrl = await generateUploadUrl();
-          const result = await fetch(postUrl, {
-            method: "POST",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-
-          if (!result.ok) {
-            throw new Error(`Failed to upload ${file.name}`);
-          }
-
-          const { storageId } = await result.json();
-          return storageId as string;
-        }),
+      // Collect all non-empty document IDs as strings
+      const allDocuments = [
+        ...(existingDocuments || []),
+        ...(storageIds || [])
+      ].filter((id): id is string => typeof id === "string" && id.length > 0);
+      
+      await submitKYC({
+        // Branded type validation is enforced on the server; casting here to match API signature
+        documents: allDocuments as Id<"_storage">[],
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phoneNumber: formData.phoneNumber,
+        idNumber: formData.idNumber,
+        email: formData.email,
+      });
+      toast.success("KYC Documents submitted for review");
+      setIsEditMode(false);
+    } catch (submitError) {
+      console.error("KYC Submission Phase Failed:", submitError);
+      toast.error(
+        `Submission failed: ${submitError instanceof Error ? submitError.message : "Internal error"}`,
       );
-
-      const failures = uploadResults.filter(
-        (r): r is PromiseRejectedResult => r.status === "rejected",
-      );
-      storageIds = uploadResults
-        .filter(
-          (r): r is PromiseFulfilledResult<string> => r.status === "fulfilled",
-        )
-        .map((r) => r.value);
-
-      if (failures.length > 0) {
-        console.error("KYC Upload partial/total failure:", failures);
-        toast.error(
-          `Failed to upload ${failures.length} file(s). Please try again.`,
-        );
-
-        // Cleanup successes since we are halting
-        if (storageIds.length > 0) {
-          await Promise.allSettled(
-            storageIds.map((id) =>
-              deleteUpload({ storageId: id as Id<"_storage"> }),
-            ),
-          );
-        }
-        setIsUploading(false);
-        return;
-      }
-
-      // Phase 2: KYC Submission
-      try {
-        const allDocuments = [...existingDocuments, ...storageIds];
-        await submitKYC({
-          documents: allDocuments as Id<"_storage">[],
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phoneNumber: formData.phoneNumber,
-          idNumber: formData.idNumber,
-          email: formData.email,
-        });
-        toast.success("KYC Documents submitted for review");
-        setIsEditMode(false);
-      } catch (submitError) {
-        console.error("KYC Submission Phase Failed:", submitError);
-        toast.error(
-          `Submission failed: ${submitError instanceof Error ? submitError.message : "Internal error"}`,
-        );
-
-        // Phase 3: Cleanup Orphaned Uploads
-        if (storageIds.length > 0) {
-          await Promise.allSettled(
-            storageIds.map((id) =>
-              deleteUpload({ storageId: id as Id<"_storage"> }),
-            ),
-          );
-        }
-      }
-    } catch (generalError) {
-      console.error("KYC Process Error:", generalError);
-      toast.error("An unexpected error occurred during verification");
-    } finally {
-      setIsUploading(false);
+      if (storageIds) await cleanupUploads(storageIds);
     }
   };
 
   const status = profile.profile?.kycStatus || "none";
-
-  const updateField = (field: keyof typeof formData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
@@ -312,117 +153,13 @@ export default function KYC() {
         </p>
       </div>
 
-      {status === "verified" && !isEditMode ? (
-        !myKycDetails ? (
-          <div className="flex justify-center py-20">
-            <LoadingIndicator />
-          </div>
-        ) : (
-          <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
-            <div className="text-center space-y-4">
-              <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
-                <ShieldCheck className="h-8 w-8 text-white" />
-              </div>
-              <div className="space-y-1">
-                <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
-                <p className="text-muted-foreground font-medium">
-                  Your account is fully verified. Thank you for maintaining
-                  marketplace integrity.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-green-500/10 pt-8">
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    Full Name
-                  </Label>
-                  <p className="font-bold">
-                    {myKycDetails?.firstName} {myKycDetails?.lastName}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    ID Number
-                  </Label>
-                  <p className="font-bold">{myKycDetails?.idNumber}</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    Contact Details
-                  </Label>
-                  <div className="space-y-1">
-                    <p className="font-bold flex items-center gap-2">
-                      <Mail className="h-3 w-3" /> {myKycDetails?.kycEmail}
-                    </p>
-                    <p className="font-bold flex items-center gap-2">
-                      <Phone className="h-3 w-3" /> {myKycDetails?.phoneNumber}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    Verified Documents
-                  </Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(myKycDetails?.kycDocuments ?? []).map((docId, idx) => (
-                      <Badge
-                        key={docId}
-                        variant="secondary"
-                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
-                      >
-                        <FileText className="h-3 w-3" />
-                        Document {idx + 1}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
-              <Button
-                onClick={() => navigate("/profile/" + profile.userId)}
-                variant="outline"
-                className="border-2 font-bold uppercase h-12 px-8"
-              >
-                View Public Profile
-              </Button>
-              <Button
-                onClick={() => setIsEditMode(true)}
-                variant="secondary"
-                className="border-2 font-bold uppercase h-12 px-8"
-              >
-                Edit Details
-              </Button>
-            </div>
-          </Card>
-        )
-      ) : status === "pending" ? (
-        <Card className="p-12 border-2 border-orange-500/20 bg-orange-500/5 text-center space-y-4">
-          <div className="h-16 w-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto animate-pulse shadow-lg shadow-orange-500/20">
-            <Clock className="h-8 w-8 text-white" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-2xl font-black uppercase">
-              Review in Progress
-            </h2>
-            <p className="text-muted-foreground font-medium">
-              Our compliance team is reviewing your documents. You'll receive a
-              notification once verified.
-            </p>
-          </div>
-          <Button
-            onClick={() => navigate("/")}
-            variant="outline"
-            className="border-2 font-bold uppercase"
-          >
-            Return to Marketplace
-          </Button>
-        </Card>
+      {(status === "verified" || status === "pending") && !isEditMode ? (
+        <VerificationStatusSection
+          status={status}
+          myKycDetails={myKycDetails}
+          userId={profile.userId || ""}
+          onEdit={() => setIsEditMode(true)}
+        />
       ) : (
         <div className="space-y-8">
           {isEditMode && (
@@ -448,179 +185,20 @@ export default function KYC() {
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Left: Personal Info Form */}
             <div className="md:col-span-2 space-y-6">
-              <Card className="p-6 border-2 space-y-6">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <User className="h-5 w-5 text-primary" />
-                  <h2 className="font-black uppercase text-sm tracking-widest">
-                    Personal Information
-                  </h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      First Names
-                    </Label>
-                    <Input
-                      placeholder="Enter all names as per ID"
-                      className="h-12 border-2 rounded-xl"
-                      value={formData.firstName}
-                      onChange={(e) => updateField("firstName", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      Last Name
-                    </Label>
-                    <Input
-                      placeholder="Surname"
-                      className="h-12 border-2 rounded-xl"
-                      value={formData.lastName}
-                      onChange={(e) => updateField("lastName", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      ID / Passport Number
-                    </Label>
-                    <div className="relative">
-                      <Fingerprint className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="National ID Number"
-                        className="h-12 pl-10 border-2 rounded-xl"
-                        value={formData.idNumber}
-                        onChange={(e) =>
-                          updateField("idNumber", e.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      Cell Phone Number
-                    </Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="+27..."
-                        className="h-12 pl-10 border-2 rounded-xl"
-                        value={formData.phoneNumber}
-                        onChange={(e) =>
-                          updateField("phoneNumber", e.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      Email Address
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="verify@example.com"
-                        className="h-12 pl-10 border-2 rounded-xl"
-                        value={formData.email}
-                        onChange={(e) => updateField("email", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      Confirm Email
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Repeat email address"
-                        className="h-12 pl-10 border-2 rounded-xl"
-                        value={formData.confirmEmail}
-                        onChange={(e) =>
-                          updateField("confirmEmail", e.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-6 border-2 space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <Upload className="h-5 w-5 text-primary" />
-                  <h2 className="font-black uppercase text-sm tracking-widest">
-                    Supporting Documents
-                  </h2>
-                </div>
-
-                <div className="p-8 bg-muted/30 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 text-center group hover:bg-muted/50 transition-colors">
-                  <Label className="cursor-pointer space-y-4 w-full">
-                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                      <Upload className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-black uppercase text-sm">
-                        Drop ID images here
-                      </p>
-                      <p className="text-xs text-muted-foreground font-medium">
-                        PNG, JPG or PDF up to 10MB
-                      </p>
-                    </div>
-                    <Input
-                      type="file"
-                      className="hidden"
-                      onChange={handleFileChange}
-                      multiple
-                      accept=".jpg,.jpeg,.png,.pdf"
-                    />
-                  </Label>
-                </div>
-
-                {(files.length > 0 || existingDocuments.length > 0) && (
-                  <div className="flex flex-wrap gap-2">
-                    {existingDocuments.map((docId, idx) => (
-                      <Badge
-                        key={docId}
-                        variant="secondary"
-                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/20"
-                      >
-                        <ShieldCheck className="h-3 w-3 text-green-600" />
-                        Existing Doc {idx + 1}
-                        {isEditMode && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                            onClick={() => handleDeleteDocument(docId)}
-                          >
-                            ×
-                          </Button>
-                        )}
-                      </Badge>
-                    ))}
-                    {files.map((f, idx) => (
-                      <Badge
-                        key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
-                        variant="secondary"
-                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2"
-                      >
-                        <FileText className="h-3 w-3" />
-                        {f.name}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </Card>
+              <PersonalInfoSection
+                formData={formData}
+                updateField={updateField}
+              />
+              <DocumentUploadSection
+                files={files}
+                existingDocuments={existingDocuments}
+                isEditMode={isEditMode}
+                onFileChange={handleFileChange}
+                onDeleteDocument={handleDeleteDocument}
+              />
             </div>
 
-            {/* Right: Info/Rules */}
             <div className="space-y-6">
               <Card className="p-6 border-2 bg-primary/5 space-y-4">
                 <div className="flex items-center gap-2">
@@ -718,7 +296,20 @@ export default function KYC() {
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={executeDeleteDocument}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (docToDelete) {
+                  try {
+                    const success = await executeDeleteDocument(docToDelete);
+                    if (success) {
+                      setShowDeleteConfirm(false);
+                      setDocToDelete(null);
+                    }
+                  } catch (err) {
+                    console.error("Delete document failed:", err);
+                  }
+                }
+              }}
             >
               Delete Permanently
             </AlertDialogAction>
@@ -726,20 +317,5 @@ export default function KYC() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-/**
- * Renders a list item with a check icon and the given label styled for compliance rules.
- *
- * @param text - The label to display next to the check icon
- * @returns A JSX list item element containing a check icon and the provided text
- */
-function ListItem({ text }: { text: string }) {
-  return (
-    <li className="flex items-start gap-2 text-[11px] font-bold uppercase text-muted-foreground leading-tight">
-      <Check className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-      {text}
-    </li>
   );
 }

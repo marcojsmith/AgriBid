@@ -1,4 +1,4 @@
-// app/src/components/BidHistory.tsx
+// app/src/components/bidding/BidHistory.tsx
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -9,7 +9,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { History, User } from "lucide-react";
-import { LoadingIndicator } from "./ui/LoadingIndicator";
+import { LoadingIndicator } from "../ui/LoadingIndicator";
 
 interface BidHistoryProps {
   auctionId: Id<"auctions">;

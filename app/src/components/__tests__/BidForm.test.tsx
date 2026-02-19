@@ -1,6 +1,6 @@
 // app/src/components/__tests__/BidForm.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BidForm } from "../BidForm";
+import { BidForm } from "../bidding/BidForm";
 import { describe, it, expect, vi } from "vitest";
 import type { Doc, Id } from "convex/_generated/dataModel";
 

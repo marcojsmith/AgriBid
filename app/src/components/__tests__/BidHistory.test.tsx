@@ -1,6 +1,6 @@
 // app/src/components/__tests__/BidHistory.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BidHistory } from "../BidHistory";
+import { BidHistory } from "../bidding/BidHistory";
 import { describe, it, expect, vi } from "vitest";
 import type { Id } from "convex/_generated/dataModel";
 

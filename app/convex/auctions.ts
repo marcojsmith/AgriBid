@@ -4,7 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
 import { getCallerRole, findUserById } from "./users";
 import type { Id } from "./_generated/dataModel";
-import { logAudit } from "./admin_utils";
+import { logAudit, updateCounter } from "./admin_utils";
 import { authComponent } from "./auth";
 
 interface RawImages {
@@ -345,6 +345,9 @@ export const createAuction = mutation({
       endTime: Date.now() + durationDays * 24 * 60 * 60 * 1000,
     });
 
+    await updateCounter(ctx, "auctions", "total", 1);
+    await updateCounter(ctx, "auctions", "pending", 1);
+
     return auctionId;
   },
 });
@@ -379,6 +382,9 @@ export const approveAuction = mutation({
       endTime,
     });
 
+    await updateCounter(ctx, "auctions", "pending", -1);
+    await updateCounter(ctx, "auctions", "active", 1);
+
     return { success: true };
   },
 });
@@ -400,6 +406,8 @@ export const rejectAuction = mutation({
     await ctx.db.patch(args.auctionId, {
       status: "rejected",
     });
+
+    await updateCounter(ctx, "auctions", "pending", -1);
 
     return { success: true };
   },
@@ -520,6 +528,8 @@ export const settleExpiredAuctions = internalMutation({
         winnerId,
       });
 
+      await updateCounter(ctx, "auctions", "active", -1);
+
       console.log(
         `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`,
       );
@@ -600,7 +610,23 @@ export const adminUpdateAuction = mutation({
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
 
+    const oldStatus = auction.status;
+    const newStatus = args.updates.status;
+
     await ctx.db.patch(args.auctionId, args.updates);
+
+    if (newStatus && oldStatus !== newStatus) {
+      const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+        active: "active",
+        pending_review: "pending",
+      };
+
+      const oldKey = statusToCounterKey[oldStatus];
+      const newKey = statusToCounterKey[newStatus];
+
+      if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
+      if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
+    }
 
     await logAudit(ctx, {
       action: "UPDATE_AUCTION",
@@ -654,8 +680,24 @@ export const bulkUpdateAuctions = mutation({
     for (const id of args.auctionIds) {
       const auction = await ctx.db.get(id);
       if (auction) {
+        const oldStatus = auction.status;
+        const newStatus = args.updates.status;
+
         await ctx.db.patch(id, args.updates);
         updated.push(id);
+
+        if (newStatus && oldStatus !== newStatus) {
+          const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+            active: "active",
+            pending_review: "pending",
+          };
+
+          const oldKey = statusToCounterKey[oldStatus];
+          const newKey = statusToCounterKey[newStatus];
+
+          if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
+          if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
+        }
       } else {
         skipped.push(id);
       }

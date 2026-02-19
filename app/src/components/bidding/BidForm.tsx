@@ -1,4 +1,4 @@
-// app/src/components/BidForm.tsx
+// app/src/components/bidding/BidForm.tsx
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

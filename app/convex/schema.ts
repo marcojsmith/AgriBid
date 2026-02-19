@@ -115,7 +115,8 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_kycStatus", ["kycStatus"])
-    .index("by_role", ["role"]),
+    .index("by_role", ["role"])
+    .index("by_isVerified", ["isVerified"]),
 
   // New Admin Features
   auditLogs: defineTable({
@@ -202,4 +203,13 @@ export default defineSchema({
   })
     .index("by_user_notification", ["userId", "notificationId"])
     .index("by_notification", ["notificationId"]),
+
+  counters: defineTable({
+    name: v.string(), // e.g., "auctions", "profiles"
+    total: v.number(),
+    active: v.optional(v.number()),
+    pending: v.optional(v.number()),
+    verified: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_name", ["name"]),
 });
