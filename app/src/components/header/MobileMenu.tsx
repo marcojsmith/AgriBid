@@ -235,8 +235,8 @@ export function MobileMenu({
                   try {
                     await onSignOut();
                     onClose();
-                  } catch {
-                    // Error handled in parent
+                  } catch (e) {
+                    console.error("Sign out failed in MobileMenu:", e);
                   }
                 }}
               >

@@ -9,6 +9,11 @@ interface UseFileUploadOptions {
   maxSize?: number; // In bytes
   allowedTypes?: string[];
   maxFiles?: number;
+  /**
+   * Optional custom cleanup handler for storage IDs.
+   * If not provided, falls back to the internal deleteUpload mutation (admin only).
+   */
+  cleanupHandler?: (storageIds: string[]) => Promise<void>;
 }
 
 /**
@@ -29,6 +34,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     maxSize = 10 * 1024 * 1024, // Default 10MB
     allowedTypes = ["image/png", "image/jpeg", "application/pdf"],
     maxFiles = 10,
+    cleanupHandler,
   } = options;
 
   const [isUploading, setIsUploading] = useState(false);
@@ -73,6 +79,23 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  /**
+   * Internal helper to handle cleanup using either the injected handler or the default mutation.
+   */
+  const performCleanup = async (storageIds: string[]) => {
+    if (storageIds.length === 0) return;
+    
+    if (cleanupHandler) {
+      await cleanupHandler(storageIds);
+    } else {
+      await Promise.allSettled(
+        storageIds.map((id) =>
+          deleteUpload({ storageId: id as Id<"_storage"> }),
+        ),
+      );
+    }
+  };
+
   const uploadFiles = async (filesToUpload: File[] = files, autoClear = false) => {
     if (filesToUpload.length === 0) return [];
     
@@ -113,13 +136,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
         );
 
         // Cleanup successes since we are halting
-        if (storageIds.length > 0) {
-          await Promise.allSettled(
-            storageIds.map((id) =>
-              deleteUpload({ storageId: id as Id<"_storage"> }),
-            ),
-          );
-        }
+        await performCleanup(storageIds);
         return null;
       }
 
@@ -138,13 +155,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
   };
 
   const cleanupUploads = async (storageIds: string[]) => {
-    if (storageIds.length > 0) {
-      await Promise.allSettled(
-        storageIds.map((id) =>
-          deleteUpload({ storageId: id as Id<"_storage"> }),
-        ),
-      );
-    }
+    await performCleanup(storageIds);
   };
 
   return {

@@ -69,6 +69,7 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
   // KYC Review State
   const [kycReviewUser, setKycReviewUser] = useState<KycReviewUser | null>(null);
   const [isFetchingKYC, setIsFetchingKYC] = useState(false);
+  const [isKycProcessing, setIsKycProcessing] = useState(false);
   const [kycRejectionReason, setKycRejectionReason] = useState("");
   const [showFullId, setShowFullId] = useState(false);
 
@@ -180,6 +181,7 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
       return;
     }
 
+    setIsKycProcessing(true);
     try {
       await reviewKYCMutation({
         userId: kycReviewUser.userId,
@@ -193,6 +195,8 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
     } catch (err) {
       console.error("KYC Review Error:", err);
       toast.error(`Review failed: ${err instanceof Error ? err.message : "Internal error"}`);
+    } finally {
+      setIsKycProcessing(false);
     }
   };
 
@@ -232,6 +236,7 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
     kycReviewUser,
     setKycReviewUser,
     isFetchingKYC,
+    isKycProcessing,
     kycRejectionReason,
     setKycRejectionReason,
     showFullId,

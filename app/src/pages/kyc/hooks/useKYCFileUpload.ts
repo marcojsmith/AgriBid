@@ -41,6 +41,11 @@ export function useKYCFileUpload() {
     maxSize: 10 * 1024 * 1024,
     allowedTypes: ["image/png", "image/jpeg", "application/pdf"],
     maxFiles: 5,
+    cleanupHandler: async (storageIds) => {
+      await Promise.allSettled(
+        storageIds.map((id) => deleteMyKYCDocument({ storageId: id as Id<"_storage"> }))
+      );
+    }
   });
 
   const executeDeleteDocument = async (docId: string) => {

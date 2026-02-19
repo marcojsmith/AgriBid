@@ -49,6 +49,7 @@ export interface AdminDashboardContextType {
   kycReviewUser: KycReviewUser | null;
   setKycReviewUser: (user: KycReviewUser | null) => void;
   isFetchingKYC: boolean;
+  isKycProcessing: boolean;
   kycRejectionReason: string;
   setKycRejectionReason: (reason: string) => void;
   showFullId: boolean;
