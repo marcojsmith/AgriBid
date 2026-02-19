@@ -1,21 +1,11 @@
-# PR Review Findings - Modularization Refactor (Round 5)
+# PR Review Findings - Modularization Refactor (Round 6)
 
-## Convex Backend
-1. [ ] **admin.ts**: Replace `.collect().then(res => res.length)` in `initializeCounters` with a safe counting approach (pagination loop or count aggregator).
-2. [ ] **admin_utils.ts**: Fix the initialization branch in `updateCounter` to set `total: delta` whenever `field === "total"`, regardless of the counter name.
-3. [ ] **admin_utils.ts**: In `updateCounter`, detect and log a warning if a value would go below zero before clamping to 0.
-4. [ ] **auctions.ts**: Update bulk-update counter logic to handle all relevant statuses (sold, unsold, rejected, draft) using a status-to-counter-key map.
+Fix the following issues. The issues can be from different files or can overlap on same lines in one file.
 
-## UI & Accessibility
-5. [ ] **Header.tsx / MobileMenu.tsx**: Memoize `onClose` with `useCallback` in `Header.tsx` to prevent `previousFocus` from being clobbered in `MobileMenu`.
-6. [ ] **UsersTab.tsx**: Change `isFetchingKYC` to a per-user state to allow concurrent KYC reviews.
+- Verify each finding against the current code and only fix it if needed.
 
-## Logic & Type Safety
-7. [ ] **useFileUpload.ts**: Ensure consistent non-throwing behavior in `performCleanup` by wrapping `cleanupHandler` in try/catch and logging errors.
-8. [ ] **useKYCForm.ts**: Add an inline comment documenting the 2-digit year ambiguity and its 100-year limitation for KYC purposes.
+In @app/convex/admin.ts around lines 310 - 323, The countQuery function currently uses a non-existent query.after(...) pattern; rewrite countQuery to use Convex's cursor-based pagination by calling query.paginate({ numItems: PAGE_SIZE, cursor }) and looping while paginate returns a continueCursor (assign it to cursor for the next call) accumulating results.length into count; update references to lastItem/_id are unnecessary with paginate. Also remove the any type on the query parameter and replace it with an appropriate Convex query type (or add a short comment describing the expected query shape) so TypeScript can validate usage.
 
-## Round 4 (Verified/Completed)
-- [x] Backend: Aggregate counter system implemented.
-- [x] A11y: MobileMenu focus/trap hardened.
-- [x] Logic: Robust SA ID validation.
-- [x] UX: Per-user verifying state in UsersTab.
+- Verify each finding against the current code and only fix it if needed.
+
+In @app/src/pages/kyc/hooks/useKYCForm.ts around lines 84 - 90, The comment above the two-line inference (variables currentYearShort, yearPart, fullYear) is inaccurate: update the wording to state that only people born in the cutoff year (e.g., yearPart === currentYearShort, such as 1926 → interpreted as 2026) are mapped to the future 20xx, while those born before that cutoff (yearPart < currentYearShort) are mapped to their corresponding 20xx years (e.g., 1925 → 2025, 1924 → 2024), which are past dates and may incorrectly pass validation; keep the note about the 100-year ambiguity and that the cutoff can be changed if needed.

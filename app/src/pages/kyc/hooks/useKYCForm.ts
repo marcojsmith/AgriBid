@@ -95,9 +95,11 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
 
     // Full year inference (assume 1900-2099)
     // NOTE: This logic has a 100-year ambiguity (e.g., year '26' could be 1926 or 2026).
-    // For practical KYC purposes, we use the current year as a cutoff. 
-    // Centenarians born before 1926 would currently be interpreted as born in 2026 (future date, will fail).
-    // This limitation is intentional; if a different cutoff is needed, update this logic.
+    // People born in the cutoff year (e.g., yearPart === currentYearShort, such as 1926) 
+    // are mapped to 2026 (future date, fails validation). 
+    // Those born before the cutoff (yearPart < currentYearShort, e.g., 1925) are mapped 
+    // to 20xx (e.g., 2025), which are past dates and may incorrectly pass.
+    // This limitation is intentional for this prototype; the cutoff can be changed if needed.
     const currentYearShort = new Date().getFullYear() % 100;
     const fullYear = yearPart <= currentYearShort ? 2000 + yearPart : 1900 + yearPart;
     

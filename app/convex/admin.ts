@@ -306,18 +306,20 @@ export const getAuditLogs = query({
 
 /**
  * Helper to count results of a query using pagination to avoid memory issues.
+ * @param query - A Convex query object (e.g., ctx.db.query("table"))
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function countQuery(query: any) {
+async function countQuery(query: { paginate: (opts: any) => Promise<any> }) {
   let count = 0;
-  const PAGE_SIZE = 500;
-  let results = await query.take(PAGE_SIZE);
-  count += results.length;
+  let cursor: string | null = null;
+  let isDone = false;
 
-  while (results.length === PAGE_SIZE) {
-    const lastItem = results[results.length - 1];
-    results = await query.after(lastItem._id).take(PAGE_SIZE);
-    count += results.length;
+  while (!isDone) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const page: any = await query.paginate({ numItems: 500, cursor });
+    count += page.page.length;
+    cursor = page.continueCursor;
+    isDone = page.isDone;
   }
   return count;
 }
