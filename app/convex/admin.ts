@@ -16,10 +16,7 @@ export const getRecentBids = query({
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
-    const bids = await ctx.db
-      .query("bids")
-      .order("desc")
-      .take(limit);
+    const bids = await ctx.db.query("bids").order("desc").take(limit);
 
     return await Promise.all(
       bids.map(async (bid) => {
@@ -57,7 +54,9 @@ export const voidBid = mutation({
       .order("desc")
       .first();
 
-    const newPrice = latestValidBid ? latestValidBid.amount : auction.startingPrice;
+    const newPrice = latestValidBid
+      ? latestValidBid.amount
+      : auction.startingPrice;
 
     await ctx.db.patch(bid.auctionId, { currentPrice: newPrice });
 
@@ -133,12 +132,16 @@ export const reviewKYC = mutation({
     if (!profile) throw new Error("Profile not found");
 
     if (args.decision === "approve") {
+      const wasVerified = profile.isVerified;
+
       await ctx.db.patch(profile._id, {
         kycStatus: "verified",
         isVerified: true,
       });
 
-      await updateCounter(ctx, "profiles", "verified", 1);
+      if (!wasVerified) {
+        await updateCounter(ctx, "profiles", "verified", 1);
+      }
 
       // Send Success Notification
       await ctx.db.insert("notifications", {
@@ -352,9 +355,7 @@ export const initializeCounters = mutation({
         ctx.db
           .query("auctions")
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_status", (q: any) =>
-            q.eq("status", "pending_review"),
-          ),
+          .withIndex("by_status", (q: any) => q.eq("status", "pending_review")),
       ),
       countQuery(ctx.db.query("profiles")),
       countQuery(
@@ -366,7 +367,10 @@ export const initializeCounters = mutation({
     ]);
 
     // Update or insert auction counters
-    const auctionCounter = await ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "auctions")).unique();
+    const auctionCounter = await ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "auctions"))
+      .unique();
     const auctionPayload = {
       total: totalAuctions,
       active: activeAuctions,
@@ -385,7 +389,10 @@ export const initializeCounters = mutation({
     }
 
     // Update or insert profile counters
-    const profileCounter = await ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "profiles")).unique();
+    const profileCounter = await ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "profiles"))
+      .unique();
     const profilePayload = {
       total: totalUsers,
       verified: verifiedSellers,
@@ -404,7 +411,7 @@ export const initializeCounters = mutation({
     }
 
     return { success: true };
-  }
+  },
 });
 
 export const getAdminStats = query({
@@ -414,8 +421,14 @@ export const getAdminStats = query({
     if (role !== "admin") throw new Error("Unauthorized");
 
     const [auctionCounter, profileCounter] = await Promise.all([
-      ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "auctions")).unique(),
-      ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "profiles")).unique(),
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "auctions"))
+        .unique(),
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "profiles"))
+        .unique(),
     ]);
 
     return {
