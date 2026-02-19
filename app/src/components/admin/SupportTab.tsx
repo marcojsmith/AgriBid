@@ -15,6 +15,16 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Check, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 /**
  * Renders an admin support tab that lists support tickets and allows resolving open tickets.
@@ -30,12 +40,28 @@ export function SupportTab() {
   const tickets = useQuery(api.admin.getTickets, {});
   const resolveTicket = useMutation(api.admin.resolveTicket);
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
+  const [selectedTicketId, setSelectedTicketId] = useState<Id<"supportTickets"> | null>(null);
+  const [resolutionText, setResolutionText] = useState("");
 
-  const handleResolve = async (ticketId: Id<"supportTickets">) => {
-    setResolvingIds((prev) => new Set(prev).add(ticketId));
+  const handleResolve = (ticketId: Id<"supportTickets">) => {
+    setSelectedTicketId(ticketId);
+    setResolutionText("");
+  };
+
+  const confirmResolve = async () => {
+    if (!selectedTicketId) return;
+    
+    const resolution = resolutionText.trim();
+    if (!resolution) {
+      toast.error("Please provide a resolution message");
+      return;
+    }
+
+    setResolvingIds((prev) => new Set(prev).add(selectedTicketId));
     try {
-      await resolveTicket({ ticketId, resolution: "Admin marked as resolved" });
+      await resolveTicket({ ticketId: selectedTicketId, resolution });
       toast.success("Ticket resolved");
+      setSelectedTicketId(null);
     } catch (err) {
       console.error("Failed to resolve ticket:", err);
       toast.error(
@@ -44,7 +70,7 @@ export function SupportTab() {
     } finally {
       setResolvingIds((prev) => {
         const next = new Set(prev);
-        next.delete(ticketId);
+        next.delete(selectedTicketId);
         return next;
       });
     }
@@ -126,6 +152,43 @@ export function SupportTab() {
           </TableBody>
         </Table>
       </Card>
+
+      <Dialog open={!!selectedTicketId} onOpenChange={(open) => !open && setSelectedTicketId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resolve Support Ticket</DialogTitle>
+            <DialogDescription>
+              Please provide a brief explanation of how this ticket was resolved. This will be recorded in the audit logs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="resolution">Resolution Details</Label>
+              <Textarea
+                id="resolution"
+                placeholder="Describe the resolution..."
+                value={resolutionText}
+                onChange={(e) => setResolutionText(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedTicketId(null)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmResolve} 
+              disabled={!resolutionText.trim() || (selectedTicketId ? resolvingIds.has(selectedTicketId) : false)}
+            >
+              {selectedTicketId && resolvingIds.has(selectedTicketId) && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
+              Confirm Resolution
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
