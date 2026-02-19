@@ -420,3 +420,39 @@ export const getMyKYCDetails = query({
     }
   },
 });
+
+/**
+ * User: Delete one of their own KYC documents.
+ */
+export const deleteMyKYCDocument = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }) => {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const userId = authUser.userId ?? authUser._id;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (!profile) throw new Error("Profile not found");
+
+    const kycDocuments = profile.kycDocuments || [];
+    if (!kycDocuments.includes(storageId)) {
+      throw new Error("Document not found in your profile");
+    }
+
+    // Remove from profile
+    const updatedDocs = kycDocuments.filter((id) => id !== storageId);
+    await ctx.db.patch(profile._id, {
+      kycDocuments: updatedDocs,
+      updatedAt: Date.now(),
+    });
+
+    // Delete from storage
+    await ctx.storage.delete(storageId);
+
+    return { success: true };
+  },
+});

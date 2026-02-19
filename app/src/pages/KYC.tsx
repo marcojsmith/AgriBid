@@ -43,6 +43,7 @@ export default function KYC() {
   const myKycDetails = useQuery(api.users.getMyKYCDetails);
   const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
   const deleteUpload = useMutation(api.auctions.deleteUpload);
+  const deleteMyKYCDocument = useMutation(api.users.deleteMyKYCDocument);
   const submitKYC = useMutation(api.users.submitKYC);
 
   const [isUploading, setIsUploading] = useState(false);
@@ -533,11 +534,36 @@ export default function KYC() {
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                            onClick={() =>
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  "Are you sure you want to permanently delete this document?",
+                                )
+                              )
+                                return;
+
+                              const originalDocs = [...existingDocuments];
+                              // Optimistic update
                               setExistingDocuments((prev) =>
                                 prev.filter((id) => id !== docId),
-                              )
-                            }
+                              );
+
+                              try {
+                                await deleteMyKYCDocument({
+                                  storageId: docId as Id<"_storage">,
+                                });
+                                toast.success("Document deleted");
+                              } catch (err) {
+                                // Rollback on failure
+                                setExistingDocuments(originalDocs);
+                                toast.error(
+                                  "Failed to delete document: " +
+                                    (err instanceof Error
+                                      ? err.message
+                                      : "Unknown error"),
+                                );
+                              }
+                            }}
                           >
                             ×
                           </Button>
@@ -579,7 +605,7 @@ export default function KYC() {
               <Button
                 className="w-full h-16 rounded-2xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/20"
                 onClick={handleUpload}
-                disabled={isUploading || files.length === 0}
+                disabled={isUploading || (files.length === 0 && existingDocuments.length === 0)}
               >
                 {isUploading ? (
                   <Loader2 className="h-5 w-5 animate-spin mr-2" />
