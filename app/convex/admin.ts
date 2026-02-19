@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
-import { logAudit } from "./admin_utils";
+import { logAudit, updateCounter } from "./admin_utils";
 import { COMMISSION_RATE } from "./config";
 import { authComponent } from "./auth";
 
@@ -137,6 +137,9 @@ export const reviewKYC = mutation({
         kycStatus: "verified",
         isVerified: true,
       });
+
+      await updateCounter(ctx, "profiles", "verified", 1);
+
       // Send Success Notification
       await ctx.db.insert("notifications", {
         recipientId: args.userId,
@@ -301,7 +304,11 @@ export const getAuditLogs = query({
 
 // --- Dashboard Stats ---
 
-export const getAdminStats = query({
+/**
+ * Recalculates all counters from scratch. 
+ * Should only be run manually or during migration.
+ */
+export const initializeCounters = mutation({
   args: {},
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
@@ -310,26 +317,74 @@ export const getAdminStats = query({
     const [
       totalAuctions,
       activeAuctions,
-      pendingReview,
+      pendingAuctions,
       totalUsers,
       verifiedSellers,
     ] = await Promise.all([
-      // Use existing index if available, or just take first few if only count is needed 
-      // (Convex doesn't have a direct count() yet, but withIndex limits scan range)
-      // Using withIndex for total counts where possible
-      ctx.db.query("auctions").withIndex("by_status").collect().then(res => res.length),
+      ctx.db.query("auctions").collect().then(res => res.length),
       ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "active")).collect().then(res => res.length),
       ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "pending_review")).collect().then(res => res.length),
-      ctx.db.query("profiles").withIndex("by_role").collect().then(res => res.length),
+      ctx.db.query("profiles").collect().then(res => res.length),
       ctx.db.query("profiles").withIndex("by_isVerified", q => q.eq("isVerified", true)).collect().then(res => res.length),
     ]);
 
+    // Update or insert auction counters
+    const auctionCounter = await ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "auctions")).unique();
+    if (auctionCounter) {
+      await ctx.db.patch(auctionCounter._id, {
+        total: totalAuctions,
+        active: activeAuctions,
+        pending: pendingAuctions,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("counters", {
+        name: "auctions",
+        total: totalAuctions,
+        active: activeAuctions,
+        pending: pendingAuctions,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Update or insert profile counters
+    const profileCounter = await ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "profiles")).unique();
+    if (profileCounter) {
+      await ctx.db.patch(profileCounter._id, {
+        total: totalUsers,
+        verified: verifiedSellers,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("counters", {
+        name: "profiles",
+        total: totalUsers,
+        verified: verifiedSellers,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { success: true };
+  }
+});
+
+export const getAdminStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const [auctionCounter, profileCounter] = await Promise.all([
+      ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "auctions")).unique(),
+      ctx.db.query("counters").withIndex("by_name", q => q.eq("name", "profiles")).unique(),
+    ]);
+
     return {
-      totalAuctions,
-      activeAuctions,
-      pendingReview,
-      totalUsers,
-      verifiedSellers,
+      totalAuctions: auctionCounter?.total ?? 0,
+      activeAuctions: auctionCounter?.active ?? 0,
+      pendingReview: auctionCounter?.pending ?? 0,
+      totalUsers: profileCounter?.total ?? 0,
+      verifiedSellers: profileCounter?.verified ?? 0,
     };
   },
 });

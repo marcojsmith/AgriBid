@@ -28,7 +28,7 @@ export function SettingsTab() {
           icon={<Hammer />}
           action={() => {
             // Tracked in GH #55
-            window.open("https://github.com/marcojsmith/AgriBid/issues/55", "_blank");
+            window.open("https://github.com/marcojsmith/AgriBid/issues/55", "_blank", "noopener,noreferrer");
             toast.info("Opening Equipment Metadata issue #55");
           }}
         />
@@ -38,7 +38,7 @@ export function SettingsTab() {
           icon={<TrendingUp />}
           action={() => {
             // Tracked in GH #56
-            window.open("https://github.com/marcojsmith/AgriBid/issues/56", "_blank");
+            window.open("https://github.com/marcojsmith/AgriBid/issues/56", "_blank", "noopener,noreferrer");
             toast.info("Opening Platform Fees issue #56");
           }}
         />

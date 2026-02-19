@@ -24,6 +24,7 @@ import { Clock, MoreVertical, Eye, Hammer, AlertCircle, Search } from "lucide-re
 import { useAdminDashboard } from "../context/useAdminDashboard";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useMemo } from "react";
 
 /**
  * Renders the Marketplace admin "Auctions" tab UI for viewing, selecting, and performing actions on auctions.
@@ -84,11 +85,16 @@ export function MarketplaceTab() {
     }
   };
 
-  const selectedSet = new Set(selectedAuctions);
-  const visibleSelectedCount = filteredAuctions.filter(a => selectedSet.has(a._id)).length;
-  
-  const isAllSelected = filteredAuctions.length > 0 && visibleSelectedCount === filteredAuctions.length;
-  const isPartiallySelected = visibleSelectedCount > 0 && visibleSelectedCount < filteredAuctions.length;
+  const { isAllSelected, isPartiallySelected } = useMemo(() => {
+    const selectedSet = new Set(selectedAuctions);
+    const visibleSelectedCount = filteredAuctions.filter(a => selectedSet.has(a._id)).length;
+    
+    return {
+      isAllSelected: filteredAuctions.length > 0 && visibleSelectedCount === filteredAuctions.length,
+      isPartiallySelected: visibleSelectedCount > 0 && visibleSelectedCount < filteredAuctions.length,
+      visibleSelectedCount
+    };
+  }, [selectedAuctions, filteredAuctions]);
 
   return (
     <TabsContent
@@ -139,9 +145,16 @@ export function MarketplaceTab() {
                   checked={isPartiallySelected ? "indeterminate" : isAllSelected}
                   onCheckedChange={(checked) => {
                     if (checked === true) {
-                      setSelectedAuctions(filteredAuctions.map((a) => a._id));
+                      // Only add visible auctions that aren't already selected
+                      const visibleIds = filteredAuctions.map((a) => a._id);
+                      setSelectedAuctions((prev) => {
+                        const newSelection = new Set([...prev, ...visibleIds]);
+                        return Array.from(newSelection);
+                      });
                     } else {
-                      setSelectedAuctions([]);
+                      // Remove only the visible auctions from selection
+                      const visibleIds = new Set(filteredAuctions.map((a) => a._id));
+                      setSelectedAuctions((prev) => prev.filter(id => !visibleIds.has(id)));
                     }
                   }}
                   aria-label="Select all auctions"

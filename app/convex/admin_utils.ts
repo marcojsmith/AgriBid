@@ -233,3 +233,41 @@ export async function decryptPII(
     );
   }
 }
+
+/**
+ * Transactionally increments or decrements a specific field in a counter document.
+ * 
+ * @param ctx - The mutation context
+ * @param name - The name of the counter (e.g., "auctions", "profiles")
+ * @param field - The field to update (e.g., "total", "active", "pending", "verified")
+ * @param delta - The amount to change by (e.g., 1 or -1)
+ */
+export async function updateCounter(
+  ctx: MutationCtx,
+  name: string,
+  field: "total" | "active" | "pending" | "verified",
+  delta: number,
+) {
+  const counter = await ctx.db
+    .query("counters")
+    .withIndex("by_name", (q) => q.eq("name", name))
+    .unique();
+
+  if (counter) {
+    const currentValue = (counter[field] as number | undefined) ?? 0;
+    await ctx.db.patch(counter._id, {
+      [field]: Math.max(0, currentValue + delta),
+      updatedAt: Date.now(),
+    });
+  } else {
+    // Initialize if it doesn't exist
+    await ctx.db.insert("counters", {
+      name,
+      total: name === "auctions" || name === "profiles" ? (field === "total" ? delta : 0) : 0,
+      active: field === "active" ? delta : 0,
+      pending: field === "pending" ? delta : 0,
+      verified: field === "verified" ? delta : 0,
+      updatedAt: Date.now(),
+    });
+  }
+}

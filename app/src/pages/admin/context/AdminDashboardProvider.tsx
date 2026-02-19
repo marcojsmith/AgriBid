@@ -69,6 +69,7 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
   // KYC Review State
   const [kycReviewUser, setKycReviewUser] = useState<KycReviewUser | null>(null);
   const [isFetchingKYC, setIsFetchingKYC] = useState(false);
+  const [fetchingKycUserId, setFetchingKycUserId] = useState<string | null>(null);
   const [isKycProcessing, setIsKycProcessing] = useState(false);
   const [kycRejectionReason, setKycRejectionReason] = useState("");
   const [showFullId, setShowFullId] = useState(false);
@@ -118,6 +119,7 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
   // Actions
   const handleReviewKYCClick = async (userId: string) => {
     setIsFetchingKYC(true);
+    setFetchingKycUserId(userId);
     try {
       const fullProfile = await getProfileForKYCMutation({ userId });
       if (fullProfile && typeof fullProfile === "object" && "userId" in fullProfile) {
@@ -131,6 +133,7 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
       toast.error("Failed to load KYC details");
     } finally {
       setIsFetchingKYC(false);
+      setFetchingKycUserId(null);
     }
   };
 
@@ -236,6 +239,7 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
     kycReviewUser,
     setKycReviewUser,
     isFetchingKYC,
+    fetchingKycUserId,
     isKycProcessing,
     kycRejectionReason,
     setKycRejectionReason,

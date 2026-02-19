@@ -4,7 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
 import { getCallerRole, findUserById } from "./users";
 import type { Id } from "./_generated/dataModel";
-import { logAudit } from "./admin_utils";
+import { logAudit, updateCounter } from "./admin_utils";
 import { authComponent } from "./auth";
 
 interface RawImages {
@@ -345,6 +345,9 @@ export const createAuction = mutation({
       endTime: Date.now() + durationDays * 24 * 60 * 60 * 1000,
     });
 
+    await updateCounter(ctx, "auctions", "total", 1);
+    await updateCounter(ctx, "auctions", "pending", 1);
+
     return auctionId;
   },
 });
@@ -379,6 +382,9 @@ export const approveAuction = mutation({
       endTime,
     });
 
+    await updateCounter(ctx, "auctions", "pending", -1);
+    await updateCounter(ctx, "auctions", "active", 1);
+
     return { success: true };
   },
 });
@@ -400,6 +406,8 @@ export const rejectAuction = mutation({
     await ctx.db.patch(args.auctionId, {
       status: "rejected",
     });
+
+    await updateCounter(ctx, "auctions", "pending", -1);
 
     return { success: true };
   },
@@ -519,6 +527,8 @@ export const settleExpiredAuctions = internalMutation({
         status: finalStatus,
         winnerId,
       });
+
+      await updateCounter(ctx, "auctions", "active", -1);
 
       console.log(
         `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`,
@@ -654,8 +664,20 @@ export const bulkUpdateAuctions = mutation({
     for (const id of args.auctionIds) {
       const auction = await ctx.db.get(id);
       if (auction) {
+        const oldStatus = auction.status;
+        const newStatus = args.updates.status;
+
         await ctx.db.patch(id, args.updates);
         updated.push(id);
+
+        if (newStatus && oldStatus !== newStatus) {
+          // Adjust counters
+          if (oldStatus === "active") await updateCounter(ctx, "auctions", "active", -1);
+          if (oldStatus === "pending_review") await updateCounter(ctx, "auctions", "pending", -1);
+          
+          if (newStatus === "active") await updateCounter(ctx, "auctions", "active", 1);
+          if (newStatus === "pending_review") await updateCounter(ctx, "auctions", "pending", 1);
+        }
       } else {
         skipped.push(id);
       }

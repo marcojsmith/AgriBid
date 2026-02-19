@@ -1,4 +1,5 @@
 // app/src/pages/admin/tabs/UsersTab.tsx
+import { useState } from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { ShieldCheck, AlertCircle, ArrowRight, Users } from "lucide-react";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { useAdminDashboard } from "../context/useAdminDashboard";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 /**
  * Render the Users administration tab with a table of user profiles and controls for KYC review, verification, promotion, and pagination.
@@ -27,13 +29,34 @@ export function UsersTab() {
   const {
     filteredUsers,
     isFetchingKYC,
-    kycReviewUser,
+    fetchingKycUserId,
     handleReviewKYCClick,
     verifyUser,
     setPromoteTarget,
     profilesStatus,
     loadMoreProfiles,
   } = useAdminDashboard();
+
+  const [verifyingUserIds, setVerifyingUserIds] = useState<Set<string>>(new Set());
+
+  const handleManualVerify = async (userId: string) => {
+    if (verifyingUserIds.has(userId)) return;
+
+    setVerifyingUserIds((prev) => new Set(prev).add(userId));
+    try {
+      await verifyUser(userId);
+      toast.success("User verified");
+    } catch (err) {
+      console.error(`Failed to verify user ${userId}:`, err);
+      toast.error(`Verification failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setVerifyingUserIds((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    }
+  };
 
   return (
     <TabsContent
@@ -114,7 +137,7 @@ export function UsersTab() {
                         <Badge
                           className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase"
                         >
-                          {isFetchingKYC && kycReviewUser?.userId === p.userId ? (
+                          {isFetchingKYC && fetchingKycUserId === p.userId ? (
                             <LoadingIndicator size="sm" />
                           ) : (
                             "KYC Pending"
@@ -138,7 +161,7 @@ export function UsersTab() {
                           onClick={() => handleReviewKYCClick(p.userId)}
                           disabled={isFetchingKYC}
                         >
-                          {isFetchingKYC && kycReviewUser?.userId === p.userId ? (
+                          {isFetchingKYC && fetchingKycUserId === p.userId ? (
                             <LoadingIndicator size="sm" className="mr-2" />
                           ) : null}
                           Review KYC
@@ -150,16 +173,12 @@ export function UsersTab() {
                             size="sm"
                             variant="outline"
                             className="h-8 border-2 font-black uppercase text-[10px] tracking-wider"
-                            onClick={async () => {
-                              try {
-                                await verifyUser(p.userId);
-                                toast.success("User verified");
-                              } catch (err) {
-                                console.error(`Failed to verify user ${p.userId}:`, err);
-                                toast.error(`Verification failed: ${err instanceof Error ? err.message : "Unknown error"}`);
-                              }
-                            }}
+                            onClick={() => handleManualVerify(p.userId)}
+                            disabled={verifyingUserIds.has(p.userId)}
                           >
+                            {verifyingUserIds.has(p.userId) ? (
+                                <LoadingIndicator size="sm" className="mr-2" />
+                            ) : null}
                             Verify
                           </Button>
                           <span className="text-[8px] text-muted-foreground uppercase font-black mt-1 opacity-50">
@@ -182,8 +201,11 @@ export function UsersTab() {
                         size="icon" 
                         className="h-8 w-8"
                         aria-label={`View details for ${p.name || p.email || 'user'}`}
+                        asChild
                       >
-                        <ArrowRight className="h-4 w-4" />
+                        <Link to={`/profile/${p.userId}`}>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
                       </Button>
                     </div>
                   </TableCell>

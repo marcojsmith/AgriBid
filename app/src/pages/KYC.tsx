@@ -113,18 +113,15 @@ export default function KYC() {
     if (!storageIds && files.length > 0) return; // Error handled in hook
 
     try {
-      // Validate and sanitize document IDs to ensure branded types
-      const sanitizedExisting = (existingDocuments || []).filter((id): id is Id<"_storage"> => 
-        typeof id === "string" && id.length > 0
-      );
-      const sanitizedNew = (storageIds || []).filter((id): id is Id<"_storage"> => 
-        typeof id === "string" && id.length > 0
-      );
-      
-      const allDocuments = [...sanitizedExisting, ...sanitizedNew];
+      // Collect all non-empty document IDs as strings
+      const allDocuments = [
+        ...(existingDocuments || []),
+        ...(storageIds || [])
+      ].filter((id): id is string => typeof id === "string" && id.length > 0);
       
       await submitKYC({
-        documents: allDocuments,
+        // Branded type validation is enforced on the server; casting here to match API signature
+        documents: allDocuments as Id<"_storage">[],
         firstName: formData.firstName,
         lastName: formData.lastName,
         phoneNumber: formData.phoneNumber,

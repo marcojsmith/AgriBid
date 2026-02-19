@@ -1,5 +1,6 @@
 // app/src/components/header/UserDropdown.tsx
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import {
   User,
   LogOut,
@@ -233,6 +234,7 @@ export function UserDropdown({
           onClick={() => {
             onSignOut().catch((err) => {
               console.error("Sign out failed:", err);
+              toast.error("Sign out failed. Please try again.");
             });
           }}
           className="rounded-xl font-black uppercase text-[10px] tracking-widest cursor-pointer focus:bg-destructive/10 focus:text-destructive text-destructive h-10 gap-2"

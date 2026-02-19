@@ -88,11 +88,17 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     if (cleanupHandler) {
       await cleanupHandler(storageIds);
     } else {
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         storageIds.map((id) =>
           deleteUpload({ storageId: id as Id<"_storage"> }),
         ),
       );
+      
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(`Failed to delete orphaned upload ${storageIds[index]}:`, result.reason);
+        }
+      });
     }
   };
 

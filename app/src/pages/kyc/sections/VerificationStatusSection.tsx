@@ -51,7 +51,7 @@ export function VerificationStatusSection({
       );
     }
 
-    const hasDocs = (myKycDetails.kycDocuments?.length || 0) > 0;
+    const hasDocs = !!myKycDetails.kycDocuments?.length;
 
     return (
       <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
@@ -75,7 +75,9 @@ export function VerificationStatusSection({
                 Full Name
               </Label>
               <p className="font-bold">
-                {myKycDetails.firstName || "—"} {myKycDetails.lastName || ""}
+                {[myKycDetails.firstName, myKycDetails.lastName]
+                  .filter(Boolean)
+                  .join(" ") || "—"}
               </p>
             </div>
             <div className="space-y-1">

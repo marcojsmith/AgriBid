@@ -55,10 +55,19 @@ export function MobileMenu({
 }: MobileMenuProps) {
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
 
   // Focus trap and Escape key handling
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      if (previousFocus.current) {
+        previousFocus.current.focus();
+        previousFocus.current = null;
+      }
+      return;
+    }
+
+    previousFocus.current = document.activeElement as HTMLElement;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -70,6 +79,9 @@ export function MobileMenu({
         const focusableElements = menuRef.current.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
+        
+        if (focusableElements.length === 0) return;
+
         const firstElement = focusableElements[0] as HTMLElement;
         const lastElement = focusableElements[
           focusableElements.length - 1

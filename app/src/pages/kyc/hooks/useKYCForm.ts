@@ -78,9 +78,51 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
   };
 
   const isValidIdNumber = (id: string) => {
-    // Basic validation for SA ID (13 digits)
+    // Robust validation for SA ID (13 digits, date check, Luhn checksum)
     const cleanId = id.replace(/\D/g, "");
-    return cleanId.length === 13;
+    if (cleanId.length !== 13) return false;
+
+    // Reject obvious dummies (all zeros)
+    if (/^0+$/.test(cleanId)) return false;
+
+    // 1. Date Validation (YYMMDD)
+    const yearPart = parseInt(cleanId.substring(0, 2), 10);
+    const monthPart = parseInt(cleanId.substring(2, 4), 10);
+    const dayPart = parseInt(cleanId.substring(4, 6), 10);
+
+    // Month check
+    if (monthPart < 1 || monthPart > 12) return false;
+
+    // Full year (assume 1900-2099)
+    const currentYearShort = new Date().getFullYear() % 100;
+    const fullYear = yearPart <= currentYearShort ? 2000 + yearPart : 1900 + yearPart;
+    
+    const birthDate = new Date(fullYear, monthPart - 1, dayPart);
+    
+    // Check if date is valid (e.g., handles Feb 29 on non-leap years)
+    if (
+      birthDate.getFullYear() !== fullYear ||
+      birthDate.getMonth() !== monthPart - 1 ||
+      birthDate.getDate() !== dayPart
+    ) {
+      return false;
+    }
+
+    // Reject future dates
+    if (birthDate > new Date()) return false;
+
+    // 2. Luhn Checksum
+    let sum = 0;
+    for (let i = 0; i < 13; i++) {
+      let digit = parseInt(cleanId.charAt(i), 10);
+      if (i % 2 !== 0) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      sum += digit;
+    }
+    
+    return sum % 10 === 0;
   };
 
   const validate = () => {
@@ -97,7 +139,7 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
     }
 
     if (!isValidIdNumber(formData.idNumber)) {
-      return { valid: false, message: "Please enter a valid 13-digit ID number" };
+      return { valid: false, message: "Please enter a valid 13-digit South African ID number" };
     }
 
     if (

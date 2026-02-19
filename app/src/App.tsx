@@ -25,7 +25,6 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const PageLoader = () => (
   <div className="flex h-[60vh] items-center justify-center bg-background" aria-live="polite">
     <LoadingIndicator />
-    <span className="sr-only">Loading page...</span>
   </div>
 );
 

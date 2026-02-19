@@ -42,9 +42,14 @@ export function useKYCFileUpload() {
     allowedTypes: ["image/png", "image/jpeg", "application/pdf"],
     maxFiles: 5,
     cleanupHandler: async (storageIds) => {
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         storageIds.map((id) => deleteMyKYCDocument({ storageId: id as Id<"_storage"> }))
       );
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(`Failed to delete KYC storage ${storageIds[index]}:`, result.reason);
+        }
+      });
     }
   });
 

@@ -8,7 +8,7 @@ import {
 } from "./_generated/server";
 import { authComponent } from "./auth";
 import { components } from "./_generated/api";
-import { logAudit, encryptPII, decryptPII } from "./admin_utils";
+import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
 import type { Id } from "./_generated/dataModel";
 
 /**
@@ -58,6 +58,7 @@ export const syncUser = mutation({
           createdAt: now,
           updatedAt: now,
         });
+        await updateCounter(ctx, "profiles", "total", 1);
       }
 
       return { success: true };
@@ -263,6 +264,8 @@ export const verifyUser = mutation({
       isVerified: true,
       updatedAt: now,
     });
+
+    await updateCounter(ctx, "profiles", "verified", 1);
 
     await logAudit(ctx, {
       action: "VERIFY_USER",
