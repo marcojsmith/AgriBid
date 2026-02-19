@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
-  Loader2,
   ShieldCheck,
   Upload,
   AlertCircle,
@@ -22,30 +21,63 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Id } from "convex/_generated/dataModel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { LoadingIndicator, LoadingPage } from "@/components/ui/LoadingIndicator";
 
 const isValidEmail = (email: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
 /**
- * Render the Seller Verification (KYC) page with status-aware UI and document submission.
+ * Renders the Seller Verification (KYC) page and orchestrates the KYC user flow.
  *
- * Renders a KYC workflow that shows verified/pending/rejected states and, when applicable,
- * displays a personal-information form, document upload area, compliance guidance, and a
- * submit action. Manages local form state, validates required fields and email consistency,
- * uploads selected documents to pre-signed URLs, and submits KYC data for review.
+ * Displays UI for verified, pending, rejected, and unverified states; provides a form
+ * for personal information, a document upload area, and controls to submit or edit KYC details.
  *
- * @returns The page's JSX element for the KYC flow
+ * @returns The JSX element for the KYC page
  */
 export default function KYC() {
   const navigate = useNavigate();
   const profile = useQuery(api.users.getMyProfile);
+  const myKycDetails = useQuery(api.users.getMyKYCDetails);
   const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
   const deleteUpload = useMutation(api.auctions.deleteUpload);
+  const deleteMyKYCDocument = useMutation(api.users.deleteMyKYCDocument);
   const submitKYC = useMutation(api.users.submitKYC);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isFormInitialized, setIsFormInitialized] = useState(false);
+  const isMounted = useRef(true);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [existingDocuments, setExistingDocuments] = useState<string[]>([]);
+
+  // Track mount status
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Reset initialization when leaving edit mode
+  useEffect(() => {
+    if (!isEditMode) {
+      setIsFormInitialized(false);
+    }
+  }, [isEditMode]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -56,6 +88,22 @@ export default function KYC() {
     email: "",
     confirmEmail: "",
   });
+
+  // Populate form when entering edit mode, but only once
+  useEffect(() => {
+    if (isEditMode && myKycDetails && !isFormInitialized) {
+      setFormData({
+        firstName: myKycDetails.firstName || "",
+        lastName: myKycDetails.lastName || "",
+        phoneNumber: myKycDetails.phoneNumber || "",
+        idNumber: myKycDetails.idNumber || "",
+        email: myKycDetails.kycEmail || "",
+        confirmEmail: myKycDetails.kycEmail || "",
+      });
+      setExistingDocuments(myKycDetails.kycDocuments || []);
+      setIsFormInitialized(true);
+    }
+  }, [isEditMode, myKycDetails, isFormInitialized]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -92,14 +140,45 @@ export default function KYC() {
   };
 
   if (!profile)
-    return (
-      <div className="flex justify-center p-20">
-        <Loader2 className="animate-spin" />
-      </div>
-    );
+    return <LoadingPage />;
 
-  const handleUpload = async () => {
-    if (files.length === 0) {
+  const handleDeleteDocument = (docId: string) => {
+    setDocToDelete(docId);
+    setShowDeleteConfirm(true);
+  };
+
+  const executeDeleteDocument = async () => {
+    if (!docToDelete) return;
+
+    const originalDocs = [...existingDocuments];
+    const targetId = docToDelete;
+
+    // Optimistic update
+    setExistingDocuments((prev) => prev.filter((id) => id !== targetId));
+    setShowDeleteConfirm(false);
+    setDocToDelete(null);
+
+    try {
+      await deleteMyKYCDocument({
+        storageId: targetId as Id<"_storage">,
+      });
+      if (isMounted.current) {
+        toast.success("Document deleted");
+      }
+    } catch (err) {
+      // Rollback on failure
+      if (isMounted.current) {
+        setExistingDocuments(originalDocs);
+        toast.error(
+          "Failed to delete document: " +
+            (err instanceof Error ? err.message : "Unknown error"),
+        );
+      }
+    }
+  };
+
+  const handleUpload = async (skipConfirm = false) => {
+    if (files.length === 0 && existingDocuments.length === 0) {
       toast.error("Please select at least one document");
       return;
     }
@@ -122,6 +201,11 @@ export default function KYC() {
       !formData.idNumber
     ) {
       toast.error("Please fill in all personal details");
+      return;
+    }
+
+    if (isEditMode && !skipConfirm) {
+      setShowConfirmModal(true);
       return;
     }
 
@@ -176,8 +260,9 @@ export default function KYC() {
 
       // Phase 2: KYC Submission
       try {
+        const allDocuments = [...existingDocuments, ...storageIds];
         await submitKYC({
-          documents: storageIds as Id<"_storage">[],
+          documents: allDocuments as Id<"_storage">[],
           firstName: formData.firstName,
           lastName: formData.lastName,
           phoneNumber: formData.phoneNumber,
@@ -185,6 +270,7 @@ export default function KYC() {
           email: formData.email,
         });
         toast.success("KYC Documents submitted for review");
+        setIsEditMode(false);
       } catch (submitError) {
         console.error("KYC Submission Phase Failed:", submitError);
         toast.error(
@@ -226,26 +312,95 @@ export default function KYC() {
         </p>
       </div>
 
-      {status === "verified" ? (
-        <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 text-center space-y-4">
-          <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
-            <ShieldCheck className="h-8 w-8 text-white" />
+      {status === "verified" && !isEditMode ? (
+        !myKycDetails ? (
+          <div className="flex justify-center py-20">
+            <LoadingIndicator />
           </div>
-          <div className="space-y-1">
-            <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
-            <p className="text-muted-foreground font-medium">
-              Your account is fully verified. Thank you for maintaining
-              marketplace integrity.
-            </p>
-          </div>
-          <Button
-            onClick={() => navigate("/profile/" + profile.userId)}
-            variant="outline"
-            className="border-2 font-bold uppercase"
-          >
-            View Public Profile
-          </Button>
-        </Card>
+        ) : (
+          <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
+            <div className="text-center space-y-4">
+              <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
+                <ShieldCheck className="h-8 w-8 text-white" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
+                <p className="text-muted-foreground font-medium">
+                  Your account is fully verified. Thank you for maintaining
+                  marketplace integrity.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-green-500/10 pt-8">
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Full Name
+                  </Label>
+                  <p className="font-bold">
+                    {myKycDetails?.firstName} {myKycDetails?.lastName}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    ID Number
+                  </Label>
+                  <p className="font-bold">{myKycDetails?.idNumber}</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Contact Details
+                  </Label>
+                  <div className="space-y-1">
+                    <p className="font-bold flex items-center gap-2">
+                      <Mail className="h-3 w-3" /> {myKycDetails?.kycEmail}
+                    </p>
+                    <p className="font-bold flex items-center gap-2">
+                      <Phone className="h-3 w-3" /> {myKycDetails?.phoneNumber}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                    Verified Documents
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(myKycDetails?.kycDocuments ?? []).map((docId, idx) => (
+                      <Badge
+                        key={docId}
+                        variant="secondary"
+                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Document {idx + 1}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
+              <Button
+                onClick={() => navigate("/profile/" + profile.userId)}
+                variant="outline"
+                className="border-2 font-bold uppercase h-12 px-8"
+              >
+                View Public Profile
+              </Button>
+              <Button
+                onClick={() => setIsEditMode(true)}
+                variant="secondary"
+                className="border-2 font-bold uppercase h-12 px-8"
+              >
+                Edit Details
+              </Button>
+            </div>
+          </Card>
+        )
       ) : status === "pending" ? (
         <Card className="p-12 border-2 border-orange-500/20 bg-orange-500/5 text-center space-y-4">
           <div className="h-16 w-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto animate-pulse shadow-lg shadow-orange-500/20">
@@ -270,6 +425,28 @@ export default function KYC() {
         </Card>
       ) : (
         <div className="space-y-8">
+          {isEditMode && (
+            <div className="p-4 border-2 border-orange-500/20 bg-orange-500/5 rounded-xl flex gap-3 items-center">
+              <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
+              <div>
+                <p className="font-black uppercase text-xs text-orange-600">
+                  Editing Verified Details
+                </p>
+                <p className="text-sm font-medium text-orange-600/80 leading-relaxed">
+                  Updating your information will reset your status to "Pending"
+                  and require re-verification by our team.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto font-bold uppercase text-[10px]"
+                onClick={() => setIsEditMode(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Left: Personal Info Form */}
             <div className="md:col-span-2 space-y-6">
@@ -406,8 +583,28 @@ export default function KYC() {
                   </Label>
                 </div>
 
-                {files.length > 0 && (
+                {(files.length > 0 || existingDocuments.length > 0) && (
                   <div className="flex flex-wrap gap-2">
+                    {existingDocuments.map((docId, idx) => (
+                      <Badge
+                        key={docId}
+                        variant="secondary"
+                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/20"
+                      >
+                        <ShieldCheck className="h-3 w-3 text-green-600" />
+                        Existing Doc {idx + 1}
+                        {isEditMode && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                            onClick={() => handleDeleteDocument(docId)}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </Badge>
+                    ))}
                     {files.map((f, idx) => (
                       <Badge
                         key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
@@ -442,11 +639,11 @@ export default function KYC() {
 
               <Button
                 className="w-full h-16 rounded-2xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/20"
-                onClick={handleUpload}
-                disabled={isUploading || files.length === 0}
+                onClick={() => handleUpload()}
+                disabled={isUploading || (files.length === 0 && existingDocuments.length === 0)}
               >
                 {isUploading ? (
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  <LoadingIndicator size="sm" className="mr-2 border-white" />
                 ) : (
                   <ShieldCheck className="h-5 w-5 mr-2" />
                 )}
@@ -470,6 +667,64 @@ export default function KYC() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Verified Details?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to update your verified details? This will
+              reset your verification status to "Pending" and you will need to
+              be re-verified before you can continue listing.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConfirmModal(false);
+                handleUpload(true);
+              }}
+            >
+              Confirm Update
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => {
+          setShowDeleteConfirm(open);
+          if (!open) setDocToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this document from
+              your profile?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDocToDelete(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={executeDeleteDocument}
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

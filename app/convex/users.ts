@@ -369,3 +369,99 @@ export const submitKYC = mutation({
     return { success: true };
   },
 });
+
+/**
+ * User: Fetch their own decrypted KYC details for viewing and editing.
+ */
+export const getMyKYCDetails = query({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return null;
+
+      const linkId = authUser.userId ?? authUser._id;
+      if (!linkId) return null;
+
+      const profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", linkId))
+        .unique();
+
+      if (!profile) return null;
+
+      const [
+        decFirstName,
+        decLastName,
+        decIdNumber,
+        decPhone,
+        decEmail,
+      ] = await Promise.all([
+        decryptPII(profile.firstName),
+        decryptPII(profile.lastName),
+        decryptPII(profile.idNumber),
+        decryptPII(profile.phoneNumber),
+        decryptPII(profile.kycEmail),
+      ]);
+
+      return {
+        firstName: decFirstName,
+        lastName: decLastName,
+        idNumber: decIdNumber,
+        phoneNumber: decPhone,
+        kycEmail: decEmail,
+        kycDocuments: profile.kycDocuments || [],
+      };
+    } catch (err) {
+      if (err instanceof Error && !err.message.includes("Unauthenticated")) {
+        console.error("Error in getMyKYCDetails:", err);
+      }
+      return null;
+    }
+  },
+});
+
+/**
+ * User: Delete one of their own KYC documents.
+ */
+export const deleteMyKYCDocument = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }) => {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const userId = authUser.userId ?? authUser._id;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (!profile) throw new Error("Profile not found");
+
+    if (profile.kycStatus === "pending") {
+      throw new Error("Cannot delete document while KYC is pending");
+    }
+
+    const kycDocuments = profile.kycDocuments || [];
+    if (!kycDocuments.includes(storageId)) {
+      throw new Error("Document not found in your profile");
+    }
+
+    // Remove from profile
+    const updatedDocs = kycDocuments.filter((id) => id !== storageId);
+    await ctx.db.patch(profile._id, {
+      kycDocuments: updatedDocs,
+      updatedAt: Date.now(),
+    });
+
+    // Delete from storage
+    try {
+      await ctx.storage.delete(storageId);
+    } catch (err) {
+      console.error(`Failed to delete storage ${storageId}, may be orphaned:`, err);
+      // Profile update succeeded; storage deletion failure is non-critical
+    }
+
+    return { success: true };
+  },
+});

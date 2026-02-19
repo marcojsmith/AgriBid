@@ -15,8 +15,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/AuctionCard";
 
+/**
+ * Renders a seller profile page based on the `userId` route parameter.
+ *
+ * Displays a loading spinner while data is being fetched, a "User Not Found"
+ * view if the seller does not exist, or the full profile when data is available.
+ * The profile includes a header with name, verification badge, role, join year,
+ * active listing and total sold stats, an "Active Auctions" grid, a "Sales History"
+ * grid, and a paginated "Load More Listings" control. If the current user is the
+ * profile owner, a "Manage Verification" button linking to `/kyc` is shown.
+ *
+ * @returns The React element for the seller profile page (including loading or not-found states).
+ */
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
+  const myProfile = useQuery(api.users.getMyProfile);
+  const isOwner = myProfile?.userId === userId || myProfile?._id === userId;
+
   const sellerInfo = useQuery(api.auctions.getSellerInfo, {
     sellerId: userId || "",
   });
@@ -82,6 +97,19 @@ export default function Profile() {
                     <ShieldCheck className="h-4 w-4" />
                     Verified Seller
                   </Badge>
+                )}
+                {isOwner && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-8 border-2 font-black uppercase text-[10px] tracking-widest rounded-lg ml-auto md:ml-0"
+                  >
+                    <Link to="/kyc">
+                      <ShieldCheck className="h-3 w-3 mr-1" />
+                      Manage Verification
+                    </Link>
+                  </Button>
                 )}
               </div>
               <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-sm text-muted-foreground font-bold uppercase tracking-wide">
