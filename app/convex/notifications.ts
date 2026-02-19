@@ -1,12 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { authComponent } from "./auth";
 
 export const getMyNotifications = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return [];
+    const userId = authUser.userId ?? authUser._id;
 
     // Fetch personal notifications
     const personal = await ctx.db
@@ -54,9 +55,9 @@ export const getMyNotifications = query({
 export const getNotificationArchive = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return [];
+    const userId = authUser.userId ?? authUser._id;
 
     const personal = await ctx.db
       .query("notifications")
@@ -100,9 +101,9 @@ export const getNotificationArchive = query({
 export const markAsRead = mutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const userId = authUser.userId ?? authUser._id;
 
     const notification = await ctx.db.get(args.notificationId);
     if (!notification) throw new Error("Notification not found");
@@ -137,9 +138,9 @@ export const markAsRead = mutation({
 export const markAllRead = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const userId = authUser.userId ?? authUser._id;
 
     // Helper for chunking arrays
     const chunk = <T>(arr: T[], size: number): T[][] => {

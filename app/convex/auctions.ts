@@ -5,6 +5,7 @@ import type { QueryCtx } from "./_generated/server";
 import { getCallerRole, findUserById } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit } from "./admin_utils";
+import { authComponent } from "./auth";
 
 interface RawImages {
   front?: string;
@@ -255,8 +256,8 @@ export const getSellerListings = query({
 });
 
 export const generateUploadUrl = mutation(async (ctx) => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  const authUser = await authComponent.getAuthUser(ctx);
+  if (!authUser) {
     throw new Error("Not authenticated");
   }
   return await ctx.storage.generateUploadUrl();
@@ -311,11 +312,11 @@ export const createAuction = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) {
       throw new Error("Not authenticated");
     }
-    const userId = identity.subject;
+    const userId = authUser.userId ?? authUser._id;
 
     const { durationDays, ...restArgs } = args;
 
@@ -407,22 +408,17 @@ export const rejectAuction = mutation({
 export const placeBid = mutation({
   args: { auctionId: v.id("auctions"), amount: v.number() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) {
       throw new Error("Not authenticated");
     }
 
-    const userId = identity.subject;
-
-    // Resolve the linkId (userId or auth internal id) using findUserById
-    const user = await findUserById(ctx, userId);
-    if (!user) throw new Error("User record not found");
-    const linkId = user.userId ?? user._id;
+    const userId = authUser.userId ?? authUser._id;
 
     // Check Verification Status
     const profile = await ctx.db
       .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", linkId))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
     if (!profile?.isVerified) {
@@ -684,9 +680,9 @@ export const bulkUpdateAuctions = mutation({
 export const getMyBids = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return [];
+    const userId = authUser.userId ?? authUser._id;
 
     // Get all bids by this user
     const bids = await ctx.db
@@ -737,9 +733,9 @@ export const getMyBids = query({
 export const getMyListings = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return [];
+    const userId = authUser.userId ?? authUser._id;
 
     const listings = await ctx.db
       .query("auctions")

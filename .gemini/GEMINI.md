@@ -107,17 +107,17 @@ Determine the best course of action for the user based on the current state of t
         - Correct the issue: After understanding the comment, the context, and the broader purpose of the application, make the necessary code changes to address the issue. This may involve refactoring code, fixing bugs, improving performance, or making other relevant changes to ensure that the code meets the project's standards and aligns with its goals.
         - Update checklist: As you address each comment, update the markdown checklist file in the `conductor/code_reviews/` folder to indicate which comments have been addressed and which ones still need to be addressed. This will help you keep track of your progress and ensure that all comments are properly addressed before finalizing the PR.
     - **Step 4: Resolve any errors**
-        - Run the following commands to ensure that the codebase is in a good state and that all tests are passing:
+        - Check for errors: Run the following commands to ensure that the codebase is in a good state and that all tests are passing:
             - `cd app && npm run lint` to check for any linting errors in the codebase.
             - `cd app && npm run build` to run all tests and ensure that they are passing successfully.
             - `npx vercel build` to check for any build errors and ensure that the application can be built successfully.
     - **Step 5: Summarise review**
-        - After addressing all the comments, compile your findings into a clear and concise summary that can used as a commit message for the changes made to address the PR review. This summary should highlight any important issues or improvements that were addressed, as well as any relevant information that may impact the changes being made.
+        - Summarise changes: After addressing all the comments, compile your findings into a clear and concise summary that can used as a commit message for the changes made to address the PR review. This summary should highlight any important issues or improvements that were addressed, as well as any relevant information that may impact the changes being made.
     - **Step 6: Update documentation**
-        - If any documentation updates were necessary as part of addressing the PR review comments, ensure that all relevant documentation is updated accordingly. This includes the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder. Make sure to document any important information or changes that were made as part of addressing the PR review comments, so that it can be easily referenced in the future.
+        - Update documentation: If any documentation updates were necessary as part of addressing the PR review comments, ensure that all relevant documentation is updated accordingly. This includes the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder. Make sure to document any important information or changes that were made as part of addressing the PR review comments, so that it can be easily referenced in the future.
     - **Step 7: Finalize PR**
-        - Once all comments have been addressed and the necessary changes have been made, finalize the PR by pushing the changes to the branch. This will allow CodeRabbit to verify that all issues and improvements have been properly addressed and that the changes meet the project's standards.
-        - Do not commit the `prXX_review_findings.md` file to the repository, as this file is only meant for your reference during the PR review process and should not be included in the final codebase.
+        - Commit and push changes: Once all comments have been addressed and the necessary changes have been made, finalize the PR by pushing the changes to the branch. This will allow CodeRabbit to verify that all issues and improvements have been properly addressed and that the changes meet the project's standards.
+        - Do not commit findings: Do not commit the `prXX_review_findings.md` file to the repository, as this file is only meant for your reference during the PR review process and should not be included in the final codebase.
 
 ## Coding Rules
 

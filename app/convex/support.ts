@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { authComponent } from "./auth";
 
 export const createTicket = mutation({
   args: {
@@ -9,9 +10,9 @@ export const createTicket = mutation({
     auctionId: v.optional(v.id("auctions")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const userId = authUser.userId ?? authUser._id;
 
     const subject = args.subject.trim();
     const message = args.message.trim();
@@ -41,9 +42,9 @@ export const createTicket = mutation({
 export const getMyTickets = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return [];
+    const userId = authUser.userId ?? authUser._id;
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 

@@ -1,4 +1,5 @@
 import type { MutationCtx } from "./_generated/server";
+import { authComponent } from "./auth";
 
 /**
  * Record an audit log entry for the current authenticated admin.
@@ -21,15 +22,15 @@ export async function logAudit(
     targetCount?: number;
   },
 ) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  const authUser = await authComponent.getAuthUser(ctx);
+  if (!authUser) {
     const errorContext = `Audit Log Failure: Missing identity for action ${args.action} on ${args.targetType}:${args.targetId}`;
     console.error(errorContext);
     throw new Error(errorContext);
   }
 
   await ctx.db.insert("auditLogs", {
-    adminId: identity.subject,
+    adminId: authUser.userId ?? authUser._id,
     action: args.action,
     targetId: args.targetId,
     targetType: args.targetType,

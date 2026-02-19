@@ -2,6 +2,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { resolveImageUrls } from "./auctions";
+import { authComponent } from "./auth";
 
 /**
  * Toggle an auction in the user's watchlist.
@@ -13,9 +14,9 @@ import { resolveImageUrls } from "./auctions";
 export const toggleWatchlist = mutation({
   args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const userId = authUser.userId ?? authUser._id;
 
     const existing = await ctx.db
       .query("watchlist")
@@ -43,9 +44,9 @@ export const toggleWatchlist = mutation({
 export const isWatched = query({
   args: { auctionId: v.id("auctions") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return false;
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return false;
+    const userId = authUser.userId ?? authUser._id;
 
     const existing = await ctx.db
       .query("watchlist")
@@ -64,9 +65,9 @@ export const isWatched = query({
 export const getWatchedAuctions = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const userId = identity.subject;
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return [];
+    const userId = authUser.userId ?? authUser._id;
 
     const watchlist = await ctx.db
       .query("watchlist")

@@ -4,6 +4,7 @@ import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit } from "./admin_utils";
 import { COMMISSION_RATE } from "./config";
+import { authComponent } from "./auth";
 
 // --- Bid Moderation ---
 
@@ -256,15 +257,15 @@ export const resolveTicket = mutation({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const adminIdentity = await ctx.auth.getUserIdentity();
-    if (!adminIdentity || !adminIdentity.subject) {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) {
       throw new Error("Admin identity not found or invalid");
     }
 
     await ctx.db.patch(args.ticketId, {
       status: "resolved",
       updatedAt: Date.now(),
-      resolvedBy: adminIdentity.subject,
+      resolvedBy: authUser.userId ?? authUser._id,
     });
 
     await logAudit(ctx, {

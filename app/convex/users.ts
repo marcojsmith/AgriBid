@@ -239,13 +239,14 @@ export const verifyUser = mutation({
 
     if (!profile) throw new Error("Profile not found");
 
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) throw new Error("Not authenticated");
+    const adminId = authUser.userId ?? authUser._id;
 
     // Enforce KYC flow unless overridden (Admin override should be rare)
     if (profile.kycStatus !== "verified") {
       console.warn(
-        `Admin ${identity.subject} is manually verifying user ${userId} without completed KYC review.`,
+        `Admin ${adminId} is manually verifying user ${userId} without completed KYC review.`,
       );
     }
 
