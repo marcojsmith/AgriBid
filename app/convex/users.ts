@@ -260,12 +260,14 @@ export const verifyUser = mutation({
     }
 
     const now = Date.now();
-    await ctx.db.patch(profile._id, {
-      isVerified: true,
-      updatedAt: now,
-    });
+    if (!profile.isVerified) {
+      await ctx.db.patch(profile._id, {
+        isVerified: true,
+        updatedAt: now,
+      });
 
-    await updateCounter(ctx, "profiles", "verified", 1);
+      await updateCounter(ctx, "profiles", "verified", 1);
+    }
 
     await logAudit(ctx, {
       action: "VERIFY_USER",
