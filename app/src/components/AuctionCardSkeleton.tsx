@@ -12,6 +12,7 @@ export const AuctionCardSkeleton = ({
 
   return (
     <Card
+      aria-hidden="true"
       className={cn(
         "overflow-hidden border-2 bg-card h-full shadow-none animate-pulse rounded-lg",
       )}

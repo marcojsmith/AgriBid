@@ -98,6 +98,22 @@ export default function Home() {
     maxPrice !== undefined ||
     maxHours !== undefined;
 
+  const getGridClasses = (mode: "compact" | "detailed", sidebarOpen: boolean) =>
+    cn(
+      "grid",
+      mode === "compact"
+        ? cn(
+            "grid-cols-1 gap-2 sm:gap-3",
+            sidebarOpen
+              ? "md:grid-cols-2"
+              : "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3",
+          )
+        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8",
+    );
+
+  const getItemWrapperClasses = (mode: "compact" | "detailed") =>
+    cn("w-full h-full", mode === "compact" && "max-w-[500px]");
+
   return (
     <div className="flex flex-col lg:flex-row gap-8">
       {/* Desktop Sidebar */}
@@ -199,27 +215,9 @@ export default function Home() {
         </div>
 
         {!auctions ? (
-          <div
-            className={cn(
-              "grid",
-              viewMode === "compact"
-                ? cn(
-                    "grid-cols-1 gap-2 sm:gap-3",
-                    isDesktopSidebarOpen
-                      ? "md:grid-cols-2"
-                      : "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3",
-                  )
-                : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8",
-            )}
-          >
+          <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
             {Array.from({ length: 9 }).map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "w-full h-full",
-                  viewMode === "compact" && "max-w-[500px]",
-                )}
-              >
+              <div key={i} className={getItemWrapperClasses(viewMode)}>
                 <AuctionCardSkeleton viewMode={viewMode} />
               </div>
             ))}
@@ -241,26 +239,11 @@ export default function Home() {
             </Button>
           </div>
         ) : (
-          <div
-            className={cn(
-              "grid",
-              viewMode === "compact"
-                ? cn(
-                    "grid-cols-1 gap-2 sm:gap-3",
-                    isDesktopSidebarOpen
-                      ? "md:grid-cols-2"
-                      : "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3",
-                  )
-                : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8",
-            )}
-          >
+          <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
             {auctions.map((auction) => (
               <div
                 key={auction._id}
-                className={cn(
-                  "w-full h-full",
-                  viewMode === "compact" && "max-w-[500px]",
-                )}
+                className={getItemWrapperClasses(viewMode)}
               >
                 <AuctionCard auction={auction} viewMode={viewMode} />
               </div>
