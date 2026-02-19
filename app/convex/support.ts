@@ -49,7 +49,7 @@ export const getMyTickets = query({
 
     return await ctx.db
       .query("supportTickets")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_updatedAt", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
   },

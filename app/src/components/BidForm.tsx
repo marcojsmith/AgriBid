@@ -22,7 +22,6 @@ export const BidForm = ({
   const [manualAmount, setManualAmount] = useState<string>(
     nextMinBid.toString(),
   );
-  const [prevNextMinBid, setPrevNextMinBid] = useState(nextMinBid);
 
   /**
    * Sync manualAmount with nextMinBid whenever the current price updates.
@@ -30,17 +29,12 @@ export const BidForm = ({
    * but doesn't clobber their input if they've already typed a higher value.
    */
   useEffect(() => {
-    setPrevNextMinBid(nextMinBid);
     const currentManualNum = parseFloat(manualAmount) || 0;
     if (currentManualNum < nextMinBid) {
       setManualAmount(nextMinBid.toString());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextMinBid]);
-
-  // Using prevNextMinBid in a no-op to satisfy the 'unused variable' lint rule while following instructions
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  prevNextMinBid;
 
   const currentManualNum = parseFloat(manualAmount) || 0;
   const isManualValid = currentManualNum >= nextMinBid;
@@ -67,7 +61,7 @@ export const BidForm = ({
               Quick Bid
             </span>
             <span className="text-base font-black tracking-tight">
-              R{amount.toLocaleString()}
+              R {amount.toLocaleString()}
             </span>
           </Button>
         ))}
@@ -114,7 +108,7 @@ export const BidForm = ({
       {!isManualValid && manualAmount !== "" && (
         <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
           <ArrowUpCircle className="h-3 w-3" />
-          Minimum bid required: R{nextMinBid.toLocaleString()}
+          Minimum bid required: R {nextMinBid.toLocaleString()}
         </p>
       )}
     </div>

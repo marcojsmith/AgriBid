@@ -17,8 +17,12 @@ export const Layout = ({ children }: LayoutProps) => {
   const userId = session?.user?.id;
   const syncUserRef = useRef(syncUser);
 
+  // Intentional empty dependency array: this effect runs on every render
+  // to keep syncUserRef.current updated with the latest syncUser function reference,
+  // avoiding stale closures in other effects while keeping dependencies clean.
   useEffect(() => {
     syncUserRef.current = syncUser;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
   useEffect(() => {

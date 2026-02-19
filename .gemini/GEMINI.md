@@ -22,6 +22,13 @@ Determine the best course of action for the user based on the current state of t
 
 # Rules & Guidelines
 
+## Senior Developer Mindset
+- Always consider the broader context of the project and how your changes fit into the overall architecture and design of the application.
+- Prioritize code quality, maintainability, and scalability in all your work.
+- Be proactive in identifying potential issues and improvements, and take the initiative to address them.
+- Communicate clearly and effectively with the team, providing constructive feedback and collaborating to achieve the best possible outcome for the project.
+- Stay up-to-date with the latest trends and best practices in software development, and continuously seek opportunities to learn and grow as a developer.
+
 ## Tech stack
 
 - **Frontend:** React (Vite), TypeScript.
@@ -89,17 +96,16 @@ Determine the best course of action for the user based on the current state of t
     - CodeRabbit performs a review of all PRs submitted to the repository, providing feedback on code quality, adherence to coding standards, testing, security implications, and overall impact on the project. The review process is designed to ensure that all changes meet the project's standards and align with its goals.
     - When a PR is submitted, CodeRabbit will perform a code review that you must then review and resolve. The review will include feedback on any issues or improvements that were identified during the review process, as well as any relevant information that may impact the changes being made.
     - **Step 1: Review PR Findings**
-        - The user will add a file under `conductor/code_reviews/` with the name `prXX_review_findings.md`, where `XX` is the number of the PR being reviewed. This file will contain a list of all the comments from the PR review, along with any relevant details or context provided by CodeRabbit.
-        - Review the comments provided by CodeRabbit in the `prXX_review_findings.md` file, and ensure that you understand the feedback and suggestions provided. Take note of any specific issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
-    - **Step 2: Create a markdown file for documenting review findings**
-        - Update the markdown file to a checklist. This will help you keep track of the feedback provided by CodeRabbit and ensure that you address all relevant issues and improvements in a clear and organized manner.
-        - The file should be stored in the `conductor/code_reviews/` folder and should be named in a way that clearly indicates its purpose, such as `pr33_review_findings.md`.
-        - The files should be a ordered checklist of all the comments as they are on the PR, with all of there details and context included, and a checkbox next to each one to keep track of which comments have been addressed and which ones still need to be addressed.
-        - The comments may include solutions on how to resolve the issue.
+        - PR review findings file: The user will add a file under `conductor/code_reviews/` with the name `prXX_review_findings.md`, where `XX` is the number of the PR being reviewed. This file will contain a list of all the comments from the PR review, along with any relevant details or context provided by CodeRabbit.
+        - Review comments: Review the comments provided by CodeRabbit in the `prXX_review_findings.md` file, and ensure that you understand the feedback and suggestions provided. Take note of any specific issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
+    - **Step 2: Update the markdown file for documenting review findings**
+        - Update the PR review findings markdown file to be a ordered checklist. Include a number and a checkbox in front of each comment, and ensure that all details and context provided by CodeRabbit are included in the checklist. This will help you keep track of which comments have been addressed and which ones still need to be addressed as you work through the review process.
     - **Step 3: Address comments**
-        - Ensure you are in the correct branch for the PR and make the necessary code changes to address the comments provided by CodeRabbit.
-        - For each comment, review the feedback provided by CodeRabbit and make the necessary changes to address the issues or improvements identified. This may involve making code changes, updating documentation, or providing additional information to clarify any misunderstandings.
-        - As you address each comment, check it off in the markdown file BEFORE moving on to the next comment.
+        - Correct branch: Ensure you are in the correct branch for the PR and make the necessary code changes to address the comments provided by CodeRabbit.
+        - Review CodeRabbit feedback: For each comment, review the feedback provided by CodeRabbit in the `prXX_review_findings.md` file and make the necessary changes to address the issues or improvements identified. This may involve making code changes, updating documentation, or providing additional information to clarify any misunderstandings.
+        - Read the file: Before correcting any issue, first read the file that contains the comment to ensure you understand the context and details of the issue. This will help you make informed decisions about how to address the comment and ensure that your changes are effective and appropriate.
+        - Correct the issue: After understanding the comment, the context, and the broader purpose of the application, make the necessary code changes to address the issue. This may involve refactoring code, fixing bugs, improving performance, or making other relevant changes to ensure that the code meets the project's standards and aligns with its goals.
+        - Update checklist: As you address each comment, update the markdown checklist file in the `conductor/code_reviews/` folder to indicate which comments have been addressed and which ones still need to be addressed. This will help you keep track of your progress and ensure that all comments are properly addressed before finalizing the PR.
     - **Step 4: Resolve any errors**
         - Run the following commands to ensure that the codebase is in a good state and that all tests are passing:
             - `cd app && npm run lint` to check for any linting errors in the codebase.

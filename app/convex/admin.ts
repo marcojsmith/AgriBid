@@ -45,22 +45,18 @@ export const voidBid = mutation({
     // Mark as void
     await ctx.db.patch(args.bidId, { status: "voided" });
 
-    // Recalculate Auction Price (Simple approach: find next highest valid bid)
-    // Convex mutations are atomic, but we fetch current state to ensure consistency.
+    // Recalculate Auction Price (Next highest valid bid)
     const auction = await ctx.db.get(bid.auctionId);
     if (!auction) throw new Error("Auction not found");
 
-    const validBids = await ctx.db
+    const latestValidBid = await ctx.db
       .query("bids")
       .withIndex("by_auction", (q) => q.eq("auctionId", bid.auctionId))
       .filter((q) => q.neq(q.field("status"), "voided"))
-      .collect();
+      .order("desc")
+      .first();
 
-    // Re-sort in memory just to be safe (descending amount)
-    validBids.sort((a, b) => b.amount - a.amount);
-
-    const highestBid = validBids[0];
-    const newPrice = highestBid ? highestBid.amount : auction.startingPrice;
+    const newPrice = latestValidBid ? latestValidBid.amount : auction.startingPrice;
 
     await ctx.db.patch(bid.auctionId, { currentPrice: newPrice });
 

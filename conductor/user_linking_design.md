@@ -30,9 +30,22 @@ Table: `user`
 Table: `profiles`
 - `_id`: Convex ID
 - `userId`: `string` (**The Foreign Key**) - Unique Index.
-- `role`: `string` (e.g., "buyer", "seller", "admin")
+- `role`: `union("buyer", "seller", "admin")`
 - `isVerified`: `boolean`
-- `bio`: `string`
+- `kycStatus`: `optional(union("pending", "verified", "rejected"))`
+- `kycDocuments`: `optional(array(string))` (storageIds)
+- `kycRejectionReason`: `optional(string)`
+- `firstName`: `optional(string)` (Encrypted PII)
+- `lastName`: `optional(string)` (Encrypted PII)
+- `idNumber`: `optional(string)` (Encrypted PII)
+- `kycEmail`: `optional(string)` (Encrypted PII)
+- `bio`: `optional(string)`
+- `phoneNumber`: `optional(string)` (Encrypted PII)
+- `companyName`: `optional(string)`
+- `createdAt`: `number` (Timestamp)
+- `updatedAt`: `number` (Timestamp)
+
+*Note: This schema reflects the canonical implementation in `app/convex/schema.ts`.*
 
 ## 3. Relationship Map
 

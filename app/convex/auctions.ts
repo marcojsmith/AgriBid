@@ -411,12 +411,18 @@ export const placeBid = mutation({
     if (!identity) {
       throw new Error("Not authenticated");
     }
+
     const userId = identity.subject;
+
+    // Resolve the linkId (userId or auth internal id) using findUserById
+    const user = await findUserById(ctx, userId);
+    if (!user) throw new Error("User record not found");
+    const linkId = user.userId ?? user._id;
 
     // Check Verification Status
     const profile = await ctx.db
       .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .withIndex("by_userId", (q) => q.eq("userId", linkId))
       .unique();
 
     if (!profile?.isVerified) {

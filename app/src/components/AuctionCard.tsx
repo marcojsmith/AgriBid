@@ -84,7 +84,7 @@ export const AuctionCard = ({
     const minimum = auction.currentPrice + auction.minIncrement;
     if (pendingBid < minimum) {
       toast.error(
-        `Price updated to R${minimum.toLocaleString("en-ZA")} due to a newer bid.`,
+        `Price updated to R ${minimum.toLocaleString("en-ZA")} due to a newer bid.`,
       );
       setPendingBid(minimum);
       return;
@@ -269,7 +269,7 @@ export const AuctionCard = ({
                     Current Bid
                   </p>
                   <p className="font-black text-primary tracking-tighter leading-none text-2xl md:text-3xl">
-                    R{auction.currentPrice.toLocaleString("en-ZA")}
+                    R {auction.currentPrice.toLocaleString("en-ZA")}
                   </p>
                 </div>
                 <div className="text-right">
@@ -304,7 +304,7 @@ export const AuctionCard = ({
             >
               {isBidding
                 ? "..."
-                : `Bid R${(auction.currentPrice + auction.minIncrement).toLocaleString("en-ZA")}`}
+                : `Bid R ${(auction.currentPrice + auction.minIncrement).toLocaleString("en-ZA")}`}
             </Button>
           </div>
         </div>

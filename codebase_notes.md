@@ -19,6 +19,7 @@
 - Standard OIDC clients expect the discovery document at `/.well-known/openid-configuration`.
 - The Better Auth Convex plugin serves this internally at `/api/auth/convex/.well-known/openid-configuration`.
 - `app/convex/http.ts` implements a rewrite handler that maps root-level `.well-known` requests to the plugin's internal paths, ensuring compatibility with the Convex runtime's OIDC validation.
+
 ### Environment Variables
 
 - **`CONVEX_SITE_URL`**: Critical for both backend (Better Auth baseURL) and OIDC validation (domain).

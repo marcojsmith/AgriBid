@@ -94,24 +94,28 @@ export function FinanceTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {stats.recentSales.map((sale) => (
-              <TableRow key={sale.id}>
-                <TableCell>
-                  {new Date(sale.date).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="font-medium">{sale.title}</TableCell>
-                <TableCell className="text-right font-bold">
-                  R {sale.amount.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  R{" "}
-                  {(
-                    (sale as { estimatedCommission?: number }).estimatedCommission ??
-                    sale.amount * (stats.commissionRate ?? 0.05)
-                  ).toLocaleString()}
+            {stats.recentSales.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                  No recent transactions
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              stats.recentSales.map((sale) => (
+                <TableRow key={sale.id}>
+                  <TableCell>
+                    {new Date(sale.date).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="font-medium">{sale.title}</TableCell>
+                  <TableCell className="text-right font-bold">
+                    R {sale.amount.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    R {sale.estimatedCommission.toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </Card>

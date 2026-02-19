@@ -156,7 +156,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
     try {
       await placeBid({ auctionId: auction._id, amount: pendingBid });
       toast.success(
-        `Bid of R${pendingBid.toLocaleString("en-ZA")} placed successfully!`,
+        `Bid of R ${pendingBid.toLocaleString("en-ZA")} placed successfully!`,
       );
     } catch (error) {
       console.error(error);
@@ -178,7 +178,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
           </p>
           <div className="flex items-baseline gap-2">
             <span className="text-4xl font-black text-primary tracking-tighter">
-              R{auction.currentPrice.toLocaleString("en-ZA")}
+              R {auction.currentPrice.toLocaleString("en-ZA")}
             </span>
             {!isEnded && (
               <Badge
@@ -206,7 +206,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
             Auction Ended
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Final Price: R{auction.currentPrice.toLocaleString("en-ZA")}
+            Final Price: R {auction.currentPrice.toLocaleString("en-ZA")}
           </p>
         </div>
       ) : (
@@ -229,7 +229,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
             <span>
               Next minimum bid:{" "}
               <span className="text-foreground">
-                R{nextMinBid.toLocaleString("en-ZA")}
+                R {nextMinBid.toLocaleString("en-ZA")}
               </span>
             </span>
           </div>

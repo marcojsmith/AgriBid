@@ -118,10 +118,25 @@ export const runSeed = mutation({
             },
           )) as DeleteManyResult;
 
+          // Runtime guard for unexpected result shapes
+          if (
+            typeof result?.isDone !== "boolean" ||
+            (result.continueCursor !== null &&
+              result.continueCursor !== undefined &&
+              typeof result.continueCursor !== "string")
+          ) {
+            console.error(
+              `Unexpected response from deleteMany for ${model}:`,
+              result,
+            );
+            isDone = true;
+            break;
+          }
+
           isDone = result.isDone;
           cursor = result.continueCursor ?? null;
 
-          // Safety: If no cursor is returned and it's not marked done, assume done to prevent infinite loops
+          // Safety: If no cursor is returned and it's not marked done, assume done
           if (!cursor) isDone = true;
         }
         console.log(`Requested wipe of auth model: ${model}`);
@@ -505,6 +520,21 @@ export const clearAllData = mutation({
             paginationOpts: { cursor, numItems: BATCH_SIZE },
           },
         )) as DeleteManyResult;
+
+        // Runtime guard for unexpected result shapes
+        if (
+          typeof result?.isDone !== "boolean" ||
+          (result.continueCursor !== null &&
+            result.continueCursor !== undefined &&
+            typeof result.continueCursor !== "string")
+        ) {
+          console.error(
+            `Unexpected response from deleteMany for ${model}:`,
+            result,
+          );
+          isDone = true;
+          break;
+        }
 
         const count = Number(result.count ?? 0);
         totalDeleted += count;

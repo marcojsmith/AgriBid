@@ -11,14 +11,14 @@ export const getMyNotifications = query({
     // Fetch personal notifications
     const personal = await ctx.db
       .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", userId))
+      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
       .order("desc")
       .take(20);
 
     // Fetch global announcements
     const announcements = await ctx.db
       .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
       .order("desc")
       .take(10);
 
@@ -60,13 +60,13 @@ export const getNotificationArchive = query({
 
     const personal = await ctx.db
       .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", userId))
+      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
       .order("desc")
       .take(args.limit || 100);
 
     const announcements = await ctx.db
       .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
       .order("desc")
       .take(args.limit || 50);
 
@@ -172,7 +172,7 @@ export const markAllRead = mutation({
     // Mark all currently visible announcements as read via receipts in batches
     const announcements = await ctx.db
       .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
       .order("desc")
       .take(100); // Only process latest 100 announcements
 

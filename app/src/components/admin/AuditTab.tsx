@@ -88,7 +88,9 @@ export function AuditTab() {
                     {new Date(log.timestamp).toLocaleString()}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    {log.adminId.substring(0, 10)}...
+                    {log.adminId.length > 10
+                      ? `${log.adminId.substring(0, 10)}...`
+                      : log.adminId}
                   </TableCell>
                   <TableCell className="font-bold uppercase text-xs tracking-wider">
                     {log.action}

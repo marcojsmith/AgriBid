@@ -107,7 +107,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
                       <p
                         className={`text-base font-black tracking-tight ${index === 0 ? "text-primary" : "text-foreground"}`}
                       >
-                        R{bid.amount.toLocaleString("en-ZA")}
+                        R {bid.amount.toLocaleString("en-ZA")}
                       </p>
                     </div>
                   </div>

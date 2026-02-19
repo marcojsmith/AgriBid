@@ -36,7 +36,7 @@ describe("BidHistory", () => {
 
     // Check for anonymized names (e.g. J*** D**)
     expect(screen.getByText(/J\*\*\* D\*\*/)).toBeInTheDocument();
-    // Check for R and the price digits, allowing for different grouping symbols (space or comma)
-    expect(screen.getByText(/R.*51.000/)).toBeInTheDocument();
+    // Check for R and the price digits, explicitly matching thousands separators and escaping dot
+    expect(screen.getByText(/R\s+51\s+000/)).toBeInTheDocument();
   });
 });

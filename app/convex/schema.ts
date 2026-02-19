@@ -147,7 +147,8 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_user", ["userId"])
-    .index("by_updatedAt", ["updatedAt"]),
+    .index("by_updatedAt", ["updatedAt"])
+    .index("by_user_updatedAt", ["userId", "updatedAt"]),
 
   transactions: defineTable({
     auctionId: v.id("auctions"),

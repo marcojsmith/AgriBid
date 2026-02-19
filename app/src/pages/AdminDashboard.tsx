@@ -279,6 +279,7 @@ export default function AdminDashboard() {
       toast.success(`KYC ${decision === "approve" ? "Approved" : "Rejected"}`);
       setKycReviewUser(null);
       setKycRejectionReason("");
+      setShowFullId(false);
     } catch {
       toast.error("Review failed");
     }
@@ -701,16 +702,16 @@ export default function AdminDashboard() {
                           title="Starting"
                           className="text-muted-foreground"
                         >
-                          R{a.startingPrice.toLocaleString()}
+                          R {a.startingPrice.toLocaleString()}
                         </span>
                         <span
                           title="Reserve"
                           className="text-primary border-x px-2"
                         >
-                          R{a.reservePrice.toLocaleString()}
+                          R {a.reservePrice.toLocaleString()}
                         </span>
                         <span title="Current" className="text-green-600">
-                          R{a.currentPrice.toLocaleString()}
+                          R {a.currentPrice.toLocaleString()}
                         </span>
                       </div>
                     </TableCell>
@@ -853,7 +854,10 @@ export default function AdminDashboard() {
                         {p.kycStatus === "pending" && (
                           <Badge
                             className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase cursor-pointer"
-                            onClick={() => setKycReviewUser(p)}
+                            onClick={() => {
+                              setKycReviewUser(p);
+                              setShowFullId(false);
+                            }}
                           >
                             KYC Pending
                           </Badge>
@@ -872,7 +876,10 @@ export default function AdminDashboard() {
                             size="sm"
                             variant="default"
                             className="h-8 font-black uppercase text-[10px] tracking-wider bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20"
-                            onClick={() => setKycReviewUser(p)}
+                            onClick={() => {
+                              setKycReviewUser(p);
+                              setShowFullId(false);
+                            }}
                           >
                             Review KYC
                           </Button>
@@ -977,7 +984,12 @@ export default function AdminDashboard() {
       {/* --- KYC REVIEW DIALOG --- */}
       <Dialog
         open={!!kycReviewUser}
-        onOpenChange={(open) => !open && setKycReviewUser(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setKycReviewUser(null);
+            setShowFullId(false);
+          }
+        }}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>

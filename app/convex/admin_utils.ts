@@ -190,9 +190,17 @@ export async function decryptPII(
 
   const [ivBase64, encryptedBase64] = parts;
 
-  // Basic Base64 validation to avoid misclassifying plaintext (e.g. "john.doe")
-  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-  if (!base64Regex.test(ivBase64) || !base64Regex.test(encryptedBase64)) {
+  // Stricter Base64 validation to avoid misclassifying plaintext (e.g. "john.doe")
+  // Ensures non-zero length, multiple of 4, and correct padding.
+  const base64Regex =
+    /^(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+
+  if (
+    !ivBase64 ||
+    !encryptedBase64 ||
+    !base64Regex.test(ivBase64) ||
+    !base64Regex.test(encryptedBase64)
+  ) {
     return encrypted;
   }
 
