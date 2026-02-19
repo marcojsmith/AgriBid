@@ -7,6 +7,7 @@ This document defines the architecture for linking the **Authentication Componen
 To maintain a clean separation of concerns, we distinguish between **Identity** (Security, Credentials, Sessions) and **Profile** (Business Metadata, Roles, Application State).
 
 ### Component Roles
+
 - **Auth Component**: Owns the lifecycle of `user`, `account`, and `session` tables. It treats these as "Identity" stores.
 - **App Component**: Owns the `profiles` table and business entities like `auctions` and `bids`. It consumes the identity to provide context.
 
@@ -17,6 +18,7 @@ We use a **Stable Shared Identifier** (`userId`) rather than internal database I
 ### Schema Definition
 
 #### Identity (Managed by Better Auth)
+
 Table: `user`
 - `_id`: Convex ID
 - `userId`: `string` (**The Link Key**) - Indexed.
@@ -24,6 +26,7 @@ Table: `user`
 - `image`: `string` (Avatar)
 
 #### Profile (Managed by AgriBid)
+
 Table: `profiles`
 - `_id`: Convex ID
 - `userId`: `string` (**The Foreign Key**) - Unique Index.
@@ -44,7 +47,7 @@ Table: `profiles`
 To ensure a seamless user experience, we implement a **Link Sync** logic:
 
 1. **Detection**: When a user logs in, the frontend calls a `syncUser` mutation.
-2. **Provisioning**: 
+2. **Provisioning**:
    - If a `profiles` record exists for the `userId`, return success.
    - If not, create a new `profiles` record with default values (e.g., `role: "buyer"`).
 3. **Hydration**: Application queries join the `user` and `profiles` data using the `userId`.
