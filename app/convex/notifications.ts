@@ -5,99 +5,112 @@ import { authComponent } from "./auth";
 export const getMyNotifications = query({
   args: {},
   handler: async (ctx) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    // Fetch personal notifications
-    const personal = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
-      .order("desc")
-      .take(20);
+      // Fetch personal notifications
+      const personal = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
+        .order("desc")
+        .take(20);
 
-    // Fetch global announcements
-    const announcements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
-      .order("desc")
-      .take(10);
+      // Fetch global announcements
+      const announcements = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
+        .order("desc")
+        .take(10);
 
-    // Fetch read receipts only for the fetched announcements to keep it bounded
-    const readReceipts = await Promise.all(
-      announcements.map((a) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_user_notification", (q) =>
-            q.eq("userId", userId).eq("notificationId", a._id),
-          )
-          .unique(),
-      ),
-    );
+      // Fetch read receipts only for the fetched announcements to keep it bounded
+      const readReceipts = await Promise.all(
+        announcements.map((a) =>
+          ctx.db
+            .query("readReceipts")
+            .withIndex("by_user_notification", (q) =>
+              q.eq("userId", userId).eq("notificationId", a._id),
+            )
+            .unique(),
+        ),
+      );
 
-    const readNotificationIds = new Set(
-      readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
-    );
+      const readNotificationIds = new Set(
+        readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
+      );
 
-    // Merge and sort, applying read status for announcements
-    const merged = [
-      ...personal,
-      ...announcements.map((a) => ({
-        ...a,
-        isRead: readNotificationIds.has(a._id),
-      })),
-    ];
+      // Merge and sort, applying read status for announcements
+      const merged = [
+        ...personal,
+        ...announcements.map((a) => ({
+          ...a,
+          isRead: readNotificationIds.has(a._id),
+        })),
+      ];
 
-    return merged.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+      return merged.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return [];
+      }
+      throw err;
+    }
   },
 });
 
 export const getNotificationArchive = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    const personal = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
-      .order("desc")
-      .take(args.limit || 100);
+      const personal = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
+        .order("desc")
+        .take(args.limit || 100);
 
-    const announcements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
-      .order("desc")
-      .take(args.limit || 50);
+      const announcements = await ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
+        .order("desc")
+        .take(args.limit || 50);
 
-    const readReceipts = await Promise.all(
-      announcements.map((a) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_user_notification", (q) =>
-            q.eq("userId", userId).eq("notificationId", a._id),
-          )
-          .unique(),
-      ),
-    );
+      const readReceipts = await Promise.all(
+        announcements.map((a) =>
+          ctx.db
+            .query("readReceipts")
+            .withIndex("by_user_notification", (q) =>
+              q.eq("userId", userId).eq("notificationId", a._id),
+            )
+            .unique(),
+        ),
+      );
 
-    const readNotificationIds = new Set(
-      readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
-    );
+      const readNotificationIds = new Set(
+        readReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
+      );
 
-    const merged = [
-      ...personal,
-      ...announcements.map((a) => ({
-        ...a,
-        isRead: readNotificationIds.has(a._id),
-      })),
-    ];
+      const merged = [
+        ...personal,
+        ...announcements.map((a) => ({
+          ...a,
+          isRead: readNotificationIds.has(a._id),
+        })),
+      ];
 
-    return merged.sort((a, b) => b.createdAt - a.createdAt);
+      return merged.sort((a, b) => b.createdAt - a.createdAt);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return [];
+      }
+      throw err;
+    }
   },
 });
-
 export const markAsRead = mutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, args) => {

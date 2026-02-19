@@ -680,73 +680,87 @@ export const bulkUpdateAuctions = mutation({
 export const getMyBids = query({
   args: {},
   handler: async (ctx) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    // Get all bids by this user
-    const bids = await ctx.db
-      .query("bids")
-      .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
-      .collect();
+      // Get all bids by this user
+      const bids = await ctx.db
+        .query("bids")
+        .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+        .collect();
 
-    // Group by auctionId to get the latest status per auction
-    const bidsByAuction = new Map<
-      (typeof bids)[number]["auctionId"],
-      typeof bids
-    >();
-    for (const bid of bids) {
-      const existing = bidsByAuction.get(bid.auctionId);
-      if (existing) {
-        existing.push(bid);
-      } else {
-        bidsByAuction.set(bid.auctionId, [bid]);
+      // Group by auctionId to get the latest status per auction
+      const bidsByAuction = new Map<
+        (typeof bids)[number]["auctionId"],
+        typeof bids
+      >();
+      for (const bid of bids) {
+        const existing = bidsByAuction.get(bid.auctionId);
+        if (existing) {
+          existing.push(bid);
+        } else {
+          bidsByAuction.set(bid.auctionId, [bid]);
+        }
       }
+      const auctionIds = Array.from(bidsByAuction.keys());
+
+      const auctions = await Promise.all(
+        auctionIds.map(async (id) => {
+          const auction = await ctx.db.get(id);
+          if (!auction) return null;
+
+          // Find my highest bid on this auction
+          const myBids = bidsByAuction.get(id) ?? [];
+          const myHighestBid = Math.max(...myBids.map((b) => b.amount));
+
+          return {
+            ...auction,
+            images: await resolveImageUrls(ctx.storage, auction.images),
+            myHighestBid,
+            isWinning:
+              auction.status === "active" &&
+              myHighestBid === auction.currentPrice,
+            isWon: auction.status === "sold" && auction.winnerId === userId,
+          };
+        }),
+      );
+
+      return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return [];
+      }
+      throw err;
     }
-    const auctionIds = Array.from(bidsByAuction.keys());
-
-    const auctions = await Promise.all(
-      auctionIds.map(async (id) => {
-        const auction = await ctx.db.get(id);
-        if (!auction) return null;
-
-        // Find my highest bid on this auction
-        const myBids = bidsByAuction.get(id) ?? [];
-        const myHighestBid = Math.max(...myBids.map((b) => b.amount));
-
-        return {
-          ...auction,
-          images: await resolveImageUrls(ctx.storage, auction.images),
-          myHighestBid,
-          isWinning:
-            auction.status === "active" &&
-            myHighestBid === auction.currentPrice,
-          isWon: auction.status === "sold" && auction.winnerId === userId,
-        };
-      }),
-    );
-
-    return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
   },
 });
 
 export const getMyListings = query({
   args: {},
   handler: async (ctx) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return [];
-    const userId = authUser.userId ?? authUser._id;
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
 
-    const listings = await ctx.db
-      .query("auctions")
-      .withIndex("by_seller", (q) => q.eq("sellerId", userId))
-      .collect();
+      const listings = await ctx.db
+        .query("auctions")
+        .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+        .collect();
 
-    return await Promise.all(
-      listings.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      })),
-    );
+      return await Promise.all(
+        listings.map(async (auction) => ({
+          ...auction,
+          images: await resolveImageUrls(ctx.storage, auction.images),
+        })),
+      );
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return [];
+      }
+      throw err;
+    }
   },
 });
