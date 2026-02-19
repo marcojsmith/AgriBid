@@ -15,6 +15,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/AuctionCard";
 
+/**
+ * Renders a seller profile page based on the `userId` route parameter.
+ *
+ * Displays a loading spinner while data is being fetched, a "User Not Found"
+ * view if the seller does not exist, or the full profile when data is available.
+ * The profile includes a header with name, verification badge, role, join year,
+ * active listing and total sold stats, an "Active Auctions" grid, a "Sales History"
+ * grid, and a paginated "Load More Listings" control. If the current user is the
+ * profile owner, a "Manage Verification" button linking to `/kyc` is shown.
+ *
+ * @returns The React element for the seller profile page (including loading or not-found states).
+ */
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
   const myProfile = useQuery(api.users.getMyProfile);
