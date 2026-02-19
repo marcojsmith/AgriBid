@@ -17,6 +17,9 @@ import { AuctionCard } from "@/components/AuctionCard";
 
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
+  const myProfile = useQuery(api.users.getMyProfile);
+  const isOwner = myProfile?.userId === userId || myProfile?._id === userId;
+
   const sellerInfo = useQuery(api.auctions.getSellerInfo, {
     sellerId: userId || "",
   });
@@ -82,6 +85,19 @@ export default function Profile() {
                     <ShieldCheck className="h-4 w-4" />
                     Verified Seller
                   </Badge>
+                )}
+                {isOwner && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-8 border-2 font-black uppercase text-[10px] tracking-widest rounded-lg ml-auto md:ml-0"
+                  >
+                    <Link to="/kyc">
+                      <ShieldCheck className="h-3 w-3 mr-1" />
+                      Manage Verification
+                    </Link>
+                  </Button>
                 )}
               </div>
               <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-sm text-muted-foreground font-bold uppercase tracking-wide">
