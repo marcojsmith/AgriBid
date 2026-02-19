@@ -112,8 +112,7 @@ export function UsersTab() {
                       )}
                       {p.kycStatus === "pending" && (
                         <Badge
-                          className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase cursor-pointer"
-                          onClick={() => handleReviewKYCClick(p.userId)}
+                          className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase"
                         >
                           {isFetchingKYC && kycReviewUser?.userId === p.userId ? (
                             <LoadingIndicator size="sm" />
@@ -155,8 +154,9 @@ export function UsersTab() {
                               try {
                                 await verifyUser(p.userId);
                                 toast.success("User verified");
-                              } catch {
-                                toast.error("Verification failed");
+                              } catch (err) {
+                                console.error(`Failed to verify user ${p.userId}:`, err);
+                                toast.error(`Verification failed: ${err instanceof Error ? err.message : "Unknown error"}`);
                               }
                             }}
                           >
@@ -177,7 +177,12 @@ export function UsersTab() {
                           Promote
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        aria-label={`View details for ${p.name || p.email || 'user'}`}
+                      >
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>

@@ -314,10 +314,13 @@ export const getAdminStats = query({
       totalUsers,
       verifiedSellers,
     ] = await Promise.all([
-      ctx.db.query("auctions").collect().then(res => res.length),
+      // Use existing index if available, or just take first few if only count is needed 
+      // (Convex doesn't have a direct count() yet, but withIndex limits scan range)
+      // Using withIndex for total counts where possible
+      ctx.db.query("auctions").withIndex("by_status").collect().then(res => res.length),
       ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "active")).collect().then(res => res.length),
       ctx.db.query("auctions").withIndex("by_status", q => q.eq("status", "pending_review")).collect().then(res => res.length),
-      ctx.db.query("profiles").collect().then(res => res.length),
+      ctx.db.query("profiles").withIndex("by_role").collect().then(res => res.length),
       ctx.db.query("profiles").withIndex("by_isVerified", q => q.eq("isVerified", true)).collect().then(res => res.length),
     ]);
 

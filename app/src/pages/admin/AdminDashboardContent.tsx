@@ -206,8 +206,10 @@ export function AdminDashboardContent() {
             <Button
               variant="outline"
               size="icon"
-              className="h-11 w-11 border-2 rounded-xl"
-              aria-label="Filter results"
+              className="h-11 w-11 border-2 rounded-xl opacity-50 cursor-not-allowed"
+              aria-label="Filter results (coming soon)"
+              disabled
+              title="Filtering coming soon"
             >
               <Filter className="h-4 w-4" />
             </Button>

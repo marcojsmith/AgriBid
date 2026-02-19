@@ -73,7 +73,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const uploadFiles = async (filesToUpload: File[] = files) => {
+  const uploadFiles = async (filesToUpload: File[] = files, autoClear = false) => {
     if (filesToUpload.length === 0) return [];
     
     setIsUploading(true);
@@ -121,6 +121,10 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
           );
         }
         return null;
+      }
+
+      if (autoClear) {
+        setFiles([]);
       }
 
       return storageIds;

@@ -27,8 +27,9 @@ export function SettingsTab() {
           description="Manage makes, models, and categories."
           icon={<Hammer />}
           action={() => {
-            // TODO: Navigate to /admin/equipment-metadata or open management UI
-            toast.info("Equipment Metadata management coming soon");
+            // Tracked in GH #55
+            window.open("https://github.com/marcojsmith/AgriBid/issues/55", "_blank");
+            toast.info("Opening Equipment Metadata issue #55");
           }}
         />
         <SettingsCard
@@ -36,8 +37,9 @@ export function SettingsTab() {
           description="Configure commission rates and listing fees."
           icon={<TrendingUp />}
           action={() => {
-            // TODO: Navigate to /admin/platform-fees or open fee config UI
-            toast.info("Platform Fees configuration coming soon");
+            // Tracked in GH #56
+            window.open("https://github.com/marcojsmith/AgriBid/issues/56", "_blank");
+            toast.info("Opening Platform Fees issue #56");
           }}
         />
         <SettingsCard

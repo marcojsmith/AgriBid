@@ -21,8 +21,13 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
     status: auctionsStatus,
     loadMore: loadMoreAuctions,
   } = usePaginatedQuery(
-    // @ts-expect-error - Convex types for usePaginatedQuery can be restrictive with custom queries
-    api.auctions.getAllAuctions, 
+    /**
+     * NOTE: Convex's type inference for usePaginatedQuery can be overly restrictive 
+     * with custom queries. Using 'as any' here to bypass the internal pagination 
+     * type mismatch which is otherwise valid at runtime.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    api.auctions.getAllAuctions as any, 
     {}, 
     { initialNumItems: 50 }
   );
@@ -32,8 +37,13 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
     status: profilesStatus,
     loadMore: loadMoreProfiles,
   } = usePaginatedQuery(
-    // @ts-expect-error - listAllProfiles has specific filter args that usePaginatedQuery might struggle to infer perfectly
-    api.users.listAllProfiles, 
+    /**
+     * NOTE: listAllProfiles has specific filter args that usePaginatedQuery 
+     * might struggle to infer perfectly. Similar to getAllAuctions, this ensures
+     * compatibility with the current Convex React library version.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    api.users.listAllProfiles as any, 
     {}, 
     { initialNumItems: 50 }
   );
@@ -155,8 +165,9 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
       setAnnouncementOpen(false);
       setAnnouncementTitle("");
       setAnnouncementMessage("");
-    } catch {
-      toast.error("Failed to send");
+    } catch (err) {
+      console.error("Announcement error:", err);
+      toast.error(`Failed to send: ${err instanceof Error ? err.message : "Internal error"}`);
     }
   };
 
@@ -179,8 +190,9 @@ export function AdminDashboardProvider({ children }: { children: React.ReactNode
       setKycReviewUser(null);
       setKycRejectionReason("");
       setShowFullId(false);
-    } catch {
-      toast.error("Review failed");
+    } catch (err) {
+      console.error("KYC Review Error:", err);
+      toast.error(`Review failed: ${err instanceof Error ? err.message : "Internal error"}`);
     }
   };
 

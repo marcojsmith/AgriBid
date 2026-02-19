@@ -51,18 +51,17 @@ export default function KYC() {
     updateField,
     validate,
     setIsFormInitialized,
-  } = useKYCForm(isEditMode ? {
-    firstName: myKycDetails?.firstName,
-    lastName: myKycDetails?.lastName,
-    phoneNumber: myKycDetails?.phoneNumber,
-    idNumber: myKycDetails?.idNumber,
-    email: myKycDetails?.kycEmail,
+  } = useKYCForm(isEditMode && myKycDetails ? {
+    firstName: myKycDetails.firstName,
+    lastName: myKycDetails.lastName,
+    phoneNumber: myKycDetails.phoneNumber,
+    idNumber: myKycDetails.idNumber,
+    email: myKycDetails.kycEmail,
   } : undefined);
 
   const {
     isUploading,
     files,
-    setFiles,
     existingDocuments,
     setExistingDocuments,
     handleFileChange,
@@ -109,14 +108,21 @@ export default function KYC() {
       return;
     }
 
-    const storageIds = await uploadFiles();
+    // Pass autoClear=true to clear file selection on success
+    const storageIds = await uploadFiles(files, true);
     if (!storageIds && files.length > 0) return; // Error handled in hook
 
     try {
-      const allDocuments = [
-        ...(existingDocuments as Id<"_storage">[]), 
-        ...((storageIds || []) as Id<"_storage">[])
-      ];
+      // Validate and sanitize document IDs to ensure branded types
+      const sanitizedExisting = (existingDocuments || []).filter((id): id is Id<"_storage"> => 
+        typeof id === "string" && id.length > 0
+      );
+      const sanitizedNew = (storageIds || []).filter((id): id is Id<"_storage"> => 
+        typeof id === "string" && id.length > 0
+      );
+      
+      const allDocuments = [...sanitizedExisting, ...sanitizedNew];
+      
       await submitKYC({
         documents: allDocuments,
         firstName: formData.firstName,
@@ -127,7 +133,6 @@ export default function KYC() {
       });
       toast.success("KYC Documents submitted for review");
       setIsEditMode(false);
-      setFiles([]);
     } catch (submitError) {
       console.error("KYC Submission Phase Failed:", submitError);
       toast.error(

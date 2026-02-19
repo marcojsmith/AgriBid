@@ -41,7 +41,10 @@ export function DocumentUploadSection({
       </div>
 
       <div className="p-8 bg-muted/30 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 text-center group hover:bg-muted/50 transition-colors">
-        <Label className="cursor-pointer space-y-4 w-full">
+        <Label 
+          htmlFor="kyc-file-upload"
+          className="cursor-pointer space-y-4 w-full"
+        >
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
             <Upload className="h-8 w-8 text-primary" />
           </div>
@@ -54,11 +57,13 @@ export function DocumentUploadSection({
             </p>
           </div>
           <Input
+            id="kyc-file-upload"
             type="file"
             className="hidden"
             onChange={onFileChange}
             multiple
             accept=".jpg,.jpeg,.png,.pdf"
+            aria-label="Upload supporting documents"
           />
         </Label>
       </div>
@@ -74,15 +79,16 @@ export function DocumentUploadSection({
               <ShieldCheck className="h-3 w-3 text-green-600" />
               Existing Doc {idx + 1}
               {isEditMode && (
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                                            onClick={() => onDeleteDocument(docId)}
-                                            aria-label={`Delete document ${idx + 1}`}
-                                          >
-                                            ×
-                                          </Button>              )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                  onClick={() => onDeleteDocument(docId)}
+                  aria-label={`Delete document ${idx + 1}`}
+                >
+                  ×
+                </Button>
+              )}
             </Badge>
           ))}
           {files.map((f, idx) => (

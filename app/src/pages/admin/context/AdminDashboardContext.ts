@@ -1,5 +1,5 @@
 // app/src/pages/admin/context/AdminDashboardContext.ts
-import { createContext } from "react";
+import React, { createContext } from "react";
 import type { Id, Doc } from "convex/_generated/dataModel";
 
 /**

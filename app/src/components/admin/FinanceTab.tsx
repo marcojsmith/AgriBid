@@ -11,42 +11,7 @@ import {
 } from "@/components/ui/table";
 import { TrendingUp, DollarSign, Calendar } from "lucide-react";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
-import { cn } from "@/lib/utils";
-
-/**
- * Render a compact statistic card that displays a label, a prominent value, and an icon.
- *
- * @param label - Short uppercase label describing the metric
- * @param value - Numeric or string value to display prominently
- * @param icon - Icon to show in a rounded tile on the right side
- * @param color - Optional Tailwind CSS color classes applied to the value text
- * @returns A JSX element rendering the styled statistic card
- */
-function StatCard({
-  label,
-  value,
-  icon,
-  color = "",
-}: {
-  label: string;
-  value: number | string;
-  icon: React.ReactNode;
-  color?: string;
-}) {
-  return (
-    <Card className="p-6 border-2 flex items-center justify-between bg-card/50 backdrop-blur-sm">
-      <div className="space-y-1">
-        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-          {label}
-        </p>
-        <p className={cn("text-2xl font-black", color)}>{value}</p>
-      </div>
-      <div className="h-12 w-12 rounded-xl bg-muted/50 flex items-center justify-center text-muted-foreground">
-        {icon}
-      </div>
-    </Card>
-  );
-}
+import { StatCard } from "./StatCard";
 
 export function FinanceTab() {
   const stats = useQuery(api.admin.getFinancialStats);
@@ -67,17 +32,26 @@ export function FinanceTab() {
           value={`R ${stats.totalSalesVolume.toLocaleString()}`}
           icon={<DollarSign className="h-5 w-5" />}
           color="text-green-600"
+          padding="p-6"
+          bgVariant="bg-card/50"
+          iconSize="h-12 w-12"
         />
         <StatCard
           label={`Est. Commission (${(stats.commissionRate ?? 0.05) * 100}%)`}
           value={`R ${stats.estimatedCommission.toLocaleString()}`}
           icon={<TrendingUp className="h-5 w-5" />}
           color="text-primary"
+          padding="p-6"
+          bgVariant="bg-card/50"
+          iconSize="h-12 w-12"
         />
         <StatCard
           label="Auctions Settled"
           value={stats.auctionCount}
           icon={<Calendar className="h-5 w-5" />}
+          padding="p-6"
+          bgVariant="bg-card/50"
+          iconSize="h-12 w-12"
         />
       </div>
 

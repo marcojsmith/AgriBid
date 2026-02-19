@@ -42,9 +42,9 @@ export function ModerationTab() {
             <h2 className="text-xl font-black uppercase tracking-tight">
               Pending Review
             </h2>
-            <Badge variant="outline">{pendingAuctions?.length || 0}</Badge>
+            <Badge variant="outline">{pendingAuctions.length}</Badge>
           </div>
-          {pendingAuctions?.map((auction) => (
+          {pendingAuctions.map((auction) => (
             <ModerationCard
               key={auction._id}
               auction={auction}
@@ -69,7 +69,7 @@ export function ModerationTab() {
               onView={() => navigate(`/auction/${auction._id}`)}
             />
           ))}
-          {pendingAuctions?.length === 0 && (
+          {pendingAuctions.length === 0 && (
             <EmptyState label="Queue is Clear" icon={<Check />} />
           )}
         </div>

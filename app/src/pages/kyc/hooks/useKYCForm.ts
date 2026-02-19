@@ -62,7 +62,8 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
       email: "",
       confirmEmail: "",
     });
-    setIsFormInitialized(false);
+    // Set to true so effect doesn't immediately re-populate from initialData
+    setIsFormInitialized(true);
   };
 
   const isValidEmail = (email: string) => {

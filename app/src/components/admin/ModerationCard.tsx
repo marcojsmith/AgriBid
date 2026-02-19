@@ -38,7 +38,7 @@ export function ModerationCard({
             <img
               src={images.front}
               className="absolute inset-0 w-full h-full object-cover"
-              alt=""
+              alt={`${auction.title} - front view`}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">

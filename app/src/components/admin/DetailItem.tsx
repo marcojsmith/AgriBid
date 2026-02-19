@@ -15,7 +15,7 @@ export function DetailItem({
   icon,
 }: {
   label: string;
-  value: string;
+  value: string | null | undefined;
   icon: React.ReactNode;
 }) {
   return (

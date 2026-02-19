@@ -84,8 +84,11 @@ export function MarketplaceTab() {
     }
   };
 
-  const isAllSelected = selectedAuctions.length === filteredAuctions.length && filteredAuctions.length > 0;
-  const isPartiallySelected = selectedAuctions.length > 0 && selectedAuctions.length < filteredAuctions.length;
+  const selectedSet = new Set(selectedAuctions);
+  const visibleSelectedCount = filteredAuctions.filter(a => selectedSet.has(a._id)).length;
+  
+  const isAllSelected = filteredAuctions.length > 0 && visibleSelectedCount === filteredAuctions.length;
+  const isPartiallySelected = visibleSelectedCount > 0 && visibleSelectedCount < filteredAuctions.length;
 
   return (
     <TabsContent
@@ -133,13 +136,13 @@ export function MarketplaceTab() {
             <TableRow className="border-b-2">
               <TableHead className="w-[50px]">
                 <Checkbox
-                  checked={isAllSelected}
-                  // @ts-expect-error - Radix/Shadcn Checkbox supports indeterminate but its types can be tricky
-                  indeterminate={isPartiallySelected}
+                  checked={isPartiallySelected ? "indeterminate" : isAllSelected}
                   onCheckedChange={(checked) => {
-                    setSelectedAuctions(
-                      checked ? filteredAuctions.map((a) => a._id) : [],
-                    );
+                    if (checked === true) {
+                      setSelectedAuctions(filteredAuctions.map((a) => a._id));
+                    } else {
+                      setSelectedAuctions([]);
+                    }
                   }}
                   aria-label="Select all auctions"
                 />
@@ -186,7 +189,7 @@ export function MarketplaceTab() {
                       checked={selectedAuctions.includes(a._id)}
                       onCheckedChange={(checked) => {
                         setSelectedAuctions((prev) =>
-                          checked
+                          checked === true
                             ? [...prev, a._id]
                             : prev.filter((id) => id !== a._id),
                         );

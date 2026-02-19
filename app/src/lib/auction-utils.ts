@@ -24,5 +24,8 @@ export function normalizeAuctionImages(
       additional: images.slice(1),
     };
   }
-  return images;
+  return {
+    ...images,
+    additional: images.additional ?? [],
+  };
 }

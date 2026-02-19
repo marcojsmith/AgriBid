@@ -3,6 +3,7 @@
 This file tracks all major tracks for the project. Each track has its own detailed plan in its respective folder.
 
 ## Legend
+
 - `[ ]` : Not Started
 - `[~]` : In Progress
 - `[x]` : Completed
@@ -13,7 +14,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Comprehensive Codebase Modularization & Refactor**
 *Link: [./tracks/modularization_refactor_20260219/](./tracks/modularization_refactor_20260219/)*
-
 
 ---
 

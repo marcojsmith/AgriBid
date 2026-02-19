@@ -51,6 +51,8 @@ export function VerificationStatusSection({
       );
     }
 
+    const hasDocs = (myKycDetails.kycDocuments?.length || 0) > 0;
+
     return (
       <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
         <div className="text-center space-y-4">
@@ -73,14 +75,14 @@ export function VerificationStatusSection({
                 Full Name
               </Label>
               <p className="font-bold">
-                {myKycDetails?.firstName} {myKycDetails?.lastName}
+                {myKycDetails.firstName || "—"} {myKycDetails.lastName || ""}
               </p>
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 ID Number
               </Label>
-              <p className="font-bold">{myKycDetails?.idNumber}</p>
+              <p className="font-bold">{myKycDetails.idNumber || "N/A"}</p>
             </div>
           </div>
           <div className="space-y-4">
@@ -90,10 +92,10 @@ export function VerificationStatusSection({
               </Label>
               <div className="space-y-1">
                 <p className="font-bold flex items-center gap-2">
-                  <Mail className="h-3 w-3" /> {myKycDetails?.kycEmail}
+                  <Mail className="h-3 w-3" /> {myKycDetails.kycEmail || "N/A"}
                 </p>
                 <p className="font-bold flex items-center gap-2">
-                  <Phone className="h-3 w-3" /> {myKycDetails?.phoneNumber}
+                  <Phone className="h-3 w-3" /> {myKycDetails.phoneNumber || "N/A"}
                 </p>
               </div>
             </div>
@@ -102,16 +104,20 @@ export function VerificationStatusSection({
                 Verified Documents
               </Label>
               <div className="flex flex-wrap gap-2">
-                {(myKycDetails?.kycDocuments ?? []).map((docId: string, idx: number) => (
-                  <Badge
-                    key={docId}
-                    variant="secondary"
-                    className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
-                  >
-                    <FileText className="h-3 w-3" />
-                    Document {idx + 1}
-                  </Badge>
-                ))}
+                {hasDocs ? (
+                  myKycDetails.kycDocuments?.map((docId: string, idx: number) => (
+                    <Badge
+                      key={docId}
+                      variant="secondary"
+                      className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
+                    >
+                      <FileText className="h-3 w-3" />
+                      Document {idx + 1}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase italic">No documents verified</p>
+                )}
               </div>
             </div>
           </div>

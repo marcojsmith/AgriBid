@@ -100,7 +100,7 @@ export function UserDropdown({
             {isLoadingProfile ? (
               <LoadingIndicator size="sm" />
             ) : (
-              <User className="h-4.5 w-4.5 transition-colors" />
+              <User className="h-4 w-4 transition-colors" />
             )}
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
