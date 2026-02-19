@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,15 @@ const isValidEmail = (email: string) => {
 export default function KYC() {
   const navigate = useNavigate();
   const profile = useQuery(api.users.getMyProfile);
+  const myKycDetails = useQuery(api.users.getMyKYCDetails);
   const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
   const deleteUpload = useMutation(api.auctions.deleteUpload);
   const submitKYC = useMutation(api.users.submitKYC);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [existingDocuments, setExistingDocuments] = useState<string[]>([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -56,6 +59,21 @@ export default function KYC() {
     email: "",
     confirmEmail: "",
   });
+
+  // Populate form when entering edit mode
+  useEffect(() => {
+    if (isEditMode && myKycDetails) {
+      setFormData({
+        firstName: myKycDetails.firstName || "",
+        lastName: myKycDetails.lastName || "",
+        phoneNumber: myKycDetails.phoneNumber || "",
+        idNumber: myKycDetails.idNumber || "",
+        email: myKycDetails.kycEmail || "",
+        confirmEmail: myKycDetails.kycEmail || "",
+      });
+      setExistingDocuments(myKycDetails.kycDocuments || []);
+    }
+  }, [isEditMode, myKycDetails]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -99,7 +117,7 @@ export default function KYC() {
     );
 
   const handleUpload = async () => {
-    if (files.length === 0) {
+    if (files.length === 0 && existingDocuments.length === 0) {
       toast.error("Please select at least one document");
       return;
     }
@@ -123,6 +141,13 @@ export default function KYC() {
     ) {
       toast.error("Please fill in all personal details");
       return;
+    }
+
+    if (isEditMode) {
+      const confirmed = window.confirm(
+        "Are you sure you want to update your verified details? This will reset your verification status to 'Pending' and you will need to be re-verified before you can continue listing.",
+      );
+      if (!confirmed) return;
     }
 
     setIsUploading(true);
@@ -176,8 +201,9 @@ export default function KYC() {
 
       // Phase 2: KYC Submission
       try {
+        const allDocuments = [...existingDocuments, ...storageIds];
         await submitKYC({
-          documents: storageIds as Id<"_storage">[],
+          documents: allDocuments as Id<"_storage">[],
           firstName: formData.firstName,
           lastName: formData.lastName,
           phoneNumber: formData.phoneNumber,
@@ -185,6 +211,7 @@ export default function KYC() {
           email: formData.email,
         });
         toast.success("KYC Documents submitted for review");
+        setIsEditMode(false);
       } catch (submitError) {
         console.error("KYC Submission Phase Failed:", submitError);
         toast.error(
@@ -226,25 +253,88 @@ export default function KYC() {
         </p>
       </div>
 
-      {status === "verified" ? (
-        <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 text-center space-y-4">
-          <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
-            <ShieldCheck className="h-8 w-8 text-white" />
+      {status === "verified" && !isEditMode ? (
+        <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
+          <div className="text-center space-y-4">
+            <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
+              <ShieldCheck className="h-8 w-8 text-white" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
+              <p className="text-muted-foreground font-medium">
+                Your account is fully verified. Thank you for maintaining
+                marketplace integrity.
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
-            <p className="text-muted-foreground font-medium">
-              Your account is fully verified. Thank you for maintaining
-              marketplace integrity.
-            </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-green-500/10 pt-8">
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Full Name
+                </Label>
+                <p className="font-bold">
+                  {myKycDetails?.firstName} {myKycDetails?.lastName}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  ID Number
+                </Label>
+                <p className="font-bold">{myKycDetails?.idNumber}</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Contact Details
+                </Label>
+                <div className="space-y-1">
+                  <p className="font-bold flex items-center gap-2">
+                    <Mail className="h-3 w-3" /> {myKycDetails?.kycEmail}
+                  </p>
+                  <p className="font-bold flex items-center gap-2">
+                    <Phone className="h-3 w-3" /> {myKycDetails?.phoneNumber}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Verified Documents
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {myKycDetails?.kycDocuments.map((docId, idx) => (
+                    <Badge
+                      key={docId}
+                      variant="secondary"
+                      className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
+                    >
+                      <FileText className="h-3 w-3" />
+                      Document {idx + 1}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-          <Button
-            onClick={() => navigate("/profile/" + profile.userId)}
-            variant="outline"
-            className="border-2 font-bold uppercase"
-          >
-            View Public Profile
-          </Button>
+
+          <div className="flex flex-col md:flex-row gap-4 justify-center pt-4">
+            <Button
+              onClick={() => navigate("/profile/" + profile.userId)}
+              variant="outline"
+              className="border-2 font-bold uppercase h-12 px-8"
+            >
+              View Public Profile
+            </Button>
+            <Button
+              onClick={() => setIsEditMode(true)}
+              variant="secondary"
+              className="border-2 font-bold uppercase h-12 px-8"
+            >
+              Edit Details
+            </Button>
+          </div>
         </Card>
       ) : status === "pending" ? (
         <Card className="p-12 border-2 border-orange-500/20 bg-orange-500/5 text-center space-y-4">
@@ -270,6 +360,28 @@ export default function KYC() {
         </Card>
       ) : (
         <div className="space-y-8">
+          {isEditMode && (
+            <div className="p-4 border-2 border-orange-500/20 bg-orange-500/5 rounded-xl flex gap-3 items-center">
+              <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
+              <div>
+                <p className="font-black uppercase text-xs text-orange-600">
+                  Editing Verified Details
+                </p>
+                <p className="text-sm font-medium text-orange-600/80 leading-relaxed">
+                  Updating your information will reset your status to "Pending"
+                  and require re-verification by our team.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto font-bold uppercase text-[10px]"
+                onClick={() => setIsEditMode(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Left: Personal Info Form */}
             <div className="md:col-span-2 space-y-6">
@@ -406,8 +518,32 @@ export default function KYC() {
                   </Label>
                 </div>
 
-                {files.length > 0 && (
+                {(files.length > 0 || existingDocuments.length > 0) && (
                   <div className="flex flex-wrap gap-2">
+                    {existingDocuments.map((docId, idx) => (
+                      <Badge
+                        key={docId}
+                        variant="secondary"
+                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/20"
+                      >
+                        <ShieldCheck className="h-3 w-3 text-green-600" />
+                        Existing Doc {idx + 1}
+                        {isEditMode && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                            onClick={() =>
+                              setExistingDocuments((prev) =>
+                                prev.filter((id) => id !== docId),
+                              )
+                            }
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </Badge>
+                    ))}
                     {files.map((f, idx) => (
                       <Badge
                         key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}

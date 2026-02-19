@@ -144,7 +144,7 @@ export const reviewKYC = mutation({
         title: "Verification Approved",
         message:
           "Your seller verification is complete. You can now list equipment.",
-        link: "/sell",
+        link: "/kyc",
         isRead: false,
         createdAt: Date.now(),
       });

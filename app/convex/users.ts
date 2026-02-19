@@ -369,3 +369,54 @@ export const submitKYC = mutation({
     return { success: true };
   },
 });
+
+/**
+ * User: Fetch their own decrypted KYC details for viewing and editing.
+ */
+export const getMyKYCDetails = query({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return null;
+
+      const linkId = authUser.userId ?? authUser._id;
+      if (!linkId) return null;
+
+      const profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", linkId))
+        .unique();
+
+      if (!profile) return null;
+
+      const [
+        decFirstName,
+        decLastName,
+        decIdNumber,
+        decPhone,
+        decEmail,
+      ] = await Promise.all([
+        decryptPII(profile.firstName),
+        decryptPII(profile.lastName),
+        decryptPII(profile.idNumber),
+        decryptPII(profile.phoneNumber),
+        decryptPII(profile.kycEmail),
+      ]);
+
+      return {
+        firstName: decFirstName,
+        lastName: decLastName,
+        idNumber: decIdNumber,
+        phoneNumber: decPhone,
+        kycEmail: decEmail,
+        kycDocuments: profile.kycDocuments || [],
+      };
+    } catch (err) {
+      if (err instanceof Error && !err.message.includes("Unauthenticated")) {
+        console.error("Error in getMyKYCDetails:", err);
+      }
+      return null;
+    }
+  },
+});
