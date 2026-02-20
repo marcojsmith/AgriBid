@@ -472,3 +472,34 @@ export const deleteMyKYCDocument = mutation({
     return { success: true };
   },
 });
+
+/**
+ * User: Update their last active timestamp.
+ */
+export const heartbeat = mutation({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return null;
+
+      const linkId = authUser.userId ?? authUser._id;
+      if (!linkId) return null;
+
+      const profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", linkId))
+        .unique();
+
+      if (profile) {
+        await ctx.db.patch(profile._id, {
+          lastActiveAt: Date.now(),
+        });
+      }
+      return { success: true };
+    } catch {
+      // Fail silently for heartbeats
+      return null;
+    }
+  },
+});

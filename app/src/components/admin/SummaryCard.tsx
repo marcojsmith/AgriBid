@@ -1,4 +1,3 @@
-// app/src/components/admin/SummaryCard.tsx
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";

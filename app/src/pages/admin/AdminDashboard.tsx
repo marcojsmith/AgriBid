@@ -25,12 +25,14 @@ export default function AdminDashboard() {
   const financialStats = useQuery(api.admin.getFinancialStats);
   const announcementStats = useQuery(api.admin.getAnnouncementStats);
   const supportStats = useQuery(api.admin.getSupportStats);
+  const systemStats = useQuery(api.admin.getSystemStats);
 
   const isLoading =
     adminStats === undefined ||
     financialStats === undefined ||
     announcementStats === undefined ||
-    supportStats === undefined;
+    supportStats === undefined ||
+    systemStats === undefined;
 
   if (isLoading) {
     return (
@@ -114,9 +116,14 @@ export default function AdminDashboard() {
           stats={[
             { label: "Total Users", value: adminStats.totalUsers },
             {
-              label: "Verified",
-              value: adminStats.verifiedUsers,
+              label: "Online Now",
+              value: adminStats.onlineUsers,
               color: "text-blue-600",
+            },
+            {
+              label: "Pending KYC",
+              value: adminStats.pendingKYC,
+              color: adminStats.pendingKYC > 0 ? "text-yellow-600" : "",
             },
           ]}
           link="/admin/users"
@@ -179,8 +186,15 @@ export default function AdminDashboard() {
           title="System"
           icon={<TrendingUp className="h-5 w-5" />}
           stats={[
-            { label: "Status", value: "Online", color: "text-green-600" },
-            { label: "Version", value: "v1.2.0" },
+            {
+              label: "Status",
+              value: systemStats.status,
+              color:
+                systemStats.status === "Online"
+                  ? "text-green-600"
+                  : "text-red-600",
+            },
+            { label: "Version", value: systemStats.version },
           ]}
           link="/admin/settings"
           linkLabel="Configuration"

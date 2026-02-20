@@ -1,6 +1,6 @@
 // app/src/components/NotificationListener.tsx
 import { useEffect, useRef } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 import { useSession } from "../lib/auth-client";
@@ -8,11 +8,13 @@ import { useSession } from "../lib/auth-client";
 /**
  * Monitors auctions the user is participating in (bidding/watching)
  * and triggers toast notifications when they are settled.
+ * Also handles user activity heartbeat.
  */
 export const NotificationListener = () => {
   const { data: session } = useSession();
   const myBids = useQuery(api.auctions.getMyBids);
   const watched = useQuery(api.watchlist.getWatchedAuctions);
+  const sendHeartbeat = useMutation(api.users.heartbeat);
 
   // Keep track of auction statuses we've already "seen" as settled
   const settledAuctionsRef = useRef<Set<string>>(new Set());
@@ -23,14 +25,29 @@ export const NotificationListener = () => {
     settledAuctionsRef.current.clear();
   }, [userId]);
 
+  // Heartbeat to track online status
+  useEffect(() => {
+    if (!session) return;
+
+    // Send heartbeat immediately on session load
+    sendHeartbeat();
+
+    // Set up interval for subsequent heartbeats
+    const intervalId = setInterval(() => {
+      sendHeartbeat();
+    }, 60 * 1000); // Every 1 minute
+
+    return () => clearInterval(intervalId);
+  }, [session, sendHeartbeat]);
+
   useEffect(() => {
     if (!session || !myBids || !watched) return;
 
     // Deduplicate auctions by ID
     const allRelevant = Array.from(
       new Map(
-        [...myBids, ...watched].map((a) => [a._id.toString(), a]),
-      ).values(),
+        [...myBids, ...watched].map((a) => [a._id.toString(), a])
+      ).values()
     );
 
     for (const auction of allRelevant) {
@@ -58,7 +75,7 @@ export const NotificationListener = () => {
               {
                 duration: 10000,
                 description: `Winning Bid: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
-              },
+              }
             );
           } else if (isSeller) {
             toast.success(
@@ -66,7 +83,7 @@ export const NotificationListener = () => {
               {
                 duration: 10000,
                 description: `Final Price: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
-              },
+              }
             );
           } else {
             toast.info(`Auction ended: ${auction.title} has been sold.`, {
@@ -80,7 +97,7 @@ export const NotificationListener = () => {
               `Auction ended: ${auction.title} did not meet reserve.`,
               {
                 duration: 8000,
-              },
+              }
             );
           } else {
             toast.info(`Auction ended: ${auction.title} was not sold.`, {

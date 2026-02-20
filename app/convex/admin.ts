@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
-import { COMMISSION_RATE } from "./config";
+import { COMMISSION_RATE, APP_VERSION, SYSTEM_STATUS } from "./config";
 import { authComponent } from "./auth";
 
 // --- Bid Moderation ---
@@ -313,23 +313,13 @@ export const getAuditLogs = query({
 // --- Dashboard Stats ---
 
 /**
- * Helper to count results of a query using pagination to avoid memory issues.
+ * Helper to count results of a query.
  * @param query - A Convex query object (e.g., ctx.db.query("table"))
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function countQuery(query: { paginate: (opts: any) => Promise<any> }) {
-  let count = 0;
-  let cursor: string | null = null;
-  let isDone = false;
-
-  while (!isDone) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const page: any = await query.paginate({ numItems: 500, cursor });
-    count += page.page.length;
-    cursor = page.continueCursor;
-    isDone = page.isDone;
-  }
-  return count;
+async function countQuery(query: { collect: () => Promise<any[]> }) {
+  const results = await query.collect();
+  return results.length;
 }
 
 /**
@@ -443,6 +433,14 @@ export const getAdminStats = query({
         .unique(),
     ]);
 
+    const onlineThreshold = Date.now() - 5 * 60 * 1000;
+    const onlineUsers = await ctx.db
+      .query("profiles")
+      .withIndex("by_lastActiveAt", (q) =>
+        q.gt("lastActiveAt", onlineThreshold)
+      )
+      .collect();
+
     return {
       totalAuctions: auctionCounter?.total ?? 0,
       activeAuctions: auctionCounter?.active ?? 0,
@@ -450,6 +448,7 @@ export const getAdminStats = query({
       pendingKYC: profileCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
       verifiedUsers: profileCounter?.verified ?? 0,
+      onlineUsers: onlineUsers.length,
     };
   },
 });
@@ -575,6 +574,19 @@ export const getSupportStats = query({
       open: openTickets.length,
       resolved: resolvedTickets.length,
       total: openTickets.length + resolvedTickets.length,
+    };
+  },
+});
+
+export const getSystemStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    return {
+      version: APP_VERSION,
+      status: SYSTEM_STATUS,
     };
   },
 });
