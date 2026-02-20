@@ -1,0 +1,4 @@
+Task: Resolve GitHub issue #67: Direct URL navigation 404
+Summary: Added rewrites to vercel.json to ensure all non-static file requests are handled by index.html, allowing React Router to manage client-side routing.
+Files: vercel.json
+Why: SPAs on Vercel return 404 for direct navigation to sub-routes because there are no physical files matching the path. Redirecting to index.html lets the client-side router take over.
