@@ -9,6 +9,7 @@ import { LoadingIndicator } from "./components/ui/LoadingIndicator";
 const Home = lazy(() => import("./pages/Home"));
 const AuctionDetail = lazy(() => import("./pages/AuctionDetail"));
 const Sell = lazy(() => import("./pages/Sell"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminModeration = lazy(() => import("./pages/admin/AdminModeration"));
 const AdminAuctions = lazy(() => import("./pages/admin/AdminAuctions"));
 const AdminMarketplace = lazy(() => import("./pages/admin/AdminMarketplace"));
@@ -100,7 +101,7 @@ function App() {
               path="/admin"
               element={
                 <RoleProtectedRoute allowedRole="admin">
-                  <AdminModeration />
+                  <AdminDashboard />
                 </RoleProtectedRoute>
               }
             />
@@ -108,7 +109,7 @@ function App() {
               path="/admin/dashboard"
               element={
                 <RoleProtectedRoute allowedRole="admin">
-                  <AdminModeration />
+                  <AdminDashboard />
                 </RoleProtectedRoute>
               }
             />
