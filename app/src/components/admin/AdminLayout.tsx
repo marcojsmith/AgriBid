@@ -138,24 +138,24 @@ export function AdminLayout({
               {stats && (
                 <div className="flex flex-wrap gap-2">
                   <StatCard
-                    label="Live"
+                    label="Live Auctions"
                     value={stats.activeAuctions}
                     icon={<Gavel className="h-3 w-3" />}
                     color="text-green-500"
                     padding="p-2"
-                    className="min-w-[100px] h-14"
+                    className="min-w-[120px] h-14"
                     iconSize="h-8 w-8"
                   />
                   <StatCard
-                    label="Verified"
+                    label="Verified Users"
                     value={stats.verifiedUsers}
                     icon={<Users className="h-3 w-3" />}
                     padding="p-2"
-                    className="min-w-[100px] h-14"
+                    className="min-w-[120px] h-14"
                     iconSize="h-8 w-8"
                   />
                   <StatCard
-                    label="Moderation"
+                    label="Moderation Queue"
                     value={`${stats.pendingReview} · ${stats.pendingKYC}`}
                     icon={<Clock className="h-3 w-3" />}
                     color={
