@@ -1,0 +1,6 @@
+Task: Resolve GitHub issue #38
+Summary: Implemented admin functionality to end auctions early.
+Changes:
+- Added closeAuctionEarly mutation to convex/admin.ts.
+- Implemented 'Close Early' action in AdminAuctions page with confirmation toast.
+- Added logic to award highest bidder and notify both winner and seller.
