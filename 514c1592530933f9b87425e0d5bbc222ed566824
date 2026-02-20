@@ -1,0 +1,14 @@
+Task: Resolve GitHub issue #64: Admin dashboard page has no value
+Summary: Replaced the redundant redirection to moderation with a comprehensive Admin Dashboard featuring summary cards for all management areas.
+Changes:
+- Created AdminDashboard.tsx with summary cards for Real-Time, Auctions, Moderation, User Base, Financials, Support, Communication, and System.
+- Created reusable SummaryCard component for detailed dashboard metrics.
+- Added getSupportStats query to Convex backend for ticket monitoring.
+- Updated App.tsx routing to serve AdminDashboard at /admin and /admin/dashboard.
+Files:
+- app/convex/admin.ts
+- app/src/components/admin/SummaryCard.tsx
+- app/src/components/admin/index.ts
+- app/src/pages/admin/AdminDashboard.tsx
+- app/src/App.tsx
+Why: To provide administrators with a high-level overview of the platform status and quick access to all management modules.
