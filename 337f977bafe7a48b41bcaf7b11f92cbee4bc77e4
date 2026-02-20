@@ -1,0 +1,6 @@
+Task: Resolve GitHub issue #44
+Summary: Enabled marketplace filtering for closed auctions (sold and unsold).
+Changes:
+- Updated getActiveAuctions and getActiveMakes to support status filtering.
+- Added Status filter UI to FilterSidebar.
+- Updated Home page to handle status parameter and display appropriate headings.
