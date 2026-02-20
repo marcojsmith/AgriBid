@@ -493,21 +493,27 @@ export const listAnnouncements = query({
       .order("desc")
       .take(limit);
 
-    return await Promise.all(
-      announcements.map(async (announcement) => {
-        const readCount = await ctx.db
-          .query("readReceipts")
-          .withIndex("by_notification", (q) =>
-            q.eq("notificationId", announcement._id)
-          )
-          .collect();
+    if (announcements.length === 0) return [];
 
-        return {
-          ...announcement,
-          readCount: readCount.length,
-        };
-      })
+    // Batch fetch read counts to avoid N+1
+    const announcementIds = announcements.map((a) => a._id);
+    const allReadReceipts = await Promise.all(
+      announcementIds.map((id) =>
+        ctx.db
+          .query("readReceipts")
+          .withIndex("by_notification", (q) => q.eq("notificationId", id))
+          .collect()
+      )
     );
+
+    const readCounts = new Map(
+      announcementIds.map((id, index) => [id, allReadReceipts[index].length])
+    );
+
+    return announcements.map((announcement) => ({
+      ...announcement,
+      readCount: readCounts.get(announcement._id) || 0,
+    }));
   },
 });
 

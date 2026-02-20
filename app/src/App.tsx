@@ -50,17 +50,11 @@ const PageLoader = () => (
  * - "/watchlist" → Watchlist (protected, allowedRole="any")
  * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
  * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
- * - "/admin" → AdminModeration (protected, allowedRole="admin")
- * - "/admin/dashboard" → AdminModeration (protected, allowedRole="admin")
- * - "/admin/moderation" → AdminModeration (protected, allowedRole="admin")
- * - "/admin/marketplace" → AdminMarketplace (protected, allowedRole="admin")
- * - "/admin/auctions" → AdminAuctions (protected, allowedRole="admin")
- * - "/admin/users" → AdminUsers (protected, allowedRole="admin")
- * - "/admin/finance" → AdminFinance (protected, allowedRole="admin")
- * - "/admin/announcements" → AdminAnnouncements (protected, allowedRole="admin")
- * - "/admin/support" → AdminSupport (protected, allowedRole="admin")
- * - "/admin/audit" → AdminAudit (protected, allowedRole="admin")
- * - "/admin/settings" → AdminSettings (protected, allowedRole="admin")
+ * - "/admin/*" → Admin sub-routes (protected, allowedRole="admin")
+ *   - /admin, /admin/dashboard, /admin/moderation
+ *   - /admin/marketplace, /admin/auctions, /admin/users
+ *   - /admin/finance, /admin/announcements, /admin/support
+ *   - /admin/audit, /admin/settings
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")

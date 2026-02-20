@@ -93,10 +93,12 @@ export default function AdminUsers() {
   }, [allProfiles, userSearch]);
 
   const handleReviewKYCClick = async (userId: string) => {
+    if (isFetchingKYC) return;
     setIsFetchingKYC(true);
     setFetchingKycUserId(userId);
     try {
       const fullProfile = await getProfileForKYCMutation({ userId });
+      // Verify we are still looking for this specific user to avoid race conditions
       if (
         fullProfile &&
         typeof fullProfile === "object" &&
@@ -104,6 +106,7 @@ export default function AdminUsers() {
       ) {
         setKycReviewUser(fullProfile as KycReviewUser);
         setShowFullId(false);
+        setKycRejectionReason("");
       } else {
         toast.error("Could not fetch profile details");
       }
@@ -363,7 +366,11 @@ export default function AdminUsers() {
       <KycReviewDialog
         user={kycReviewUser}
         isOpen={!!kycReviewUser}
-        onClose={() => setKycReviewUser(null)}
+        onClose={() => {
+          setKycReviewUser(null);
+          setKycRejectionReason("");
+          setShowFullId(false);
+        }}
         onReview={handleKycReview}
         isProcessing={isKycProcessing}
         rejectionReason={kycRejectionReason}

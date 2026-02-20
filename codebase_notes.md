@@ -83,9 +83,14 @@ The `ListingWizard` now uses permanent Convex File Storage for all equipment ima
 
 ## Admin Moderation Workflow
 
-A dedicated Admin Dashboard (`/admin`) has been implemented to handle the lifecycle of new listings.
-- New auctions are created with a `pending_review` status.
-- Admins can review equipment details and condition checklists.
-- The `approveAuction` mutation updates the status to `active` and calculates the final auction end time.
-- Only users with the `admin` role (stored in the `user` table) can access these features.
+The Admin Dashboard has been refactored from a monolithic context-based design to a modular route-based architecture (`/admin/*`).
+- **Structure**: Each administrative function (Moderation, Auctions, Users, Announcements, Finance, etc.) is its own standalone page component with isolated local state.
+- **Layout**: A shared `AdminLayout` component provides the persistent sidebar navigation and a high-density KPI header.
+- **Workflow**: 
+  - New auctions are created with a `pending_review` status and appear in the **Moderation Queue**.
+  - Admins can approve or reject listings; approval transitions the status to `active` and sets the live auction timer.
+  - User management includes KYC document review with decrypted PII access and role elevation (promotion to admin).
+- **Auditability**: All administrative actions are automatically logged via the `logAudit` helper.
+- **Performance**: N+1 queries in administrative views (e.g., fetching read counts for announcements) are optimized via batched or parallelized lookups.
+- **Type Safety**: Backend queries used with `usePaginatedQuery` must have required `paginationOpts` in their validators to enable correct frontend type inference.
 

@@ -57,8 +57,7 @@ export default function AdminAuctions() {
     status: auctionsStatus,
     loadMore: loadMoreAuctions,
   } = usePaginatedQuery(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    api.auctions.getAllAuctions as any,
+    api.auctions.getAllAuctions,
     {},
     { initialNumItems: 50 }
   );
@@ -186,7 +185,7 @@ export default function AdminAuctions() {
             />
           </div>
           <Badge variant="secondary" className="font-bold">
-            {allAuctions.length} Total Records
+            {allAuctions.length} Loaded Records
           </Badge>
         </div>
         <Card className="border-2 overflow-hidden bg-card/50 backdrop-blur-sm">

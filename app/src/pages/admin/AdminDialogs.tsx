@@ -164,8 +164,8 @@ export function KycReviewDialog({
                       className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2"
                       onClick={() => {
                         try {
-                          if (!url || typeof url !== "string")
-                            throw new Error("Missing document URL");
+                          if (typeof url !== "string")
+                            throw new Error("Invalid document URL");
                           window.open(url, "_blank", "noopener,noreferrer");
                         } catch (err) {
                           console.error("KYC Document Access Error:", err);

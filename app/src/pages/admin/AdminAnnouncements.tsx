@@ -58,6 +58,16 @@ export default function AdminAnnouncements() {
       return;
     }
 
+    if (title.length > 200) {
+      toast.error("Title must be 200 characters or fewer");
+      return;
+    }
+
+    if (message.length > 2000) {
+      toast.error("Message must be 2000 characters or fewer");
+      return;
+    }
+
     setIsSending(true);
     try {
       await createAnnouncementMutation({ title, message });

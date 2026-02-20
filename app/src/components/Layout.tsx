@@ -26,7 +26,6 @@ export const Layout = ({ children }: LayoutProps) => {
   // avoiding stale closures in other effects while keeping dependencies clean.
   useEffect(() => {
     syncUserRef.current = syncUser;
-     
   });
 
   useEffect(() => {

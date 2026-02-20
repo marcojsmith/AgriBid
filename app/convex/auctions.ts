@@ -23,7 +23,7 @@ interface RawImages {
  */
 export async function resolveImageUrls(
   storage: QueryCtx["storage"],
-  images: unknown,
+  images: unknown
 ) {
   const resolveUrl = async (id: string | undefined) => {
     if (!id) return undefined;
@@ -50,8 +50,8 @@ export async function resolveImageUrls(
     additional: (
       await Promise.all(
         (normalizedImages.additional || []).map(async (id: string) =>
-          id.startsWith("http") ? id : await storage.getUrl(id),
-        ),
+          id.startsWith("http") ? id : await storage.getUrl(id)
+        )
       )
     ).filter((url: string | null | undefined): url is string => !!url),
   };
@@ -74,7 +74,7 @@ export const getPendingAuctions = query({
       auctions.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
-      })),
+      }))
     );
   },
 });
@@ -96,7 +96,7 @@ export const getActiveAuctions = query({
     if (args.search) {
       auctions = await auctionsQuery
         .withSearchIndex("search_title", (q) =>
-          q.search("title", args.search!).eq("status", "active"),
+          q.search("title", args.search!).eq("status", "active")
         )
         .collect();
     } else {
@@ -123,7 +123,7 @@ export const getActiveAuctions = query({
       auctions.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
-      })),
+      }))
     );
   },
 });
@@ -175,7 +175,7 @@ export const getAuctionBids = query({
         } else {
           bidderNames.set(bidderId, "Anonymous");
         }
-      }),
+      })
     );
 
     const bidsWithUsers = bids.map((bid) => ({
@@ -213,7 +213,7 @@ export const getSellerInfo = query({
     const soldAuctions = await ctx.db
       .query("auctions")
       .withIndex("by_seller_status", (q) =>
-        q.eq("sellerId", args.sellerId).eq("status", "sold"),
+        q.eq("sellerId", args.sellerId).eq("status", "sold")
       )
       .collect();
 
@@ -234,10 +234,7 @@ export const getSellerListings = query({
       .query("auctions")
       .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
       .filter((q) =>
-        q.or(
-          q.eq(q.field("status"), "active"),
-          q.eq(q.field("status"), "sold"),
-        ),
+        q.or(q.eq(q.field("status"), "active"), q.eq(q.field("status"), "sold"))
       )
       .paginate(args.paginationOpts);
 
@@ -245,7 +242,7 @@ export const getSellerListings = query({
       results.page.map(async (auction) => ({
         ...auction,
         images: await resolveImageUrls(ctx.storage, auction.images),
-      })),
+      }))
     );
 
     return {
@@ -275,7 +272,7 @@ export const deleteUpload = mutation({
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) {
       console.warn(
-        `Attempted to delete non-existent storage item: ${args.storageId}`,
+        `Attempted to delete non-existent storage item: ${args.storageId}`
       );
       return;
     }
@@ -431,7 +428,7 @@ export const placeBid = mutation({
 
     if (!profile?.isVerified) {
       throw new Error(
-        "Account verification required to place bids. Please complete KYC.",
+        "Account verification required to place bids. Please complete KYC."
       );
     }
 
@@ -531,7 +528,7 @@ export const settleExpiredAuctions = internalMutation({
       await updateCounter(ctx, "auctions", "active", -1);
 
       console.log(
-        `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`,
+        `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`
       );
     }
   },
@@ -542,7 +539,7 @@ export const settleExpiredAuctions = internalMutation({
  */
 export const getAllAuctions = query({
   args: {
-    paginationOpts: v.optional(paginationOptsValidator),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     console.log("getAllAuctions received args:", args);
@@ -551,12 +548,10 @@ export const getAllAuctions = query({
       throw new Error("Not authorized");
     }
 
-    const opts = args.paginationOpts || { numItems: 50, cursor: null };
-
     const auctions = await ctx.db
       .query("auctions")
       .order("desc")
-      .paginate(opts);
+      .paginate(args.paginationOpts);
 
     return {
       ...auctions,
@@ -564,7 +559,7 @@ export const getAllAuctions = query({
         auctions.page.map(async (auction) => ({
           ...auction,
           images: await resolveImageUrls(ctx.storage, auction.images),
-        })),
+        }))
       ),
     };
   },
@@ -593,8 +588,8 @@ export const adminUpdateAuction = mutation({
           v.literal("active"),
           v.literal("sold"),
           v.literal("unsold"),
-          v.literal("rejected"),
-        ),
+          v.literal("rejected")
+        )
       ),
       startTime: v.optional(v.number()),
       endTime: v.optional(v.number()),
@@ -616,7 +611,10 @@ export const adminUpdateAuction = mutation({
     await ctx.db.patch(args.auctionId, args.updates);
 
     if (newStatus && oldStatus !== newStatus) {
-      const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+      const statusToCounterKey: Record<
+        string,
+        "active" | "pending" | undefined
+      > = {
         active: "active",
         pending_review: "pending",
       };
@@ -655,8 +653,8 @@ export const bulkUpdateAuctions = mutation({
           v.literal("active"),
           v.literal("sold"),
           v.literal("unsold"),
-          v.literal("rejected"),
-        ),
+          v.literal("rejected")
+        )
       ),
       startTime: v.optional(v.number()),
       endTime: v.optional(v.number()),
@@ -671,7 +669,7 @@ export const bulkUpdateAuctions = mutation({
 
     if (args.auctionIds.length > MAX_BULK_UPDATE_SIZE) {
       throw new Error(
-        `Bulk update exceeds limit of ${MAX_BULK_UPDATE_SIZE} auctions`,
+        `Bulk update exceeds limit of ${MAX_BULK_UPDATE_SIZE} auctions`
       );
     }
 
@@ -687,7 +685,10 @@ export const bulkUpdateAuctions = mutation({
         updated.push(id);
 
         if (newStatus && oldStatus !== newStatus) {
-          const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+          const statusToCounterKey: Record<
+            string,
+            "active" | "pending" | undefined
+          > = {
             active: "active",
             pending_review: "pending",
           };
@@ -755,7 +756,8 @@ export const getMyBids = query({
 
           // Find my highest bid on this auction
           const myBids = bidsByAuction.get(id) ?? [];
-          const myHighestBid = myBids.length > 0 ? Math.max(...myBids.map((b) => b.amount)) : 0;
+          const myHighestBid =
+            myBids.length > 0 ? Math.max(...myBids.map((b) => b.amount)) : 0;
 
           return {
             ...auction,
@@ -766,7 +768,7 @@ export const getMyBids = query({
               myHighestBid === auction.currentPrice,
             isWon: auction.status === "sold" && auction.winnerId === userId,
           };
-        }),
+        })
       );
 
       return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
@@ -796,7 +798,7 @@ export const getMyListings = query({
         listings.map(async (auction) => ({
           ...auction,
           images: await resolveImageUrls(ctx.storage, auction.images),
-        })),
+        }))
       );
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
