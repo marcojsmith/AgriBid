@@ -8,3 +8,4 @@ export * from "./FinanceTab";
 export * from "./SupportTab";
 export * from "./AuditTab";
 export * from "./BidMonitor";
+export * from "./SummaryCard";

@@ -541,3 +541,27 @@ export const getAnnouncementStats = query({
     };
   },
 });
+
+export const getSupportStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const openTickets = await ctx.db
+      .query("supportTickets")
+      .withIndex("by_status", (q) => q.eq("status", "open"))
+      .collect();
+
+    const resolvedTickets = await ctx.db
+      .query("supportTickets")
+      .withIndex("by_status", (q) => q.eq("status", "resolved"))
+      .collect();
+
+    return {
+      open: openTickets.length,
+      resolved: resolvedTickets.length,
+      total: openTickets.length + resolvedTickets.length,
+    };
+  },
+});
