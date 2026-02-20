@@ -343,6 +343,7 @@ export const initializeCounters = mutation({
       pendingAuctions,
       totalUsers,
       verifiedSellers,
+      pendingKYC,
     ] = await Promise.all([
       countQuery(ctx.db.query("auctions")),
       countQuery(
@@ -363,6 +364,12 @@ export const initializeCounters = mutation({
           .query("profiles")
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true))
+      ),
+      countQuery(
+        ctx.db
+          .query("profiles")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_kycStatus", (q: any) => q.eq("kycStatus", "pending"))
       ),
     ]);
 
@@ -396,8 +403,8 @@ export const initializeCounters = mutation({
     const profilePayload = {
       total: totalUsers,
       verified: verifiedSellers,
-      active: 0, // Profiles don't use active/pending in this context currently
-      pending: 0,
+      pending: pendingKYC,
+      active: 0, // Profiles don't use active in this context currently
       updatedAt: Date.now(),
     };
 
@@ -435,8 +442,9 @@ export const getAdminStats = query({
       totalAuctions: auctionCounter?.total ?? 0,
       activeAuctions: auctionCounter?.active ?? 0,
       pendingReview: auctionCounter?.pending ?? 0,
+      pendingKYC: profileCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
-      verifiedSellers: profileCounter?.verified ?? 0,
+      verifiedUsers: profileCounter?.verified ?? 0,
     };
   },
 });

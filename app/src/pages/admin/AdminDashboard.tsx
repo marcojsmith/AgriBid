@@ -85,14 +85,21 @@ export default function AdminDashboard() {
           icon={<ShieldCheck className="h-5 w-5" />}
           stats={[
             {
-              label: "Pending Review",
+              label: "Auctions",
               value: adminStats.pendingReview,
               color:
                 adminStats.pendingReview > 0
                   ? "text-yellow-600"
                   : "text-green-600",
             },
-            { label: "KYC Queue", value: "0" }, // TODO: Add KYC pending count to getAdminStats
+            {
+              label: "KYC Users",
+              value: adminStats.pendingKYC,
+              color:
+                adminStats.pendingKYC > 0
+                  ? "text-yellow-600"
+                  : "text-green-600",
+            },
           ]}
           link="/admin/moderation"
           linkLabel="Review Queue"
@@ -106,7 +113,7 @@ export default function AdminDashboard() {
             { label: "Total Users", value: adminStats.totalUsers },
             {
               label: "Verified",
-              value: adminStats.verifiedSellers,
+              value: adminStats.verifiedUsers,
               color: "text-blue-600",
             },
           ]}

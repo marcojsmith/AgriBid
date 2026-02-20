@@ -7,7 +7,6 @@ import {
   Gavel,
   Users,
   Clock,
-  TrendingUp,
   ShieldCheck,
   LayoutDashboard,
   Hammer,
@@ -25,8 +24,9 @@ interface AdminLayoutProps {
   subtitle?: string;
   stats: {
     activeAuctions: number;
-    totalUsers: number;
+    verifiedUsers: number;
     pendingReview: number;
+    pendingKYC: number;
   } | null;
   onAnnounce?: () => void;
 }
@@ -147,8 +147,8 @@ export function AdminLayout({
                     iconSize="h-8 w-8"
                   />
                   <StatCard
-                    label="Users"
-                    value={stats.totalUsers}
+                    label="Verified"
+                    value={stats.verifiedUsers}
                     icon={<Users className="h-3 w-3" />}
                     padding="p-2"
                     className="min-w-[100px] h-14"
@@ -156,20 +156,15 @@ export function AdminLayout({
                   />
                   <StatCard
                     label="Moderation"
-                    value={stats.pendingReview}
+                    value={`${stats.pendingReview} · ${stats.pendingKYC}`}
                     icon={<Clock className="h-3 w-3" />}
-                    color={stats.pendingReview > 0 ? "text-yellow-500" : ""}
+                    color={
+                      stats.pendingReview > 0 || stats.pendingKYC > 0
+                        ? "text-yellow-500"
+                        : ""
+                    }
                     padding="p-2"
-                    className="min-w-[100px] h-14"
-                    iconSize="h-8 w-8"
-                  />
-                  <StatCard
-                    label="Growth"
-                    value="—"
-                    icon={<TrendingUp className="h-3 w-3" />}
-                    color="text-primary"
-                    padding="p-2"
-                    className="min-w-[100px] h-14"
+                    className="min-w-[150px] h-14"
                     iconSize="h-8 w-8"
                   />
                 </div>
