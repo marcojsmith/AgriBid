@@ -1,0 +1,21 @@
+Task: Resolve GitHub issues #70, #71, #72, #74
+Summary: Improved admin dashboard with dynamic system information and real-time user tracking.
+Changes:
+- #70: Externalized system status and version to getSystemStats query.
+- #71: Integrated dynamic KYC pending count in User Base summary card.
+- #72: Removed redundant file path comment in SummaryCard.tsx.
+- #74: Replaced Verified Users KPI with Online Users (active in last 5 minutes).
+Technical Details:
+- Added lastActiveAt to profiles schema with index.
+- Implemented heartbeat mutation in users.ts.
+- Added heartbeat interval to NotificationListener.tsx.
+- Updated getAdminStats to calculate online users based on 5-minute threshold.
+Files:
+- app/convex/schema.ts
+- app/convex/users.ts
+- app/convex/admin.ts
+- app/convex/config.ts
+- app/src/components/admin/SummaryCard.tsx
+- app/src/components/admin/AdminLayout.tsx
+- app/src/pages/admin/AdminDashboard.tsx
+- app/src/components/NotificationListener.tsx
