@@ -45,19 +45,17 @@ const SIDEBAR_ITEMS = [
 ];
 
 /**
- * Render the admin layout with a persistent sidebar, KPI header and main content area.
- *
- * Renders a two-pane admin interface: a left navigation sidebar and a right main area that displays a title, subtitle, optional announcement action and optional KPI stat cards above the content.
+ * Render a two-pane admin interface with a persistent left navigation sidebar and a right main area containing a KPI header and page content.
  *
  * @param children - Content rendered inside the main content area
  * @param title - Header title shown in the KPI header (defaults to "Admin Dashboard")
  * @param subtitle - Small uppercase subtitle shown under the title (defaults to "Global Marketplace Oversight")
- * @param stats - Optional KPI metrics; when provided renders stat cards for:
- *   - `activeAuctions` (Live),
- *   - `totalUsers` (Users),
- *   - `pendingReview` (Moderation)
+ * @param stats - Optional KPI metrics; when provided renders three stat cards:
+ *   - `activeAuctions` (Live)
+ *   - `verifiedUsers` (Verified)
+ *   - `pendingReview` and `pendingKYC` shown together as `"<pendingReview> · <pendingKYC>"` on the Moderation card; the Moderation card uses yellow styling if either pending value is greater than 0
  * @param onAnnounce - Optional callback invoked when the Announce button is clicked; the button is rendered only when this callback is provided
- * @returns The Admin layout React element with sidebar navigation, KPI header and the provided children
+ * @returns The Admin layout React element containing the sidebar, KPI header (with optional action and stat cards) and the provided children
  */
 export function AdminLayout({
   children,

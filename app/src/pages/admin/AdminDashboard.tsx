@@ -16,7 +16,9 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";
 
 /**
- * Renders the Admin Dashboard overview with summary cards for all management areas.
+ * Render the admin dashboard layout with summary cards for each management area.
+ *
+ * @returns The admin overview layout populated with real-time, auctions, moderation, users, financials, support, communication and system summary cards.
  */
 export default function AdminDashboard() {
   const adminStats = useQuery(api.admin.getAdminStats);
