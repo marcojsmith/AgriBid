@@ -26,13 +26,12 @@ import {
 } from "@/components/ui/alert-dialog";
 
 /**
- * Render an admin real-time feed of recent bids and controls to void individual bids.
+ * Render an admin real-time feed of recent bids with controls to void individual bids.
  *
- * Fetches up to 20 recent bids and displays them in a table with time, auction title, bidder, and amount.
- * Rows for voided bids are visually de-emphasized and show the amount struck through.
- * Provides a per-row action to void a bid; voiding prompts for confirmation and shows a success or error toast.
+ * Displays up to 20 recent bids in a table (time, auction title, bidder, amount), highlights voided rows,
+ * provides per-row void actions that require confirmation, and shows success or error toasts.
  *
- * @returns A JSX element containing the real-time bids table with void controls and loading state handling.
+ * @returns A JSX element containing the bids table, confirmation dialog and loading state.
  */
 export function BidMonitor() {
   const bids = useQuery(api.admin.getRecentBids, { limit: 20 });
@@ -108,7 +107,7 @@ export function BidMonitor() {
                     {new Date(bid.timestamp).toLocaleTimeString()}
                   </TableCell>
                   <TableCell
-                    className="font-medium max-w-[200px] truncate"
+                    className="font-medium truncate"
                     title={bid.auctionTitle}
                   >
                     {bid.auctionTitle}

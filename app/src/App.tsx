@@ -9,7 +9,17 @@ import { LoadingIndicator } from "./components/ui/LoadingIndicator";
 const Home = lazy(() => import("./pages/Home"));
 const AuctionDetail = lazy(() => import("./pages/AuctionDetail"));
 const Sell = lazy(() => import("./pages/Sell"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminModeration = lazy(() => import("./pages/admin/AdminModeration"));
+const AdminAuctions = lazy(() => import("./pages/admin/AdminAuctions"));
+const AdminMarketplace = lazy(() => import("./pages/admin/AdminMarketplace"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
+const AdminAnnouncements = lazy(
+  () => import("./pages/admin/AdminAnnouncements")
+);
+const AdminSupport = lazy(() => import("./pages/admin/AdminSupport"));
+const AdminAudit = lazy(() => import("./pages/admin/AdminAudit"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -29,7 +39,7 @@ const PageLoader = () => (
 );
 
 /**
- * Mounts the client-side router and declares all application routes.
+ * Mounts the client-side router and declares application routes within the main layout.
  *
  * Declared routes:
  * - "/" → Home
@@ -37,15 +47,19 @@ const PageLoader = () => (
  * - "/auction/:id" → AuctionDetail
  * - "/profile/:userId" → Profile
  * - "/sell" → Sell
- * - "/watchlist" → Watchlist (protected)
- * - "/dashboard/bids" → MyBids (protected)
- * - "/dashboard/listings" → MyListings (protected)
- * - "/admin" → AdminDashboard (protected, admin only)
- * - "/kyc" → KYC (protected)
- * - "/support" → Support (protected)
- * - "/notifications" → Notifications (protected)
+ * - "/watchlist" → Watchlist (protected, allowedRole="any")
+ * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
+ * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
+ * - "/admin/*" → Admin sub-routes (protected, allowedRole="admin")
+ *   - /admin, /admin/dashboard, /admin/moderation
+ *   - /admin/marketplace, /admin/auctions, /admin/users
+ *   - /admin/finance, /admin/announcements, /admin/support
+ *   - /admin/audit, /admin/settings
+ * - "/kyc" → KYC (protected, allowedRole="any")
+ * - "/support" → Support (protected, allowedRole="any")
+ * - "/notifications" → Notifications (protected, allowedRole="any")
  *
- * @returns The root JSX element containing the BrowserRouter, layout, and route definitions
+ * @returns The root JSX element containing the BrowserRouter, layout and route definitions
  */
 function App() {
   return (
@@ -86,7 +100,87 @@ function App() {
               path="/admin"
               element={
                 <RoleProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
+                  <AdminModeration />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminModeration />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/moderation"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminModeration />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/marketplace"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminMarketplace />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/auctions"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminAuctions />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminUsers />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/finance"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminFinance />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/announcements"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminAnnouncements />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/support"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminSupport />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/audit"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminAudit />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminSettings />
                 </RoleProtectedRoute>
               }
             />

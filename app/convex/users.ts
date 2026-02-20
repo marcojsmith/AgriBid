@@ -137,7 +137,7 @@ export async function getCallerRole(ctx: QueryCtx | MutationCtx) {
  */
 export const listAllProfiles = query({
   args: {
-    paginationOpts: v.optional(paginationOptsValidator),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     console.log("listAllProfiles received args:", args);
@@ -146,12 +146,10 @@ export const listAllProfiles = query({
       throw new Error("Unauthorized");
     }
 
-    const opts = args.paginationOpts || { numItems: 50, cursor: null };
-
     const profiles = await ctx.db
       .query("profiles")
       .order("desc")
-      .paginate(opts);
+      .paginate(args.paginationOpts);
 
     // Parallelize user lookups
     const page = await Promise.all(
@@ -165,7 +163,7 @@ export const listAllProfiles = query({
           image: user?.image,
           idNumber: p.idNumber ? "****" : undefined, // Mask ID number in listings
         };
-      }),
+      })
     );
 
     return {
@@ -195,20 +193,26 @@ export const getProfileForKYC = mutation({
 
     const user = await findUserById(ctx, userId);
 
-    const [decIdNumber, decFirstName, decLastName, decPhone, decEmail, kycDocUrls] =
-      await Promise.all([
-        decryptPII(profile.idNumber),
-        decryptPII(profile.firstName),
-        decryptPII(profile.lastName),
-        decryptPII(profile.phoneNumber),
-        decryptPII(profile.kycEmail),
-        Promise.all(
-          (profile.kycDocuments || []).map(async (id) => {
-            const url = await ctx.storage.getUrl(id as Id<"_storage">);
-            return url;
-          }),
-        ),
-      ]);
+    const [
+      decIdNumber,
+      decFirstName,
+      decLastName,
+      decPhone,
+      decEmail,
+      kycDocUrls,
+    ] = await Promise.all([
+      decryptPII(profile.idNumber),
+      decryptPII(profile.firstName),
+      decryptPII(profile.lastName),
+      decryptPII(profile.phoneNumber),
+      decryptPII(profile.kycEmail),
+      Promise.all(
+        (profile.kycDocuments || []).map(async (id) => {
+          const url = await ctx.storage.getUrl(id as Id<"_storage">);
+          return url;
+        })
+      ),
+    ]);
 
     await logAudit(ctx, {
       action: "VIEW_KYC_DETAILS",
@@ -255,7 +259,7 @@ export const verifyUser = mutation({
     // Enforce KYC flow unless overridden (Admin override should be rare)
     if (profile.kycStatus !== "verified") {
       console.warn(
-        `Admin ${adminId} is manually verifying user ${userId} without completed KYC review.`,
+        `Admin ${adminId} is manually verifying user ${userId} without completed KYC review.`
       );
     }
 
@@ -395,19 +399,14 @@ export const getMyKYCDetails = query({
 
       if (!profile) return null;
 
-      const [
-        decFirstName,
-        decLastName,
-        decIdNumber,
-        decPhone,
-        decEmail,
-      ] = await Promise.all([
-        decryptPII(profile.firstName),
-        decryptPII(profile.lastName),
-        decryptPII(profile.idNumber),
-        decryptPII(profile.phoneNumber),
-        decryptPII(profile.kycEmail),
-      ]);
+      const [decFirstName, decLastName, decIdNumber, decPhone, decEmail] =
+        await Promise.all([
+          decryptPII(profile.firstName),
+          decryptPII(profile.lastName),
+          decryptPII(profile.idNumber),
+          decryptPII(profile.phoneNumber),
+          decryptPII(profile.kycEmail),
+        ]);
 
       return {
         firstName: decFirstName,
@@ -463,7 +462,10 @@ export const deleteMyKYCDocument = mutation({
     try {
       await ctx.storage.delete(storageId);
     } catch (err) {
-      console.error(`Failed to delete storage ${storageId}, may be orphaned:`, err);
+      console.error(
+        `Failed to delete storage ${storageId}, may be orphaned:`,
+        err
+      );
       // Profile update succeeded; storage deletion failure is non-critical
     }
 

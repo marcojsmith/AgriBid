@@ -35,21 +35,17 @@ interface UserDropdownProps {
 }
 
 /**
- * Render a user account dropdown with profile status, navigation links, and a sign-out action.
+ * Render a user account dropdown with profile status, navigation links and a sign-out action.
  *
- * Displays a trigger button that shows loading state, verification badge, user name, and avatar.
- * The dropdown menu includes KYC prompt (when needed), public profile link (or syncing state),
- * optional admin moderation link, common navigation items (My Bids, Watchlist, My Listings, Support),
- * and a Sign Out item that invokes the provided sign-out callback.
+ * Renders a trigger button that reflects loading and verification states and a content menu that conditionally includes a KYC prompt, public profile link (or syncing state), an admin dashboard link for admins, common navigation items (My Bids, Watchlist, My Listings, Support Tickets) and a Sign Out item.
  *
- * @param userData - Optional user data object (may include display name and profile information)
- * @param isLoadingProfile - Whether profile data is currently loading; disables interaction and shows placeholders
- * @param isVerified - Whether the user's identity/KYC has been verified
- * @param kycStatus - KYC status string (e.g., "pending"); used to determine KYC-related UI states
- * @param profileId - Public profile identifier; when present, enables the Public Profile link
- * @param role - User role (e.g., "admin"); used to conditionally show admin links
- * @param onSignOut - Callback invoked when the user selects "Sign Out"
- *
+ * @param userData - Optional user object; used to display the user's name when available
+ * @param isLoadingProfile - When true, disables interaction and shows loading placeholders in the trigger
+ * @param isVerified - Whether the user's identity/KYC is verified; controls badge and KYC prompt visibility
+ * @param kycStatus - KYC status string (for example `"pending"`); used to determine KYC-related UI states and labels
+ * @param profileId - Public profile identifier; when present enables the Public Profile link, otherwise shows a syncing state
+ * @param role - User role (for example `"admin"`); when `"admin"` shows the Admin Dashboard link
+ * @param onSignOut - Callback invoked when the user selects "Sign Out"; errors from this callback are caught and surfaced to the user
  * @returns The dropdown menu JSX containing the trigger and account-related menu items
  */
 export function UserDropdown({
@@ -85,16 +81,12 @@ export function UserDropdown({
                   variant="secondary"
                   className="h-4 px-1 text-[8px] font-black bg-orange-500/10 text-orange-600 border-orange-500/20 uppercase"
                 >
-                  {kycStatus === "pending"
-                    ? "Pending Review"
-                    : "Unverified"}
+                  {kycStatus === "pending" ? "Pending Review" : "Unverified"}
                 </Badge>
               )}
             </div>
             <span className="text-sm font-bold text-primary leading-none mt-1">
-              {isLoadingProfile
-                ? "Loading..."
-                : userData?.name || "User"}
+              {isLoadingProfile ? "Loading..." : userData?.name || "User"}
             </span>
           </div>
           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all border-2 border-primary/20">
@@ -121,10 +113,7 @@ export function UserDropdown({
             asChild
             className="bg-orange-500/10 text-orange-600 focus:bg-orange-500/20 focus:text-orange-700 rounded-xl mb-1 border border-orange-500/20 p-3"
           >
-            <Link
-              to="/kyc"
-              className="flex items-center gap-3 w-full"
-            >
+            <Link to="/kyc" className="flex items-center gap-3 w-full">
               <ShieldAlert className="h-5 w-5" />
               <div className="flex flex-col">
                 <span className="font-black text-[10px] uppercase tracking-tighter leading-none">
@@ -168,12 +157,9 @@ export function UserDropdown({
             asChild
             className="rounded-xl font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary h-10"
           >
-            <Link
-              to="/admin"
-              className="flex items-center gap-2 w-full"
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Admin Moderation
+            <Link to="/admin" className="flex items-center gap-2 w-full">
+              <ShieldAlert className="h-4 w-4" />
+              Admin Dashboard
             </Link>
           </DropdownMenuItem>
         )}
@@ -184,10 +170,7 @@ export function UserDropdown({
           asChild
           className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
         >
-          <Link
-            to="/dashboard/bids"
-            className="flex items-center gap-2 w-full"
-          >
+          <Link to="/dashboard/bids" className="flex items-center gap-2 w-full">
             <LayoutDashboard className="h-4 w-4" />
             My Bids
           </Link>
@@ -196,10 +179,7 @@ export function UserDropdown({
           asChild
           className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
         >
-          <Link
-            to="/watchlist"
-            className="flex items-center gap-2 w-full"
-          >
+          <Link to="/watchlist" className="flex items-center gap-2 w-full">
             <Heart className="h-4 w-4" />
             Watchlist
           </Link>
@@ -220,10 +200,7 @@ export function UserDropdown({
           asChild
           className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
         >
-          <Link
-            to="/support"
-            className="flex items-center gap-2 w-full"
-          >
+          <Link to="/support" className="flex items-center gap-2 w-full">
             <MessageSquare className="h-4 w-4" />
             Support Tickets
           </Link>
