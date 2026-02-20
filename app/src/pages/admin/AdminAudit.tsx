@@ -9,7 +9,11 @@ export default function AdminAudit() {
 
   if (adminStats === undefined) {
     return (
-      <AdminLayout stats={null}>
+      <AdminLayout
+        stats={null}
+        title="System Audit Logs"
+        subtitle="Security, Access & Administrative Actions"
+      >
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -18,7 +22,11 @@ export default function AdminAudit() {
   }
 
   return (
-    <AdminLayout stats={adminStats}>
+    <AdminLayout
+      stats={adminStats}
+      title="System Audit Logs"
+      subtitle="Security, Access & Administrative Actions"
+    >
       <AuditTab />
     </AdminLayout>
   );

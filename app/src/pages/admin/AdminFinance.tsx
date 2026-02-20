@@ -9,7 +9,11 @@ export default function AdminFinance() {
 
   if (adminStats === undefined) {
     return (
-      <AdminLayout stats={null}>
+      <AdminLayout
+        stats={null}
+        title="Financial Oversight"
+        subtitle="Revenue, Commissions & Transaction History"
+      >
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -18,7 +22,11 @@ export default function AdminFinance() {
   }
 
   return (
-    <AdminLayout stats={adminStats}>
+    <AdminLayout
+      stats={adminStats}
+      title="Financial Oversight"
+      subtitle="Revenue, Commissions & Transaction History"
+    >
       <FinanceTab />
     </AdminLayout>
   );

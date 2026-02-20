@@ -13,14 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  ShieldCheck,
-  AlertCircle,
-  ArrowRight,
-  Users,
-  Search,
-  Filter,
-} from "lucide-react";
+import { ShieldCheck, AlertCircle, ArrowRight, Search } from "lucide-react";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -57,12 +50,7 @@ export default function AdminUsers() {
     results: allProfiles,
     status: profilesStatus,
     loadMore: loadMoreProfiles,
-  } = usePaginatedQuery(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    api.users.listAllProfiles as any,
-    {},
-    { initialNumItems: 50 }
-  );
+  } = usePaginatedQuery(api.users.listAllProfiles, {}, { initialNumItems: 50 });
 
   // Mutations
   const verifyUserMutation = useMutation(api.users.verifyUser);
@@ -181,7 +169,11 @@ export default function AdminUsers() {
 
   if (allProfiles === undefined || adminStats === undefined) {
     return (
-      <AdminLayout stats={adminStats || null}>
+      <AdminLayout
+        stats={adminStats || null}
+        title="User Management"
+        subtitle="Oversight of Platform Participants & Verification"
+      >
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -190,40 +182,26 @@ export default function AdminUsers() {
   }
 
   return (
-    <AdminLayout stats={adminStats}>
+    <AdminLayout
+      stats={adminStats}
+      title="User Management"
+      subtitle="Oversight of Platform Participants & Verification"
+    >
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b pb-4">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-black uppercase tracking-tight">
-              User Management
-            </h2>
-            <Badge variant="secondary" className="ml-2">
-              {allProfiles.length} Total
-            </Badge>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
+          <div className="relative group w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input
+              placeholder="Search Users..."
+              className="pl-9 h-9 border-2 rounded-lg bg-background focus-visible:ring-primary/20"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+            />
           </div>
-
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative group flex-1 md:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                placeholder="Search Users..."
-                className="pl-10 h-10 border-2 rounded-xl bg-muted/30 focus:ring-primary/20"
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 border-2 rounded-xl opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
-          </div>
+          <Badge variant="secondary" className="font-bold">
+            {allProfiles.length} Total Profiles
+          </Badge>
         </div>
-
         <Card className="border-2 overflow-hidden bg-card/30 backdrop-blur-sm">
           <Table>
             <TableHeader className="bg-muted/50">

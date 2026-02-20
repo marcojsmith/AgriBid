@@ -13,7 +13,11 @@ export default function AdminSettings() {
 
   if (adminStats === undefined) {
     return (
-      <AdminLayout stats={null}>
+      <AdminLayout
+        stats={null}
+        title="System Settings"
+        subtitle="Platform Configuration & Metadata Management"
+      >
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -22,7 +26,11 @@ export default function AdminSettings() {
   }
 
   return (
-    <AdminLayout stats={adminStats}>
+    <AdminLayout
+      stats={adminStats}
+      title="System Settings"
+      subtitle="Platform Configuration & Metadata Management"
+    >
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <SettingsCard

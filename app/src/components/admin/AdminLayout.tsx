@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 
 interface AdminLayoutProps {
   children: ReactNode;
+  title?: string;
+  subtitle?: string;
   stats: {
     activeAuctions: number;
     totalUsers: number;
@@ -42,11 +44,17 @@ const SIDEBAR_ITEMS = [
   { label: "System", icon: Settings, path: "/admin/settings" },
 ];
 
-export function AdminLayout({ children, stats, onAnnounce }: AdminLayoutProps) {
+export function AdminLayout({
+  children,
+  title = "Admin Dashboard",
+  subtitle = "Global Marketplace Oversight",
+  stats,
+  onAnnounce,
+}: AdminLayoutProps) {
   const location = useLocation();
 
   return (
-    <div className="flex min-h-[calc(100-64px)] bg-muted/30">
+    <div className="flex min-h-[calc(100vh-64px)] bg-muted/30">
       {/* Sidebar */}
       <aside className="w-64 border-r bg-background flex flex-col sticky top-16 h-[calc(100vh-64px)]">
         <div className="p-6">
@@ -87,17 +95,17 @@ export function AdminLayout({ children, stats, onAnnounce }: AdminLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-x-hidden">
-        <div className="max-w-[1400px] mx-auto px-8 py-8 space-y-8">
+      <main className="flex-1 overflow-x-hidden bg-background">
+        <div className="flex flex-col min-h-full">
           {/* KPI Header */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-background p-6 rounded-2xl border-2 shadow-sm">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
-                <LayoutDashboard className="h-6 w-6 text-primary" />
-                Admin Dashboard
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-background px-8 py-4 border-b-2">
+            <div className="space-y-0.5">
+              <h1 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                <LayoutDashboard className="h-5 w-5 text-primary" />
+                {title}
               </h1>
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest">
-                Global Marketplace Oversight
+              <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
+                {subtitle}
               </p>
             </div>
 
@@ -105,58 +113,56 @@ export function AdminLayout({ children, stats, onAnnounce }: AdminLayoutProps) {
               {onAnnounce && (
                 <Button
                   variant="outline"
-                  className="gap-2 border-2 rounded-xl h-11"
+                  className="gap-2 border-2 rounded-xl h-9 text-xs font-bold"
                   onClick={onAnnounce}
                 >
-                  <Megaphone className="h-4 w-4" /> Announce
+                  <Megaphone className="h-3.5 w-3.5" /> Announce
                 </Button>
               )}
 
               {stats && (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                   <StatCard
                     label="Live"
                     value={stats.activeAuctions}
-                    icon={<Gavel className="h-3.5 w-3.5" />}
+                    icon={<Gavel className="h-3 w-3" />}
                     color="text-green-500"
-                    padding="p-4"
-                    className="min-w-[120px]"
-                    iconSize="h-10 w-10"
+                    padding="p-2"
+                    className="min-w-[100px] h-14"
+                    iconSize="h-8 w-8"
                   />
                   <StatCard
                     label="Users"
                     value={stats.totalUsers}
-                    icon={<Users className="h-3.5 w-3.5" />}
-                    padding="p-4"
-                    className="min-w-[120px]"
-                    iconSize="h-10 w-10"
+                    icon={<Users className="h-3 w-3" />}
+                    padding="p-2"
+                    className="min-w-[100px] h-14"
+                    iconSize="h-8 w-8"
                   />
                   <StatCard
                     label="Moderation"
                     value={stats.pendingReview}
-                    icon={<Clock className="h-3.5 w-3.5" />}
+                    icon={<Clock className="h-3 w-3" />}
                     color={stats.pendingReview > 0 ? "text-yellow-500" : ""}
-                    padding="p-4"
-                    className="min-w-[120px]"
-                    iconSize="h-10 w-10"
+                    padding="p-2"
+                    className="min-w-[100px] h-14"
+                    iconSize="h-8 w-8"
                   />
                   <StatCard
                     label="Growth"
                     value="—"
-                    icon={<TrendingUp className="h-3.5 w-3.5" />}
+                    icon={<TrendingUp className="h-3 w-3" />}
                     color="text-primary"
-                    padding="p-4"
-                    className="min-w-[120px]"
-                    iconSize="h-10 w-10"
+                    padding="p-2"
+                    className="min-w-[100px] h-14"
+                    iconSize="h-8 w-8"
                   />
                 </div>
               )}
             </div>
           </div>
 
-          <div className="bg-background rounded-2xl border-2 shadow-sm p-6 min-h-[600px]">
-            {children}
-          </div>
+          <div className="flex-1 p-8">{children}</div>
         </div>
       </main>
     </div>

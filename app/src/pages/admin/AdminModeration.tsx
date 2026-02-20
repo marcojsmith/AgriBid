@@ -1,7 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Badge } from "@/components/ui/badge";
-import { Check, ShieldCheck } from "lucide-react";
+import { Check } from "lucide-react";
 import { ModerationCard } from "@/components/admin";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -38,7 +37,11 @@ export default function AdminModeration() {
 
   if (pendingAuctions === undefined) {
     return (
-      <AdminLayout stats={adminStats || null}>
+      <AdminLayout
+        stats={adminStats || null}
+        title="Moderation Queue"
+        subtitle="Review & Approve Pending Listings"
+      >
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -47,20 +50,12 @@ export default function AdminModeration() {
   }
 
   return (
-    <AdminLayout stats={adminStats || null}>
+    <AdminLayout
+      stats={adminStats || null}
+      title="Moderation Queue"
+      subtitle="Review & Approve Pending Listings"
+    >
       <div className="space-y-6">
-        <div className="flex items-center justify-between border-b pb-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-black uppercase tracking-tight">
-              Moderation Queue
-            </h2>
-            <Badge variant="secondary" className="ml-2">
-              {pendingAuctions.length} Pending
-            </Badge>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {pendingAuctions.map((auction) => (
             <ModerationCard

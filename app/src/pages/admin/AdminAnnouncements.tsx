@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Megaphone, Send, History, Eye, Plus } from "lucide-react";
+import { Send, History, Eye, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -68,7 +68,11 @@ export default function AdminAnnouncements() {
 
   if (announcements === undefined || adminStats === undefined) {
     return (
-      <AdminLayout stats={adminStats || null}>
+      <AdminLayout
+        stats={adminStats || null}
+        title="Global Announcements"
+        subtitle="Broadcast Updates to All Users"
+      >
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -77,22 +81,13 @@ export default function AdminAnnouncements() {
   }
 
   return (
-    <AdminLayout stats={adminStats || null}>
+    <AdminLayout
+      stats={adminStats || null}
+      title="Global Announcements"
+      subtitle="Broadcast Updates to All Users"
+    >
       <div className="space-y-8">
-        {/* Header & Quick Stats */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Megaphone className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-black uppercase tracking-tight">
-                Announcements
-              </h2>
-            </div>
-            <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest">
-              Broadcast messages to all users
-            </p>
-          </div>
-
+        <div className="flex justify-end">
           <Dialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 rounded-xl shadow-lg shadow-primary/20 h-11 px-6">
@@ -220,7 +215,7 @@ export default function AdminAnnouncements() {
                       {new Date(ann.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="font-bold">{ann.title}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm max-w-md truncate">
+                    <TableCell className="text-muted-foreground text-sm truncate">
                       {ann.message}
                     </TableCell>
                     <TableCell className="text-right">

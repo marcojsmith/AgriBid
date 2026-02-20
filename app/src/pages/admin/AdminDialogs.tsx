@@ -182,35 +182,35 @@ export function KycReviewDialog({
                 className="border-2 rounded-xl"
               />
             </div>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                className="border-2 font-black uppercase text-xs h-12 px-8 hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => onReview("reject")}
+                disabled={isKycReasonEmpty || isProcessing}
+              >
+                {isProcessing ? (
+                  <LoadingIndicator size="sm" className="mr-2" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                Reject Application
+              </Button>
+              <Button
+                className="font-black uppercase text-xs h-12 px-8 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
+                onClick={() => onReview("approve")}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <LoadingIndicator size="sm" className="mr-2 border-white" />
+                ) : (
+                  <Check className="h-4 w-4 mr-2" />
+                )}
+                Approve & Verify
+              </Button>
+            </DialogFooter>
           </div>
         )}
-        <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            className="border-2 font-black uppercase text-xs h-12 px-8 hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => onReview("reject")}
-            disabled={isKycReasonEmpty || isProcessing}
-          >
-            {isProcessing ? (
-              <LoadingIndicator size="sm" className="mr-2" />
-            ) : (
-              <X className="h-4 w-4 mr-2" />
-            )}
-            Reject Application
-          </Button>
-          <Button
-            className="font-black uppercase text-xs h-12 px-8 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
-            onClick={() => onReview("approve")}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <LoadingIndicator size="sm" className="mr-2 border-white" />
-            ) : (
-              <Check className="h-4 w-4 mr-2" />
-            )}
-            Approve & Verify
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

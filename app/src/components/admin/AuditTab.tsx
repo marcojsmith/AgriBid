@@ -47,7 +47,7 @@ export function AuditTab() {
           <summary className="text-[10px] text-primary hover:underline font-bold uppercase tracking-tighter">
             View Payload
           </summary>
-          <pre className="mt-2 p-2 bg-muted rounded-lg text-[10px] font-mono overflow-x-auto whitespace-pre-wrap max-w-md">
+          <pre className="mt-2 p-2 bg-muted rounded-lg text-[10px] font-mono overflow-x-auto whitespace-pre-wrap w-full">
             {JSON.stringify(parsed, null, 2)}
           </pre>
         </details>

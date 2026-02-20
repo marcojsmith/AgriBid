@@ -36,7 +36,8 @@ export function SupportTab() {
   const tickets = useQuery(api.admin.getTickets, {});
   const resolveTicket = useMutation(api.admin.resolveTicket);
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
-  const [selectedTicketId, setSelectedTicketId] = useState<Id<"supportTickets"> | null>(null);
+  const [selectedTicketId, setSelectedTicketId] =
+    useState<Id<"supportTickets"> | null>(null);
   const [resolutionText, setResolutionText] = useState("");
 
   const handleResolve = (ticketId: Id<"supportTickets">) => {
@@ -46,7 +47,7 @@ export function SupportTab() {
 
   const confirmResolve = async () => {
     if (!selectedTicketId) return;
-    
+
     const resolution = resolutionText.trim();
     if (!resolution) {
       toast.error("Please provide a resolution message");
@@ -61,7 +62,7 @@ export function SupportTab() {
     } catch (err) {
       console.error("Failed to resolve ticket:", err);
       toast.error(
-        err instanceof Error ? err.message : "Failed to resolve ticket",
+        err instanceof Error ? err.message : "Failed to resolve ticket"
       );
     } finally {
       setResolvingIds((prev) => {
@@ -120,9 +121,7 @@ export function SupportTab() {
                   <TableCell className="font-medium">
                     {ticket.subject}
                   </TableCell>
-                  <TableCell className="max-w-[300px] truncate">
-                    {ticket.message}
-                  </TableCell>
+                  <TableCell className="truncate">{ticket.message}</TableCell>
                   <TableCell className="uppercase text-xs font-bold">
                     {ticket.priority}
                   </TableCell>
@@ -149,12 +148,16 @@ export function SupportTab() {
         </Table>
       </Card>
 
-      <Dialog open={!!selectedTicketId} onOpenChange={(open) => !open && setSelectedTicketId(null)}>
+      <Dialog
+        open={!!selectedTicketId}
+        onOpenChange={(open) => !open && setSelectedTicketId(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Resolve Support Ticket</DialogTitle>
             <DialogDescription>
-              Please provide a brief explanation of how this ticket was resolved. This will be recorded in the audit logs.
+              Please provide a brief explanation of how this ticket was
+              resolved. This will be recorded in the audit logs.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -173,9 +176,12 @@ export function SupportTab() {
             <Button variant="outline" onClick={() => setSelectedTicketId(null)}>
               Cancel
             </Button>
-            <Button 
-              onClick={confirmResolve} 
-              disabled={!resolutionText.trim() || (selectedTicketId ? resolvingIds.has(selectedTicketId) : false)}
+            <Button
+              onClick={confirmResolve}
+              disabled={
+                !resolutionText.trim() ||
+                (selectedTicketId ? resolvingIds.has(selectedTicketId) : false)
+              }
             >
               {selectedTicketId && resolvingIds.has(selectedTicketId) && (
                 <LoadingIndicator size="sm" className="mr-2" />

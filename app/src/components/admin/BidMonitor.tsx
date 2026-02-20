@@ -108,7 +108,7 @@ export function BidMonitor() {
                     {new Date(bid.timestamp).toLocaleTimeString()}
                   </TableCell>
                   <TableCell
-                    className="font-medium max-w-[200px] truncate"
+                    className="font-medium truncate"
                     title={bid.auctionTitle}
                   >
                     {bid.auctionTitle}

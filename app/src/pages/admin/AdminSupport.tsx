@@ -9,7 +9,11 @@ export default function AdminSupport() {
 
   if (adminStats === undefined) {
     return (
-      <AdminLayout stats={null}>
+      <AdminLayout
+        stats={null}
+        title="Support Tickets"
+        subtitle="Customer Service & Issue Resolution"
+      >
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -18,7 +22,11 @@ export default function AdminSupport() {
   }
 
   return (
-    <AdminLayout stats={adminStats}>
+    <AdminLayout
+      stats={adminStats}
+      title="Support Tickets"
+      subtitle="Customer Service & Issue Resolution"
+    >
       <SupportTab />
     </AdminLayout>
   );
