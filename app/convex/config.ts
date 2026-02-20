@@ -44,3 +44,9 @@ export const COMMISSION_RATE = (() => {
   const parsed = parseFloat(envVal);
   return isNaN(parsed) ? 0.05 : parsed;
 })();
+
+/**
+ * System Information
+ */
+export const APP_VERSION = "v1.2.0";
+export const SYSTEM_STATUS = "Online";

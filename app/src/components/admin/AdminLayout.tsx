@@ -24,7 +24,7 @@ interface AdminLayoutProps {
   subtitle?: string;
   stats: {
     activeAuctions: number;
-    verifiedUsers: number;
+    onlineUsers: number;
     pendingReview: number;
     pendingKYC: number;
   } | null;
@@ -145,9 +145,10 @@ export function AdminLayout({
                     iconSize="h-8 w-8"
                   />
                   <StatCard
-                    label="Verified Users"
-                    value={stats.verifiedUsers}
+                    label="Online Users"
+                    value={stats.onlineUsers}
                     icon={<Users className="h-3 w-3" />}
+                    color="text-blue-500"
                     padding="p-2"
                     className="min-w-[120px] h-14"
                     iconSize="h-8 w-8"

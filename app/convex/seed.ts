@@ -4,6 +4,7 @@ import { mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { components } from "./_generated/api";
 import { getCallerRole } from "./users";
+import { updateCounter } from "./admin_utils";
 
 type SeedTableNames =
   | "auctions"
@@ -41,7 +42,7 @@ async function checkDestructiveAccess(ctx: MutationCtx) {
   if (nodeEnv === undefined && vercelEnv === undefined) {
     throw new Error(
       "Unauthorized: Deployment environment is indeterminate (NODE_ENV and VERCEL_ENV are undefined). " +
-        "Destructive operations are blocked for non-admins to prevent accidental data loss in production.",
+        "Destructive operations are blocked for non-admins to prevent accidental data loss in production."
     );
   }
 
@@ -51,7 +52,7 @@ async function checkDestructiveAccess(ctx: MutationCtx) {
   if (!isDev && !isPreview) {
     throw new Error(
       `Unauthorized: Destructive operations are only allowed in development or preview environments. ` +
-        `Current environment: ${nodeEnv || vercelEnv}.`,
+        `Current environment: ${nodeEnv || vercelEnv}.`
     );
   }
 }
@@ -115,7 +116,7 @@ export const runSeed = mutation({
                 where: [], // Clear all
               },
               paginationOpts: { cursor, numItems: BATCH_SIZE },
-            },
+            }
           )) as DeleteManyResult;
 
           // Runtime guard for unexpected result shapes
@@ -127,7 +128,7 @@ export const runSeed = mutation({
           ) {
             console.error(
               `Unexpected response from deleteMany for ${model}:`,
-              result,
+              result
             );
             isDone = true;
             break;
@@ -232,6 +233,8 @@ export const runSeed = mutation({
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+      await updateCounter(ctx, "profiles", "total", 1);
+      await updateCounter(ctx, "profiles", "verified", 1);
     }
 
     // 2.5. Create Mock Admin User (Idempotent)
@@ -272,6 +275,7 @@ export const runSeed = mutation({
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+      await updateCounter(ctx, "profiles", "total", 1);
     }
 
     // 3. Seed Mock Auctions
@@ -432,8 +436,29 @@ export const runSeed = mutation({
 
       if (!existing) {
         await ctx.db.insert("auctions", auctionData);
+        await updateCounter(ctx, "auctions", "total", 1);
+        if (auctionData.status === "active") {
+          await updateCounter(ctx, "auctions", "active", 1);
+        } else if (auctionData.status === "pending_review") {
+          await updateCounter(ctx, "auctions", "pending", 1);
+        }
       } else {
+        const oldStatus = existing.status as string;
+        const newStatus = auctionData.status as string;
+
         await ctx.db.patch(existing._id, auctionData);
+
+        if (oldStatus !== newStatus) {
+          if (oldStatus === "active")
+            await updateCounter(ctx, "auctions", "active", -1);
+          if (oldStatus === "pending_review")
+            await updateCounter(ctx, "auctions", "pending", -1);
+
+          if (newStatus === "active")
+            await updateCounter(ctx, "auctions", "active", 1);
+          if (newStatus === "pending_review")
+            await updateCounter(ctx, "auctions", "pending", 1);
+        }
       }
     }
 
@@ -466,7 +491,7 @@ export const clearAuctions = mutation({
     }
 
     console.log(
-      `Cleared ${auctionsCount} auctions and ${totalBidsDeleted} bids.`,
+      `Cleared ${auctionsCount} auctions and ${totalBidsDeleted} bids.`
     );
     return auctionsCount;
   },
@@ -518,7 +543,7 @@ export const clearAllData = mutation({
               where: [],
             },
             paginationOpts: { cursor, numItems: BATCH_SIZE },
-          },
+          }
         )) as DeleteManyResult;
 
         // Runtime guard for unexpected result shapes
@@ -530,7 +555,7 @@ export const clearAllData = mutation({
         ) {
           console.error(
             `Unexpected response from deleteMany for ${model}:`,
-            result,
+            result
           );
           isDone = true;
           break;
