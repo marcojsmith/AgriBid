@@ -1,0 +1,13 @@
+Task: Resolve GitHub issue #63: Admin page KPIs showing correct info
+Summary: Enhanced admin KPIs by adding pending KYC count and improving visual breakdown.
+Changes:
+- Backend: Updated initializeCounters and getAdminStats to track and return pendingKYC count.
+- Backend: Renamed verifiedSellers to verifiedUsers for semantic clarity.
+- Frontend: Updated AdminLayout to display Verified users and a combined Moderation KPI (auctions · users).
+- Frontend: Removed redundant Growth card from AdminLayout.
+- Frontend: Updated AdminDashboard to utilize the new stats fields.
+Files:
+- app/convex/admin.ts
+- app/src/components/admin/AdminLayout.tsx
+- app/src/pages/admin/AdminDashboard.tsx
+Why: To provide administrators with accurate and comprehensive metrics for platform oversight, specifically separating auction moderation from user verification.
