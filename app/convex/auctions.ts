@@ -81,6 +81,9 @@ export const getPendingAuctions = query({
 
 export const getActiveAuctions = query({
   args: {
+    status: v.optional(
+      v.union(v.literal("active"), v.literal("sold"), v.literal("unsold"))
+    ),
     search: v.optional(v.string()),
     make: v.optional(v.string()),
     minYear: v.optional(v.number()),
@@ -90,18 +93,19 @@ export const getActiveAuctions = query({
     maxHours: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const status = args.status ?? "active";
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
 
     if (args.search) {
       auctions = await auctionsQuery
         .withSearchIndex("search_title", (q) =>
-          q.search("title", args.search!).eq("status", "active")
+          q.search("title", args.search!).eq("status", status)
         )
         .collect();
     } else {
       auctions = await auctionsQuery
-        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .withIndex("by_status", (q) => q.eq("status", status))
         .collect();
     }
 
@@ -131,12 +135,18 @@ export const getActiveAuctions = query({
 export const getActiveMakes = query({
   args: {},
   handler: async (ctx) => {
-    const activeAuctions = await ctx.db
+    const auctions = await ctx.db
       .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "sold"),
+          q.eq(q.field("status"), "unsold")
+        )
+      )
       .collect();
 
-    const makes = Array.from(new Set(activeAuctions.map((a) => a.make))).sort();
+    const makes = Array.from(new Set(auctions.map((a) => a.make))).sort();
     return makes;
   },
 });
