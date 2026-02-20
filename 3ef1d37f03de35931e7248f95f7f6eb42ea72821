@@ -1,0 +1,5 @@
+Task: Resolve GitHub issue #66
+Summary: Optimized announcement listing by batching read receipt queries.
+Technical Details:
+- Implemented batchFetchReadCounts helper to handle bulk read count fetching.
+- Reduced N+1 query pattern in listAnnouncements.
