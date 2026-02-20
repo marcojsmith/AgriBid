@@ -65,6 +65,7 @@ export default function AdminAuctions() {
   const bulkUpdateAuctionsMutation = useMutation(
     api.auctions.bulkUpdateAuctions
   );
+  const closeAuctionEarlyMutation = useMutation(api.admin.closeAuctionEarly);
 
   const filteredAuctions = useMemo(() => {
     if (!allAuctions) return [];
@@ -346,16 +347,39 @@ export default function AdminAuctions() {
                             <Eye className="h-4 w-4" /> View Details
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive font-bold rounded-lg gap-2"
-                            onClick={() =>
-                              toast.info(
-                                "Force end logic pending implementation"
-                              )
-                            }
-                          >
-                            <AlertCircle className="h-4 w-4" /> Force End
-                          </DropdownMenuItem>
+                          {a.status === "active" && (
+                            <DropdownMenuItem
+                              className="text-destructive font-bold rounded-lg gap-2"
+                              onClick={() => {
+                                toast.warning("Close Auction Early?", {
+                                  description:
+                                    "This will end the auction immediately and award the highest bidder.",
+                                  action: {
+                                    label: "Confirm",
+                                    onClick: async () => {
+                                      try {
+                                        const result =
+                                          await closeAuctionEarlyMutation({
+                                            auctionId: a._id,
+                                          });
+                                        toast.success(
+                                          `Auction closed early as ${result.status.toUpperCase()}`
+                                        );
+                                      } catch (err) {
+                                        toast.error(
+                                          err instanceof Error
+                                            ? err.message
+                                            : "Failed to close auction"
+                                        );
+                                      }
+                                    },
+                                  },
+                                });
+                              }}
+                            >
+                              <AlertCircle className="h-4 w-4" /> Close Early
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
