@@ -139,6 +139,8 @@ export const reviewKYC = mutation({
         isVerified: true,
       });
 
+      await updateCounter(ctx, "profiles", "pending", -1);
+
       if (!wasVerified) {
         await updateCounter(ctx, "profiles", "verified", 1);
       }
@@ -164,6 +166,9 @@ export const reviewKYC = mutation({
         kycStatus: "rejected",
         kycRejectionReason: reason,
       });
+
+      await updateCounter(ctx, "profiles", "pending", -1);
+
       // Send Rejection Notification
       await ctx.db.insert("notifications", {
         recipientId: args.userId,
