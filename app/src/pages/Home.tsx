@@ -61,6 +61,8 @@ export default function Home() {
 
   // Extract filter params
   const searchQuery = searchParams.get("q") || undefined;
+  const status =
+    (searchParams.get("status") as "active" | "sold" | "unsold") || "active";
   const make = searchParams.get("make") || undefined;
 
   const parseFiniteInt = (key: string) => {
@@ -77,6 +79,7 @@ export default function Home() {
   const maxHours = parseFiniteInt("maxHours");
 
   const auctions = useQuery(api.auctions.getActiveAuctions, {
+    status,
     search: searchQuery,
     make,
     minYear,
@@ -91,6 +94,7 @@ export default function Home() {
   }
 
   const hasActiveFilters =
+    status !== "active" ||
     make !== undefined ||
     minYear !== undefined ||
     maxYear !== undefined ||
@@ -104,15 +108,20 @@ export default function Home() {
       mode === "compact"
         ? cn(
             "grid-cols-1 gap-2 sm:gap-3",
-            sidebarOpen
-              ? "md:grid-cols-2"
-              : "md:grid-cols-2 lg:grid-cols-3",
+            sidebarOpen ? "md:grid-cols-2" : "md:grid-cols-2 lg:grid-cols-3"
           )
-        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8",
+        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8"
     );
 
   const getItemWrapperClasses = (mode: "compact" | "detailed") =>
     cn("w-full h-full", mode === "compact" && "max-w-[500px]");
+
+  const getHeadingText = () => {
+    if (searchQuery) return `Results for "${searchQuery}"`;
+    if (status === "sold") return "Sold Equipment";
+    if (status === "unsold") return "Unsold Items";
+    return "Active Auctions";
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-8">
@@ -146,7 +155,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-3xl font-black tracking-tight text-primary uppercase">
-              {searchQuery ? `Results for "${searchQuery}"` : "Active Auctions"}
+              {getHeadingText()}
             </h2>
             <div className="flex flex-wrap gap-2 mt-2">
               {searchQuery && (

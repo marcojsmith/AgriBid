@@ -16,6 +16,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   // Local state for debounced inputs
   const [localFilters, setLocalFilters] = useState({
+    status: searchParams.get("status") || "active",
     make: searchParams.get("make") || "",
     minYear: searchParams.get("minYear") || "",
     maxYear: searchParams.get("maxYear") || "",
@@ -28,6 +29,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalFilters({
+      status: searchParams.get("status") || "active",
       make: searchParams.get("make") || "",
       minYear: searchParams.get("minYear") || "",
       maxYear: searchParams.get("maxYear") || "",
@@ -44,9 +46,11 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const applyFilters = () => {
     const newParams = new URLSearchParams(searchParams);
     Object.entries(localFilters).forEach(([key, value]) => {
-      if (value) {
+      if (value && !(key === "status" && value === "active")) {
         newParams.set(key, value);
-      } else {
+      } else if (key === "status" && value === "active") {
+        newParams.delete(key);
+      } else if (!value) {
         newParams.delete(key);
       }
     });
@@ -62,7 +66,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     if (onClose) onClose();
   };
 
-  const hasFilters = Object.values(localFilters).some((v) => v !== "");
+  const hasFilters = Object.entries(localFilters).some(([key, v]) => {
+    if (key === "status") return v !== "active";
+    return v !== "";
+  });
 
   return (
     <div className="flex flex-col h-full bg-card border-2 rounded-3xl overflow-hidden shadow-xl shadow-primary/5 animate-in slide-in-from-left-4 duration-300">
@@ -86,6 +93,38 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        {/* Status Filter */}
+        <div className="space-y-3">
+          <label
+            htmlFor="filter-status"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
+            Show
+          </label>
+          <div className="flex flex-col gap-2">
+            {[
+              { id: "active", label: "Active Auctions" },
+              { id: "sold", label: "Sold Equipment" },
+              { id: "unsold", label: "Unsold Items" },
+            ].map((option) => (
+              <button
+                key={option.id}
+                onClick={() => updateParam("status", option.id)}
+                className={`h-11 px-4 rounded-xl text-sm font-bold transition-all border-2 text-left flex items-center justify-between ${
+                  localFilters.status === option.id
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                {option.label}
+                {localFilters.status === option.id && (
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Manufacturer Filter */}
         <div className="space-y-3">
           <label
