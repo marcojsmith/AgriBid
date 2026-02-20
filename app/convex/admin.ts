@@ -315,6 +315,81 @@ export const getAuditLogs = query({
   },
 });
 
+export const closeAuctionEarly = mutation({
+  args: { auctionId: v.id("auctions") },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) throw new Error("Auction not found");
+    if (auction.status !== "active") {
+      throw new Error("Only active auctions can be closed early");
+    }
+
+    // Find the highest valid bid
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .filter((q) => q.neq(q.field("status"), "voided"))
+      .collect();
+
+    const hasBids = bids.length > 0;
+    const finalStatus = hasBids ? "sold" : "unsold";
+    let winnerId: string | undefined = undefined;
+
+    if (hasBids) {
+      const highestBid = bids.reduce((prev, curr) =>
+        curr.amount > prev.amount ? curr : prev
+      );
+      winnerId = highestBid.bidderId;
+    }
+
+    // Update auction
+    await ctx.db.patch(args.auctionId, {
+      status: finalStatus,
+      winnerId,
+      endTime: Date.now(), // End it now
+    });
+
+    // Update counter
+    await updateCounter(ctx, "auctions", "active", -1);
+
+    // Notifications
+    if (winnerId) {
+      await ctx.db.insert("notifications", {
+        recipientId: winnerId,
+        type: "success",
+        title: "Auction Won!",
+        message: `Congratulations! The auction for ${auction.title} was closed early and you are the winner.`,
+        link: `/auctions/${args.auctionId}`,
+        isRead: false,
+        createdAt: Date.now(),
+      });
+    }
+
+    await ctx.db.insert("notifications", {
+      recipientId: auction.sellerId,
+      type: "info",
+      title: "Auction Closed Early",
+      message: `Admin has closed your auction for ${auction.title} early. Status: ${finalStatus}.`,
+      link: `/auctions/${args.auctionId}`,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+
+    // Audit Log
+    await logAudit(ctx, {
+      action: "CLOSE_AUCTION_EARLY",
+      targetId: args.auctionId,
+      targetType: "auction",
+      details: `Status: ${finalStatus}, Winner: ${winnerId || "None"}`,
+    });
+
+    return { success: true, status: finalStatus, winnerId };
+  },
+});
+
 // --- Dashboard Stats ---
 
 /**
