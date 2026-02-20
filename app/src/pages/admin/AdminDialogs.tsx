@@ -53,7 +53,21 @@ interface AdminProfile {
 }
 
 /**
- * KYC Review Dialog Component
+ * Displays a modal dialog for reviewing a user's KYC submission.
+ *
+ * Shows personal details, submitted documents, a required rejection-reason textarea,
+ * and action buttons to approve or reject the application.
+ *
+ * @param user - The KYC user to review; when `null` the dialog content is not rendered.
+ * @param isOpen - Controls whether the dialog is open.
+ * @param onClose - Called when the dialog is closed by the user.
+ * @param onReview - Called with `"approve"` or `"reject"` when the corresponding action is confirmed.
+ * @param isProcessing - Disables actions and shows loading indicators while a review is being processed.
+ * @param rejectionReason - Current text for the rejection reason textarea; required for rejecting.
+ * @param setRejectionReason - Updates the rejection reason state.
+ * @param showFullId - When `true`, displays the user's full ID/passport number; otherwise masks it.
+ * @param setShowFullId - Toggles the visibility of the full ID/passport number.
+ * @returns The dialog JSX element rendering the KYC review UI.
  */
 export function KycReviewDialog({
   user,
@@ -217,7 +231,17 @@ export function KycReviewDialog({
 }
 
 /**
- * Bulk Action Confirmation Dialog
+ * Render a confirmation dialog to perform a bulk status update for selected auctions.
+ *
+ * Renders an alert dialog that describes how many items will be updated and the target status, and provides Cancel and Confirm actions.
+ *
+ * @param isOpen - Controls whether the dialog is visible
+ * @param onClose - Called when the dialog is dismissed
+ * @param onConfirm - Called when the user confirms the bulk update
+ * @param isProcessing - When true, disables actions and shows a loading indicator on the confirm button
+ * @param selectedCount - Number of auctions that will be updated
+ * @param targetStatus - The status to apply to the selected auctions (may be `null` if not specified)
+ * @returns The dialog element for confirming a bulk status update
  */
 export function BulkActionDialog({
   isOpen,
@@ -274,7 +298,13 @@ export function BulkActionDialog({
 }
 
 /**
- * Promote Action Confirmation Dialog
+ * Confirmation dialog to promote a user to an administrative role.
+ *
+ * @param isOpen - Whether the dialog is visible.
+ * @param onClose - Callback invoked when the dialog is closed.
+ * @param onConfirm - Callback invoked when the promotion is confirmed.
+ * @param isProcessing - When true, disables actions and shows a loading indicator.
+ * @param targetUser - The user to be promoted; used to display the user's name or email. May be `null`.
  */
 export function PromoteAdminDialog({
   isOpen,

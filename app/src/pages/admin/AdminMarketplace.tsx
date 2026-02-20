@@ -4,6 +4,18 @@ import { BidMonitor } from "@/components/admin";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
+/**
+ * Admin page that displays a live auction monitor and current admin statistics.
+ *
+ * Renders the AdminLayout with the title "Live Auction Monitor" and subtitle
+ * "Real-time Bidding & Activity Stream". While admin statistics are loading it
+ * shows a centred loading indicator; once loaded it injects the fetched stats
+ * and displays the BidMonitor component.
+ *
+ * @returns A React element containing the admin layout with either a loading
+ * indicator (when stats are undefined) or the live BidMonitor with the fetched
+ * `adminStats`.
+ */
 export default function AdminMarketplace() {
   const adminStats = useQuery(api.admin.getAdminStats);
 

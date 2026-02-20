@@ -8,6 +8,14 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import type { Id } from "convex/_generated/dataModel";
 
+/**
+ * Renders the admin moderation page for reviewing and actioning pending auction listings.
+ *
+ * @returns The AdminLayout React element containing:
+ * - a centred loading state while pending auctions are being fetched,
+ * - a responsive grid of ModerationCard items with approve, reject and view handlers when data is available,
+ * - an empty-state banner when there are no pending auctions.
+ */
 export default function AdminModeration() {
   const pendingAuctions = useQuery(api.auctions.getPendingAuctions);
   const adminStats = useQuery(api.admin.getAdminStats);

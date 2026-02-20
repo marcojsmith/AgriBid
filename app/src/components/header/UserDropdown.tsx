@@ -35,21 +35,17 @@ interface UserDropdownProps {
 }
 
 /**
- * Render a user account dropdown with profile status, navigation links, and a sign-out action.
+ * Render a user account dropdown with profile status, navigation links and a sign-out action.
  *
- * Displays a trigger button that shows loading state, verification badge, user name, and avatar.
- * The dropdown menu includes KYC prompt (when needed), public profile link (or syncing state),
- * optional admin moderation link, common navigation items (My Bids, Watchlist, My Listings, Support),
- * and a Sign Out item that invokes the provided sign-out callback.
+ * Renders a trigger button that reflects loading and verification states and a content menu that conditionally includes a KYC prompt, public profile link (or syncing state), an admin dashboard link for admins, common navigation items (My Bids, Watchlist, My Listings, Support Tickets) and a Sign Out item.
  *
- * @param userData - Optional user data object (may include display name and profile information)
- * @param isLoadingProfile - Whether profile data is currently loading; disables interaction and shows placeholders
- * @param isVerified - Whether the user's identity/KYC has been verified
- * @param kycStatus - KYC status string (e.g., "pending"); used to determine KYC-related UI states
- * @param profileId - Public profile identifier; when present, enables the Public Profile link
- * @param role - User role (e.g., "admin"); used to conditionally show admin links
- * @param onSignOut - Callback invoked when the user selects "Sign Out"
- *
+ * @param userData - Optional user object; used to display the user's name when available
+ * @param isLoadingProfile - When true, disables interaction and shows loading placeholders in the trigger
+ * @param isVerified - Whether the user's identity/KYC is verified; controls badge and KYC prompt visibility
+ * @param kycStatus - KYC status string (for example `"pending"`); used to determine KYC-related UI states and labels
+ * @param profileId - Public profile identifier; when present enables the Public Profile link, otherwise shows a syncing state
+ * @param role - User role (for example `"admin"`); when `"admin"` shows the Admin Dashboard link
+ * @param onSignOut - Callback invoked when the user selects "Sign Out"; errors from this callback are caught and surfaced to the user
  * @returns The dropdown menu JSX containing the trigger and account-related menu items
  */
 export function UserDropdown({

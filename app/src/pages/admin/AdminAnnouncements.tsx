@@ -29,6 +29,15 @@ import {
 } from "@/components/ui/table";
 import { StatCard } from "@/components/admin/StatCard";
 
+/**
+ * Admin page for composing, sending and reviewing global broadcast announcements.
+ *
+ * Renders an interface that displays announcement statistics and history, and provides
+ * a dialog-based form to create and send new announcements to all users with basic
+ * input validation and sending state.
+ *
+ * @returns The page's JSX element for the Admin Announcements interface.
+ */
 export default function AdminAnnouncements() {
   const announcements = useQuery(api.admin.listAnnouncements, {});
   const announcementStats = useQuery(api.admin.getAnnouncementStats, {});

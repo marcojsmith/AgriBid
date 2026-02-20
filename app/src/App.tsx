@@ -39,7 +39,7 @@ const PageLoader = () => (
 );
 
 /**
- * Mounts the client-side router and declares all application routes.
+ * Mounts the client-side router and declares application routes within the main layout.
  *
  * Declared routes:
  * - "/" → Home
@@ -47,15 +47,25 @@ const PageLoader = () => (
  * - "/auction/:id" → AuctionDetail
  * - "/profile/:userId" → Profile
  * - "/sell" → Sell
- * - "/watchlist" → Watchlist (protected)
- * - "/dashboard/bids" → MyBids (protected)
- * - "/dashboard/listings" → MyListings (protected)
- * - "/admin" → AdminDashboard (protected, admin only)
- * - "/kyc" → KYC (protected)
- * - "/support" → Support (protected)
- * - "/notifications" → Notifications (protected)
+ * - "/watchlist" → Watchlist (protected, allowedRole="any")
+ * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
+ * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
+ * - "/admin" → AdminModeration (protected, allowedRole="admin")
+ * - "/admin/dashboard" → AdminModeration (protected, allowedRole="admin")
+ * - "/admin/moderation" → AdminModeration (protected, allowedRole="admin")
+ * - "/admin/marketplace" → AdminMarketplace (protected, allowedRole="admin")
+ * - "/admin/auctions" → AdminAuctions (protected, allowedRole="admin")
+ * - "/admin/users" → AdminUsers (protected, allowedRole="admin")
+ * - "/admin/finance" → AdminFinance (protected, allowedRole="admin")
+ * - "/admin/announcements" → AdminAnnouncements (protected, allowedRole="admin")
+ * - "/admin/support" → AdminSupport (protected, allowedRole="admin")
+ * - "/admin/audit" → AdminAudit (protected, allowedRole="admin")
+ * - "/admin/settings" → AdminSettings (protected, allowedRole="admin")
+ * - "/kyc" → KYC (protected, allowedRole="any")
+ * - "/support" → Support (protected, allowedRole="any")
+ * - "/notifications" → Notifications (protected, allowedRole="any")
  *
- * @returns The root JSX element containing the BrowserRouter, layout, and route definitions
+ * @returns The root JSX element containing the BrowserRouter, layout and route definitions
  */
 function App() {
   return (

@@ -44,6 +44,21 @@ const SIDEBAR_ITEMS = [
   { label: "System", icon: Settings, path: "/admin/settings" },
 ];
 
+/**
+ * Render the admin layout with a persistent sidebar, KPI header and main content area.
+ *
+ * Renders a two-pane admin interface: a left navigation sidebar and a right main area that displays a title, subtitle, optional announcement action and optional KPI stat cards above the content.
+ *
+ * @param children - Content rendered inside the main content area
+ * @param title - Header title shown in the KPI header (defaults to "Admin Dashboard")
+ * @param subtitle - Small uppercase subtitle shown under the title (defaults to "Global Marketplace Oversight")
+ * @param stats - Optional KPI metrics; when provided renders stat cards for:
+ *   - `activeAuctions` (Live),
+ *   - `totalUsers` (Users),
+ *   - `pendingReview` (Moderation)
+ * @param onAnnounce - Optional callback invoked when the Announce button is clicked; the button is rendered only when this callback is provided
+ * @returns The Admin layout React element with sidebar navigation, KPI header and the provided children
+ */
 export function AdminLayout({
   children,
   title = "Admin Dashboard",

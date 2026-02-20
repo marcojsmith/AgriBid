@@ -42,6 +42,13 @@ interface AdminProfile {
   createdAt: number;
 }
 
+/**
+ * Admin page component that provides a user management interface with search, KYC review, manual verification and promotion-to-admin actions.
+ *
+ * Renders a paginated list of user profiles, per-user action buttons (Review KYC, Verify, Promote), and the related KYC review and promote dialogs.
+ *
+ * @returns The React element for the Admin Users interface.
+ */
 export default function AdminUsers() {
   const adminStats = useQuery(api.admin.getAdminStats);
   const [userSearch, setUserSearch] = useState("");

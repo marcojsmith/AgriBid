@@ -15,13 +15,9 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 
 /**
- * Render a table view of admin audit logs with a loading state.
+ * Render a table of admin audit logs with pagination controls and a centred loading state.
  *
- * Displays a centered spinner while audit logs are being fetched. Once available,
- * shows a card containing a table of logs with columns: Timestamp, Admin ID,
- * Action, Target, and Details.
- *
- * @returns A React element that displays the loading spinner or the audit logs table.
+ * @returns A React element that displays a centred loading indicator while logs are fetched, or a card containing the audit logs table with details and pagination controls.
  */
 export function AuditTab() {
   const [limit, setLimit] = useState(50);

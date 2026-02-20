@@ -7,6 +7,16 @@ import { SettingsCard } from "@/components/admin";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees and security logs.
+ *
+ * Displays a centred loading indicator while admin statistics are being fetched. Once loaded, presents three settings cards:
+ * - Equipment Metadata: opens the related GitHub issue and shows an info toast.
+ * - Platform Fees: opens the related GitHub issue and shows an info toast.
+ * - Security Logs: navigates to the internal audit view.
+ *
+ * @returns The AdminSettings page component as a React element.
+ */
 export default function AdminSettings() {
   const adminStats = useQuery(api.admin.getAdminStats);
   const navigate = useNavigate();
