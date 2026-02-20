@@ -1,9 +1,14 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type QueryCtx,
+  type MutationCtx,
+} from "./_generated/server";
 import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
-import { COMMISSION_RATE } from "./config";
+import { COMMISSION_RATE, APP_VERSION, SYSTEM_STATUS } from "./config";
 import { authComponent } from "./auth";
 
 // --- Bid Moderation ---
@@ -139,6 +144,8 @@ export const reviewKYC = mutation({
         isVerified: true,
       });
 
+      await updateCounter(ctx, "profiles", "pending", -1);
+
       if (!wasVerified) {
         await updateCounter(ctx, "profiles", "verified", 1);
       }
@@ -164,6 +171,9 @@ export const reviewKYC = mutation({
         kycStatus: "rejected",
         kycRejectionReason: reason,
       });
+
+      await updateCounter(ctx, "profiles", "pending", -1);
+
       // Send Rejection Notification
       await ctx.db.insert("notifications", {
         recipientId: args.userId,
@@ -305,26 +315,115 @@ export const getAuditLogs = query({
   },
 });
 
+export const closeAuctionEarly = mutation({
+  args: { auctionId: v.id("auctions") },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) throw new Error("Auction not found");
+    if (auction.status !== "active") {
+      throw new Error("Only active auctions can be closed early");
+    }
+
+    // Find the highest valid bid
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .filter((q) => q.neq(q.field("status"), "voided"))
+      .collect();
+
+    const hasBids = bids.length > 0;
+    const finalStatus = hasBids ? "sold" : "unsold";
+    let winnerId: string | undefined = undefined;
+
+    if (hasBids) {
+      const highestBid = bids.reduce((prev, curr) =>
+        curr.amount > prev.amount ? curr : prev
+      );
+      winnerId = highestBid.bidderId;
+    }
+
+    // Update auction
+    await ctx.db.patch(args.auctionId, {
+      status: finalStatus,
+      winnerId,
+      endTime: Date.now(), // End it now
+    });
+
+    // Update counter
+    await updateCounter(ctx, "auctions", "active", -1);
+
+    // Notifications
+    if (winnerId) {
+      await ctx.db.insert("notifications", {
+        recipientId: winnerId,
+        type: "success",
+        title: "Auction Won!",
+        message: `Congratulations! The auction for ${auction.title} was closed early and you are the winner.`,
+        link: `/auctions/${args.auctionId}`,
+        isRead: false,
+        createdAt: Date.now(),
+      });
+    }
+
+    await ctx.db.insert("notifications", {
+      recipientId: auction.sellerId,
+      type: "info",
+      title: "Auction Closed Early",
+      message: `Admin has closed your auction for ${auction.title} early. Status: ${finalStatus}.`,
+      link: `/auctions/${args.auctionId}`,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+
+    // Audit Log
+    await logAudit(ctx, {
+      action: "CLOSE_AUCTION_EARLY",
+      targetId: args.auctionId,
+      targetType: "auction",
+      details: `Status: ${finalStatus}, Winner: ${winnerId || "None"}`,
+    });
+
+    return { success: true, status: finalStatus, winnerId };
+  },
+});
+
 // --- Dashboard Stats ---
 
 /**
- * Helper to count results of a query using pagination to avoid memory issues.
+ * Helper to count results of a query.
  * @param query - A Convex query object (e.g., ctx.db.query("table"))
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function countQuery(query: { paginate: (opts: any) => Promise<any> }) {
-  let count = 0;
-  let cursor: string | null = null;
-  let isDone = false;
+async function countQuery(query: { collect: () => Promise<any[]> }) {
+  const results = await query.collect();
+  return results.length;
+}
 
-  while (!isDone) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const page: any = await query.paginate({ numItems: 500, cursor });
-    count += page.page.length;
-    cursor = page.continueCursor;
-    isDone = page.isDone;
-  }
-  return count;
+/**
+ * Helper to batch fetch read counts for a list of notification IDs.
+ */
+async function batchFetchReadCounts(
+  ctx: QueryCtx | MutationCtx,
+  notificationIds: Id<"notifications">[]
+) {
+  if (notificationIds.length === 0) return new Map();
+
+  // Parallelize read receipt counts for each notification
+  const allReadReceipts = await Promise.all(
+    notificationIds.map((id) =>
+      ctx.db
+        .query("readReceipts")
+        .withIndex("by_notification", (q) => q.eq("notificationId", id))
+        .collect()
+    )
+  );
+
+  return new Map(
+    notificationIds.map((id, index) => [id, allReadReceipts[index].length])
+  );
 }
 
 /**
@@ -343,6 +442,7 @@ export const initializeCounters = mutation({
       pendingAuctions,
       totalUsers,
       verifiedSellers,
+      pendingKYC,
     ] = await Promise.all([
       countQuery(ctx.db.query("auctions")),
       countQuery(
@@ -363,6 +463,12 @@ export const initializeCounters = mutation({
           .query("profiles")
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true))
+      ),
+      countQuery(
+        ctx.db
+          .query("profiles")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_kycStatus", (q: any) => q.eq("kycStatus", "pending"))
       ),
     ]);
 
@@ -396,8 +502,8 @@ export const initializeCounters = mutation({
     const profilePayload = {
       total: totalUsers,
       verified: verifiedSellers,
-      active: 0, // Profiles don't use active/pending in this context currently
-      pending: 0,
+      pending: pendingKYC,
+      active: 0, // Profiles don't use active in this context currently
       updatedAt: Date.now(),
     };
 
@@ -431,12 +537,22 @@ export const getAdminStats = query({
         .unique(),
     ]);
 
+    const onlineThreshold = Date.now() - 5 * 60 * 1000;
+    const onlineUsers = await ctx.db
+      .query("profiles")
+      .withIndex("by_lastActiveAt", (q) =>
+        q.gt("lastActiveAt", onlineThreshold)
+      )
+      .collect();
+
     return {
       totalAuctions: auctionCounter?.total ?? 0,
       activeAuctions: auctionCounter?.active ?? 0,
       pendingReview: auctionCounter?.pending ?? 0,
+      pendingKYC: profileCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
-      verifiedSellers: profileCounter?.verified ?? 0,
+      verifiedUsers: profileCounter?.verified ?? 0,
+      onlineUsers: onlineUsers.length,
     };
   },
 });
@@ -496,18 +612,9 @@ export const listAnnouncements = query({
     if (announcements.length === 0) return [];
 
     // Batch fetch read counts to avoid N+1
-    const announcementIds = announcements.map((a) => a._id);
-    const allReadReceipts = await Promise.all(
-      announcementIds.map((id) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_notification", (q) => q.eq("notificationId", id))
-          .collect()
-      )
-    );
-
-    const readCounts = new Map(
-      announcementIds.map((id, index) => [id, allReadReceipts[index].length])
+    const readCounts = await batchFetchReadCounts(
+      ctx,
+      announcements.map((a) => a._id)
     );
 
     return announcements.map((announcement) => ({
@@ -562,6 +669,19 @@ export const getSupportStats = query({
       open: openTickets.length,
       resolved: resolvedTickets.length,
       total: openTickets.length + resolvedTickets.length,
+    };
+  },
+});
+
+export const getSystemStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    return {
+      version: APP_VERSION,
+      status: SYSTEM_STATUS,
     };
   },
 });

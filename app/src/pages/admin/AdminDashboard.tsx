@@ -16,19 +16,23 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";
 
 /**
- * Renders the Admin Dashboard overview with summary cards for all management areas.
+ * Render the admin dashboard layout with summary cards for each management area.
+ *
+ * @returns The admin overview layout populated with real-time, auctions, moderation, users, financials, support, communication and system summary cards.
  */
 export default function AdminDashboard() {
   const adminStats = useQuery(api.admin.getAdminStats);
   const financialStats = useQuery(api.admin.getFinancialStats);
   const announcementStats = useQuery(api.admin.getAnnouncementStats);
   const supportStats = useQuery(api.admin.getSupportStats);
+  const systemStats = useQuery(api.admin.getSystemStats);
 
   const isLoading =
     adminStats === undefined ||
     financialStats === undefined ||
     announcementStats === undefined ||
-    supportStats === undefined;
+    supportStats === undefined ||
+    systemStats === undefined;
 
   if (isLoading) {
     return (
@@ -85,14 +89,21 @@ export default function AdminDashboard() {
           icon={<ShieldCheck className="h-5 w-5" />}
           stats={[
             {
-              label: "Pending Review",
+              label: "Auctions",
               value: adminStats.pendingReview,
               color:
                 adminStats.pendingReview > 0
                   ? "text-yellow-600"
                   : "text-green-600",
             },
-            { label: "KYC Queue", value: "0" }, // TODO: Add KYC pending count to getAdminStats
+            {
+              label: "KYC Users",
+              value: adminStats.pendingKYC,
+              color:
+                adminStats.pendingKYC > 0
+                  ? "text-yellow-600"
+                  : "text-green-600",
+            },
           ]}
           link="/admin/moderation"
           linkLabel="Review Queue"
@@ -105,9 +116,14 @@ export default function AdminDashboard() {
           stats={[
             { label: "Total Users", value: adminStats.totalUsers },
             {
-              label: "Verified",
-              value: adminStats.verifiedSellers,
+              label: "Online Now",
+              value: adminStats.onlineUsers,
               color: "text-blue-600",
+            },
+            {
+              label: "Pending KYC",
+              value: adminStats.pendingKYC,
+              color: adminStats.pendingKYC > 0 ? "text-yellow-600" : "",
             },
           ]}
           link="/admin/users"
@@ -170,8 +186,15 @@ export default function AdminDashboard() {
           title="System"
           icon={<TrendingUp className="h-5 w-5" />}
           stats={[
-            { label: "Status", value: "Online", color: "text-green-600" },
-            { label: "Version", value: "v1.2.0" },
+            {
+              label: "Status",
+              value: systemStats.status,
+              color:
+                systemStats.status === "Online"
+                  ? "text-green-600"
+                  : "text-red-600",
+            },
+            { label: "Version", value: systemStats.version },
           ]}
           link="/admin/settings"
           linkLabel="Configuration"
