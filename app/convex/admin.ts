@@ -25,7 +25,7 @@ export const getRecentBids = query({
           ...bid,
           auctionTitle: auction?.title || "Unknown Auction",
         };
-      }),
+      })
     );
   },
 });
@@ -95,11 +95,11 @@ export const getPendingKYC = query({
                 if (url === null) {
                   missingIds.push(id);
                   console.error(
-                    `Missing KYC document ${id} for profile ${p._id}`,
+                    `Missing KYC document ${id} for profile ${p._id}`
                   );
                 }
                 return url;
-              }),
+              })
             )
           : [];
 
@@ -109,7 +109,7 @@ export const getPendingKYC = query({
           hasMissingKycDocuments: missingIds.length > 0,
           missingKycDocumentIds: missingIds,
         };
-      }),
+      })
     );
   },
 });
@@ -203,7 +203,7 @@ export const getFinancialStats = query({
 
     const totalSalesVolume = soldAuctions.reduce(
       (sum, a) => sum + a.currentPrice,
-      0,
+      0
     );
     const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
 
@@ -349,20 +349,20 @@ export const initializeCounters = mutation({
         ctx.db
           .query("auctions")
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_status", (q: any) => q.eq("status", "active")),
+          .withIndex("by_status", (q: any) => q.eq("status", "active"))
       ),
       countQuery(
         ctx.db
           .query("auctions")
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_status", (q: any) => q.eq("status", "pending_review")),
+          .withIndex("by_status", (q: any) => q.eq("status", "pending_review"))
       ),
       countQuery(ctx.db.query("profiles")),
       countQuery(
         ctx.db
           .query("profiles")
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true)),
+          .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true))
       ),
     ]);
 
@@ -476,5 +476,62 @@ export const createAnnouncement = mutation({
     });
 
     return { success: true };
+  },
+});
+
+export const listAnnouncements = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const limit = Math.max(1, Math.min(args.limit || 50, 100));
+
+    const announcements = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+      .order("desc")
+      .take(limit);
+
+    return await Promise.all(
+      announcements.map(async (announcement) => {
+        const readCount = await ctx.db
+          .query("readReceipts")
+          .withIndex("by_notification", (q) =>
+            q.eq("notificationId", announcement._id)
+          )
+          .collect();
+
+        return {
+          ...announcement,
+          readCount: readCount.length,
+        };
+      })
+    );
+  },
+});
+
+export const getAnnouncementStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const allAnnouncements = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+      .collect();
+
+    const recentCount = allAnnouncements.filter(
+      (a) => a.createdAt >= sevenDaysAgo
+    ).length;
+
+    return {
+      total: allAnnouncements.length,
+      recent: recentCount,
+    };
   },
 });

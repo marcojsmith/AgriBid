@@ -85,16 +85,12 @@ export function UserDropdown({
                   variant="secondary"
                   className="h-4 px-1 text-[8px] font-black bg-orange-500/10 text-orange-600 border-orange-500/20 uppercase"
                 >
-                  {kycStatus === "pending"
-                    ? "Pending Review"
-                    : "Unverified"}
+                  {kycStatus === "pending" ? "Pending Review" : "Unverified"}
                 </Badge>
               )}
             </div>
             <span className="text-sm font-bold text-primary leading-none mt-1">
-              {isLoadingProfile
-                ? "Loading..."
-                : userData?.name || "User"}
+              {isLoadingProfile ? "Loading..." : userData?.name || "User"}
             </span>
           </div>
           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all border-2 border-primary/20">
@@ -121,10 +117,7 @@ export function UserDropdown({
             asChild
             className="bg-orange-500/10 text-orange-600 focus:bg-orange-500/20 focus:text-orange-700 rounded-xl mb-1 border border-orange-500/20 p-3"
           >
-            <Link
-              to="/kyc"
-              className="flex items-center gap-3 w-full"
-            >
+            <Link to="/kyc" className="flex items-center gap-3 w-full">
               <ShieldAlert className="h-5 w-5" />
               <div className="flex flex-col">
                 <span className="font-black text-[10px] uppercase tracking-tighter leading-none">
@@ -168,12 +161,9 @@ export function UserDropdown({
             asChild
             className="rounded-xl font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary h-10"
           >
-            <Link
-              to="/admin"
-              className="flex items-center gap-2 w-full"
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Admin Moderation
+            <Link to="/admin" className="flex items-center gap-2 w-full">
+              <ShieldAlert className="h-4 w-4" />
+              Admin Dashboard
             </Link>
           </DropdownMenuItem>
         )}
@@ -184,10 +174,7 @@ export function UserDropdown({
           asChild
           className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
         >
-          <Link
-            to="/dashboard/bids"
-            className="flex items-center gap-2 w-full"
-          >
+          <Link to="/dashboard/bids" className="flex items-center gap-2 w-full">
             <LayoutDashboard className="h-4 w-4" />
             My Bids
           </Link>
@@ -196,10 +183,7 @@ export function UserDropdown({
           asChild
           className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
         >
-          <Link
-            to="/watchlist"
-            className="flex items-center gap-2 w-full"
-          >
+          <Link to="/watchlist" className="flex items-center gap-2 w-full">
             <Heart className="h-4 w-4" />
             Watchlist
           </Link>
@@ -220,10 +204,7 @@ export function UserDropdown({
           asChild
           className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
         >
-          <Link
-            to="/support"
-            className="flex items-center gap-2 w-full"
-          >
+          <Link to="/support" className="flex items-center gap-2 w-full">
             <MessageSquare className="h-4 w-4" />
             Support Tickets
           </Link>
