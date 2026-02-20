@@ -1,5 +1,10 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type QueryCtx,
+  type MutationCtx,
+} from "./_generated/server";
 import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
@@ -323,6 +328,30 @@ async function countQuery(query: { collect: () => Promise<any[]> }) {
 }
 
 /**
+ * Helper to batch fetch read counts for a list of notification IDs.
+ */
+async function batchFetchReadCounts(
+  ctx: QueryCtx | MutationCtx,
+  notificationIds: Id<"notifications">[]
+) {
+  if (notificationIds.length === 0) return new Map();
+
+  // Parallelize read receipt counts for each notification
+  const allReadReceipts = await Promise.all(
+    notificationIds.map((id) =>
+      ctx.db
+        .query("readReceipts")
+        .withIndex("by_notification", (q) => q.eq("notificationId", id))
+        .collect()
+    )
+  );
+
+  return new Map(
+    notificationIds.map((id, index) => [id, allReadReceipts[index].length])
+  );
+}
+
+/**
  * Recalculates all counters from scratch.
  * Should only be run manually or during migration.
  */
@@ -508,18 +537,9 @@ export const listAnnouncements = query({
     if (announcements.length === 0) return [];
 
     // Batch fetch read counts to avoid N+1
-    const announcementIds = announcements.map((a) => a._id);
-    const allReadReceipts = await Promise.all(
-      announcementIds.map((id) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_notification", (q) => q.eq("notificationId", id))
-          .collect()
-      )
-    );
-
-    const readCounts = new Map(
-      announcementIds.map((id, index) => [id, allReadReceipts[index].length])
+    const readCounts = await batchFetchReadCounts(
+      ctx,
+      announcements.map((a) => a._id)
     );
 
     return announcements.map((announcement) => ({
