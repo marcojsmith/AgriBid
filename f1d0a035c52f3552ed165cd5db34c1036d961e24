@@ -1,0 +1,4 @@
+Task: Define the errorReports and appSettings schemas.
+Summary: Added errorReports and appSettings tables to app/convex/schema.ts.
+Files: app/convex/schema.ts
+Why: To provide backend storage for error reports, including fingerprinting for deduplication and user breadcrumbs, and a remote feature toggle for the GitHub reporting functionality.
