@@ -15,6 +15,8 @@ import type * as auctions from "../auctions.js";
 import type * as auth from "../auth.js";
 import type * as config from "../config.js";
 import type * as crons from "../crons.js";
+import type * as errors from "../errors.js";
+import type * as github_config from "../github_config.js";
 import type * as http from "../http.js";
 import type * as notifications from "../notifications.js";
 import type * as seed from "../seed.js";
@@ -36,6 +38,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   config: typeof config;
   crons: typeof crons;
+  errors: typeof errors;
+  github_config: typeof github_config;
   http: typeof http;
   notifications: typeof notifications;
   seed: typeof seed;

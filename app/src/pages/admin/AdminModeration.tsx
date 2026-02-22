@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import type { Id } from "convex/_generated/dataModel";
+import useErrorHandler from "@/hooks/useErrorHandler";
 
 /**
  * Renders the admin moderation page for reviewing and actioning pending auction listings.
@@ -22,14 +23,14 @@ export default function AdminModeration() {
   const approveAuctionMutation = useMutation(api.auctions.approveAuction);
   const rejectAuctionMutation = useMutation(api.auctions.rejectAuction);
   const navigate = useNavigate();
+  const handleError = useErrorHandler();
 
   const handleApprove = async (id: Id<"auctions">) => {
     try {
       await approveAuctionMutation({ auctionId: id });
       toast.success("Auction approved");
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to approve auction");
+      handleError(err, { metadata: { action: "approveAuction", auctionId: id } });
     }
   };
 
@@ -38,8 +39,7 @@ export default function AdminModeration() {
       await rejectAuctionMutation({ auctionId: id });
       toast.success("Auction rejected");
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to reject auction");
+      handleError(err, { metadata: { action: "rejectAuction", auctionId: id } });
     }
   };
 

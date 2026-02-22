@@ -14,4 +14,11 @@ crons.interval(
   internal.auctions.settleExpiredAuctions,
 );
 
+// Process pending error reports every 5 minutes (rate-limited batch size)
+crons.interval(
+  "process pending error reports",
+  { minutes: 5 },
+  internal.errors.processPendingErrorReports,
+);
+
 export default crons;

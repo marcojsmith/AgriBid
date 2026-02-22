@@ -6,6 +6,8 @@ import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
 import { toast } from "sonner";
 import { isValidCallbackUrl } from "@/lib/utils";
+import { trackAction } from "@/lib/activity-tracker";
+import useErrorHandler from "@/hooks/useErrorHandler";
 
 import {
   ListingWizardProvider,
@@ -37,6 +39,7 @@ const ListingWizardContent = () => {
   const navigate = useNavigate();
   const { getStepError } = useListingForm();
   const createAuction = useMutation(api.auctions.createAuction);
+  const handleError = useErrorHandler();
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -63,6 +66,7 @@ const ListingWizardContent = () => {
 
     setIsSubmitting(true);
     try {
+      trackAction("interaction", "submit_listing");
       const images = {
         ...formData.images,
         additional: Array.isArray(formData.images.additional)
@@ -96,8 +100,12 @@ const ListingWizardContent = () => {
       setIsSuccess(true);
       toast.success("Listing submitted for review!");
     } catch (error) {
-      console.error(error);
-      toast.error(error instanceof Error ? error.message : "Submission failed");
+        // centralised error handling + reporting
+        handleError(error, {
+          userContext: session
+            ? { userId: session.user?.userId ?? session.user?.id }
+            : undefined,
+        });
     } finally {
       setIsSubmitting(false);
     }

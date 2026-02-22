@@ -212,4 +212,45 @@ export default defineSchema({
     verified: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
+  // Error reporting table
+  errorReports: defineTable({
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("duplicate"),
+    ),
+    fingerprint: v.string(),
+    errorType: v.string(),
+    message: v.string(),
+    stackTrace: v.optional(v.string()),
+    userContext: v.object({
+      userId: v.optional(v.string()),
+      role: v.optional(v.string()),
+      kycStatus: v.optional(v.string()),
+    }),
+    breadcrumbs: v.optional(
+      v.array(
+        v.object({
+          timestamp: v.number(),
+          type: v.string(),
+          description: v.string(),
+          metadata: v.optional(v.string()),
+        }),
+      ),
+    ),
+    metadata: v.object({
+      browser: v.optional(v.string()),
+      url: v.optional(v.string()),
+      timestamp: v.number(),
+    }),
+    githubIssueUrl: v.optional(v.string()),
+    retryCount: v.number(),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"]) 
+    .index("by_fingerprint", ["fingerprint"]),
 });
