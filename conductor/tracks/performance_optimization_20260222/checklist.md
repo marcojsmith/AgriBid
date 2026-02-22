@@ -11,17 +11,17 @@
 - [x] Add limits to `getFinancialStats` (`app/convex/admin.ts`)
 - [x] Add limits to `getPendingKYC` (`app/convex/admin.ts`)
 
-## Task 2: Database Query Efficiency
-- [ ] Add composite indexes in `app/convex/schema.ts`
-  - [ ] `by_status_make` for `[status, make]`
-  - [ ] `by_status_year` for `[status, year]`
-- [ ] Optimize `getActiveAuctions` in `app/convex/auctions.ts`
-  - [ ] Use index-based filtering where possible
-  - [ ] Apply in-memory filters for non-indexed fields
-- [ ] Implement `toAuctionSummary` helper in `app/convex/auctions.ts`
-  - [ ] Project only essential fields (`_id`, `title`, `make`, `model`, `year`, `currentPrice`, `endTime`, `status`, `images`)
-- [ ] Update `getActiveAuctions` to return summary objects
-- [ ] Update `getPendingAuctions` to return summary objects
+## Task 2: Database Query Efficiency (Completed)
+- [x] Add composite indexes in `app/convex/schema.ts`
+  - [x] `by_status_make` for `[status, make]`
+  - [x] `by_status_year` for `[status, year]`
+- [x] Optimize `getActiveAuctions` in `app/convex/auctions.ts`
+  - [x] Use index-based filtering where possible
+  - [x] Apply in-memory filters for non-indexed fields
+- [x] Implement `toAuctionSummary` helper in `app/convex/auctions.ts`
+  - [x] Project only essential fields (`_id`, `title`, `make`, `model`, `year`, `currentPrice`, `endTime`, `status`, `images`)
+- [x] Update `getActiveAuctions` to return summary objects
+- [x] Update `getPendingAuctions` to return summary objects
 
 ## Task 3: Consolidate Frontend Subscriptions
 - [ ] Lift Admin Stats to Context

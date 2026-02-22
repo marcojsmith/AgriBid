@@ -3,7 +3,7 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
 import { getCallerRole, findUserById } from "./users";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
 import { authComponent } from "./auth";
 import { resolveUrlCached } from "./image_cache";
@@ -52,6 +52,28 @@ export async function resolveImageUrls(
   };
 }
 
+/**
+ * Transforms an auction document into a lightweight summary for list views.
+ * Projects only essential fields to reduce bandwidth.
+ */
+async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
+  return {
+    _id: auction._id,
+    title: auction.title,
+    make: auction.make,
+    model: auction.model,
+    year: auction.year,
+    currentPrice: auction.currentPrice,
+    endTime: auction.endTime,
+    status: auction.status,
+    reservePrice: auction.reservePrice,
+    operatingHours: auction.operatingHours,
+    location: auction.location,
+    sellerId: auction.sellerId,
+    images: await resolveImageUrls(ctx.storage, auction.images),
+  };
+}
+
 export const getPendingAuctions = query({
   args: {},
   handler: async (ctx) => {
@@ -66,10 +88,7 @@ export const getPendingAuctions = query({
       .collect();
 
     return await Promise.all(
-      auctions.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      auctions.map((auction) => toAuctionSummary(ctx, auction))
     );
   },
 });
@@ -94,13 +113,44 @@ export const getActiveAuctions = query({
           q.search("title", args.search!).eq("status", "active")
         )
         .collect();
+    } else if (args.make) {
+      // Use composite index for status + make
+      auctions = await auctionsQuery
+        .withIndex("by_status_make", (q) =>
+          q.eq("status", "active").eq("make", args.make!)
+        )
+        .collect();
+    } else if (args.minYear !== undefined || args.maxYear !== undefined) {
+      // Use composite index for status + year (range)
+      auctions = await auctionsQuery
+        .withIndex("by_status_year", (q) => {
+          const statusQuery = q.eq("status", "active");
+          if (args.minYear !== undefined && args.maxYear !== undefined) {
+            return statusQuery
+              .gte("year", args.minYear)
+              .lte("year", args.maxYear);
+          }
+          if (args.minYear !== undefined) {
+            return statusQuery.gte("year", args.minYear);
+          }
+          if (args.maxYear !== undefined) {
+            return statusQuery.lte("year", args.maxYear);
+          }
+          return statusQuery;
+        })
+        .collect();
     } else {
+      // Default: status only
       auctions = await auctionsQuery
         .withIndex("by_status", (q) => q.eq("status", "active"))
         .collect();
     }
 
-    // Apply additional filters in memory for now (can be optimized with indexes later if needed)
+    // Apply remaining in-memory filters (those not covered by the selected index)
+    // Note: If we used the `by_status_make` index, we don't need to filter by make again,
+    // but filtering again is harmless and safer if logic changes.
+    // However, for strict optimization, we could conditionally filter.
+    // For simplicity and correctness, we re-verify all filters.
     auctions = auctions.filter((a) => {
       if (args.make && a.make !== args.make) return false;
       if (args.minYear !== undefined && a.year < args.minYear) return false;
@@ -115,10 +165,7 @@ export const getActiveAuctions = query({
     });
 
     return await Promise.all(
-      auctions.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      auctions.map((auction) => toAuctionSummary(ctx, auction))
     );
   },
 });
