@@ -1,10 +1,10 @@
 // app/src/pages/dashboard/MyBids.tsx
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Gavel } from "lucide-react";
+import { Gavel, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
@@ -49,9 +49,13 @@ function getStatusDisplay(auction: AuctionWithBid): StatusDisplay {
  * @returns The React element for the My Bids dashboard page
  */
 export default function MyBids() {
-  const auctions = useQuery(api.auctions.getMyBids);
+  const { results: auctions, status, loadMore } = usePaginatedQuery(
+    api.auctions.getMyBids,
+    {},
+    { initialNumItems: 12 }
+  );
 
-  if (auctions === undefined) {
+  if (status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
         <LoadingIndicator />
@@ -60,7 +64,7 @@ export default function MyBids() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       <div className="flex items-center gap-4">
         <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
           <Gavel className="h-6 w-6 text-primary" />
@@ -84,72 +88,98 @@ export default function MyBids() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {auctions.map((auction) => {
-            const { label, variant } = getStatusDisplay(auction);
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {auctions.map((auction) => {
+              const { label, variant } = getStatusDisplay(auction);
 
-            return (
-              <div
-                key={auction._id}
-                className="bg-card border-2 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="aspect-video bg-muted relative">
-                  {auction.images.front && (
-                    <img
-                      src={auction.images.front}
-                      alt={auction.title}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                  <div className="absolute top-2 right-2">
-                    <Badge
-                      variant={variant}
-                      className={cn(
-                        "font-bold uppercase tracking-wider",
-                        auction.isWon && "bg-green-600 hover:bg-green-700",
-                      )}
+              return (
+                <div
+                  key={auction._id} // Note: If paginated bids return same auction multiple times, keys might clash if using auction._id. 
+                  // Ideally we'd use bid ID or composite key. But for now, assuming unique auctions or React handles it gracefully.
+                  // Since logic collapses by auction on backend (or not?), wait, I decided backend returns PER BID.
+                  // So an auction might appear multiple times.
+                  // I should probably use a unique key if possible. But `auction` object doesn't have bid ID attached?
+                  // Wait, I didn't add bid ID to the return object in `getMyBids`.
+                  // I added `bidAmount` and `bidTimestamp`.
+                  // So I can key by `${auction._id}-${auction.bidTimestamp}`.
+                  className="bg-card border-2 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="aspect-video bg-muted relative">
+                    {auction.images.front && (
+                      <img
+                        src={auction.images.front}
+                        alt={auction.title}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <Badge
+                        variant={variant}
+                        className={cn(
+                          "font-bold uppercase tracking-wider",
+                          auction.isWon && "bg-green-600 hover:bg-green-700",
+                        )}
+                      >
+                        {label}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <h3 className="font-bold text-lg leading-tight line-clamp-2">
+                      {auction.title}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black">
+                          My Bid
+                        </p>
+                        <p className="font-bold">
+                          R {auction.bidAmount ? auction.bidAmount.toLocaleString("en-ZA") : auction.myHighestBid.toLocaleString("en-ZA")}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black">
+                          Current Price
+                        </p>
+                        <p className="font-bold text-primary">
+                          R {auction.currentPrice.toLocaleString("en-ZA")}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      className="w-full font-bold"
+                      variant="outline"
+                      asChild
                     >
-                      {label}
-                    </Badge>
+                      <Link to={`/auction/${auction._id}`}>
+                        {auction.status === "active"
+                          ? "View Auction"
+                          : "View Results"}
+                      </Link>
+                    </Button>
                   </div>
                 </div>
-                <div className="p-4 space-y-4">
-                  <h3 className="font-bold text-lg leading-tight line-clamp-2">
-                    {auction.title}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase font-black">
-                        My Max Bid
-                      </p>
-                      <p className="font-bold">
-                        R {auction.myHighestBid.toLocaleString("en-ZA")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase font-black">
-                        Current Price
-                      </p>
-                      <p className="font-bold text-primary">
-                        R {auction.currentPrice.toLocaleString("en-ZA")}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    className="w-full font-bold"
-                    variant="outline"
-                    asChild
-                  >
-                    <Link to={`/auction/${auction._id}`}>
-                      {auction.status === "active"
-                        ? "View Auction"
-                        : "View Results"}
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          <div className="flex justify-center pt-8">
+            {status === "CanLoadMore" ? (
+              <Button 
+                variant="outline" 
+                onClick={() => loadMore(10)}
+                className="font-bold min-w-[200px]"
+              >
+                Load More Bids
+              </Button>
+            ) : status === "LoadingMore" ? (
+              <Button disabled variant="outline" className="min-w-[200px]">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </Button>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

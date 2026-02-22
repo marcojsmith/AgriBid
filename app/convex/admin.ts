@@ -83,7 +83,7 @@ export const getPendingKYC = query({
     const profiles = await ctx.db
       .query("profiles")
       .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-      .collect();
+      .take(50);
 
     return await Promise.all(
       profiles.map(async (p) => {
@@ -199,7 +199,7 @@ export const getFinancialStats = query({
     const soldAuctions = await ctx.db
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "sold"))
-      .collect();
+      .take(200);
 
     const totalSalesVolume = soldAuctions.reduce(
       (sum, a) => sum + a.currentPrice,

@@ -1,9 +1,9 @@
 // app/src/pages/Watchlist.tsx
 import { Link } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "../components/ui/button";
-import { Heart } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { AuctionCard } from "../components/AuctionCard";
 import { LoadingIndicator } from "../components/ui/LoadingIndicator";
 
@@ -15,9 +15,13 @@ import { LoadingIndicator } from "../components/ui/LoadingIndicator";
  * @returns The watchlist page JSX element
  */
 export default function Watchlist() {
-  const watchedAuctions = useQuery(api.watchlist.getWatchedAuctions);
+  const { results: watchedAuctions, status, loadMore } = usePaginatedQuery(
+    api.watchlist.getWatchedAuctions,
+    {},
+    { initialNumItems: 12 }
+  );
 
-  if (watchedAuctions === undefined) {
+  if (status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
         <LoadingIndicator />
@@ -26,7 +30,7 @@ export default function Watchlist() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       <div className="flex items-center gap-4">
         <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
           <Heart className="h-6 w-6 text-primary fill-current" />
@@ -52,10 +56,29 @@ export default function Watchlist() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {watchedAuctions.map((auction) => (
-            <AuctionCard key={auction._id} auction={auction} />
-          ))}
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {watchedAuctions.map((auction) => (
+              <AuctionCard key={auction._id} auction={auction} />
+            ))}
+          </div>
+
+          <div className="flex justify-center pt-8">
+            {status === "CanLoadMore" ? (
+              <Button 
+                variant="outline" 
+                onClick={() => loadMore(10)}
+                className="font-bold min-w-[200px]"
+              >
+                Load More
+              </Button>
+            ) : status === "LoadingMore" ? (
+              <Button disabled variant="outline" className="min-w-[200px]">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </Button>
+            ) : null}
+          </div>
         </div>
       )}
     </div>

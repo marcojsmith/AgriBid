@@ -110,8 +110,8 @@ Determine the best course of action for the user based on the current state of t
         - Update checklist: As you address each comment, update the markdown checklist file in the `conductor/code_reviews/` folder to indicate which comments have been addressed and which ones still need to be addressed. This will help you keep track of your progress and ensure that all comments are properly addressed before finalizing the PR.
     - **Step 4: Resolve any errors**
         - Check for errors: Run the following commands to ensure that the codebase is in a good state and that all tests are passing:
-            - `cd app && npm run lint` to check for any linting errors in the codebase.
-            - `cd app && npm run build` to run all tests and ensure that they are passing successfully.
+            - `cd app && npm run lint` (mac) or `cd app ; npm run lint` (windows) to check for any linting errors in the codebase.
+            - `cd app && npm run build` (mac) or `cd app ; npm run build` (windows) to run all tests and ensure that they are passing successfully.
             - `npx vercel build` to check for any build errors and ensure that the application can be built successfully.
     - **Step 5: Summarise review**
         - Summarise changes: After addressing all the comments, compile your findings into a clear and concise summary that can used as a commit message for the changes made to address the PR review. This summary should highlight any important issues or improvements that were addressed, as well as any relevant information that may impact the changes being made.

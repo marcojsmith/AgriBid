@@ -6,6 +6,7 @@ import { getCallerRole, findUserById } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
 import { authComponent } from "./auth";
+import { resolveUrlCached } from "./image_cache";
 
 interface RawImages {
   front?: string;
@@ -25,12 +26,6 @@ export async function resolveImageUrls(
   storage: QueryCtx["storage"],
   images: unknown
 ) {
-  const resolveUrl = async (id: string | undefined) => {
-    if (!id) return undefined;
-    if (id.startsWith("http")) return id;
-    return (await storage.getUrl(id)) ?? undefined;
-  };
-
   // Normalize legacy array format or non-object inputs
   let normalizedImages: RawImages;
   if (Array.isArray(images)) {
@@ -43,17 +38,17 @@ export async function resolveImageUrls(
 
   return {
     ...normalizedImages,
-    front: await resolveUrl(normalizedImages.front),
-    engine: await resolveUrl(normalizedImages.engine),
-    cabin: await resolveUrl(normalizedImages.cabin),
-    rear: await resolveUrl(normalizedImages.rear),
+    front: await resolveUrlCached(storage, normalizedImages.front),
+    engine: await resolveUrlCached(storage, normalizedImages.engine),
+    cabin: await resolveUrlCached(storage, normalizedImages.cabin),
+    rear: await resolveUrlCached(storage, normalizedImages.rear),
     additional: (
       await Promise.all(
         (normalizedImages.additional || []).map(async (id: string) =>
-          id.startsWith("http") ? id : await storage.getUrl(id)
+          await resolveUrlCached(storage, id)
         )
       )
-    ).filter((url: string | null | undefined): url is string => !!url),
+    ).filter((url: string | undefined): url is string => !!url),
   };
 }
 
@@ -134,7 +129,7 @@ export const getActiveMakes = query({
     const activeAuctions = await ctx.db
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+      .take(1000); // Limit scan to prevent unbounded execution
 
     const makes = Array.from(new Set(activeAuctions.map((a) => a.make))).sort();
     return makes;
@@ -190,7 +185,7 @@ export const getAuctionBids = query({
 export const getEquipmentMetadata = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("equipmentMetadata").collect();
+    return await ctx.db.query("equipmentMetadata").take(100);
   },
 });
 
@@ -721,41 +716,35 @@ export const bulkUpdateAuctions = mutation({
 });
 
 export const getMyBids = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return [];
+      if (!authUser) return { page: [], isDone: true, continueCursor: "" };
       const userId = authUser.userId ?? authUser._id;
 
-      // Get all bids by this user
-      const bids = await ctx.db
+      // Get bids by this user, paginated
+      const bidsResult = await ctx.db
         .query("bids")
         .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
-        .collect();
+        .order("desc") // Show latest bids first
+        .paginate(args.paginationOpts);
 
-      // Group by auctionId to get the latest status per auction
-      const bidsByAuction = new Map<
-        (typeof bids)[number]["auctionId"],
-        typeof bids
-      >();
-      for (const bid of bids) {
-        const existing = bidsByAuction.get(bid.auctionId);
-        if (existing) {
-          existing.push(bid);
-        } else {
-          bidsByAuction.set(bid.auctionId, [bid]);
-        }
-      }
-      const auctionIds = Array.from(bidsByAuction.keys());
-
-      const auctions = await Promise.all(
-        auctionIds.map(async (id) => {
-          const auction = await ctx.db.get(id);
+      const page = await Promise.all(
+        bidsResult.page.map(async (bid) => {
+          const auction = await ctx.db.get(bid.auctionId);
           if (!auction) return null;
 
-          // Find my highest bid on this auction
-          const myBids = bidsByAuction.get(id) ?? [];
+          // Note: This logic for "myHighestBid" is simplified for pagination context.
+          // Ideally we'd fetch all bids for this auction by user, but that might be expensive per row.
+          // Here we just use the current bid amount as a reference or fetch specifically.
+          // To be accurate, we should query:
+          const myBids = await ctx.db
+            .query("bids")
+            .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+            .filter((q) => q.eq(q.field("bidderId"), userId))
+            .collect();
+
           const myHighestBid =
             myBids.length > 0 ? Math.max(...myBids.map((b) => b.amount)) : 0;
 
@@ -767,44 +756,55 @@ export const getMyBids = query({
               auction.status === "active" &&
               myHighestBid === auction.currentPrice,
             isWon: auction.status === "sold" && auction.winnerId === userId,
+            // Add bid specific info if needed
+            bidAmount: bid.amount,
+            bidTimestamp: bid.timestamp,
           };
         })
       );
 
-      return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+      return {
+        ...bidsResult,
+        page: page.filter((a): a is NonNullable<typeof a> => a !== null),
+      };
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyBids failure:", err);
       }
-      return [];
+      return { page: [], isDone: true, continueCursor: "" };
     }
   },
 });
 
 export const getMyListings = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return [];
+      if (!authUser) return { page: [], isDone: true, continueCursor: "" };
       const userId = authUser.userId ?? authUser._id;
 
-      const listings = await ctx.db
+      const listingsResult = await ctx.db
         .query("auctions")
         .withIndex("by_seller", (q) => q.eq("sellerId", userId))
-        .collect();
+        .paginate(args.paginationOpts);
 
-      return await Promise.all(
-        listings.map(async (auction) => ({
+      const page = await Promise.all(
+        listingsResult.page.map(async (auction) => ({
           ...auction,
           images: await resolveImageUrls(ctx.storage, auction.images),
         }))
       );
+
+      return {
+        ...listingsResult,
+        page,
+      };
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyListings failure:", err);
       }
-      return [];
+      return { page: [], isDone: true, continueCursor: "" };
     }
   },
 });

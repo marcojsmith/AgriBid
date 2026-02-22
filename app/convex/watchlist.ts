@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { resolveImageUrls } from "./auctions";
 import { authComponent } from "./auth";
+import { paginationOptsValidator } from "convex/server";
 
 /**
  * Toggle an auction in the user's watchlist.
@@ -70,20 +71,20 @@ export const isWatched = query({
  * Retrieve all auctions in the current user's watchlist.
  */
 export const getWatchedAuctions = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return [];
+      if (!authUser) return { page: [], isDone: true, continueCursor: "" };
       const userId = authUser.userId ?? authUser._id;
 
       const watchlist = await ctx.db
         .query("watchlist")
         .withIndex("by_user", (q) => q.eq("userId", userId))
-        .collect();
+        .paginate(args.paginationOpts);
 
-      const auctions = await Promise.all(
-        watchlist.map(async (item) => {
+      const page = await Promise.all(
+        watchlist.page.map(async (item) => {
           const auction = await ctx.db.get(item.auctionId);
           if (!auction) return null;
           return {
@@ -93,12 +94,15 @@ export const getWatchedAuctions = query({
         }),
       );
 
-      return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+      return {
+        ...watchlist,
+        page: page.filter((a): a is NonNullable<typeof a> => a !== null),
+      };
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getWatchedAuctions failure:", err);
       }
-      return [];
+      return { page: [], isDone: true, continueCursor: "" };
     }
   },
 });
