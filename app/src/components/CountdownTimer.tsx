@@ -2,15 +2,19 @@
 import { useState, useEffect } from "react";
 
 interface CountdownTimerProps {
-  endTime: number;
+  endTime?: number | null;
 }
 
 export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
   const [remainingMs, setRemainingMs] = useState<number>(
-    () => endTime - Date.now(),
+    () => (endTime ?? 0) - Date.now()
   );
 
   useEffect(() => {
+    if (endTime === undefined || endTime === null) {
+      return;
+    }
+
     const calculateTime = () => {
       setRemainingMs(endTime - Date.now());
     };
@@ -21,6 +25,12 @@ export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
     return () => clearInterval(interval);
   }, [endTime]);
 
+  if (endTime === undefined || endTime === null) {
+    return (
+      <span className="font-mono font-bold text-muted-foreground">TBD</span>
+    );
+  }
+
   const isLowTime = remainingMs > 0 && remainingMs < 3600000; // Less than 1 hour
 
   if (remainingMs <= 0) {
@@ -29,7 +39,7 @@ export const CountdownTimer = ({ endTime }: CountdownTimerProps) => {
 
   const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
   const hours = Math.floor(
-    (remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+    (remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
   );
   const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
