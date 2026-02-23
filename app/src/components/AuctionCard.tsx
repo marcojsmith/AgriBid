@@ -145,7 +145,7 @@ export const AuctionCard = ({
           onWatchlistToggle={handleWatchlistToggle}
           year={auction.year}
           make={auction.make}
-          endTime={auction.endTime ?? 0}
+          endTime={auction.endTime}
         />
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -191,7 +191,7 @@ export const AuctionCard = ({
           >
             <AuctionCardPrice
               currentPrice={auction.currentPrice}
-              endTime={auction.endTime ?? 0}
+              endTime={auction.endTime}
               isCompact={isCompact}
             />
           </CardContent>

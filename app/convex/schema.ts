@@ -197,8 +197,7 @@ export default defineSchema({
       "recipientId",
       "isRead",
       "createdAt",
-    ])
-    .index("by_createdAt", ["createdAt"]),
+    ]),
 
   readReceipts: defineTable({
     userId: v.string(),

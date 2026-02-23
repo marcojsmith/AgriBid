@@ -272,7 +272,9 @@ export default function AdminAuctions() {
                     <TableCell>
                       <div className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
-                        {new Date(a.endTime ?? 0).toLocaleDateString()}
+                        {a.endTime
+                          ? new Date(a.endTime).toLocaleDateString()
+                          : "—"}
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">

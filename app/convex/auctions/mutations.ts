@@ -227,7 +227,8 @@ export const adminUpdateAuction = mutation({
     const newStatus = args.updates.status;
 
     if (newStatus === "active") {
-      validateAuctionStatus(auction, newStatus);
+      const patched = { ...auction, ...args.updates };
+      validateAuctionStatus(patched, newStatus);
     }
 
     await ctx.db.patch(args.auctionId, args.updates);
@@ -310,6 +311,16 @@ export const bulkUpdateAuctions = mutation({
         const oldStatus = auction.status;
         const newStatus = args.updates.status;
 
+        if (newStatus === "active") {
+          const patched = { ...auction, ...args.updates };
+          try {
+            validateAuctionStatus(patched, newStatus);
+          } catch {
+            skipped.push(id);
+            continue;
+          }
+        }
+
         await ctx.db.patch(id, args.updates);
         updated.push(id);
 
@@ -329,6 +340,7 @@ export const bulkUpdateAuctions = mutation({
       details: JSON.stringify({
         requestedCount: args.auctionIds.length,
         updatedCount: updated.length,
+        skippedCount: skipped.length,
         updates: Object.keys(args.updates),
         preview: updated.slice(0, 3),
       }),

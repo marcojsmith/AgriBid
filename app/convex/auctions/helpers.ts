@@ -163,6 +163,7 @@ export async function toAuctionSummary(
     minIncrement: auction.minIncrement,
     startTime: auction.startTime,
     endTime: auction.endTime,
+    durationDays: auction.durationDays,
     status: auction.status,
     reservePrice: auction.reservePrice,
     operatingHours: auction.operatingHours,
@@ -222,7 +223,29 @@ export const AuctionDetailValidator = v.object({
  */
 export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
   return {
-    ...auction,
+    _id: auction._id,
+    _creationTime: auction._creationTime,
+    title: auction.title,
+    description: auction.description,
+    make: auction.make,
+    model: auction.model,
+    year: auction.year,
+    operatingHours: auction.operatingHours,
+    location: auction.location,
+    startingPrice: auction.startingPrice,
+    reservePrice: auction.reservePrice,
+    durationDays: auction.durationDays,
+    currentPrice: auction.currentPrice,
+    minIncrement: auction.minIncrement,
+    startTime: auction.startTime,
+    endTime: auction.endTime,
+    status: auction.status,
+    sellerId: auction.sellerId,
+    winnerId: auction.winnerId,
+    isExtended: auction.isExtended,
+    seedId: auction.seedId,
+    conditionReportUrl: auction.conditionReportUrl,
+    conditionChecklist: auction.conditionChecklist,
     images: await resolveImageUrls(ctx.storage, auction.images),
   };
 }

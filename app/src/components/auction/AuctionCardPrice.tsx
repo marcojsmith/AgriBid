@@ -3,7 +3,7 @@ import { CountdownTimer } from "../CountdownTimer";
 
 interface AuctionCardPriceProps {
   currentPrice: number;
-  endTime: number;
+  endTime?: number | undefined;
   isCompact: boolean;
 }
 

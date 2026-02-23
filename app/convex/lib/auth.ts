@@ -121,6 +121,8 @@ export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
       .withIndex("by_userId", (q) => q.eq("userId", linkId))
       .unique();
 
+    if (!profile) return null;
+
     return {
       authUser,
       profile,

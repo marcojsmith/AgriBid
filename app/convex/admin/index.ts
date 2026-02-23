@@ -193,6 +193,10 @@ export const resolveTicket = mutation({
       throw new Error("Ticket not found");
     }
 
+    if (ticket.status === "resolved") {
+      return { success: true };
+    }
+
     await ctx.db.patch(args.ticketId, {
       status: "resolved",
       updatedAt: Date.now(),
