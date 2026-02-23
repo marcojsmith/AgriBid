@@ -3,15 +3,16 @@ import { getAuthUser } from "./lib/auth";
 import { encryptPII, decryptPII } from "./lib/encryption";
 
 /**
- * Record an audit log entry for the current authenticated admin.
+ * Create an audit log entry for the currently authenticated admin.
  *
- * If there is no authenticated user identity, the function throws to prevent unaudited admin actions.
+ * Throws an Error if no authenticated user identity is present.
  *
- * `@param` args.action - Short identifier of the action performed (e.g., "delete_user", "update_settings")
- * @param args.targetId - Optional identifier of the target resource affected by the action
- * @param args.targetType - Optional type/category of the target resource (e.g., "user", "project")
- * @param args.details - Optional free-form details about the action or context
+ * @param args.action - Short identifier of the action performed (for example `delete_user` or `update_settings`)
+ * @param args.targetId - Optional identifier of the resource affected by the action
+ * @param args.targetType - Optional type or category of the resource (for example `user` or `project`)
+ * @param args.details - Optional free-form details or context about the action
  * @param args.targetCount - Optional number of targets affected by the action
+ * @throws Error When there is no authenticated user available in the provided context
  */
 export async function logAudit(
   ctx: MutationCtx,

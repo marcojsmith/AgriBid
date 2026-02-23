@@ -20,6 +20,11 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { KycReviewDialog, PromoteAdminDialog } from "./dialogs";
 import { useUserManagement, type AdminProfile } from "./hooks";
 
+/**
+ * Render the Admin Users page with search, paginated user list, status indicators and actions for KYC review, manual verification and promotion.
+ *
+ * @returns The Admin Users page JSX element
+ */
 export default function AdminUsers() {
   const adminStats = useQuery(api.admin.getAdminStats);
   const {

@@ -9,11 +9,10 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { authComponent } from "../auth";
 
 /**
- * Retrieves the authenticated user from the current context.
+ * Retrieve the authenticated user associated with the provided context.
  *
- * @param ctx - Query or Mutation context
- * @returns The authenticated user object, or null if not authenticated
- * @throws Never throws - returns null if unauthenticated
+ * @param ctx - Query or Mutation context used to resolve the current user
+ * @returns The authenticated user object, or `null` if no user is authenticated
  */
 export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
   try {
@@ -24,11 +23,11 @@ export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Retrieves the authenticated user from the current context.
+ * Ensures a user is authenticated and returns the authenticated user.
  *
  * @param ctx - Query or Mutation context
- * @returns The authenticated user object
- * @throws Error("Not authenticated") if user is not authenticated
+ * @returns The authenticated user
+ * @throws Error("Not authenticated") if no authenticated user is found
  */
 export async function requireAuth(ctx: QueryCtx | MutationCtx) {
   const authUser = await getAuthUser(ctx);
@@ -66,12 +65,11 @@ export async function getCallerRole(
 }
 
 /**
- * Retrieves the authenticated user and verifies they have admin role.
+ * Ensure the current caller is authenticated and has an admin role.
  *
- * @param ctx - Query or Mutation context
  * @returns The authenticated user object
- * @throws Error("Not authenticated") if user is not authenticated
- * @throws Error("Unauthorized: Admin privileges required") if user is not an admin
+ * @throws Error("Not authenticated") if no authenticated user is present
+ * @throws Error("Not authorized: Admin privileges required") if the authenticated user is not an admin
  */
 export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const authUser = await requireAuth(ctx);
@@ -85,10 +83,9 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Retrieves the authenticated user's profile with merged identity and application metadata.
+ * Retrieve the authenticated user along with their profile and resolved userId.
  *
- * @param ctx - Query or Mutation context
- * @returns An object containing the auth user and their profile, or null if not authenticated
+ * @returns An object with `authUser`, `profile`, and `userId`, or `null` if the caller is not authenticated, the userId cannot be determined, the profile is not found, or an error occurs
  */
 export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
   try {
@@ -114,11 +111,12 @@ export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Retrieves the authenticated user's profile or throws if not found.
+ * Ensure the current user is authenticated and obtain their profile and userId.
  *
- * @param ctx - Query or Mutation context
- * @returns An object containing the auth user and their profile
- * @throws Error if user is not authenticated or profile is not found
+ * @returns An object with `authUser`, `profile`, and `userId`
+ * @throws Error when the user is not authenticated
+ * @throws Error when the user identity cannot be determined ("Unable to determine user identity")
+ * @throws Error when the user profile is not found ("User profile not found")
  */
 export async function requireProfile(ctx: QueryCtx | MutationCtx) {
   const authUser = await requireAuth(ctx);
@@ -145,11 +143,11 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Verifies that the authenticated user is verified (KYC complete).
+ * Ensure the authenticated user's account has completed KYC verification.
  *
- * @param ctx - Query or Mutation context
- * @returns True if user is verified
- * @throws Error if user is not authenticated or not verified
+ * @param ctx - The query or mutation context containing authentication and database access
+ * @returns `true` if the authenticated user's profile is verified
+ * @throws Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
  */
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   const { profile } = await requireProfile(ctx);
