@@ -67,11 +67,12 @@ export const getAuthUser = query({
   returns: v.union(
     v.null(),
     v.object({
-      userId: v.optional(v.string()),
-      _id: v.optional(v.string()),
-      email: v.optional(v.string()),
-      name: v.optional(v.string()),
-      image: v.optional(v.string()),
+      userId: v.optional(v.union(v.string(), v.null())),
+      _id: v.any(),
+      email: v.optional(v.union(v.string(), v.null())),
+      name: v.optional(v.union(v.string(), v.null())),
+      image: v.optional(v.union(v.string(), v.null())),
+      _creationTime: v.optional(v.number()),
     }),
   ),
   handler: async (ctx) => {
