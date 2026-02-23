@@ -21,13 +21,21 @@ Very important documentation can be found in the following folders and files:
 
 Determine the best course of action for the user based on the current state of the project and the defined rules and guidelines. Provide clear and concise instructions, code snippets, and explanations to help the user achieve their goals effectively. Always ensure that your suggestions align with the project's objectives and adhere to best practices in software development.
 
----
+# Project Overview
+
+This project is focused on developing a digital prototype for an auction platform specifically designed for agricultural products. The platform will feature real-time bidding capabilities, user authentication, and a responsive user interface.
+
+- Our goal is to develop a fully functional production-ready application that can be deployed and used by real users. This means that we need to ensure that the application is functional, secure, scalable, and maintainable.
+- We must deliver a high-quality codebase that adheres to best practices and coding standards, and that is well-documented to facilitate future development and maintenance.
+- We must architect the application in a way that allows for easy integration of new features and improvements in the future, ensure type safety across the codebase, and maintain a consistent design language throughout the application.
+- Focus on efficient bandwidth usage and performance optimization to ensure a smooth user experience, especially for users with limited internet connectivity.
+
 
 # Rules & Guidelines
 
 ## Senior Developer Mindset
 - Always consider the broader context of the project and how your changes fit into the overall architecture and design of the application.
-- Prioritize code quality, maintainability, and scalability in all your work.
+- Prioritize code quality, data efficiency, code maintainability, and scalability in all your work.
 - Be proactive in identifying potential issues and improvements, and take the initiative to address them.
 - Communicate clearly and effectively with the team, providing constructive feedback and collaborating to achieve the best possible outcome for the project.
 - Stay up-to-date with the latest trends and best practices in software development, and continuously seek opportunities to learn and grow as a developer.
@@ -55,7 +63,7 @@ Determine the best course of action for the user based on the current state of t
 **Backend/Database:** Convex (Real-time auction state synchronization).
 
 - Important files to consider:
-    - `app/convex/auctions.ts`: Contains the auction logic.
+    - `app/convex/auctions/*` (index.ts, queries.ts, mutations.ts, helpers.ts, bidding.ts): Contains the auction logic.
     - `app/convex/auth.ts`, `app/convex/auth.config.ts`: Handles user authentication and management.
     - `app/convex/convex.config.ts`, `app/convex/config.ts`: Convex configuration files.
     - `app/convex/schema.ts`: Defines the database schema for the application.
@@ -85,7 +93,7 @@ Determine the best course of action for the user based on the current state of t
 - We are developing a new digital prototype, so there is no legacy code or data to consider. All code and data should be treated as new and can be modified freely.
 - Changing code could cause data issues, so be mindful of any data-related changes that need to be made as part of code changes and ensure that they are properly tested.
 
-**commits and branches:**
+**Commits and Branches:**
 
 - Follow the commit message format specified in `Checklist.md` for all commits. Ensure the commit message is clear, concise, and accurately describes the changes made in the commit.
 - Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
@@ -135,6 +143,14 @@ Determine the best course of action for the user based on the current state of t
 - Avoid code duplication by creating reusable components and functions. This will help reduce the overall codebase size and improve maintainability.
 - Ensure that all code is well-documented with clear comments explaining the purpose and functionality of complex code sections. This will help other developers understand the codebase and make it easier to maintain and update the code in the future.
 - Regularly review and refactor the codebase to improve code quality, readability, and maintainability. This will help ensure that the codebase remains clean and efficient as the project evolves and grows over time.
+
+**Best Practices:**
+
+- Follow React best practices for frontend development, including the use of functional components, hooks, and composition patterns to create a clean and maintainable codebase.
+- Use shadcn/ui components for building the user interface, and customize them as needed to fit the design and functionality requirements of the application. This will help ensure a consistent and cohesive design language throughout the application while also leveraging the benefits of using a component library.
+- Follow web design guidelines for creating a user-friendly and accessible interface, including considerations for layout, typography, color schemes, and responsive design. This will help ensure that the application is easy to use and provides a positive user experience across different devices and screen sizes.
+- Always consider the user experience when making design and development decisions, and strive to create an intuitive and enjoyable experience for the users of the application. This includes providing clear feedback for user actions, ensuring that the interface is easy to navigate, and minimizing any potential friction points in the user journey.
+- Do not shy away from making significant changes to the codebase or design if it will lead to a better overall outcome for the project. Always prioritize the quality and maintainability of the codebase and the user experience over making small, incremental changes that may not have a significant impact.
 
 ## UI Design Rules
 

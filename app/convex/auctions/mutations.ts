@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { getCallerRole } from "../users";
 import { logAudit, updateCounter } from "../admin_utils";
-import { authComponent } from "../auth";
+import { getAuthUser, resolveUserId } from "../lib/auth";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
@@ -10,7 +10,7 @@ export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
-    const authUser = await authComponent.getAuthUser(ctx);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) {
       throw new Error("Not authenticated");
     }
@@ -68,11 +68,14 @@ export const createAuction = mutation({
   },
   returns: v.id("auctions"),
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) {
       throw new Error("Not authenticated");
     }
-    const userId = authUser.userId ?? authUser._id;
+    const userId = resolveUserId(authUser);
+    if (!userId) {
+      throw new Error("Unable to determine user ID");
+    }
 
     const { durationDays, ...restArgs } = args;
 
@@ -145,6 +148,8 @@ export const approveAuction = mutation({
 
 /**
  * Validates that an auction has the required fields for its status.
+ * Currently only validates the "active" status (requires endTime).
+ * TODO: Add validation for other statuses as needed, e.g., "sold" should require winnerId.
  * Throws an error if validation fails.
  */
 function validateAuctionStatus(

@@ -52,7 +52,7 @@ async function _getCallerRoleFromAuthUser(
  * @param authUser The authenticated user object.
  * @returns The resolved user ID as a string, or null if it cannot be determined.
  */
-function resolveUserId(authUser: AuthUser): string | null {
+export function resolveUserId(authUser: AuthUser): string | null {
   return authUser.userId ?? authUser._id ?? null;
 }
 
@@ -166,14 +166,14 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Ensure the authenticated user's account has completed KYC verification.
+ * Ensures the current user is authenticated and their profile is verified.
  *
  * @param ctx - The query or mutation context containing authentication and database access
- * @returns `true` if the authenticated user's profile is verified
+ * @returns The authenticated user's profile
  * @throws Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
  */
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
-  const { profile } = await requireProfile(ctx);
+  const { profile, ...rest } = await requireProfile(ctx);
 
   if (!profile.isVerified) {
     throw new Error(
@@ -181,5 +181,5 @@ export async function requireVerified(ctx: QueryCtx | MutationCtx) {
     );
   }
 
-  return true;
+  return { profile, ...rest };
 }

@@ -53,7 +53,11 @@ export const getRecentBids = query({
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
-    const bids = await ctx.db.query("bids").order("desc").take(limit);
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .take(limit);
 
     return await Promise.all(
       bids.map(async (bid) => {
@@ -341,7 +345,7 @@ export const listAnnouncements = query({
 
     if (announcements.length === 0) return [];
 
-    // Batch fetch read counts to avoid N+1
+    // Parallel fetch read counts using indexed queries; still issues N queries
     const announcementIds = announcements.map((a) => a._id);
     const allReadReceipts = await Promise.all(
       announcementIds.map((id) =>

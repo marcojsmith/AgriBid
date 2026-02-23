@@ -88,7 +88,6 @@ export async function resolveImageUrls(
   ]);
 
   return {
-    ...normalizedImages,
     front,
     engine,
     cabin,

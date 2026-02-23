@@ -12,7 +12,7 @@ interface AuctionCardThumbnailProps {
   onWatchlistToggle: (e: React.MouseEvent) => Promise<void>;
   year: number;
   make: string;
-  endTime?: number | undefined;
+  endTime?: number;
 }
 
 /**
