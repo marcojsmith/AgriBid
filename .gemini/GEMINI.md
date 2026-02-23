@@ -102,7 +102,7 @@ Determine the best course of action for the user based on the current state of t
 
 **Step 1: List files and folders to Review**
 
-- Using terminal commands, list all of the files and folders within the project that are not part of the .gitignore file.
+- Using terminal commands, list all the files and folders within the project that are not part of the .gitignore file.
 - This will help you identify all the relevant files and folders that may be impacted by the changes being made, and will allow you to review them thoroughly during the code review process.
 
 **Step 2: Identify files to review**
