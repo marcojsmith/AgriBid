@@ -14,6 +14,7 @@ import { paginationOptsValidator } from "convex/server";
  */
 export const toggleWatchlist = mutation({
   args: { auctionId: v.id("auctions") },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
@@ -44,6 +45,7 @@ export const toggleWatchlist = mutation({
  */
 export const isWatched = query({
   args: { auctionId: v.id("auctions") },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -72,6 +74,11 @@ export const isWatched = query({
  */
 export const getWatchedAuctions = query({
   args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -116,6 +123,7 @@ export const getWatchedAuctions = query({
  */
 export const getWatchedAuctionIds = query({
   args: {},
+  returns: v.array(v.id("auctions")),
   handler: async (ctx) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);

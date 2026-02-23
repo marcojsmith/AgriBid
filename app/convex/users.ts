@@ -35,6 +35,7 @@ export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
  */
 export const syncUser = mutation({
   args: {},
+  returns: v.union(v.null(), v.object({ success: v.boolean() })),
   handler: async (ctx) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -78,6 +79,7 @@ export const syncUser = mutation({
  */
 export const getMyProfile = query({
   args: {},
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -139,6 +141,11 @@ export const listAllProfiles = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     console.log("listAllProfiles received args:", args);
     const role = await getCallerRole(ctx);
@@ -178,6 +185,7 @@ export const listAllProfiles = query({
  */
 export const getProfileForKYC = mutation({
   args: { userId: v.string() },
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx, { userId }) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -239,6 +247,7 @@ export const getProfileForKYC = mutation({
  */
 export const verifyUser = mutation({
   args: { userId: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { userId }) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -288,6 +297,7 @@ export const verifyUser = mutation({
  */
 export const promoteToAdmin = mutation({
   args: { userId: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { userId }) => {
     const callerRole = await getCallerRole(ctx);
     if (callerRole !== "admin") {
@@ -335,6 +345,7 @@ export const submitKYC = mutation({
     idNumber: v.string(),
     email: v.string(),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
@@ -384,6 +395,7 @@ export const submitKYC = mutation({
  */
 export const getMyKYCDetails = query({
   args: {},
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -430,6 +442,7 @@ export const getMyKYCDetails = query({
  */
 export const deleteMyKYCDocument = mutation({
   args: { storageId: v.id("_storage") },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { storageId }) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");

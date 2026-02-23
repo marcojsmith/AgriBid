@@ -66,6 +66,8 @@ Determine the best course of action for the user based on the current state of t
     - When making code changes, ensure that they are cohesive and related to a single feature or bug fix. Avoid making unrelated changes in the same commit or pull request, as this can make it difficult to review and understand the changes.
     - If you need to make multiple unrelated changes, consider breaking them into separate commits or pull requests to maintain clarity and ease of review.
     - Make sure when adding a feature or fixing a bug, you consider all the necessary changes that need to be made across the codebase, including any related data changes, and ensure that they are all included in the same cohesive set of changes. Consider frontend changes, backend changes, database schema or seed data, security implications, testing changes, documentation updates, and any other relevant changes that are necessary to fully implement the feature or fix the bug in a cohesive manner.
+- **Code Changes:**
+    - Prefer making multiple changes at once when making code changes to a file, this saves on the overhead of making agentic code changes. For example, if you need to make several changes to a file, it is more efficient to make all the necessary changes in one go rather than making multiple separate changes to the same file. This will help reduce the overall time and effort required to make the changes and ensure that all related changes are made together in a cohesive manner.
 
 ### Code Reviews:
 

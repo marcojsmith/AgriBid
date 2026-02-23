@@ -43,6 +43,19 @@ async function getAnnouncementsWithReadStatus(
 
 export const getMyNotifications = query({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("notifications"),
+      _creationTime: v.number(),
+      recipientId: v.string(),
+      type: v.string(),
+      title: v.string(),
+      message: v.string(),
+      isRead: v.boolean(),
+      createdAt: v.number(),
+      link: v.optional(v.string()),
+    })
+  ),
   handler: async (ctx) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -84,6 +97,19 @@ export const getMyNotifications = query({
 
 export const getNotificationArchive = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("notifications"),
+      _creationTime: v.number(),
+      recipientId: v.string(),
+      type: v.string(),
+      title: v.string(),
+      message: v.string(),
+      isRead: v.boolean(),
+      createdAt: v.number(),
+      link: v.optional(v.string()),
+    })
+  ),
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -122,6 +148,7 @@ export const getNotificationArchive = query({
 
 export const markAsRead = mutation({
   args: { notificationId: v.id("notifications") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
@@ -159,6 +186,7 @@ export const markAsRead = mutation({
 
 export const markAllRead = mutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");

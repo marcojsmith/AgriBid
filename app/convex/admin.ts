@@ -11,6 +11,18 @@ import { authComponent } from "./auth";
 
 export const getRecentBids = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("bids"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      bidderId: v.string(),
+      amount: v.number(),
+      timestamp: v.number(),
+      status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
+      auctionTitle: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -33,6 +45,7 @@ export const getRecentBids = query({
 
 export const voidBid = mutation({
   args: { bidId: v.id("bids"), reason: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -79,6 +92,11 @@ export const getPendingKYC = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -129,6 +147,7 @@ export const reviewKYC = mutation({
     decision: v.union(v.literal("approve"), v.literal("reject")),
     reason: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -200,6 +219,21 @@ export const reviewKYC = mutation({
 
 export const getFinancialStats = query({
   args: {},
+  returns: v.object({
+    totalSalesVolume: v.number(),
+    estimatedCommission: v.number(),
+    commissionRate: v.number(),
+    recentSales: v.array(
+      v.object({
+        id: v.id("auctions"),
+        title: v.string(),
+        amount: v.number(),
+        estimatedCommission: v.number(),
+        date: v.number(),
+      })
+    ),
+    auctionCount: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -242,6 +276,21 @@ export const getFinancialStats = query({
 
 export const getTickets = query({
   args: { status: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("supportTickets"),
+      _creationTime: v.number(),
+      userId: v.string(),
+      auctionId: v.optional(v.id("auctions")),
+      subject: v.string(),
+      message: v.string(),
+      status: v.string(),
+      priority: v.string(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      resolvedBy: v.optional(v.string()),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -268,6 +317,7 @@ export const getTickets = query({
 
 export const resolveTicket = mutation({
   args: { ticketId: v.id("supportTickets"), resolution: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -300,6 +350,19 @@ const MAX_AUDIT_LOG_LIMIT = 100;
 
 export const getAuditLogs = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("auditLogs"),
+      _creationTime: v.number(),
+      adminId: v.string(),
+      action: v.string(),
+      targetId: v.optional(v.string()),
+      targetType: v.optional(v.string()),
+      details: v.optional(v.string()),
+      targetCount: v.optional(v.number()),
+      timestamp: v.number(),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -342,6 +405,7 @@ async function countQuery(query: { paginate: (opts: any) => Promise<any> }) {
  */
 export const initializeCounters = mutation({
   args: {},
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -425,6 +489,13 @@ export const initializeCounters = mutation({
 
 export const getAdminStats = query({
   args: {},
+  returns: v.object({
+    totalAuctions: v.number(),
+    activeAuctions: v.number(),
+    pendingReview: v.number(),
+    totalUsers: v.number(),
+    verifiedSellers: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -454,6 +525,7 @@ export const getAdminStats = query({
 
 export const createAnnouncement = mutation({
   args: { title: v.string(), message: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -490,6 +562,20 @@ export const createAnnouncement = mutation({
 
 export const listAnnouncements = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("notifications"),
+      _creationTime: v.number(),
+      recipientId: v.string(),
+      type: v.string(),
+      title: v.string(),
+      message: v.string(),
+      isRead: v.boolean(),
+      createdAt: v.number(),
+      link: v.optional(v.string()),
+      readCount: v.number(),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -528,6 +614,10 @@ export const listAnnouncements = query({
 
 export const getAnnouncementStats = query({
   args: {},
+  returns: v.object({
+    total: v.number(),
+    recent: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -553,6 +643,11 @@ export const getAnnouncementStats = query({
 
 export const getSupportStats = query({
   args: {},
+  returns: v.object({
+    open: v.number(),
+    resolved: v.number(),
+    total: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");

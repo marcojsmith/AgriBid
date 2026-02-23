@@ -86,10 +86,10 @@ Convex Type  | TS/JS type  |  Example Usage         | Validator for argument val
 | Id          | string      | `doc._id`              | `v.id(tableName)`                              |                                                                                                                                                                                                       |
 | Null        | null        | `null`                 | `v.null()`                                     | JavaScript's `undefined` is not a valid Convex value. Functions the return `undefined` or do not return will return `null` when called from a client. Use `null` instead.                             |
 | Int64       | bigint      | `3n`                   | `v.int64()`                                    | Int64s only support BigInts between -2^63 and 2^63-1. Convex supports `bigint`s in most modern browsers.                                                                                              |
-| Float64     | number      | `3.1`                  | `v.number()`                                   | Convex supports all IEEE-754 double-precision floating point numbers (such as NaNs). Inf and NaN are JSON serialized as strings.                                                                      |
+| Float64     | number      | `3.1`                  | `v.number()`                                   | Convex supports all IEEE-754 double-precision floating-point numbers (such as NaNs). Inf and NaN are JSON serialized as strings.                                      |
 | Boolean     | boolean     | `true`                 | `v.boolean()`                                  |
 | String      | string      | `"abc"`                | `v.string()`                                   | Strings are stored as UTF-8 and must be valid Unicode sequences. Strings must be smaller than the 1MB total size limit when encoded as UTF-8.                                                         |
-| Bytes       | ArrayBuffer | `new ArrayBuffer(8)`   | `v.bytes()`                                    | Convex supports first class bytestrings, passed in as `ArrayBuffer`s. Bytestrings must be smaller than the 1MB total size limit for Convex types.                                                     |
+| Bytes       | ArrayBuffer | `new ArrayBuffer(8)`   | `v.bytes()`                                    | Convex supports first-class bytestrings, passed in as `ArrayBuffer`s. Bytestrings must be smaller than the 1MB total size limit for Convex types.                                                     |
 | Array       | Array       | `[1, 3.2, "abc"]`      | `v.array(values)`                              | Arrays can have at most 8192 values.                                                                                                                                                                  |
 | Object      | Object      | `{a: "abc"}`           | `v.object({property: value})`                  | Convex only supports "plain old JavaScript objects" (objects that do not have a custom prototype). Objects can have at most 1024 entries. Field names must be nonempty and not start with "$" or "_". |
 | Record      | Record      | `{"a": "1", "b": "2"}` | `v.record(keys, values)`                       | Records are objects at runtime, but can have dynamic keys. Keys must be only ASCII characters, nonempty, and not start with "$" or "_".                                                               |
@@ -134,7 +134,7 @@ export const g = query({
 - Use the `internal` object defined by the framework in `convex/_generated/api.ts` to call internal (or private) functions registered with `internalQuery`, `internalMutation`, or `internalAction`.
 - Convex uses file-based routing, so a public function defined in `convex/example.ts` named `f` has a function reference of `api.example.f`.
 - A private function defined in `convex/example.ts` named `g` has a function reference of `internal.example.g`.
-- Functions can also registered within directories nested within the `convex/` folder. For example, a public function `h` defined in `convex/messages/access.ts` has a function reference of `api.messages.access.h`.
+- Functions can also be registered within directories nested within the `convex/` folder. For example, a public function `h` defined in `convex/messages/access.ts` has a function reference of `api.messages.access.h`.
 
 ### Api design
 - Convex uses file-based routing, so thoughtfully organize files with public query, mutation, or action functions within the `convex/` directory.
@@ -163,10 +163,7 @@ export const listWithExtraArg = query({
 Note: `paginationOpts` is an object with the following properties:
 - `numItems`: the maximum number of documents to return (the validator is `v.number()`)
 - `cursor`: the cursor to use to fetch the next page of documents (the validator is `v.union(v.string(), v.null())`)
-- A query that ends in `.paginate()` returns an object that has the following properties:
-- page (contains an array of documents that you fetches)
-- isDone (a boolean that represents whether or not this is the last page of documents)
-- continueCursor (a string that represents the cursor to use to fetch the next page of documents)
+- A query ending in `.paginate()` returns an object with `page` (array of fetched documents), `isDone` (boolean indicating last page), and `continueCursor` (cursor string for the next page).
 
 
 ## Validator guidelines
@@ -193,7 +190,7 @@ export const exampleQuery = query({
     handler: async (ctx, args) => {
         const idToUsername: Record<Id<"users">, string> = {};
         for (const userId of args.userIds) {
-            const user = await ctx.db.get("users", userId);
+            const user = await ctx.db.get(userId);
             if (user) {
                 idToUsername[user._id] = user.username;
             }
@@ -208,7 +205,7 @@ export const exampleQuery = query({
 - When using the `Array` type, make sure to always define your arrays as `const array: Array<T> = [...];`
 - When using the `Record` type, make sure to always define your records as `const record: Record<KeyType, ValueType> = {...};`
 
-## Full text search guidelines
+## Full-text search guidelines
 - A query for "10 messages in channel '#general' that best match the query 'hello hi' in their body" would look like:
 
 const messages = await ctx.db
@@ -219,7 +216,7 @@ const messages = await ctx.db
   .take(10);
 
 ## Query guidelines
-- Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.
+- Prefer indexes and `withIndex` for performance; use `.filter()` sparingly for complex predicates or boolean logic that cannot be expressed via indexes.
 - Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(row._id)` on each result.
 - Use `.unique()` to get a single document from a query. This method will throw an error if there are multiple documents that match the query.
 - When using async iteration, don't use `.collect()` or `.take(n)` on the result of a query. Instead, use the `for await (const row of query)` syntax.
@@ -235,7 +232,7 @@ const messages = await ctx.db
 
 ## Action guidelines
 - Always add `"use node";` to the top of files containing actions that use Node.js built-in modules.
-- Never use `ctx.db` inside of an action. Actions don't have access to the database.
+- Never use `ctx.db` inside an action. Actions don't have access to the database.
 - Below is an example of the syntax for an action:
 ```typescript
 import { action } from "./_generated/server";

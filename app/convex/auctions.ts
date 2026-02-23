@@ -31,7 +31,9 @@ export async function resolveImageUrls(
   // Normalize legacy array format or non-object inputs
   let normalizedImages: RawImages;
   if (Array.isArray(images)) {
-    normalizedImages = { additional: images as string[] };
+    normalizedImages = {
+      additional: images.filter((i): i is string => typeof i === "string"),
+    };
   } else if (images && typeof images === "object") {
     normalizedImages = images as RawImages;
   } else {
@@ -92,6 +94,28 @@ async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
 
 export const getPendingAuctions = query({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("auctions"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      make: v.string(),
+      model: v.string(),
+      year: v.number(),
+      currentPrice: v.number(),
+      startingPrice: v.number(),
+      minIncrement: v.number(),
+      endTime: v.number(),
+      startTime: v.number(),
+      status: v.string(),
+      reservePrice: v.number(),
+      operatingHours: v.number(),
+      location: v.string(),
+      sellerId: v.string(),
+      images: v.any(),
+    })
+  ),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -119,6 +143,28 @@ export const getActiveAuctions = query({
     maxPrice: v.optional(v.number()),
     maxHours: v.optional(v.number()),
   },
+  returns: v.array(
+    v.object({
+      _id: v.id("auctions"),
+      _creationTime: v.number(),
+      title: v.string(),
+      description: v.optional(v.string()),
+      make: v.string(),
+      model: v.string(),
+      year: v.number(),
+      currentPrice: v.number(),
+      startingPrice: v.number(),
+      minIncrement: v.number(),
+      endTime: v.number(),
+      startTime: v.number(),
+      status: v.string(),
+      reservePrice: v.number(),
+      operatingHours: v.number(),
+      location: v.string(),
+      sellerId: v.string(),
+      images: v.any(),
+    })
+  ),
   handler: async (ctx, args) => {
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
@@ -188,19 +234,53 @@ export const getActiveAuctions = query({
 
 export const getActiveMakes = query({
   args: {},
+  returns: v.array(v.string()),
   handler: async (ctx) => {
-    const activeAuctions = await ctx.db
-      .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .take(1000); // Limit scan to prevent unbounded execution
-
-    const makes = Array.from(new Set(activeAuctions.map((a) => a.make))).sort();
+    const metadata = await ctx.db.query("equipmentMetadata").collect();
+    const makes = Array.from(new Set(metadata.map((m) => m.make))).sort();
     return makes;
   },
 });
 
 export const getAuctionById = query({
   args: { auctionId: v.id("auctions") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("auctions"),
+      _creationTime: v.number(),
+      title: v.string(),
+      make: v.string(),
+      model: v.string(),
+      year: v.number(),
+      operatingHours: v.number(),
+      location: v.string(),
+      description: v.optional(v.string()),
+      startingPrice: v.number(),
+      reservePrice: v.number(),
+      durationDays: v.optional(v.number()),
+      images: v.any(),
+      conditionChecklist: v.optional(
+        v.object({
+          engine: v.boolean(),
+          hydraulics: v.boolean(),
+          tires: v.boolean(),
+          serviceHistory: v.boolean(),
+          notes: v.optional(v.string()),
+        })
+      ),
+      sellerId: v.string(),
+      status: v.string(),
+      currentPrice: v.number(),
+      minIncrement: v.number(),
+      startTime: v.number(),
+      endTime: v.number(),
+      isExtended: v.optional(v.boolean()),
+      winnerId: v.optional(v.string()),
+      seedId: v.optional(v.string()),
+      conditionReportUrl: v.optional(v.string()),
+    })
+  ),
   handler: async (ctx, args) => {
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) return null;
@@ -214,6 +294,18 @@ export const getAuctionById = query({
 
 export const getAuctionBids = query({
   args: { auctionId: v.id("auctions") },
+  returns: v.array(
+    v.object({
+      _id: v.id("bids"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      bidderId: v.string(),
+      amount: v.number(),
+      timestamp: v.number(),
+      status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
+      bidderName: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const bids = await ctx.db
       .query("bids")
@@ -247,6 +339,15 @@ export const getAuctionBids = query({
 
 export const getEquipmentMetadata = query({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("equipmentMetadata"),
+      _creationTime: v.number(),
+      make: v.string(),
+      models: v.array(v.string()),
+      category: v.string(),
+    })
+  ),
   handler: async (ctx) => {
     return await ctx.db.query("equipmentMetadata").take(100);
   },
@@ -254,6 +355,16 @@ export const getEquipmentMetadata = query({
 
 export const getSellerInfo = query({
   args: { sellerId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      name: v.optional(v.string()),
+      isVerified: v.boolean(),
+      role: v.string(),
+      createdAt: v.optional(v.number()),
+      itemsSold: v.number(),
+    })
+  ),
   handler: async (ctx, args) => {
     // Query user details from the auth component's adapter
     const user = await findUserById(ctx, args.sellerId);
@@ -287,6 +398,11 @@ export const getSellerInfo = query({
 
 export const getSellerListings = query({
   args: { userId: v.string(), paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     const results = await ctx.db
       .query("auctions")
@@ -310,16 +426,21 @@ export const getSellerListings = query({
   },
 });
 
-export const generateUploadUrl = mutation(async (ctx) => {
-  const authUser = await authComponent.getAuthUser(ctx);
-  if (!authUser) {
-    throw new Error("Not authenticated");
-  }
-  return await ctx.storage.generateUploadUrl();
+export const generateUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) {
+      throw new Error("Not authenticated");
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
 });
 
 export const deleteUpload = mutation({
   args: { storageId: v.id("_storage") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -366,6 +487,7 @@ export const createAuction = mutation({
       notes: v.optional(v.string()),
     }),
   },
+  returns: v.id("auctions"),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) {
@@ -409,6 +531,7 @@ export const createAuction = mutation({
 
 export const approveAuction = mutation({
   args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -446,6 +569,7 @@ export const approveAuction = mutation({
 
 export const rejectAuction = mutation({
   args: { auctionId: v.id("auctions") },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -470,6 +594,7 @@ export const rejectAuction = mutation({
 
 export const placeBid = mutation({
   args: { auctionId: v.id("auctions"), amount: v.number() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) {
@@ -544,6 +669,7 @@ export const placeBid = mutation({
  */
 export const settleExpiredAuctions = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now();
     const expiredAuctions = await ctx.db
@@ -599,6 +725,11 @@ export const getAllAuctions = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     console.log("getAllAuctions received args:", args);
     const role = await getCallerRole(ctx);
@@ -654,6 +785,7 @@ export const adminUpdateAuction = mutation({
       currentPrice: v.optional(v.number()),
     }),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -719,6 +851,11 @@ export const bulkUpdateAuctions = mutation({
       startingPrice: v.optional(v.number()),
     }),
   },
+  returns: v.object({
+    success: v.boolean(),
+    updated: v.array(v.id("auctions")),
+    skipped: v.array(v.id("auctions")),
+  }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -780,6 +917,37 @@ export const bulkUpdateAuctions = mutation({
 
 export const getMyBids = query({
   args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("auctions"),
+        _creationTime: v.number(),
+        title: v.string(),
+        description: v.optional(v.string()),
+        make: v.string(),
+        model: v.string(),
+        year: v.number(),
+        currentPrice: v.number(),
+        startingPrice: v.number(),
+        minIncrement: v.number(),
+        endTime: v.number(),
+        startTime: v.number(),
+        status: v.string(),
+        reservePrice: v.number(),
+        operatingHours: v.number(),
+        location: v.string(),
+        sellerId: v.string(),
+        images: v.any(),
+        myHighestBid: v.number(),
+        isWinning: v.boolean(),
+        isWon: v.boolean(),
+        bidAmount: v.number(),
+        bidTimestamp: v.number(),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
@@ -793,27 +961,24 @@ export const getMyBids = query({
         .order("desc") // Show latest bids first
         .paginate(args.paginationOpts);
 
-      // Collect auction IDs from the page
-      const auctionIds = bidsResult.page.map((bid) => bid.auctionId);
+      // Collect unique auction IDs from the page to avoid redundant queries
+      const uniqueAuctionIds = Array.from(
+        new Set(bidsResult.page.map((bid) => bid.auctionId))
+      );
 
-      // Batch-fetch bids for only the auctions on this page (not all user bids)
-      // Use parallel queries per auction to find highest bid per auction
+      // Fetch only the latest (highest) bid per auction for this user
       const bidsByAuction = new Map<string, number>();
-      
+
       await Promise.all(
-        auctionIds.map(async (auctionId) => {
-          const auctionBids = await ctx.db
+        uniqueAuctionIds.map(async (auctionId) => {
+          const latestBid = await ctx.db
             .query("bids")
             .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+            .order("desc")
             .filter((q) => q.eq(q.field("bidderId"), userId))
-            .collect();
+            .first();
 
-          if (auctionBids.length > 0) {
-            const maxBid = Math.max(...auctionBids.map((b) => b.amount));
-            bidsByAuction.set(auctionId, maxBid);
-          } else {
-            bidsByAuction.set(auctionId, 0);
-          }
+          bidsByAuction.set(auctionId, latestBid?.amount || 0);
         })
       );
 
@@ -855,6 +1020,11 @@ export const getMyBids = query({
 
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
