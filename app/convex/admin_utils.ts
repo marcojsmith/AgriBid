@@ -22,7 +22,7 @@ export async function logAudit(
     targetType?: string;
     details?: string;
     targetCount?: number;
-  },
+  }
 ) {
   const authUser = await getAuthUser(ctx);
   if (!authUser) {
@@ -43,21 +43,21 @@ export async function logAudit(
 }
 
 // Re-export encryption functions from lib/encryption for backward compatibility
-export { encryptPII, decryptPII }
+export { encryptPII, decryptPII };
 
 /**
  * Transactionally increments or decrements a specific field in a counter document.
- * 
+ *
  * @param ctx - The mutation context
- * @param name - The name of the counter (e.g., "auctions", "profiles")
- * @param field - The field to update (e.g., "total", "active", "pending", "verified")
+ * @param name - The name of the counter (e.g., "auctions", "profiles", "support", "announcements")
+ * @param field - The field to update (e.g., "total", "active", "pending", "verified", "open", "resolved")
  * @param delta - The amount to change by (e.g., 1 or -1)
  */
 export async function updateCounter(
   ctx: MutationCtx,
   name: string,
-  field: "total" | "active" | "pending" | "verified",
-  delta: number,
+  field: string,
+  delta: number
 ) {
   const counter = await ctx.db
     .query("counters")
@@ -65,12 +65,13 @@ export async function updateCounter(
     .unique();
 
   if (counter) {
-    const currentValue = (counter[field] as number | undefined) ?? 0;
+    const currentValue =
+      (counter[field as keyof typeof counter] as number | undefined) ?? 0;
     const newValue = currentValue + delta;
 
     if (newValue < 0) {
       console.warn(
-        `Counter underflow detected: counter=${counter._id}, name=${name}, field=${field}, currentValue=${currentValue}, delta=${delta}. Clamping to 0.`,
+        `Counter underflow detected: counter=${counter._id}, name=${name}, field=${field}, currentValue=${currentValue}, delta=${delta}. Clamping to 0.`
       );
     }
 
@@ -87,6 +88,8 @@ export async function updateCounter(
       active: field === "active" ? initialValue : 0,
       pending: field === "pending" ? initialValue : 0,
       verified: field === "verified" ? initialValue : 0,
+      open: field === "open" ? initialValue : 0,
+      resolved: field === "resolved" ? initialValue : 0,
       updatedAt: Date.now(),
     });
   }

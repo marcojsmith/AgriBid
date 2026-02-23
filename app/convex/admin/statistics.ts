@@ -10,16 +10,44 @@ import { getCallerRole } from "../users";
 import { COMMISSION_RATE } from "../config";
 
 /**
- * Counts the number of results produced by a query using its `collect()` method.
+ * Counts the number of results produced by a query using pagination.
  *
- * @param queryObj - A query-like object exposing `collect()` which returns an array of results
- * @returns The number of results returned by `queryObj.collect()`
+ * @param queryFn - A function that returns a fresh query object each time
+ * @returns The total count of results
+ * @throws Error if max iterations exceeded (prevents infinite loops)
  */
-async function countQuery(queryObj: {
-  collect: () => Promise<unknown[]>;
-}) {
-  const results = await queryObj.collect();
-  return results.length;
+async function countQuery(
+  queryFn: () => {
+    paginate: (options: {
+      numItems: number;
+      cursor: string | null;
+    }) => Promise<{
+      page: Record<string, unknown>[];
+      continueCursor: string;
+      isDone: boolean;
+    }>;
+  },
+  maxIterations: number = 1000
+) {
+  let count = 0;
+  let cursor: string | null = null;
+  let isDone = false;
+  let iterations = 0;
+
+  while (!isDone) {
+    if (iterations >= maxIterations) {
+      throw new Error(
+        `countQuery exceeded max iterations (${maxIterations}). Possible infinite loop or cursor invalidation.`
+      );
+    }
+    const result = await queryFn().paginate({ numItems: 500, cursor });
+    count += result.page.length;
+    cursor = result.continueCursor;
+    isDone = result.isDone;
+    iterations++;
+  }
+
+  return count;
 }
 
 /**
@@ -74,7 +102,7 @@ export const getFinancialStats = query({
     // Fetch only the most recent sales for the activity list
     const recentSoldAuctions = await ctx.db
       .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "sold"))
+      .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
       .order("desc")
       .take(10);
 
@@ -83,7 +111,7 @@ export const getFinancialStats = query({
       title: a.title,
       amount: a.currentPrice,
       estimatedCommission: a.currentPrice * COMMISSION_RATE,
-      date: a.endTime,
+      date: a.endTime ?? 0,
     }));
 
     return {
@@ -116,25 +144,22 @@ export const initializeCounters = mutation({
       totalUsers,
       verifiedSellers,
     ] = await Promise.all([
-      countQuery(ctx.db.query("auctions")),
-      countQuery(
+      countQuery(() => ctx.db.query("auctions")),
+      countQuery(() =>
         ctx.db
           .query("auctions")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_status", (q: any) => q.eq("status", "active"))
+          .withIndex("by_status", (q) => q.eq("status", "active"))
       ),
-      countQuery(
+      countQuery(() =>
         ctx.db
           .query("auctions")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_status", (q: any) => q.eq("status", "pending_review"))
+          .withIndex("by_status", (q) => q.eq("status", "pending_review"))
       ),
-      countQuery(ctx.db.query("profiles")),
-      countQuery(
+      countQuery(() => ctx.db.query("profiles")),
+      countQuery(() =>
         ctx.db
           .query("profiles")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true))
+          .withIndex("by_isVerified", (q) => q.eq("isVerified", true))
       ),
     ]);
 
@@ -242,26 +267,28 @@ export const getAnnouncementStats = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
+    const announcementCounter = await ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "announcements"))
+      .unique();
+
+    const counter = announcementCounter as { total?: number } | null;
+
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    const total = await countQuery(
-      ctx.db
-        .query("notifications")
-        .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
-    );
-
-    const recentCount = await countQuery(
-      ctx.db
-        .query("notifications")
-        .withIndex("by_recipient_createdAt", (q) =>
-          q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
-        )
-    );
+    let recent = 0;
+    const recentNotifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_createdAt", (q) =>
+        q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
+      )
+      .take(1000);
+    recent = recentNotifications.length;
 
     return {
-      total,
-      recent: recentCount,
+      total: counter?.total ?? 0,
+      recent,
     };
   },
 });
@@ -283,22 +310,21 @@ export const getSupportStats = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const openCount = await countQuery(
-      ctx.db.query("supportTickets").withIndex("by_status", (q) => q.eq("status", "open"))
-    );
+    const supportCounter = await ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "support"))
+      .unique();
 
-    const resolvedCount = await countQuery(
-      ctx.db
-        .query("supportTickets")
-        .withIndex("by_status", (q) => q.eq("status", "resolved"))
-    );
-
-    const totalCount = await countQuery(ctx.db.query("supportTickets"));
+    const counter = supportCounter as {
+      open?: number;
+      resolved?: number;
+      total?: number;
+    } | null;
 
     return {
-      open: openCount,
-      resolved: resolvedCount,
-      total: totalCount,
+      open: counter?.open ?? 0,
+      resolved: counter?.resolved ?? 0,
+      total: counter?.total ?? 0,
     };
   },
 });

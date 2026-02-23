@@ -12,7 +12,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCallerRole } from "../users";
-import { logAudit } from "../admin_utils";
+import { logAudit, updateCounter } from "../admin_utils";
 import { getAuthUser } from "../lib/auth";
 
 // --- Re-export specialized modules for backward compatibility ---
@@ -199,6 +199,11 @@ export const resolveTicket = mutation({
       resolvedBy: authUser.userId ?? authUser._id,
     });
 
+    if (ticket.status === "open") {
+      await updateCounter(ctx, "support", "open", -1);
+      await updateCounter(ctx, "support", "resolved", 1);
+    }
+
     await logAudit(ctx, {
       action: "RESOLVE_TICKET",
       targetId: args.ticketId,
@@ -239,7 +244,7 @@ export const getAuditLogs = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const limit = Math.min(args.limit || 50, MAX_AUDIT_LOG_LIMIT);
+    const limit = Math.max(1, Math.min(args.limit ?? 50, MAX_AUDIT_LOG_LIMIT));
 
     return await ctx.db
       .query("auditLogs")
@@ -282,6 +287,8 @@ export const createAnnouncement = mutation({
       isRead: false,
       createdAt: Date.now(),
     });
+
+    await updateCounter(ctx, "announcements", "total", 1);
 
     await logAudit(ctx, {
       action: "CREATE_ANNOUNCEMENT",

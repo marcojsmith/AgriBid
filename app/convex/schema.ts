@@ -21,8 +21,9 @@ export default defineSchema({
     startingPrice: v.number(),
     currentPrice: v.number(),
     minIncrement: v.number(),
-    startTime: v.number(),
-    endTime: v.number(),
+    startTime: v.optional(v.number()),
+    endTime: v.optional(v.number()),
+    durationDays: v.optional(v.number()),
     sellerId: v.string(),
     status: v.union(
       v.literal("draft"),
@@ -30,7 +31,7 @@ export default defineSchema({
       v.literal("active"),
       v.literal("sold"),
       v.literal("unsold"),
-      v.literal("rejected"),
+      v.literal("rejected")
     ),
     winnerId: v.optional(v.string()),
     images: v.union(
@@ -41,7 +42,7 @@ export default defineSchema({
         rear: v.optional(v.string()), // storageId
         additional: v.optional(v.array(v.string())), // array of storageIds
       }),
-      v.array(v.string()), // legacy format
+      v.array(v.string()) // legacy format
     ),
     description: v.optional(v.string()),
     conditionReportUrl: v.optional(v.string()),
@@ -54,7 +55,7 @@ export default defineSchema({
         tires: v.boolean(),
         serviceHistory: v.boolean(),
         notes: v.optional(v.string()),
-      }),
+      })
     ),
   })
     .index("by_status", ["status"])
@@ -101,8 +102,8 @@ export default defineSchema({
       v.union(
         v.literal("pending"),
         v.literal("verified"),
-        v.literal("rejected"),
-      ),
+        v.literal("rejected")
+      )
     ),
     kycDocuments: v.optional(v.array(v.string())), // storageIds
     kycRejectionReason: v.optional(v.string()),
@@ -142,7 +143,7 @@ export default defineSchema({
     status: v.union(
       v.literal("open"),
       v.literal("resolved"),
-      v.literal("closed"),
+      v.literal("closed")
     ),
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     createdAt: v.number(),
@@ -162,12 +163,12 @@ export default defineSchema({
     type: v.union(
       v.literal("commission"),
       v.literal("listing_fee"),
-      v.literal("sale"),
+      v.literal("sale")
     ),
     status: v.union(
       v.literal("pending"),
       v.literal("completed"),
-      v.literal("failed"),
+      v.literal("failed")
     ),
     timestamp: v.number(),
   })
@@ -182,7 +183,7 @@ export default defineSchema({
       v.literal("info"),
       v.literal("success"),
       v.literal("warning"),
-      v.literal("error"),
+      v.literal("error")
     ),
     title: v.string(),
     message: v.string(),
@@ -208,11 +209,13 @@ export default defineSchema({
     .index("by_notification", ["notificationId"]),
 
   counters: defineTable({
-    name: v.string(), // e.g., "auctions", "profiles"
+    name: v.string(), // e.g., "auctions", "profiles", "support", "announcements"
     total: v.number(),
     active: v.optional(v.number()),
     pending: v.optional(v.number()),
     verified: v.optional(v.number()),
+    open: v.optional(v.number()),
+    resolved: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 });
