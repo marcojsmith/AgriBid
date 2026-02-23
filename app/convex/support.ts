@@ -9,6 +9,7 @@ export const createTicket = mutation({
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
     auctionId: v.optional(v.id("auctions")),
   },
+  returns: v.id("supportTickets"),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
@@ -41,6 +42,29 @@ export const createTicket = mutation({
 
 export const getMyTickets = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("supportTickets"),
+      _creationTime: v.number(),
+      userId: v.string(),
+      auctionId: v.optional(v.id("auctions")),
+      subject: v.string(),
+      message: v.string(),
+      status: v.union(
+        v.literal("open"),
+        v.literal("resolved"),
+        v.literal("closed"),
+      ),
+      priority: v.union(
+        v.literal("low"),
+        v.literal("medium"),
+        v.literal("high"),
+      ),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      resolvedBy: v.optional(v.string()),
+    }),
+  ),
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);

@@ -17,6 +17,7 @@ if (isProduction && allowDevPromotionFlag) {
 
 export const promoteToAdmin = mutation({
   args: { email: v.string() },
+  returns: v.object({ success: v.boolean(), userId: v.string() }),
   handler: async (ctx, args) => {
     const callerRole = await getCallerRole(ctx);
     const allowDevPromotion = !isProduction && allowDevPromotionFlag;
