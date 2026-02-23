@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { updateCounter } from "../admin_utils";
+import type { Doc } from "../_generated/dataModel";
 
 /**
  * Internal mutation to settle auctions that have reached their end time.
@@ -24,22 +25,27 @@ export const settleExpiredAuctions = internalMutation({
         .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
         .collect();
 
-      const hasBids = bids.length > 0;
+      // Filter out voided or invalid bids so they don't affect settlement
+      const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
+
+      const hasBids = validBids.length > 0;
       const reserveMet = auction.currentPrice >= auction.reservePrice;
 
       const finalStatus = hasBids && reserveMet ? "sold" : "unsold";
 
       let winnerId = undefined;
       if (finalStatus === "sold") {
-        // Find the highest bid to determine the winner.
+        // Find the highest valid bid to determine the winner.
         // Tie-break: earlier bid wins if amounts are equal.
-        const highestBid = bids.reduce((prev, current) => {
-          if (current.amount > prev.amount) return current;
-          if (current.amount === prev.amount) {
-            return current.timestamp < prev.timestamp ? current : prev;
+        const highestBid = validBids.reduce(
+          (prev: Doc<"bids">, current: Doc<"bids">) => {
+            if (current.amount > prev.amount) return current;
+            if (current.amount === prev.amount) {
+              return current.timestamp < prev.timestamp ? current : prev;
+            }
+            return prev;
           }
-          return prev;
-        });
+        );
         winnerId = highestBid.bidderId;
       }
 

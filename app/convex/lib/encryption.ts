@@ -10,13 +10,14 @@
  * Compatible with Convex standard runtime.
  */
 const ENCRYPTION_KEY_STR = process.env.PII_ENCRYPTION_KEY;
-const IS_PRODUCTION = !!process.env.CONVEX_CLOUD_URL;
+// APP_ENV must be set to "production" in production deployments
+const IS_PRODUCTION = process.env.APP_ENV === "production";
 const ALLOW_DEV_FALLBACK = process.env.ALLOW_PII_DEV_FALLBACK === "true";
 
 // Validation: Key must exist in production and must be 32 bytes
 if (IS_PRODUCTION && !ENCRYPTION_KEY_STR) {
   throw new Error(
-    "CRITICAL: PII_ENCRYPTION_KEY environment variable is missing in production.",
+    "CRITICAL: PII_ENCRYPTION_KEY environment variable is missing in production."
   );
 }
 
@@ -24,7 +25,7 @@ if (ENCRYPTION_KEY_STR) {
   const keyBytes = new TextEncoder().encode(ENCRYPTION_KEY_STR);
   if (keyBytes.length !== 32) {
     throw new Error(
-      `CRITICAL: PII_ENCRYPTION_KEY must be exactly 32 bytes. Current byte length: ${keyBytes.length}`,
+      `CRITICAL: PII_ENCRYPTION_KEY must be exactly 32 bytes. Current byte length: ${keyBytes.length}`
     );
   }
 }
@@ -39,13 +40,13 @@ const FINAL_KEY_STR = ENCRYPTION_KEY_STR
 
 if (!FINAL_KEY_STR) {
   throw new Error(
-    "CRITICAL: PII_ENCRYPTION_KEY is required. Development fallback is only allowed with ALLOW_PII_DEV_FALLBACK=true outside of production.",
+    "CRITICAL: PII_ENCRYPTION_KEY is required. Development fallback is only allowed with ALLOW_PII_DEV_FALLBACK=true outside of production."
   );
 }
 
 if (FINAL_KEY_STR === DEV_FALLBACK_KEY) {
   console.warn(
-    "⚠️ SECURITY WARNING: Using hardcoded development PII encryption key. DO NOT USE THIS IN PRODUCTION.",
+    "⚠️ SECURITY WARNING: Using hardcoded development PII encryption key. DO NOT USE THIS IN PRODUCTION."
   );
 }
 
@@ -62,7 +63,7 @@ async function getCryptoKey() {
     keyData,
     { name: "AES-GCM" },
     false,
-    ["encrypt", "decrypt"],
+    ["encrypt", "decrypt"]
   );
 }
 
@@ -101,7 +102,7 @@ function base64ToArrayBuffer(base64: string): Uint8Array {
  * @throws Error when encryption fails (message prefixed with `encryptPII failed:`).
  */
 export async function encryptPII(
-  value: string | undefined,
+  value: string | undefined
 ): Promise<string | undefined> {
   if (value === undefined || value === null) return undefined;
 
@@ -114,13 +115,13 @@ export async function encryptPII(
     const encryptedBuffer = await crypto.subtle.encrypt(
       { name: "AES-GCM", iv: iv as BufferSource },
       key,
-      data as BufferSource,
+      data as BufferSource
     );
 
     // Use exact bytes of the Uint8Array/ArrayBuffer for conversion
     const ivBase64 = arrayBufferToBase64(iv);
     const encryptedBase64 = arrayBufferToBase64(
-      new Uint8Array(encryptedBuffer),
+      new Uint8Array(encryptedBuffer)
     );
 
     // Format: iv.encryptedContentWithTag
@@ -128,7 +129,7 @@ export async function encryptPII(
   } catch (err) {
     console.error("Encryption error:", err);
     throw new Error(
-      `encryptPII failed: ${err instanceof Error ? err.message : String(err)}`,
+      `encryptPII failed: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 }
@@ -144,7 +145,7 @@ export async function encryptPII(
  * @throws Error when decryption is attempted but fails (e.g., authentication/tag mismatch or key errors).
  */
 export async function decryptPII(
-  encrypted: string | undefined,
+  encrypted: string | undefined
 ): Promise<string | undefined> {
   if (encrypted === undefined || encrypted === null) return undefined;
 
@@ -184,7 +185,7 @@ export async function decryptPII(
     const decryptedBuffer = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: iv as BufferSource },
       key,
-      data as BufferSource,
+      data as BufferSource
     );
 
     const dec = new TextDecoder();
@@ -194,7 +195,7 @@ export async function decryptPII(
     // If it looked like encrypted but failed to decrypt (e.g. wrong key),
     // it's safer to throw than to return garbage or the "fake" encrypted string.
     throw new Error(
-      `Decryption failed: ${err instanceof Error ? err.message : String(err)}`,
+      `Decryption failed: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 }

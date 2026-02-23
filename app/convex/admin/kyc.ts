@@ -102,6 +102,9 @@ export const reviewKYC = mutation({
       await ctx.db.patch(profile._id, {
         kycStatus: "verified",
         isVerified: true,
+        // clear any previous rejection reason and record update time
+        kycRejectionReason: undefined,
+        updatedAt: Date.now(),
       });
 
       if (!wasVerified) {
@@ -125,10 +128,18 @@ export const reviewKYC = mutation({
         throw new Error("Rejection reason is required");
       }
 
+      const wasVerified = profile.isVerified;
+
       await ctx.db.patch(profile._id, {
         kycStatus: "rejected",
         kycRejectionReason: reason,
+        isVerified: false,
+        updatedAt: Date.now(),
       });
+
+      if (wasVerified) {
+        await updateCounter(ctx, "profiles", "verified", -1);
+      }
       // Send Rejection Notification
       await ctx.db.insert("notifications", {
         recipientId: args.userId,

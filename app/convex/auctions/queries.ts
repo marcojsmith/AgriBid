@@ -3,7 +3,12 @@ import { query } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getCallerRole, findUserById } from "../users";
 import { authComponent } from "../auth";
-import { AuctionSummaryValidator, toAuctionSummary, AuctionDetailValidator, toAuctionDetail } from "./helpers";
+import {
+  AuctionSummaryValidator,
+  toAuctionSummary,
+  AuctionDetailValidator,
+  toAuctionDetail,
+} from "./helpers";
 
 export const getPendingAuctions = query({
   args: {},
@@ -273,7 +278,9 @@ export const getAllAuctions = query({
     return {
       ...auctions,
       page: await Promise.all(
-        auctions.page.map(async (auction) => await toAuctionSummary(ctx, auction))
+        auctions.page.map(
+          async (auction) => await toAuctionSummary(ctx, auction)
+        )
       ),
     };
   },
@@ -300,12 +307,21 @@ export const getMyBids = query({
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
+      if (!authUser)
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          pageStatus: null,
+          splitCursor: null,
+        };
       const userId = authUser.userId ?? authUser._id;
 
       const bidsResult = await ctx.db
         .query("bids")
         .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+        // exclude voided bids from results
+        .filter((q) => q.neq(q.field("status"), "voided"))
         .order("desc")
         .paginate(args.paginationOpts);
 
@@ -320,6 +336,8 @@ export const getMyBids = query({
           const latestBid = await ctx.db
             .query("bids")
             .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+            // only consider non-voided bids
+            .filter((q) => q.neq(q.field("status"), "voided"))
             .order("desc")
             .filter((q) => q.eq(q.field("bidderId"), userId))
             .first();
@@ -355,7 +373,13 @@ export const getMyBids = query({
       };
     } catch (err) {
       if (err instanceof Error && err.message.includes("Unauthenticated")) {
-        return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          pageStatus: null,
+          splitCursor: null,
+        };
       }
       console.error("getMyBids failure:", err);
       throw err;
@@ -375,7 +399,14 @@ export const getMyListings = query({
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
+      if (!authUser)
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          pageStatus: null,
+          splitCursor: null,
+        };
       const userId = authUser.userId ?? authUser._id;
 
       const listingsResult = await ctx.db
@@ -384,7 +415,9 @@ export const getMyListings = query({
         .paginate(args.paginationOpts);
 
       const page = await Promise.all(
-        listingsResult.page.map(async (auction) => await toAuctionSummary(ctx, auction))
+        listingsResult.page.map(
+          async (auction) => await toAuctionSummary(ctx, auction)
+        )
       );
 
       return {
@@ -395,7 +428,13 @@ export const getMyListings = query({
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyListings failure:", err);
       }
-      return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        pageStatus: null,
+        splitCursor: null,
+      };
     }
   },
 });

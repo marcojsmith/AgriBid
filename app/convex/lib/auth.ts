@@ -7,6 +7,7 @@
 
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { authComponent } from "../auth";
+import type { AuthUser } from "../auth";
 
 /**
  * Retrieve the authenticated user associated with the provided context.
@@ -17,9 +18,42 @@ import { authComponent } from "../auth";
 export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
   try {
     return await authComponent.getAuthUser(ctx);
+  } catch (err) {
+    console.error("getAuthUser failed:", err);
+    return null;
+  }
+}
+
+/**
+ * Internal helper to get caller role from an already fetched AuthUser.
+ * Avoids duplicate auth lookups when AuthUser is already available.
+ */
+async function _getCallerRoleFromAuthUser(
+  ctx: QueryCtx | MutationCtx,
+  authUser: AuthUser
+): Promise<string | null> {
+  try {
+    const linkId = resolveUserId(authUser);
+    if (!linkId) return null;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", linkId))
+      .unique();
+
+    return profile?.role ?? null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolves the user ID from an AuthUser object.
+ * @param authUser The authenticated user object.
+ * @returns The resolved user ID as a string, or null if it cannot be determined.
+ */
+function resolveUserId(authUser: AuthUser): string | null {
+  return authUser.userId ?? authUser._id ?? null;
 }
 
 /**
@@ -46,22 +80,9 @@ export async function requireAuth(ctx: QueryCtx | MutationCtx) {
 export async function getCallerRole(
   ctx: QueryCtx | MutationCtx
 ): Promise<string | null> {
-  try {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) return null;
-
-    const linkId = authUser.userId ?? authUser._id;
-    if (!linkId) return null;
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", linkId))
-      .unique();
-
-    return profile?.role ?? null;
-  } catch {
-    return null;
-  }
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) return null;
+  return await _getCallerRoleFromAuthUser(ctx, authUser);
 }
 
 /**
@@ -73,7 +94,7 @@ export async function getCallerRole(
  */
 export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const authUser = await requireAuth(ctx);
-  const role = await getCallerRole(ctx);
+  const role = await _getCallerRoleFromAuthUser(ctx, authUser);
 
   if (role !== "admin") {
     throw new Error("Not authorized: Admin privileges required");
@@ -92,7 +113,7 @@ export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
     const authUser = await getAuthUser(ctx);
     if (!authUser) return null;
 
-    const linkId = authUser.userId ?? authUser._id;
+    const linkId = resolveUserId(authUser);
     if (!linkId) return null;
 
     const profile = await ctx.db
@@ -121,7 +142,7 @@ export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
 export async function requireProfile(ctx: QueryCtx | MutationCtx) {
   const authUser = await requireAuth(ctx);
 
-  const linkId = authUser.userId ?? authUser._id;
+  const linkId = resolveUserId(authUser);
   if (!linkId) {
     throw new Error("Unable to determine user identity");
   }

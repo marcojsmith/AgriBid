@@ -4,6 +4,7 @@ import { getCallerRole } from "../users";
 import { logAudit, updateCounter } from "../admin_utils";
 import { authComponent } from "../auth";
 import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -95,8 +96,7 @@ export const createAuction = mutation({
       status: "pending_review",
       currentPrice: args.startingPrice,
       minIncrement: args.startingPrice < 10000 ? 100 : 500,
-      startTime: Date.now(),
-      endTime: Date.now() + durationDays * 24 * 60 * 60 * 1000,
+      durationDays: durationDays,
     });
 
     await updateCounter(ctx, "auctions", "total", 1);
@@ -115,15 +115,15 @@ export const approveAuction = mutation({
       throw new Error("Not authorized: Admin privileges required");
     }
 
-    const durationDays = args.durationDays ?? 7;
-    if (durationDays <= 0 || durationDays > 365) {
-      throw new Error("Invalid duration: must be between 1 and 365 days");
-    }
-
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
     if (auction.status !== "pending_review") {
       throw new Error("Only auctions in pending_review can be approved");
+    }
+
+    const durationDays = args.durationDays ?? auction.durationDays ?? 7;
+    if (durationDays <= 0 || durationDays > 365) {
+      throw new Error("Invalid duration: must be between 1 and 365 days");
     }
 
     const startTime = Date.now();
@@ -143,6 +143,21 @@ export const approveAuction = mutation({
   },
 });
 
+/**
+ * Validates that an auction has the required fields for its status.
+ * Throws an error if validation fails.
+ */
+function validateAuctionStatus(
+  auction: { status: string; endTime?: number | null },
+  newStatus: string
+): void {
+  if (newStatus === "active" && !auction.endTime) {
+    throw new Error(
+      "Cannot set status to 'active' without endTime. Use approveAuction or provide endTime in the update."
+    );
+  }
+}
+
 export const rejectAuction = mutation({
   args: { auctionId: v.id("auctions") },
   returns: v.object({ success: v.boolean() }),
@@ -160,6 +175,8 @@ export const rejectAuction = mutation({
 
     await ctx.db.patch(args.auctionId, {
       status: "rejected",
+      startTime: undefined,
+      endTime: undefined,
     });
 
     await updateCounter(ctx, "auctions", "pending", -1);
@@ -209,22 +226,14 @@ export const adminUpdateAuction = mutation({
     const oldStatus = auction.status;
     const newStatus = args.updates.status;
 
+    if (newStatus === "active") {
+      validateAuctionStatus(auction, newStatus);
+    }
+
     await ctx.db.patch(args.auctionId, args.updates);
 
     if (newStatus && oldStatus !== newStatus) {
-      const statusToCounterKey: Record<
-        string,
-        "active" | "pending" | undefined
-      > = {
-        active: "active",
-        pending_review: "pending",
-      };
-
-      const oldKey = statusToCounterKey[oldStatus];
-      const newKey = statusToCounterKey[newStatus];
-
-      if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
-      if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
+      await adjustStatusCounters(ctx, oldStatus, newStatus);
     }
 
     await logAudit(ctx, {
@@ -237,6 +246,23 @@ export const adminUpdateAuction = mutation({
     return { success: true };
   },
 });
+
+async function adjustStatusCounters(
+  ctx: MutationCtx, // Changed from any
+  oldStatus: string,
+  newStatus: string
+) {
+  const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+    active: "active",
+    pending_review: "pending",
+  };
+
+  const oldKey = statusToCounterKey[oldStatus];
+  const newKey = statusToCounterKey[newStatus];
+
+  if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
+  if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
+}
 
 const MAX_BULK_UPDATE_SIZE = 50;
 
@@ -288,19 +314,7 @@ export const bulkUpdateAuctions = mutation({
         updated.push(id);
 
         if (newStatus && oldStatus !== newStatus) {
-          const statusToCounterKey: Record<
-            string,
-            "active" | "pending" | undefined
-          > = {
-            active: "active",
-            pending_review: "pending",
-          };
-
-          const oldKey = statusToCounterKey[oldStatus];
-          const newKey = statusToCounterKey[newStatus];
-
-          if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
-          if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
+          await adjustStatusCounters(ctx, oldStatus, newStatus);
         }
       } else {
         skipped.push(id);
@@ -311,11 +325,12 @@ export const bulkUpdateAuctions = mutation({
       action: "BULK_UPDATE_AUCTIONS",
       targetId: args.auctionIds.join(","),
       targetType: "auction",
-      targetCount: args.auctionIds.length,
+      targetCount: updated.length,
       details: JSON.stringify({
-        count: args.auctionIds.length,
+        requestedCount: args.auctionIds.length,
+        updatedCount: updated.length,
         updates: Object.keys(args.updates),
-        preview: args.auctionIds.slice(0, 3),
+        preview: updated.slice(0, 3),
       }),
     });
 

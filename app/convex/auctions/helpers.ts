@@ -11,6 +11,15 @@ export interface RawImages {
   additional?: string[];
 }
 
+// Shared validator for conditionChecklist
+export const ConditionChecklistValidator = v.object({
+  engine: v.boolean(),
+  hydraulics: v.boolean(),
+  tires: v.boolean(),
+  serviceHistory: v.boolean(),
+  notes: v.optional(v.string()),
+});
+
 /**
  * Normalises image references and resolves them to accessible URLs.
  *
@@ -28,14 +37,37 @@ export async function resolveImageUrls(
   images: unknown,
   options: { limit?: number } = {}
 ) {
+  // Helper to validate if a value is a non-empty string (potential image ID)
+  function isValidImageId(value: unknown): value is string {
+    return typeof value === "string" && value.length > 0;
+  }
+
   // Normalize legacy array format or non-object inputs
   let normalizedImages: RawImages;
   if (Array.isArray(images)) {
     normalizedImages = {
-      additional: images.filter((i): i is string => typeof i === "string"),
+      additional: images.filter(isValidImageId),
     };
-  } else if (images && typeof images === "object") {
-    normalizedImages = { ...(images as RawImages) };
+  } else if (images && typeof images === "object" && !Array.isArray(images)) {
+    const imagesObj = images as Record<string, unknown>;
+    const tempRawImages: RawImages = {};
+
+    if (isValidImageId(imagesObj.front)) {
+      tempRawImages.front = imagesObj.front;
+    }
+    if (isValidImageId(imagesObj.engine)) {
+      tempRawImages.engine = imagesObj.engine;
+    }
+    if (isValidImageId(imagesObj.cabin)) {
+      tempRawImages.cabin = imagesObj.cabin;
+    }
+    if (isValidImageId(imagesObj.rear)) {
+      tempRawImages.rear = imagesObj.rear;
+    }
+    if (Array.isArray(imagesObj.additional)) {
+      tempRawImages.additional = imagesObj.additional.filter(isValidImageId);
+    }
+    normalizedImages = tempRawImages;
   } else {
     normalizedImages = { additional: [] };
   }
@@ -48,16 +80,23 @@ export async function resolveImageUrls(
     );
   }
 
+  const [front, engine, cabin, rear] = await Promise.all([
+    resolveUrlCached(storage, normalizedImages.front),
+    resolveUrlCached(storage, normalizedImages.engine),
+    resolveUrlCached(storage, normalizedImages.cabin),
+    resolveUrlCached(storage, normalizedImages.rear),
+  ]);
+
   return {
     ...normalizedImages,
-    front: await resolveUrlCached(storage, normalizedImages.front),
-    engine: await resolveUrlCached(storage, normalizedImages.engine),
-    cabin: await resolveUrlCached(storage, normalizedImages.cabin),
-    rear: await resolveUrlCached(storage, normalizedImages.rear),
+    front,
+    engine,
+    cabin,
+    rear,
     additional: (
       await Promise.all(
-        (normalizedImages.additional || []).map(async (id: string) =>
-          await resolveUrlCached(storage, id)
+        (normalizedImages.additional || []).map(
+          async (id: string) => await resolveUrlCached(storage, id)
         )
       )
     ).filter((url: string | undefined): url is string => !!url),
@@ -80,8 +119,9 @@ export const AuctionSummaryValidator = v.object({
   startingPrice: v.number(),
   currentPrice: v.number(),
   minIncrement: v.number(),
-  startTime: v.number(),
-  endTime: v.number(),
+  startTime: v.optional(v.number()),
+  endTime: v.optional(v.number()),
+  durationDays: v.optional(v.number()),
   sellerId: v.string(),
   status: v.string(),
   winnerId: v.optional(v.string()),
@@ -96,7 +136,7 @@ export const AuctionSummaryValidator = v.object({
     rear: v.optional(v.string()),
     additional: v.array(v.string()),
   }),
-  conditionChecklist: v.optional(v.any()),
+  conditionChecklist: v.optional(ConditionChecklistValidator),
 });
 
 /**
@@ -106,7 +146,10 @@ export const AuctionSummaryValidator = v.object({
  * @param auction - Full auction document to convert into a summary
  * @returns An object with selected auction fields and an `images` object whose entries are resolved URLs for `front`, `engine`, `cabin`, `rear` and an `additional` array of resolved URLs
  */
-export async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
+export async function toAuctionSummary(
+  ctx: QueryCtx,
+  auction: Doc<"auctions">
+) {
   return {
     _id: auction._id,
     _creationTime: auction._creationTime,
@@ -157,21 +200,13 @@ export const AuctionDetailValidator = v.object({
     rear: v.optional(v.string()),
     additional: v.array(v.string()),
   }),
-  conditionChecklist: v.optional(
-    v.object({
-      engine: v.boolean(),
-      hydraulics: v.boolean(),
-      tires: v.boolean(),
-      serviceHistory: v.boolean(),
-      notes: v.optional(v.string()),
-    })
-  ),
+  conditionChecklist: v.optional(ConditionChecklistValidator),
   sellerId: v.string(),
   status: v.string(),
   currentPrice: v.number(),
   minIncrement: v.number(),
-  startTime: v.number(),
-  endTime: v.number(),
+  startTime: v.optional(v.number()),
+  endTime: v.optional(v.number()),
   isExtended: v.optional(v.boolean()),
   winnerId: v.optional(v.string()),
   seedId: v.optional(v.string()),

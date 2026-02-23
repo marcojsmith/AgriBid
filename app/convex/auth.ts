@@ -15,7 +15,7 @@ export const authComponent = createClient<DataModel>(components.auth);
 
 export const createAuth = (
   ctx: GenericCtx<DataModel>,
-  { optionsOnly } = { optionsOnly: false },
+  { optionsOnly } = { optionsOnly: false }
 ) => {
   const trustedOrigins = ALLOWED_ORIGINS;
   const siteUrl = process.env.CONVEX_SITE_URL;
@@ -26,11 +26,9 @@ export const createAuth = (
 
   return betterAuth({
     appName: "AgriBid",
-    // disable logging when createAuth is called just to generate options.
     logger: {
       disabled: optionsOnly,
     },
-    // The site URL is needed for redirects and cookies
     baseURL: siteUrl,
     basePath: "/api/auth",
     trustedOrigins,
@@ -47,7 +45,6 @@ export const createAuth = (
       requireEmailVerification: false,
     },
     plugins: [
-      // The Convex plugin is required for Convex compatibility
       convex({
         authConfig: {
           providers: [
@@ -62,18 +59,27 @@ export const createAuth = (
   });
 };
 
+export type AuthUser = {
+  userId?: string | null;
+  _id: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+  _creationTime?: number;
+};
+
 export const getAuthUser = query({
   args: {},
   returns: v.union(
     v.null(),
     v.object({
       userId: v.optional(v.union(v.string(), v.null())),
-      _id: v.any(),
+      _id: v.string(),
       email: v.optional(v.union(v.string(), v.null())),
       name: v.optional(v.union(v.string(), v.null())),
       image: v.optional(v.union(v.string(), v.null())),
       _creationTime: v.optional(v.number()),
-    }),
+    })
   ),
   handler: async (ctx) => {
     try {

@@ -1,15 +1,12 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { authComponent } from "../auth";
+import { requireAuth } from "../lib/auth";
 
 export const placeBid = mutation({
   args: { auctionId: v.id("auctions"), amount: v.number() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) {
-      throw new Error("Not authenticated");
-    }
+    const authUser = await requireAuth(ctx);
 
     const userId = authUser.userId ?? authUser._id;
 
@@ -35,7 +32,7 @@ export const placeBid = mutation({
     }
 
     // Check if auction has expired
-    if (auction.endTime <= Date.now()) {
+    if (!auction.endTime || auction.endTime <= Date.now()) {
       throw new Error("Auction ended");
     }
 
