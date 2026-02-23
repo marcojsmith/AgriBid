@@ -386,7 +386,12 @@ export const getAuditLogs = query({
  * Uses .collect() which is suitable for moderate datasets in this prototype.
  * @param query - A Convex query object
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * Count the number of results produced by a query using its `collect()` method.
+ *
+ * @param query - A query-like object exposing `collect()` which returns an array of results
+ * @returns The number of results returned by `query.collect()`
+ */
 async function countQuery(query: any) {
   const results = await query.collect();
   return results.length;
