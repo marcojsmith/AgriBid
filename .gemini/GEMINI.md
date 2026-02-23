@@ -32,7 +32,16 @@ Determine the best course of action for the user based on the current state of t
 
 ## Folder Structure
 
-TO BE UPDATED BY AI AS THE PROJECT PROGRESSES.
+- `app/`: Main application directory.
+    - `convex/`: Backend logic, database schema, and server-side functions using Convex.
+    - `src/`: Frontend React application source code.
+        - `components/`: Reusable UI components (using shadcn/ui).
+        - `pages/`: Application views and routing.
+        - `hooks/`: Custom React hooks for state and logic.
+        - `contexts/`: React context providers for global state.
+        - `lib/`: Utility functions and shared application logic.
+- `conductor/`: Project management documentation, guidelines, and feature tracks.
+- `.gemini/`: Gemini CLI specific configurations, rules, and specialized skills.
 
 ## Tech stack
 

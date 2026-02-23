@@ -64,7 +64,16 @@ export const createAuth = (
 
 export const getAuthUser = query({
   args: {},
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(
+    v.null(),
+    v.object({
+      userId: v.optional(v.string()),
+      _id: v.optional(v.string()),
+      email: v.optional(v.string()),
+      name: v.optional(v.string()),
+      image: v.optional(v.string()),
+    }),
+  ),
   handler: async (ctx) => {
     try {
       return await authComponent.getAuthUser(ctx);
