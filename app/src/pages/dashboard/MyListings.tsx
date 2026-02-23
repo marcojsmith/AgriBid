@@ -16,7 +16,11 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
  * @returns The React element tree for the My Listings dashboard page.
  */
 export default function MyListings() {
-  const { results: listings, status, loadMore } = usePaginatedQuery(
+  const {
+    results: listings,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
     api.auctions.getMyListings,
     {},
     { initialNumItems: 10 }
@@ -113,7 +117,9 @@ export default function MyListings() {
                     </span>
                   </span>
                   <span>
-                    {new Date(auction.endTime).toLocaleDateString("en-ZA")}
+                    {auction.endTime
+                      ? new Date(auction.endTime).toLocaleDateString("en-ZA")
+                      : "—"}
                   </span>
                 </div>
               </div>
@@ -139,11 +145,11 @@ export default function MyListings() {
               </div>
             </div>
           ))}
-          
+
           <div className="flex justify-center pt-8">
             {status === "CanLoadMore" ? (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => loadMore(10)}
                 className="font-bold min-w-[200px]"
               >

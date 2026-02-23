@@ -21,15 +21,16 @@ import {
 import { toast } from "sonner";
 
 /**
- * Show a bell button with an unread badge and a dropdown listing the current user's notifications.
+ * Renders a bell button with an unread badge and a dropdown listing the current user's notifications.
  *
- * The dropdown presents notification items (icon, title, date, message), lets the user mark individual
- * notifications or all notifications as read, and provides access to the full notifications archive.
+ * The dropdown shows each notification's icon, title, date and message, allows marking individual notifications
+ * or all notifications as read, and includes a control to open the full notifications archive.
  *
- * @returns A JSX element containing the notifications dropdown UI
+ * @returns The JSX element that renders the notifications dropdown
  */
 export function NotificationDropdown() {
   const navigate = useNavigate();
+  // @ts-expect-error - Convex type instantiation complexity
   const notifications = useQuery(api.notifications.getMyNotifications);
   const markRead = useMutation(api.notifications.markAsRead);
   const markAllRead = useMutation(api.notifications.markAllRead);

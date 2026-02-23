@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
+import { useMemo } from "react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,72 +15,47 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, AlertCircle, ArrowRight, Search } from "lucide-react";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
-import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { KycReviewDialog, PromoteAdminDialog } from "./AdminDialogs";
-import type { Id } from "convex/_generated/dataModel";
-
-interface KycReviewUser {
-  userId: string;
-  firstName?: string;
-  lastName?: string;
-  idNumber?: string;
-  phoneNumber?: string;
-  kycEmail?: string;
-  kycDocuments?: string[];
-}
-
-interface AdminProfile {
-  _id: Id<"profiles">;
-  userId: string;
-  name?: string;
-  email?: string;
-  role: string;
-  isVerified?: boolean;
-  kycStatus?: string;
-  createdAt: number;
-}
+import { KycReviewDialog, PromoteAdminDialog } from "./dialogs";
+import { useUserManagement, type AdminProfile } from "./hooks";
 
 /**
- * Admin page component that provides a user management interface with search, KYC review, manual verification and promotion-to-admin actions.
+ * Render the Admin Users page with search, paginated user list, status indicators and actions for KYC review, manual verification and promotion.
  *
- * Renders a paginated list of user profiles, per-user action buttons (Review KYC, Verify, Promote), and the related KYC review and promote dialogs.
- *
- * @returns The React element for the Admin Users interface.
+ * @returns The Admin Users page JSX element
  */
 export default function AdminUsers() {
   const adminStats = useQuery(api.admin.getAdminStats);
-  const [userSearch, setUserSearch] = useState("");
-
   const {
     results: allProfiles,
     status: profilesStatus,
     loadMore: loadMoreProfiles,
   } = usePaginatedQuery(api.users.listAllProfiles, {}, { initialNumItems: 50 });
 
-  // Mutations
-  const verifyUserMutation = useMutation(api.users.verifyUser);
-  const promoteToAdminMutation = useMutation(api.users.promoteToAdmin);
-  const reviewKYCMutation = useMutation(api.admin.reviewKYC);
-  const getProfileForKYCMutation = useMutation(api.users.getProfileForKYC);
-
-  // Local UI State
-  const [kycReviewUser, setKycReviewUser] = useState<KycReviewUser | null>(
-    null
-  );
-  const [isFetchingKYC, setIsFetchingKYC] = useState(false);
-  const [fetchingKycUserId, setFetchingKycUserId] = useState<string | null>(
-    null
-  );
-  const [isKycProcessing, setIsKycProcessing] = useState(false);
-  const [kycRejectionReason, setKycRejectionReason] = useState("");
-  const [showFullId, setShowFullId] = useState(false);
-  const [promoteTarget, setPromoteTarget] = useState<AdminProfile | null>(null);
-  const [isPromoting, setIsPromoting] = useState(false);
-  const [verifyingUserIds, setVerifyingUserIds] = useState<Set<string>>(
-    new Set()
-  );
+  // Use custom hook for all user management state and handlers
+  const {
+    userSearch,
+    setUserSearch,
+    kycReviewUser,
+    isFetchingKYC,
+    fetchingKycUserId,
+    isKycProcessing,
+    kycRejectionReason,
+    setKycRejectionReason,
+    showFullId,
+    setShowFullId,
+    handleReviewKYCClick,
+    handleKycReview,
+    closeKycReview,
+    promoteTarget,
+    setPromoteTarget,
+    isPromoting,
+    handlePromote,
+    closePromotion,
+    verifyingUserIds,
+    handleManualVerify,
+  } = useUserManagement();
 
   const filteredUsers = useMemo(() => {
     if (!allProfiles) return [];
@@ -91,91 +66,6 @@ export default function AdminUsers() {
         p.userId.toLowerCase().includes(userSearch.toLowerCase())
     );
   }, [allProfiles, userSearch]);
-
-  const handleReviewKYCClick = async (userId: string) => {
-    if (isFetchingKYC) return;
-    setIsFetchingKYC(true);
-    setFetchingKycUserId(userId);
-    try {
-      const fullProfile = await getProfileForKYCMutation({ userId });
-      // Verify we are still looking for this specific user to avoid race conditions
-      if (
-        fullProfile &&
-        typeof fullProfile === "object" &&
-        "userId" in fullProfile
-      ) {
-        setKycReviewUser(fullProfile as KycReviewUser);
-        setShowFullId(false);
-        setKycRejectionReason("");
-      } else {
-        toast.error("Could not fetch profile details");
-      }
-    } catch (err) {
-      console.error("KYC Fetch Error:", err);
-      toast.error("Failed to load KYC details");
-    } finally {
-      setIsFetchingKYC(false);
-      setFetchingKycUserId(null);
-    }
-  };
-
-  const handleManualVerify = async (userId: string) => {
-    if (verifyingUserIds.has(userId)) return;
-    setVerifyingUserIds((prev) => new Set(prev).add(userId));
-    try {
-      await verifyUserMutation({ userId });
-      toast.success("User verified");
-    } catch (err) {
-      console.error(err);
-      toast.error("Verification failed");
-    } finally {
-      setVerifyingUserIds((prev) => {
-        const next = new Set(prev);
-        next.delete(userId);
-        return next;
-      });
-    }
-  };
-
-  const handleKycReview = async (decision: "approve" | "reject") => {
-    if (!kycReviewUser) return;
-    const reason = kycRejectionReason.trim();
-    if (decision === "reject" && !reason) {
-      toast.error("Rejection reason is required");
-      return;
-    }
-    setIsKycProcessing(true);
-    try {
-      await reviewKYCMutation({
-        userId: kycReviewUser.userId,
-        decision,
-        reason: decision === "reject" ? reason : undefined,
-      });
-      toast.success(`KYC ${decision === "approve" ? "Approved" : "Rejected"}`);
-      setKycReviewUser(null);
-      setKycRejectionReason("");
-    } catch (err) {
-      console.error(err);
-      toast.error("Review failed");
-    } finally {
-      setIsKycProcessing(false);
-    }
-  };
-
-  const handlePromote = async () => {
-    if (!promoteTarget) return;
-    setIsPromoting(true);
-    try {
-      await promoteToAdminMutation({ userId: promoteTarget.userId });
-      toast.success("User promoted to Admin");
-      setPromoteTarget(null);
-    } catch (err) {
-      console.error(err);
-      toast.error("Promotion failed");
-    } finally {
-      setIsPromoting(false);
-    }
-  };
 
   if (allProfiles === undefined || adminStats === undefined) {
     return (
@@ -364,11 +254,7 @@ export default function AdminUsers() {
       <KycReviewDialog
         user={kycReviewUser}
         isOpen={!!kycReviewUser}
-        onClose={() => {
-          setKycReviewUser(null);
-          setKycRejectionReason("");
-          setShowFullId(false);
-        }}
+        onClose={closeKycReview}
         onReview={handleKycReview}
         isProcessing={isKycProcessing}
         rejectionReason={kycRejectionReason}
@@ -378,7 +264,7 @@ export default function AdminUsers() {
       />
       <PromoteAdminDialog
         isOpen={!!promoteTarget}
-        onClose={() => setPromoteTarget(null)}
+        onClose={closePromotion}
         onConfirm={handlePromote}
         isProcessing={isPromoting}
         targetUser={promoteTarget}

@@ -30,7 +30,9 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
 
   const placeBid = useMutation(api.auctions.placeBid);
 
-  const isEnded = auction.status !== "active" || auction.endTime <= Date.now();
+  const isEnded =
+    auction.status !== "active" ||
+    (auction.endTime ? auction.endTime <= Date.now() : true);
   const nextMinBid = auction.currentPrice + auction.minIncrement;
 
   // Use explicit loading check to avoid false positives for unverified status
@@ -143,7 +145,10 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
     if (!pendingBid) return;
 
     // Guard against submitting after auction ends
-    if (auction.status !== "active" || auction.endTime <= Date.now()) {
+    if (
+      auction.status !== "active" ||
+      (auction.endTime ? auction.endTime <= Date.now() : true)
+    ) {
       toast.error("This auction has ended");
       setIsConfirmOpen(false);
       setPendingBid(null);
@@ -156,12 +161,12 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
     try {
       await placeBid({ auctionId: auction._id, amount: pendingBid });
       toast.success(
-        `Bid of R ${pendingBid.toLocaleString("en-ZA")} placed successfully!`,
+        `Bid of R ${pendingBid.toLocaleString("en-ZA")} placed successfully!`
       );
     } catch (error) {
       console.error(error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to place bid",
+        error instanceof Error ? error.message : "Failed to place bid"
       );
     } finally {
       setIsBidding(false);

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
+import { updateCounter } from "./admin_utils";
 
 export const createTicket = mutation({
   args: {
@@ -36,6 +37,9 @@ export const createTicket = mutation({
       updatedAt: Date.now(),
     });
 
+    await updateCounter(ctx, "support", "open", 1);
+    await updateCounter(ctx, "support", "total", 1);
+
     return ticketId;
   },
 });
@@ -53,17 +57,17 @@ export const getMyTickets = query({
       status: v.union(
         v.literal("open"),
         v.literal("resolved"),
-        v.literal("closed"),
+        v.literal("closed")
       ),
       priority: v.union(
         v.literal("low"),
         v.literal("medium"),
-        v.literal("high"),
+        v.literal("high")
       ),
       createdAt: v.number(),
       updatedAt: v.number(),
       resolvedBy: v.optional(v.string()),
-    }),
+    })
   ),
   handler: async (ctx, args) => {
     try {

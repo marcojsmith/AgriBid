@@ -3,17 +3,17 @@ import { CountdownTimer } from "../CountdownTimer";
 
 interface AuctionCardPriceProps {
   currentPrice: number;
-  endTime: number;
+  endTime?: number;
   isCompact: boolean;
 }
 
 /**
- * Render the current bid and remaining auction time unless the component is in compact mode.
+ * Display the current bid and auction countdown, or render nothing in compact mode.
  *
- * @param currentPrice - The current bid amount displayed in South African rand; formatted with `toLocaleString("en-ZA")`.
- * @param endTime - The auction end timestamp in milliseconds since the Unix epoch used by the countdown.
- * @param isCompact - When `true`, the component renders nothing.
- * @returns The price-and-countdown markup, or `null` when `isCompact` is `true`.
+ * @param currentPrice - The current bid amount in rand
+ * @param endTime - Optional auction end timestamp in milliseconds used to initialise the countdown
+ * @param isCompact - If `true`, nothing is rendered
+ * @returns The rendered price-and-countdown markup, or `null` when `isCompact` is `true`.
  */
 export function AuctionCardPrice({
   currentPrice,

@@ -6,7 +6,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getAuthUser, getCallerRole } from "./lib/auth";
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
 import type { Id } from "./_generated/dataModel";
@@ -38,7 +38,7 @@ export const syncUser = mutation({
   returns: v.union(v.null(), v.object({ success: v.boolean() })),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return null;
 
       // Use userId if set (mocks), otherwise fall back to primary id
@@ -82,7 +82,7 @@ export const getMyProfile = query({
   returns: v.union(v.null(), v.any()),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return null;
 
       const linkId = authUser.userId ?? authUser._id;
@@ -106,32 +106,8 @@ export const getMyProfile = query({
   },
 });
 
-/**
- * Retrieve the current caller's role from their profile.
- *
- * @returns The caller's role (for example, `"admin"` or `"buyer"`), or `null` if the caller is not authenticated or no profile exists.
- */
-export async function getCallerRole(ctx: QueryCtx | MutationCtx) {
-  try {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return null;
-
-    const linkId = authUser.userId ?? authUser._id;
-    if (!linkId) return null;
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", linkId))
-      .unique();
-
-    return profile?.role ?? null;
-  } catch (err) {
-    if (err instanceof Error && !err.message.includes("Unauthenticated")) {
-      console.error("Error in getCallerRole:", err);
-    }
-    return null;
-  }
-}
+// Re-export getCallerRole for backward compatibility
+export { getCallerRole };
 
 /**
  * Admin: List all profiles for moderation and management.
@@ -278,7 +254,7 @@ export const verifyUser = mutation({
 
     if (!profile) throw new Error("Profile not found");
 
-    const authUser = await authComponent.getAuthUser(ctx);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
     const adminId = authUser.userId ?? authUser._id;
 
@@ -364,7 +340,7 @@ export const submitKYC = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
@@ -415,7 +391,7 @@ export const getMyKYCDetails = query({
   returns: v.union(v.null(), v.any()),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return null;
 
       const linkId = authUser.userId ?? authUser._id;
@@ -461,7 +437,7 @@ export const deleteMyKYCDocument = mutation({
   args: { storageId: v.id("_storage") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { storageId }) => {
-    const authUser = await authComponent.getAuthUser(ctx);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 

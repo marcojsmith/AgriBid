@@ -11,6 +11,7 @@ const crons = cronJobs();
 crons.interval(
   "settle expired auctions",
   { minutes: 1 },
+  // @ts-expect-error - Convex type instantiation complexity, no runtime impact
   internal.auctions.settleExpiredAuctions,
 );
 
