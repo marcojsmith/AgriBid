@@ -1,8 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { getCallerRole } from "../users";
+import { getCallerRole, getAuthUser, resolveUserId } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
-import { getAuthUser, resolveUserId } from "../lib/auth";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 

@@ -55,7 +55,7 @@ async function _getCallerRoleFromAuthUser(
  * @returns The resolved user ID as a string, or null if it cannot be determined.
  */
 export function resolveUserId(authUser: AuthUser): string | null {
-  return authUser.userId ?? authUser._id ?? null;
+  return authUser.userId ?? authUser._id;
 }
 
 /**
@@ -183,5 +183,4 @@ export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   }
 
   return { profile, ...rest };
-}
 }

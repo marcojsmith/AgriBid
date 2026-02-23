@@ -99,8 +99,8 @@ export async function resolveImageUrls(
     rear,
     additional: (
       await Promise.all(
-        (normalizedImages.additional || []).map(
-          async (id: string) => await resolveUrlCached(storage, id)
+        (normalizedImages.additional || []).map((id: string) =>
+          resolveUrlCached(storage, id)
         )
       )
     ).filter((url: string | undefined): url is string => !!url),
