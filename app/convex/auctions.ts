@@ -21,12 +21,15 @@ interface RawImages {
  *
  * Accepts either a legacy array (treated as `additional`), a RawImages-like object, or any other value (treated as no images).
  *
+ * @param storage - Convex storage context
  * @param images - Image input: an array of storage IDs (legacy), a RawImages-like object { front, engine, cabin, rear, additional }, or any other value to indicate no images.
+ * @param options - Optional configuration, e.g., { limit: number } to cap additional images.
  * @returns An object with the RawImages shape where `front`, `engine`, `cabin`, and `rear` are either resolved HTTP URLs or `undefined`, and `additional` is an array of resolved HTTP URLs with any unresolvable entries omitted.
  */
 export async function resolveImageUrls(
   storage: QueryCtx["storage"],
-  images: unknown
+  images: unknown,
+  options: { limit?: number } = {}
 ) {
   // Normalize legacy array format or non-object inputs
   let normalizedImages: RawImages;
@@ -35,9 +38,17 @@ export async function resolveImageUrls(
       additional: images.filter((i): i is string => typeof i === "string"),
     };
   } else if (images && typeof images === "object") {
-    normalizedImages = images as RawImages;
+    normalizedImages = { ...(images as RawImages) };
   } else {
     normalizedImages = { additional: [] };
+  }
+
+  // Apply limit to additional images if specified
+  if (options.limit !== undefined && normalizedImages.additional) {
+    normalizedImages.additional = normalizedImages.additional.slice(
+      0,
+      options.limit
+    );
   }
 
   return {
@@ -57,19 +68,53 @@ export async function resolveImageUrls(
 }
 
 /**
+ * Validator for a compact auction summary suitable for list views.
+ * Designed to be type-compatible with Doc<"auctions"> while omitting heavy data.
+ */
+export const AuctionSummaryValidator = v.object({
+  _id: v.id("auctions"),
+  _creationTime: v.number(),
+  title: v.string(),
+  make: v.string(),
+  model: v.string(),
+  year: v.number(),
+  operatingHours: v.number(),
+  location: v.string(),
+  reservePrice: v.number(),
+  startingPrice: v.number(),
+  currentPrice: v.number(),
+  minIncrement: v.number(),
+  startTime: v.number(),
+  endTime: v.number(),
+  sellerId: v.string(),
+  status: v.string(),
+  winnerId: v.optional(v.string()),
+  description: v.optional(v.string()),
+  conditionReportUrl: v.optional(v.string()),
+  isExtended: v.optional(v.boolean()),
+  seedId: v.optional(v.string()),
+  images: v.object({
+    front: v.optional(v.string()),
+    engine: v.optional(v.string()),
+    cabin: v.optional(v.string()),
+    rear: v.optional(v.string()),
+    additional: v.array(v.string()),
+  }),
+  // Omit heavy conditionChecklist in summaries
+  conditionChecklist: v.optional(v.any()),
+});
+
+/**
  * Create a compact auction summary suitable for list views.
  *
  * Produces a minimal projection of the auction containing identifying fields,
- * timing and pricing info, seller and location, and image URLs.
+ * timing and pricing info, location, and a thumbnail image URL.
  *
- * @param ctx - Query context; used to resolve image storage references to accessible URLs
+ * @param ctx - Query context
  * @param auction - The auction document to summarise
- * @returns An object with `_id`, `_creationTime`, title, description, make, model, `year`,
- * `currentPrice`, `startingPrice`, `minIncrement`, `startTime`, `endTime`, `status`,
- * `reservePrice`, `operatingHours`, `location`, `sellerId` and `images` where `images`
- * contains resolved URLs for front, engine, cabin, rear and an `additional` array of URLs
+ * @returns A skinny auction object compatible with AuctionCard
  */
-async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
+export async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
   return {
     _id: auction._id,
     _creationTime: auction._creationTime,
@@ -81,41 +126,79 @@ async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
     currentPrice: auction.currentPrice,
     startingPrice: auction.startingPrice,
     minIncrement: auction.minIncrement,
-    endTime: auction.endTime,
     startTime: auction.startTime,
+    endTime: auction.endTime,
     status: auction.status,
     reservePrice: auction.reservePrice,
     operatingHours: auction.operatingHours,
     location: auction.location,
     sellerId: auction.sellerId,
+    winnerId: auction.winnerId,
+    conditionReportUrl: auction.conditionReportUrl,
+    isExtended: auction.isExtended,
+    seedId: auction.seedId,
+    // List views only need the front image (thumbnail)
+    images: await resolveImageUrls(ctx.storage, auction.images, { limit: 0 }),
+  };
+}
+
+/**
+ * Validator for a full auction document with resolved URLs.
+ */
+export const AuctionDetailValidator = v.object({
+  _id: v.id("auctions"),
+  _creationTime: v.number(),
+  title: v.string(),
+  make: v.string(),
+  model: v.string(),
+  year: v.number(),
+  operatingHours: v.number(),
+  location: v.string(),
+  description: v.optional(v.string()),
+  startingPrice: v.number(),
+  reservePrice: v.number(),
+  durationDays: v.optional(v.number()),
+  images: v.object({
+    front: v.optional(v.string()),
+    engine: v.optional(v.string()),
+    cabin: v.optional(v.string()),
+    rear: v.optional(v.string()),
+    additional: v.array(v.string()),
+  }),
+  conditionChecklist: v.optional(
+    v.object({
+      engine: v.boolean(),
+      hydraulics: v.boolean(),
+      tires: v.boolean(),
+      serviceHistory: v.boolean(),
+      notes: v.optional(v.string()),
+    })
+  ),
+  sellerId: v.string(),
+  status: v.string(),
+  currentPrice: v.number(),
+  minIncrement: v.number(),
+  startTime: v.number(),
+  endTime: v.number(),
+  isExtended: v.optional(v.boolean()),
+  winnerId: v.optional(v.string()),
+  seedId: v.optional(v.string()),
+  conditionReportUrl: v.optional(v.string()),
+});
+
+/**
+ * Resolves full auction details including all image URLs.
+ */
+async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
+  return {
+    ...auction,
     images: await resolveImageUrls(ctx.storage, auction.images),
   };
 }
 
 export const getPendingAuctions = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("auctions"),
-      _creationTime: v.number(),
-      title: v.string(),
-      description: v.optional(v.string()),
-      make: v.string(),
-      model: v.string(),
-      year: v.number(),
-      currentPrice: v.number(),
-      startingPrice: v.number(),
-      minIncrement: v.number(),
-      endTime: v.number(),
-      startTime: v.number(),
-      status: v.string(),
-      reservePrice: v.number(),
-      operatingHours: v.number(),
-      location: v.string(),
-      sellerId: v.string(),
-      images: v.any(),
-    })
-  ),
+  returns: v.array(AuctionSummaryValidator),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -143,28 +226,7 @@ export const getActiveAuctions = query({
     maxPrice: v.optional(v.number()),
     maxHours: v.optional(v.number()),
   },
-  returns: v.array(
-    v.object({
-      _id: v.id("auctions"),
-      _creationTime: v.number(),
-      title: v.string(),
-      description: v.optional(v.string()),
-      make: v.string(),
-      model: v.string(),
-      year: v.number(),
-      currentPrice: v.number(),
-      startingPrice: v.number(),
-      minIncrement: v.number(),
-      endTime: v.number(),
-      startTime: v.number(),
-      status: v.string(),
-      reservePrice: v.number(),
-      operatingHours: v.number(),
-      location: v.string(),
-      sellerId: v.string(),
-      images: v.any(),
-    })
-  ),
+  returns: v.array(AuctionSummaryValidator),
   handler: async (ctx, args) => {
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
@@ -208,11 +270,7 @@ export const getActiveAuctions = query({
         .collect();
     }
 
-    // Apply remaining in-memory filters (those not covered by the selected index)
-    // Note: If we used the `by_status_make` index, we don't need to filter by make again,
-    // but filtering again is harmless and safer if logic changes.
-    // However, for strict optimization, we could conditionally filter.
-    // For simplicity and correctness, we re-verify all filters.
+    // Apply remaining in-memory filters
     auctions = auctions.filter((a) => {
       if (args.make && a.make !== args.make) return false;
       if (args.minYear !== undefined && a.year < args.minYear) return false;
@@ -244,51 +302,12 @@ export const getActiveMakes = query({
 
 export const getAuctionById = query({
   args: { auctionId: v.id("auctions") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("auctions"),
-      _creationTime: v.number(),
-      title: v.string(),
-      make: v.string(),
-      model: v.string(),
-      year: v.number(),
-      operatingHours: v.number(),
-      location: v.string(),
-      description: v.optional(v.string()),
-      startingPrice: v.number(),
-      reservePrice: v.number(),
-      durationDays: v.optional(v.number()),
-      images: v.any(),
-      conditionChecklist: v.optional(
-        v.object({
-          engine: v.boolean(),
-          hydraulics: v.boolean(),
-          tires: v.boolean(),
-          serviceHistory: v.boolean(),
-          notes: v.optional(v.string()),
-        })
-      ),
-      sellerId: v.string(),
-      status: v.string(),
-      currentPrice: v.number(),
-      minIncrement: v.number(),
-      startTime: v.number(),
-      endTime: v.number(),
-      isExtended: v.optional(v.boolean()),
-      winnerId: v.optional(v.string()),
-      seedId: v.optional(v.string()),
-      conditionReportUrl: v.optional(v.string()),
-    })
-  ),
+  returns: v.union(v.null(), AuctionDetailValidator),
   handler: async (ctx, args) => {
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) return null;
 
-    return {
-      ...auction,
-      images: await resolveImageUrls(ctx.storage, auction.images),
-    };
+    return await toAuctionDetail(ctx, auction);
   },
 });
 
@@ -399,7 +418,7 @@ export const getSellerInfo = query({
 export const getSellerListings = query({
   args: { userId: v.string(), paginationOpts: paginationOptsValidator },
   returns: v.object({
-    page: v.array(v.any()),
+    page: v.array(AuctionSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -415,10 +434,7 @@ export const getSellerListings = query({
       .paginate(args.paginationOpts);
 
     const page = await Promise.all(
-      results.page.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      results.page.map(async (auction) => await toAuctionSummary(ctx, auction))
     );
 
     return {
@@ -728,7 +744,7 @@ export const getAllAuctions = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(v.any()),
+    page: v.array(AuctionSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -748,10 +764,7 @@ export const getAllAuctions = query({
     return {
       ...auctions,
       page: await Promise.all(
-        auctions.page.map(async (auction) => ({
-          ...auction,
-          images: await resolveImageUrls(ctx.storage, auction.images),
-        }))
+        auctions.page.map(async (auction) => await toAuctionSummary(ctx, auction))
       ),
     };
   },
@@ -923,24 +936,7 @@ export const getMyBids = query({
   returns: v.object({
     page: v.array(
       v.object({
-        _id: v.id("auctions"),
-        _creationTime: v.number(),
-        title: v.string(),
-        description: v.optional(v.string()),
-        make: v.string(),
-        model: v.string(),
-        year: v.number(),
-        currentPrice: v.number(),
-        startingPrice: v.number(),
-        minIncrement: v.number(),
-        endTime: v.number(),
-        startTime: v.number(),
-        status: v.string(),
-        reservePrice: v.number(),
-        operatingHours: v.number(),
-        location: v.string(),
-        sellerId: v.string(),
-        images: v.any(),
+        ...AuctionSummaryValidator.fields,
         myHighestBid: v.number(),
         isWinning: v.boolean(),
         isWon: v.boolean(),
@@ -992,18 +988,16 @@ export const getMyBids = query({
           const auction = await ctx.db.get(bid.auctionId);
           if (!auction) return null;
 
-          // Use pre-computed highest bid from batch query instead of per-row query
+          const summary = await toAuctionSummary(ctx, auction);
           const myHighestBid = bidsByAuction.get(auction._id) || 0;
 
           return {
-            ...auction,
-            images: await resolveImageUrls(ctx.storage, auction.images),
+            ...summary,
             myHighestBid,
             isWinning:
               auction.status === "active" &&
               myHighestBid === auction.currentPrice,
             isWon: auction.status === "sold" && auction.winnerId === userId,
-            // Add bid specific info if needed
             bidAmount: bid.amount,
             bidTimestamp: bid.timestamp,
           };
@@ -1026,7 +1020,7 @@ export const getMyBids = query({
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
-    page: v.array(v.any()),
+    page: v.array(AuctionSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -1044,10 +1038,7 @@ export const getMyListings = query({
         .paginate(args.paginationOpts);
 
       const page = await Promise.all(
-        listingsResult.page.map(async (auction) => ({
-          ...auction,
-          images: await resolveImageUrls(ctx.storage, auction.images),
-        }))
+        listingsResult.page.map(async (auction) => await toAuctionSummary(ctx, auction))
       );
 
       return {

@@ -5,7 +5,7 @@ Your purpose is to assist the user in developing a digital prototype for an auct
 
 The user wants to develop an auction platform that allows users to bid on agricultural products. The platform will have a real-time bidding system, user authentication, and a responsive UI. The project will be built using React for the frontend, Convex for the backend and database.
 
-Additional documentation can be found in the following folders and files:
+Very important documentation can be found in the following folders and files:
 - Brief.md
 - Checklist.md
 - codebase_notes.md

@@ -142,7 +142,19 @@ export const listAllProfiles = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(v.any()),
+    page: v.array(
+      v.object({
+        _id: v.id("profiles"),
+        _creationTime: v.number(),
+        userId: v.string(),
+        role: v.string(),
+        isVerified: v.boolean(),
+        kycStatus: v.optional(v.string()),
+        name: v.optional(v.string()),
+        email: v.optional(v.string()),
+        createdAt: v.number(),
+      })
+    ),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -165,11 +177,15 @@ export const listAllProfiles = query({
         const user = await findUserById(ctx, p.userId);
 
         return {
-          ...p,
+          _id: p._id,
+          _creationTime: p._creationTime,
+          userId: p.userId,
+          role: p.role,
+          isVerified: p.isVerified,
+          kycStatus: p.kycStatus,
           name: user?.name,
           email: user?.email,
-          image: user?.image,
-          idNumber: p.idNumber ? "****" : undefined, // Mask ID number in listings
+          createdAt: p.createdAt,
         };
       })
     );

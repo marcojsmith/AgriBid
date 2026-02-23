@@ -1,7 +1,7 @@
 // app/convex/watchlist.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { resolveImageUrls } from "./auctions";
+import { AuctionSummaryValidator, toAuctionSummary } from "./auctions";
 import { authComponent } from "./auth";
 import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel";
@@ -76,7 +76,7 @@ export const isWatched = query({
 export const getWatchedAuctions = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
-    page: v.array(v.any()),
+    page: v.array(AuctionSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -97,10 +97,7 @@ export const getWatchedAuctions = query({
         watchlist.page.map(async (item) => {
           const auction = await ctx.db.get(item.auctionId);
           if (!auction) return null;
-          return {
-            ...auction,
-            images: await resolveImageUrls(ctx.storage, auction.images),
-          };
+          return await toAuctionSummary(ctx, auction);
         }),
       );
 

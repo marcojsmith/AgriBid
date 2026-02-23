@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getCallerRole } from "./users";
-import type { Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
 import { COMMISSION_RATE } from "./config";
 import { authComponent } from "./auth";
@@ -93,7 +92,15 @@ export const getPendingKYC = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(v.any()),
+    page: v.array(
+      v.object({
+        _id: v.id("profiles"),
+        _creationTime: v.number(),
+        userId: v.string(),
+        role: v.string(),
+        kycStatus: v.optional(v.string()),
+      })
+    ),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -104,41 +111,21 @@ export const getPendingKYC = query({
     if (role !== "admin") throw new Error("Unauthorized");
 
     // Use Convex pagination to properly handle cursor and limits
+    // Only return minimal info for the list. Details are fetched on demand.
     const profilesResult = await ctx.db
       .query("profiles")
       .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
       .paginate(args.paginationOpts);
 
-    const processedProfiles = await Promise.all(
-      profilesResult.page.map(async (p) => {
-        const missingIds: string[] = [];
-        const urls = p.kycDocuments
-          ? await Promise.all(
-              p.kycDocuments.map(async (id) => {
-                const url = await ctx.storage.getUrl(id as Id<"_storage">);
-                if (url === null) {
-                  missingIds.push(id);
-                  console.error(
-                    `Missing KYC document ${id} for profile ${p._id}`
-                  );
-                }
-                return url;
-              })
-            )
-          : [];
-
-        return {
-          ...p,
-          kycDocuments: urls.filter((url): url is string => url !== null),
-          hasMissingKycDocuments: missingIds.length > 0,
-          missingKycDocumentIds: missingIds,
-        };
-      })
-    );
-
     return {
       ...profilesResult,
-      page: processedProfiles,
+      page: profilesResult.page.map((p) => ({
+        _id: p._id,
+        _creationTime: p._creationTime,
+        userId: p.userId,
+        role: p.role,
+        kycStatus: p.kycStatus,
+      })),
     };
   },
 });
