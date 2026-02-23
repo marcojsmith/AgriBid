@@ -68,7 +68,7 @@ async function getCryptoKey() {
 }
 
 /**
- * Encode an ArrayBuffer or Uint8Array as a base64 string.
+ * Encodes an ArrayBuffer or Uint8Array to a base64 string.
  *
  * @param buffer - The input bytes to encode, provided as an ArrayBuffer or Uint8Array
  * @returns The base64-encoded representation of `buffer`
@@ -135,14 +135,15 @@ export async function encryptPII(
 }
 
 /**
- * Decrypts a PII string produced by the matching encryptPII function.
+ * Decrypts a PII value produced by the corresponding `encryptPII` function.
  *
- * If `encrypted` is `undefined` or `null`, returns `undefined`. If `encrypted` does not match the expected
- * encrypted format (`iv.encryptedBase64`), the original input is returned unchanged (legacy/plaintext passthrough).
+ * If `encrypted` is `undefined` or `null`, returns `undefined`. If `encrypted` is not in the expected
+ * `ivBase64.encryptedBase64` format or fails basic Base64/IV validation, the original input is returned unchanged
+ * (allows passthrough for legacy/plaintext values).
  *
- * @param encrypted - The value to decrypt, expected in the `iv.encryptedBase64` format produced by encryption; may be plaintext or `undefined`.
+ * @param encrypted - The value to decrypt, expected as `ivBase64.encryptedBase64`; may be plaintext or `undefined`.
  * @returns The decrypted plaintext string, the original input when it is not in the expected encrypted format, or `undefined` when input is `undefined`/`null`.
- * @throws Error when decryption is attempted but fails (e.g., authentication/tag mismatch or key errors).
+ * @throws Error when decryption is attempted but fails (for example authentication/tag mismatch or key errors).
  */
 export async function decryptPII(
   encrypted: string | undefined

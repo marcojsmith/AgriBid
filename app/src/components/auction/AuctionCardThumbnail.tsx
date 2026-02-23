@@ -16,11 +16,11 @@ interface AuctionCardThumbnailProps {
 }
 
 /**
- * Render a responsive auction thumbnail with image or placeholder, a watchlist toggle, an optional year/make badge, and an optional countdown.
+ * Renders a responsive auction thumbnail with an image or placeholder, a watchlist toggle, an optional year/make badge and an optional countdown.
  *
- * @param onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed.
- * @param endTime - End timestamp (milliseconds since Unix epoch) passed to the countdown display.
- * @returns The thumbnail JSX element for an auction card.
+ * @param onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
+ * @param endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
+ * @returns The thumbnail JSX element for an auction card
  */
 export function AuctionCardThumbnail({
   primaryImage,
