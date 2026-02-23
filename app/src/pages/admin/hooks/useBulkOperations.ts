@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import type { Doc, Id } from "convex/_generated/dataModel";
 
@@ -113,7 +114,13 @@ export function useBulkOperations() {
       setBulkStatusTarget(null);
     } catch (err) {
       console.error("Bulk update failed:", err);
-      toast.error(err instanceof Error ? err.message : "Bulk update failed");
+      toast.error(
+        err instanceof ConvexError
+          ? (err.data as string)
+          : err instanceof Error
+            ? err.message
+            : "Bulk update failed"
+      );
     } finally {
       setIsBulkProcessing(false);
     }

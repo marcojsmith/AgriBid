@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { ConvexError } from "convex/values";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,7 +79,11 @@ export default function AdminAnnouncements() {
     } catch (err) {
       console.error(err);
       toast.error(
-        err instanceof Error ? err.message : "Failed to send announcement"
+        err instanceof ConvexError
+          ? (err.data as string)
+          : err instanceof Error
+            ? err.message
+            : "Failed to send announcement"
       );
     } finally {
       setIsSending(false);

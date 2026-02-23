@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
+import { ConvexError } from "convex/values";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import {
-  MessageSquare,
-  Clock,
-  CheckCircle2,
-  HelpCircle,
-} from "lucide-react";
+import { MessageSquare, Clock, CheckCircle2, HelpCircle } from "lucide-react";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 
 /**
@@ -65,7 +61,11 @@ export default function Support() {
     } catch (e) {
       console.error("Failed to create ticket:", e);
       toast.error(
-        `Failed to create ticket: ${e instanceof Error ? e.message : "Unknown error"}`,
+        e instanceof ConvexError
+          ? (e.data as string)
+          : e instanceof Error
+            ? e.message
+            : "Failed to create ticket"
       );
     } finally {
       setIsSubmitting(false);
