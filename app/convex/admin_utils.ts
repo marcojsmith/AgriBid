@@ -46,12 +46,13 @@ export async function logAudit(
 export { encryptPII, decryptPII };
 
 /**
- * Transactionally increments or decrements a specific field in a counter document.
+ * Increment or decrement a named counter's numeric field and persist the change.
  *
- * @param ctx - The mutation context
- * @param name - The name of the counter (e.g., "auctions", "profiles", "support", "announcements")
- * @param field - The field to update (e.g., "total", "active", "pending", "verified", "open", "resolved")
- * @param delta - The amount to change by (e.g., 1 or -1)
+ * Updates the existing counter document's specified field by `delta` (clamped to a minimum of 0) and sets `updatedAt` to the current time. If no counter exists for `name` a new document is created with the targeted field initialised to `max(0, delta)` and common fields (`total`, `active`, `pending`, `verified`, `open`, `resolved`) populated (other fields set to 0). A warning is emitted to the console if the computed value would underflow below zero.
+ *
+ * @param name - The identifier of the counter (for example `auctions`, `profiles`, `support`, `announcements`)
+ * @param field - The counter field to adjust (for example `total`, `active`, `pending`, `verified`, `open`, `resolved`)
+ * @param delta - The amount to change the field by; may be negative, but the stored value will never be less than 0
  */
 export async function updateCounter(
   ctx: MutationCtx,

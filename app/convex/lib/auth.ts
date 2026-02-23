@@ -57,9 +57,8 @@ export function resolveUserId(authUser: AuthUser): string | null {
 }
 
 /**
- * Ensures a user is authenticated and returns the authenticated user.
+ * Ensure the caller is authenticated and return the authenticated user.
  *
- * @param ctx - Query or Mutation context
  * @returns The authenticated user
  * @throws Error("Not authenticated") if no authenticated user is found
  */
@@ -104,9 +103,9 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Retrieve the authenticated user along with their profile and resolved userId.
+ * Get the authenticated user together with their profile and resolved userId when available.
  *
- * @returns An object with `authUser`, `profile`, and `userId`, or `null` if the caller is not authenticated, the userId cannot be determined, the profile is not found, or an error occurs
+ * @returns `{ authUser, profile, userId }` containing the authenticated user, their profile and the resolved userId, or `null` if the caller is not authenticated, the userId cannot be determined, the profile is not found, or an error occurs
  */
 export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
   try {
@@ -134,12 +133,12 @@ export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Ensure the current user is authenticated and obtain their profile and userId.
+ * Ensure the current user is authenticated and return their auth user, profile and resolved userId.
  *
- * @returns An object with `authUser`, `profile`, and `userId`
- * @throws Error when the user is not authenticated
- * @throws Error when the user identity cannot be determined ("Unable to determine user identity")
- * @throws Error when the user profile is not found ("User profile not found")
+ * @returns An object containing `authUser`, `profile` and `userId`
+ * @throws Error When the user is not authenticated
+ * @throws Error When the user identity cannot be determined ("Unable to determine user identity")
+ * @throws Error When the user profile is not found ("User profile not found")
  */
 export async function requireProfile(ctx: QueryCtx | MutationCtx) {
   const authUser = await requireAuth(ctx);
@@ -166,11 +165,11 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Ensures the current user is authenticated and their profile is verified.
+ * Ensure the caller has an authenticated profile and that the profile is verified.
  *
- * @param ctx - The query or mutation context containing authentication and database access
- * @returns The authenticated user's profile
- * @throws Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
+ * @param ctx - Query or mutation context with authentication and database access
+ * @returns An object containing `authUser`, `profile`, and `userId`
+ * @throws Error if the user is not authenticated, the user profile is missing, or the profile is not verified
  */
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   const { profile, ...rest } = await requireProfile(ctx);

@@ -10,11 +10,12 @@ import { getCallerRole } from "../users";
 import { COMMISSION_RATE } from "../config";
 
 /**
- * Counts the number of results produced by a query using pagination.
+ * Count results from a paginated query by repeatedly paginating until completion.
  *
- * @param queryFn - A function that returns a fresh query object each time
- * @returns The total count of results
- * @throws Error if max iterations exceeded (prevents infinite loops)
+ * @param queryFn - Function that returns a fresh query object with a `paginate` method for retrieving pages
+ * @param maxIterations - Maximum pagination iterations before aborting to prevent infinite loops (default: 1000)
+ * @returns The total number of items across all pages
+ * @throws Error if the pagination loop exceeds `maxIterations`
  */
 async function countQuery(
   queryFn: () => {

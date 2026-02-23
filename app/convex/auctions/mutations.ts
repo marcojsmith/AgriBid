@@ -147,10 +147,13 @@ export const approveAuction = mutation({
 });
 
 /**
- * Validates that an auction has the required fields for its status.
- * Currently only validates the "active" status (requires endTime).
- * TODO: Add validation for other statuses as needed, e.g., "sold" should require winnerId.
- * Throws an error if validation fails.
+ * Validate that an auction record contains required fields for a target status.
+ *
+ * Currently enforces that setting the status to `active` requires `auction.endTime`.
+ *
+ * @param auction - Auction object containing at least `status` and optional `endTime`
+ * @param newStatus - Target status to validate against
+ * @throws Error if `newStatus` is `active` and `auction.endTime` is missing
  */
 function validateAuctionStatus(
   auction: { status: string; endTime?: number | null },
@@ -253,6 +256,14 @@ export const adminUpdateAuction = mutation({
   },
 });
 
+/**
+ * Update global auction counters when an auction changes status.
+ *
+ * Maps recognised statuses to the per-category counters and decrements the counter for the old status (if mapped) and increments the counter for the new status (if mapped).
+ *
+ * @param oldStatus - Previous auction status; recognised values include `active` and `pending_review` (only these map to counters)
+ * @param newStatus - New auction status; recognised values include `active` and `pending_review` (only these map to counters)
+ */
 async function adjustStatusCounters(
   ctx: MutationCtx, // Changed from any
   oldStatus: string,

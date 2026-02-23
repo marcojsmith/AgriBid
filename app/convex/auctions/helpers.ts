@@ -37,7 +37,12 @@ export async function resolveImageUrls(
   images: unknown,
   options: { limit?: number } = {}
 ) {
-  // Helper to validate if a value is a non-empty string (potential image ID)
+  /**
+   * Determines whether a value is a non-empty string suitable as an image ID.
+   *
+   * @param value - The value to check
+   * @returns `true` if the value is a non-empty string, `false` otherwise
+   */
   function isValidImageId(value: unknown): value is string {
     return typeof value === "string" && value.length > 0;
   }

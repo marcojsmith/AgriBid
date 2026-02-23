@@ -12,18 +12,19 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import type { AdminProfile } from "../hooks/useUserManagement";
 
 /**
- * Render a confirmation dialog to promote a user to an administrative role.
+ * Renders a confirmation dialog to promote a user to an administrative role.
  *
- * Displays the target user's name or email and warns that the promotion grants full access
- * to the Command Center and system settings. Provides Cancel and Promote actions; when
- * `isProcessing` is true the actions are disabled and a loading indicator is shown.
+ * Shows the target user's name or email and warns that the promotion grants full access
+ * to the Command Center and system settings. Provides Cancel and Promote actions; the
+ * Promote action is disabled and displays a loading indicator while `isProcessing` is true.
+ * Closing the dialog invokes `onClose`.
  *
  * @param isOpen - Whether the dialog is visible
  * @param onClose - Called when the dialog is dismissed
  * @param onConfirm - Called when the Promote action is confirmed
  * @param isProcessing - When true, disables actions and shows a loading indicator
  * @param targetUser - The user to be promoted; used to display the user's name or email (may be `null`)
- * @returns The rendered alert dialog element
+ * @returns The AlertDialog React element
  */
 export function PromoteAdminDialog({
   isOpen,

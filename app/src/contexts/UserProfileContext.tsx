@@ -23,10 +23,10 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Accesses the current user's profile from the UserProfile context.
+ * Retrieve the current user's profile from the UserProfile context.
  *
- * @returns The `UserProfile` value stored in context, `null` if the user has no profile, or `undefined` if the profile is still loading.
- * @throws {Error} If called outside of a `UserProfileProvider`.
+ * @returns The `UserProfile` value from context, `null` when the user has no profile, or `undefined` while the profile is loading.
+ * @throws Error If called outside a `UserProfileProvider`.
  */
 export function useUserProfile() {
   const context = useContext(UserProfileContext);

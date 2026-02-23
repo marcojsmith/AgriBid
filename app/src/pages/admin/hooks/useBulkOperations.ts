@@ -5,12 +5,20 @@ import { toast } from "sonner";
 import type { Doc, Id } from "convex/_generated/dataModel";
 
 /**
- * Custom hook for managing auction bulk operations including selection, search, and status updates.
+ * Manage auction bulk operations including selection state, search term and bulk status updates.
  *
- * Encapsulates auction selection state, search filtering, and bulk update operations.
- * Handles indeterminate checkbox state for partial selection based on provided auction list.
+ * Exposes state and handlers for selecting visible auctions, computing selection summary, performing bulk status mutations, and resetting selection.
  *
- * @returns Object containing state, derived computed properties, and handler functions
+ * @returns An object with:
+ * - `auctionSearch` and `setAuctionSearch` — search string and its setter.
+ * - `selectedAuctions` and `setSelectedAuctions` — array of selected auction IDs and its setter.
+ * - `handleSelectAll(auctions, checked)` — select or deselect all visible auctions.
+ * - `handleToggleSelection(auctionId, selected)` — toggle selection for a single auction ID.
+ * - `isBulkProcessing` — boolean flag for in-progress bulk operation.
+ * - `bulkStatusTarget` and `setBulkStatusTarget` — pending status for bulk updates and its setter.
+ * - `getSelectionState(auctions)` — returns `{ isAllSelected, isPartiallySelected }` for the provided visible auctions.
+ * - `handleBulkStatusUpdate()` — performs the bulk status update for selected auctions.
+ * - `clearSelection()` — clears selections and resets the bulk status target.
  */
 export function useBulkOperations() {
   // Search and filter state
