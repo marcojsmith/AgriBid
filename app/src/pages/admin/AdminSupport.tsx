@@ -5,9 +5,9 @@ import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { SupportTab } from "@/components/admin/SupportTab";
 
 /**
- * Render the admin "Support Tickets" page, displaying a loading indicator until admin statistics are available.
+ * Render the Admin "Support Tickets" page and show a centred loading indicator while admin statistics are loading.
  *
- * @returns The page's React element: an AdminLayout populated with `null` stats and a centred LoadingIndicator while stats are undefined, and with `adminStats` and the SupportTab once data is available.
+ * @returns The Admin Support page React element; displays a centred LoadingIndicator when stats are undefined and the SupportTab once stats are available.
  */
 export default function AdminSupport() {
   const adminStats = useQuery(api.admin.getAdminStats);
@@ -15,7 +15,6 @@ export default function AdminSupport() {
   if (adminStats === undefined) {
     return (
       <AdminLayout
-        stats={null}
         title="Support Tickets"
         subtitle="Customer Service & Issue Resolution"
       >
@@ -28,7 +27,6 @@ export default function AdminSupport() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="Support Tickets"
       subtitle="Customer Service & Issue Resolution"
     >

@@ -180,7 +180,6 @@ export default function AdminUsers() {
   if (allProfiles === undefined || adminStats === undefined) {
     return (
       <AdminLayout
-        stats={adminStats || null}
         title="User Management"
         subtitle="Oversight of Platform Participants & Verification"
       >
@@ -193,7 +192,6 @@ export default function AdminUsers() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="User Management"
       subtitle="Oversight of Platform Participants & Verification"
     >

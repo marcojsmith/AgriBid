@@ -18,16 +18,13 @@ import {
 } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { cn } from "@/lib/utils";
+import { AdminStatsProvider, useAdminStats } from "@/contexts/AdminStatsContext";
 
 interface AdminLayoutProps {
   children: ReactNode;
   title?: string;
   subtitle?: string;
-  stats: {
-    activeAuctions: number;
-    totalUsers: number;
-    pendingReview: number;
-  } | null;
+  // stats prop removed, handled internally by context
   onAnnounce?: () => void;
 }
 
@@ -47,26 +44,38 @@ const SIDEBAR_ITEMS = [
 /**
  * Render the admin layout with a persistent sidebar, KPI header and main content area.
  *
- * Renders a two-pane admin interface: a left navigation sidebar and a right main area that displays a title, subtitle, optional announcement action and optional KPI stat cards above the content.
- *
- * @param children - Content rendered inside the main content area
- * @param title - Header title shown in the KPI header (defaults to "Admin Dashboard")
- * @param subtitle - Small uppercase subtitle shown under the title (defaults to "Global Marketplace Oversight")
- * @param stats - Optional KPI metrics; when provided renders stat cards for:
- *   - `activeAuctions` (Live),
- *   - `totalUsers` (Users),
- *   - `pendingReview` (Moderation)
- * @param onAnnounce - Optional callback invoked when the Announce button is clicked; the button is rendered only when this callback is provided
- * @returns The Admin layout React element with sidebar navigation, KPI header and the provided children
+ * @param props - Properties controlling the layout: `children`, optional `title` and `subtitle`, and optional `onAnnounce` callback.
+ * @returns The layout element wrapped with admin stats context, containing the sidebar, KPI header and main content area.
  */
-export function AdminLayout({
+export function AdminLayout(props: AdminLayoutProps) {
+  return (
+    <AdminStatsProvider>
+      <AdminLayoutContent {...props} />
+    </AdminStatsProvider>
+  );
+}
+
+/**
+ * Renders the admin layout content: sidebar navigation, KPI header and main content area.
+ *
+ * Reads admin statistics from context and displays stat cards when available; shows an Announce
+ * button when `onAnnounce` is provided. `title` and `subtitle` appear in the header and
+ * `children` are rendered as the main content.
+ *
+ * @param children - Content to display in the main area
+ * @param title - Header title (defaults to "Admin Dashboard")
+ * @param subtitle - Header subtitle (defaults to "Global Marketplace Oversight")
+ * @param onAnnounce - Optional callback invoked when the Announce button is clicked
+ * @returns The layout content element for admin pages
+ */
+function AdminLayoutContent({
   children,
   title = "Admin Dashboard",
   subtitle = "Global Marketplace Oversight",
-  stats,
   onAnnounce,
 }: AdminLayoutProps) {
   const location = useLocation();
+  const stats = useAdminStats();
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] bg-muted/30">

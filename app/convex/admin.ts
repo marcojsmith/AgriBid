@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { getCallerRole } from "./users";
-import type { Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
 import { COMMISSION_RATE } from "./config";
 import { authComponent } from "./auth";
@@ -10,6 +10,18 @@ import { authComponent } from "./auth";
 
 export const getRecentBids = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("bids"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      bidderId: v.string(),
+      amount: v.number(),
+      timestamp: v.number(),
+      status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
+      auctionTitle: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -32,6 +44,7 @@ export const getRecentBids = query({
 
 export const voidBid = mutation({
   args: { bidId: v.id("bids"), reason: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -75,42 +88,45 @@ export const voidBid = mutation({
 // --- KYC / Verification ---
 
 export const getPendingKYC = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("profiles"),
+        _creationTime: v.number(),
+        userId: v.string(),
+        role: v.string(),
+        kycStatus: v.optional(v.string()),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
+  handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const profiles = await ctx.db
+    // Use Convex pagination to properly handle cursor and limits
+    // Only return minimal info for the list. Details are fetched on demand.
+    const profilesResult = await ctx.db
       .query("profiles")
       .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-      .collect();
+      .paginate(args.paginationOpts);
 
-    return await Promise.all(
-      profiles.map(async (p) => {
-        const missingIds: string[] = [];
-        const urls = p.kycDocuments
-          ? await Promise.all(
-              p.kycDocuments.map(async (id) => {
-                const url = await ctx.storage.getUrl(id as Id<"_storage">);
-                if (url === null) {
-                  missingIds.push(id);
-                  console.error(
-                    `Missing KYC document ${id} for profile ${p._id}`
-                  );
-                }
-                return url;
-              })
-            )
-          : [];
-
-        return {
-          ...p,
-          kycDocuments: urls.filter((url): url is string => url !== null),
-          hasMissingKycDocuments: missingIds.length > 0,
-          missingKycDocumentIds: missingIds,
-        };
-      })
-    );
+    return {
+      ...profilesResult,
+      page: profilesResult.page.map((p) => ({
+        _id: p._id,
+        _creationTime: p._creationTime,
+        userId: p.userId,
+        role: p.role,
+        kycStatus: p.kycStatus,
+      })),
+    };
   },
 });
 
@@ -120,6 +136,7 @@ export const reviewKYC = mutation({
     decision: v.union(v.literal("approve"), v.literal("reject")),
     reason: v.optional(v.string()),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -191,40 +208,68 @@ export const reviewKYC = mutation({
 
 export const getFinancialStats = query({
   args: {},
+  returns: v.object({
+    totalSalesVolume: v.number(),
+    estimatedCommission: v.number(),
+    commissionRate: v.number(),
+    recentSales: v.array(
+      v.object({
+        id: v.id("auctions"),
+        title: v.string(),
+        amount: v.number(),
+        estimatedCommission: v.number(),
+        date: v.number(),
+      })
+    ),
+    auctionCount: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    // In a real app, use aggregations. Here we scan.
-    const soldAuctions = await ctx.db
-      .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "sold"))
-      .collect();
+    // Scan all sold auctions to compute global aggregates
+    let totalSalesVolume = 0;
+    let auctionCount = 0;
+    let cursor: string | null = null;
+    let isDone = false;
 
-    const totalSalesVolume = soldAuctions.reduce(
-      (sum, a) => sum + a.currentPrice,
-      0
-    );
+    while (!isDone) {
+      const page = await ctx.db
+        .query("auctions")
+        .withIndex("by_status", (q) => q.eq("status", "sold"))
+        .paginate({ numItems: 500, cursor });
+
+      for (const a of page.page) {
+        totalSalesVolume += a.currentPrice;
+        auctionCount++;
+      }
+      cursor = page.continueCursor;
+      isDone = page.isDone;
+    }
+
     const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
 
-    // Recent Transactions
-    const recentSales = soldAuctions
-      .sort((a, b) => b.endTime - a.endTime)
-      .slice(0, 10)
-      .map((a) => ({
-        id: a._id,
-        title: a.title,
-        amount: a.currentPrice,
-        estimatedCommission: a.currentPrice * COMMISSION_RATE,
-        date: a.endTime,
-      }));
+    // Fetch only the most recent sales for the activity list
+    const recentSoldAuctions = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "sold"))
+      .order("desc")
+      .take(10);
+
+    const recentSales = recentSoldAuctions.map((a) => ({
+      id: a._id,
+      title: a.title,
+      amount: a.currentPrice,
+      estimatedCommission: a.currentPrice * COMMISSION_RATE,
+      date: a.endTime,
+    }));
 
     return {
       totalSalesVolume,
       estimatedCommission,
       commissionRate: COMMISSION_RATE,
       recentSales,
-      auctionCount: soldAuctions.length,
+      auctionCount,
     };
   },
 });
@@ -233,6 +278,21 @@ export const getFinancialStats = query({
 
 export const getTickets = query({
   args: { status: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("supportTickets"),
+      _creationTime: v.number(),
+      userId: v.string(),
+      auctionId: v.optional(v.id("auctions")),
+      subject: v.string(),
+      message: v.string(),
+      status: v.string(),
+      priority: v.string(),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      resolvedBy: v.optional(v.string()),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -259,6 +319,7 @@ export const getTickets = query({
 
 export const resolveTicket = mutation({
   args: { ticketId: v.id("supportTickets"), resolution: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -291,6 +352,19 @@ const MAX_AUDIT_LOG_LIMIT = 100;
 
 export const getAuditLogs = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("auditLogs"),
+      _creationTime: v.number(),
+      adminId: v.string(),
+      action: v.string(),
+      targetId: v.optional(v.string()),
+      targetType: v.optional(v.string()),
+      details: v.optional(v.string()),
+      targetCount: v.optional(v.number()),
+      timestamp: v.number(),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -333,6 +407,7 @@ async function countQuery(query: { paginate: (opts: any) => Promise<any> }) {
  */
 export const initializeCounters = mutation({
   args: {},
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -416,6 +491,13 @@ export const initializeCounters = mutation({
 
 export const getAdminStats = query({
   args: {},
+  returns: v.object({
+    totalAuctions: v.number(),
+    activeAuctions: v.number(),
+    pendingReview: v.number(),
+    totalUsers: v.number(),
+    verifiedSellers: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -445,6 +527,7 @@ export const getAdminStats = query({
 
 export const createAnnouncement = mutation({
   args: { title: v.string(), message: v.string() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -481,6 +564,20 @@ export const createAnnouncement = mutation({
 
 export const listAnnouncements = query({
   args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("notifications"),
+      _creationTime: v.number(),
+      recipientId: v.string(),
+      type: v.string(),
+      title: v.string(),
+      message: v.string(),
+      isRead: v.boolean(),
+      createdAt: v.number(),
+      link: v.optional(v.string()),
+      readCount: v.number(),
+    })
+  ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -519,6 +616,10 @@ export const listAnnouncements = query({
 
 export const getAnnouncementStats = query({
   args: {},
+  returns: v.object({
+    total: v.number(),
+    recent: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
@@ -526,17 +627,22 @@ export const getAnnouncementStats = query({
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    const allAnnouncements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
-      .collect();
+    const total = await countQuery(
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+    );
 
-    const recentCount = allAnnouncements.filter(
-      (a) => a.createdAt >= sevenDaysAgo
-    ).length;
+    const recentCount = await countQuery(
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) =>
+          q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
+        )
+    );
 
     return {
-      total: allAnnouncements.length,
+      total,
       recent: recentCount,
     };
   },
@@ -544,24 +650,29 @@ export const getAnnouncementStats = query({
 
 export const getSupportStats = query({
   args: {},
+  returns: v.object({
+    open: v.number(),
+    resolved: v.number(),
+    total: v.number(),
+  }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const openTickets = await ctx.db
-      .query("supportTickets")
-      .withIndex("by_status", (q) => q.eq("status", "open"))
-      .collect();
+    const openCount = await countQuery(
+      ctx.db.query("supportTickets").withIndex("by_status", (q) => q.eq("status", "open"))
+    );
 
-    const resolvedTickets = await ctx.db
-      .query("supportTickets")
-      .withIndex("by_status", (q) => q.eq("status", "resolved"))
-      .collect();
+    const resolvedCount = await countQuery(
+      ctx.db
+        .query("supportTickets")
+        .withIndex("by_status", (q) => q.eq("status", "resolved"))
+    );
 
     return {
-      open: openTickets.length,
-      resolved: resolvedTickets.length,
-      total: openTickets.length + resolvedTickets.length,
+      open: openCount,
+      resolved: resolvedCount,
+      total: openCount + resolvedCount,
     };
   },
 });

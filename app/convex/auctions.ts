@@ -3,9 +3,10 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import type { QueryCtx } from "./_generated/server";
 import { getCallerRole, findUserById } from "./users";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
 import { authComponent } from "./auth";
+import { resolveUrlCached } from "./image_cache";
 
 interface RawImages {
   front?: string;
@@ -16,49 +17,188 @@ interface RawImages {
 }
 
 /**
- * Resolve and normalize image references into accessible URLs.
+ * Normalises image references and resolves them to accessible URLs.
  *
- * @param images - Image input in either legacy array form (treated as `additional`), a RawImages-like object, or any other value (treated as no images).
- * @returns An object matching the RawImages shape where `front`, `engine`, `cabin`, and `rear` are resolved to URLs or `undefined`, and `additional` is an array of resolved HTTP URLs. Non-HTTP IDs are resolved via the provided storage; entries that cannot be resolved are omitted from `additional`.
+ * Accepts either a legacy array (treated as `additional`), a RawImages-like object, or any other value (treated as no images).
+ *
+ * @param storage - Convex storage context
+ * @param images - Image input: an array of storage IDs (legacy), a RawImages-like object { front, engine, cabin, rear, additional }, or any other value to indicate no images.
+ * @param options - Optional configuration, e.g., { limit: number } to cap additional images.
+ * @returns An object with the RawImages shape where `front`, `engine`, `cabin`, and `rear` are either resolved HTTP URLs or `undefined`, and `additional` is an array of resolved HTTP URLs with any unresolvable entries omitted.
  */
 export async function resolveImageUrls(
   storage: QueryCtx["storage"],
-  images: unknown
+  images: unknown,
+  options: { limit?: number } = {}
 ) {
-  const resolveUrl = async (id: string | undefined) => {
-    if (!id) return undefined;
-    if (id.startsWith("http")) return id;
-    return (await storage.getUrl(id)) ?? undefined;
-  };
-
   // Normalize legacy array format or non-object inputs
   let normalizedImages: RawImages;
   if (Array.isArray(images)) {
-    normalizedImages = { additional: images as string[] };
+    normalizedImages = {
+      additional: images.filter((i): i is string => typeof i === "string"),
+    };
   } else if (images && typeof images === "object") {
-    normalizedImages = images as RawImages;
+    normalizedImages = { ...(images as RawImages) };
   } else {
     normalizedImages = { additional: [] };
   }
 
+  // Apply limit to additional images if specified
+  if (options.limit !== undefined && normalizedImages.additional) {
+    normalizedImages.additional = normalizedImages.additional.slice(
+      0,
+      options.limit
+    );
+  }
+
   return {
     ...normalizedImages,
-    front: await resolveUrl(normalizedImages.front),
-    engine: await resolveUrl(normalizedImages.engine),
-    cabin: await resolveUrl(normalizedImages.cabin),
-    rear: await resolveUrl(normalizedImages.rear),
+    front: await resolveUrlCached(storage, normalizedImages.front),
+    engine: await resolveUrlCached(storage, normalizedImages.engine),
+    cabin: await resolveUrlCached(storage, normalizedImages.cabin),
+    rear: await resolveUrlCached(storage, normalizedImages.rear),
     additional: (
       await Promise.all(
         (normalizedImages.additional || []).map(async (id: string) =>
-          id.startsWith("http") ? id : await storage.getUrl(id)
+          await resolveUrlCached(storage, id)
         )
       )
-    ).filter((url: string | null | undefined): url is string => !!url),
+    ).filter((url: string | undefined): url is string => !!url),
+  };
+}
+
+/**
+ * Validator for a compact auction summary suitable for list views.
+ * Designed to be type-compatible with Doc<"auctions"> while omitting heavy data.
+ */
+export const AuctionSummaryValidator = v.object({
+  _id: v.id("auctions"),
+  _creationTime: v.number(),
+  title: v.string(),
+  make: v.string(),
+  model: v.string(),
+  year: v.number(),
+  operatingHours: v.number(),
+  location: v.string(),
+  reservePrice: v.number(),
+  startingPrice: v.number(),
+  currentPrice: v.number(),
+  minIncrement: v.number(),
+  startTime: v.number(),
+  endTime: v.number(),
+  sellerId: v.string(),
+  status: v.string(),
+  winnerId: v.optional(v.string()),
+  description: v.optional(v.string()),
+  conditionReportUrl: v.optional(v.string()),
+  isExtended: v.optional(v.boolean()),
+  seedId: v.optional(v.string()),
+  images: v.object({
+    front: v.optional(v.string()),
+    engine: v.optional(v.string()),
+    cabin: v.optional(v.string()),
+    rear: v.optional(v.string()),
+    additional: v.array(v.string()),
+  }),
+  // Omit heavy conditionChecklist in summaries
+  conditionChecklist: v.optional(v.any()),
+});
+
+/**
+ * Create a compact auction summary suitable for list views.
+ *
+ * Produces a minimal projection of the auction containing identifying fields,
+ * timing and pricing info, location, and a thumbnail image URL.
+ *
+ * @param ctx - Query context
+ * @param auction - The auction document to summarise
+ * @returns A skinny auction object compatible with AuctionCard
+ */
+export async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
+  return {
+    _id: auction._id,
+    _creationTime: auction._creationTime,
+    title: auction.title,
+    description: auction.description,
+    make: auction.make,
+    model: auction.model,
+    year: auction.year,
+    currentPrice: auction.currentPrice,
+    startingPrice: auction.startingPrice,
+    minIncrement: auction.minIncrement,
+    startTime: auction.startTime,
+    endTime: auction.endTime,
+    status: auction.status,
+    reservePrice: auction.reservePrice,
+    operatingHours: auction.operatingHours,
+    location: auction.location,
+    sellerId: auction.sellerId,
+    winnerId: auction.winnerId,
+    conditionReportUrl: auction.conditionReportUrl,
+    isExtended: auction.isExtended,
+    seedId: auction.seedId,
+    // List views only need the front image (thumbnail)
+    images: await resolveImageUrls(ctx.storage, auction.images, { limit: 0 }),
+  };
+}
+
+/**
+ * Validator for a full auction document with resolved URLs.
+ */
+export const AuctionDetailValidator = v.object({
+  _id: v.id("auctions"),
+  _creationTime: v.number(),
+  title: v.string(),
+  make: v.string(),
+  model: v.string(),
+  year: v.number(),
+  operatingHours: v.number(),
+  location: v.string(),
+  description: v.optional(v.string()),
+  startingPrice: v.number(),
+  reservePrice: v.number(),
+  durationDays: v.optional(v.number()),
+  images: v.object({
+    front: v.optional(v.string()),
+    engine: v.optional(v.string()),
+    cabin: v.optional(v.string()),
+    rear: v.optional(v.string()),
+    additional: v.array(v.string()),
+  }),
+  conditionChecklist: v.optional(
+    v.object({
+      engine: v.boolean(),
+      hydraulics: v.boolean(),
+      tires: v.boolean(),
+      serviceHistory: v.boolean(),
+      notes: v.optional(v.string()),
+    })
+  ),
+  sellerId: v.string(),
+  status: v.string(),
+  currentPrice: v.number(),
+  minIncrement: v.number(),
+  startTime: v.number(),
+  endTime: v.number(),
+  isExtended: v.optional(v.boolean()),
+  winnerId: v.optional(v.string()),
+  seedId: v.optional(v.string()),
+  conditionReportUrl: v.optional(v.string()),
+});
+
+/**
+ * Resolves full auction details including all image URLs.
+ */
+async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
+  return {
+    ...auction,
+    images: await resolveImageUrls(ctx.storage, auction.images),
   };
 }
 
 export const getPendingAuctions = query({
   args: {},
+  returns: v.array(AuctionSummaryValidator),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -71,10 +211,7 @@ export const getPendingAuctions = query({
       .collect();
 
     return await Promise.all(
-      auctions.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      auctions.map((auction) => toAuctionSummary(ctx, auction))
     );
   },
 });
@@ -89,6 +226,7 @@ export const getActiveAuctions = query({
     maxPrice: v.optional(v.number()),
     maxHours: v.optional(v.number()),
   },
+  returns: v.array(AuctionSummaryValidator),
   handler: async (ctx, args) => {
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
@@ -99,13 +237,40 @@ export const getActiveAuctions = query({
           q.search("title", args.search!).eq("status", "active")
         )
         .collect();
+    } else if (args.make) {
+      // Use composite index for status + make
+      auctions = await auctionsQuery
+        .withIndex("by_status_make", (q) =>
+          q.eq("status", "active").eq("make", args.make!)
+        )
+        .collect();
+    } else if (args.minYear !== undefined || args.maxYear !== undefined) {
+      // Use composite index for status + year (range)
+      auctions = await auctionsQuery
+        .withIndex("by_status_year", (q) => {
+          const statusQuery = q.eq("status", "active");
+          if (args.minYear !== undefined && args.maxYear !== undefined) {
+            return statusQuery
+              .gte("year", args.minYear)
+              .lte("year", args.maxYear);
+          }
+          if (args.minYear !== undefined) {
+            return statusQuery.gte("year", args.minYear);
+          }
+          if (args.maxYear !== undefined) {
+            return statusQuery.lte("year", args.maxYear);
+          }
+          return statusQuery;
+        })
+        .collect();
     } else {
+      // Default: status only
       auctions = await auctionsQuery
         .withIndex("by_status", (q) => q.eq("status", "active"))
         .collect();
     }
 
-    // Apply additional filters in memory for now (can be optimized with indexes later if needed)
+    // Apply remaining in-memory filters
     auctions = auctions.filter((a) => {
       if (args.make && a.make !== args.make) return false;
       if (args.minYear !== undefined && a.year < args.minYear) return false;
@@ -120,42 +285,46 @@ export const getActiveAuctions = query({
     });
 
     return await Promise.all(
-      auctions.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      auctions.map((auction) => toAuctionSummary(ctx, auction))
     );
   },
 });
 
 export const getActiveMakes = query({
   args: {},
+  returns: v.array(v.string()),
   handler: async (ctx) => {
-    const activeAuctions = await ctx.db
-      .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
-
-    const makes = Array.from(new Set(activeAuctions.map((a) => a.make))).sort();
+    const metadata = await ctx.db.query("equipmentMetadata").collect();
+    const makes = Array.from(new Set(metadata.map((m) => m.make))).sort();
     return makes;
   },
 });
 
 export const getAuctionById = query({
   args: { auctionId: v.id("auctions") },
+  returns: v.union(v.null(), AuctionDetailValidator),
   handler: async (ctx, args) => {
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) return null;
 
-    return {
-      ...auction,
-      images: await resolveImageUrls(ctx.storage, auction.images),
-    };
+    return await toAuctionDetail(ctx, auction);
   },
 });
 
 export const getAuctionBids = query({
   args: { auctionId: v.id("auctions") },
+  returns: v.array(
+    v.object({
+      _id: v.id("bids"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      bidderId: v.string(),
+      amount: v.number(),
+      timestamp: v.number(),
+      status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
+      bidderName: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const bids = await ctx.db
       .query("bids")
@@ -189,13 +358,32 @@ export const getAuctionBids = query({
 
 export const getEquipmentMetadata = query({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("equipmentMetadata"),
+      _creationTime: v.number(),
+      make: v.string(),
+      models: v.array(v.string()),
+      category: v.string(),
+    })
+  ),
   handler: async (ctx) => {
-    return await ctx.db.query("equipmentMetadata").collect();
+    return await ctx.db.query("equipmentMetadata").take(100);
   },
 });
 
 export const getSellerInfo = query({
   args: { sellerId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      name: v.optional(v.string()),
+      isVerified: v.boolean(),
+      role: v.string(),
+      createdAt: v.optional(v.number()),
+      itemsSold: v.number(),
+    })
+  ),
   handler: async (ctx, args) => {
     // Query user details from the auth component's adapter
     const user = await findUserById(ctx, args.sellerId);
@@ -229,6 +417,13 @@ export const getSellerInfo = query({
 
 export const getSellerListings = query({
   args: { userId: v.string(), paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(AuctionSummaryValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
     const results = await ctx.db
       .query("auctions")
@@ -239,10 +434,7 @@ export const getSellerListings = query({
       .paginate(args.paginationOpts);
 
     const page = await Promise.all(
-      results.page.map(async (auction) => ({
-        ...auction,
-        images: await resolveImageUrls(ctx.storage, auction.images),
-      }))
+      results.page.map(async (auction) => await toAuctionSummary(ctx, auction))
     );
 
     return {
@@ -252,16 +444,21 @@ export const getSellerListings = query({
   },
 });
 
-export const generateUploadUrl = mutation(async (ctx) => {
-  const authUser = await authComponent.getAuthUser(ctx);
-  if (!authUser) {
-    throw new Error("Not authenticated");
-  }
-  return await ctx.storage.generateUploadUrl();
+export const generateUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) {
+      throw new Error("Not authenticated");
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
 });
 
 export const deleteUpload = mutation({
   args: { storageId: v.id("_storage") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -308,6 +505,7 @@ export const createAuction = mutation({
       notes: v.optional(v.string()),
     }),
   },
+  returns: v.id("auctions"),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) {
@@ -351,6 +549,7 @@ export const createAuction = mutation({
 
 export const approveAuction = mutation({
   args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -388,6 +587,7 @@ export const approveAuction = mutation({
 
 export const rejectAuction = mutation({
   args: { auctionId: v.id("auctions") },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -412,6 +612,7 @@ export const rejectAuction = mutation({
 
 export const placeBid = mutation({
   args: { auctionId: v.id("auctions"), amount: v.number() },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
     if (!authUser) {
@@ -486,6 +687,7 @@ export const placeBid = mutation({
  */
 export const settleExpiredAuctions = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now();
     const expiredAuctions = await ctx.db
@@ -541,8 +743,14 @@ export const getAllAuctions = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
+  returns: v.object({
+    page: v.array(AuctionSummaryValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
-    console.log("getAllAuctions received args:", args);
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
       throw new Error("Not authorized");
@@ -556,10 +764,7 @@ export const getAllAuctions = query({
     return {
       ...auctions,
       page: await Promise.all(
-        auctions.page.map(async (auction) => ({
-          ...auction,
-          images: await resolveImageUrls(ctx.storage, auction.images),
-        }))
+        auctions.page.map(async (auction) => await toAuctionSummary(ctx, auction))
       ),
     };
   },
@@ -596,6 +801,7 @@ export const adminUpdateAuction = mutation({
       currentPrice: v.optional(v.number()),
     }),
   },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -661,6 +867,11 @@ export const bulkUpdateAuctions = mutation({
       startingPrice: v.optional(v.number()),
     }),
   },
+  returns: v.object({
+    success: v.boolean(),
+    updated: v.array(v.id("auctions")),
+    skipped: v.array(v.id("auctions")),
+  }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -721,90 +932,124 @@ export const bulkUpdateAuctions = mutation({
 });
 
 export const getMyBids = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        ...AuctionSummaryValidator.fields,
+        myHighestBid: v.number(),
+        isWinning: v.boolean(),
+        isWon: v.boolean(),
+        bidAmount: v.number(),
+        bidTimestamp: v.number(),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
+  handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return [];
+      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
       const userId = authUser.userId ?? authUser._id;
 
-      // Get all bids by this user
-      const bids = await ctx.db
+      // Get bids by this user, paginated
+      const bidsResult = await ctx.db
         .query("bids")
         .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
-        .collect();
+        .order("desc") // Show latest bids first
+        .paginate(args.paginationOpts);
 
-      // Group by auctionId to get the latest status per auction
-      const bidsByAuction = new Map<
-        (typeof bids)[number]["auctionId"],
-        typeof bids
-      >();
-      for (const bid of bids) {
-        const existing = bidsByAuction.get(bid.auctionId);
-        if (existing) {
-          existing.push(bid);
-        } else {
-          bidsByAuction.set(bid.auctionId, [bid]);
-        }
-      }
-      const auctionIds = Array.from(bidsByAuction.keys());
+      // Collect unique auction IDs from the page to avoid redundant queries
+      const uniqueAuctionIds = Array.from(
+        new Set(bidsResult.page.map((bid) => bid.auctionId))
+      );
 
-      const auctions = await Promise.all(
-        auctionIds.map(async (id) => {
-          const auction = await ctx.db.get(id);
+      // Fetch only the latest (highest) bid per auction for this user
+      const bidsByAuction = new Map<string, number>();
+
+      await Promise.all(
+        uniqueAuctionIds.map(async (auctionId) => {
+          const latestBid = await ctx.db
+            .query("bids")
+            .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+            .order("desc")
+            .filter((q) => q.eq(q.field("bidderId"), userId))
+            .first();
+
+          bidsByAuction.set(auctionId, latestBid?.amount || 0);
+        })
+      );
+
+      const page = await Promise.all(
+        bidsResult.page.map(async (bid) => {
+          const auction = await ctx.db.get(bid.auctionId);
           if (!auction) return null;
 
-          // Find my highest bid on this auction
-          const myBids = bidsByAuction.get(id) ?? [];
-          const myHighestBid =
-            myBids.length > 0 ? Math.max(...myBids.map((b) => b.amount)) : 0;
+          const summary = await toAuctionSummary(ctx, auction);
+          const myHighestBid = bidsByAuction.get(auction._id) || 0;
 
           return {
-            ...auction,
-            images: await resolveImageUrls(ctx.storage, auction.images),
+            ...summary,
             myHighestBid,
             isWinning:
               auction.status === "active" &&
               myHighestBid === auction.currentPrice,
             isWon: auction.status === "sold" && auction.winnerId === userId,
+            bidAmount: bid.amount,
+            bidTimestamp: bid.timestamp,
           };
         })
       );
 
-      return auctions.filter((a): a is NonNullable<typeof a> => a !== null);
+      return {
+        ...bidsResult,
+        page: page.filter((a): a is NonNullable<typeof a> => a !== null),
+      };
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyBids failure:", err);
       }
-      return [];
+      return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
     }
   },
 });
 
 export const getMyListings = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(AuctionSummaryValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
+  handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return [];
+      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
       const userId = authUser.userId ?? authUser._id;
 
-      const listings = await ctx.db
+      const listingsResult = await ctx.db
         .query("auctions")
         .withIndex("by_seller", (q) => q.eq("sellerId", userId))
-        .collect();
+        .paginate(args.paginationOpts);
 
-      return await Promise.all(
-        listings.map(async (auction) => ({
-          ...auction,
-          images: await resolveImageUrls(ctx.storage, auction.images),
-        }))
+      const page = await Promise.all(
+        listingsResult.page.map(async (auction) => await toAuctionSummary(ctx, auction))
       );
+
+      return {
+        ...listingsResult,
+        page,
+      };
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyListings failure:", err);
       }
-      return [];
+      return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
     }
   },
 });

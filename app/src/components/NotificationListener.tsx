@@ -11,8 +11,17 @@ import { useSession } from "../lib/auth-client";
  */
 export const NotificationListener = () => {
   const { data: session } = useSession();
-  const myBids = useQuery(api.auctions.getMyBids);
-  const watched = useQuery(api.watchlist.getWatchedAuctions);
+  
+  // Fetch recent bids and watched items (first page only for notifications)
+  const myBidsData = useQuery(api.auctions.getMyBids, { 
+    paginationOpts: { numItems: 20, cursor: null } 
+  });
+  const watchedData = useQuery(api.watchlist.getWatchedAuctions, { 
+    paginationOpts: { numItems: 20, cursor: null } 
+  });
+
+  const myBids = myBidsData?.page;
+  const watched = watchedData?.page;
 
   // Keep track of auction statuses we've already "seen" as settled
   const settledAuctionsRef = useRef<Set<string>>(new Set());

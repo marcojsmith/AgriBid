@@ -14,12 +14,31 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { SummaryCard } from "@/components/admin/SummaryCard";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";
+import { useAdminStats } from "@/contexts/AdminStatsContext";
 
 /**
  * Renders the Admin Dashboard overview with summary cards for all management areas.
  */
 export default function AdminDashboard() {
-  const adminStats = useQuery(api.admin.getAdminStats);
+  return (
+    <AdminLayout
+      title="Admin Overview"
+      subtitle="Marketplace Control Centre"
+    >
+      <AdminDashboardContent />
+    </AdminLayout>
+  );
+}
+
+/**
+ * Render the admin dashboard content with summary cards for activity, auctions, moderation, users, financials, support, communication and system.
+ *
+ * Shows a centred loading indicator while required stats are being fetched and displays an error message if any required data is unavailable.
+ *
+ * @returns A JSX element containing the dashboard grid, a centred loading indicator while data is loading, or an error message if data is missing.
+ */
+function AdminDashboardContent() {
+  const adminStats = useAdminStats();
   const financialStats = useQuery(api.admin.getFinancialStats);
   const announcementStats = useQuery(api.admin.getAnnouncementStats);
   const supportStats = useQuery(api.admin.getSupportStats);
@@ -32,24 +51,25 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <AdminLayout
-        stats={adminStats || null}
-        title="Admin Overview"
-        subtitle="Marketplace Control Centre"
-      >
-        <div className="h-96 flex items-center justify-center">
-          <LoadingIndicator />
-        </div>
-      </AdminLayout>
+      <div className="h-96 flex items-center justify-center">
+        <LoadingIndicator />
+      </div>
+    );
+  }
+
+  // Safe checks for potentially null/undefined data even after loading check if queries return null
+  if (!adminStats || !financialStats || !announcementStats || !supportStats) {
+    return (
+      <div className="h-96 flex flex-col items-center justify-center text-center gap-4">
+        <p className="text-muted-foreground">Unable to load dashboard data.</p>
+        <p className="text-sm text-muted-foreground">
+          Please refresh the page or contact support if the issue persists.
+        </p>
+      </div>
     );
   }
 
   return (
-    <AdminLayout
-      stats={adminStats || null}
-      title="Admin Overview"
-      subtitle="Marketplace Control Centre"
-    >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Activity Card (Placeholder for now) */}
         <SummaryCard
@@ -177,6 +197,5 @@ export default function AdminDashboard() {
           linkLabel="Configuration"
         />
       </div>
-    </AdminLayout>
   );
 }

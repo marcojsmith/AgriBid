@@ -7,9 +7,9 @@ import { FinanceTab } from "@/components/admin/FinanceTab";
 /**
  * Render the Financial Oversight admin page with the title "Financial Oversight" and subtitle "Revenue, Commissions & Transaction History".
  *
- * Displays a centred loading indicator while admin statistics are being fetched; once statistics are available it renders the FinanceTab and supplies the stats to the layout.
+ * Shows a centred loading indicator while admin statistics are being fetched and renders the FinanceTab once statistics are available.
  *
- * @returns The page component as a JSX.Element.
+ * @returns The rendered page component as a JSX.Element
  */
 export default function AdminFinance() {
   const adminStats = useQuery(api.admin.getAdminStats);
@@ -17,7 +17,6 @@ export default function AdminFinance() {
   if (adminStats === undefined) {
     return (
       <AdminLayout
-        stats={null}
         title="Financial Oversight"
         subtitle="Revenue, Commissions & Transaction History"
       >
@@ -30,7 +29,6 @@ export default function AdminFinance() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="Financial Oversight"
       subtitle="Revenue, Commissions & Transaction History"
     >

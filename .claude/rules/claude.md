@@ -5,7 +5,7 @@ Your purpose is to assist the user in developing a digital prototype for an auct
 
 The user wants to develop an auction platform that allows users to bid on agricultural products. The platform will have a real-time bidding system, user authentication, and a responsive UI. The project will be built using React for the frontend, Convex for the backend and database.
 
-Very important documentation can be found in the following folders and files:
+Additional documentation can be found in the following folders and files:
 - Brief.md
 - Checklist.md
 - codebase_notes.md
@@ -49,8 +49,6 @@ Determine the best course of action for the user based on the current state of t
 
 ## Operational Rules
 
-- **Reading files:**
-    - When you need to read a file, read the entire file if possible. This will help you understand the full context and avoid missing any important information that may be relevant to the task at hand. If the file is too large to read in one go, try to read it in sections, but make sure to keep track of the overall structure and context of the file as you read through it.
 - **Running development server:**
     - Assume the development and convex servers are already running when making changes.
 - **Legacy code and data:**
@@ -68,8 +66,6 @@ Determine the best course of action for the user based on the current state of t
     - When making code changes, ensure that they are cohesive and related to a single feature or bug fix. Avoid making unrelated changes in the same commit or pull request, as this can make it difficult to review and understand the changes.
     - If you need to make multiple unrelated changes, consider breaking them into separate commits or pull requests to maintain clarity and ease of review.
     - Make sure when adding a feature or fixing a bug, you consider all the necessary changes that need to be made across the codebase, including any related data changes, and ensure that they are all included in the same cohesive set of changes. Consider frontend changes, backend changes, database schema or seed data, security implications, testing changes, documentation updates, and any other relevant changes that are necessary to fully implement the feature or fix the bug in a cohesive manner.
-- **Code Changes:**
-    - Prefer making multiple changes at once when making code changes to a file, this saves on the overhead of making agentic code changes. For example, if you need to make several changes to a file, it is more efficient to make all the necessary changes in one go rather than making multiple separate changes to the same file. This will help reduce the overall time and effort required to make the changes and ensure that all related changes are made together in a cohesive manner.
 
 ### Code Reviews:
 
@@ -114,9 +110,9 @@ Determine the best course of action for the user based on the current state of t
         - Correct the issue: After understanding the comment, the context, and the broader purpose of the application, make the necessary code changes to address the issue. This may involve refactoring code, fixing bugs, improving performance, or making other relevant changes to ensure that the code meets the project's standards and aligns with its goals.
         - Update checklist: As you address each comment, update the markdown checklist file in the `conductor/code_reviews/` folder to indicate which comments have been addressed and which ones still need to be addressed. This will help you keep track of your progress and ensure that all comments are properly addressed before finalizing the PR.
     - **Step 4: Resolve any errors**
-        - Check for errors: Run the following commands to ensure that the codebase is in a good state and that all tests are passing (use `;` for PowerShell or `&&` for cmd.exe):
-            - `cd app && npm run lint` (mac) or `cd app ; npm run lint` (PowerShell) or `cd app && npm run lint` (cmd.exe) to check for any linting errors in the codebase.
-            - `cd app && npm run build` (mac) or `cd app ; npm run build` (PowerShell) or `cd app && npm run build` (cmd.exe) to run all tests and ensure that they are passing successfully.
+        - Check for errors: Run the following commands to ensure that the codebase is in a good state and that all tests are passing:
+            - `cd app && npm run lint` to check for any linting errors in the codebase.
+            - `cd app && npm run build` to run all tests and ensure that they are passing successfully.
             - `npx vercel build` to check for any build errors and ensure that the application can be built successfully.
     - **Step 5: Summarise review**
         - Summarise changes: After addressing all the comments, compile your findings into a clear and concise summary that can used as a commit message for the changes made to address the PR review. This summary should highlight any important issues or improvements that were addressed, as well as any relevant information that may impact the changes being made.
@@ -138,8 +134,7 @@ Determine the best course of action for the user based on the current state of t
 - **Types**
 
     - Use TypeScript for all frontend code.
-    - Use JSDoc comments for all backend code in Convex, which is written in JavaScript. This will help ensure that the backend code is well-documented and maintainable, even though it is not written in TypeScript.
-    - Do not use `any` type in TypeScript. Always strive to use specific types to ensure type safety and improve code readability.
+    - Use JSDoc comments for all backend code in Convex, which is written in TypeScript. This will help ensure that the backend code is well-documented and maintainable.    - Do not use `any` type in TypeScript. Always strive to use specific types to ensure type safety and improve code readability.
     - Define interfaces and types for all data structures and function parameters/returns to ensure clarity and maintainability of the codebase.
     - Use type guards and type assertions where necessary to ensure that the code is type-safe and to prevent potential runtime errors.
     - Do not use eslint-disable or any other means to bypass type checking. If you encounter a situation where you feel the need to disable type checking, take a step back and consider how you can refactor the code to properly handle the types instead.

@@ -62,6 +62,9 @@ export default defineSchema({
     .index("by_seller_status", ["sellerId", "status"])
     .index("by_end_time", ["endTime"])
     .index("by_seedId", ["seedId"])
+    .index("by_status_make", ["status", "make"])
+    .index("by_status_year", ["status", "year"])
+    .index("by_status_endTime", ["status", "endTime"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["status"],

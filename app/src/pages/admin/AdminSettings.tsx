@@ -24,7 +24,6 @@ export default function AdminSettings() {
   if (adminStats === undefined) {
     return (
       <AdminLayout
-        stats={null}
         title="System Settings"
         subtitle="Platform Configuration & Metadata Management"
       >
@@ -37,7 +36,6 @@ export default function AdminSettings() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="System Settings"
       subtitle="Platform Configuration & Metadata Management"
     >
