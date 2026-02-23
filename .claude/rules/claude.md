@@ -134,8 +134,7 @@ Determine the best course of action for the user based on the current state of t
 - **Types**
 
     - Use TypeScript for all frontend code.
-    - Use JSDoc comments for all backend code in Convex, which is written in Typescript. This will help ensure that the backend code is well-documented and maintainable.
-    - Do not use `any` type in TypeScript. Always strive to use specific types to ensure type safety and improve code readability.
+    - Use JSDoc comments for all backend code in Convex, which is written in TypeScript. This will help ensure that the backend code is well-documented and maintainable.    - Do not use `any` type in TypeScript. Always strive to use specific types to ensure type safety and improve code readability.
     - Define interfaces and types for all data structures and function parameters/returns to ensure clarity and maintainability of the codebase.
     - Use type guards and type assertions where necessary to ensure that the code is type-safe and to prevent potential runtime errors.
     - Do not use eslint-disable or any other means to bypass type checking. If you encounter a situation where you feel the need to disable type checking, take a step back and consider how you can refactor the code to properly handle the types instead.

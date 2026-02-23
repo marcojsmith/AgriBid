@@ -145,11 +145,10 @@ export const listAllProfiles = query({
     page: v.array(v.any()),
     isDone: v.boolean(),
     continueCursor: v.string(),
-    pageStatus: v.union(v.string(), v.null()),
-    splitCursor: v.union(v.string(), v.null()),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
-    console.log("listAllProfiles received args:", args);
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
       throw new Error("Unauthorized");
