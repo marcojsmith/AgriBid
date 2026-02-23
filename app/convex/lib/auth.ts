@@ -19,7 +19,9 @@ export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
   try {
     return await authComponent.getAuthUser(ctx);
   } catch (err) {
-    console.error("getAuthUser failed:", err);
+    if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+      console.error("getAuthUser failed:", err);
+    }
     return null;
   }
 }
@@ -167,9 +169,9 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 /**
  * Ensure the caller has an authenticated profile and that the profile is verified.
  *
- * @param ctx - Query or mutation context with authentication and database access
- * @returns An object containing `authUser`, `profile`, and `userId`
- * @throws Error if the user is not authenticated, the user profile is missing, or the profile is not verified
+ * `@param` ctx - The query or mutation context containing authentication and database access
+ * `@returns` An object containing `profile`, `authUser`, and `userId` for the verified user
+ * `@throws` Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
  */
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   const { profile, ...rest } = await requireProfile(ctx);
@@ -181,4 +183,5 @@ export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   }
 
   return { profile, ...rest };
+}
 }
