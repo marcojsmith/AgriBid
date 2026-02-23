@@ -30,6 +30,13 @@ export default function AdminDashboard() {
   );
 }
 
+/**
+ * Render the admin dashboard content with summary cards for activity, auctions, moderation, users, financials, support, communication and system.
+ *
+ * Shows a centred loading indicator while required stats are being fetched and displays an error message if any required data is unavailable.
+ *
+ * @returns A JSX element containing the dashboard grid, a centred loading indicator while data is loading, or an error message if data is missing.
+ */
 function AdminDashboardContent() {
   const adminStats = useAdminStats();
   const financialStats = useQuery(api.admin.getFinancialStats);

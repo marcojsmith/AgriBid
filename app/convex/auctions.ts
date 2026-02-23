@@ -17,10 +17,12 @@ interface RawImages {
 }
 
 /**
- * Resolve and normalize image references into accessible URLs.
+ * Normalises image references and resolves them to accessible URLs.
  *
- * @param images - Image input in either legacy array form (treated as `additional`), a RawImages-like object, or any other value (treated as no images).
- * @returns An object matching the RawImages shape where `front`, `engine`, `cabin`, and `rear` are resolved to URLs or `undefined`, and `additional` is an array of resolved HTTP URLs. Non-HTTP IDs are resolved via the provided storage; entries that cannot be resolved are omitted from `additional`.
+ * Accepts either a legacy array (treated as `additional`), a RawImages-like object, or any other value (treated as no images).
+ *
+ * @param images - Image input: an array of storage IDs (legacy), a RawImages-like object { front, engine, cabin, rear, additional }, or any other value to indicate no images.
+ * @returns An object with the RawImages shape where `front`, `engine`, `cabin`, and `rear` are either resolved HTTP URLs or `undefined`, and `additional` is an array of resolved HTTP URLs with any unresolvable entries omitted.
  */
 export async function resolveImageUrls(
   storage: QueryCtx["storage"],
@@ -53,8 +55,17 @@ export async function resolveImageUrls(
 }
 
 /**
- * Transforms an auction document into a lightweight summary for list views.
- * Projects only essential fields to reduce bandwidth.
+ * Create a compact auction summary suitable for list views.
+ *
+ * Produces a minimal projection of the auction containing identifying fields,
+ * timing and pricing info, seller and location, and image URLs.
+ *
+ * @param ctx - Query context; used to resolve image storage references to accessible URLs
+ * @param auction - The auction document to summarise
+ * @returns An object with `_id`, `_creationTime`, title, description, make, model, `year`,
+ * `currentPrice`, `startingPrice`, `minIncrement`, `startTime`, `endTime`, `status`,
+ * `reservePrice`, `operatingHours`, `location`, `sellerId` and `images` where `images`
+ * contains resolved URLs for front, engine, cabin, rear and an `additional` array of URLs
  */
 async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
   return {

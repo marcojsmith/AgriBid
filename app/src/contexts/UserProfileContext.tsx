@@ -30,6 +30,12 @@ export interface UserProfile {
 
 const UserProfileContext = createContext<UserProfile | undefined | null>(undefined);
 
+/**
+ * Provides the current user's profile to descendant components via a React context.
+ *
+ * @param children - React nodes to render inside the provider
+ * @returns A React element that supplies the user profile context to its children
+ */
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const userProfile = useQuery(api.users.getMyProfile);
 
@@ -40,6 +46,11 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Accesses the current user's profile from the UserProfile context.
+ *
+ * @returns The `UserProfile` value stored in context; `undefined` if no provider is present, `null` if the user has no profile.
+ */
 export function useUserProfile() {
   const context = useContext(UserProfileContext);
   // Throw if undefined to ensure usage within provider

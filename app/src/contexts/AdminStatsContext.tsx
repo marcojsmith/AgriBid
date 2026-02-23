@@ -13,6 +13,12 @@ interface AdminStats {
 
 const AdminStatsContext = createContext<AdminStats | undefined | null>(undefined);
 
+/**
+ * Provides admin statistics to descendant components via React context.
+ *
+ * @param children - The React nodes to render inside the provider
+ * @returns A React element that wraps `children` with `AdminStatsContext.Provider`, supplying fetched admin statistics as the context value
+ */
 export function AdminStatsProvider({ children }: { children: ReactNode }) {
   const stats = useQuery(api.admin.getAdminStats);
 
@@ -23,6 +29,11 @@ export function AdminStatsProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Accesses the current admin statistics from the AdminStatsContext.
+ *
+ * @returns The `AdminStats` object from context, `undefined` if the hook is used outside the provider or the context value has not been set, or `null` if there are explicitly no statistics available.
+ */
 export function useAdminStats() {
   const context = useContext(AdminStatsContext);
   // Optional: throw if undefined to ensure usage within provider

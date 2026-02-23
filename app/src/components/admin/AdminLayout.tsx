@@ -43,7 +43,9 @@ const SIDEBAR_ITEMS = [
 
 /**
  * Render the admin layout with a persistent sidebar, KPI header and main content area.
- * Now wraps content with AdminStatsProvider to consolidate subscriptions.
+ *
+ * @param props - Properties controlling the layout: `children`, optional `title` and `subtitle`, and optional `onAnnounce` callback.
+ * @returns The layout element wrapped with admin stats context, containing the sidebar, KPI header and main content area.
  */
 export function AdminLayout(props: AdminLayoutProps) {
   return (
@@ -53,6 +55,19 @@ export function AdminLayout(props: AdminLayoutProps) {
   );
 }
 
+/**
+ * Renders the admin layout content: sidebar navigation, KPI header and main content area.
+ *
+ * Reads admin statistics from context and displays stat cards when available; shows an Announce
+ * button when `onAnnounce` is provided. `title` and `subtitle` appear in the header and
+ * `children` are rendered as the main content.
+ *
+ * @param children - Content to display in the main area
+ * @param title - Header title (defaults to "Admin Dashboard")
+ * @param subtitle - Header subtitle (defaults to "Global Marketplace Oversight")
+ * @param onAnnounce - Optional callback invoked when the Announce button is clicked
+ * @returns The layout content element for admin pages
+ */
 function AdminLayoutContent({
   children,
   title = "Admin Dashboard",

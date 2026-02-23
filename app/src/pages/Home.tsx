@@ -36,11 +36,11 @@ function useMediaQuery(query: string) {
 }
 
 /**
- * Render the AgriBid home page showing active auctions with a filter sidebar, mobile filter overlay, and view-mode controls.
+ * Renders the AgriBid home page with active auctions, a filter sidebar, a mobile filter overlay and view-mode controls.
  *
- * Reads URL query parameters to apply search and filter criteria, fetches matching active auctions, and displays loading,
- * empty, or results states. Supports toggling a persistent desktop sidebar, a mobile filter overlay, and compact/detailed
- * auction list layouts.
+ * Reads URL query parameters to apply search and filter criteria, fetches matching active auctions and watched auction IDs,
+ * and displays loading, empty or results states; supports toggling the desktop sidebar, opening a mobile filter panel,
+ * and switching between compact and detailed list layouts.
  *
  * @returns The Home page JSX element
  */

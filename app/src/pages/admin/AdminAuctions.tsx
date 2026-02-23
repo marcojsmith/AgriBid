@@ -31,14 +31,11 @@ import { BulkActionDialog } from "./AdminDialogs";
 import type { Id, Doc } from "convex/_generated/dataModel";
 
 /**
- * Renders the admin Auctions management page, providing searchable and paginated
- * listings, row selection, per-row actions, and bulk status update workflows.
+ * Admin auctions management UI with search, selectable paginated listings, per-row actions and bulk status update workflows.
  *
- * The UI includes a search input, selectable table rows, status badges, pagination
- * with "Load More", contextual row actions, and a confirmation dialog for bulk
- * status changes.
+ * Renders a searchable table of auctions with status badges, row selection (including indeterminate state), contextual actions per row, "Load More" pagination and a confirmation dialog for bulk status changes.
  *
- * @returns The component's rendered React element representing the admin auctions management interface.
+ * @returns A React element that renders the admin auctions management interface
  */
 export default function AdminAuctions() {
   const navigate = useNavigate();
