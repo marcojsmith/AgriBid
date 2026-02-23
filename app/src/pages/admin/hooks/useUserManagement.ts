@@ -32,12 +32,18 @@ export interface AdminProfile {
 }
 
 /**
- * Custom hook for managing user administration actions including KYC review, verification, and promotion.
+ * Manage user administration state and handlers for KYC review, verification and promotion.
  *
- * Encapsulates all user-related state management (search filters, KYC dialogs, verification status)
- * and async handlers for user operations. Consolidates 10 useState calls and 4 handlers from AdminUsers.tsx.
+ * Encapsulates search/filter state, KYC review dialog state and actions, promotion dialog state and actions,
+ * and per-user verification tracking for consumption by admin UI components.
  *
- * @returns Object containing state values and handler functions for user management operations
+ * @returns An object exposing:
+ * - Search state: `userSearch`, `setUserSearch`
+ * - KYC review: `kycReviewUser`, `setKycReviewUser`, `isFetchingKYC`, `fetchingKycUserId`, `isKycProcessing`,
+ *   `kycRejectionReason`, `setKycRejectionReason`, `showFullId`, `setShowFullId`, `handleReviewKYCClick`,
+ *   `handleKycReview`, `closeKycReview`
+ * - Promotion: `promoteTarget`, `setPromoteTarget`, `isPromoting`, `handlePromote`, `closePromotion`
+ * - Verification: `verifyingUserIds`, `handleManualVerify`
  */
 export function useUserManagement() {
   // Mutations
