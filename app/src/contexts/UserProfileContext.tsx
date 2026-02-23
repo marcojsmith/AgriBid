@@ -28,7 +28,9 @@ export interface UserProfile {
   } | null;
 }
 
-const UserProfileContext = createContext<UserProfile | undefined | null>(undefined);
+const NO_PROVIDER = Symbol("NO_PROVIDER");
+
+const UserProfileContext = createContext<UserProfile | undefined | null | typeof NO_PROVIDER>(NO_PROVIDER);
 
 /**
  * Provides the current user's profile to descendant components via a React context.
@@ -49,13 +51,13 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 /**
  * Accesses the current user's profile from the UserProfile context.
  *
- * @returns The `UserProfile` value stored in context, or `null` if the user has no profile.
+ * @returns The `UserProfile` value stored in context, `null` if the user has no profile, or `undefined` if the profile is still loading.
  * @throws {Error} If called outside of a `UserProfileProvider`.
  */
 export function useUserProfile() {
   const context = useContext(UserProfileContext);
-  // Throw if undefined to ensure usage within provider
-  if (context === undefined) {
+  // Throw if sentinel to ensure usage within provider
+  if (context === NO_PROVIDER) {
     throw new Error("useUserProfile must be used within a UserProfileProvider");
   }
   return context;
