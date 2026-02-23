@@ -9,14 +9,25 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as admin_index from "../admin/index.js";
+import type * as admin_kyc from "../admin/kyc.js";
+import type * as admin_statistics from "../admin/statistics.js";
 import type * as admin_debug from "../admin_debug.js";
 import type * as admin_utils from "../admin_utils.js";
 import type * as auctions from "../auctions.js";
+import type * as auctions_bidding from "../auctions/bidding.js";
+import type * as auctions_helpers from "../auctions/helpers.js";
+import type * as auctions_index from "../auctions/index.js";
+import type * as auctions_internal from "../auctions/internal.js";
+import type * as auctions_mutations from "../auctions/mutations.js";
+import type * as auctions_queries from "../auctions/queries.js";
 import type * as auth from "../auth.js";
 import type * as config from "../config.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as image_cache from "../image_cache.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_encryption from "../lib/encryption.js";
 import type * as notifications from "../notifications.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
@@ -31,14 +42,25 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  "admin/index": typeof admin_index;
+  "admin/kyc": typeof admin_kyc;
+  "admin/statistics": typeof admin_statistics;
   admin_debug: typeof admin_debug;
   admin_utils: typeof admin_utils;
   auctions: typeof auctions;
+  "auctions/bidding": typeof auctions_bidding;
+  "auctions/helpers": typeof auctions_helpers;
+  "auctions/index": typeof auctions_index;
+  "auctions/internal": typeof auctions_internal;
+  "auctions/mutations": typeof auctions_mutations;
+  "auctions/queries": typeof auctions_queries;
   auth: typeof auth;
   config: typeof config;
   crons: typeof crons;
   http: typeof http;
   image_cache: typeof image_cache;
+  "lib/auth": typeof lib_auth;
+  "lib/encryption": typeof lib_encryption;
   notifications: typeof notifications;
   seed: typeof seed;
   support: typeof support;

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type QueryCtx } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getAuthUser } from "./lib/auth";
 import type { Doc } from "./_generated/dataModel";
 
 /**
@@ -58,7 +58,7 @@ export const getMyNotifications = query({
   ),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return [];
       const userId = authUser.userId ?? authUser._id;
 
@@ -112,7 +112,7 @@ export const getNotificationArchive = query({
   ),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return [];
       const userId = authUser.userId ?? authUser._id;
 
@@ -150,7 +150,7 @@ export const markAsRead = mutation({
   args: { notificationId: v.id("notifications") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
@@ -188,7 +188,7 @@ export const markAllRead = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const authUser = await authComponent.getAuthUser(ctx);
+    const authUser = await getAuthUser(ctx);
     if (!authUser) throw new Error("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 

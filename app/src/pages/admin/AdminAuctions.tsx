@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
+import { useMemo } from "react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,9 @@ import { formatCurrency } from "@/lib/currency";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
-import { BulkActionDialog } from "./AdminDialogs";
-import type { Id, Doc } from "convex/_generated/dataModel";
+import { BulkActionDialog } from "./dialogs";
+import { useBulkOperations } from "./hooks";
+import type { Doc } from "convex/_generated/dataModel";
 
 /**
  * Admin auctions management UI with search, selectable paginated listings, per-row actions and bulk status update workflows.
@@ -40,15 +41,6 @@ import type { Id, Doc } from "convex/_generated/dataModel";
 export default function AdminAuctions() {
   const navigate = useNavigate();
   const adminStats = useQuery(api.admin.getAdminStats);
-  const [auctionSearch, setAuctionSearch] = useState("");
-  const [selectedAuctions, setSelectedAuctions] = useState<Id<"auctions">[]>(
-    []
-  );
-  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
-  const [bulkStatusTarget, setBulkStatusTarget] = useState<
-    "active" | "rejected" | "sold" | "unsold" | null
-  >(null);
-
   const {
     results: allAuctions,
     status: auctionsStatus,
@@ -59,9 +51,20 @@ export default function AdminAuctions() {
     { initialNumItems: 50 }
   );
 
-  const bulkUpdateAuctionsMutation = useMutation(
-    api.auctions.bulkUpdateAuctions
-  );
+  // Use custom hook for all auction selection and bulk operation state
+  const {
+    auctionSearch,
+    setAuctionSearch,
+    selectedAuctions,
+    setSelectedAuctions,
+    handleSelectAll,
+    handleToggleSelection,
+    isBulkProcessing,
+    bulkStatusTarget,
+    setBulkStatusTarget,
+    getSelectionState,
+    handleBulkStatusUpdate,
+  } = useBulkOperations();
 
   const filteredAuctions = useMemo(() => {
     if (!allAuctions) return [];
@@ -73,42 +76,11 @@ export default function AdminAuctions() {
     );
   }, [allAuctions, auctionSearch]);
 
-  const { isAllSelected, isPartiallySelected } = useMemo(() => {
-    const selectedSet = new Set(selectedAuctions);
-    const visibleSelectedCount = filteredAuctions.filter((a) =>
-      selectedSet.has(a._id)
-    ).length;
-
-    return {
-      isAllSelected:
-        filteredAuctions.length > 0 &&
-        visibleSelectedCount === filteredAuctions.length,
-      isPartiallySelected:
-        visibleSelectedCount > 0 &&
-        visibleSelectedCount < filteredAuctions.length,
-    };
-  }, [selectedAuctions, filteredAuctions]);
-
-  const handleBulkStatusUpdate = async () => {
-    if (selectedAuctions.length === 0 || !bulkStatusTarget) return;
-    setIsBulkProcessing(true);
-    try {
-      await bulkUpdateAuctionsMutation({
-        auctionIds: selectedAuctions,
-        updates: { status: bulkStatusTarget },
-      });
-      toast.success(
-        `Updated ${selectedAuctions.length} auctions to ${bulkStatusTarget}`
-      );
-      setSelectedAuctions([]);
-      setBulkStatusTarget(null);
-    } catch (err) {
-      console.error("Bulk update failed:", err);
-      toast.error(err instanceof Error ? err.message : "Bulk update failed");
-    } finally {
-      setIsBulkProcessing(false);
-    }
-  };
+  // Get computed selection state based on filtered auctions
+  const { isAllSelected, isPartiallySelected } = useMemo(
+    () => getSelectionState(filteredAuctions),
+    [filteredAuctions, getSelectionState]
+  );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -227,21 +199,9 @@ export default function AdminAuctions() {
                     checked={
                       isPartiallySelected ? "indeterminate" : isAllSelected
                     }
-                    onCheckedChange={(checked) => {
-                      if (checked === true) {
-                        const visibleIds = filteredAuctions.map((a) => a._id);
-                        setSelectedAuctions((prev) =>
-                          Array.from(new Set([...prev, ...visibleIds]))
-                        );
-                      } else {
-                        const visibleIds = new Set(
-                          filteredAuctions.map((a) => a._id)
-                        );
-                        setSelectedAuctions((prev) =>
-                          prev.filter((id) => !visibleIds.has(id))
-                        );
-                      }
-                    }}
+                    onCheckedChange={(checked) =>
+                      handleSelectAll(filteredAuctions, checked as boolean)
+                    }
                   />
                 </TableHead>
                 <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
@@ -280,13 +240,9 @@ export default function AdminAuctions() {
                     <TableCell>
                       <Checkbox
                         checked={selectedAuctions.includes(a._id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedAuctions((prev) =>
-                            checked === true
-                              ? [...prev, a._id]
-                              : prev.filter((id) => id !== a._id)
-                          );
-                        }}
+                        onCheckedChange={(checked) =>
+                          handleToggleSelection(a._id, checked as boolean)
+                        }
                       />
                     </TableCell>
                     <TableCell>{getStatusBadge(a.status)}</TableCell>
