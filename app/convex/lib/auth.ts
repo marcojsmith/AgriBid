@@ -170,9 +170,9 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 /**
  * Ensures the current user is authenticated and their profile is verified.
  *
- * @param ctx - The query or mutation context containing authentication and database access
- * @returns The authenticated user's profile
- * @throws Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
+ * `@param` ctx - The query or mutation context containing authentication and database access
+ * `@returns` An object containing `profile`, `authUser`, and `userId` for the verified user
+ * `@throws` Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
  */
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   const { profile, ...rest } = await requireProfile(ctx);
@@ -184,4 +184,5 @@ export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   }
 
   return { profile, ...rest };
+}
 }
