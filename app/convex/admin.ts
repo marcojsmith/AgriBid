@@ -382,23 +382,19 @@ export const getAuditLogs = query({
 // --- Dashboard Stats ---
 
 /**
- * Helper to count results of a query using pagination to avoid memory issues.
- * @param query - A Convex query object (e.g., ctx.db.query("table"))
+ * Helper to count results of a query.
+ * Uses .collect() which is suitable for moderate datasets in this prototype.
+ * @param query - A Convex query object
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function countQuery(query: { paginate: (opts: any) => Promise<any> }) {
-  let count = 0;
-  let cursor: string | null = null;
-  let isDone = false;
-
-  while (!isDone) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const page: any = await query.paginate({ numItems: 500, cursor });
-    count += page.page.length;
-    cursor = page.continueCursor;
-    isDone = page.isDone;
-  }
-  return count;
+/**
+ * Count the number of results produced by a query using its `collect()` method.
+ *
+ * @param query - A query-like object exposing `collect()` which returns an array of results
+ * @returns The number of results returned by `query.collect()`
+ */
+async function countQuery(query: any) {
+  const results = await query.collect();
+  return results.length;
 }
 
 /**
