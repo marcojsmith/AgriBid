@@ -135,19 +135,22 @@ export const getActiveAuctions = query({
 export const getActiveMakes = query({
   args: {},
   handler: async (ctx) => {
-    const auctions = await ctx.db
-      .query("auctions")
-      .filter((q) =>
-        q.or(
-          q.eq(q.field("status"), "active"),
-          q.eq(q.field("status"), "sold"),
-          q.eq(q.field("status"), "unsold")
-        )
-      )
-      .collect();
+    // TODO: Future optimization could use a denormalized 'visibleMakes' collection.
+    // For now, we avoid a full table scan by running separate indexed queries for each visible status.
+    const statuses = ["active", "sold", "unsold"] as const;
+    const allMakes = new Set<string>();
 
-    const makes = Array.from(new Set(auctions.map((a) => a.make))).sort();
-    return makes;
+    await Promise.all(
+      statuses.map(async (status) => {
+        const auctions = await ctx.db
+          .query("auctions")
+          .withIndex("by_status", (q) => q.eq("status", status))
+          .collect();
+        auctions.forEach((a) => allMakes.add(a.make));
+      })
+    );
+
+    return Array.from(allMakes).sort();
   },
 });
 

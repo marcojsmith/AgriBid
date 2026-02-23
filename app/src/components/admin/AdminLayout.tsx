@@ -52,8 +52,8 @@ const SIDEBAR_ITEMS = [
  * @param subtitle - Small uppercase subtitle shown under the title (defaults to "Global Marketplace Oversight")
  * @param stats - Optional KPI metrics; when provided renders three stat cards:
  *   - `activeAuctions` (Live)
- *   - `verifiedUsers` (Verified)
- *   - `pendingReview` and `pendingKYC` shown together as `"<pendingReview> · <pendingKYC>"` on the Moderation card; the Moderation card uses yellow styling if either pending value is greater than 0
+ *   - `onlineUsers` (Online)
+ *   - `pendingReview` and `pendingKYC` shown together with explicit units (e.g., "R: X · K: Y") on the Moderation card; the Moderation card uses yellow styling if either pending value is greater than 0
  * @param onAnnounce - Optional callback invoked when the Announce button is clicked; the button is rendered only when this callback is provided
  * @returns The Admin layout React element containing the sidebar, KPI header (with optional action and stat cards) and the provided children
  */
@@ -155,7 +155,7 @@ export function AdminLayout({
                   />
                   <StatCard
                     label="Moderation Queue"
-                    value={`${stats.pendingReview} · ${stats.pendingKYC}`}
+                    value={`R: ${stats.pendingReview} · K: ${stats.pendingKYC}`}
                     icon={<Clock className="h-3 w-3" />}
                     color={
                       stats.pendingReview > 0 || stats.pendingKYC > 0

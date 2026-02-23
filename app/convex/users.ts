@@ -375,6 +375,8 @@ export const submitKYC = mutation({
       updatedAt: Date.now(),
     });
 
+    await updateCounter(ctx, "profiles", "pending", 1);
+
     return { success: true };
   },
 });

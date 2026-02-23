@@ -61,8 +61,10 @@ export default function Home() {
 
   // Extract filter params
   const searchQuery = searchParams.get("q") || undefined;
-  const status =
-    (searchParams.get("status") as "active" | "sold" | "unsold") || "active";
+  const rawStatus = searchParams.get("status");
+  const status = (["active", "sold", "unsold"].includes(rawStatus as any)
+    ? (rawStatus as "active" | "sold" | "unsold")
+    : "active");
   const make = searchParams.get("make") || undefined;
 
   const parseFiniteInt = (key: string) => {

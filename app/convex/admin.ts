@@ -136,6 +136,8 @@ export const reviewKYC = mutation({
 
     if (!profile) throw new Error("Profile not found");
 
+    const wasPending = profile.kycStatus === "pending";
+
     if (args.decision === "approve") {
       const wasVerified = profile.isVerified;
 
@@ -143,6 +145,10 @@ export const reviewKYC = mutation({
         kycStatus: "verified",
         isVerified: true,
       });
+
+      if (wasPending) {
+        await updateCounter(ctx, "profiles", "pending", -1);
+      }
 
       if (!wasVerified) {
         await updateCounter(ctx, "profiles", "verified", 1);
@@ -169,6 +175,11 @@ export const reviewKYC = mutation({
         kycStatus: "rejected",
         kycRejectionReason: reason,
       });
+
+      if (wasPending) {
+        await updateCounter(ctx, "profiles", "pending", -1);
+      }
+
       // Send Rejection Notification
       await ctx.db.insert("notifications", {
         recipientId: args.userId,
@@ -330,13 +341,20 @@ export const closeAuctionEarly = mutation({
       .collect();
 
     const hasBids = bids.length > 0;
-    const finalStatus = hasBids ? "sold" : "unsold";
+    const reserveMet = auction.currentPrice >= auction.reservePrice;
+    const finalStatus = hasBids && reserveMet ? "sold" : "unsold";
     let winnerId: string | undefined = undefined;
 
-    if (hasBids) {
-      const highestBid = bids.reduce((prev, curr) =>
-        curr.amount > prev.amount ? curr : prev
-      );
+    if (finalStatus === "sold") {
+      // Find the highest bid to determine the winner.
+      // Tie-break: earlier bid wins if amounts are equal.
+      const highestBid = bids.reduce((prev, current) => {
+        if (current.amount > prev.amount) return current;
+        if (current.amount === prev.amount) {
+          return current.timestamp < prev.timestamp ? current : prev;
+        }
+        return prev;
+      });
       winnerId = highestBid.bidderId;
     }
 
@@ -431,89 +449,96 @@ export const initializeCounters = mutation({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const [
-      totalAuctions,
-      activeAuctions,
-      pendingAuctions,
-      totalUsers,
-      verifiedSellers,
-      pendingKYC,
-    ] = await Promise.all([
-      countQuery(ctx.db.query("auctions")),
-      countQuery(
-        ctx.db
-          .query("auctions")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_status", (q: any) => q.eq("status", "active"))
-      ),
-      countQuery(
-        ctx.db
-          .query("auctions")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_status", (q: any) => q.eq("status", "pending_review"))
-      ),
-      countQuery(ctx.db.query("profiles")),
-      countQuery(
-        ctx.db
-          .query("profiles")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true))
-      ),
-      countQuery(
-        ctx.db
-          .query("profiles")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .withIndex("by_kycStatus", (q: any) => q.eq("kycStatus", "pending"))
-      ),
-    ]);
-
-    // Update or insert auction counters
-    const auctionCounter = await ctx.db
-      .query("counters")
-      .withIndex("by_name", (q) => q.eq("name", "auctions"))
-      .unique();
-    const auctionPayload = {
-      total: totalAuctions,
-      active: activeAuctions,
-      pending: pendingAuctions,
-      verified: 0, // Auctions don't use verified
-      updatedAt: Date.now(),
-    };
-
-    if (auctionCounter) {
-      await ctx.db.patch(auctionCounter._id, auctionPayload);
-    } else {
-      await ctx.db.insert("counters", {
-        name: "auctions",
-        ...auctionPayload,
-      });
-    }
-
-    // Update or insert profile counters
-    const profileCounter = await ctx.db
-      .query("counters")
-      .withIndex("by_name", (q) => q.eq("name", "profiles"))
-      .unique();
-    const profilePayload = {
-      total: totalUsers,
-      verified: verifiedSellers,
-      pending: pendingKYC,
-      active: 0, // Profiles don't use active in this context currently
-      updatedAt: Date.now(),
-    };
-
-    if (profileCounter) {
-      await ctx.db.patch(profileCounter._id, profilePayload);
-    } else {
-      await ctx.db.insert("counters", {
-        name: "profiles",
-        ...profilePayload,
-      });
-    }
-
+    await initializeCountersInternal(ctx);
     return { success: true };
   },
 });
+
+/**
+ * Internal helper to recalculate all counters from scratch.
+ * Used by initializeCounters mutation and the seeding process.
+ */
+export async function initializeCountersInternal(ctx: MutationCtx) {
+  const [
+    totalAuctions,
+    activeAuctions,
+    pendingAuctions,
+    totalUsers,
+    verifiedSellers,
+    pendingKYC,
+  ] = await Promise.all([
+    countQuery(ctx.db.query("auctions")),
+    countQuery(
+      ctx.db
+        .query("auctions")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .withIndex("by_status", (q: any) => q.eq("status", "active"))
+    ),
+    countQuery(
+      ctx.db
+        .query("auctions")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .withIndex("by_status", (q: any) => q.eq("status", "pending_review"))
+    ),
+    countQuery(ctx.db.query("profiles")),
+    countQuery(
+      ctx.db
+        .query("profiles")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .withIndex("by_isVerified", (q: any) => q.eq("isVerified", true))
+    ),
+    countQuery(
+      ctx.db
+        .query("profiles")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .withIndex("by_kycStatus", (q: any) => q.eq("kycStatus", "pending"))
+    ),
+  ]);
+
+  // Update or insert auction counters
+  const auctionCounter = await ctx.db
+    .query("counters")
+    .withIndex("by_name", (q) => q.eq("name", "auctions"))
+    .unique();
+  const auctionPayload = {
+    total: totalAuctions,
+    active: activeAuctions,
+    pending: pendingAuctions,
+    verified: 0, // Auctions don't use verified
+    updatedAt: Date.now(),
+  };
+
+  if (auctionCounter) {
+    await ctx.db.patch(auctionCounter._id, auctionPayload);
+  } else {
+    await ctx.db.insert("counters", {
+      name: "auctions",
+      ...auctionPayload,
+    });
+  }
+
+  // Update or insert profile counters
+  const profileCounter = await ctx.db
+    .query("counters")
+    .withIndex("by_name", (q) => q.eq("name", "profiles"))
+    .unique();
+  const profilePayload = {
+    total: totalUsers,
+    verified: verifiedSellers,
+    pending: pendingKYC,
+    active: 0, // Profiles don't use active in this context currently
+    updatedAt: Date.now(),
+  };
+
+  if (profileCounter) {
+    await ctx.db.patch(profileCounter._id, profilePayload);
+  } else {
+    await ctx.db.insert("counters", {
+      name: "profiles",
+      ...profilePayload,
+    });
+  }
+}
 
 export const getAdminStats = query({
   args: {},

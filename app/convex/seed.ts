@@ -5,13 +5,15 @@ import type { MutationCtx } from "./_generated/server";
 import { components } from "./_generated/api";
 import { getCallerRole } from "./users";
 import { updateCounter } from "./admin_utils";
+import { initializeCountersInternal } from "./admin";
 
 type SeedTableNames =
   | "auctions"
   | "bids"
   | "profiles"
   | "watchlist"
-  | "equipmentMetadata";
+  | "equipmentMetadata"
+  | "counters";
 
 interface DeleteManyResult {
   count: number;
@@ -85,6 +87,7 @@ export const runSeed = mutation({
         "bids",
         "profiles",
         "watchlist",
+        "counters",
       ];
       for (const tableName of tablesToClear) {
         let deletedCount = 0;
@@ -276,6 +279,7 @@ export const runSeed = mutation({
         updatedAt: Date.now(),
       });
       await updateCounter(ctx, "profiles", "total", 1);
+      await updateCounter(ctx, "profiles", "verified", 1);
     }
 
     // 3. Seed Mock Auctions
@@ -461,6 +465,8 @@ export const runSeed = mutation({
         }
       }
     }
+
+    await initializeCountersInternal(ctx);
 
     console.log("Seeding completed successfully.");
   },

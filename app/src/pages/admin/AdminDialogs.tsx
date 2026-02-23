@@ -354,3 +354,59 @@ export function PromoteAdminDialog({
     </AlertDialog>
   );
 }
+
+/**
+ * Confirmation dialog to close an auction early.
+ *
+ * @param isOpen - Whether the dialog is visible.
+ * @param onClose - Callback invoked when the dialog is closed.
+ * @param onConfirm - Callback invoked when the action is confirmed.
+ * @param isProcessing - When true, disables actions and shows a loading indicator.
+ * @param auctionTitle - Title of the auction being closed early.
+ */
+export function ConfirmCloseEarlyDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  isProcessing,
+  auctionTitle,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isProcessing: boolean;
+  auctionTitle: string;
+}) {
+  return (
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent className="rounded-2xl border-2">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-black uppercase tracking-tight text-destructive">
+            Close Auction Early?
+          </AlertDialogTitle>
+          <AlertDialogDescription className="font-medium text-sm">
+            You are about to end the auction for{" "}
+            <span className="font-bold text-primary">{auctionTitle}</span> immediately.
+            The highest bidder will be awarded the win if the reserve price has been met.
+            This action is irreversible.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="rounded-xl border-2 font-bold uppercase text-[10px]">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isProcessing}
+            className="rounded-xl bg-destructive text-destructive-foreground font-black uppercase text-[10px]"
+          >
+            {isProcessing ? (
+              <LoadingIndicator size="sm" className="mr-2" />
+            ) : null}
+            Confirm Early Close
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

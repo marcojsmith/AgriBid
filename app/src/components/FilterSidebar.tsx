@@ -46,11 +46,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const applyFilters = () => {
     const newParams = new URLSearchParams(searchParams);
     Object.entries(localFilters).forEach(([key, value]) => {
-      if (value && !(key === "status" && value === "active")) {
+      const isDefaultStatus = key === "status" && value === "active";
+      if (value && !isDefaultStatus) {
         newParams.set(key, value);
-      } else if (key === "status" && value === "active") {
-        newParams.delete(key);
-      } else if (!value) {
+      } else {
         newParams.delete(key);
       }
     });
@@ -96,12 +95,12 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         {/* Status Filter */}
         <div className="space-y-3">
           <label
-            htmlFor="filter-status"
+            id="filter-status-label"
             className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
           >
             Show
           </label>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2" role="group" aria-labelledby="filter-status-label">
             {[
               { id: "active", label: "Active Auctions" },
               { id: "sold", label: "Sold Equipment" },

@@ -116,14 +116,14 @@ export default function AdminDashboard() {
           stats={[
             { label: "Total Users", value: adminStats.totalUsers },
             {
+              label: "Verified Users",
+              value: adminStats.verifiedUsers,
+              color: "text-green-600",
+            },
+            {
               label: "Online Now",
               value: adminStats.onlineUsers,
               color: "text-blue-600",
-            },
-            {
-              label: "Pending KYC",
-              value: adminStats.pendingKYC,
-              color: adminStats.pendingKYC > 0 ? "text-yellow-600" : "",
             },
           ]}
           link="/admin/users"

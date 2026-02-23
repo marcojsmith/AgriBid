@@ -27,7 +27,7 @@ import { formatCurrency } from "@/lib/currency";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
-import { BulkActionDialog } from "./AdminDialogs";
+import { BulkActionDialog, ConfirmCloseEarlyDialog } from "./AdminDialogs";
 import type { Id, Doc } from "convex/_generated/dataModel";
 
 /**
@@ -52,6 +52,10 @@ export default function AdminAuctions() {
     "active" | "rejected" | "sold" | "unsold" | null
   >(null);
 
+  // Close Early State
+  const [closeEarlyTarget, setCloseEarlyTarget] = useState<Doc<"auctions"> | null>(null);
+  const [isClosingEarly, setIsClosingEarly] = useState(false);
+
   const {
     results: allAuctions,
     status: auctionsStatus,
@@ -66,6 +70,26 @@ export default function AdminAuctions() {
     api.auctions.bulkUpdateAuctions
   );
   const closeAuctionEarlyMutation = useMutation(api.admin.closeAuctionEarly);
+
+  const handleCloseEarly = async () => {
+    if (!closeEarlyTarget) return;
+    setIsClosingEarly(true);
+    try {
+      const result = await closeAuctionEarlyMutation({
+        auctionId: closeEarlyTarget._id,
+      });
+      toast.success(
+        `Auction closed early as ${result.status.toUpperCase()}`
+      );
+      setCloseEarlyTarget(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to close auction"
+      );
+    } finally {
+      setIsClosingEarly(false);
+    }
+  };
 
   const filteredAuctions = useMemo(() => {
     if (!allAuctions) return [];
@@ -350,32 +374,7 @@ export default function AdminAuctions() {
                           {a.status === "active" && (
                             <DropdownMenuItem
                               className="text-destructive font-bold rounded-lg gap-2"
-                              onClick={() => {
-                                toast.warning("Close Auction Early?", {
-                                  description:
-                                    "This will end the auction immediately and award the highest bidder.",
-                                  action: {
-                                    label: "Confirm",
-                                    onClick: async () => {
-                                      try {
-                                        const result =
-                                          await closeAuctionEarlyMutation({
-                                            auctionId: a._id,
-                                          });
-                                        toast.success(
-                                          `Auction closed early as ${result.status.toUpperCase()}`
-                                        );
-                                      } catch (err) {
-                                        toast.error(
-                                          err instanceof Error
-                                            ? err.message
-                                            : "Failed to close auction"
-                                        );
-                                      }
-                                    },
-                                  },
-                                });
-                              }}
+                              onClick={() => setCloseEarlyTarget(a)}
                             >
                               <AlertCircle className="h-4 w-4" /> Close Early
                             </DropdownMenuItem>
@@ -409,6 +408,13 @@ export default function AdminAuctions() {
         isProcessing={isBulkProcessing}
         selectedCount={selectedAuctions.length}
         targetStatus={bulkStatusTarget}
+      />
+      <ConfirmCloseEarlyDialog
+        isOpen={!!closeEarlyTarget}
+        onClose={() => setCloseEarlyTarget(null)}
+        onConfirm={handleCloseEarly}
+        isProcessing={isClosingEarly}
+        auctionTitle={closeEarlyTarget?.title || ""}
       />
     </AdminLayout>
   );
