@@ -125,10 +125,9 @@ export const getWatchedAuctionIds = query({
       const watchlist = await ctx.db
         .query("watchlist")
         .withIndex("by_user", (q) => q.eq("userId", userId))
-        .collect();
+        .take(500); // Reasonable upper bound for watched auctions
 
-      return watchlist.map((item) => item.auctionId);
-    } catch (err) {
+      return watchlist.map((item) => item.auctionId);    } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getWatchedAuctionIds failure:", err);
       }

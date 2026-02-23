@@ -95,7 +95,7 @@ export default function MyBids() {
 
               return (
                 <div
-                  key={auction.bidTimestamp ? `${auction._id}-${auction.bidTimestamp}` : `${auction._id}-${auction.bidAmount}-${auction.bidTimestamp}`}
+                  key={`${auction._id}-${auction.bidTimestamp}`}
                   className="bg-card border-2 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="aspect-video bg-muted relative">
