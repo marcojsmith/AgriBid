@@ -109,7 +109,7 @@ Convex Type  | TS/JS type  |  Example Usage         | Validator for argument val
 - Try to use as few calls from actions to queries and mutations as possible. Queries and mutations are transactions, so splitting logic up into multiple calls introduces the risk of race conditions.
 - All of these calls take in a `FunctionReference`. Do NOT try to pass the callee function directly into one of these calls.
 - When using `ctx.runQuery`, `ctx.runMutation`, or `ctx.runAction` to call a function in the same file, specify a type annotation on the return value to work around TypeScript circularity limitations. For example,
-```
+```typescript
 export const f = query({
   args: { name: v.string() },
   returns: v.string(),
@@ -145,7 +145,7 @@ export const g = query({
 - Paginated queries are queries that return a list of results in incremental pages.
 - You can define pagination using the following syntax:
 
-```ts
+```typescript
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
@@ -183,7 +183,7 @@ Note: `paginationOpts` is an object with the following properties:
 ## Typescript guidelines
 - You can use the helper typescript type `Id` imported from './_generated/dataModel' to get the type of the id for a given table. For example if there is a table called 'users' you can use `Id<'users'>` to get the type of the id for that table.
 - If you need to define a `Record` make sure that you correctly provide the type of the key and value in the type. For example a validator `v.record(v.id('users'), v.string())` would have the type `Record<Id<'users'>, string>`. Below is an example of using `Record` with an `Id` type in a query:
-```ts
+```typescript
 import { query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 
@@ -237,7 +237,7 @@ const messages = await ctx.db
 - Always add `"use node";` to the top of files containing actions that use Node.js built-in modules.
 - Never use `ctx.db` inside of an action. Actions don't have access to the database.
 - Below is an example of the syntax for an action:
-```ts
+```typescript
 import { action } from "./_generated/server";
 
 export const exampleAction = action({
@@ -255,7 +255,7 @@ export const exampleAction = action({
 - Only use the `crons.interval` or `crons.cron` methods to schedule cron jobs. Do NOT use the `crons.hourly`, `crons.daily`, or `crons.weekly` helpers.
 - Both cron methods take in a FunctionReference. Do NOT try to pass the function directly into one of these methods.
 - Define crons by declaring the top-level `crons` object, calling some methods on it, and then exporting it as default. For example,
-```ts
+```typescript
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
@@ -285,7 +285,7 @@ export default crons;
 - Do NOT use the deprecated `ctx.storage.getMetadata` call for loading a file's metadata.
 
 Instead, query the `_storage` system table. For example, you can use `ctx.db.system.get` to get an `Id<"_storage">`.
-```
+```typescript
 import { query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
@@ -314,7 +314,7 @@ export const exampleQuery = query({
 ## Example: chat-app
 
 ### Task
-```
+```text
 Create a real-time chat application backend with AI responses. The app should:
 - Allow creating users with names
 - Support multiple chat channels
@@ -353,7 +353,7 @@ Public Mutations:
 - createUser:
   - file path: convex/index.ts
   - arguments: {name: v.string()}
-  - returns: v.object({userId: v.id("users")})
+  - returns: v.id("users")
   - purpose: Create a new user with a given name
 - createChannel:
   - file path: convex/index.ts

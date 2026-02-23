@@ -51,8 +51,16 @@ function AdminDashboardContent() {
   }
 
   // Safe checks for potentially null/undefined data even after loading check if queries return null
+  // Safe checks for potentially null/undefined data even after loading check if queries return null
   if (!adminStats || !financialStats || !announcementStats || !supportStats) {
-     return <div>Error loading dashboard data.</div>;
+    return (
+      <div className="h-96 flex flex-col items-center justify-center text-center gap-4">
+        <p className="text-muted-foreground">Unable to load dashboard data.</p>
+        <p className="text-sm text-muted-foreground">
+          Please refresh the page or contact support if the issue persists.
+        </p>
+      </div>
+    );
   }
 
   return (
