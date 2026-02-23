@@ -145,6 +145,8 @@ export const listAllProfiles = query({
     page: v.array(v.any()),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    pageStatus: v.union(v.string(), v.null()),
+    splitCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     console.log("listAllProfiles received args:", args);

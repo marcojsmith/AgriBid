@@ -402,6 +402,8 @@ export const getSellerListings = query({
     page: v.array(v.any()),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    pageStatus: v.union(v.string(), v.null()),
+    splitCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     const results = await ctx.db
@@ -729,6 +731,8 @@ export const getAllAuctions = query({
     page: v.array(v.any()),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    pageStatus: v.union(v.string(), v.null()),
+    splitCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     console.log("getAllAuctions received args:", args);
@@ -947,6 +951,8 @@ export const getMyBids = query({
     ),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    pageStatus: v.union(v.string(), v.null()),
+    splitCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     try {
@@ -1024,6 +1030,8 @@ export const getMyListings = query({
     page: v.array(v.any()),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    pageStatus: v.union(v.string(), v.null()),
+    splitCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     try {

@@ -96,6 +96,8 @@ export const getPendingKYC = query({
     page: v.array(v.any()),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    pageStatus: v.union(v.string(), v.null()),
+    splitCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
