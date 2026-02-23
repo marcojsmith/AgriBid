@@ -297,7 +297,7 @@ Avoid clutter and unnecessary elements.
 
 # External Model Usage
 
-Leverage 3rd party LLMs (Gemini 3 Pro, Kimi K2, GPT-5, Claude, Nano Banana Pro) to help brainstorm ideas, generating text, or assist with specific tasks like coding, development, and design.
+Leverage 3rd party LLMs to help brainstorm ideas, generating text, generating images, or assist with specific tasks like coding, development, and design.
 
 **Model Selection:**
 
@@ -307,6 +307,7 @@ Leverage 3rd party LLMs (Gemini 3 Pro, Kimi K2, GPT-5, Claude, Nano Banana Pro) 
 - Claude: specializes in coding and development.
 - GPT-5: general-purpose, versatile for various tasks.
 - Kimi K2: coding, mathematics, and tool orchestration.
+- Nano Banana Pro: generating images.
 
 **Prompt Generation:** 
 
