@@ -16,11 +16,11 @@ import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/AuctionCard";
 
 /**
- * Render the seller profile page for the `userId` taken from route parameters.
+ * Renders the seller profile page for the route parameter `userId`.
  *
- * Renders a loading view while data is being fetched, a not-found view if the seller does not exist, or the full profile when data is available. The profile includes seller metadata, active and sold listings, and a paginated control to load more listings; when the current user owns the profile a "Manage Verification" action is shown.
+ * Shows a full-page loading indicator while data is being fetched, a user-not-found view when the seller does not exist, or the complete profile when data is available. The profile includes seller metadata, counts for active and sold items, grids of active and sold listings (with watched state), and a paginated control to load more listings. When the current user owns the profile a "Manage Verification" action is shown.
  *
- * @returns The React element representing the seller profile page, a loading view, or a not-found view.
+ * @returns A React element containing the seller profile, a full-page loading indicator, or a user-not-found view.
  */
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
