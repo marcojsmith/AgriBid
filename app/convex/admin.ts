@@ -240,36 +240,49 @@ export const getFinancialStats = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    // In a real app, use aggregations. Here we scan.
-    const soldAuctions = await ctx.db
-      .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "sold"))
-      .take(200);
+    // Scan all sold auctions to compute global aggregates
+    let totalSalesVolume = 0;
+    let auctionCount = 0;
+    let cursor: string | null = null;
+    let isDone = false;
 
-    const totalSalesVolume = soldAuctions.reduce(
-      (sum, a) => sum + a.currentPrice,
-      0
-    );
+    while (!isDone) {
+      const page = await ctx.db
+        .query("auctions")
+        .withIndex("by_status", (q) => q.eq("status", "sold"))
+        .paginate({ numItems: 500, cursor });
+
+      for (const a of page.page) {
+        totalSalesVolume += a.currentPrice;
+        auctionCount++;
+      }
+      cursor = page.continueCursor;
+      isDone = page.isDone;
+    }
+
     const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
 
-    // Recent Transactions
-    const recentSales = soldAuctions
-      .sort((a, b) => b.endTime - a.endTime)
-      .slice(0, 10)
-      .map((a) => ({
-        id: a._id,
-        title: a.title,
-        amount: a.currentPrice,
-        estimatedCommission: a.currentPrice * COMMISSION_RATE,
-        date: a.endTime,
-      }));
+    // Fetch only the most recent sales for the activity list
+    const recentSoldAuctions = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "sold"))
+      .order("desc")
+      .take(10);
+
+    const recentSales = recentSoldAuctions.map((a) => ({
+      id: a._id,
+      title: a.title,
+      amount: a.currentPrice,
+      estimatedCommission: a.currentPrice * COMMISSION_RATE,
+      date: a.endTime,
+    }));
 
     return {
       totalSalesVolume,
       estimatedCommission,
       commissionRate: COMMISSION_RATE,
       recentSales,
-      auctionCount: soldAuctions.length,
+      auctionCount,
     };
   },
 });
@@ -627,17 +640,22 @@ export const getAnnouncementStats = query({
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    const allAnnouncements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
-      .collect();
+    const total = await countQuery(
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
+    );
 
-    const recentCount = allAnnouncements.filter(
-      (a) => a.createdAt >= sevenDaysAgo
-    ).length;
+    const recentCount = await countQuery(
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) =>
+          q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
+        )
+    );
 
     return {
-      total: allAnnouncements.length,
+      total,
       recent: recentCount,
     };
   },
@@ -654,20 +672,20 @@ export const getSupportStats = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const openTickets = await ctx.db
-      .query("supportTickets")
-      .withIndex("by_status", (q) => q.eq("status", "open"))
-      .collect();
+    const openCount = await countQuery(
+      ctx.db.query("supportTickets").withIndex("by_status", (q) => q.eq("status", "open"))
+    );
 
-    const resolvedTickets = await ctx.db
-      .query("supportTickets")
-      .withIndex("by_status", (q) => q.eq("status", "resolved"))
-      .collect();
+    const resolvedCount = await countQuery(
+      ctx.db
+        .query("supportTickets")
+        .withIndex("by_status", (q) => q.eq("status", "resolved"))
+    );
 
     return {
-      open: openTickets.length,
-      resolved: resolvedTickets.length,
-      total: openTickets.length + resolvedTickets.length,
+      open: openCount,
+      resolved: resolvedCount,
+      total: openCount + resolvedCount,
     };
   },
 });

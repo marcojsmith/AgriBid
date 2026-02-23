@@ -956,7 +956,7 @@ export const getMyBids = query({
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return { page: [], isDone: true, continueCursor: "" };
+      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
       const userId = authUser.userId ?? authUser._id;
 
       // Get bids by this user, paginated
@@ -1018,7 +1018,7 @@ export const getMyBids = query({
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyBids failure:", err);
       }
-      return { page: [], isDone: true, continueCursor: "" };
+      return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
     }
   },
 });
@@ -1035,7 +1035,7 @@ export const getMyListings = query({
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return { page: [], isDone: true, continueCursor: "" };
+      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
       const userId = authUser.userId ?? authUser._id;
 
       const listingsResult = await ctx.db
@@ -1058,7 +1058,7 @@ export const getMyListings = query({
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyListings failure:", err);
       }
-      return { page: [], isDone: true, continueCursor: "" };
+      return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
     }
   },
 });

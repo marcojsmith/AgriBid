@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { resolveImageUrls } from "./auctions";
 import { authComponent } from "./auth";
 import { paginationOptsValidator } from "convex/server";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * Toggle an auction in the user's watchlist.
@@ -84,7 +85,7 @@ export const getWatchedAuctions = query({
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return { page: [], isDone: true, continueCursor: "" };
+      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
       const userId = authUser.userId ?? authUser._id;
 
       const watchlist = await ctx.db
@@ -111,7 +112,7 @@ export const getWatchedAuctions = query({
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getWatchedAuctions failure:", err);
       }
-      return { page: [], isDone: true, continueCursor: "" };
+      return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
     }
   },
 });
@@ -132,12 +133,23 @@ export const getWatchedAuctionIds = query({
       if (!authUser) return [];
       const userId = authUser.userId ?? authUser._id;
 
-      const watchlist = await ctx.db
-        .query("watchlist")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
-        .take(500); // Reasonable upper bound for watched auctions
+      const results: Id<"auctions">[] = [];
+      let cursor: string | null = null;
+      let isDone = false;
 
-      return watchlist.map((item) => item.auctionId);    } catch (err) {
+      while (!isDone) {
+        const page = await ctx.db
+          .query("watchlist")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .paginate({ numItems: 100, cursor });
+
+        results.push(...page.page.map((item) => item.auctionId));
+        cursor = page.continueCursor;
+        isDone = page.isDone;
+      }
+
+      return results;
+    } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getWatchedAuctionIds failure:", err);
       }
