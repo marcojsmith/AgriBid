@@ -19,7 +19,9 @@ export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
   try {
     return await authComponent.getAuthUser(ctx);
   } catch (err) {
-    console.error("getAuthUser failed:", err);
+    if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+      console.error("getAuthUser failed:", err);
+    }
     return null;
   }
 }
