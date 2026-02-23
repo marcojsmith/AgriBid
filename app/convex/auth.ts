@@ -1,4 +1,5 @@
 // app/convex/auth.ts
+import { v } from "convex/values";
 import { createClient } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth";
@@ -63,6 +64,7 @@ export const createAuth = (
 
 export const getAuthUser = query({
   args: {},
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx) => {
     try {
       return await authComponent.getAuthUser(ctx);

@@ -30,6 +30,10 @@ Determine the best course of action for the user based on the current state of t
 - Communicate clearly and effectively with the team, providing constructive feedback and collaborating to achieve the best possible outcome for the project.
 - Stay up-to-date with the latest trends and best practices in software development, and continuously seek opportunities to learn and grow as a developer.
 
+## Folder Structure
+
+TO BE UPDATED BY AI AS THE PROJECT PROGRESSES.
+
 ## Tech stack
 
 - **Frontend:** React (Vite), TypeScript.
@@ -51,6 +55,7 @@ Determine the best course of action for the user based on the current state of t
 
 - **Reading files:**
     - When you need to read a file, read the entire file if possible. This will help you understand the full context and avoid missing any important information that may be relevant to the task at hand. If the file is too large to read in one go, try to read it in sections, but make sure to keep track of the overall structure and context of the file as you read through it.
+    - Use the ReadFile tool to read files, and read as many files at once as possible to get a comprehensive understanding of the codebase and the specific files that are relevant to the task you are working on.
 - **Running development server:**
     - Assume the development and convex servers are already running when making changes.
 - **Legacy code and data:**
@@ -73,65 +78,89 @@ Determine the best course of action for the user based on the current state of t
 
 ### Code Reviews:
 
-    - When performing code reviews, focus on the following aspects:
-        - Code quality and readability.
-        - Adherence to coding standards and best practices.
-        - Proper testing and coverage.
-        - Security implications of the changes.
-        - Overall impact on the project and any potential issues or improvements.
-        - Unused imports, variables or code, and any opportunities to clean up the codebase.
-        - Refactoring opportunities to improve code structure and maintainability.
-        - Unfinished or placeholder code that may have been left in the codebase, and ensuring that all code is complete and ready for production.
-        - Documentation updates that may be necessary as part of the changes, and ensuring that all relevant documentation is updated accordingly. Including the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder.
-    - Provide constructive feedback and suggestions for improvement, and be open to discussion and collaboration with the author of the changes. Always aim to improve the overall quality of the codebase and ensure that the changes align with the project's goals and standards.
-    - **Step 1: List files and folders to Review**
-        - Using terminal commands, list all of the files and folders within the project that are not part of the .gitignore file.
-        - This will help you identify all the relevant files and folders that may be impacted by the changes being made, and will allow you to review them thoroughly during the code review process.
-    - **Step 2: Identify files to review**
-        - Create a list in a markdown file of all the important files and folders to investigate.
-        - Update this list regularly to keep track of the most relevant parts of the codebase and to keep track of which files you have already reviewed and which ones you still need to review.
-    - **Step 3: Review files**
-        - For each file, review the code and identify any potential issues, improvements, or important information that is relevant to the changes being made.
-        - Document your findings in the markdown file, including any specific lines of code or sections that are noteworthy.
-    - **Step 4: Summarise review**
-        - After reviewing all the relevant files, compile your findings into a clear and concise summary that can be shared with the author of the changes.
-        - This summary should highlight any important issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
-    - **Step 5: Updating documentation**
+**General notes:**
+- When performing code reviews, focus on the following aspects:
+    - Code quality and readability.
+    - Adherence to coding standards and best practices.
+    - Proper testing and coverage.
+    - Security implications of the changes.
+    - Overall impact on the project and any potential issues or improvements.
+    - Unused imports, variables or code, and any opportunities to clean up the codebase.
+    - Refactoring opportunities to improve code structure and maintainability.
+    - Unfinished or placeholder code that may have been left in the codebase, and ensuring that all code is complete and ready for production.
+    - Documentation updates that may be necessary as part of the changes, and ensuring that all relevant documentation is updated accordingly. Including the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder.
+- Provide constructive feedback and suggestions for improvement, and be open to discussion and collaboration with the author of the changes. Always aim to improve the overall quality of the codebase and ensure that the changes align with the project's goals and standards.
+
+**Step 1: List files and folders to Review**
+
+- Using terminal commands, list all of the files and folders within the project that are not part of the .gitignore file.
+- This will help you identify all the relevant files and folders that may be impacted by the changes being made, and will allow you to review them thoroughly during the code review process.
+
+**Step 2: Identify files to review**
+
+- Create a list in a markdown file of all the important files and folders to investigate.
+- Update this list regularly to keep track of the most relevant parts of the codebase and to keep track of which files you have already reviewed and which ones you still need to review.
+
+**Step 3: Review files**
+
+- For each file, review the code and identify any potential issues, improvements, or important information that is relevant to the changes being made.
+- Document your findings in the markdown file, including any specific lines of code or sections that are noteworthy.
+
+**Step 4: Summarise review**
+
+- After reviewing all the relevant files, compile your findings into a clear and concise summary that can be shared with the author of the changes.
+- This summary should highlight any important issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
+
+**Step 5: Update documentation**
 
 ### PR review:
 
-    - CodeRabbit performs a review of all PRs submitted to the repository, providing feedback on code quality, adherence to coding standards, testing, security implications, and overall impact on the project. The review process is designed to ensure that all changes meet the project's standards and align with its goals.
-    - When a PR is submitted, CodeRabbit will perform a code review that you must then review and resolve. The review will include feedback on any issues or improvements that were identified during the review process, as well as any relevant information that may impact the changes being made.
-    - **Step 1: Review PR Findings**
-        - PR review findings file: The user will add a file under `conductor/code_reviews/` with the name `prXX_review_findings.md`, where `XX` is the number of the PR being reviewed. This file will contain a list of all the comments from the PR review, along with any relevant details or context provided by CodeRabbit.
-        - Review comments: Review the comments provided by CodeRabbit in the `prXX_review_findings.md` file, and ensure that you understand the feedback and suggestions provided. Take note of any specific issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
-    - **Step 2: Update the markdown file for documenting review findings**
-        - Update the PR review findings markdown file to be a ordered checklist. Include a number and a checkbox in front of each comment, and ensure that all details and context provided by CodeRabbit are included in the checklist. This will help you keep track of which comments have been addressed and which ones still need to be addressed as you work through the review process.
-    - **Step 3: Address comments**
-        - Correct branch: Ensure you are in the correct branch for the PR and make the necessary code changes to address the comments provided by CodeRabbit.
-        - Review CodeRabbit feedback: For each comment, review the feedback provided by CodeRabbit in the `prXX_review_findings.md` file and make the necessary changes to address the issues or improvements identified. This may involve making code changes, updating documentation, or providing additional information to clarify any misunderstandings.
-        - Read the file: Before correcting any issue, first read the file that contains the comment to ensure you understand the context and details of the issue. This will help you make informed decisions about how to address the comment and ensure that your changes are effective and appropriate.
-        - Correct the issue: After understanding the comment, the context, and the broader purpose of the application, make the necessary code changes to address the issue. This may involve refactoring code, fixing bugs, improving performance, or making other relevant changes to ensure that the code meets the project's standards and aligns with its goals.
-        - Update checklist: As you address each comment, update the markdown checklist file in the `conductor/code_reviews/` folder to indicate which comments have been addressed and which ones still need to be addressed. This will help you keep track of your progress and ensure that all comments are properly addressed before finalizing the PR.
-    - **Step 4: Resolve any errors**
-        - Check for errors: Run the following commands to ensure that the codebase is in a good state and that all tests are passing (use `;` for PowerShell or `&&` for cmd.exe):
-            - `cd app && npm run lint` (mac) or `cd app ; npm run lint` (PowerShell) or `cd app && npm run lint` (cmd.exe) to check for any linting errors in the codebase.
-            - `cd app && npm run build` (mac) or `cd app ; npm run build` (PowerShell) or `cd app && npm run build` (cmd.exe) to run all tests and ensure that they are passing successfully.
-            - `npx vercel build` to check for any build errors and ensure that the application can be built successfully.
-    - **Step 5: Summarise review**
-        - Summarise changes: After addressing all the comments, compile your findings into a clear and concise summary that can used as a commit message for the changes made to address the PR review. This summary should highlight any important issues or improvements that were addressed, as well as any relevant information that may impact the changes being made.
-    - **Step 6: Update documentation**
-        - Update documentation: If any documentation updates were necessary as part of addressing the PR review comments, ensure that all relevant documentation is updated accordingly. This includes the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder. Make sure to document any important information or changes that were made as part of addressing the PR review comments, so that it can be easily referenced in the future.
-    - **Step 7: Finalize PR**
-        - Commit and push changes: Once all comments have been addressed and the necessary changes have been made, finalize the PR by pushing the changes to the branch. This will allow CodeRabbit to verify that all issues and improvements have been properly addressed and that the changes meet the project's standards.
-        - Do not commit findings: Do not commit the `prXX_review_findings.md` file to the repository, as this file is only meant for your reference during the PR review process and should not be included in the final codebase.
+- CodeRabbit performs a review of all PRs submitted to the repository, providing feedback on code quality, adherence to coding standards, testing, security implications, and overall impact on the project. The review process is designed to ensure that all changes meet the project's standards and align with its goals.
+- When a PR is submitted, CodeRabbit will perform a code review that you must then review and resolve. The review will include feedback on any issues or improvements that were identified during the review process, as well as any relevant information that may impact the changes being made.
+
+**Step 1: Review PR Findings**
+
+- PR review findings file: The user will add a file under `conductor/code_reviews/` with the name `prXX_review_findings.md`, where `XX` is the number of the PR being reviewed. This file will contain a list of all the comments from the PR review, along with any relevant details or context provided by CodeRabbit.
+- Review comments: Review the comments provided by CodeRabbit in the `prXX_review_findings.md` file, and ensure that you understand the feedback and suggestions provided. Take note of any specific issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
+
+**Step 2: Update the markdown file for documenting review findings**
+
+- Update the PR review findings markdown file to be a ordered checklist. Include a number and a checkbox in front of each comment, and ensure that all details and context provided by CodeRabbit are included in the checklist. This will help you keep track of which comments have been addressed and which ones still need to be addressed as you work through the review process.
+
+**Step 3: Address comments**
+
+- Correct branch: Ensure you are in the correct branch for the PR and make the necessary code changes to address the comments provided by CodeRabbit.
+- Review CodeRabbit feedback: For each comment, review the feedback provided by CodeRabbit in the `prXX_review_findings.md` file and make the necessary changes to address the issues or improvements identified. This may involve making code changes, updating documentation, or providing additional information to clarify any misunderstandings.
+- Read the file: Before correcting any issue, first read the file that contains the comment to ensure you understand the context and details of the issue. This will help you make informed decisions about how to address the comment and ensure that your changes are effective and appropriate.
+- Correct the issue: After understanding the comment, the context, and the broader purpose of the application, make the necessary code changes to address the issue. This may involve refactoring code, fixing bugs, improving performance, or making other relevant changes to ensure that the code meets the project's standards and aligns with its goals.
+- Update checklist: As you address each comment, update the markdown checklist file in the `conductor/code_reviews/` folder to indicate which comments have been addressed and which ones still need to be addressed. This will help you keep track of your progress and ensure that all comments are properly addressed before finalizing the PR.
+
+**Step 4: Resolve any errors**
+
+- Check for errors: Run the following commands to ensure that the codebase is in a good state and that all tests are passing (use `;` for PowerShell or `&&` for cmd.exe):
+    - `cd app && npm run lint` (mac) or `cd app ; npm run lint` (PowerShell) or `cd app && npm run lint` (cmd.exe) to check for any linting errors in the codebase.
+    - `cd app && npm run build` (mac) or `cd app ; npm run build` (PowerShell) or `cd app && npm run build` (cmd.exe) to run all tests and ensure that they are passing successfully.
+    - `npx vercel build` to check for any build errors and ensure that the application can be built successfully.
+
+**Step 5: Summarise review**
+
+- Summarise changes: After addressing all the comments, compile your findings into a clear and concise summary that can used as a commit message for the changes made to address the PR review. This summary should highlight any important issues or improvements that were addressed, as well as any relevant information that may impact the changes being made.
+
+**Step 6: Update documentation**
+
+- Update documentation: If any documentation updates were necessary as part of addressing the PR review comments, ensure that all relevant documentation is updated accordingly. This includes the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder. Make sure to document any important information or changes that were made as part of addressing the PR review comments, so that it can be easily referenced in the future.
+
+**Step 7: Finalize PR**
+
+- Commit and push changes: Once all comments have been addressed and the necessary changes have been made, finalize the PR by pushing the changes to the branch. This will allow CodeRabbit to verify that all issues and improvements have been properly addressed and that the changes meet the project's standards.
+- Do not commit findings: Do not commit the `prXX_review_findings.md` file to the repository, as this file is only meant for your reference during the PR review process and should not be included in the final codebase.
 
 ### Committing Changes:
 
-    - When committing changes, ensure that your commit message accurately describes the changes made in the commit.
-    - Group related changes together in a single commit to maintain cohesion and clarity in the commit history. Avoid making large commits that include unrelated changes, as this can make it difficult to review and understand the changes being made.
-    - Before committing, ensure that all tests are passing and that there are no linting errors in the codebase. This will help maintain code quality and ensure that the changes being committed meet the project's standards.
-    - After committing, push the changes to the appropriate branch to allow for code review and integration into the main codebase.
+- When committing changes, ensure that your commit message accurately describes the changes made in the commit.
+- Group related changes together in a single commit to maintain cohesion and clarity in the commit history. Avoid making large commits that include unrelated changes, as this can make it difficult to review and understand the changes being made.
+- Before committing, ensure that all tests are passing and that there are no linting errors in the codebase. This will help maintain code quality and ensure that the changes being committed meet the project's standards.
+- After committing, push the changes to the appropriate branch to allow for code review and integration into the main codebase.
 
 ## Coding Rules
 
@@ -216,6 +245,7 @@ Determine the best course of action for the user based on the current state of t
 Leverage 3rd party LLMs (Gemini 3.0 Pro, Kimi K2, GPT-5, Claude, Nano Banana Pro) to help brainstorm ideas, generate text/lore, or assist with specific tasks like coding, development, and design.
 
 **Model Selection:**
+
 - Convex AI: specialises in convex documentation and database design. Use for Convex-related queries.
 - Gemini 3.0 Pro: advanced reasoning, suitable for complex tasks.
 - Gemini 3.0 Flash: faster, suitable for simpler tasks.
@@ -277,10 +307,6 @@ Leverage 3rd party LLMs (Gemini 3.0 Pro, Kimi K2, GPT-5, Claude, Nano Banana Pro
 - **Format:** Markdown, concise.
 - **Review:** Periodically consolidate or archive.
 - **Restart:** Use for chat reset/context reload.
-
-# Folder Structure
-
-TO BE UPDATED BY AI AS THE PROJECT PROGRESSES.
 
 # Note to AI
 

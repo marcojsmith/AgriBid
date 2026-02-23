@@ -68,6 +68,7 @@ export const runSeed = mutation({
     providedSeed: v.optional(v.string()),
     clear: v.optional(v.boolean()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     // --- SECURITY GUARD ---
     const seedSecret = process.env.SEED_SECRET;
@@ -438,11 +439,13 @@ export const runSeed = mutation({
     }
 
     console.log("Seeding completed successfully.");
+    return null;
   },
 });
 
 export const clearAuctions = mutation({
   args: {},
+  returns: v.number(),
   handler: async (ctx) => {
     await checkDestructiveAccess(ctx);
 
@@ -478,6 +481,7 @@ export const clearAuctions = mutation({
  */
 export const clearAllData = mutation({
   args: {},
+  returns: v.number(),
   handler: async (ctx) => {
     await checkDestructiveAccess(ctx);
 
