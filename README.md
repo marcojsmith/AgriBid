@@ -16,11 +16,18 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
   - **Seller Dashboard**: Manage equipment inventory, track listing status, and view sales.
 - **Watchlist Functionality**: Save and monitor auctions with real-time status updates and accessibility-optimized toggles.
 - **Live Notifications**: Instant toast notifications for outbids, auction extensions, and final settlement results.
-- **Admin Moderation**: Dedicated dashboard for reviewing and approving/rejecting equipment listings.
-- **Security & Integrity**: 
-  - Role-Based Access Control (RBAC).
+- **Admin Moderation & Management**:
+  - Dedicated dashboard for reviewing and approving/rejecting equipment listings.
+  - **KYC Workflows**: Review and approve/reject seller verification submissions with detailed document review.
+  - **Bulk Operations**: Process multiple auctions simultaneously with status updates and audit trails.
+  - **Real-Time Statistics**: Financial metrics, user counts, auction states, and support ticket tracking.
+  - **Support Ticket System**: Manage user inquiries with status tracking and resolution workflows.
+- **Security & Integrity**:
+  - Role-Based Access Control (RBAC) with centralized authentication utilities.
+  - **PII Encryption**: AES-256-GCM encryption for sensitive user data (ID numbers, passport details).
   - Open Redirect protection on all authentication flows.
-  - Immutable bid history logs and NaN-safe parameter parsing.
+  - Immutable bid history logs and audit trails for all administrative actions.
+  - NaN-safe parameter parsing and comprehensive input validation.
 
 ## 🗺️ Roadmap (Upcoming Features)
 
@@ -44,16 +51,25 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 
 ```text
 AgriBid/
-├── app/                  # Main application code
-│   ├── convex/           # Backend schema, queries, mutations, and crons
-│   └── src/              # React frontend
-│       ├── components/   # Reusable UI & business logic components
-│       ├── lib/          # Utilities and Auth client
-│       └── pages/        # Page components (Home, Dashboards, Details)
-├── conductor/            # Spec-driven development tracks and project docs
-├── Brief.md              # Project specification
-├── Checklist.md          # Feature implementation tracker
-└── README.md             # Project overview
+├── app/                     # Main application code
+│   ├── convex/              # Backend (modular architecture)
+│   │   ├── admin/           # Admin operations (KYC, statistics, moderation)
+│   │   ├── auctions/        # Auction logic (queries, mutations, bidding, settlement)
+│   │   ├── lib/             # Shared utilities (auth, encryption)
+│   │   ├── schema.ts        # Database schema definitions
+│   │   └── crons.ts         # Scheduled tasks (auction settlement)
+│   └── src/                 # React frontend
+│       ├── components/      # Reusable UI & business logic components
+│       ├── contexts/        # React contexts (admin stats, user profiles)
+│       ├── lib/             # Utilities and Auth client
+│       └── pages/           # Page components
+│           └── admin/       # Admin-specific UI
+│               ├── dialogs/ # Modals for KYC review, bulk actions, promotions
+│               └── hooks/   # Custom hooks for admin state management
+├── conductor/               # Spec-driven development tracks and project docs
+├── Brief.md                 # Project specification
+├── Checklist.md             # Feature implementation tracker
+└── README.md                # Project overview
 ```
 
 ## 🏁 Getting Started
