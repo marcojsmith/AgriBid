@@ -59,12 +59,17 @@ export async function resolveImageUrls(
 async function toAuctionSummary(ctx: QueryCtx, auction: Doc<"auctions">) {
   return {
     _id: auction._id,
+    _creationTime: auction._creationTime,
     title: auction.title,
+    description: auction.description,
     make: auction.make,
     model: auction.model,
     year: auction.year,
     currentPrice: auction.currentPrice,
+    startingPrice: auction.startingPrice,
+    minIncrement: auction.minIncrement,
     endTime: auction.endTime,
+    startTime: auction.startTime,
     status: auction.status,
     reservePrice: auction.reservePrice,
     operatingHours: auction.operatingHours,
@@ -777,23 +782,37 @@ export const getMyBids = query({
         .order("desc") // Show latest bids first
         .paginate(args.paginationOpts);
 
+      // Collect auction IDs from the page
+      const auctionIds = bidsResult.page.map((bid) => bid.auctionId);
+
+      // Batch-fetch bids for only the auctions on this page (not all user bids)
+      // Use parallel queries per auction to find highest bid per auction
+      const bidsByAuction = new Map<string, number>();
+      
+      await Promise.all(
+        auctionIds.map(async (auctionId) => {
+          const auctionBids = await ctx.db
+            .query("bids")
+            .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+            .filter((q) => q.eq(q.field("bidderId"), userId))
+            .collect();
+
+          if (auctionBids.length > 0) {
+            const maxBid = Math.max(...auctionBids.map((b) => b.amount));
+            bidsByAuction.set(auctionId, maxBid);
+          } else {
+            bidsByAuction.set(auctionId, 0);
+          }
+        })
+      );
+
       const page = await Promise.all(
         bidsResult.page.map(async (bid) => {
           const auction = await ctx.db.get(bid.auctionId);
           if (!auction) return null;
 
-          // Note: This logic for "myHighestBid" is simplified for pagination context.
-          // Ideally we'd fetch all bids for this auction by user, but that might be expensive per row.
-          // Here we just use the current bid amount as a reference or fetch specifically.
-          // To be accurate, we should query:
-          const myBids = await ctx.db
-            .query("bids")
-            .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
-            .filter((q) => q.eq(q.field("bidderId"), userId))
-            .collect();
-
-          const myHighestBid =
-            myBids.length > 0 ? Math.max(...myBids.map((b) => b.amount)) : 0;
+          // Use pre-computed highest bid from batch query instead of per-row query
+          const myHighestBid = bidsByAuction.get(auction._id) || 0;
 
           return {
             ...auction,

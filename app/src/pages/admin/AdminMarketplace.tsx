@@ -22,7 +22,6 @@ export default function AdminMarketplace() {
   if (adminStats === undefined) {
     return (
       <AdminLayout
-        stats={null}
         title="Live Auction Monitor"
         subtitle="Real-time Bidding & Activity Stream"
       >
@@ -35,7 +34,6 @@ export default function AdminMarketplace() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="Live Auction Monitor"
       subtitle="Real-time Bidding & Activity Stream"
     >

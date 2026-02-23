@@ -32,6 +32,8 @@ export default function Profile() {
     sellerId: userId || "",
   });
 
+  const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
+
   const {
     results: listings,
     status,
@@ -170,7 +172,7 @@ export default function Profile() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {activeListings.map((auction) => (
-              <AuctionCard key={auction._id} auction={auction} />
+              <AuctionCard key={auction._id} auction={auction} isWatched={watchedAuctionIds?.includes(auction._id) ?? false} />
             ))}
           </div>
         )}
@@ -190,7 +192,7 @@ export default function Profile() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {soldListings.map((auction) => (
-              <AuctionCard key={auction._id} auction={auction} />
+              <AuctionCard key={auction._id} auction={auction} isWatched={watchedAuctionIds?.includes(auction._id) ?? false} />
             ))}
           </div>
         </section>

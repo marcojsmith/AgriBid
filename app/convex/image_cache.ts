@@ -1,16 +1,11 @@
-import { QueryCtx } from "./_generated/server";
-
-const URL_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-interface CacheEntry {
-  url: string;
-  expiresAt: number;
-}
-
-const urlCache = new Map<string, CacheEntry>();
+import type { QueryCtx } from "./_generated/server";
 
 /**
- * Resolve a storage ID to a URL, using an in-memory cache to reduce storage calls.
+ * Resolve a storage ID to a URL.
+ * 
+ * Note: Caching is handled by Convex's built-in query result caching mechanism.
+ * Storage URLs from Convex are long-lived and deterministic, so repeated calls
+ * within the same query execution are automatically cached by Convex.
  * 
  * @param storage - The database storage object
  * @param storageId - The storage ID to resolve
@@ -23,21 +18,6 @@ export async function resolveUrlCached(
   if (!storageId) return undefined;
   if (storageId.startsWith("http")) return storageId;
 
-  const now = Date.now();
-  const cached = urlCache.get(storageId);
-
-  if (cached && cached.expiresAt > now) {
-    return cached.url;
-  }
-
   const url = await storage.getUrl(storageId);
-  if (url) {
-    urlCache.set(storageId, {
-      url,
-      expiresAt: now + URL_CACHE_TTL,
-    });
-    return url;
-  }
-
-  return undefined;
+  return url ?? undefined;
 }

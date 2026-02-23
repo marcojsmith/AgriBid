@@ -14,12 +14,24 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { SummaryCard } from "@/components/admin/SummaryCard";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";
+import { useAdminStats } from "@/contexts/AdminStatsContext";
 
 /**
  * Renders the Admin Dashboard overview with summary cards for all management areas.
  */
 export default function AdminDashboard() {
-  const adminStats = useQuery(api.admin.getAdminStats);
+  return (
+    <AdminLayout
+      title="Admin Overview"
+      subtitle="Marketplace Control Centre"
+    >
+      <AdminDashboardContent />
+    </AdminLayout>
+  );
+}
+
+function AdminDashboardContent() {
+  const adminStats = useAdminStats();
   const financialStats = useQuery(api.admin.getFinancialStats);
   const announcementStats = useQuery(api.admin.getAnnouncementStats);
   const supportStats = useQuery(api.admin.getSupportStats);
@@ -32,24 +44,18 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <AdminLayout
-        stats={adminStats || null}
-        title="Admin Overview"
-        subtitle="Marketplace Control Centre"
-      >
-        <div className="h-96 flex items-center justify-center">
-          <LoadingIndicator />
-        </div>
-      </AdminLayout>
+      <div className="h-96 flex items-center justify-center">
+        <LoadingIndicator />
+      </div>
     );
   }
 
+  // Safe checks for potentially null/undefined data even after loading check if queries return null
+  if (!adminStats || !financialStats || !announcementStats || !supportStats) {
+     return <div>Error loading dashboard data.</div>;
+  }
+
   return (
-    <AdminLayout
-      stats={adminStats || null}
-      title="Admin Overview"
-      subtitle="Marketplace Control Centre"
-    >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Activity Card (Placeholder for now) */}
         <SummaryCard
@@ -177,6 +183,5 @@ export default function AdminDashboard() {
           linkLabel="Configuration"
         />
       </div>
-    </AdminLayout>
   );
 }

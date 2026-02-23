@@ -86,6 +86,9 @@ export default function Home() {
     maxHours,
   });
 
+  // Batch-fetch watched auction IDs to avoid per-card queries
+  const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
+
   if (isPending) {
     return <LoadingPage message="Loading..." />;
   }
@@ -245,7 +248,11 @@ export default function Home() {
                 key={auction._id}
                 className={getItemWrapperClasses(viewMode)}
               >
-                <AuctionCard auction={auction} viewMode={viewMode} />
+                <AuctionCard 
+                  auction={auction} 
+                  viewMode={viewMode}
+                  isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
+                />
               </div>
             ))}
           </div>

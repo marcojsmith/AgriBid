@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { getCallerRole } from "./users";
 import type { Id } from "./_generated/dataModel";
 import { logAudit, updateCounter } from "./admin_utils";
@@ -75,18 +76,21 @@ export const voidBid = mutation({
 // --- KYC / Verification ---
 
 export const getPendingKYC = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const profiles = await ctx.db
+    // Use Convex pagination to properly handle cursor and limits
+    const profilesResult = await ctx.db
       .query("profiles")
       .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-      .take(50);
+      .paginate(args.paginationOpts);
 
-    return await Promise.all(
-      profiles.map(async (p) => {
+    const processedProfiles = await Promise.all(
+      profilesResult.page.map(async (p) => {
         const missingIds: string[] = [];
         const urls = p.kycDocuments
           ? await Promise.all(
@@ -111,6 +115,11 @@ export const getPendingKYC = query({
         };
       })
     );
+
+    return {
+      ...profilesResult,
+      page: processedProfiles,
+    };
   },
 });
 

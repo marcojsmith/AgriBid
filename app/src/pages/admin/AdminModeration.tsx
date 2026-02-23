@@ -18,7 +18,7 @@ import type { Id } from "convex/_generated/dataModel";
  */
 export default function AdminModeration() {
   const pendingAuctions = useQuery(api.auctions.getPendingAuctions);
-  const adminStats = useQuery(api.admin.getAdminStats);
+  // adminStats removed, handled by AdminLayout
   const approveAuctionMutation = useMutation(api.auctions.approveAuction);
   const rejectAuctionMutation = useMutation(api.auctions.rejectAuction);
   const navigate = useNavigate();
@@ -46,7 +46,6 @@ export default function AdminModeration() {
   if (pendingAuctions === undefined) {
     return (
       <AdminLayout
-        stats={adminStats || null}
         title="Moderation Queue"
         subtitle="Review & Approve Pending Listings"
       >
@@ -59,7 +58,6 @@ export default function AdminModeration() {
 
   return (
     <AdminLayout
-      stats={adminStats || null}
       title="Moderation Queue"
       subtitle="Review & Approve Pending Listings"
     >

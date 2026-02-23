@@ -18,7 +18,6 @@ export default function AdminAudit() {
   if (adminStats === undefined) {
     return (
       <AdminLayout
-        stats={null}
         title="System Audit Logs"
         subtitle="Security, Access & Administrative Actions"
       >
@@ -31,7 +30,6 @@ export default function AdminAudit() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="System Audit Logs"
       subtitle="Security, Access & Administrative Actions"
     >

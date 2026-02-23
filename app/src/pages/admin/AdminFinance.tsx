@@ -17,7 +17,6 @@ export default function AdminFinance() {
   if (adminStats === undefined) {
     return (
       <AdminLayout
-        stats={null}
         title="Financial Oversight"
         subtitle="Revenue, Commissions & Transaction History"
       >
@@ -30,7 +29,6 @@ export default function AdminFinance() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="Financial Oversight"
       subtitle="Revenue, Commissions & Transaction History"
     >

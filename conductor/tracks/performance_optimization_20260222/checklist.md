@@ -23,22 +23,22 @@
 - [x] Update `getActiveAuctions` to return summary objects
 - [x] Update `getPendingAuctions` to return summary objects
 
-## Task 3: Consolidate Frontend Subscriptions
-- [ ] Lift Admin Stats to Context
-  - [ ] Create `AdminStatsContext` in `app/src/contexts/AdminStatsContext.tsx`
-  - [ ] Create `useAdminStats` hook
-  - [ ] Wrap `AdminLayout` with provider
-  - [ ] Update admin pages to use hook
-- [ ] Batch Watchlist Status Checks
-  - [ ] Create `getWatchedAuctionIds` query in `app/convex/watchlist.ts`
-  - [ ] Update list components (Home, Search) to fetch watched IDs once
-  - [ ] Pass `isWatched` prop to `AuctionCard`
-  - [ ] Remove individual `isWatched` query from `AuctionCard`
-- [ ] Create User Profile Context
-  - [ ] Create `UserProfileContext` in `app/src/contexts/UserProfileContext.tsx`
-  - [ ] Create `useUserProfile` hook
-  - [ ] Wrap authenticated routes with provider
-  - [ ] Update components (`Header`, `Profile`, etc.) to use hook
-- [ ] Optimize NotificationListener
-  - [ ] Review implementation (Note: Handled partially in Task 1 by fetching only first page)
-  - [ ] Further optimize if necessary (e.g. specialized query for recent updates)
+## Task 3: Consolidate Frontend Subscriptions (Completed)
+- [x] Lift Admin Stats to Context
+  - [x] Create `AdminStatsContext` in `app/src/contexts/AdminStatsContext.tsx`
+  - [x] Create `useAdminStats` hook
+  - [x] Wrap `AdminLayout` with provider
+  - [x] Update admin pages to use hook
+- [x] Batch Watchlist Status Checks
+  - [x] Create `getWatchedAuctionIds` query in `app/convex/watchlist.ts`
+  - [x] Update list components (Home, Search) to fetch watched IDs once
+  - [x] Pass `isWatched` prop to `AuctionCard`
+  - [x] Remove individual `isWatched` query from `AuctionCard`
+- [x] Create User Profile Context
+  - [x] Create `UserProfileContext` in `app/src/contexts/UserProfileContext.tsx`
+  - [x] Create `useUserProfile` hook
+  - [x] Wrap authenticated routes with provider
+  - [x] Update components (`Header`, `Profile`, etc.) to use hook
+- [x] Optimize NotificationListener
+  - [x] Review implementation (Note: Handled partially in Task 1 by fetching only first page)
+  - [x] Further optimize if necessary (e.g. specialized query for recent updates)

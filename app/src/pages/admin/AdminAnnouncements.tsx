@@ -88,7 +88,6 @@ export default function AdminAnnouncements() {
   if (announcements === undefined || adminStats === undefined) {
     return (
       <AdminLayout
-        stats={adminStats || null}
         title="Global Announcements"
         subtitle="Broadcast Updates to All Users"
       >
@@ -101,7 +100,6 @@ export default function AdminAnnouncements() {
 
   return (
     <AdminLayout
-      stats={adminStats || null}
       title="Global Announcements"
       subtitle="Broadcast Updates to All Users"
     >

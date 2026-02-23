@@ -15,7 +15,6 @@ export default function AdminSupport() {
   if (adminStats === undefined) {
     return (
       <AdminLayout
-        stats={null}
         title="Support Tickets"
         subtitle="Customer Service & Issue Resolution"
       >
@@ -28,7 +27,6 @@ export default function AdminSupport() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="Support Tickets"
       subtitle="Customer Service & Issue Resolution"
     >

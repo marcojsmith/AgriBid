@@ -1,9 +1,9 @@
 // app/src/components/AuctionCard.tsx
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Doc } from "convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
 import { useNavigate } from "react-router-dom";
@@ -18,23 +18,29 @@ import { AuctionCardPrice } from "./auction/AuctionCardPrice";
 interface AuctionCardProps {
   auction: Doc<"auctions">;
   viewMode?: "compact" | "detailed";
+  isWatched?: boolean;
 }
 
 export const AuctionCard = ({
   auction,
   viewMode = "detailed",
+  isWatched: initialIsWatched = false,
 }: AuctionCardProps) => {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const placeBid = useMutation(api.auctions.placeBid);
-  const isWatched = useQuery(api.watchlist.isWatched, {
-    auctionId: auction._id,
-  });
   const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
   const [isBidding, setIsBidding] = useState(false);
   const isBiddingRef = useRef(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingBid, setPendingBid] = useState<number | null>(null);
+  // Track local state for watchlist to provide immediate feedback
+  const [isWatched, setIsWatched] = useState(initialIsWatched);
+
+  // Synchronize local state with prop changes from parent (server updates)
+  useEffect(() => {
+    setIsWatched(initialIsWatched);
+  }, [initialIsWatched]);
 
   const handleWatchlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -52,6 +58,7 @@ export const AuctionCard = ({
 
     try {
       const nowWatched = await toggleWatchlist({ auctionId: auction._id });
+      setIsWatched(nowWatched);
       toast.success(
         nowWatched ? "Added to watchlist" : "Removed from watchlist",
       );

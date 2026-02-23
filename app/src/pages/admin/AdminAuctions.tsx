@@ -156,7 +156,6 @@ export default function AdminAuctions() {
   if (allAuctions === undefined || adminStats === undefined) {
     return (
       <AdminLayout
-        stats={adminStats || null}
         title="Auction Marketplace"
         subtitle="Comprehensive Listing & Inventory Management"
       >
@@ -169,7 +168,6 @@ export default function AdminAuctions() {
 
   return (
     <AdminLayout
-      stats={adminStats}
       title="Auction Marketplace"
       subtitle="Comprehensive Listing & Inventory Management"
     >

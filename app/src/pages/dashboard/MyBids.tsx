@@ -95,14 +95,7 @@ export default function MyBids() {
 
               return (
                 <div
-                  key={auction._id} // Note: If paginated bids return same auction multiple times, keys might clash if using auction._id. 
-                  // Ideally we'd use bid ID or composite key. But for now, assuming unique auctions or React handles it gracefully.
-                  // Since logic collapses by auction on backend (or not?), wait, I decided backend returns PER BID.
-                  // So an auction might appear multiple times.
-                  // I should probably use a unique key if possible. But `auction` object doesn't have bid ID attached?
-                  // Wait, I didn't add bid ID to the return object in `getMyBids`.
-                  // I added `bidAmount` and `bidTimestamp`.
-                  // So I can key by `${auction._id}-${auction.bidTimestamp}`.
+                  key={auction.bidTimestamp ? `${auction._id}-${auction.bidTimestamp}` : `${auction._id}-${auction.bidAmount}-${auction.bidTimestamp}`}
                   className="bg-card border-2 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="aspect-video bg-muted relative">

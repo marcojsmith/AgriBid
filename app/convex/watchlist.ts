@@ -106,3 +106,33 @@ export const getWatchedAuctions = query({
     }
   },
 });
+
+/**
+ * Batch-fetch the set of all watched auction IDs for the current user.
+ * Optimized for efficiently determining which auctions in a list are watched
+ * without making per-auction queries.
+ * 
+ * @returns An array of auction IDs that the user has watched
+ */
+export const getWatchedAuctionIds = query({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return [];
+      const userId = authUser.userId ?? authUser._id;
+
+      const watchlist = await ctx.db
+        .query("watchlist")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+
+      return watchlist.map((item) => item.auctionId);
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getWatchedAuctionIds failure:", err);
+      }
+      return [];
+    }
+  },
+});
