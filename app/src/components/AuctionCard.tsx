@@ -60,7 +60,7 @@ export const AuctionCard = ({
       const nowWatched = await toggleWatchlist({ auctionId: auction._id });
       setIsWatched(nowWatched);
       toast.success(
-        nowWatched ? "Added to watchlist" : "Removed from watchlist",
+        nowWatched ? "Added to watchlist" : "Removed from watchlist"
       );
     } catch {
       toast.error("Failed to update watchlist");
@@ -92,7 +92,7 @@ export const AuctionCard = ({
     const minimum = auction.currentPrice + auction.minIncrement;
     if (pendingBid < minimum) {
       toast.error(
-        `Price updated to R ${minimum.toLocaleString("en-ZA")} due to a newer bid.`,
+        `Price updated to R ${minimum.toLocaleString("en-ZA")} due to a newer bid.`
       );
       setPendingBid(minimum);
       return;
@@ -107,7 +107,7 @@ export const AuctionCard = ({
     } catch (error) {
       console.error(error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to place bid",
+        error instanceof Error ? error.message : "Failed to place bid"
       );
     } finally {
       setIsBidding(false);
@@ -130,7 +130,7 @@ export const AuctionCard = ({
   return (
     <Card
       className={cn(
-        "overflow-hidden border-2 hover:border-primary transition-colors bg-card group rounded-lg h-full shadow-none",
+        "overflow-hidden border-2 hover:border-primary transition-colors bg-card group rounded-lg h-full shadow-none"
       )}
     >
       <Link
@@ -145,7 +145,7 @@ export const AuctionCard = ({
           onWatchlistToggle={handleWatchlistToggle}
           year={auction.year}
           make={auction.make}
-          endTime={auction.endTime}
+          endTime={auction.endTime ?? 0}
         />
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -158,7 +158,7 @@ export const AuctionCard = ({
                   "leading-tight font-black group-hover:text-primary transition-colors line-clamp-2 uppercase tracking-tight",
                   isCompact
                     ? "text-xs sm:text-sm md:text-base"
-                    : "text-lg md:text-xl",
+                    : "text-lg md:text-xl"
                 )}
               >
                 {auction.title}
@@ -186,12 +186,12 @@ export const AuctionCard = ({
           <CardContent
             className={cn(
               "flex-1 flex flex-col justify-end pt-0 md:pt-0",
-              isCompact ? "p-3" : "p-4 md:p-5",
+              isCompact ? "p-3" : "p-4 md:p-5"
             )}
           >
             <AuctionCardPrice
               currentPrice={auction.currentPrice}
-              endTime={auction.endTime}
+              endTime={auction.endTime ?? 0}
               isCompact={isCompact}
             />
           </CardContent>
@@ -199,7 +199,7 @@ export const AuctionCard = ({
           <div
             className={cn(
               "bg-muted/20 border-t flex gap-2 items-center",
-              isCompact ? "p-3 h-12" : "p-4 md:p-5",
+              isCompact ? "p-3 h-12" : "p-4 md:p-5"
             )}
           >
             <Button
@@ -208,7 +208,7 @@ export const AuctionCard = ({
                 "flex-1 font-black uppercase shadow-sm",
                 isCompact
                   ? "text-[10px] h-8 rounded-lg"
-                  : "text-xs h-11 rounded-xl",
+                  : "text-xs h-11 rounded-xl"
               )}
               onClick={handleBidInitiate}
               disabled={isBidding || auction.status !== "active"}

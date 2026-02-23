@@ -1,17 +1,10 @@
-import { createContext, useContext } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { useContext } from "react";
 import type { ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
-interface AdminStats {
-  totalAuctions: number;
-  activeAuctions: number;
-  pendingReview: number;
-  totalUsers: number;
-  verifiedSellers: number;
-}
-
-const AdminStatsContext = createContext<AdminStats | undefined | null>(undefined);
+import { AdminStatsContext } from "./admin-stats-types";
 
 /**
  * Provides admin statistics to descendant components via React context.

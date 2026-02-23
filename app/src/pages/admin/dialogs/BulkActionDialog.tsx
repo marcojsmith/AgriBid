@@ -52,7 +52,7 @@ export function BulkActionDialog({
             </span>{" "}
             to status{" "}
             <span className="font-bold text-primary uppercase">
-              {targetStatus}
+              {(targetStatus ?? "unspecified").toUpperCase()}
             </span>
             . This action is auditable and affects marketplace visibility.
           </AlertDialogDescription>

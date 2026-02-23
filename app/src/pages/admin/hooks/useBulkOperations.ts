@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
@@ -36,19 +36,22 @@ export function useBulkOperations() {
    * Computes selection state based on provided auctions.
    * Returns whether all, some, or no visible auctions are selected.
    */
-  const getSelectionState = (auctions: Doc<"auctions">[] = []) => {
-    const selectedSet = new Set(selectedAuctions);
-    const visibleSelectedCount = auctions.filter((a) =>
-      selectedSet.has(a._id)
-    ).length;
+  const getSelectionState = useCallback(
+    (auctions: Doc<"auctions">[] = []) => {
+      const selectedSet = new Set(selectedAuctions);
+      const visibleSelectedCount = auctions.filter((a) =>
+        selectedSet.has(a._id)
+      ).length;
 
-    return {
-      isAllSelected:
-        auctions.length > 0 && visibleSelectedCount === auctions.length,
-      isPartiallySelected:
-        visibleSelectedCount > 0 && visibleSelectedCount < auctions.length,
-    };
-  };
+      return {
+        isAllSelected:
+          auctions.length > 0 && visibleSelectedCount === auctions.length,
+        isPartiallySelected:
+          visibleSelectedCount > 0 && visibleSelectedCount < auctions.length,
+      };
+    },
+    [selectedAuctions]
+  );
 
   /**
    * Toggles select-all checkbox: selects all visible auctions or clears selection.
@@ -69,10 +72,15 @@ export function useBulkOperations() {
   /**
    * Toggles individual auction selection
    */
-  const handleToggleSelection = (auctionId: Id<"auctions">, selected: boolean) => {
+  const handleToggleSelection = (
+    auctionId: Id<"auctions">,
+    selected: boolean
+  ) => {
     setSelectedAuctions((prev) =>
       selected === true
-        ? [...prev, auctionId]
+        ? prev.includes(auctionId)
+          ? prev
+          : [...prev, auctionId]
         : prev.filter((id) => id !== auctionId)
     );
   };

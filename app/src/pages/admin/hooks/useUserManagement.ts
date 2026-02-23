@@ -90,11 +90,15 @@ export function useUserManagement() {
       if (
         fullProfile &&
         typeof fullProfile === "object" &&
-        "userId" in fullProfile
+        "userId" in fullProfile &&
+        fullProfile.userId === userId // Added condition
       ) {
         setKycReviewUser(fullProfile as KycReviewUser);
         setShowFullId(false);
         setKycRejectionReason("");
+      } else if (fullProfile && fullProfile.userId !== userId) {
+        // Stale response, ignore
+        return;
       } else {
         toast.error("Could not fetch profile details");
       }
@@ -112,8 +116,16 @@ export function useUserManagement() {
    * Tracks verification state per user to prevent duplicate requests.
    */
   const handleManualVerify = async (userId: string) => {
-    if (verifyingUserIds.has(userId)) return;
-    setVerifyingUserIds((prev) => new Set(prev).add(userId));
+    let added = false;
+    setVerifyingUserIds((prev) => {
+      if (prev.has(userId)) return prev;
+      added = true;
+      const next = new Set(prev);
+      next.add(userId);
+      return next;
+    });
+    if (!added) return; // If not added, it means it was already being verified
+
     try {
       await verifyUserMutation({ userId });
       toast.success("User verified");

@@ -56,7 +56,7 @@ export default function AdminAuctions() {
     auctionSearch,
     setAuctionSearch,
     selectedAuctions,
-    setSelectedAuctions,
+    clearSelection,
     handleSelectAll,
     handleToggleSelection,
     isBulkProcessing,
@@ -181,7 +181,7 @@ export default function AdminAuctions() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => setSelectedAuctions([])}
+                  onClick={() => clearSelection()}
                   disabled={isBulkProcessing}
                   variant="ghost"
                   className="font-bold uppercase text-xs h-9"
@@ -272,7 +272,7 @@ export default function AdminAuctions() {
                     <TableCell>
                       <div className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
-                        {new Date(a.endTime).toLocaleDateString()}
+                        {new Date(a.endTime ?? 0).toLocaleDateString()}
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">
