@@ -157,6 +157,12 @@ export const AuctionCard = ({
                       : "bg-destructive text-destructive-foreground",
                     "h-6 w-6"
                   )}
+                  role="img"
+                  aria-label={
+                    auction.status === "sold"
+                      ? "Sold auction"
+                      : "Closed auction"
+                  }
                 >
                   <Gavel className="h-3.5 w-3.5" />
                 </div>

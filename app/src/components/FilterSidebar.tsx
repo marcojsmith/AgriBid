@@ -55,7 +55,13 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   const applyFilters = () => {
     const newParams = new URLSearchParams(searchParams);
-    Object.entries(localFilters).forEach(([key, value]) => {
+    const { status, ...otherFilters } = localFilters;
+    if (status === "active") {
+      newParams.delete("status");
+    } else {
+      newParams.set("status", status);
+    }
+    Object.entries(otherFilters).forEach(([key, value]) => {
       if (value) {
         newParams.set(key, value);
       } else {
@@ -70,14 +76,13 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     const q = searchParams.get("q");
     const newParams = new URLSearchParams();
     if (q) newParams.set("q", q);
-    newParams.set("status", "active");
     setSearchParams(newParams);
     if (onClose) onClose();
   };
 
+  const { status, ...otherFilters } = localFilters;
   const hasFilters =
-    localFilters.status !== "active" ||
-    Object.values(localFilters).some((v) => v !== "" && v !== "active");
+    status !== "active" || Object.values(otherFilters).some((v) => v !== "");
 
   return (
     <div className="flex flex-col h-full bg-card border-2 rounded-3xl overflow-hidden shadow-xl shadow-primary/5 animate-in slide-in-from-left-4 duration-300">

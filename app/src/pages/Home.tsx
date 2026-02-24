@@ -61,7 +61,15 @@ export default function Home() {
   // Extract filter params
   const searchQuery = searchParams.get("q") || undefined;
   const make = searchParams.get("make") || undefined;
-  const statusFilter = searchParams.get("status") || "active";
+
+  const isValidStatus = (
+    value: string | null
+  ): value is "active" | "closed" | "all" => {
+    return value === "active" || value === "closed" || value === "all";
+  };
+
+  const rawStatus = searchParams.get("status");
+  const statusFilter = isValidStatus(rawStatus) ? rawStatus : "active";
 
   const parseFiniteInt = (key: string) => {
     const val = searchParams.get(key);
@@ -84,7 +92,7 @@ export default function Home() {
     minPrice,
     maxPrice,
     maxHours,
-    statusFilter: statusFilter as "active" | "closed" | "all",
+    statusFilter,
   });
 
   // Batch-fetch watched auction IDs to avoid per-card queries
