@@ -6,8 +6,11 @@ export interface AdminStats {
   pendingReview: number;
   totalUsers: number;
   verifiedSellers: number;
+  kycPending: number;
 }
 
-export const AdminStatsContext = createContext<AdminStats | undefined | null>(
-  undefined
-);
+export const NO_PROVIDER = Symbol("NO_PROVIDER");
+
+export const AdminStatsContext = createContext<
+  AdminStats | undefined | null | typeof NO_PROVIDER
+>(NO_PROVIDER);

@@ -1,16 +1,16 @@
-/* eslint-disable react-refresh/only-export-components */
-import { useContext } from "react";
 import type { ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 import { AdminStatsContext } from "./admin-stats-types";
 
+export { AdminStatsContext };
+
 /**
- * Provides admin statistics to descendant components via React context.
+ * Provide admin statistics to descendant components via AdminStatsContext.
  *
- * @param children - The React nodes to render inside the provider
- * @returns A React element that wraps `children` with `AdminStatsContext.Provider`, supplying fetched admin statistics as the context value
+ * @param children - React nodes rendered inside the provider
+ * @returns A React element that supplies the fetched admin statistics as the context value
  */
 export function AdminStatsProvider({ children }: { children: ReactNode }) {
   const stats = useQuery(api.admin.getAdminStats);
@@ -20,18 +20,4 @@ export function AdminStatsProvider({ children }: { children: ReactNode }) {
       {children}
     </AdminStatsContext.Provider>
   );
-}
-
-/**
- * Accesses the current admin statistics from the AdminStatsContext.
- *
- * @returns The `AdminStats` object from context, `undefined` if the hook is used outside the provider or the context value has not been set, or `null` if there are explicitly no statistics available.
- */
-export function useAdminStats() {
-  const context = useContext(AdminStatsContext);
-  // Optional: throw if undefined to ensure usage within provider
-  // if (context === undefined) {
-  //   throw new Error("useAdminStats must be used within an AdminStatsProvider");
-  // }
-  return context;
 }
