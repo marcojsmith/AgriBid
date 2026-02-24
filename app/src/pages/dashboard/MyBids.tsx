@@ -129,9 +129,9 @@ export default function MyBids() {
                         </p>
                         <p className="font-bold">
                           R{" "}
-                          {auction.bidAmount
-                            ? auction.bidAmount.toLocaleString("en-ZA")
-                            : auction.myHighestBid.toLocaleString("en-ZA")}
+                          {(
+                            auction.bidAmount ?? auction.myHighestBid
+                          ).toLocaleString("en-ZA")}
                         </p>
                       </div>
                       <div>
