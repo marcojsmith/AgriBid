@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation } from "../_generated/server";
 import { getCallerRole, getAuthUser, resolveUserId } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
@@ -79,11 +79,11 @@ export const createAuction = mutation({
     const { durationDays, ...restArgs } = args;
 
     if (durationDays <= 0 || durationDays > 365) {
-      throw new Error("Invalid duration: must be between 1 and 365 days");
+      throw new ConvexError("Invalid duration: must be between 1 and 365 days");
     }
 
     if (restArgs.images.additional && restArgs.images.additional.length > 6) {
-      throw new Error("Additional images limit exceeded (max 6)");
+      throw new ConvexError("Additional images limit exceeded (max 6)");
     }
 
     const images = {
@@ -118,14 +118,14 @@ export const approveAuction = mutation({
     }
 
     const auction = await ctx.db.get(args.auctionId);
-    if (!auction) throw new Error("Auction not found");
+    if (!auction) throw new ConvexError("Auction not found");
     if (auction.status !== "pending_review") {
-      throw new Error("Only auctions in pending_review can be approved");
+      throw new ConvexError("Only auctions in pending_review can be approved");
     }
 
     const durationDays = args.durationDays ?? auction.durationDays ?? 7;
     if (durationDays <= 0 || durationDays > 365) {
-      throw new Error("Invalid duration: must be between 1 and 365 days");
+      throw new ConvexError("Invalid duration: must be between 1 and 365 days");
     }
 
     const startTime = Date.now();
@@ -175,9 +175,9 @@ export const rejectAuction = mutation({
     }
 
     const auction = await ctx.db.get(args.auctionId);
-    if (!auction) throw new Error("Auction not found");
+    if (!auction) throw new ConvexError("Auction not found");
     if (auction.status !== "pending_review") {
-      throw new Error("Only auctions in pending_review can be rejected");
+      throw new ConvexError("Only auctions in pending_review can be rejected");
     }
 
     await ctx.db.patch(args.auctionId, {

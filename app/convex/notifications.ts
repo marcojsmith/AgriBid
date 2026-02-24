@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getAuthUser } from "./lib/auth";
 import type { Doc } from "./_generated/dataModel";
@@ -13,7 +13,7 @@ import type { Doc } from "./_generated/dataModel";
 async function getAnnouncementsWithReadStatus(
   ctx: QueryCtx,
   userId: string,
-  announcements: Doc<"notifications">[],
+  announcements: Doc<"notifications">[]
 ) {
   if (announcements.length === 0) return [];
 
@@ -23,16 +23,16 @@ async function getAnnouncementsWithReadStatus(
       ctx.db
         .query("readReceipts")
         .withIndex("by_user_notification", (q) =>
-          q.eq("userId", userId).eq("notificationId", a._id),
+          q.eq("userId", userId).eq("notificationId", a._id)
         )
-        .unique(),
-    ),
+        .unique()
+    )
   );
 
   const readNotificationIds = new Set(
     readReceipts
       .filter((r): r is NonNullable<typeof r> => r !== null)
-      .map((r) => r.notificationId),
+      .map((r) => r.notificationId)
   );
 
   return announcements.map((a) => ({
@@ -79,7 +79,7 @@ export const getMyNotifications = query({
       const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
         ctx,
         userId,
-        announcements,
+        announcements
       );
 
       // Merge and sort, applying read status for announcements
@@ -131,7 +131,7 @@ export const getNotificationArchive = query({
       const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
         ctx,
         userId,
-        announcements,
+        announcements
       );
 
       const merged = [...personal, ...enrichedAnnouncements];
@@ -151,18 +151,18 @@ export const markAsRead = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
+    if (!authUser) throw new ConvexError("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
     const notification = await ctx.db.get(args.notificationId);
-    if (!notification) throw new Error("Notification not found");
+    if (!notification) throw new ConvexError("Notification not found");
 
     if (notification.recipientId === "all") {
       // For broadcast, insert a read receipt if it doesn't exist
       const existing = await ctx.db
         .query("readReceipts")
         .withIndex("by_user_notification", (q) =>
-          q.eq("userId", userId).eq("notificationId", args.notificationId),
+          q.eq("userId", userId).eq("notificationId", args.notificationId)
         )
         .unique();
 
@@ -175,8 +175,8 @@ export const markAsRead = mutation({
       }
     } else {
       if (notification.recipientId !== userId) {
-        throw new Error(
-          "Unauthorized: This notification does not belong to you",
+        throw new ConvexError(
+          "Unauthorized: This notification does not belong to you"
         );
       }
       await ctx.db.patch(args.notificationId, { isRead: true });
@@ -189,7 +189,7 @@ export const markAllRead = mutation({
   returns: v.null(),
   handler: async (ctx) => {
     const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
+    if (!authUser) throw new ConvexError("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
     // Helper for chunking arrays
@@ -207,7 +207,7 @@ export const markAllRead = mutation({
     const unreadPersonal = await ctx.db
       .query("notifications")
       .withIndex("by_recipient", (q) =>
-        q.eq("recipientId", userId).eq("isRead", false),
+        q.eq("recipientId", userId).eq("isRead", false)
       )
       .take(500); // Safety cap for total processed
 
@@ -215,8 +215,8 @@ export const markAllRead = mutation({
     for (const batch of personalChunks) {
       await Promise.all(
         batch.map((notification) =>
-          ctx.db.patch(notification._id, { isRead: true }),
-        ),
+          ctx.db.patch(notification._id, { isRead: true })
+        )
       );
     }
 
@@ -234,19 +234,21 @@ export const markAllRead = mutation({
           ctx.db
             .query("readReceipts")
             .withIndex("by_user_notification", (q) =>
-              q.eq("userId", userId).eq("notificationId", a._id),
+              q.eq("userId", userId).eq("notificationId", a._id)
             )
-            .unique(),
-        ),
+            .unique()
+        )
       );
 
       const existingNotificationIds = new Set(
-        existingReceipts.filter((r) => r !== null).map((r) => r!.notificationId),
+        existingReceipts
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+          .map((r) => r.notificationId)
       );
       const now = Date.now();
 
       const newReceipts = announcements.filter(
-        (announcement) => !existingNotificationIds.has(announcement._id),
+        (announcement) => !existingNotificationIds.has(announcement._id)
       );
 
       const receiptChunks = chunk(newReceipts, BATCH_SIZE);
@@ -257,8 +259,8 @@ export const markAllRead = mutation({
               userId,
               notificationId: announcement._id,
               readAt: now,
-            }),
-          ),
+            })
+          )
         );
       }
     }

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import {
   mutation,
@@ -299,7 +299,7 @@ export const promoteToAdmin = mutation({
 
     const identity = await ctx.auth.getUserIdentity();
     if (identity?.subject === userId) {
-      throw new Error("Cannot change own role");
+      throw new ConvexError("Cannot change own role");
     }
 
     const profile = await ctx.db
@@ -438,7 +438,7 @@ export const deleteMyKYCDocument = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { storageId }) => {
     const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
+    if (!authUser) throw new ConvexError("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
     const profile = await ctx.db
@@ -446,15 +446,15 @@ export const deleteMyKYCDocument = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
 
-    if (!profile) throw new Error("Profile not found");
+    if (!profile) throw new ConvexError("Profile not found");
 
     if (profile.kycStatus === "pending") {
-      throw new Error("Cannot delete document while KYC is pending");
+      throw new ConvexError("Cannot delete document while KYC is pending");
     }
 
     const kycDocuments = profile.kycDocuments || [];
     if (!kycDocuments.includes(storageId)) {
-      throw new Error("Document not found in your profile");
+      throw new ConvexError("Document not found in your profile");
     }
 
     // Remove from profile

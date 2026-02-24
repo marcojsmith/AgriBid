@@ -1,5 +1,5 @@
 // app/convex/watchlist.ts
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { AuctionSummaryValidator, toAuctionSummary } from "./auctions";
 import { authComponent } from "./auth";
@@ -18,13 +18,13 @@ export const toggleWatchlist = mutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
+    if (!authUser) throw new ConvexError("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
     const existing = await ctx.db
       .query("watchlist")
       .withIndex("by_user_auction", (q) =>
-        q.eq("userId", userId).eq("auctionId", args.auctionId),
+        q.eq("userId", userId).eq("auctionId", args.auctionId)
       )
       .first();
 
@@ -56,7 +56,7 @@ export const isWatched = query({
       const existing = await ctx.db
         .query("watchlist")
         .withIndex("by_user_auction", (q) =>
-          q.eq("userId", userId).eq("auctionId", args.auctionId),
+          q.eq("userId", userId).eq("auctionId", args.auctionId)
         )
         .first();
 
@@ -85,7 +85,14 @@ export const getWatchedAuctions = query({
   handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
+      if (!authUser)
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          pageStatus: null,
+          splitCursor: null,
+        };
       const userId = authUser.userId ?? authUser._id;
 
       const watchlist = await ctx.db
@@ -98,7 +105,7 @@ export const getWatchedAuctions = query({
           const auction = await ctx.db.get(item.auctionId);
           if (!auction) return null;
           return await toAuctionSummary(ctx, auction);
-        }),
+        })
       );
 
       return {
@@ -109,7 +116,13 @@ export const getWatchedAuctions = query({
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getWatchedAuctions failure:", err);
       }
-      return { page: [], isDone: true, continueCursor: "", pageStatus: null, splitCursor: null };
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        pageStatus: null,
+        splitCursor: null,
+      };
     }
   },
 });
@@ -118,7 +131,7 @@ export const getWatchedAuctions = query({
  * Batch-fetch the set of all watched auction IDs for the current user.
  * Optimized for efficiently determining which auctions in a list are watched
  * without making per-auction queries.
- * 
+ *
  * @returns An array of auction IDs that the user has watched
  */
 export const getWatchedAuctionIds = query({

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { mutation } from "../_generated/server";
 import { requireAuth } from "../lib/auth";
 
@@ -17,29 +17,30 @@ export const placeBid = mutation({
       .unique();
 
     if (!profile?.isVerified) {
-      throw new Error(
+      throw new ConvexError(
         "Account verification required to place bids. Please complete KYC."
       );
     }
 
     const auction = await ctx.db.get(args.auctionId);
-    if (!auction) throw new Error("Auction not found");
-    if (auction.status !== "active") throw new Error("Auction not active");
+    if (!auction) throw new ConvexError("Auction not found");
+    if (auction.status !== "active")
+      throw new ConvexError("Auction not active");
 
     // Prevent sellers from bidding on their own auction
     if (auction.sellerId === userId) {
-      throw new Error("Sellers cannot bid on their own auction");
+      throw new ConvexError("Sellers cannot bid on their own auction");
     }
 
     // Check if auction has expired
     if (!auction.endTime || auction.endTime <= Date.now()) {
-      throw new Error("Auction ended");
+      throw new ConvexError("Auction ended");
     }
 
     // Enforce Minimum Bid Increment
     const minimumRequired = auction.currentPrice + auction.minIncrement;
     if (args.amount < minimumRequired) {
-      throw new Error(`Bid must be at least R${minimumRequired}`);
+      throw new ConvexError(`Bid must be at least R${minimumRequired}`);
     }
 
     // Extend auction if bid placed in final 2 minutes (Soft Close)

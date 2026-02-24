@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Clock, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BidConfirmation } from "./BidConfirmation";
-import { isValidCallbackUrl, cn } from "@/lib/utils";
+import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
 import { AuctionCardThumbnail } from "./auction/AuctionCardThumbnail";
 import { AuctionCardPrice } from "./auction/AuctionCardPrice";
 
@@ -106,9 +106,7 @@ export const AuctionCard = ({
       toast.success("Bid placed successfully!");
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to place bid"
-      );
+      toast.error(getErrorMessage(error, "Failed to place bid"));
     } finally {
       setIsBidding(false);
       isBiddingRef.current = false;

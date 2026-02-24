@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/admin/StatCard";
+import { getErrorMessage } from "@/lib/utils";
 
 /**
  * Admin page for composing, sending and reviewing global broadcast announcements.
@@ -77,9 +78,7 @@ export default function AdminAnnouncements() {
       setAnnouncementMessage("");
     } catch (err) {
       console.error(err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to send announcement"
-      );
+      toast.error(getErrorMessage(err, "Failed to send announcement"));
     } finally {
       setIsSending(false);
     }

@@ -3,12 +3,10 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import {
-  ShieldCheck,
-  AlertCircle,
-} from "lucide-react";
+import { ShieldCheck, AlertCircle } from "lucide-react";
 import type { Id } from "convex/_generated/dataModel";
 import {
   AlertDialog,
@@ -20,7 +18,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LoadingIndicator, LoadingPage } from "@/components/ui/LoadingIndicator";
+import {
+  LoadingIndicator,
+  LoadingPage,
+} from "@/components/ui/LoadingIndicator";
 import { useKYCForm } from "./kyc/hooks/useKYCForm";
 import { useKYCFileUpload } from "./kyc/hooks/useKYCFileUpload";
 import { VerificationStatusSection } from "./kyc/sections/VerificationStatusSection";
@@ -46,18 +47,17 @@ export default function KYC() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [docToDelete, setDocToDelete] = useState<string | null>(null);
 
-  const {
-    formData,
-    updateField,
-    validate,
-    setIsFormInitialized,
-  } = useKYCForm(isEditMode && myKycDetails ? {
-    firstName: myKycDetails.firstName,
-    lastName: myKycDetails.lastName,
-    phoneNumber: myKycDetails.phoneNumber,
-    idNumber: myKycDetails.idNumber,
-    email: myKycDetails.kycEmail,
-  } : undefined);
+  const { formData, updateField, validate, setIsFormInitialized } = useKYCForm(
+    isEditMode && myKycDetails
+      ? {
+          firstName: myKycDetails.firstName,
+          lastName: myKycDetails.lastName,
+          phoneNumber: myKycDetails.phoneNumber,
+          idNumber: myKycDetails.idNumber,
+          email: myKycDetails.kycEmail,
+        }
+      : undefined
+  );
 
   const {
     isUploading,
@@ -116,9 +116,9 @@ export default function KYC() {
       // Collect all non-empty document IDs as strings
       const allDocuments = [
         ...(existingDocuments || []),
-        ...(storageIds || [])
+        ...(storageIds || []),
       ].filter((id): id is string => typeof id === "string" && id.length > 0);
-      
+
       await submitKYC({
         // Branded type validation is enforced on the server; casting here to match API signature
         documents: allDocuments as Id<"_storage">[],
@@ -132,9 +132,7 @@ export default function KYC() {
       setIsEditMode(false);
     } catch (submitError) {
       console.error("KYC Submission Phase Failed:", submitError);
-      toast.error(
-        `Submission failed: ${submitError instanceof Error ? submitError.message : "Internal error"}`,
-      );
+      toast.error(getErrorMessage(submitError, "Submission failed"));
       if (storageIds) await cleanupUploads(storageIds);
     }
   };
@@ -218,7 +216,10 @@ export default function KYC() {
               <Button
                 className="w-full h-16 rounded-2xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/20"
                 onClick={() => handleUpload()}
-                disabled={isUploading || (files.length === 0 && existingDocuments.length === 0)}
+                disabled={
+                  isUploading ||
+                  (files.length === 0 && existingDocuments.length === 0)
+                }
               >
                 {isUploading ? (
                   <LoadingIndicator size="sm" className="mr-2 border-white" />

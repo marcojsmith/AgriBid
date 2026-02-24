@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "../lib/auth-client";
+import { getErrorMessage } from "@/lib/utils";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { CountdownTimer } from "./CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
@@ -165,9 +166,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
       );
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to place bid"
-      );
+      toast.error(getErrorMessage(error, "Failed to place bid"));
     } finally {
       setIsBidding(false);
       setPendingBid(null);
