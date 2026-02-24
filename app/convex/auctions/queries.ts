@@ -39,27 +39,58 @@ export const getActiveAuctions = query({
     minPrice: v.optional(v.number()),
     maxPrice: v.optional(v.number()),
     maxHours: v.optional(v.number()),
+    statusFilter: v.optional(
+      v.union(v.literal("active"), v.literal("closed"), v.literal("all"))
+    ),
   },
   returns: v.array(AuctionSummaryValidator),
   handler: async (ctx, args) => {
+    const statusFilter = args.statusFilter ?? "active";
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
 
+    const matchesStatusFilter = (auctionStatus: string): boolean => {
+      if (statusFilter === "active") return auctionStatus === "active";
+      if (statusFilter === "closed")
+        return auctionStatus === "sold" || auctionStatus === "unsold";
+      return (
+        auctionStatus === "active" ||
+        auctionStatus === "sold" ||
+        auctionStatus === "unsold"
+      );
+    };
+
     if (args.search) {
-      auctions = await auctionsQuery
-        .withSearchIndex("search_title", (q) =>
-          q.search("title", args.search!).eq("status", "active")
-        )
-        .collect();
+      const baseQuery = auctionsQuery;
+      if (statusFilter === "active") {
+        auctions = await baseQuery
+          .withSearchIndex("search_title", (q) =>
+            q.search("title", args.search!).eq("status", "active")
+          )
+          .collect();
+      } else {
+        const allAuctions = await baseQuery
+          .withSearchIndex("search_title", (q) =>
+            q.search("title", args.search!)
+          )
+          .collect();
+        auctions = allAuctions.filter((a) => matchesStatusFilter(a.status));
+      }
     } else if (args.make) {
-      auctions = await auctionsQuery
-        .withIndex("by_status_make", (q) =>
+      if (statusFilter === "active") {
+        const makeQuery = auctionsQuery.withIndex("by_status_make", (q) =>
           q.eq("status", "active").eq("make", args.make!)
-        )
-        .collect();
+        );
+        auctions = await makeQuery.collect();
+      } else {
+        const allAuctions = await auctionsQuery.collect();
+        auctions = allAuctions.filter(
+          (a) => a.make === args.make && matchesStatusFilter(a.status)
+        );
+      }
     } else if (args.minYear !== undefined || args.maxYear !== undefined) {
-      auctions = await auctionsQuery
-        .withIndex("by_status_year", (q) => {
+      if (statusFilter === "active") {
+        const yearQuery = auctionsQuery.withIndex("by_status_year", (q) => {
           const statusQuery = q.eq("status", "active");
           if (args.minYear !== undefined && args.maxYear !== undefined) {
             return statusQuery
@@ -73,12 +104,21 @@ export const getActiveAuctions = query({
             return statusQuery.lte("year", args.maxYear);
           }
           return statusQuery;
-        })
-        .collect();
+        });
+        auctions = await yearQuery.collect();
+      } else {
+        const allAuctions = await auctionsQuery.collect();
+        auctions = allAuctions.filter((a) => {
+          const matchesYear =
+            (args.minYear === undefined || a.year >= args.minYear) &&
+            (args.maxYear === undefined || a.year <= args.maxYear);
+          if (!matchesYear) return false;
+          return matchesStatusFilter(a.status);
+        });
+      }
     } else {
-      auctions = await auctionsQuery
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .collect();
+      const allAuctions = await auctionsQuery.collect();
+      auctions = allAuctions.filter((a) => matchesStatusFilter(a.status));
     }
 
     auctions = auctions.filter((a) => {

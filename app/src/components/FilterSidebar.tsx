@@ -16,6 +16,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   // Local state for debounced inputs
   const [localFilters, setLocalFilters] = useState({
+    status: searchParams.get("status") || "active",
     make: searchParams.get("make") || "",
     minYear: searchParams.get("minYear") || "",
     maxYear: searchParams.get("maxYear") || "",
@@ -28,6 +29,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalFilters({
+      status: searchParams.get("status") || "active",
       make: searchParams.get("make") || "",
       minYear: searchParams.get("minYear") || "",
       maxYear: searchParams.get("maxYear") || "",
@@ -39,6 +41,16 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   const updateParam = (key: string, value: string) => {
     setLocalFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleStatusChange = (value: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value === "active") {
+      newParams.delete("status");
+    } else {
+      newParams.set("status", value);
+    }
+    setSearchParams(newParams);
   };
 
   const applyFilters = () => {
@@ -58,11 +70,14 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     const q = searchParams.get("q");
     const newParams = new URLSearchParams();
     if (q) newParams.set("q", q);
+    newParams.set("status", "active");
     setSearchParams(newParams);
     if (onClose) onClose();
   };
 
-  const hasFilters = Object.values(localFilters).some((v) => v !== "");
+  const hasFilters =
+    localFilters.status !== "active" ||
+    Object.values(localFilters).some((v) => v !== "" && v !== "active");
 
   return (
     <div className="flex flex-col h-full bg-card border-2 rounded-3xl overflow-hidden shadow-xl shadow-primary/5 animate-in slide-in-from-left-4 duration-300">
@@ -198,6 +213,26 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
               HRS
             </span>
           </div>
+        </div>
+
+        {/* Auction Status Filter */}
+        <div className="space-y-3">
+          <label
+            htmlFor="filter-status"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
+            Auction Status
+          </label>
+          <select
+            id="filter-status"
+            value={localFilters.status}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="w-full h-12 rounded-xl border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+          >
+            <option value="active">Active Auctions</option>
+            <option value="closed">Closed Auctions</option>
+            <option value="all">All Auctions</option>
+          </select>
         </div>
       </div>
 
