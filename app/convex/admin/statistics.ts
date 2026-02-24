@@ -226,21 +226,27 @@ export const getAdminStats = query({
     pendingReview: v.number(),
     totalUsers: v.number(),
     verifiedSellers: v.number(),
+    kycPending: v.number(),
   }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const [auctionCounter, profileCounter] = await Promise.all([
-      ctx.db
-        .query("counters")
-        .withIndex("by_name", (q) => q.eq("name", "auctions"))
-        .unique(),
-      ctx.db
-        .query("counters")
-        .withIndex("by_name", (q) => q.eq("name", "profiles"))
-        .unique(),
-    ]);
+    const [auctionCounter, profileCounter, pendingKycProfiles] =
+      await Promise.all([
+        ctx.db
+          .query("counters")
+          .withIndex("by_name", (q) => q.eq("name", "auctions"))
+          .unique(),
+        ctx.db
+          .query("counters")
+          .withIndex("by_name", (q) => q.eq("name", "profiles"))
+          .unique(),
+        ctx.db
+          .query("profiles")
+          .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
+          .collect(),
+      ]);
 
     return {
       totalAuctions: auctionCounter?.total ?? 0,
@@ -248,6 +254,7 @@ export const getAdminStats = query({
       pendingReview: auctionCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
       verifiedSellers: profileCounter?.verified ?? 0,
+      kycPending: pendingKycProfiles.length,
     };
   },
 });

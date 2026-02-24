@@ -1,11 +1,10 @@
- 
 import { useContext } from "react";
 import { UserProfileContext, NO_PROVIDER } from "./user-profile-types";
 
 /**
  * Retrieve the current user's profile from the UserProfile context.
  *
- * @returns The `UserProfile` value from context, `null` when the user has no profile, or `undefined` while the profile is loading.
+ * @returns An object containing userId, _id, email, profile, and kyc properties, `null` when the user has no profile, or `undefined` while the profile is loading.
  * @throws Error If called outside a `UserProfileProvider`.
  */
 export function useUserProfile() {

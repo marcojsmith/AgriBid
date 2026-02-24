@@ -109,7 +109,7 @@ function AdminDashboardContent() {
                 ? "text-yellow-600"
                 : "text-green-600",
           },
-          { label: "KYC Queue", value: "0" }, // TODO: Add KYC pending count to getAdminStats
+          { label: "KYC Queue", value: adminStats.kycPending || 0 },
         ]}
         link="/admin/moderation"
         linkLabel="Review Queue"

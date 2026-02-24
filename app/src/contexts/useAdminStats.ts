@@ -1,17 +1,16 @@
- 
 import { useContext } from "react";
-import { AdminStatsContext } from "./admin-stats-types";
+import { AdminStatsContext, NO_PROVIDER } from "./admin-stats-types";
 
 /**
  * Accesses the current admin statistics from the AdminStatsContext.
  *
- * @returns The `AdminStats` object from context, `undefined` if the hook is used outside the provider or the context value has not been set, or `null` if there are explicitly no statistics available.
+ * @returns The `AdminStats` object from context, `null` when explicitly no statistics are available, or `undefined` while loading.
+ * @throws Error If called outside an `AdminStatsProvider`.
  */
 export function useAdminStats() {
   const context = useContext(AdminStatsContext);
-  // Optional: throw if undefined to ensure usage within provider
-  // if (context === undefined) {
-  //   throw new Error("useAdminStats must be used within an AdminStatsProvider");
-  // }
+  if (context === NO_PROVIDER) {
+    throw new Error("useAdminStats must be used within an AdminStatsProvider");
+  }
   return context;
 }
