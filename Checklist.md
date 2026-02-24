@@ -235,7 +235,7 @@
 
 ## Dependencies
 
-### NPM Packages
+### bunx Packages
 - [x] `react`, `react-dom`
 - [x] `react-router-dom`
 - [x] `convex`
