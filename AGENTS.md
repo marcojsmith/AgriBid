@@ -122,6 +122,23 @@ This project is focused on developing a digital prototype for an auction platfor
 - Before committing, ensure that all tests are passing and that there are no linting errors in the codebase. This will help maintain code quality and ensure that the changes being committed meet the project's standards.
 - After committing, push the changes to the appropriate branch to allow for code review and integration into the main codebase.
 
+## Semantic Versioning
+
+Follow [Semantic Versioning (SemVer)](https://semver.org/) to manage the version in `app/package.json`. The version is injected at build time into the application via Vite and displayed in the AdminDashboard.
+
+**When to update the version:**
+
+| Change Type | Version Bump | Example |
+|-------------|--------------|---------|
+| Bug fixes, typo corrections, UI tweaks | **Patch** (x.y.**Z**) | 0.1.0 → 0.1.1 |
+| New features, non-breaking functionality | **Minor** (x.**Y**.z) | 0.1.0 → 0.2.0 |
+| Breaking changes, major refactors, significant milestones | **Major** (**X**.y.z) | 0.1.0 → 1.0.0 |
+
+**Guidelines:**
+- Always update `app/package.json` version BEFORE merging a PR that introduces changes.
+- Include the version bump in the same commit/PR as the changes themselves.
+- The version flows automatically from `package.json` through Vite's build process to the running application (see `app/vite.config.ts` and `app/src/vite-env.d.ts`).
+
 ## Coding Rules
 
 **Types**
