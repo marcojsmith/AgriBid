@@ -10,17 +10,19 @@ interface AuctionCardThumbnailProps {
   isCompact: boolean;
   isWatched: boolean | undefined;
   onWatchlistToggle: (e: React.MouseEvent) => Promise<void>;
-  year: number;
-  make: string;
   endTime?: number;
 }
 
 /**
- * Renders a responsive auction thumbnail with an image or placeholder, a watchlist toggle, an optional year/make badge and an optional countdown.
+ * Render a responsive auction thumbnail containing an image or placeholder, a watchlist toggle and an optional countdown.
  *
+ * @param primaryImage - URL of the primary image; if undefined a placeholder is shown
+ * @param title - Title used for the image alt text
+ * @param isCompact - When true, render the compact layout (fixed width and inline countdown)
+ * @param isWatched - Whether the item is currently on the user's watchlist
  * @param onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
  * @param endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
- * @returns The thumbnail JSX element for an auction card
+ * @returns The JSX element representing the auction thumbnail
  */
 export function AuctionCardThumbnail({
   primaryImage,
@@ -28,8 +30,6 @@ export function AuctionCardThumbnail({
   isCompact,
   isWatched,
   onWatchlistToggle,
-  year,
-  make,
   endTime,
 }: AuctionCardThumbnailProps) {
   return (
@@ -94,15 +94,6 @@ export function AuctionCardThumbnail({
             />
           </Button>
         </div>
-
-        {/* Badges - Detailed Overlay (Top Right) */}
-        {!isCompact && (
-          <div className="absolute top-3 right-3">
-            <div className="bg-background/80 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider shadow-sm">
-              {year} {make}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Timer - Under Image */}

@@ -10,6 +10,30 @@ import {
   toAuctionDetail,
 } from "./helpers";
 
+/**
+ * Represents the possible status values for an auction.
+ */
+type AuctionStatus = "active" | "sold" | "unsold";
+
+/**
+ * Represents the filter options for querying auctions by status.
+ * - "active": Returns only active auctions
+ * - "closed": Returns only closed auctions (sold or unsold)
+ * - "all": Returns all auctions
+ */
+type StatusFilter = "active" | "closed" | "all";
+
+/**
+ * Maps a StatusFilter to the corresponding array of AuctionStatus values.
+ * @param filter - The status filter ("active", "closed", or "all")
+ * @returns An array of AuctionStatus values to query
+ */
+const statusesForFilter = (filter: StatusFilter): AuctionStatus[] => {
+  if (filter === "active") return ["active"];
+  if (filter === "closed") return ["sold", "unsold"];
+  return ["active", "sold", "unsold"];
+};
+
 export const getPendingAuctions = query({
   args: {},
   returns: v.array(AuctionSummaryValidator),
@@ -39,46 +63,78 @@ export const getActiveAuctions = query({
     minPrice: v.optional(v.number()),
     maxPrice: v.optional(v.number()),
     maxHours: v.optional(v.number()),
+    statusFilter: v.optional(
+      v.union(v.literal("active"), v.literal("closed"), v.literal("all"))
+    ),
   },
   returns: v.array(AuctionSummaryValidator),
   handler: async (ctx, args) => {
+    const statusFilter: StatusFilter = args.statusFilter ?? "active";
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
 
     if (args.search) {
-      auctions = await auctionsQuery
-        .withSearchIndex("search_title", (q) =>
-          q.search("title", args.search!).eq("status", "active")
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
+          auctionsQuery
+            .withSearchIndex("search_title", (q) =>
+              q.search("title", args.search!).eq("status", status)
+            )
+            .collect()
         )
-        .collect();
+      );
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     } else if (args.make) {
-      auctions = await auctionsQuery
-        .withIndex("by_status_make", (q) =>
-          q.eq("status", "active").eq("make", args.make!)
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
+          auctionsQuery
+            .withIndex("by_status_make", (q) =>
+              q.eq("status", status).eq("make", args.make!)
+            )
+            .collect()
         )
-        .collect();
+      );
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     } else if (args.minYear !== undefined || args.maxYear !== undefined) {
-      auctions = await auctionsQuery
-        .withIndex("by_status_year", (q) => {
-          const statusQuery = q.eq("status", "active");
-          if (args.minYear !== undefined && args.maxYear !== undefined) {
-            return statusQuery
-              .gte("year", args.minYear)
-              .lte("year", args.maxYear);
-          }
-          if (args.minYear !== undefined) {
-            return statusQuery.gte("year", args.minYear);
-          }
-          if (args.maxYear !== undefined) {
-            return statusQuery.lte("year", args.maxYear);
-          }
-          return statusQuery;
-        })
-        .collect();
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
+          auctionsQuery
+            .withIndex("by_status_year", (q) => {
+              const statusQuery = q.eq("status", status);
+              if (args.minYear !== undefined && args.maxYear !== undefined) {
+                return statusQuery
+                  .gte("year", args.minYear)
+                  .lte("year", args.maxYear);
+              }
+              if (args.minYear !== undefined) {
+                return statusQuery.gte("year", args.minYear);
+              }
+              if (args.maxYear !== undefined) {
+                return statusQuery.lte("year", args.maxYear);
+              }
+              return statusQuery;
+            })
+            .collect()
+        )
+      );
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     } else {
-      auctions = await auctionsQuery
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .collect();
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
+          auctionsQuery
+            .withIndex("by_status", (q) => q.eq("status", status))
+            .collect()
+        )
+      );
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     }
 
     auctions = auctions.filter((a) => {

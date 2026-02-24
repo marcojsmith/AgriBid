@@ -36,13 +36,12 @@ function useMediaQuery(query: string) {
 }
 
 /**
- * Renders the AgriBid home page with active auctions, a filter sidebar, a mobile filter overlay and view-mode controls.
+ * Render the AgriBid home page with auction listings, filter controls (desktop and mobile) and view-mode toggles.
  *
- * Reads URL query parameters to apply search and filter criteria, fetches matching active auctions and watched auction IDs,
- * and displays loading, empty or results states; supports toggling the desktop sidebar, opening a mobile filter panel,
- * and switching between compact and detailed list layouts.
+ * Reads URL query parameters to apply search and filter criteria, fetches matching auctions and watched IDs,
+ * and displays loading, empty or results states while supporting desktop sidebar and mobile filter overlay interactions.
  *
- * @returns The Home page JSX element
+ * @returns The JSX element for the Home page
  */
 export default function Home() {
   const { isPending } = useSession();
@@ -62,6 +61,15 @@ export default function Home() {
   // Extract filter params
   const searchQuery = searchParams.get("q") || undefined;
   const make = searchParams.get("make") || undefined;
+
+  const isValidStatus = (
+    value: string | null
+  ): value is "active" | "closed" | "all" => {
+    return value === "active" || value === "closed" || value === "all";
+  };
+
+  const rawStatus = searchParams.get("status");
+  const statusFilter = isValidStatus(rawStatus) ? rawStatus : "active";
 
   const parseFiniteInt = (key: string) => {
     const val = searchParams.get(key);
@@ -84,6 +92,7 @@ export default function Home() {
     minPrice,
     maxPrice,
     maxHours,
+    statusFilter,
   });
 
   // Batch-fetch watched auction IDs to avoid per-card queries
@@ -94,6 +103,7 @@ export default function Home() {
   }
 
   const hasActiveFilters =
+    statusFilter !== "active" ||
     make !== undefined ||
     minYear !== undefined ||
     maxYear !== undefined ||
@@ -120,7 +130,7 @@ export default function Home() {
       {/* Desktop Sidebar */}
       {isDesktopSidebarOpen && (
         <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
-          <FilterSidebar key={searchParams.toString()} />
+          <FilterSidebar />
         </aside>
       )}
 
@@ -135,10 +145,7 @@ export default function Home() {
           />
           {/* Sidebar Container */}
           <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80 z-20">
-            <FilterSidebar
-              key={searchParams.toString()}
-              onClose={() => setIsMobileFilterOpen(false)}
-            />
+            <FilterSidebar onClose={() => setIsMobileFilterOpen(false)} />
           </div>
         </div>
       )}
@@ -147,7 +154,13 @@ export default function Home() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-3xl font-black tracking-tight text-primary uppercase">
-              {searchQuery ? `Results for "${searchQuery}"` : "Active Auctions"}
+              {searchQuery
+                ? `Results for "${searchQuery}"`
+                : statusFilter === "active"
+                  ? "Active Auctions"
+                  : statusFilter === "closed"
+                    ? "Closed Auctions"
+                    : "All Auctions"}
             </h2>
             <div className="flex flex-wrap gap-2 mt-2">
               {searchQuery && (
@@ -217,7 +230,7 @@ export default function Home() {
 
         {!auctions ? (
           <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
-            {Array.from({ length: 9 }).map((_, i) => (
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className={getItemWrapperClasses(viewMode)}>
                 <AuctionCardSkeleton viewMode={viewMode} />
               </div>
