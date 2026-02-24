@@ -36,7 +36,7 @@ describe("Layout", () => {
         <Layout>
           <div data-testid="child-content">Child Content</div>
         </Layout>
-      </BrowserRouter>,
+      </BrowserRouter>
     );
 
     expect(screen.getByTestId("mock-header")).toBeInTheDocument();

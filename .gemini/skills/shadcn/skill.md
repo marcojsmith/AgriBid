@@ -30,7 +30,7 @@ There are two approaches to adding components:
 
 **A. Direct Installation (Recommended)**
 ```bash
-npx shadcn@latest add [component-name]
+bunx shadcn@latest add [component-name]
 ```
 
 This command:
@@ -60,13 +60,13 @@ If working with a custom registry (defined in `components.json`) or exploring th
 For **new projects**, use the `create` command to customize everything (style, fonts, component library):
 
 ```bash
-npx shadcn@latest create
+bunx shadcn@latest create
 ```
 
 For **existing projects**, initialize configuration:
 
 ```bash
-npx shadcn@latest init
+bunx shadcn@latest init
 ```
 
 This creates `components.json` with your configuration:

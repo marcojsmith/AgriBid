@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd app && npx convex deploy --cmd 'npm run build' --preview-run 'seed:runSeed'",
-  "installCommand": "cd app && npm install",
+  "buildCommand": "cd app && bunx convex deploy --cmd 'bun run build' --preview-run 'seed:runSeed'",
+  "installCommand": "cd app && bun install",
   "outputDirectory": "app/dist",
   "rewrites": [
     {

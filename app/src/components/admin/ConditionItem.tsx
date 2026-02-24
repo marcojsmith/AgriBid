@@ -10,7 +10,13 @@ import { Check, X } from "lucide-react";
  * @param value - Optional boolean indicating condition state: `true` = pass, `false` = fail, `undefined` = unavailable
  * @returns A JSX element representing the labeled condition indicator
  */
-export function ConditionItem({ label, value }: { label: string; value?: boolean }) {
+export function ConditionItem({
+  label,
+  value,
+}: {
+  label: string;
+  value?: boolean;
+}) {
   return (
     <div className="space-y-1 text-center md:text-left">
       <p className="text-[8px] font-black uppercase text-muted-foreground">

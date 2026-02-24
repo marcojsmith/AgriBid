@@ -20,7 +20,7 @@ export const BidForm = ({
 }: BidFormProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
   const [manualAmount, setManualAmount] = useState<string>(
-    nextMinBid.toString(),
+    nextMinBid.toString()
   );
 
   /**

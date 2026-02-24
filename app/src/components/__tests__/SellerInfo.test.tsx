@@ -22,13 +22,13 @@ describe("SellerInfo", () => {
     render(
       <MemoryRouter>
         <SellerInfo sellerId="seller123" />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
 
     expect(screen.getByText("Verified Farmer")).toBeInTheDocument();
     expect(screen.getByText("Commercial Dealer")).toBeInTheDocument();
     expect(
-      screen.getByText(/High-Integrity Verification/i),
+      screen.getByText(/High-Integrity Verification/i)
     ).toBeInTheDocument();
   });
 
@@ -38,7 +38,7 @@ describe("SellerInfo", () => {
     const { container } = render(
       <MemoryRouter>
         <SellerInfo sellerId="seller123" />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
 
     expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
@@ -50,10 +50,12 @@ describe("SellerInfo", () => {
     render(
       <MemoryRouter>
         <SellerInfo sellerId="seller123" />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
 
-    expect(screen.getByText(/Seller information unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Seller information unavailable/i)
+    ).toBeInTheDocument();
   });
 
   it("hides verification badge when seller is unverified", () => {
@@ -68,10 +70,12 @@ describe("SellerInfo", () => {
     render(
       <MemoryRouter>
         <SellerInfo sellerId="seller123" />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
 
     expect(screen.getByText("Unverified User")).toBeInTheDocument();
-    expect(screen.queryByText(/High-Integrity Verification/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/High-Integrity Verification/i)
+    ).not.toBeInTheDocument();
   });
 });

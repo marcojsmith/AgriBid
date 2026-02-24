@@ -43,7 +43,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
     try {
       const nowWatched = await toggleWatchlist({ auctionId: auction._id });
       toast.success(
-        nowWatched ? "Added to watchlist" : "Removed from watchlist",
+        nowWatched ? "Added to watchlist" : "Removed from watchlist"
       );
     } catch {
       toast.error("Failed to update watchlist");
@@ -89,7 +89,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
               "rounded-xl border-2 font-black uppercase text-xs tracking-widest gap-2 h-12 px-6 transition-all shrink-0",
               isWatched
                 ? "border-red-500/50 text-red-500 hover:bg-red-50 hover:text-red-600"
-                : "text-zinc-500 hover:border-primary hover:text-primary",
+                : "text-zinc-500 hover:border-primary hover:text-primary"
             )}
             onClick={handleWatchlistToggle}
           >

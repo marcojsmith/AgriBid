@@ -1,10 +1,10 @@
 /**
  * Barrel file for auction operations.
- * 
+ *
  * This file re-exports all auction-related functions from the modular structure
  * to maintain backward compatibility with existing imports. All implementations
  * have been decomposed into focused modules:
- * 
+ *
  * - queries.ts: Read operations (listAuctions, getAuctionById, etc.)
  * - mutations.ts: Standard write operations (createAuction, updateAuction, etc.)
  * - bidding.ts: Bid-specific mutations (placeBid, etc.)

@@ -11,13 +11,13 @@ import { useSession } from "../lib/auth-client";
  */
 export const NotificationListener = () => {
   const { data: session } = useSession();
-  
+
   // Fetch recent bids and watched items (first page only for notifications)
-  const myBidsData = useQuery(api.auctions.getMyBids, { 
-    paginationOpts: { numItems: 20, cursor: null } 
+  const myBidsData = useQuery(api.auctions.getMyBids, {
+    paginationOpts: { numItems: 20, cursor: null },
   });
-  const watchedData = useQuery(api.watchlist.getWatchedAuctions, { 
-    paginationOpts: { numItems: 20, cursor: null } 
+  const watchedData = useQuery(api.watchlist.getWatchedAuctions, {
+    paginationOpts: { numItems: 20, cursor: null },
   });
 
   const myBids = myBidsData?.page;
@@ -38,8 +38,8 @@ export const NotificationListener = () => {
     // Deduplicate auctions by ID
     const allRelevant = Array.from(
       new Map(
-        [...myBids, ...watched].map((a) => [a._id.toString(), a]),
-      ).values(),
+        [...myBids, ...watched].map((a) => [a._id.toString(), a])
+      ).values()
     );
 
     for (const auction of allRelevant) {
@@ -67,7 +67,7 @@ export const NotificationListener = () => {
               {
                 duration: 10000,
                 description: `Winning Bid: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
-              },
+              }
             );
           } else if (isSeller) {
             toast.success(
@@ -75,7 +75,7 @@ export const NotificationListener = () => {
               {
                 duration: 10000,
                 description: `Final Price: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
-              },
+              }
             );
           } else {
             toast.info(`Auction ended: ${auction.title} has been sold.`, {
@@ -89,7 +89,7 @@ export const NotificationListener = () => {
               `Auction ended: ${auction.title} did not meet reserve.`,
               {
                 duration: 8000,
-              },
+              }
             );
           } else {
             toast.info(`Auction ended: ${auction.title} was not sold.`, {

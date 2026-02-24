@@ -40,7 +40,7 @@
     - [x] Update `ListingWizard.tsx` to use the `ListingWizardProvider` and sub-components
     - [x] Reduce main component file size to < 150 lines
 - [x] Task: Final Verification
-    - [x] Run full test suite (`npm run test`)
-    - [x] Run production build (`npm run build`)
+    - [x] Run full test suite (`bun run test`)
+    - [x] Run production build (`bun run build`)
     - [x] Perform manual end-to-end listing flow test
 - [x] Task: Conductor - Manual Verification using Chromedevtools 'Phase 4: Integration' (Protocol in workflow.md)

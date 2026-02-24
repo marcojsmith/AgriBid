@@ -13,9 +13,9 @@ export const GeneralInfoStep = () => {
       SA_LOCATIONS.filter(
         (loc) =>
           loc.toLowerCase().includes(formData.location.toLowerCase()) &&
-          formData.location.length > 1,
+          formData.location.length > 1
       ),
-    [formData.location],
+    [formData.location]
   );
 
   return (

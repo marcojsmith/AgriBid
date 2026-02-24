@@ -15,7 +15,7 @@ export interface AuctionImages {
  * @returns A standardized AuctionImages object
  */
 export function normalizeAuctionImages(
-  images: AuctionImages | string[] | undefined,
+  images: AuctionImages | string[] | undefined
 ): AuctionImages {
   if (!images) return { additional: [] };
   if (Array.isArray(images)) {

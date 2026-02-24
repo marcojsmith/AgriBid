@@ -17,11 +17,11 @@ interface ListingWizardContextType {
   setPreviews: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   updateField: <K extends keyof ListingFormData>(
     field: K,
-    value: ListingFormData[K],
+    value: ListingFormData[K]
   ) => void;
   updateChecklist: <K extends keyof ConditionChecklist>(
     field: K,
-    value: ConditionChecklist[K],
+    value: ConditionChecklist[K]
   ) => void;
 }
 
@@ -80,14 +80,14 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateField = <K extends keyof ListingFormData>(
     field: K,
-    value: ListingFormData[K],
+    value: ListingFormData[K]
   ) => {
     setDraftSaved(false);
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
       if (field === "make" || field === "model" || field === "year") {
         const parts = [newData.year, newData.make, newData.model].filter(
-          (v) => v !== undefined && v !== null && v !== "",
+          (v) => v !== undefined && v !== null && v !== ""
         );
         if (parts.length > 0) {
           newData.title = parts.join(" ");
@@ -99,7 +99,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateChecklist = <K extends keyof ConditionChecklist>(
     field: K,
-    value: ConditionChecklist[K],
+    value: ConditionChecklist[K]
   ) => {
     setDraftSaved(false);
     setFormData((prev) => ({
@@ -138,7 +138,7 @@ export const useListingWizard = () => {
   const context = useContext(ListingWizardContext);
   if (context === undefined) {
     throw new Error(
-      "useListingWizard must be used within a ListingWizardProvider",
+      "useListingWizard must be used within a ListingWizardProvider"
     );
   }
   return context;

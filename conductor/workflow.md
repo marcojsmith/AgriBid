@@ -36,7 +36,7 @@ All tasks follow a strict lifecycle:
 
 6. **Verify Coverage:** Run coverage reports using Vitest. For example:
    ```bash
-   npx vitest run --coverage
+   bunx vitest run --coverage
    ```
    Target: >80% coverage for new code. Note: Ensure the command matches the project's test tooling.
 
@@ -100,7 +100,7 @@ All tasks follow a strict lifecycle:
 
 3.  **Execute Automated Tests with Proactive Debugging:**
     -   Before execution, you **must** announce the exact shell command you will use to run the tests.
-    -   **Example Announcement:** "I will now run the automated test suite to verify the phase. **Command:** `CI=true npm test`"
+- **Example Announcement:** "I will now run the automated test suite to verify the phase. **Command:** `CI=true bun test`"
     -   Execute the announced command.
     -   If tests fail, you **must** inform the user and begin debugging. You may attempt to propose a fix a **maximum of two times**. If the tests still fail after your second proposed fix, you **must stop**, report the persistent failure, and ask the user for guidance.
 
@@ -115,7 +115,7 @@ All tasks follow a strict lifecycle:
         The automated tests have passed. For manual verification, please follow these steps:
 
         **Manual Verification Steps:**
-        1.  **Start the development server with the command:** `npm run dev`
+        1.  **Start the development server with the command:** `bun run dev`
         2.  **Open your browser to:** `http://localhost:3000`
         3.  **Confirm that you see:** The new user profile page, with the user's name and email displayed correctly.
         ```
@@ -174,34 +174,34 @@ Before marking any task complete, verify:
 ### Setup
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Setup Convex environment (if first time)
-npx convex dev
+bunx convex dev
 ```
 
 ### Daily Development
 ```bash
 # Start Vite development server
-npm run dev
+bun run dev
 
 # Start Convex in dev mode (for backend functions/schema)
-npx convex dev
+bunx convex dev
 
 # Run tests in watch mode
-npm run test
+bun run test
 
 # Run linter
-npm run lint
+bun run lint
 ```
 
 ### Before Committing
 ```bash
 # Run all checks (lint, test, build)
-npm run lint && npm run test && npm run build
+bun run lint && bun run test && bun run build
 
 # Check coverage
-npx vitest run --coverage
+bunx vitest run --coverage
 ```
 
 ## Testing Requirements

@@ -67,7 +67,7 @@ export const PricingDurationStep = () => {
                   formData.reservePrice !== 0 &&
                     formData.reservePrice < formData.startingPrice
                     ? "border-destructive focus-visible:ring-destructive"
-                    : "border-primary/20",
+                    : "border-primary/20"
                 )}
               />
             </div>

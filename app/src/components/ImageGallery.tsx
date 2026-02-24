@@ -104,7 +104,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                   key={idx}
                   className={cn(
                     "h-1.5 w-1.5 rounded-full transition-all",
-                    activeIndex === idx ? "bg-white w-4" : "bg-white/40",
+                    activeIndex === idx ? "bg-white w-4" : "bg-white/40"
                   )}
                 />
               ))}
@@ -124,7 +124,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                 "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 activeIndex === index
                   ? "border-primary ring-2 ring-primary/20 scale-95"
-                  : "border-transparent hover:border-primary/40",
+                  : "border-transparent hover:border-primary/40"
               )}
               aria-label={`View image ${index + 1}`}
             >

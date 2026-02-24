@@ -43,7 +43,7 @@ describe("BiddingPanel", () => {
     render(
       <BrowserRouter>
         <BiddingPanel auction={mockAuction} />
-      </BrowserRouter>,
+      </BrowserRouter>
     );
 
     // Check for R and the price digits, allowing for different grouping symbols (space or comma)
@@ -62,7 +62,7 @@ describe("BiddingPanel", () => {
     render(
       <BrowserRouter>
         <BiddingPanel auction={endedAuction} />
-      </BrowserRouter>,
+      </BrowserRouter>
     );
 
     expect(screen.getByText(/Auction SOLD/i)).toBeInTheDocument();
@@ -77,11 +77,13 @@ describe("BiddingPanel", () => {
     render(
       <BrowserRouter>
         <BiddingPanel auction={mockAuction} />
-      </BrowserRouter>,
+      </BrowserRouter>
     );
 
     // Should show verification alert (multiple elements may contain this text now)
-    expect(screen.getAllByText(/Verification Required/i).length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Verification Required/i).length
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Complete KYC Now/i)).toBeInTheDocument();
   });
 
@@ -94,11 +96,13 @@ describe("BiddingPanel", () => {
     render(
       <BrowserRouter>
         <BiddingPanel auction={mockAuction} />
-      </BrowserRouter>,
+      </BrowserRouter>
     );
 
     // Should NOT show verification alert
-    expect(screen.queryByText(/Verification Required/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Verification Required/i)
+    ).not.toBeInTheDocument();
     // Manual bid input should be present (via BidForm)
     expect(screen.getByPlaceholderText(/Enter amount/i)).toBeInTheDocument();
   });

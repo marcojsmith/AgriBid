@@ -6,10 +6,7 @@ import { signOut } from "../lib/auth-client";
 import { api } from "convex/_generated/api";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
-import {
-  Menu,
-  X,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { SearchBar } from "./header/SearchBar";
@@ -81,18 +78,21 @@ export const Header = () => {
                     "transition-colors hover:text-primary",
                     location.pathname === link.href
                       ? "text-primary"
-                      : "text-muted-foreground",
+                      : "text-muted-foreground"
                   )}
                 >
                   {link.name}
                 </Link>
-              ),
+              )
             )}
           </nav>
         </div>
 
         {/* Global Search - Desktop */}
-        <SearchBar id="search-desktop" className="hidden md:flex flex-1 max-w-md" />
+        <SearchBar
+          id="search-desktop"
+          className="hidden md:flex flex-1 max-w-md"
+        />
 
         <div className="flex items-center gap-2 shrink-0">
           <Authenticated>

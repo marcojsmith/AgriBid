@@ -106,7 +106,7 @@ export const ReviewSubmitStep = () => {
                         {key}: {value ? "YES" : "NO"}
                       </Badge>
                     );
-                  },
+                  }
                 )}
               </div>
             </div>

@@ -90,7 +90,7 @@ export default function Login() {
                   .map(
                     (token) =>
                       token.charAt(0).toUpperCase() +
-                      token.slice(1).toLowerCase(),
+                      token.slice(1).toLowerCase()
                   )
                   .join(" ") || "User";
 

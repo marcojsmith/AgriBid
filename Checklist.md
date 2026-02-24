@@ -14,8 +14,8 @@
 - [x] Create initial folder structure (`src/components`, `src/pages`, `src/lib`, etc.)
 
 ### Convex Configuration
-- [x] Install Convex CLI (`npm install convex`)
-- [x] Run `npx convex dev` to initialise project in `app/`
+- [x] Install Convex CLI (`bun add convex`)
+- [x] Run `bunx convex dev` to initialise project in `app/`
 - [x] Configure `convex.json` with deployment settings
 - [x] Set up environment variables in Convex dashboard
 - [x] Create initial schema (`convex/schema.ts`)
@@ -24,7 +24,7 @@
 
 ### Better Auth Integration
 - [x] Install `@better-auth/cli` and dependencies
-- [x] Generate Better Auth component (`npx @better-auth/cli init`)
+- [x] Generate Better Auth component (`bunx @better-auth/cli init`)
 - [x] Configure auth providers (email/password, Google OAuth)
 - [x] Set up auth middleware in `convex/http.ts` (with CORS and OIDC rewrites)
 - [x] Create auth client utilities (`src/lib/auth-client.ts`)
@@ -200,11 +200,11 @@
 - [x] Document all required environment variables in README/codebase_notes
 
 ### Convex Deployment
-- [ ] Deploy to Convex Cloud (`npx convex deploy`)
+- [ ] Deploy to Convex Cloud (`bunx convex deploy`)
 
 ### Vercel Deployment
 - [ ] Connect GitHub repository to Vercel
-- [ ] Configure build settings (build command: `npm run build`, output directory: `dist/`)
+- [ ] Configure build settings (build command: `bun run build`, output directory: `dist/`)
 - [ ] Set environment variables in Vercel dashboard
 - [ ] Deploy staging environment for testing
 - [ ] Deploy production environment after testing
@@ -235,7 +235,7 @@
 
 ## Dependencies
 
-### NPM Packages
+### bunx Packages
 - [x] `react`, `react-dom`
 - [x] `react-router-dom`
 - [x] `convex`

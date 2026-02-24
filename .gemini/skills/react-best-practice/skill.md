@@ -1935,7 +1935,7 @@ Reduce SVG coordinate precision to decrease file size. The optimal precision dep
 **Automate with SVGO:**
 
 ```bash
-npx svgo --precision=1 --multipass icon.svg
+bunx svgo --precision=1 --multipass icon.svg
 ```
 
 ### 6.5 Prevent Hydration Mismatch Without Flickering

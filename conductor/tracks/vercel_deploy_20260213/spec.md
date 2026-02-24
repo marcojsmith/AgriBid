@@ -6,7 +6,7 @@ Implement a robust, automated deployment pipeline for AgriBid using Vercel. This
 ## Functional Requirements
 - **Automated Staging Deploys:** Every push to non-main branches (or a dedicated `develop` branch) must trigger a Vercel Preview deployment.
 - **Automated Production Deploys:** Merges to the `main` branch must trigger a Vercel Production deployment.
-- **Backend Synchronization:** The deployment pipeline must run `npx convex deploy` to ensure backend schemas and functions are updated before the frontend build completes.
+- **Backend Synchronization:** The deployment pipeline must run `bunx convex deploy` to ensure backend schemas and functions are updated before the frontend build completes.
 - **Environment Variable Management:** Configure Vercel to securely handle Convex deployment keys and Better Auth secrets.
 
 ## Non-Functional Requirements

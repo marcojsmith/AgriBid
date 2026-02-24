@@ -3,7 +3,10 @@ import { Check, X, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { normalizeAuctionImages, type AuctionImages } from "@/lib/auction-utils";
+import {
+  normalizeAuctionImages,
+  type AuctionImages,
+} from "@/lib/auction-utils";
 import { formatCurrency } from "@/lib/currency";
 import { ConditionItem } from "./ConditionItem";
 import type { Doc } from "convex/_generated/dataModel";
@@ -29,7 +32,7 @@ export function ModerationCard({
   onView: () => void;
 }) {
   const images = normalizeAuctionImages(
-    auction.images as AuctionImages | string[] | undefined,
+    auction.images as AuctionImages | string[] | undefined
   );
   return (
     <Card className="p-5 border-2 hover:border-primary/40 transition-all bg-card/40 backdrop-blur-md group">

@@ -97,7 +97,8 @@ export function VerificationStatusSection({
                   <Mail className="h-3 w-3" /> {myKycDetails.kycEmail || "N/A"}
                 </p>
                 <p className="font-bold flex items-center gap-2">
-                  <Phone className="h-3 w-3" /> {myKycDetails.phoneNumber || "N/A"}
+                  <Phone className="h-3 w-3" />{" "}
+                  {myKycDetails.phoneNumber || "N/A"}
                 </p>
               </div>
             </div>
@@ -107,18 +108,22 @@ export function VerificationStatusSection({
               </Label>
               <div className="flex flex-wrap gap-2">
                 {hasDocs ? (
-                  myKycDetails.kycDocuments?.map((docId: string, idx: number) => (
-                    <Badge
-                      key={docId}
-                      variant="secondary"
-                      className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
-                    >
-                      <FileText className="h-3 w-3" />
-                      Document {idx + 1}
-                    </Badge>
-                  ))
+                  myKycDetails.kycDocuments?.map(
+                    (docId: string, idx: number) => (
+                      <Badge
+                        key={docId}
+                        variant="secondary"
+                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Document {idx + 1}
+                      </Badge>
+                    )
+                  )
                 ) : (
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase italic">No documents verified</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase italic">
+                    No documents verified
+                  </p>
                 )}
               </div>
             </div>
@@ -152,9 +157,7 @@ export function VerificationStatusSection({
           <Clock className="h-8 w-8 text-white" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-2xl font-black uppercase">
-            Review in Progress
-          </h2>
+          <h2 className="text-2xl font-black uppercase">Review in Progress</h2>
           <p className="text-muted-foreground font-medium">
             Our compliance team is reviewing your documents. You'll receive a
             notification once verified.

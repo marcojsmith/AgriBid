@@ -36,7 +36,7 @@ export const MediaGalleryStep = () => {
                 "relative group aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-4 transition-all overflow-hidden",
                 storageId
                   ? "border-primary/40 bg-muted"
-                  : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5",
+                  : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"
               )}
             >
               {storageId ? (
@@ -83,7 +83,7 @@ export const MediaGalleryStep = () => {
                     htmlFor={`file-upload-${slot.id}`}
                     className={cn(
                       "w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer outline-none",
-                      uploadingSlot === slot.id && "animate-pulse",
+                      uploadingSlot === slot.id && "animate-pulse"
                     )}
                   >
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">

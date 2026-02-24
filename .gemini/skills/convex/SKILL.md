@@ -14,7 +14,7 @@ To ensure successful automated deployments, follow these dashboard and codebase 
 ### Dashboard Settings
 - **Framework Preset**: `Vite`
 - **Root Directory**: `app/`
-- **Build Command**: `npx convex deploy --cmd 'npm run build'` (Override: **ON**)
+- **Build Command**: `bunx convex deploy --cmd 'bun run build'` (Override: **ON**)
 - **Output Directory**: `dist`
 
 ### Handling Preview Deployments (Dynamic URLs)
@@ -35,7 +35,7 @@ In `app/package.json`, ensure the `build` script includes `codegen` to generate 
 ```json
 {
   "scripts": {
-    "build": "npx convex codegen && tsc -b && vite build"
+    "build": "bunx convex codegen && tsc -b && vite build"
   }
 }
 ```
@@ -79,6 +79,6 @@ The `convex/` directory MUST be included in your `include` array for `tsc` to fi
 
 ## Best Practices
 
-- **Backend Sync**: Always use `npx convex deploy` in the CI/CD build command rather than a separate step to ensure the frontend is built against the correct backend version.
+- **Backend Sync**: Always use `bunx convex deploy` in the CI/CD build command rather than a separate step to ensure the frontend is built against the correct backend version.
 - **Gitignore**: Always ignore `convex/_generated/`. Do not commit these files.
 - **Auth Proxying**: If using Better Auth or similar, ensure the Vite proxy is configured to point to your Convex Site URL during local development.

@@ -35,4 +35,3 @@ export interface UserDataWithProfile {
   image?: string | null;
   profile?: UserProfileMetadata | null;
 }
-

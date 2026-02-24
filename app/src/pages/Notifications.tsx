@@ -33,14 +33,14 @@ export default function Notifications() {
 
   const onNotificationClick = async (
     id: Id<"notifications">,
-    link?: string,
+    link?: string
   ) => {
     try {
       await handleNotificationClick(id, link, navigate, markRead);
     } catch (e) {
       console.error("Notification click failed:", e);
       toast.error(
-        `Action failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+        `Action failed: ${e instanceof Error ? e.message : "Unknown error"}`
       );
     }
   };
@@ -53,7 +53,7 @@ export default function Notifications() {
     } catch (e) {
       console.error("Mark all read failed:", e);
       toast.error(
-        `Action failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+        `Action failed: ${e instanceof Error ? e.message : "Unknown error"}`
       );
     } finally {
       setIsMarkingAllRead(false);
@@ -124,7 +124,7 @@ export default function Notifications() {
                 key={n._id}
                 className={cn(
                   "p-6 flex gap-6 hover:bg-muted/30 transition-all cursor-pointer group",
-                  !n.isRead ? "bg-muted/50" : "opacity-60",
+                  !n.isRead ? "bg-muted/50" : "opacity-60"
                 )}
                 onClick={() => onNotificationClick(n._id, n.link)}
               >

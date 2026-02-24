@@ -39,7 +39,7 @@ describe("ImageGallery", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByAltText("Test Equipment - Full Screen")).toHaveAttribute(
       "src",
-      mockImages[0],
+      mockImages[0]
     );
   });
 
@@ -51,7 +51,10 @@ describe("ImageGallery", () => {
     fireEvent.click(mainImageButton);
 
     const nextButton = screen.getByLabelText("Next image");
-    const stopPropagationSpy = vi.spyOn(MouseEvent.prototype, "stopPropagation");
+    const stopPropagationSpy = vi.spyOn(
+      MouseEvent.prototype,
+      "stopPropagation"
+    );
 
     fireEvent.click(nextButton);
 
@@ -66,8 +69,9 @@ describe("ImageGallery", () => {
     // Index 0 is active by default
     // We look for the overlay div which has bg-black/5 class
     // In our implementation it's: <div className="absolute inset-0 bg-black/5 ..." />
-    const overlays = screen.queryAllByRole("button", { name: /View image/i })
-      .map(button => button.querySelector(".bg-black\\/5"));
+    const overlays = screen
+      .queryAllByRole("button", { name: /View image/i })
+      .map((button) => button.querySelector(".bg-black\\/5"));
 
     expect(overlays[0]).toBeNull(); // Active thumbnail has no overlay
     expect(overlays[1]).not.toBeNull(); // Inactive thumbnail has overlay

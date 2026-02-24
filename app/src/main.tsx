@@ -17,5 +17,5 @@ createRoot(document.getElementById("root")!).render(
         <Toaster position="top-center" richColors />
       </ConvexBetterAuthProvider>
     </ConvexProvider>
-  </StrictMode>,
+  </StrictMode>
 );
