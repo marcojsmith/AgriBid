@@ -49,11 +49,11 @@ function getStatusDisplay(auction: AuctionWithBid): StatusDisplay {
  * @returns The React element for the My Bids dashboard page
  */
 export default function MyBids() {
-  const { results: auctions, status, loadMore } = usePaginatedQuery(
-    api.auctions.getMyBids,
-    {},
-    { initialNumItems: 12 }
-  );
+  const {
+    results: auctions,
+    status,
+    loadMore,
+  } = usePaginatedQuery(api.auctions.getMyBids, {}, { initialNumItems: 12 });
 
   if (status === "LoadingFirstPage") {
     return (
@@ -111,7 +111,7 @@ export default function MyBids() {
                         variant={variant}
                         className={cn(
                           "font-bold uppercase tracking-wider",
-                          auction.isWon && "bg-green-600 hover:bg-green-700",
+                          auction.isWon && "bg-green-600 hover:bg-green-700"
                         )}
                       >
                         {label}
@@ -128,7 +128,10 @@ export default function MyBids() {
                           My Bid
                         </p>
                         <p className="font-bold">
-                          R {auction.bidAmount ? auction.bidAmount.toLocaleString("en-ZA") : auction.myHighestBid.toLocaleString("en-ZA")}
+                          R{" "}
+                          {auction.bidAmount
+                            ? auction.bidAmount.toLocaleString("en-ZA")
+                            : auction.myHighestBid.toLocaleString("en-ZA")}
                         </p>
                       </div>
                       <div>
@@ -159,8 +162,8 @@ export default function MyBids() {
 
           <div className="flex justify-center pt-8">
             {status === "CanLoadMore" ? (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => loadMore(10)}
                 className="font-bold min-w-[200px]"
               >

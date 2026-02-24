@@ -35,7 +35,7 @@ export async function handleNotificationClick(
   navigate: (p: string) => void,
   markReadFn: (args: {
     notificationId: Id<"notifications">;
-  }) => Promise<unknown>,
+  }) => Promise<unknown>
 ) {
   try {
     await markReadFn({ notificationId });

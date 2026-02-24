@@ -77,9 +77,9 @@ export function MobileMenu({
 
       if (e.key === "Tab" && menuRef.current) {
         const allFocusable = menuRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
-        
+
         // Filter out elements that are disabled, hidden, or have negative tabindex
         const focusableElements = Array.from(allFocusable).filter((el) => {
           const element = el as HTMLElement;
@@ -90,7 +90,7 @@ export function MobileMenu({
             element.offsetParent !== null // basic visibility check
           );
         }) as HTMLElement[];
-        
+
         if (focusableElements.length === 0) return;
 
         const firstElement = focusableElements[0];
@@ -143,7 +143,7 @@ export function MobileMenu({
                 "text-lg font-black uppercase tracking-tight p-4 rounded-2xl bg-muted/30 border-2 border-transparent hover:border-primary/20 transition-all",
                 location.pathname === link.href
                   ? "text-primary border-primary/20"
-                  : "text-muted-foreground",
+                  : "text-muted-foreground"
               )}
             >
               {link.name}
@@ -208,10 +208,7 @@ export function MobileMenu({
                     className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl"
                     asChild
                   >
-                    <Link
-                      to={`/profile/${profileId}`}
-                      onClick={onClose}
-                    >
+                    <Link to={`/profile/${profileId}`} onClick={onClose}>
                       <User className="h-3.5 w-3.5" />
                       Profile
                     </Link>
@@ -233,10 +230,7 @@ export function MobileMenu({
                   className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl"
                   asChild
                 >
-                  <Link
-                    to="/dashboard/bids"
-                    onClick={onClose}
-                  >
+                  <Link to="/dashboard/bids" onClick={onClose}>
                     <LayoutDashboard className="h-3.5 w-3.5" />
                     My Bids
                   </Link>
@@ -249,10 +243,7 @@ export function MobileMenu({
                   )}
                   asChild
                 >
-                  <Link
-                    to="/dashboard/listings"
-                    onClick={onClose}
-                  >
+                  <Link to="/dashboard/listings" onClick={onClose}>
                     <Settings className="h-3.5 w-3.5" />
                     My Listings
                   </Link>

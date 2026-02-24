@@ -34,7 +34,7 @@ export function PersonalInfoSection({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label 
+          <Label
             htmlFor="firstName"
             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
           >
@@ -49,7 +49,7 @@ export function PersonalInfoSection({
           />
         </div>
         <div className="space-y-2">
-          <Label 
+          <Label
             htmlFor="lastName"
             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
           >
@@ -67,7 +67,7 @@ export function PersonalInfoSection({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label 
+          <Label
             htmlFor="idNumber"
             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
           >
@@ -85,7 +85,7 @@ export function PersonalInfoSection({
           </div>
         </div>
         <div className="space-y-2">
-          <Label 
+          <Label
             htmlFor="phoneNumber"
             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
           >
@@ -107,7 +107,7 @@ export function PersonalInfoSection({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label 
+          <Label
             htmlFor="email"
             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
           >
@@ -126,7 +126,7 @@ export function PersonalInfoSection({
           </div>
         </div>
         <div className="space-y-2">
-          <Label 
+          <Label
             htmlFor="confirmEmail"
             className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
           >

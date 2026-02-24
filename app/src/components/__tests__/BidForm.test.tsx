@@ -43,7 +43,7 @@ describe("BidForm", () => {
         onBid={vi.fn()}
         isLoading={false}
         isVerified={false}
-      />,
+      />
     );
 
     // Assert manual input and submit are disabled
@@ -53,9 +53,11 @@ describe("BidForm", () => {
     expect(submitButton).toBeDisabled();
 
     // Assert quick bid buttons are disabled
-    const quickBidButtons = screen.getAllByRole("button").filter(
-      (btn) => btn !== submitButton && btn.textContent?.includes("Quick Bid"),
-    );
+    const quickBidButtons = screen
+      .getAllByRole("button")
+      .filter(
+        (btn) => btn !== submitButton && btn.textContent?.includes("Quick Bid")
+      );
     quickBidButtons.forEach((btn) => expect(btn).toBeDisabled());
   });
 

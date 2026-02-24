@@ -14,8 +14,8 @@
 - [x] Create initial folder structure (`src/components`, `src/pages`, `src/lib`, etc.)
 
 ### Convex Configuration
-- [x] Install Convex CLI (`npm install convex`)
-- [x] Run `npx convex dev` to initialise project in `app/`
+- [x] Install Convex CLI (`bun add convex`)
+- [x] Run `bunx convex dev` to initialise project in `app/`
 - [x] Configure `convex.json` with deployment settings
 - [x] Set up environment variables in Convex dashboard
 - [x] Create initial schema (`convex/schema.ts`)
@@ -204,7 +204,7 @@
 
 ### Vercel Deployment
 - [ ] Connect GitHub repository to Vercel
-- [ ] Configure build settings (build command: `npm run build`, output directory: `dist/`)
+- [ ] Configure build settings (build command: `bun run build`, output directory: `dist/`)
 - [ ] Set environment variables in Vercel dashboard
 - [ ] Deploy staging environment for testing
 - [ ] Deploy production environment after testing

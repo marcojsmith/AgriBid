@@ -27,7 +27,7 @@ export function LoadingIndicator({
       className={cn(
         "animate-spin rounded-full border-primary",
         sizeClasses[size],
-        className,
+        className
       )}
       role="status"
       aria-label="Loading"
@@ -54,7 +54,7 @@ export function LoadingPage({
     <div
       className={cn(
         "flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold uppercase tracking-widest",
-        className,
+        className
       )}
       role="status"
       aria-live="polite"

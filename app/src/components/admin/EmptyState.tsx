@@ -9,12 +9,12 @@ import React from "react";
  * @param subtitle - Secondary uppercase subtitle shown beneath the label; defaults to "Operational Equilibrium Reached"
  * @returns The empty-state JSX element containing the icon, label, and subtitle
  */
-export function EmptyState({ 
-  label, 
-  icon, 
-  subtitle = "Operational Equilibrium Reached" 
-}: { 
-  label: string; 
+export function EmptyState({
+  label,
+  icon,
+  subtitle = "Operational Equilibrium Reached",
+}: {
+  label: string;
   icon: React.ReactNode;
   subtitle?: string;
 }) {

@@ -26,7 +26,9 @@ export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
   const myProfile = useQuery(api.users.getMyProfile);
   const isProfileLoading = myProfile === undefined;
-  const isOwner = !isProfileLoading && (myProfile?.userId === userId || myProfile?._id === userId);
+  const isOwner =
+    !isProfileLoading &&
+    (myProfile?.userId === userId || myProfile?._id === userId);
 
   const sellerInfo = useQuery(api.auctions.getSellerInfo, {
     sellerId: userId || "",
@@ -41,7 +43,7 @@ export default function Profile() {
   } = usePaginatedQuery(
     api.auctions.getSellerListings,
     { userId: userId || "" },
-    { initialNumItems: 6 },
+    { initialNumItems: 6 }
   );
 
   if (sellerInfo === undefined || status === "LoadingFirstPage") {
@@ -172,7 +174,11 @@ export default function Profile() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {activeListings.map((auction) => (
-              <AuctionCard key={auction._id} auction={auction} isWatched={watchedAuctionIds?.includes(auction._id) ?? false} />
+              <AuctionCard
+                key={auction._id}
+                auction={auction}
+                isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
+              />
             ))}
           </div>
         )}
@@ -192,7 +198,11 @@ export default function Profile() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {soldListings.map((auction) => (
-              <AuctionCard key={auction._id} auction={auction} isWatched={watchedAuctionIds?.includes(auction._id) ?? false} />
+              <AuctionCard
+                key={auction._id}
+                auction={auction}
+                isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
+              />
             ))}
           </div>
         </section>

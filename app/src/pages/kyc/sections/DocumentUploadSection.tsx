@@ -41,7 +41,7 @@ export function DocumentUploadSection({
       </div>
 
       <div className="p-8 bg-muted/30 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 text-center group hover:bg-muted/50 transition-colors">
-        <Label 
+        <Label
           htmlFor="kyc-file-upload"
           className="cursor-pointer space-y-4 w-full"
         >
@@ -49,9 +49,7 @@ export function DocumentUploadSection({
             <Upload className="h-8 w-8 text-primary" />
           </div>
           <div className="space-y-1">
-            <p className="font-black uppercase text-sm">
-              Drop ID images here
-            </p>
+            <p className="font-black uppercase text-sm">Drop ID images here</p>
             <p className="text-xs text-muted-foreground font-medium">
               PNG, JPG or PDF up to 10MB
             </p>

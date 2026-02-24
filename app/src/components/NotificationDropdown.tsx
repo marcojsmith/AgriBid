@@ -113,7 +113,7 @@ export function NotificationDropdown() {
               className={cn(
                 "flex flex-col items-start gap-1 p-3 rounded-xl cursor-pointer transition-all border-2 border-transparent",
                 "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
-                !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60",
+                !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
               )}
               onClick={async () => {
                 try {
@@ -121,7 +121,7 @@ export function NotificationDropdown() {
                     n._id,
                     n.link,
                     navigate,
-                    markRead,
+                    markRead
                   );
                 } catch (e) {
                   console.error("Notification action failed:", e);

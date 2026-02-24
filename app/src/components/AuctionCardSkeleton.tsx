@@ -14,7 +14,7 @@ export const AuctionCardSkeleton = ({
     <Card
       aria-hidden="true"
       className={cn(
-        "overflow-hidden border-2 bg-card h-full shadow-none animate-pulse rounded-lg",
+        "overflow-hidden border-2 bg-card h-full shadow-none animate-pulse rounded-lg"
       )}
     >
       <div className={cn("flex h-full", isCompact ? "flex-row" : "flex-col")}>
@@ -22,13 +22,13 @@ export const AuctionCardSkeleton = ({
         <div
           className={cn(
             "shrink-0 flex flex-col",
-            isCompact ? "w-[120px] sm:w-[160px] md:w-[180px]" : "w-full",
+            isCompact ? "w-[120px] sm:w-[160px] md:w-[180px]" : "w-full"
           )}
         >
           <div
             className={cn(
               "bg-muted relative overflow-hidden",
-              isCompact ? "flex-1 border-r" : "aspect-video",
+              isCompact ? "flex-1 border-r" : "aspect-video"
             )}
           />
 
@@ -76,7 +76,7 @@ export const AuctionCardSkeleton = ({
           <CardContent
             className={cn(
               "flex-1 flex flex-col justify-end pt-0 md:pt-0",
-              isCompact ? "p-3" : "p-4 md:p-5",
+              isCompact ? "p-3" : "p-4 md:p-5"
             )}
           >
             {!isCompact && (
@@ -98,13 +98,13 @@ export const AuctionCardSkeleton = ({
           <div
             className={cn(
               "bg-muted/20 border-t flex gap-2 items-center",
-              isCompact ? "p-3 h-12" : "p-4 md:p-5",
+              isCompact ? "p-3 h-12" : "p-4 md:p-5"
             )}
           >
             <div
               className={cn(
                 "flex-1 bg-muted",
-                isCompact ? "h-8 rounded-lg" : "h-11 rounded-xl",
+                isCompact ? "h-8 rounded-lg" : "h-11 rounded-xl"
               )}
             />
           </div>

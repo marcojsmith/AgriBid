@@ -43,14 +43,19 @@ export function useKYCFileUpload() {
     maxFiles: 5,
     cleanupHandler: async (storageIds) => {
       const results = await Promise.allSettled(
-        storageIds.map((id) => deleteMyKYCDocument({ storageId: id as Id<"_storage"> }))
+        storageIds.map((id) =>
+          deleteMyKYCDocument({ storageId: id as Id<"_storage"> })
+        )
       );
       results.forEach((result, index) => {
         if (result.status === "rejected") {
-          console.error(`Failed to delete KYC storage ${storageIds[index]}:`, result.reason);
+          console.error(
+            `Failed to delete KYC storage ${storageIds[index]}:`,
+            result.reason
+          );
         }
       });
-    }
+    },
   });
 
   const executeDeleteDocument = async (docId: string) => {
@@ -65,12 +70,12 @@ export function useKYCFileUpload() {
       return true;
     } catch (err) {
       // Rollback on failure: only add it back if it's not already there
-      setExistingDocuments((prev) => 
+      setExistingDocuments((prev) =>
         prev.includes(docId) ? prev : [...prev, docId]
       );
       toast.error(
         "Failed to delete document: " +
-          (err instanceof Error ? err.message : "Unknown error"),
+          (err instanceof Error ? err.message : "Unknown error")
       );
       return false;
     }

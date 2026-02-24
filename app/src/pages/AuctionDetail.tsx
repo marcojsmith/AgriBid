@@ -24,7 +24,7 @@ export default function AuctionDetail() {
 
   const auction = useQuery(
     api.auctions.getAuctionById,
-    id ? { auctionId: id as Id<"auctions"> } : "skip",
+    id ? { auctionId: id as Id<"auctions"> } : "skip"
   );
 
   if (id === undefined) {

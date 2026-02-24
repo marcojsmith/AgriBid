@@ -22,7 +22,11 @@ interface SearchBarProps {
  * @param className - Optional additional CSS classes applied to the root form element
  * @param id - Optional id for the input element (default: `"search"`)
  */
-export function SearchBar({ onSearch, className, id = "search" }: SearchBarProps) {
+export function SearchBar({
+  onSearch,
+  className,
+  id = "search",
+}: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -36,10 +40,7 @@ export function SearchBar({ onSearch, className, id = "search" }: SearchBarProps
   };
 
   return (
-    <form
-      onSubmit={handleSearch}
-      className={cn("relative", className)}
-    >
+    <form onSubmit={handleSearch} className={cn("relative", className)}>
       <label htmlFor={id} className="sr-only">
         Search equipment
       </label>

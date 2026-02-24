@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "bun@1.3.9",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -14,11 +15,11 @@
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [
-      "npx prettier --write",
-      "npx eslint --fix"
+      "bunx prettier --write",
+      "bunx eslint --fix"
     ],
     "*.{css,json,md}": [
-      "npx prettier --write"
+      "bunx prettier --write"
     ]
   },
   "dependencies": {

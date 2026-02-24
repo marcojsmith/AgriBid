@@ -55,7 +55,7 @@ describe("ListingWizard", () => {
     render(
       <MemoryRouter>
         <ListingWizard />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
   const navigateToStep4 = () => {
     fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), {
@@ -84,7 +84,7 @@ describe("ListingWizard", () => {
     renderWizard();
 
     expect(
-      screen.getAllByText(/General Information/i).length,
+      screen.getAllByText(/General Information/i).length
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
   });

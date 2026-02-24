@@ -273,10 +273,10 @@ Avoid clutter and unnecessary elements.
 **Step 4: Resolve any errors**
 
 - Check for errors: Run the following commands to ensure that the codebase is in a good state and that all tests are passing (use `;` for PowerShell or `&&` for cmd.exe):
-    - `cd app && npm run lint` (mac) or `cd app ; npm run lint` (PowerShell) or `cd app && npm run lint` (cmd.exe) to check for any linting errors in the codebase.
-    - `cd app && npm run test` (mac) or `cd app ; npm run test` (PowerShell) or `cd app && npm run test` (cmd.exe) to run all tests and ensure that they are passing successfully.
-    - `cd app && npm run build` (mac) or `cd app ; npm run build` (PowerShell) or `cd app && npm run build` (cmd.exe) to ensure that the application can be built successfully without any errors.
-    - `npx vercel build` to check for any build errors and ensure that the application can be built successfully.
+    - `cd app && bun run lint` (mac) or `cd app ; bun run lint` (PowerShell) or `cd app && bun run lint` (cmd.exe) to check for any linting errors in the codebase.
+    - `cd app && bun run test` (mac) or `cd app ; bun run test` (PowerShell) or `cd app && bun run test` (cmd.exe) to run all tests and ensure that they are passing successfully.
+    - `cd app && bun run build` (mac) or `cd app ; bun run build` (PowerShell) or `cd app && bun run build` (cmd.exe) to ensure that the application can be built successfully without any errors.
+    - `bunx vercel build` to check for any build errors and ensure that the application can be built successfully.
 
 **Step 5: Summarise review**
 
@@ -363,8 +363,8 @@ Ask the user to submit this prompt to their preferred external model and provide
 - **Project Structure:** Managed from the root to ensure all documentation folders (`conductor/`, etc.) are uploaded for the `prebuild` rules generation script.
 - **Dashboard Settings (Required):**
     - **Root Directory:** Empty (or `.`).
-    - **Build Command:** `cd app && npx convex deploy --cmd 'npm run build'`
-    - **Install Command:** `cd app && npm install` (Override ON).
+    - **Build Command:** `cd app && bunx convex deploy --cmd 'bun run build'`
+    - **Install Command:** `cd app && bun install` (Override ON).
     - **Output Directory:** `app/dist`.
 - **Purpose:** Use for manual deployments, inspecting build logs (`npx vercel logs`), and verifying environment health. Before assuming a deployment is successful, use `npx vercel list` to confirm status.
 

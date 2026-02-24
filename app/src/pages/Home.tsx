@@ -107,11 +107,9 @@ export default function Home() {
       mode === "compact"
         ? cn(
             "grid-cols-1 gap-2 sm:gap-3",
-            sidebarOpen
-              ? "md:grid-cols-2"
-              : "md:grid-cols-2 lg:grid-cols-3",
+            sidebarOpen ? "md:grid-cols-2" : "md:grid-cols-2 lg:grid-cols-3"
           )
-        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8",
+        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8"
     );
 
   const getItemWrapperClasses = (mode: "compact" | "detailed") =>
@@ -248,8 +246,8 @@ export default function Home() {
                 key={auction._id}
                 className={getItemWrapperClasses(viewMode)}
               >
-                <AuctionCard 
-                  auction={auction} 
+                <AuctionCard
+                  auction={auction}
                   viewMode={viewMode}
                   isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
                 />

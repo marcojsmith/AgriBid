@@ -48,7 +48,7 @@ export const useListingMedia = () => {
 
   const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    slotId: string,
+    slotId: string
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -129,7 +129,7 @@ export const useListingMedia = () => {
         if (!Array.isArray(newImages.additional)) return prev;
         storageIdToCleanup = newImages.additional[index];
         newImages.additional = newImages.additional.filter(
-          (_, i) => i !== index,
+          (_, i) => i !== index
         );
       } else {
         const key = slotId as keyof Omit<typeof formData.images, "additional">;

@@ -39,13 +39,13 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
   const [isUploading, setIsUploading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  
+
   const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
   const deleteUpload = useMutation(api.auctions.deleteUpload);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    
+
     if (files.length + selectedFiles.length > maxFiles) {
       toast.error(`Maximum ${maxFiles} files allowed`);
       return;
@@ -55,13 +55,13 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
     for (const file of selectedFiles) {
       if (file.size > maxSize) {
-        toast.error(`${file.name} exceeds ${Math.round(maxSize / 1024 / 1024)}MB limit`);
+        toast.error(
+          `${file.name} exceeds ${Math.round(maxSize / 1024 / 1024)}MB limit`
+        );
         continue;
       }
       if (!allowedTypes.includes(file.type)) {
-        toast.error(
-          `${file.name} is not a supported format`,
-        );
+        toast.error(`${file.name} is not a supported format`);
         continue;
       }
       validFiles.push(file);
@@ -84,7 +84,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
    */
   const performCleanup = async (storageIds: string[]) => {
     if (storageIds.length === 0) return;
-    
+
     if (cleanupHandler) {
       try {
         await cleanupHandler(storageIds);
@@ -94,10 +94,10 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     } else {
       const results = await Promise.allSettled(
         storageIds.map((id) =>
-          deleteUpload({ storageId: id as Id<"_storage"> }),
-        ),
+          deleteUpload({ storageId: id as Id<"_storage"> })
+        )
       );
-      
+
       results.forEach((result, index) => {
         if (result.status === "rejected") {
           const reason = result.reason;
@@ -110,12 +110,12 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
             console.warn(
               `Authorization failure while deleting orphaned upload ${storageIds[index]}. ` +
                 `This usually happens when a non-admin caller omits a 'cleanupHandler'. ` +
-                `Please provide a custom cleanupHandler for this context.`,
+                `Please provide a custom cleanupHandler for this context.`
             );
           } else {
             console.error(
               `Failed to delete orphaned upload ${storageIds[index]}:`,
-              reason,
+              reason
             );
           }
         }
@@ -123,9 +123,12 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     }
   };
 
-  const uploadFiles = async (filesToUpload: File[] = files, autoClear = false) => {
+  const uploadFiles = async (
+    filesToUpload: File[] = files,
+    autoClear = false
+  ) => {
     if (filesToUpload.length === 0) return [];
-    
+
     setIsUploading(true);
     let storageIds: string[] = [];
     try {
@@ -144,22 +147,22 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
           const { storageId } = await result.json();
           return storageId as string;
-        }),
+        })
       );
 
       const failures = uploadResults.filter(
-        (r): r is PromiseRejectedResult => r.status === "rejected",
+        (r): r is PromiseRejectedResult => r.status === "rejected"
       );
       storageIds = uploadResults
         .filter(
-          (r): r is PromiseFulfilledResult<string> => r.status === "fulfilled",
+          (r): r is PromiseFulfilledResult<string> => r.status === "fulfilled"
         )
         .map((r) => r.value);
 
       if (failures.length > 0) {
         console.error("Upload partial failure:", failures);
         toast.error(
-          `Failed to upload ${failures.length} file(s). Please try again.`,
+          `Failed to upload ${failures.length} file(s). Please try again.`
         );
 
         // Cleanup successes since we are halting

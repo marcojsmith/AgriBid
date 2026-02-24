@@ -20,7 +20,7 @@ export const StepIndicator = () => {
         <div
           className={cn(
             "flex items-center gap-2 transition-opacity duration-300",
-            draftSaved ? "opacity-100" : "opacity-0",
+            draftSaved ? "opacity-100" : "opacity-0"
           )}
         >
           <Save className="h-4 w-4 text-muted-foreground" />

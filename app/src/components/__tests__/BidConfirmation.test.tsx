@@ -14,7 +14,7 @@ describe("BidConfirmation", () => {
         amount={50500}
         onConfirm={onConfirm}
         onCancel={onCancel}
-      />,
+      />
     );
 
     expect(screen.getByText(/Confirm your bid/i)).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe("BidConfirmation", () => {
         amount={50500}
         onConfirm={vi.fn()}
         onCancel={onCancel}
-      />,
+      />
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Cancel/i }));

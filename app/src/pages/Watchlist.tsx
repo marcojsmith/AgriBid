@@ -15,7 +15,11 @@ import { LoadingIndicator } from "../components/ui/LoadingIndicator";
  * @returns The watchlist page JSX element
  */
 export default function Watchlist() {
-  const { results: watchedAuctions, status, loadMore } = usePaginatedQuery(
+  const {
+    results: watchedAuctions,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
     api.watchlist.getWatchedAuctions,
     {},
     { initialNumItems: 12 }
@@ -59,14 +63,18 @@ export default function Watchlist() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {watchedAuctions.map((auction) => (
-              <AuctionCard key={auction._id} auction={auction} isWatched={true} />
+              <AuctionCard
+                key={auction._id}
+                auction={auction}
+                isWatched={true}
+              />
             ))}
           </div>
 
           <div className="flex justify-center pt-8">
             {status === "CanLoadMore" ? (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => loadMore(10)}
                 className="font-bold min-w-[200px]"
               >

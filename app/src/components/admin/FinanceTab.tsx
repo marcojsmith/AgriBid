@@ -80,7 +80,10 @@ export function FinanceTab() {
           <TableBody>
             {stats.recentSales.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   No recent transactions
                 </TableCell>
               </TableRow>

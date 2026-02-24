@@ -8,7 +8,7 @@ describe("Footer", () => {
     render(
       <BrowserRouter>
         <Footer />
-      </BrowserRouter>,
+      </BrowserRouter>
     );
 
   it("renders the brand name and copyright", () => {

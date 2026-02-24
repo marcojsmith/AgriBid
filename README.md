@@ -90,7 +90,7 @@ AgriBid/
 2.  **Install dependencies**:
     ```bash
     cd app
-    npm install
+    bun install
     ```
 
 3.  **Configure Environment Variables**:
@@ -101,20 +101,20 @@ AgriBid/
 
 4.  **Launch Backend (Convex)**:
     ```bash
-    npx convex dev
+    bunx convex dev
     ```
 
 5.  **Run Development Server**:
     In a new terminal window:
     ```bash
-    npm run dev
+    bun run dev
     ```
 
 ### Seeding Data
 
 To populate your local environment with mock equipment and auctions:
 ```bash
-npx convex run seed
+bunx convex run seed
 ```
 
 ## 🏗 Development Workflow
@@ -125,7 +125,7 @@ This project follows a **Spec-Driven Development** (Conductor) approach. Major f
 
 Run the test suite using Vitest:
 ```bash
-npm run test
+bun run test
 ```
 
 ## 🌐 Deployment

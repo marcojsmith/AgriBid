@@ -41,7 +41,7 @@ async function checkDestructiveAccess(ctx: MutationCtx) {
   if (nodeEnv === undefined && vercelEnv === undefined) {
     throw new Error(
       "Unauthorized: Deployment environment is indeterminate (NODE_ENV and VERCEL_ENV are undefined). " +
-        "Destructive operations are blocked for non-admins to prevent accidental data loss in production.",
+        "Destructive operations are blocked for non-admins to prevent accidental data loss in production."
     );
   }
 
@@ -51,7 +51,7 @@ async function checkDestructiveAccess(ctx: MutationCtx) {
   if (!isDev && !isPreview) {
     throw new Error(
       `Unauthorized: Destructive operations are only allowed in development or preview environments. ` +
-        `Current environment: ${nodeEnv || vercelEnv}.`,
+        `Current environment: ${nodeEnv || vercelEnv}.`
     );
   }
 }
@@ -116,7 +116,7 @@ export const runSeed = mutation({
                 where: [], // Clear all
               },
               paginationOpts: { cursor, numItems: BATCH_SIZE },
-            },
+            }
           )) as DeleteManyResult;
 
           // Runtime guard for unexpected result shapes
@@ -128,7 +128,7 @@ export const runSeed = mutation({
           ) {
             console.error(
               `Unexpected response from deleteMany for ${model}:`,
-              result,
+              result
             );
             isDone = true;
             break;
@@ -469,7 +469,7 @@ export const clearAuctions = mutation({
     }
 
     console.log(
-      `Cleared ${auctionsCount} auctions and ${totalBidsDeleted} bids.`,
+      `Cleared ${auctionsCount} auctions and ${totalBidsDeleted} bids.`
     );
     return auctionsCount;
   },
@@ -522,7 +522,7 @@ export const clearAllData = mutation({
               where: [],
             },
             paginationOpts: { cursor, numItems: BATCH_SIZE },
-          },
+          }
         )) as DeleteManyResult;
 
         // Runtime guard for unexpected result shapes
@@ -534,7 +534,7 @@ export const clearAllData = mutation({
         ) {
           console.error(
             `Unexpected response from deleteMany for ${model}:`,
-            result,
+            result
           );
           isDone = true;
           break;

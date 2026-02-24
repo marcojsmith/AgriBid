@@ -23,7 +23,7 @@ export const TechnicalSpecsStep = () => {
   const uniqueMakes = Array.from(new Set(metadata.map((m) => m.make))).sort();
   const selectedMakeData = metadata.filter((m) => m.make === formData.make);
   const availableModels = Array.from(
-    new Set(selectedMakeData.flatMap((m) => m.models)),
+    new Set(selectedMakeData.flatMap((m) => m.models))
   ).sort();
 
   return (

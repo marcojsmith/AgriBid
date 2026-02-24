@@ -31,14 +31,14 @@ describe("AuctionHeader", () => {
     render(
       <MemoryRouter>
         <AuctionHeader auction={mockAuction} />
-      </MemoryRouter>,
+      </MemoryRouter>
     );
 
     expect(screen.getByText("John Deere 8RX 410")).toBeInTheDocument();
     expect(screen.getByText("2022 John Deere")).toBeInTheDocument();
     expect(screen.getByText("Iowa, USA")).toBeInTheDocument();
     expect(
-      screen.getByText(/1\s*[.,]?\s*200\s*Operating Hours/),
+      screen.getByText(/1\s*[.,]?\s*200\s*Operating Hours/)
     ).toBeInTheDocument();
     expect(screen.getByText("Year 2022")).toBeInTheDocument();
   });

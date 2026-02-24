@@ -12,6 +12,6 @@
 
 ## Tooling & Infrastructure
 - **Build Tool**: Vite
-- **Package Manager**: npm (standard for this project)
+- **Package Manager**: bun
 - **Linting & Formatting**: ESLint
 - **Git Hooks**: Husky + lint-staged

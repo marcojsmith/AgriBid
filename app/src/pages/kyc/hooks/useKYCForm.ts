@@ -95,16 +95,17 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
 
     // Full year inference (assume 1900-2099)
     // NOTE: This logic has a 100-year ambiguity (e.g., year '26' could be 1926 or 2026).
-    // People born in the cutoff year (e.g., yearPart === currentYearShort, such as 1926) 
-    // are mapped to 2026 (future date, fails validation). 
-    // Those born before the cutoff (yearPart < currentYearShort, e.g., 1925) are mapped 
+    // People born in the cutoff year (e.g., yearPart === currentYearShort, such as 1926)
+    // are mapped to 2026 (future date, fails validation).
+    // Those born before the cutoff (yearPart < currentYearShort, e.g., 1925) are mapped
     // to 20xx (e.g., 2025), which are past dates and may incorrectly pass.
     // This limitation is intentional for this prototype; the cutoff can be changed if needed.
     const currentYearShort = new Date().getFullYear() % 100;
-    const fullYear = yearPart <= currentYearShort ? 2000 + yearPart : 1900 + yearPart;
-    
+    const fullYear =
+      yearPart <= currentYearShort ? 2000 + yearPart : 1900 + yearPart;
+
     const birthDate = new Date(fullYear, monthPart - 1, dayPart);
-    
+
     // Check if date is valid (e.g., handles Feb 29 on non-leap years)
     if (
       birthDate.getFullYear() !== fullYear ||
@@ -127,15 +128,12 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
       }
       sum += digit;
     }
-    
+
     return sum % 10 === 0;
   };
 
   const validate = () => {
-    if (
-      !formData.firstName.trim() ||
-      !formData.lastName.trim()
-    ) {
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
       return { valid: false, message: "Please fill in all personal details" };
     }
 
@@ -148,11 +146,17 @@ export function useKYCForm(initialData?: Partial<KYCFormData>) {
     }
 
     if (!isValidPhoneNumber(formData.phoneNumber)) {
-      return { valid: false, message: "Please enter a valid phone number (at least 10 digits)" };
+      return {
+        valid: false,
+        message: "Please enter a valid phone number (at least 10 digits)",
+      };
     }
 
     if (!isValidIdNumber(formData.idNumber)) {
-      return { valid: false, message: "Please enter a valid 13-digit South African ID number" };
+      return {
+        valid: false,
+        message: "Please enter a valid 13-digit South African ID number",
+      };
     }
 
     return { valid: true };
