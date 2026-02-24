@@ -241,7 +241,9 @@ export const markAllRead = mutation({
       );
 
       const existingNotificationIds = new Set(
-        existingReceipts.filter((r) => r !== null).map((r) => r!.notificationId)
+        existingReceipts
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+          .map((r) => r.notificationId)
       );
       const now = Date.now();
 

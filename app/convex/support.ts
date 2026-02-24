@@ -19,8 +19,8 @@ export const createTicket = mutation({
     const subject = args.subject.trim();
     const message = args.message.trim();
 
-    if (subject.length === 0 || subject.length > 200) {
-      throw new ConvexError("Subject must be between 1 and 200 characters");
+    if (subject.length === 0 || subject.length > 100) {
+      throw new ConvexError("Subject must be between 1 and 100 characters");
     }
     if (message.length === 0 || message.length > 2000) {
       throw new ConvexError("Message must be between 1 and 2000 characters");

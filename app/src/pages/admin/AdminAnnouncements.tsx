@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { ConvexError } from "convex/values";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatCard } from "@/components/admin/StatCard";
+import { getErrorMessage } from "@/lib/utils";
 
 /**
  * Admin page for composing, sending and reviewing global broadcast announcements.
@@ -78,13 +78,7 @@ export default function AdminAnnouncements() {
       setAnnouncementMessage("");
     } catch (err) {
       console.error(err);
-      toast.error(
-        err instanceof ConvexError
-          ? (err.data as string)
-          : err instanceof Error
-            ? err.message
-            : "Failed to send announcement"
-      );
+      toast.error(getErrorMessage(err, "Failed to send announcement"));
     } finally {
       setIsSending(false);
     }

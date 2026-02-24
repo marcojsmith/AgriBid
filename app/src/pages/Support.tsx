@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { ConvexError } from "convex/values";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -60,13 +60,7 @@ export default function Support() {
       setPriority("medium");
     } catch (e) {
       console.error("Failed to create ticket:", e);
-      toast.error(
-        e instanceof ConvexError
-          ? (e.data as string)
-          : e instanceof Error
-            ? e.message
-            : "Failed to create ticket"
-      );
+      toast.error(getErrorMessage(e, "Failed to create ticket"));
     } finally {
       setIsSubmitting(false);
     }

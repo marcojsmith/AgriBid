@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { ConvexError } from "convex/values";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ShieldCheck, AlertCircle } from "lucide-react";
@@ -132,13 +132,7 @@ export default function KYC() {
       setIsEditMode(false);
     } catch (submitError) {
       console.error("KYC Submission Phase Failed:", submitError);
-      toast.error(
-        submitError instanceof ConvexError
-          ? (submitError.data as string)
-          : submitError instanceof Error
-            ? submitError.message
-            : "Submission failed"
-      );
+      toast.error(getErrorMessage(submitError, "Submission failed"));
       if (storageIds) await cleanupUploads(storageIds);
     }
   };

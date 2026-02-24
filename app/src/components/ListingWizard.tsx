@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { ConvexError } from "convex/values";
 import { useSession } from "../lib/auth-client";
+import { getErrorMessage } from "@/lib/utils";
 import { toast } from "sonner";
 import { isValidCallbackUrl } from "@/lib/utils";
 
@@ -98,13 +98,7 @@ const ListingWizardContent = () => {
       toast.success("Listing submitted for review!");
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof ConvexError
-          ? (error.data as string)
-          : error instanceof Error
-            ? error.message
-            : "Submission failed"
-      );
+      toast.error(getErrorMessage(error, "Submission failed"));
     } finally {
       setIsSubmitting(false);
     }

@@ -438,7 +438,7 @@ export const deleteMyKYCDocument = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { storageId }) => {
     const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
+    if (!authUser) throw new ConvexError("Not authenticated");
     const userId = authUser.userId ?? authUser._id;
 
     const profile = await ctx.db
