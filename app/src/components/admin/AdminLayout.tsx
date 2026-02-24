@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { cn } from "@/lib/utils";
-import { AdminStatsProvider, useAdminStats } from "@/contexts/AdminStatsContext";
+import { AdminStatsProvider } from "@/contexts/AdminStatsContext";
+import { useAdminStats } from "@/contexts/useAdminStats";
 
 interface AdminLayoutProps {
   children: ReactNode;

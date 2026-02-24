@@ -24,7 +24,7 @@ export interface KycProfile {
   lastName?: string;
 }
 
-export interface UserProfile {
+interface UserProfile {
   userId?: string | null;
   _id?: string;
   email?: string;
