@@ -425,16 +425,15 @@ export const closeAuctionEarly = mutation({
 
     const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
     const hasBids = validBids.length > 0;
-    const reserveMet = auction.currentPrice >= auction.reservePrice;
 
     type AuctionStatus = "sold" | "unsold";
     let finalStatus: AuctionStatus;
     let winnerId: string | undefined;
     let winningAmount: number | undefined;
 
-    if (hasBids && reserveMet) {
-      finalStatus = "sold";
-      const highestBid = validBids.reduce(
+    let highestBid: Doc<"bids"> | undefined;
+    if (hasBids) {
+      highestBid = validBids.reduce(
         (prev: Doc<"bids">, current: Doc<"bids">) => {
           if (current.amount > prev.amount) return current;
           if (current.amount === prev.amount) {
@@ -443,8 +442,17 @@ export const closeAuctionEarly = mutation({
           return prev;
         }
       );
-      winnerId = highestBid.bidderId;
-      winningAmount = highestBid.amount;
+    }
+
+    const reserveMet =
+      hasBids &&
+      highestBid !== undefined &&
+      highestBid.amount >= auction.reservePrice;
+
+    if (hasBids && reserveMet) {
+      finalStatus = "sold";
+      winnerId = highestBid!.bidderId;
+      winningAmount = highestBid!.amount;
     } else {
       finalStatus = "unsold";
     }

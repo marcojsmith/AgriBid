@@ -122,8 +122,10 @@ export default function AdminAuctions() {
   /**
    * Closes the auction early after user confirmation.
    * Calls the backend mutation and shows appropriate toast feedback.
+   * @param e - The click event to prevent automatic dialog close
    */
-  const handleCloseAuction = async (): Promise<void> => {
+  const handleCloseAuction = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault();
     if (!closingAuction) return;
 
     setIsClosing(true);
@@ -440,51 +442,54 @@ export default function AdminAuctions() {
             <AlertDialogTitle className="font-black uppercase tracking-tight">
               Close Auction Early?
             </AlertDialogTitle>
-            <AlertDialogDescription className="font-medium text-sm">
-              {closingAuction && (
-                <div className="space-y-3 mt-2">
-                  <div className="font-bold text-foreground">
-                    {closingAuction.title}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">
-                        Current Bid:
-                      </span>
-                      <div className="font-bold text-primary">
-                        {formatCurrency(closingAuction.currentPrice)}
+            <AlertDialogDescription asChild>
+              <div className="font-medium text-sm">
+                {closingAuction && (
+                  <div className="space-y-3 mt-2">
+                    <div className="font-bold text-foreground">
+                      {closingAuction.title}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">
+                          Current Bid:
+                        </span>
+                        <div className="font-bold text-primary">
+                          {formatCurrency(closingAuction.currentPrice)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Reserve:</span>
+                        <div className="font-bold">
+                          {formatCurrency(closingAuction.reservePrice)}{" "}
+                          {closingAuction.currentPrice >=
+                          closingAuction.reservePrice ? (
+                            <span className="text-green-600">✓ Met</span>
+                          ) : (
+                            <span className="text-red-600">✗ Not Met</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Reserve:</span>
-                      <div className="font-bold">
-                        {formatCurrency(closingAuction.reservePrice)}{" "}
-                        {closingAuction.currentPrice >=
-                        closingAuction.reservePrice ? (
-                          <span className="text-green-600">✓ Met</span>
-                        ) : (
-                          <span className="text-red-600">✗ Not Met</span>
-                        )}
+                    {closingAuction.endTime && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">
+                          Time Remaining:
+                        </span>{" "}
+                        <span className="font-bold">
+                          {formatTimeRemaining(closingAuction.endTime)}
+                        </span>
                       </div>
+                    )}
+                    <div className="pt-2 border-t text-yellow-600 text-sm font-medium">
+                      ⚠️ This action will immediately close the auction. If the
+                      reserve price is met, the highest bidder will be awarded
+                      the item. If not met, the auction will be marked as
+                      unsold.
                     </div>
                   </div>
-                  {closingAuction.endTime && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">
-                        Time Remaining:
-                      </span>{" "}
-                      <span className="font-bold">
-                        {formatTimeRemaining(closingAuction.endTime)}
-                      </span>
-                    </div>
-                  )}
-                  <div className="pt-2 border-t text-yellow-600 text-sm font-medium">
-                    ⚠️ This action will immediately close the auction. If the
-                    reserve price is met, the highest bidder will be awarded the
-                    item. If not met, the auction will be marked as unsold.
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
