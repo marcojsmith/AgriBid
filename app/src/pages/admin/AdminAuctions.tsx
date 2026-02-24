@@ -1,6 +1,7 @@
-import { useMemo } from "react";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useMemo, useState } from "react";
+import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import type { Doc } from "convex/_generated/dataModel";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,6 +22,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Clock, MoreVertical, Eye, AlertCircle, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/lib/currency";
@@ -29,7 +40,34 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { BulkActionDialog } from "./dialogs";
 import { useBulkOperations } from "./hooks";
-import type { Doc } from "convex/_generated/dataModel";
+
+/**
+ * Format time remaining until a given timestamp.
+ */
+function formatTimeRemaining(endTime: number): string {
+  const now = Date.now();
+  const diff = endTime - now;
+
+  if (diff <= 0) return "Ended";
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    return `${days} day${days > 1 ? "s" : ""}, ${remainingHours} hour${remainingHours !== 1 ? "s" : ""}`;
+  }
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return `${hours} hour${hours > 1 ? "s" : ""}, ${remainingMinutes} min`;
+  }
+  if (minutes > 0) {
+    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
+  }
+  return `${seconds} second${seconds !== 1 ? "s" : ""}`;
+}
 
 /**
  * Admin auctions management UI with search, selectable paginated listings, per-row actions and bulk status update workflows.
@@ -65,6 +103,60 @@ export default function AdminAuctions() {
     getSelectionState,
     handleBulkStatusUpdate,
   } = useBulkOperations();
+
+  const [closingAuction, setClosingAuction] = useState<Doc<"auctions"> | null>(
+    null
+  );
+  const [isClosing, setIsClosing] = useState(false);
+
+  const closeAuctionEarly = useMutation(api.auctions.closeAuctionEarly);
+
+  /**
+   * Opens the confirmation dialog to force end an auction.
+   * @param auction - The auction to close early
+   */
+  const handleForceEnd = (auction: Doc<"auctions">): void => {
+    setClosingAuction(auction);
+  };
+
+  /**
+   * Closes the auction early after user confirmation.
+   * Calls the backend mutation and shows appropriate toast feedback.
+   * @param e - The click event to prevent automatic dialog close
+   */
+  const handleCloseAuction = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault();
+    if (!closingAuction) return;
+
+    setIsClosing(true);
+    try {
+      const result = await closeAuctionEarly({ auctionId: closingAuction._id });
+
+      if (result.success) {
+        if (
+          result.finalStatus === "sold" &&
+          result.winnerId &&
+          result.winningAmount !== undefined &&
+          result.winningAmount !== null
+        ) {
+          toast.success(
+            `Auction closed successfully. Awarded to highest bidder for ${formatCurrency(result.winningAmount)}`
+          );
+        } else {
+          toast.success(
+            "Auction closed. Reserve price not met—marked as unsold"
+          );
+        }
+      } else {
+        toast.error(result.error || "Failed to close auction");
+      }
+    } catch {
+      toast.error("Network error—please try again");
+    } finally {
+      setIsClosing(false);
+      setClosingAuction(null);
+    }
+  };
 
   const filteredAuctions = useMemo(() => {
     if (!allAuctions) return [];
@@ -301,10 +393,9 @@ export default function AdminAuctions() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive font-bold rounded-lg gap-2"
+                            disabled={a.status !== "active"}
                             onClick={() =>
-                              toast.info(
-                                "Force end logic pending implementation"
-                              )
+                              a.status === "active" && handleForceEnd(a)
                             }
                           >
                             <AlertCircle className="h-4 w-4" /> Force End
@@ -339,6 +430,88 @@ export default function AdminAuctions() {
         selectedCount={selectedAuctions.length}
         targetStatus={bulkStatusTarget}
       />
+      <AlertDialog
+        open={!!closingAuction}
+        onOpenChange={(open) => {
+          if (isClosing) return;
+          if (!open) setClosingAuction(null);
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl border-2">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-black uppercase tracking-tight">
+              Close Auction Early?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="font-medium text-sm">
+                {closingAuction && (
+                  <div className="space-y-3 mt-2">
+                    <div className="font-bold text-foreground">
+                      {closingAuction.title}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">
+                          Current Bid:
+                        </span>
+                        <div className="font-bold text-primary">
+                          {formatCurrency(closingAuction.currentPrice)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Reserve:</span>
+                        <div className="font-bold">
+                          {formatCurrency(closingAuction.reservePrice)}{" "}
+                          {closingAuction.currentPrice >=
+                          closingAuction.reservePrice ? (
+                            <span className="text-green-600">✓ Met</span>
+                          ) : (
+                            <span className="text-red-600">✗ Not Met</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {closingAuction.endTime && (
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">
+                          Time Remaining:
+                        </span>{" "}
+                        <span className="font-bold">
+                          {formatTimeRemaining(closingAuction.endTime)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t text-yellow-600 text-sm font-medium">
+                      ⚠️ This action will immediately close the auction. If the
+                      reserve price is met, the highest bidder will be awarded
+                      the item. If not met, the auction will be marked as
+                      unsold.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="rounded-xl border-2 font-bold uppercase text-[10px]"
+              disabled={isClosing}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCloseAuction}
+              disabled={isClosing}
+              className="rounded-xl bg-destructive text-destructive-foreground font-black uppercase text-[10px]"
+            >
+              {isClosing ? (
+                <LoadingIndicator size="sm" className="mr-2" />
+              ) : null}
+              Close Auction
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

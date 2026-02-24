@@ -36,6 +36,7 @@ export {
   rejectAuction,
   adminUpdateAuction,
   bulkUpdateAuctions,
+  closeAuctionEarly,
 } from "./auctions/mutations";
 
 // Re-export bidding mutations
