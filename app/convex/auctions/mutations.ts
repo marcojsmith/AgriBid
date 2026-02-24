@@ -4,6 +4,7 @@ import { getCallerRole, getAuthUser, resolveUserId } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -362,5 +363,126 @@ export const bulkUpdateAuctions = mutation({
     });
 
     return { success: true, updated, skipped };
+  },
+});
+
+/**
+ * Result type for closeAuctionEarly mutation.
+ */
+interface CloseAuctionEarlyResult {
+  success: boolean;
+  finalStatus: string;
+  winnerId?: string;
+  winningAmount?: number;
+  error?: string;
+}
+
+/**
+ * Admin mutation to manually close an active auction early.
+ * Determines winner based on highest bid, validates reserve price,
+ * and updates auction status accordingly.
+ */
+export const closeAuctionEarly = mutation({
+  args: { auctionId: v.id("auctions") },
+  returns: v.object({
+    success: v.boolean(),
+    finalStatus: v.string(),
+    winnerId: v.optional(v.string()),
+    winningAmount: v.optional(v.number()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args): Promise<CloseAuctionEarlyResult> => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      return {
+        success: false,
+        finalStatus: "",
+        error: "Not authorized",
+      };
+    }
+
+    const auction = await ctx.db.get(args.auctionId);
+    if (!auction) {
+      return {
+        success: false,
+        finalStatus: "",
+        error: "Auction not found",
+      };
+    }
+
+    if (auction.status !== "active") {
+      return {
+        success: false,
+        finalStatus: "",
+        error: "Auction has already been settled",
+      };
+    }
+
+    const bids = await ctx.db
+      .query("bids")
+      .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+      .collect();
+
+    const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
+    const hasBids = validBids.length > 0;
+    const reserveMet = auction.currentPrice >= auction.reservePrice;
+
+    type AuctionStatus = "sold" | "unsold";
+    let finalStatus: AuctionStatus;
+    let winnerId: string | undefined;
+    let winningAmount: number | undefined;
+
+    if (hasBids && reserveMet) {
+      finalStatus = "sold";
+      const highestBid = validBids.reduce(
+        (prev: Doc<"bids">, current: Doc<"bids">) => {
+          if (current.amount > prev.amount) return current;
+          if (current.amount === prev.amount) {
+            return current.timestamp < prev.timestamp ? current : prev;
+          }
+          return prev;
+        }
+      );
+      winnerId = highestBid.bidderId;
+      winningAmount = highestBid.amount;
+    } else {
+      finalStatus = "unsold";
+    }
+
+    await ctx.db.patch(auction._id, {
+      status: finalStatus,
+      winnerId,
+    });
+
+    await updateCounter(ctx, "auctions", "active", -1);
+
+    const authUser = await getAuthUser(ctx);
+    const adminId = authUser ? resolveUserId(authUser) : "unknown";
+
+    await logAudit(ctx, {
+      action: "auction_early_closure",
+      targetId: args.auctionId,
+      targetType: "auction",
+      details: JSON.stringify({
+        adminId,
+        title: auction.title,
+        finalStatus,
+        winnerId,
+        winningAmount,
+        reserveMet,
+        bidCount: validBids.length,
+        message:
+          finalStatus === "sold"
+            ? `Sold to ${winnerId} for ${winningAmount}`
+            : "Reserve not met - marked as unsold",
+      }),
+    });
+
+    return {
+      success: true,
+      finalStatus,
+      winnerId,
+      winningAmount,
+    };
   },
 });
