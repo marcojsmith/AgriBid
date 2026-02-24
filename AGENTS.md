@@ -359,14 +359,14 @@ Ask the user to submit this prompt to their preferred external model and provide
 
 ## Vercel CLI
 
-- **Usage:** Run via `npx vercel` from the **project root** directory.
+- **Usage:** Run via `bunx vercel` from the **project root** directory.
 - **Project Structure:** Managed from the root to ensure all documentation folders (`conductor/`, etc.) are uploaded for the `prebuild` rules generation script.
 - **Dashboard Settings (Required):**
     - **Root Directory:** Empty (or `.`).
     - **Build Command:** `cd app && bunx convex deploy --cmd 'bun run build'`
     - **Install Command:** `cd app && bun install` (Override ON).
     - **Output Directory:** `app/dist`.
-- **Purpose:** Use for manual deployments, inspecting build logs (`npx vercel logs`), and verifying environment health. Before assuming a deployment is successful, use `npx vercel list` to confirm status.
+- **Purpose:** Use for manual deployments, inspecting build logs (`bunx vercel logs`), and verifying environment health. Before assuming a deployment is successful, use `bunx vercel list` to confirm status.
 
 ## GitHub CLI
 

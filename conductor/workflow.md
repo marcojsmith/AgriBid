@@ -36,7 +36,7 @@ All tasks follow a strict lifecycle:
 
 6. **Verify Coverage:** Run coverage reports using Vitest. For example:
    ```bash
-   npx vitest run --coverage
+   bunx vitest run --coverage
    ```
    Target: >80% coverage for new code. Note: Ensure the command matches the project's test tooling.
 

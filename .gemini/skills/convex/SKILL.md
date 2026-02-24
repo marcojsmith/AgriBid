@@ -35,7 +35,7 @@ In `app/package.json`, ensure the `build` script includes `codegen` to generate 
 ```json
 {
   "scripts": {
-    "build": "npx convex codegen && tsc -b && vite build"
+    "build": "bunx convex codegen && tsc -b && vite build"
   }
 }
 ```

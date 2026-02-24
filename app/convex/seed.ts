@@ -37,7 +37,7 @@ async function checkDestructiveAccess(ctx: MutationCtx) {
   if (isAdmin) return;
 
   // SECURITY: Explicitly validate environment variables to prevent silent degradation.
-  // These variables must be set in the Convex dashboard or via CLI (e.g., npx convex env set NODE_ENV development).
+  // These variables must be set in the Convex dashboard or via CLI (e.g., bunx convex env set NODE_ENV development).
   if (nodeEnv === undefined && vercelEnv === undefined) {
     throw new Error(
       "Unauthorized: Deployment environment is indeterminate (NODE_ENV and VERCEL_ENV are undefined). " +

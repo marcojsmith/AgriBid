@@ -24,7 +24,7 @@
 
 ### Better Auth Integration
 - [x] Install `@better-auth/cli` and dependencies
-- [x] Generate Better Auth component (`npx @better-auth/cli init`)
+- [x] Generate Better Auth component (`bunx @better-auth/cli init`)
 - [x] Configure auth providers (email/password, Google OAuth)
 - [x] Set up auth middleware in `convex/http.ts` (with CORS and OIDC rewrites)
 - [x] Create auth client utilities (`src/lib/auth-client.ts`)
@@ -200,7 +200,7 @@
 - [x] Document all required environment variables in README/codebase_notes
 
 ### Convex Deployment
-- [ ] Deploy to Convex Cloud (`npx convex deploy`)
+- [ ] Deploy to Convex Cloud (`bunx convex deploy`)
 
 ### Vercel Deployment
 - [ ] Connect GitHub repository to Vercel
