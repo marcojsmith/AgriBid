@@ -10,6 +10,16 @@ import {
   toAuctionDetail,
 } from "./helpers";
 
+type StatusFilter = "active" | "closed" | "all";
+
+const statusesForFilter = (
+  filter: StatusFilter
+): ("active" | "sold" | "unsold")[] => {
+  if (filter === "active") return ["active"];
+  if (filter === "closed") return ["sold", "unsold"];
+  return ["active", "sold", "unsold"];
+};
+
 export const getPendingAuctions = query({
   args: {},
   returns: v.array(AuctionSummaryValidator),
@@ -45,27 +55,9 @@ export const getActiveAuctions = query({
   },
   returns: v.array(AuctionSummaryValidator),
   handler: async (ctx, args) => {
-    const statusFilter = args.statusFilter ?? "active";
+    const statusFilter: StatusFilter = args.statusFilter ?? "active";
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
-
-    const statusesForFilter = (
-      filter: string
-    ): ("active" | "sold" | "unsold")[] => {
-      if (filter === "active") return ["active"];
-      if (filter === "closed") return ["sold", "unsold"];
-      return ["active", "sold", "unsold"];
-    };
-
-    const deduplicate = <T extends { _id: string }>(results: T[]): T[] => {
-      const seen = new Map<string, T>();
-      for (const item of results) {
-        if (!seen.has(item._id)) {
-          seen.set(item._id, item);
-        }
-      }
-      return Array.from(seen.values());
-    };
 
     if (args.search) {
       const statuses = statusesForFilter(statusFilter);
@@ -78,7 +70,8 @@ export const getActiveAuctions = query({
             .collect()
         )
       );
-      auctions = deduplicate(results.flat());
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     } else if (args.make) {
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
@@ -90,7 +83,8 @@ export const getActiveAuctions = query({
             .collect()
         )
       );
-      auctions = deduplicate(results.flat());
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     } else if (args.minYear !== undefined || args.maxYear !== undefined) {
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
@@ -114,7 +108,8 @@ export const getActiveAuctions = query({
             .collect()
         )
       );
-      auctions = deduplicate(results.flat());
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     } else {
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
@@ -124,7 +119,8 @@ export const getActiveAuctions = query({
             .collect()
         )
       );
-      auctions = deduplicate(results.flat());
+      // Status buckets are mutually exclusive so deduplication is a no-op
+      auctions = results.flat();
     }
 
     auctions = auctions.filter((a) => {

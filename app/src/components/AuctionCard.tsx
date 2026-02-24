@@ -125,6 +125,11 @@ export const AuctionCard = ({
       images.additional?.[0];
 
   const isCompact = viewMode === "compact";
+  /**
+   * Whether the auction is closed (sold or unsold).
+   * This flag controls closed-state rendering branches in AuctionCard.
+   * It is true when auction.status === "sold" or "unsold".
+   */
   const isClosed = auction.status === "sold" || auction.status === "unsold";
 
   return (
@@ -230,31 +235,33 @@ export const AuctionCard = ({
                 isCompact={isCompact}
               />
             </CardContent>
-
-            <div
-              className={cn(
-                "bg-muted/20 border-t flex gap-2 items-center",
-                isCompact ? "p-3 h-12" : "p-4 md:p-5"
-              )}
-            >
-              <Button
-                size="sm"
-                className={cn(
-                  "flex-1 font-black uppercase shadow-sm",
-                  isCompact
-                    ? "text-[10px] h-8 rounded-lg"
-                    : "text-xs h-11 rounded-xl"
-                )}
-                onClick={handleBidInitiate}
-                disabled={isBidding || auction.status !== "active"}
-              >
-                {isBidding
-                  ? "..."
-                  : `Bid R ${(auction.currentPrice + auction.minIncrement).toLocaleString("en-ZA")}`}
-              </Button>
-            </div>
           </div>
         </Link>
+
+        <div
+          className={cn(
+            "bg-muted/20 border-t flex gap-2 items-center",
+            isCompact ? "p-3 h-12" : "p-4 md:p-5"
+          )}
+        >
+          <Button
+            size="sm"
+            className={cn(
+              "flex-1 font-black uppercase shadow-sm",
+              isCompact
+                ? "text-[10px] h-8 rounded-lg"
+                : "text-xs h-11 rounded-xl"
+            )}
+            onClick={handleBidInitiate}
+            disabled={isBidding || auction.status !== "active"}
+          >
+            {isBidding
+              ? "..."
+              : isClosed
+                ? "Closed"
+                : `Bid R ${(auction.currentPrice + auction.minIncrement).toLocaleString("en-ZA")}`}
+          </Button>
+        </div>
       </div>
 
       <BidConfirmation
