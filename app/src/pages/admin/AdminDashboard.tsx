@@ -28,7 +28,7 @@ export default function AdminDashboard() {
 }
 
 /**
- * Display the admin dashboard grid of summary cards for activity, auctions, moderation, users, financials, support, communication and system.
+ * Display the admin dashboard grid of summary cards for Real-Time, auctions, moderation, users, financials, support, communication and system.
  *
  * While required stats are being fetched, displays a centred loading indicator. If any required dataset is missing after loading, shows an error message prompting the user to refresh or contact support.
  *
@@ -68,7 +68,7 @@ function AdminDashboardContent() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* Activity Card (Placeholder for now) */}
+      {/* Real-Time Card (Placeholder for now) */}
       <SummaryCard
         title="Real-Time"
         icon={<Activity className="h-5 w-5" />}
