@@ -10,11 +10,25 @@ import {
   toAuctionDetail,
 } from "./helpers";
 
+/**
+ * Represents the possible status values for an auction.
+ */
+type AuctionStatus = "active" | "sold" | "unsold";
+
+/**
+ * Represents the filter options for querying auctions by status.
+ * - "active": Returns only active auctions
+ * - "closed": Returns only closed auctions (sold or unsold)
+ * - "all": Returns all auctions
+ */
 type StatusFilter = "active" | "closed" | "all";
 
-const statusesForFilter = (
-  filter: StatusFilter
-): ("active" | "sold" | "unsold")[] => {
+/**
+ * Maps a StatusFilter to the corresponding array of AuctionStatus values.
+ * @param filter - The status filter ("active", "closed", or "all")
+ * @returns An array of AuctionStatus values to query
+ */
+const statusesForFilter = (filter: StatusFilter): AuctionStatus[] => {
   if (filter === "active") return ["active"];
   if (filter === "closed") return ["sold", "unsold"];
   return ["active", "sold", "unsold"];
