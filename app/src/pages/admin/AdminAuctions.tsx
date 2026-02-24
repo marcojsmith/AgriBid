@@ -111,11 +111,19 @@ export default function AdminAuctions() {
 
   const closeAuctionEarly = useMutation(api.auctions.closeAuctionEarly);
 
-  const handleForceEnd = (auction: Doc<"auctions">) => {
+  /**
+   * Opens the confirmation dialog to force end an auction.
+   * @param auction - The auction to close early
+   */
+  const handleForceEnd = (auction: Doc<"auctions">): void => {
     setClosingAuction(auction);
   };
 
-  const handleCloseAuction = async () => {
+  /**
+   * Closes the auction early after user confirmation.
+   * Calls the backend mutation and shows appropriate toast feedback.
+   */
+  const handleCloseAuction = async (): Promise<void> => {
     if (!closingAuction) return;
 
     setIsClosing(true);
@@ -126,7 +134,8 @@ export default function AdminAuctions() {
         if (
           result.finalStatus === "sold" &&
           result.winnerId &&
-          result.winningAmount
+          result.winningAmount !== undefined &&
+          result.winningAmount !== null
         ) {
           toast.success(
             `Auction closed successfully. Awarded to highest bidder for ${formatCurrency(result.winningAmount)}`
@@ -382,7 +391,10 @@ export default function AdminAuctions() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive font-bold rounded-lg gap-2"
-                            onClick={() => handleForceEnd(a)}
+                            disabled={a.status !== "active"}
+                            onClick={() =>
+                              a.status === "active" && handleForceEnd(a)
+                            }
                           >
                             <AlertCircle className="h-4 w-4" /> Force End
                           </DropdownMenuItem>
@@ -418,7 +430,10 @@ export default function AdminAuctions() {
       />
       <AlertDialog
         open={!!closingAuction}
-        onOpenChange={(open) => !open && setClosingAuction(null)}
+        onOpenChange={(open) => {
+          if (isClosing) return;
+          if (!open) setClosingAuction(null);
+        }}
       >
         <AlertDialogContent className="rounded-2xl border-2">
           <AlertDialogHeader>
@@ -431,7 +446,7 @@ export default function AdminAuctions() {
                   <div className="font-bold text-foreground">
                     {closingAuction.title}
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">
                         Current Bid:
@@ -473,7 +488,10 @@ export default function AdminAuctions() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl border-2 font-bold uppercase text-[10px]">
+            <AlertDialogCancel
+              className="rounded-xl border-2 font-bold uppercase text-[10px]"
+              disabled={isClosing}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
