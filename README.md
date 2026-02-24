@@ -22,6 +22,7 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
   - **Bulk Operations**: Process multiple auctions simultaneously with status updates and audit trails.
   - **Real-Time Statistics**: Financial metrics, user counts, auction states, and support ticket tracking.
   - **Support Ticket System**: Manage user inquiries with status tracking and resolution workflows.
+  - **Version Display**: System card dynamically displays application version sourced from package.json.
 - **Security & Integrity**:
   - Role-Based Access Control (RBAC) with centralized authentication utilities.
   - **PII Encryption**: AES-256-GCM encryption for sensitive user data (ID numbers, passport details).
@@ -41,6 +42,7 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 ## 🛠 Tech Stack
 
 - **Frontend**: [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
+  - Vite build-time injection for application version from package.json
 - **Backend & Database**: [Convex](https://www.convex.dev/) (Real-time synchronization & ACID transactions)
 - **Authentication**: [Better Auth](https://www.better-auth.com/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn/UI](https://ui.shadcn.com/)
@@ -99,6 +101,8 @@ AgriBid/
     - `BETTER_AUTH_SECRET`
     - (Other Auth provider keys as needed)
 
+    **Note**: `VITE_APP_VERSION` is automatically injected at build time from `app/package.json` and does not need to be added to `.env.local`.
+
 4.  **Launch Backend (Convex)**:
     ```bash
     bunx convex dev
@@ -127,6 +131,17 @@ Run the test suite using Vitest:
 ```bash
 bun run test
 ```
+
+### Version Management
+
+The project follows [Semantic Versioning (SemVer)](https://semver.org/). The application version is maintained in `app/package.json` and automatically injected at build time via Vite. The version is displayed in the Admin Dashboard System card.
+
+**Version Update Guidelines**:
+- **Patch** (0.0.X): Bug fixes, typo corrections, UI tweaks
+- **Minor** (0.X.0): New features, non-breaking functionality additions
+- **Major** (X.0.0): Breaking changes, major refactors, significant milestones
+
+For detailed versioning guidelines and the complete update flow, see the Semantic Versioning section in `AGENTS.md`.
 
 ## 🌐 Deployment
 
