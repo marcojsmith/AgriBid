@@ -49,110 +49,55 @@ export const getActiveAuctions = query({
     const auctionsQuery = ctx.db.query("auctions");
     let auctions;
 
+    const statusesForFilter = (
+      filter: string
+    ): ("active" | "sold" | "unsold")[] => {
+      if (filter === "active") return ["active"];
+      if (filter === "closed") return ["sold", "unsold"];
+      return ["active", "sold", "unsold"];
+    };
+
+    const deduplicate = <T extends { _id: string }>(results: T[]): T[] => {
+      const seen = new Map<string, T>();
+      for (const item of results) {
+        if (!seen.has(item._id)) {
+          seen.set(item._id, item);
+        }
+      }
+      return Array.from(seen.values());
+    };
+
     if (args.search) {
-      if (statusFilter === "active") {
-        auctions = await auctionsQuery
-          .withSearchIndex("search_title", (q) =>
-            q.search("title", args.search!).eq("status", "active")
-          )
-          .collect();
-      } else if (statusFilter === "closed") {
-        const [soldResults, unsoldResults] = await Promise.all([
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
           auctionsQuery
             .withSearchIndex("search_title", (q) =>
-              q.search("title", args.search!).eq("status", "sold")
+              q.search("title", args.search!).eq("status", status)
             )
-            .collect(),
-          auctionsQuery
-            .withSearchIndex("search_title", (q) =>
-              q.search("title", args.search!).eq("status", "unsold")
-            )
-            .collect(),
-        ]);
-        auctions = [...soldResults, ...unsoldResults];
-      } else {
-        const [activeResults, soldResults, unsoldResults] = await Promise.all([
-          auctionsQuery
-            .withSearchIndex("search_title", (q) =>
-              q.search("title", args.search!).eq("status", "active")
-            )
-            .collect(),
-          auctionsQuery
-            .withSearchIndex("search_title", (q) =>
-              q.search("title", args.search!).eq("status", "sold")
-            )
-            .collect(),
-          auctionsQuery
-            .withSearchIndex("search_title", (q) =>
-              q.search("title", args.search!).eq("status", "unsold")
-            )
-            .collect(),
-        ]);
-        auctions = [...activeResults, ...soldResults, ...unsoldResults];
-      }
+            .collect()
+        )
+      );
+      auctions = deduplicate(results.flat());
     } else if (args.make) {
-      if (statusFilter === "active") {
-        const makeQuery = auctionsQuery.withIndex("by_status_make", (q) =>
-          q.eq("status", "active").eq("make", args.make!)
-        );
-        auctions = await makeQuery.collect();
-      } else if (statusFilter === "closed") {
-        const [soldResults, unsoldResults] = await Promise.all([
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
           auctionsQuery
             .withIndex("by_status_make", (q) =>
-              q.eq("status", "sold").eq("make", args.make!)
+              q.eq("status", status).eq("make", args.make!)
             )
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status_make", (q) =>
-              q.eq("status", "unsold").eq("make", args.make!)
-            )
-            .collect(),
-        ]);
-        auctions = [...soldResults, ...unsoldResults];
-      } else {
-        const [activeResults, soldResults, unsoldResults] = await Promise.all([
-          auctionsQuery
-            .withIndex("by_status_make", (q) =>
-              q.eq("status", "active").eq("make", args.make!)
-            )
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status_make", (q) =>
-              q.eq("status", "sold").eq("make", args.make!)
-            )
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status_make", (q) =>
-              q.eq("status", "unsold").eq("make", args.make!)
-            )
-            .collect(),
-        ]);
-        auctions = [...activeResults, ...soldResults, ...unsoldResults];
-      }
+            .collect()
+        )
+      );
+      auctions = deduplicate(results.flat());
     } else if (args.minYear !== undefined || args.maxYear !== undefined) {
-      if (statusFilter === "active") {
-        const yearQuery = auctionsQuery.withIndex("by_status_year", (q) => {
-          const statusQuery = q.eq("status", "active");
-          if (args.minYear !== undefined && args.maxYear !== undefined) {
-            return statusQuery
-              .gte("year", args.minYear)
-              .lte("year", args.maxYear);
-          }
-          if (args.minYear !== undefined) {
-            return statusQuery.gte("year", args.minYear);
-          }
-          if (args.maxYear !== undefined) {
-            return statusQuery.lte("year", args.maxYear);
-          }
-          return statusQuery;
-        });
-        auctions = await yearQuery.collect();
-      } else if (statusFilter === "closed") {
-        const [soldResults, unsoldResults] = await Promise.all([
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
           auctionsQuery
             .withIndex("by_status_year", (q) => {
-              const statusQuery = q.eq("status", "sold");
+              const statusQuery = q.eq("status", status);
               if (args.minYear !== undefined && args.maxYear !== undefined) {
                 return statusQuery
                   .gte("year", args.minYear)
@@ -166,111 +111,20 @@ export const getActiveAuctions = query({
               }
               return statusQuery;
             })
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status_year", (q) => {
-              const statusQuery = q.eq("status", "unsold");
-              if (args.minYear !== undefined && args.maxYear !== undefined) {
-                return statusQuery
-                  .gte("year", args.minYear)
-                  .lte("year", args.maxYear);
-              }
-              if (args.minYear !== undefined) {
-                return statusQuery.gte("year", args.minYear);
-              }
-              if (args.maxYear !== undefined) {
-                return statusQuery.lte("year", args.maxYear);
-              }
-              return statusQuery;
-            })
-            .collect(),
-        ]);
-        auctions = [...soldResults, ...unsoldResults];
-      } else {
-        const [activeResults, soldResults, unsoldResults] = await Promise.all([
-          auctionsQuery
-            .withIndex("by_status_year", (q) => {
-              const statusQuery = q.eq("status", "active");
-              if (args.minYear !== undefined && args.maxYear !== undefined) {
-                return statusQuery
-                  .gte("year", args.minYear)
-                  .lte("year", args.maxYear);
-              }
-              if (args.minYear !== undefined) {
-                return statusQuery.gte("year", args.minYear);
-              }
-              if (args.maxYear !== undefined) {
-                return statusQuery.lte("year", args.maxYear);
-              }
-              return statusQuery;
-            })
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status_year", (q) => {
-              const statusQuery = q.eq("status", "sold");
-              if (args.minYear !== undefined && args.maxYear !== undefined) {
-                return statusQuery
-                  .gte("year", args.minYear)
-                  .lte("year", args.maxYear);
-              }
-              if (args.minYear !== undefined) {
-                return statusQuery.gte("year", args.minYear);
-              }
-              if (args.maxYear !== undefined) {
-                return statusQuery.lte("year", args.maxYear);
-              }
-              return statusQuery;
-            })
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status_year", (q) => {
-              const statusQuery = q.eq("status", "unsold");
-              if (args.minYear !== undefined && args.maxYear !== undefined) {
-                return statusQuery
-                  .gte("year", args.minYear)
-                  .lte("year", args.maxYear);
-              }
-              if (args.minYear !== undefined) {
-                return statusQuery.gte("year", args.minYear);
-              }
-              if (args.maxYear !== undefined) {
-                return statusQuery.lte("year", args.maxYear);
-              }
-              return statusQuery;
-            })
-            .collect(),
-        ]);
-        auctions = [...activeResults, ...soldResults, ...unsoldResults];
-      }
+            .collect()
+        )
+      );
+      auctions = deduplicate(results.flat());
     } else {
-      if (statusFilter === "active") {
-        auctions = await auctionsQuery
-          .withIndex("by_status", (q) => q.eq("status", "active"))
-          .collect();
-      } else if (statusFilter === "closed") {
-        const [soldResults, unsoldResults] = await Promise.all([
+      const statuses = statusesForFilter(statusFilter);
+      const results = await Promise.all(
+        statuses.map((status) =>
           auctionsQuery
-            .withIndex("by_status", (q) => q.eq("status", "sold"))
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status", (q) => q.eq("status", "unsold"))
-            .collect(),
-        ]);
-        auctions = [...soldResults, ...unsoldResults];
-      } else {
-        const [activeResults, soldResults, unsoldResults] = await Promise.all([
-          auctionsQuery
-            .withIndex("by_status", (q) => q.eq("status", "active"))
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status", (q) => q.eq("status", "sold"))
-            .collect(),
-          auctionsQuery
-            .withIndex("by_status", (q) => q.eq("status", "unsold"))
-            .collect(),
-        ]);
-        auctions = [...activeResults, ...soldResults, ...unsoldResults];
-      }
+            .withIndex("by_status", (q) => q.eq("status", status))
+            .collect()
+        )
+      );
+      auctions = deduplicate(results.flat());
     }
 
     auctions = auctions.filter((a) => {

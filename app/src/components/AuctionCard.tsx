@@ -170,6 +170,19 @@ export const AuctionCard = ({
             )}
           </div>
 
+          {isClosed && !isCompact && (
+            <div className="absolute top-3 right-3 z-10">
+              <Badge
+                variant={
+                  auction.status === "sold" ? "secondary" : "destructive"
+                }
+                className="font-black uppercase tracking-wider shadow-lg"
+              >
+                {auction.status === "sold" ? "SOLD" : "UNSOLD"}
+              </Badge>
+            </div>
+          )}
+
           <div className="flex-1 flex flex-col min-w-0">
             <CardHeader
               className={cn(isCompact ? "p-3 pb-1" : "p-4 md:p-5 pb-0 md:pb-0")}
@@ -242,16 +255,6 @@ export const AuctionCard = ({
             </div>
           </div>
         </Link>
-        {isClosed && !isCompact && (
-          <div className="absolute top-3 right-3 z-10">
-            <Badge
-              variant={auction.status === "sold" ? "secondary" : "destructive"}
-              className="font-black uppercase tracking-wider shadow-lg"
-            >
-              {auction.status === "sold" ? "SOLD" : "UNSOLD"}
-            </Badge>
-          </div>
-        )}
       </div>
 
       <BidConfirmation
