@@ -26,7 +26,9 @@ export function requireEnv(key: string): string {
 /**
  * The origins allowed to make cross-origin requests to the Convex deployment.
  * Parsed from the ALLOWED_ORIGINS environment variable as a comma-separated list.
- * Includes common local development ports and .vercel.app for previews by default.
+ * Defaults to an empty array if not set, meaning no cross-origin requests are allowed.
+ * Configure ALLOWED_ORIGINS in the .env.local file (e.g., "http://localhost:5173,.vercel.app")
+ * and preview domains (e.g., .vercel.app) to allow all subdomains of vercel.app.
  */
 export const ALLOWED_ORIGINS = (getEnv("ALLOWED_ORIGINS") ?? "")
   .split(",")
