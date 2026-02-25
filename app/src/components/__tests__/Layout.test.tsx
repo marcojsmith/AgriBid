@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 
 // Mock Header and Footer to isolate Layout testing
-vi.mock("../header", () => ({
+vi.mock("../header/Header", () => ({
   Header: () => <header data-testid="mock-header">Header</header>,
 }));
 
