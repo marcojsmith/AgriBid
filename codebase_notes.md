@@ -9,7 +9,7 @@ For consistency, this project follows these naming rules:
 - **Variables and functions**: camelCase (e.g., `getUserProfile`)
 - **React components**: PascalCase (e.g., `UserProfile`)
 
-> Note: See `AGENTS.md` for the authoritative naming conventions. This document may be outdated.
+> This document is the authoritative source for naming conventions; other project documents should mirror it.
 
 ## Authentication & Security (Better Auth + Convex)
 
