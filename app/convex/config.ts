@@ -76,19 +76,16 @@ export function isOriginAllowed(origin: string | null | undefined): boolean {
     if (allowed.startsWith("http")) {
       try {
         const allowedUrl = new URL(allowed);
-        // Compare full origin: scheme + hostname + port
+        // Compare full origin using URL.origin (scheme + hostname + port)
         // If originUrl is missing/unparseable, full-URL entries require a parseable origin
         if (originUrl) {
-          return (
-            originUrl.protocol === allowedUrl.protocol &&
-            originUrl.hostname === allowedUrl.hostname &&
-            originUrl.port === allowedUrl.port
-          );
+          return originUrl.origin === allowedUrl.origin;
         }
         // Origin couldn't be parsed - don't fallback to hostname-only for URL entries
         return false;
       } catch {
-        // If parsing fails, fall through to hostname comparison
+        // If allowed URL parsing fails, it cannot match any origin (return false)
+        return false;
       }
     }
 

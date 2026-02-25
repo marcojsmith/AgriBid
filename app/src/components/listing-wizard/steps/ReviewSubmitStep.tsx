@@ -96,7 +96,7 @@ export const ReviewSubmitStep = () => {
               <div className="flex flex-wrap gap-2 mt-1">
                 {Object.entries(formData.conditionChecklist).map(
                   ([key, value]) => {
-                    if (key === "notes" || value === null) return null;
+                    if (key === "notes" || value == null) return null;
                     return (
                       <Badge
                         key={key}

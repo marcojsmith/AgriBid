@@ -21,6 +21,14 @@ import { MediaGalleryStep } from "./steps/MediaGalleryStep";
 import { PricingDurationStep } from "./steps/PricingDurationStep";
 import { ReviewSubmitStep } from "./steps/ReviewSubmitStep";
 
+/**
+ * Inner component that renders the listing wizard content and handles form submission.
+ * Consumes ListingWizardContext via useListingWizard, session state via useSession,
+ * routing via useLocation/useNavigate, validation via useListingForm, and auction
+ * creation via useMutation.
+ *
+ * @returns The wizard step UI based on currentStep or success/error states
+ */
 const ListingWizardContent = () => {
   const {
     formData,
@@ -38,6 +46,16 @@ const ListingWizardContent = () => {
   const { getStepError } = useListingForm();
   const createAuction = useMutation(api.auctions.createAuction);
 
+  /**
+   * Handles the final listing submission.
+   * - Prevents double-submit via isSubmitting guard
+   * - Validates all steps before submission
+   * - Calls createAuction mutation
+   * - Updates submission state and navigates on success
+   * - Shows error toast on failure
+   *
+   * @returns Promise that resolves when submission completes (success or failure)
+   */
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
@@ -55,7 +73,7 @@ const ListingWizardContent = () => {
       return;
     }
 
-    for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex++) {
+    for (const [stepIndex] of STEPS.entries()) {
       const error = getStepError(stepIndex);
       if (error) {
         setCurrentStep(stepIndex);
@@ -99,7 +117,11 @@ const ListingWizardContent = () => {
       setIsSuccess(true);
       toast.success("Listing submitted for review!");
     } catch (error) {
-      console.error(error);
+      console.error("Listing submission failed", {
+        error,
+        step: "listing submission",
+        formState: { title: formData.title, make: formData.make },
+      });
       toast.error(getErrorMessage(error, "Submission failed"));
     } finally {
       setIsSubmitting(false);

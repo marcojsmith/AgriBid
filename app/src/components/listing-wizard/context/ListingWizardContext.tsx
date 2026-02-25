@@ -33,6 +33,7 @@ const ListingWizardContext = createContext<
  * - Skips undefined values from source
  * - Replaces arrays (not merged)
  * - Recursively merges nested plain objects
+ * - Guards against prototype pollution by skipping __proto__, prototype, constructor
  *
  * @param target - The target object to merge into
  * @param source - The source object to merge from
@@ -43,7 +44,10 @@ function deepMerge<T extends object>(target: T, source: Partial<T>): T {
   for (const key in source) {
     if (
       Object.prototype.hasOwnProperty.call(source, key) &&
-      source[key] !== undefined
+      source[key] !== undefined &&
+      key !== "__proto__" &&
+      key !== "prototype" &&
+      key !== "constructor"
     ) {
       const sourceVal = source[key];
       const targetVal = result[key];
@@ -92,8 +96,19 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!saved) return DEFAULT_FORM_DATA;
     try {
       const parsed = JSON.parse(saved) as Partial<ListingFormData>;
-      if (Array.isArray(parsed.images) || !parsed.images?.additional) {
+      if (!parsed || typeof parsed !== "object") {
         return DEFAULT_FORM_DATA;
+      }
+      if (
+        parsed.images &&
+        typeof parsed.images === "object" &&
+        !Array.isArray(parsed.images)
+      ) {
+        parsed.images = {
+          ...DEFAULT_FORM_DATA.images,
+          ...parsed.images,
+          additional: parsed.images.additional ?? [],
+        };
       }
       return deepMerge(DEFAULT_FORM_DATA, parsed);
     } catch (e) {
