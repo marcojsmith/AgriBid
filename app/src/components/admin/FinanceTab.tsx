@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TrendingUp, DollarSign, Calendar } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { StatCard } from "./StatCard";
 
 /**

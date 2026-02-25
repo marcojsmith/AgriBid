@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Gavel, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 interface StatusDisplay {
   label: string;

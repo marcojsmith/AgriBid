@@ -9,7 +9,65 @@ import {
 import { getAuthUser, getCallerRole } from "./lib/auth";
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
-import type { Id } from "./_generated/dataModel";
+
+/**
+ * Validator for a profile document from the database.
+ */
+export const ProfileValidator = v.object({
+  _id: v.id("profiles"),
+  _creationTime: v.number(),
+  userId: v.string(),
+  role: v.union(v.literal("buyer"), v.literal("seller"), v.literal("admin")),
+  isVerified: v.boolean(),
+  kycStatus: v.optional(
+    v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected"))
+  ),
+  kycDocumentIds: v.optional(v.array(v.string())),
+  kycDocumentUrls: v.optional(v.array(v.string())),
+  kycRejectionReason: v.optional(v.string()),
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  idNumber: v.optional(v.string()),
+  kycEmail: v.optional(v.string()),
+  bio: v.optional(v.string()),
+  phoneNumber: v.optional(v.string()),
+  companyName: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+/**
+ * Validator for the return type of getMyProfile, combining auth user with profile.
+ * Uses v.object with optional fields to handle the dynamic auth user type.
+ */
+export const UserProfileValidator = v.object({
+  _id: v.string(),
+  userId: v.optional(v.string()),
+  name: v.optional(v.string()),
+  email: v.optional(v.string()),
+  profile: v.union(ProfileValidator, v.null()),
+});
+
+/**
+ * Validator for profile with decrypted PII (used in getProfileForKYC).
+ */
+export const ProfileForKYCValidator = ProfileValidator.extend({
+  name: v.optional(v.string()),
+  email: v.optional(v.string()),
+});
+
+/**
+ * Validator for KYC details (used in getMyKYCDetails).
+ */
+export const KYCDetailsValidator = v.object({
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  idNumber: v.optional(v.string()),
+  phoneNumber: v.optional(v.string()),
+  kycEmail: v.optional(v.string()),
+  kycDocumentIds: v.optional(v.array(v.string())),
+  kycDocumentUrls: v.optional(v.array(v.string())),
+});
 
 /**
  * Helper to find a user by ID, checking both internal _id and shared userId.
@@ -79,7 +137,7 @@ export const syncUser = mutation({
  */
 export const getMyProfile = query({
   args: {},
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), UserProfileValidator),
   handler: async (ctx) => {
     try {
       const authUser = await getAuthUser(ctx);
@@ -94,8 +152,11 @@ export const getMyProfile = query({
         .unique();
 
       return {
-        ...authUser,
-        profile,
+        _id: authUser._id,
+        userId: authUser.userId ?? undefined,
+        name: authUser.name ?? undefined,
+        email: authUser.email ?? undefined,
+        profile: profile ?? null,
       };
     } catch (err) {
       if (err instanceof Error && !err.message.includes("Unauthenticated")) {
@@ -178,7 +239,7 @@ export const listAllProfiles = query({
  */
 export const getProfileForKYC = mutation({
   args: { userId: v.string() },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), ProfileForKYCValidator),
   handler: async (ctx, { userId }) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
@@ -209,7 +270,7 @@ export const getProfileForKYC = mutation({
       decryptPII(profile.kycEmail),
       Promise.all(
         (profile.kycDocuments || []).map(async (id) => {
-          const url = await ctx.storage.getUrl(id as Id<"_storage">);
+          const url = await ctx.storage.getUrl(id);
           return url;
         })
       ),
@@ -230,7 +291,8 @@ export const getProfileForKYC = mutation({
       phoneNumber: decPhone,
       kycEmail: decEmail,
       idNumber: decIdNumber,
-      kycDocuments: kycDocUrls.filter((url): url is string => url !== null),
+      kycDocumentIds: profile.kycDocuments,
+      kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
     };
   },
 });
@@ -388,7 +450,7 @@ export const submitKYC = mutation({
  */
 export const getMyKYCDetails = query({
   args: {},
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), KYCDetailsValidator),
   handler: async (ctx) => {
     try {
       const authUser = await getAuthUser(ctx);
@@ -404,14 +466,26 @@ export const getMyKYCDetails = query({
 
       if (!profile) return null;
 
-      const [decFirstName, decLastName, decIdNumber, decPhone, decEmail] =
-        await Promise.all([
-          decryptPII(profile.firstName),
-          decryptPII(profile.lastName),
-          decryptPII(profile.idNumber),
-          decryptPII(profile.phoneNumber),
-          decryptPII(profile.kycEmail),
-        ]);
+      const [
+        decFirstName,
+        decLastName,
+        decIdNumber,
+        decPhone,
+        decEmail,
+        kycDocUrls,
+      ] = await Promise.all([
+        decryptPII(profile.firstName),
+        decryptPII(profile.lastName),
+        decryptPII(profile.idNumber),
+        decryptPII(profile.phoneNumber),
+        decryptPII(profile.kycEmail),
+        Promise.all(
+          (profile.kycDocuments || []).map(async (id) => {
+            const url = await ctx.storage.getUrl(id);
+            return url;
+          })
+        ),
+      ]);
 
       return {
         firstName: decFirstName,
@@ -419,7 +493,10 @@ export const getMyKYCDetails = query({
         idNumber: decIdNumber,
         phoneNumber: decPhone,
         kycEmail: decEmail,
-        kycDocuments: profile.kycDocuments || [],
+        kycDocumentIds: profile.kycDocuments,
+        kycDocumentUrls: kycDocUrls.filter(
+          (url): url is string => url !== null
+        ),
       };
     } catch (err) {
       if (err instanceof Error && !err.message.includes("Unauthenticated")) {

@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
-import { LoadingIndicator } from "./components/ui/LoadingIndicator";
+import { LoadingIndicator } from "./components/LoadingIndicator";
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));

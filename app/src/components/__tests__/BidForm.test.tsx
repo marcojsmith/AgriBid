@@ -42,7 +42,7 @@ describe("BidForm", () => {
         auction={mockAuction}
         onBid={vi.fn()}
         isLoading={false}
-        isVerified={false}
+        isBidFormEnabled={false}
       />
     );
 

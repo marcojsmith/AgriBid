@@ -5,7 +5,7 @@ import { Input } from "../components/ui/input";
 import { useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { isValidCallbackUrl } from "../lib/utils";
-import { LoadingPage } from "../components/ui/LoadingIndicator";
+import { LoadingPage } from "../components/LoadingIndicator";
 
 /**
  * Render a dedicated Login/Registration page.

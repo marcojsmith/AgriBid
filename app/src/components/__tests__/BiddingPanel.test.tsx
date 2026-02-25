@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { BiddingPanel } from "../BiddingPanel";
+import { BiddingPanel } from "../bidding/BiddingPanel";
 import { describe, it, expect, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import type { Doc, Id } from "convex/_generated/dataModel";

@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { FinanceTab } from "@/components/admin/FinanceTab";
 
 /**

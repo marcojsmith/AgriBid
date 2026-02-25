@@ -18,9 +18,8 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { DetailItem } from "@/components/admin";
-import { toast } from "sonner";
 import type { KycReviewUser } from "../hooks/useUserManagement";
 
 /**
@@ -127,26 +126,20 @@ export function KycReviewDialog({
                   <FileText className="h-3 w-3" /> Submitted Documents
                 </h3>
                 <div className="space-y-2">
-                  {user.kycDocuments?.map((url: string, i: number) => (
+                  {user.kycDocumentUrls?.map((url: string, i: number) => (
                     <Button
                       key={i}
                       variant="outline"
                       className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2"
-                      onClick={() => {
-                        try {
-                          if (typeof url !== "string")
-                            throw new Error("Invalid document URL");
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        } catch (err) {
-                          console.error("KYC Document Access Error:", err);
-                          toast.error("Invalid or restricted document link");
-                        }
-                      }}
+                      onClick={() =>
+                        window.open(url, "_blank", "noopener,noreferrer")
+                      }
                     >
                       <Eye className="h-3 w-3" /> View Document {i + 1}
                     </Button>
                   ))}
-                  {(!user.kycDocuments || user.kycDocuments.length === 0) && (
+                  {(!user.kycDocumentUrls ||
+                    user.kycDocumentUrls.length === 0) && (
                     <p className="text-xs text-muted-foreground font-medium italic">
                       No documents uploaded.
                     </p>

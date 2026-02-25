@@ -9,7 +9,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { History, User } from "lucide-react";
-import { LoadingIndicator } from "../ui/LoadingIndicator";
+import { LoadingIndicator } from "../LoadingIndicator";
 
 interface BidHistoryProps {
   auctionId: Id<"auctions">;

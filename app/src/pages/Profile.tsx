@@ -11,9 +11,9 @@ import {
   Award,
   ArrowLeft,
 } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
-import { AuctionCard } from "@/components/AuctionCard";
+import { AuctionCard } from "@/components/auction";
 
 /**
  * Renders the seller profile page for the route parameter `userId`.

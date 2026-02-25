@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { SummaryCard } from "@/components/admin/SummaryCard";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";
 import { useAdminStats } from "@/contexts/useAdminStats";
 

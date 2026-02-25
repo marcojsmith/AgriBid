@@ -6,17 +6,27 @@ import type { Doc } from "convex/_generated/dataModel";
 import { TrendingUp, ArrowUpCircle } from "lucide-react";
 
 interface BidFormProps {
+  /** The auction document containing current pricing and status */
   auction: Doc<"auctions">;
+  /** Callback triggered when a bid amount is submitted */
   onBid: (amount: number) => void;
+  /** Loading state during bid submission */
   isLoading: boolean;
-  isVerified?: boolean;
+  /** Whether the bid form is active; defaults to true */
+  isBidFormEnabled?: boolean;
 }
 
+/**
+ * Interactive bid form for custom and quick bid submissions.
+ *
+ * @param props - Component props including auction data and handlers
+ * @returns A React element for placing bids
+ */
 export const BidForm = ({
   auction,
   onBid,
   isLoading,
-  isVerified = true,
+  isBidFormEnabled = true,
 }: BidFormProps) => {
   const nextMinBid = auction.currentPrice + auction.minIncrement;
   const [manualAmount, setManualAmount] = useState<string>(
@@ -55,7 +65,7 @@ export const BidForm = ({
             variant="outline"
             className="h-14 flex flex-col items-center justify-center gap-0.5 border-2 hover:border-primary hover:bg-primary/5 transition-all group"
             onClick={() => onBid(amount)}
-            disabled={isLoading || !isVerified}
+            disabled={isLoading || !isBidFormEnabled}
           >
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
               Quick Bid
@@ -91,12 +101,12 @@ export const BidForm = ({
               onChange={(e) => setManualAmount(e.target.value)}
               placeholder="Enter amount"
               className="h-14 pl-8 text-lg font-bold rounded-xl border-2 focus-visible:ring-primary"
-              disabled={isLoading || !isVerified}
+              disabled={isLoading || !isBidFormEnabled}
             />
           </div>
           <Button
             className="h-14 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
-            disabled={!isManualValid || isLoading || !isVerified}
+            disabled={!isManualValid || isLoading || !isBidFormEnabled}
             onClick={() => onBid(currentManualNum)}
           >
             <TrendingUp className="h-5 w-5" />

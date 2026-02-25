@@ -37,7 +37,7 @@ import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/lib/currency";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { BulkActionDialog } from "./dialogs";
 import { useBulkOperations } from "./hooks";
 
@@ -214,7 +214,10 @@ export default function AdminAuctions() {
     }
   };
 
-  if (allAuctions === undefined || adminStats === undefined) {
+  if (
+    (auctionsStatus === "LoadingFirstPage" || auctionsStatus === undefined) &&
+    adminStats === undefined
+  ) {
     return (
       <AdminLayout
         title="Auction Marketplace"

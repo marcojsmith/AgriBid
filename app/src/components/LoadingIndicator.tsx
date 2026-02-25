@@ -10,7 +10,7 @@ interface LoadingIndicatorProps {
  *
  * @param className - Optional additional CSS classes to apply to the spinner container
  * @param size - Visual size of the spinner; one of "sm", "md", or "lg"
- * @returns A focusable spinner element with role="status", an accessible label, and a hidden "Loading..." announcement for screen readers
+ * @returns A spinner element with role="status", an accessible label, and a visually-hidden "Loading..." announcement for screen readers. The spinner is not keyboard-focusable.
  */
 export function LoadingIndicator({
   className,

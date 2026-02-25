@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { MessageSquare, Clock, CheckCircle2, HelpCircle } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
  * Render the Help & Support page that lets users create new support tickets and view their existing tickets.
