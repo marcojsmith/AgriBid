@@ -3,6 +3,29 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ListingFormData, ConditionChecklist } from "../types";
 import { DEFAULT_FORM_DATA, STEPS } from "../constants";
 
+function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  const result = { ...target } as Record<string, unknown>;
+  for (const key in source) {
+    if (source[key] !== undefined) {
+      const sourceVal = source[key];
+      const targetVal = result[key];
+      if (
+        sourceVal !== null &&
+        typeof sourceVal === "object" &&
+        !Array.isArray(sourceVal) &&
+        targetVal !== null &&
+        typeof targetVal === "object" &&
+        !Array.isArray(targetVal)
+      ) {
+        result[key] = deepMerge(targetVal, sourceVal);
+      } else {
+        result[key] = sourceVal;
+      }
+    }
+  }
+  return result as T;
+}
+
 interface ListingWizardContextType {
   formData: ListingFormData;
   currentStep: number;
@@ -58,7 +81,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       if (Array.isArray(parsed.images) || !parsed.images?.additional) {
         return DEFAULT_FORM_DATA;
       }
-      return { ...DEFAULT_FORM_DATA, ...parsed };
+      return deepMerge(DEFAULT_FORM_DATA, parsed);
     } catch (e) {
       console.error("Failed to parse listing draft", e);
       localStorage.removeItem("agribid_listing_draft");

@@ -173,9 +173,12 @@ Follow [Semantic Versioning (SemVer)](https://semver.org/) to manage the version
 
 - Use consistent naming conventions for variables, functions, components, and files throughout the codebase.
 - For folders use hyphen-case (e.g., `user-profile`)
-- For files use PascalCase (e.g., `UserProfile.tsx`)
+- For React component files use PascalCase (e.g., `UserProfile.tsx`, `MyComponent.tsx`)
+- For utility/module files use camelCase or kebab-case depending on context (e.g., `queries.ts`, `mutations.ts`, `helpers.ts`, `bidding.ts`, `authConfig.ts` or `auth-config.ts`)
 - For variables and functions use camelCase (e.g., `getUserProfile`)
 - For React components use PascalCase (e.g., `UserProfile`).
+
+> Note: See AGENTS.md for the authoritative naming conventions. This document may be outdated.
 
 ## UI Design Rules
 

@@ -50,9 +50,11 @@ export const ALLOWED_ORIGINS = (getEnv("ALLOWED_ORIGINS") ?? "")
 export function isOriginAllowed(origin: string | null | undefined): boolean {
   if (!origin) return false;
 
+  let originUrl: URL | null = null;
   let hostname = "";
   try {
-    hostname = new URL(origin).hostname;
+    originUrl = new URL(origin);
+    hostname = originUrl.hostname;
   } catch {
     // If not a valid URL, it might be a direct hostname string
     hostname = origin;
@@ -68,16 +70,28 @@ export function isOriginAllowed(origin: string | null | undefined): boolean {
       return hostname === suffix || hostname.endsWith("." + suffix);
     }
 
-    // Direct hostname match: if 'allowed' is a URL, extract its hostname first
-    let allowedHostname = allowed;
-    try {
-      if (allowed.startsWith("http")) {
-        allowedHostname = new URL(allowed).hostname;
+    // If 'allowed' is a full URL, compare full origin (scheme + host + port)
+    // instead of degrading to hostname-only comparison
+    if (allowed.startsWith("http")) {
+      try {
+        const allowedUrl = new URL(allowed);
+        // Compare full origin: scheme + hostname + port
+        if (originUrl) {
+          return (
+            originUrl.protocol === allowedUrl.protocol &&
+            originUrl.hostname === allowedUrl.hostname &&
+            originUrl.port === allowedUrl.port
+          );
+        }
+        // If origin couldn't be parsed as URL, compare against allowed URL's host only
+        return hostname === allowedUrl.hostname;
+      } catch {
+        // If parsing fails, fall through to hostname comparison
       }
-    } catch {
-      // Stay with original 'allowed' value
     }
-    return hostname === allowedHostname;
+
+    // Direct hostname match for plain hostname entries (e.g., "localhost" or "example.com")
+    return hostname === allowed;
   });
 }
 

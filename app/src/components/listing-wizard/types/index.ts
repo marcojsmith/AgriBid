@@ -12,7 +12,7 @@ export interface ConditionChecklist {
   /** Service history availability */
   serviceHistory: boolean | null;
   /** Additional notes about the equipment condition */
-  notes?: string;
+  notes: string;
 }
 
 /**

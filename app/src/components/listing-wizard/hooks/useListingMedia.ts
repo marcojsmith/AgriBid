@@ -126,13 +126,16 @@ export const useListingMedia = () => {
   const removeImage = (slotId: string, index?: number) => {
     const currentImages = formData.images;
     let targetId: string | undefined;
+    let previewKey: string;
 
     if (slotId === "additional" && typeof index === "number") {
       if (!Array.isArray(currentImages.additional)) return;
       targetId = currentImages.additional[index];
+      previewKey = targetId;
     } else {
       const key = slotId as keyof Omit<typeof formData.images, "additional">;
       targetId = currentImages[key];
+      previewKey = slotId;
     }
 
     setFormData((prev) => {
@@ -149,12 +152,12 @@ export const useListingMedia = () => {
       return { ...prev, images: newImages };
     });
 
-    if (targetId) {
+    if (previewKey) {
       setPreviews((prevP) => {
         const next = { ...prevP };
-        if (next[targetId!]) {
-          URL.revokeObjectURL(next[targetId!]);
-          delete next[targetId!];
+        if (next[previewKey]) {
+          URL.revokeObjectURL(next[previewKey]);
+          delete next[previewKey];
         }
         return next;
       });

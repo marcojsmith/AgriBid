@@ -74,6 +74,17 @@ AgriBid/
 
 ## 🏁 Getting Started
 
+### Naming Conventions
+
+For consistency, this project follows these naming rules:
+- **Folders**: hyphen-case (e.g., `user-profile`)
+- **React component files**: PascalCase (e.g., `UserProfile.tsx`)
+- **Utility/module files**: camelCase or kebab-case (e.g., `queries.ts`, `authConfig.ts`)
+- **Variables and functions**: camelCase (e.g., `getUserProfile`)
+- **React components**: PascalCase (e.g., `UserProfile`)
+
+> Note: See `AGENTS.md` for the authoritative naming conventions. This document may be outdated.
+
 ### Prerequisites
 
 - Node.js (Latest LTS recommended)
