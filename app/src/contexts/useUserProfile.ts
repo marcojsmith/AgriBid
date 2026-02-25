@@ -10,7 +10,7 @@ import { UserProfileContext, NO_PROVIDER } from "./user-profile-types";
 export function useUserProfile() {
   const context = useContext(UserProfileContext);
   // Throw if sentinel to ensure usage within provider
-  if (context === NO_PROVIDER) {
+  if ((context as unknown) === NO_PROVIDER) {
     throw new Error("useUserProfile must be used within a UserProfileProvider");
   }
   return context;

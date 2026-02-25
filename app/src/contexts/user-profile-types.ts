@@ -34,6 +34,6 @@ export interface UserProfile {
 
 export const NO_PROVIDER = Symbol("NO_PROVIDER");
 
-export const UserProfileContext = createContext<
-  UserProfile | undefined | null | typeof NO_PROVIDER
->(NO_PROVIDER);
+export const UserProfileContext = createContext<UserProfile | undefined | null>(
+  NO_PROVIDER as unknown as UserProfile | undefined | null
+);
