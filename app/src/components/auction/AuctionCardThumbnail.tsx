@@ -23,6 +23,7 @@ interface AuctionCardThumbnailProps {
  * @param isWatched - Whether the item is currently on the user's watchlist
  * @param onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
  * @param endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
+ * @param isClosed - Whether the auction is closed; when true the countdown is hidden
  * @returns The JSX element representing the auction thumbnail
  */
 export function AuctionCardThumbnail({
