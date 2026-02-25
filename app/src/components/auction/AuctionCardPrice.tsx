@@ -5,6 +5,7 @@ interface AuctionCardPriceProps {
   currentPrice: number;
   endTime?: number;
   isCompact: boolean;
+  isClosed: boolean;
 }
 
 /**
@@ -13,12 +14,14 @@ interface AuctionCardPriceProps {
  * @param currentPrice - The current bid amount in rand
  * @param endTime - Optional auction end timestamp in milliseconds used to initialise the countdown
  * @param isCompact - If `true`, nothing is rendered
+ * @param isClosed - If `true`, the countdown is hidden (auction is sold or unsold)
  * @returns The rendered price-and-countdown markup, or `null` when `isCompact` is `true`.
  */
 export function AuctionCardPrice({
   currentPrice,
   endTime,
   isCompact,
+  isClosed,
 }: AuctionCardPriceProps) {
   if (isCompact) return null;
 
@@ -32,14 +35,16 @@ export function AuctionCardPrice({
           R {currentPrice.toLocaleString("en-ZA")}
         </p>
       </div>
-      <div className="text-right">
-        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
-          Ends In
-        </p>
-        <div className="text-sm font-bold">
-          <CountdownTimer endTime={endTime} />
+      {!isClosed && (
+        <div className="text-right">
+          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
+            Ends In
+          </p>
+          <div className="text-sm font-bold">
+            <CountdownTimer endTime={endTime} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

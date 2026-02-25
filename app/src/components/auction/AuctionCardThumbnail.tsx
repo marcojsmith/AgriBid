@@ -11,6 +11,7 @@ interface AuctionCardThumbnailProps {
   isWatched: boolean | undefined;
   onWatchlistToggle: (e: React.MouseEvent) => Promise<void>;
   endTime?: number;
+  isClosed: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ interface AuctionCardThumbnailProps {
  * @param isWatched - Whether the item is currently on the user's watchlist
  * @param onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
  * @param endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
+ * @param isClosed - Whether the auction is closed; when true the countdown is hidden
  * @returns The JSX element representing the auction thumbnail
  */
 export function AuctionCardThumbnail({
@@ -31,6 +33,7 @@ export function AuctionCardThumbnail({
   isWatched,
   onWatchlistToggle,
   endTime,
+  isClosed,
 }: AuctionCardThumbnailProps) {
   return (
     <div
@@ -97,7 +100,7 @@ export function AuctionCardThumbnail({
       </div>
 
       {/* Timer - Under Image */}
-      {isCompact && (
+      {isCompact && !isClosed && (
         <div className="bg-muted/30 flex items-center justify-center px-2 border-r h-12 border-t">
           <div className="font-black whitespace-nowrap leading-none text-sm sm:text-base">
             <CountdownTimer endTime={endTime} />
