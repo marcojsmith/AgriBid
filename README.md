@@ -76,7 +76,7 @@ AgriBid/
 
 ### Prerequisites
 
-- Node.js (Latest LTS recommended)
+- [Bun](https://bun.sh/) (Latest version recommended) or Node.js (Latest LTS)
 - A Convex account (for backend hosting)
 
 ### Installation
