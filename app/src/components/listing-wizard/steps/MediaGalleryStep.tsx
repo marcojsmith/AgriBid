@@ -9,7 +9,7 @@ import {
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "../hooks/useListingWizard";
 import { useListingMedia } from "../hooks/useListingMedia";
 import { PHOTO_SLOTS } from "../constants";
 

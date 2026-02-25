@@ -1,6 +1,6 @@
 import { Info, Camera, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "../hooks/useListingWizard";
 import { PHOTO_SLOTS } from "../constants";
 
 export const ReviewSubmitStep = () => {

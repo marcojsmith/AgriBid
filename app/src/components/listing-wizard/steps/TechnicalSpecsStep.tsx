@@ -3,7 +3,7 @@ import { Check, Search } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "../hooks/useListingWizard";
 
 /**
  * Technical specifications step component for the listing wizard.

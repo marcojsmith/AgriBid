@@ -7,10 +7,8 @@ import { useSession } from "../../lib/auth-client";
 import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
 import { toast } from "sonner";
 
-import {
-  ListingWizardProvider,
-  useListingWizard,
-} from "./context/ListingWizardContext";
+import { ListingWizardProvider } from "./context/ListingWizardContext";
+import { useListingWizard } from "./hooks/useListingWizard";
 import { useListingForm } from "./hooks/useListingForm";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TrendingUp, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "../hooks/useListingWizard";
 import { cn } from "@/lib/utils";
 
 export const PricingDurationStep = () => {

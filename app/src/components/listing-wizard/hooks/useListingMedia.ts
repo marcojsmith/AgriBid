@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "./useListingWizard";
 
 export const useListingMedia = () => {
   const { formData, setFormData, previews, setPreviews } = useListingWizard();

@@ -42,9 +42,10 @@ export const ALLOWED_ORIGINS = (getEnv("ALLOWED_ORIGINS") ?? "")
  * Matching rules:
  * - Exact string match against ALLOWED_ORIGINS entries.
  * - An allowed entry beginning with `.` (for example `.vercel.app`) matches hostnames equal to the suffix or ending with `.` + suffix.
- * - If an allowed entry is a URL, its hostname is used for comparison.
+ * - If an allowed entry is a URL (starts with "http"), the full origin is compared including protocol (scheme), hostname, and port.
+ *   If the incoming origin cannot be parsed as a URL, the entry does not match (returns false).
  *
- * @param origin - The origin or hostname to check; may be a full URL, a hostname, or `null`/`undefined`
+ * @param origin - The origin or hostname to check; may be a full URL (e.g., "http://localhost:5173"), a hostname (e.g., "localhost"), or `null`/`undefined`
  * @returns `true` if the origin is allowed according to ALLOWED_ORIGINS, `false` otherwise
  */
 export function isOriginAllowed(origin: string | null | undefined): boolean {
@@ -76,6 +77,7 @@ export function isOriginAllowed(origin: string | null | undefined): boolean {
       try {
         const allowedUrl = new URL(allowed);
         // Compare full origin: scheme + hostname + port
+        // If originUrl is missing/unparseable, full-URL entries require a parseable origin
         if (originUrl) {
           return (
             originUrl.protocol === allowedUrl.protocol &&
@@ -83,8 +85,8 @@ export function isOriginAllowed(origin: string | null | undefined): boolean {
             originUrl.port === allowedUrl.port
           );
         }
-        // If origin couldn't be parsed as URL, compare against allowed URL's host only
-        return hostname === allowedUrl.hostname;
+        // Origin couldn't be parsed - don't fallback to hostname-only for URL entries
+        return false;
       } catch {
         // If parsing fails, fall through to hostname comparison
       }

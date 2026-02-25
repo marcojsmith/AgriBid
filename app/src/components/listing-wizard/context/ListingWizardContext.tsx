@@ -1,30 +1,6 @@
-/* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect } from "react";
 import type { ListingFormData, ConditionChecklist } from "../types";
 import { DEFAULT_FORM_DATA, STEPS } from "../constants";
-
-function deepMerge<T extends object>(target: T, source: Partial<T>): T {
-  const result = { ...target } as Record<string, unknown>;
-  for (const key in source) {
-    if (source[key] !== undefined) {
-      const sourceVal = source[key];
-      const targetVal = result[key];
-      if (
-        sourceVal !== null &&
-        typeof sourceVal === "object" &&
-        !Array.isArray(sourceVal) &&
-        targetVal !== null &&
-        typeof targetVal === "object" &&
-        !Array.isArray(targetVal)
-      ) {
-        result[key] = deepMerge(targetVal, sourceVal);
-      } else {
-        result[key] = sourceVal;
-      }
-    }
-  }
-  return result as T;
-}
 
 interface ListingWizardContextType {
   formData: ListingFormData;
@@ -52,6 +28,44 @@ const ListingWizardContext = createContext<
   ListingWizardContextType | undefined
 >(undefined);
 
+/**
+ * Deeply merges a source object into a target object.
+ * - Skips undefined values from source
+ * - Replaces arrays (not merged)
+ * - Recursively merges nested plain objects
+ *
+ * @param target - The target object to merge into
+ * @param source - The source object to merge from
+ * @returns The merged result with type T
+ */
+function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  const result = { ...target } as Record<string, unknown>;
+  for (const key in source) {
+    if (
+      Object.prototype.hasOwnProperty.call(source, key) &&
+      source[key] !== undefined
+    ) {
+      const sourceVal = source[key];
+      const targetVal = result[key];
+      if (
+        sourceVal !== null &&
+        typeof sourceVal === "object" &&
+        !Array.isArray(sourceVal) &&
+        targetVal !== null &&
+        typeof targetVal === "object" &&
+        !Array.isArray(targetVal)
+      ) {
+        result[key] = deepMerge(targetVal, sourceVal);
+      } else {
+        result[key] = sourceVal;
+      }
+    }
+  }
+  return result as T;
+}
+
+export { ListingWizardContext, type ListingWizardContextType };
+
 export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -77,7 +91,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
     const saved = localStorage.getItem("agribid_listing_draft");
     if (!saved) return DEFAULT_FORM_DATA;
     try {
-      const parsed = JSON.parse(saved);
+      const parsed = JSON.parse(saved) as Partial<ListingFormData>;
       if (Array.isArray(parsed.images) || !parsed.images?.additional) {
         return DEFAULT_FORM_DATA;
       }
@@ -155,14 +169,4 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       {children}
     </ListingWizardContext.Provider>
   );
-};
-
-export const useListingWizard = () => {
-  const context = useContext(ListingWizardContext);
-  if (context === undefined) {
-    throw new Error(
-      "useListingWizard must be used within a ListingWizardProvider"
-    );
-  }
-  return context;
 };

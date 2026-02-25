@@ -1,16 +1,5 @@
 # Project Workflow
 
-## Naming Conventions
-
-For consistency, this project follows these naming rules:
-- **Folders**: hyphen-case (e.g., `user-profile`)
-- **React component files**: PascalCase (e.g., `UserProfile.tsx`)
-- **Utility/module files**: camelCase or kebab-case (e.g., `queries.ts`, `authConfig.ts`)
-- **Variables and functions**: camelCase (e.g., `getUserProfile`)
-- **React components**: PascalCase (e.g., `UserProfile`)
-
-> Note: See `AGENTS.md` for the authoritative naming conventions. This document may be outdated.
-
 ## Guiding Principles
 
 1. **The Plan is the Source of Truth:** All work must be tracked in `plan.md`
@@ -21,6 +10,17 @@ For consistency, this project follows these naming rules:
 6. **Non-Interactive & CI-Aware:** Prefer non-interactive commands. Use `CI=true` for watch-mode tools (tests, linters) to ensure single execution.
    
    **Note:** The `CI=true` syntax shown is for Unix-like shells (bash, zsh, sh). On Windows, use `$env:CI="true"` (PowerShell) or `set CI=true` (CMD).
+
+## Naming Conventions
+
+For consistency, this project follows these naming rules:
+- **Folders**: hyphen-case (e.g., `user-profile`)
+- **React component files**: PascalCase (e.g., `UserProfile.tsx`)
+- **Utility/module files**: camelCase or kebab-case (e.g., `queries.ts`, `authConfig.ts`)
+- **Variables and functions**: camelCase (e.g., `getUserProfile`)
+- **React components**: PascalCase (e.g., `UserProfile`)
+
+> This document is the authoritative source for naming conventions; other project documents should mirror it.
 
 ## Task Workflow
 

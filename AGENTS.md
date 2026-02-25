@@ -178,7 +178,7 @@ Follow [Semantic Versioning (SemVer)](https://semver.org/) to manage the version
 - For variables and functions use camelCase (e.g., `getUserProfile`)
 - For React components use PascalCase (e.g., `UserProfile`).
 
-> Note: See AGENTS.md for the authoritative naming conventions. This document may be outdated.
+> This document is the authoritative source for naming conventions; other project documents should mirror it.
 
 ## UI Design Rules
 
