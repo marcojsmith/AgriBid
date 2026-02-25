@@ -3,25 +3,24 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../lib/auth-client";
-import { getErrorMessage } from "@/lib/utils";
+import { useSession } from "../../lib/auth-client";
+import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
 import { toast } from "sonner";
-import { isValidCallbackUrl } from "@/lib/utils";
 
 import {
   ListingWizardProvider,
   useListingWizard,
-} from "./ListingWizard/context/ListingWizardContext";
-import { useListingForm } from "./ListingWizard/hooks/useListingForm";
-import { StepIndicator } from "./ListingWizard/StepIndicator";
-import { WizardNavigation } from "./ListingWizard/WizardNavigation";
+} from "./context/ListingWizardContext";
+import { useListingForm } from "./hooks/useListingForm";
+import { StepIndicator } from "./StepIndicator";
+import { WizardNavigation } from "./WizardNavigation";
 
-import { GeneralInfoStep } from "./ListingWizard/steps/GeneralInfoStep";
-import { TechnicalSpecsStep } from "./ListingWizard/steps/TechnicalSpecsStep";
-import { ConditionChecklistStep } from "./ListingWizard/steps/ConditionChecklistStep";
-import { MediaGalleryStep } from "./ListingWizard/steps/MediaGalleryStep";
-import { PricingDurationStep } from "./ListingWizard/steps/PricingDurationStep";
-import { ReviewSubmitStep } from "./ListingWizard/steps/ReviewSubmitStep";
+import { GeneralInfoStep } from "./steps/GeneralInfoStep";
+import { TechnicalSpecsStep } from "./steps/TechnicalSpecsStep";
+import { ConditionChecklistStep } from "./steps/ConditionChecklistStep";
+import { MediaGalleryStep } from "./steps/MediaGalleryStep";
+import { PricingDurationStep } from "./steps/PricingDurationStep";
+import { ReviewSubmitStep } from "./steps/ReviewSubmitStep";
 
 const ListingWizardContent = () => {
   const {
@@ -185,6 +184,15 @@ const ListingWizardContent = () => {
   );
 };
 
+/**
+ * Public entry point for the listing wizard feature.
+ *
+ * This component composes {@link ListingWizardProvider} and {@link ListingWizardContent}
+ * to provide the complete listing creation flow. It accepts no props and returns a
+ * JSX.Element that renders the provider with the wizard content.
+ *
+ * @returns A JSX.Element rendering the listing wizard provider and content
+ */
 export const ListingWizard = () => (
   <ListingWizardProvider>
     <ListingWizardContent />

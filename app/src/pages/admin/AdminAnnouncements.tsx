@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, History, Eye, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card } from "@/components/ui/card";
 import {

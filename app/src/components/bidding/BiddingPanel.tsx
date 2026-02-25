@@ -1,25 +1,35 @@
-// app/src/components/BiddingPanel.tsx
+// app/src/components/bidding/BiddingPanel.tsx
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../lib/auth-client";
-import { getErrorMessage } from "@/lib/utils";
+import { useSession } from "../../lib/auth-client";
+import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { CountdownTimer } from "./CountdownTimer";
+import { CountdownTimer } from "../CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Gavel, Info, ShieldAlert } from "lucide-react";
-import { BidForm } from "./bidding/BidForm";
-import { BidConfirmation } from "./BidConfirmation";
+import { BidForm } from "./BidForm";
+import { BidConfirmation } from "../BidConfirmation";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { isValidCallbackUrl } from "@/lib/utils";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;
 }
 
+/**
+ * Bidding panel component for auction detail pages.
+ *
+ * Provides the interactive bidding interface including current bid display,
+ * countdown timer, bid form, and confirmation dialog. This component is
+ * part of the public bidding API.
+ *
+ * @param props - The component props
+ * @param props.auction - The auction object containing all auction data (status, currentPrice, minIncrement, endTime, etc.)
+ * @returns A React element rendering the bidding panel with bid form and confirmation
+ */
 export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
   const { data: session, isPending } = useSession();
   const userData = useQuery(api.users.getMyProfile);

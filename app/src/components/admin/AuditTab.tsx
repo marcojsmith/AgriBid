@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 
 /**

@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { BidMonitor } from "@/components/admin";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
  * Admin page that shows a live auction monitor and current admin interface.

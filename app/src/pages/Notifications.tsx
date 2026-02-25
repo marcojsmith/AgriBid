@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, ArrowRight, Inbox } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {

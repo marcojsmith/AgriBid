@@ -18,7 +18,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { DetailItem } from "@/components/admin";
 import { toast } from "sonner";
 import type { KycReviewUser } from "../hooks/useUserManagement";

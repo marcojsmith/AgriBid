@@ -1,18 +1,26 @@
-// app/src/components/Header.tsx
+// app/src/components/header/Header.tsx
 import { useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
-import { signOut } from "../lib/auth-client";
+import { signOut } from "../../lib/auth-client";
 import { api } from "convex/_generated/api";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import { toast } from "sonner";
-import { NotificationDropdown } from "./NotificationDropdown";
-import { SearchBar } from "./header/SearchBar";
-import { UserDropdown } from "./header/UserDropdown";
-import { MobileMenu } from "./header/MobileMenu";
+import { NotificationDropdown } from "../NotificationDropdown";
+import { SearchBar } from "./SearchBar";
+import { UserDropdown } from "./UserDropdown";
+import { MobileMenu } from "./MobileMenu";
 
+/**
+ * Main application header component.
+ *
+ * Renders the site navigation, search bar, user authentication controls,
+ * and mobile menu. This component is publicly exported via the header barrel.
+ *
+ * @returns A JSX.Element representing the application header
+ */
 export const Header = () => {
   const userData = useQuery(api.users.getMyProfile);
   const isLoadingProfile = userData === undefined;

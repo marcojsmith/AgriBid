@@ -18,10 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  LoadingIndicator,
-  LoadingPage,
-} from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator, LoadingPage } from "@/components/LoadingIndicator";
 import { useKYCForm } from "./kyc/hooks/useKYCForm";
 import { useKYCFileUpload } from "./kyc/hooks/useKYCFileUpload";
 import { VerificationStatusSection } from "./kyc/sections/VerificationStatusSection";

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Mail, Phone, FileText, Clock } from "lucide-react";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
 
 export interface KycDetails {

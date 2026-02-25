@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LoadingIndicator } from "../ui/LoadingIndicator";
+import { LoadingIndicator } from "../LoadingIndicator";
 import type { UserDataWithProfile } from "@/types/auth";
 
 interface UserDropdownProps {

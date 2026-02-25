@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { Header } from "./Header";
+import { Header } from "./header";
 import { Footer } from "./Footer";
 import { NotificationListener } from "./NotificationListener";
 import { UserProfileProvider } from "../contexts/UserProfileContext";

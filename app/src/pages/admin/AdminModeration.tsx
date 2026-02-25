@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { ModerationCard } from "@/components/admin";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import type { Id } from "convex/_generated/dataModel";
 

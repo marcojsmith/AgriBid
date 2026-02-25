@@ -4,13 +4,13 @@ import { useQuery } from "convex/react";
 import { useSession } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
 import { api } from "convex/_generated/api";
-import { AuctionCard } from "../components/AuctionCard";
+import { AuctionCard } from "../components/auction";
 import { AuctionCardSkeleton } from "../components/AuctionCardSkeleton";
 import { FilterSidebar } from "../components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LoadingPage } from "../components/ui/LoadingIndicator";
+import { LoadingPage } from "../components/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.

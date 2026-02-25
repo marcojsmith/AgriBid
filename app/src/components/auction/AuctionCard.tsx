@@ -1,4 +1,4 @@
-// app/src/components/AuctionCard.tsx
+// app/src/components/auction/AuctionCard.tsx
 import React, { useRef, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,15 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../lib/auth-client";
+import { useSession } from "../../lib/auth-client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Clock, MapPin, Gavel } from "lucide-react";
 import { Link } from "react-router-dom";
-import { BidConfirmation } from "./BidConfirmation";
+import { BidConfirmation } from "../BidConfirmation";
 import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
-import { AuctionCardThumbnail } from "./auction/AuctionCardThumbnail";
-import { AuctionCardPrice } from "./auction/AuctionCardPrice";
+import { AuctionCardThumbnail } from "./AuctionCardThumbnail";
+import { AuctionCardPrice } from "./AuctionCardPrice";
 
 interface AuctionCardProps {
   auction: Doc<"auctions">;
