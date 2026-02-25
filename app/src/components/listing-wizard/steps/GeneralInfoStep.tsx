@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useListingWizard } from "../context/ListingWizardContext";
-import { SA_LOCATIONS } from "../constants";
+import { SOUTHERN_AFRICA_LOCATIONS } from "../constants";
 
 export const GeneralInfoStep = () => {
   const { formData, updateField } = useListingWizard();
@@ -10,7 +10,7 @@ export const GeneralInfoStep = () => {
 
   const filteredLocations = useMemo(
     () =>
-      SA_LOCATIONS.filter(
+      SOUTHERN_AFRICA_LOCATIONS.filter(
         (loc) =>
           loc.toLowerCase().includes(formData.location.toLowerCase()) &&
           formData.location.length > 1

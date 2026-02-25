@@ -2,6 +2,12 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { useListingWizard } from "../context/ListingWizardContext";
 
+/**
+ * Step component for collecting equipment condition checklist information.
+ * Allows sellers to indicate the condition of key equipment components.
+ *
+ * @returns JSX.Element - The condition checklist form
+ */
 export const ConditionChecklistStep = () => {
   const { formData, updateChecklist } = useListingWizard();
 
@@ -63,6 +69,7 @@ export const ConditionChecklistStep = () => {
                 onClick={() => updateChecklist(item.id, true)}
                 className="rounded-lg font-bold w-16"
                 aria-pressed={formData.conditionChecklist[item.id] === true}
+                aria-label={`${item.label} yes`}
               >
                 Yes
               </Button>
@@ -76,6 +83,7 @@ export const ConditionChecklistStep = () => {
                 onClick={() => updateChecklist(item.id, false)}
                 className="rounded-lg font-bold w-16"
                 aria-pressed={formData.conditionChecklist[item.id] === false}
+                aria-label={`${item.label} no`}
               >
                 No
               </Button>

@@ -58,7 +58,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       if (Array.isArray(parsed.images) || !parsed.images?.additional) {
         return DEFAULT_FORM_DATA;
       }
-      return parsed;
+      return { ...DEFAULT_FORM_DATA, ...parsed };
     } catch (e) {
       console.error("Failed to parse listing draft", e);
       localStorage.removeItem("agribid_listing_draft");

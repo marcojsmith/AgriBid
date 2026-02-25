@@ -14,6 +14,7 @@ import {
 import { useListingForm } from "./hooks/useListingForm";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
+import { STEPS } from "./constants";
 
 import { GeneralInfoStep } from "./steps/GeneralInfoStep";
 import { TechnicalSpecsStep } from "./steps/TechnicalSpecsStep";
@@ -55,10 +56,12 @@ const ListingWizardContent = () => {
       return;
     }
 
-    const error = getStepError(currentStep);
-    if (error) {
-      toast.error(error);
-      return;
+    for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex++) {
+      const error = getStepError(stepIndex);
+      if (error) {
+        toast.error(error);
+        return;
+      }
     }
 
     setIsSubmitting(true);

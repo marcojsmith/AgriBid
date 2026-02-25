@@ -117,36 +117,44 @@ export const useListingMedia = () => {
       toast.error("Upload failed");
     } finally {
       setUploadingSlot(null);
+      if (e.currentTarget) {
+        e.currentTarget.value = "";
+      }
     }
   };
 
   const removeImage = (slotId: string, index?: number) => {
-    let storageIdToCleanup: string | undefined;
+    const currentImages = formData.images;
+    let targetId: string | undefined;
+
+    if (slotId === "additional" && typeof index === "number") {
+      if (!Array.isArray(currentImages.additional)) return;
+      targetId = currentImages.additional[index];
+    } else {
+      const key = slotId as keyof Omit<typeof formData.images, "additional">;
+      targetId = currentImages[key];
+    }
 
     setFormData((prev) => {
       const newImages = { ...prev.images };
       if (slotId === "additional" && typeof index === "number") {
         if (!Array.isArray(newImages.additional)) return prev;
-        storageIdToCleanup = newImages.additional[index];
         newImages.additional = newImages.additional.filter(
           (_, i) => i !== index
         );
       } else {
         const key = slotId as keyof Omit<typeof formData.images, "additional">;
-        storageIdToCleanup = newImages[key];
         delete newImages[key];
       }
       return { ...prev, images: newImages };
     });
 
-    // Cleanup preview in a separate update to avoid stale closures and ensure functional updates
-    const targetId = slotId === "additional" ? storageIdToCleanup : slotId;
     if (targetId) {
       setPreviews((prevP) => {
         const next = { ...prevP };
-        if (next[targetId]) {
-          URL.revokeObjectURL(next[targetId]);
-          delete next[targetId];
+        if (next[targetId!]) {
+          URL.revokeObjectURL(next[targetId!]);
+          delete next[targetId!];
         }
         return next;
       });
