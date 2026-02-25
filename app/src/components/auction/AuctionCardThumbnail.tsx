@@ -11,6 +11,7 @@ interface AuctionCardThumbnailProps {
   isWatched: boolean | undefined;
   onWatchlistToggle: (e: React.MouseEvent) => Promise<void>;
   endTime?: number;
+  isClosed: boolean;
 }
 
 /**
@@ -31,6 +32,7 @@ export function AuctionCardThumbnail({
   isWatched,
   onWatchlistToggle,
   endTime,
+  isClosed,
 }: AuctionCardThumbnailProps) {
   return (
     <div
@@ -97,7 +99,7 @@ export function AuctionCardThumbnail({
       </div>
 
       {/* Timer - Under Image */}
-      {isCompact && (
+      {isCompact && !isClosed && (
         <div className="bg-muted/30 flex items-center justify-center px-2 border-r h-12 border-t">
           <div className="font-black whitespace-nowrap leading-none text-sm sm:text-base">
             <CountdownTimer endTime={endTime} />

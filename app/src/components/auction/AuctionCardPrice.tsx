@@ -5,6 +5,7 @@ interface AuctionCardPriceProps {
   currentPrice: number;
   endTime?: number;
   isCompact: boolean;
+  isClosed: boolean;
 }
 
 /**
@@ -19,6 +20,7 @@ export function AuctionCardPrice({
   currentPrice,
   endTime,
   isCompact,
+  isClosed,
 }: AuctionCardPriceProps) {
   if (isCompact) return null;
 
@@ -33,12 +35,16 @@ export function AuctionCardPrice({
         </p>
       </div>
       <div className="text-right">
-        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
-          Ends In
-        </p>
-        <div className="text-sm font-bold">
-          <CountdownTimer endTime={endTime} />
-        </div>
+        {!isClosed && (
+          <>
+            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
+              Ends In
+            </p>
+            <div className="text-sm font-bold">
+              <CountdownTimer endTime={endTime} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -151,6 +151,7 @@ export const AuctionCard = ({
               isWatched={isWatched}
               onWatchlistToggle={handleWatchlistToggle}
               endTime={auction.endTime}
+              isClosed={isClosed}
             />
             {isClosed && isCompact && (
               <div className="absolute top-1.5 right-1.5 z-10">
@@ -233,6 +234,7 @@ export const AuctionCard = ({
                 currentPrice={auction.currentPrice}
                 endTime={auction.endTime}
                 isCompact={isCompact}
+                isClosed={isClosed}
               />
             </CardContent>
           </div>
