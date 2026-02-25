@@ -7,7 +7,7 @@ import { components } from "./_generated/api";
 import { query } from "./_generated/server";
 import type { GenericCtx } from "@convex-dev/better-auth";
 import type { DataModel } from "./_generated/dataModel";
-import { ALLOWED_ORIGINS } from "./config";
+import { ALLOWED_ORIGINS, isOriginAllowed } from "./config";
 
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.
@@ -15,9 +15,14 @@ export const authComponent = createClient<DataModel>(components.auth);
 
 export const createAuth = (
   ctx: GenericCtx<DataModel>,
-  { optionsOnly } = { optionsOnly: false }
+  options: { optionsOnly?: boolean; origin?: string } = {}
 ) => {
-  const trustedOrigins = ALLOWED_ORIGINS;
+  const { optionsOnly = false, origin } = options;
+  const trustedOrigins = [...ALLOWED_ORIGINS];
+  if (origin && isOriginAllowed(origin)) {
+    trustedOrigins.push(origin);
+  }
+
   const siteUrl = process.env.CONVEX_SITE_URL;
 
   if (!siteUrl) {
