@@ -11,6 +11,6 @@ export interface AdminStats {
 
 export const NO_PROVIDER = Symbol("NO_PROVIDER");
 
-export const AdminStatsContext = createContext<
-  AdminStats | undefined | null | typeof NO_PROVIDER
->(NO_PROVIDER);
+export const AdminStatsContext = createContext<AdminStats | undefined | null>(
+  NO_PROVIDER as unknown as AdminStats | undefined | null
+);

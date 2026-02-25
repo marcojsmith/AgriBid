@@ -9,7 +9,7 @@ import { AdminStatsContext, NO_PROVIDER } from "./admin-stats-types";
  */
 export function useAdminStats() {
   const context = useContext(AdminStatsContext);
-  if (context === NO_PROVIDER) {
+  if ((context as unknown) === NO_PROVIDER) {
     throw new Error("useAdminStats must be used within an AdminStatsProvider");
   }
   return context;
