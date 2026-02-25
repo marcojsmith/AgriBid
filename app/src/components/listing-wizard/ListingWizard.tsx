@@ -27,6 +27,7 @@ const ListingWizardContent = () => {
   const {
     formData,
     currentStep,
+    setCurrentStep,
     setIsSubmitting,
     isSubmitting,
     isSuccess,
@@ -59,6 +60,7 @@ const ListingWizardContent = () => {
     for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex++) {
       const error = getStepError(stepIndex);
       if (error) {
+        setCurrentStep(stepIndex);
         toast.error(error);
         return;
       }

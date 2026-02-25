@@ -53,8 +53,6 @@ export const UserProfileValidator = v.object({
 export const ProfileForKYCValidator = ProfileValidator.extend({
   name: v.optional(v.string()),
   email: v.optional(v.string()),
-  kycDocumentIds: v.optional(v.array(v.id("_storage"))),
-  kycDocumentUrls: v.optional(v.array(v.string())),
 });
 
 /**
@@ -292,7 +290,6 @@ export const getProfileForKYC = mutation({
       phoneNumber: decPhone,
       kycEmail: decEmail,
       idNumber: decIdNumber,
-      kycDocumentIds: profile.kycDocuments,
       kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
     };
   },

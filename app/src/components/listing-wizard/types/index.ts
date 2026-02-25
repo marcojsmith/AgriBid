@@ -17,7 +17,7 @@ export interface ConditionChecklist {
 
 /**
  * Represents the images associated with a listing.
- * Includes required slots (front, engine, cabin, rear) and optional additional photos.
+ * Optional image slots (front, engine, cabin, rear) plus required additional photos array.
  */
 export interface ListingImages {
   /** Front 45° view image storage ID */
