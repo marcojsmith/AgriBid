@@ -12,6 +12,7 @@
 
 - The CORS logic is manually implemented in `app/convex/http.ts` to ensure strict origin matching and prevent credential leakage.
 - `ALLOWED_ORIGINS` is parsed from an environment variable with a fallback to `http://localhost:5173`.
+- **Wildcard Support**: Origins can use a suffix pattern (e.g., `.vercel.app`) to match all subdomains. The `isOriginAllowed()` function in `app/convex/config.ts` handles exact matches, wildcard suffix matching, and hostname-based comparison.
 - If an origin is not in the allowed list, the `Access-Control-Allow-Origin` header is omitted entirely.
 
 ### OIDC Discovery Rewrite
@@ -86,11 +87,11 @@ The `ListingWizard` now uses permanent Convex File Storage for all equipment ima
 The Admin Dashboard has been refactored from a monolithic context-based design to a modular route-based architecture (`/admin/*`).
 - **Structure**: Each administrative function (Moderation, Auctions, Users, Announcements, Finance, etc.) is its own standalone page component with isolated local state.
 - **Layout**: A shared `AdminLayout` component provides the persistent sidebar navigation and a high-density KPI header.
-- **Workflow**: 
+- **Workflow**:
   - New auctions are created with a `pending_review` status and appear in the **Moderation Queue**.
   - Admins can approve or reject listings; approval transitions the status to `active` and sets the live auction timer.
   - User management includes KYC document review with decrypted PII access and role elevation (promotion to admin).
+- **KYC Document Storage**: KYC documents (ID, proof of residence, etc.) are stored using Convex storage IDs rather than string-based references, providing better type safety and integration with Convex's file storage system.
 - **Auditability**: All administrative actions are automatically logged via the `logAudit` helper.
 - **Performance**: N+1 queries in administrative views (e.g., fetching read counts for announcements) are optimized via batched or parallelized lookups.
 - **Type Safety**: Backend queries used with `usePaginatedQuery` must have required `paginationOpts` in their validators to enable correct frontend type inference.
-
