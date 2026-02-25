@@ -2,13 +2,13 @@
 import { useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
-import { signOut } from "../../lib/auth-client";
+import { signOut } from "@/lib/auth-client";
 import { api } from "convex/_generated/api";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import { toast } from "sonner";
-import { NotificationDropdown } from "../NotificationDropdown";
+import { NotificationDropdown } from "@/components/NotificationDropdown";
 import { SearchBar } from "./SearchBar";
 import { UserDropdown } from "./UserDropdown";
 import { MobileMenu } from "./MobileMenu";

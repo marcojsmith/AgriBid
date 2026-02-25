@@ -1,10 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Check, Search } from "lucide-react";
-import { LoadingIndicator } from "../../LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useListingWizard } from "../context/ListingWizardContext";
 
+/**
+ * Technical specifications step component for the listing wizard.
+ *
+ * Allows users to select equipment make, model, and view technical specifications.
+ *
+ * @returns A JSX.Element rendering the technical specs selection interface
+ */
 export const TechnicalSpecsStep = () => {
   const { formData, updateField } = useListingWizard();
   const metadata = useQuery(api.auctions.getEquipmentMetadata);

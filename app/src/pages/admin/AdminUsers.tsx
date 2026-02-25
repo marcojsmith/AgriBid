@@ -67,7 +67,10 @@ export default function AdminUsers() {
     );
   }, [allProfiles, userSearch]);
 
-  if (allProfiles === undefined || adminStats === undefined) {
+  if (
+    (profilesStatus === "LoadingFirstPage" || profilesStatus === undefined) &&
+    adminStats === undefined
+  ) {
     return (
       <AdminLayout
         title="User Management"

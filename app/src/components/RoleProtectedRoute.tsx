@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "./ui/button";
 import { isValidCallbackUrl } from "@/lib/utils";
-import { LoadingPage } from "./LoadingIndicator";
+import { LoadingPage } from "@/components/LoadingIndicator";
 
 interface RoleProtectedRouteProps {
   children: ReactNode;

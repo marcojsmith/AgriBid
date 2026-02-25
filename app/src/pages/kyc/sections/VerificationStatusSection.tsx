@@ -7,6 +7,8 @@ import { ShieldCheck, Mail, Phone, FileText, Clock } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
 
+export type VerificationStatus = "verified" | "pending" | "null" | "unknown";
+
 export interface KycDetails {
   firstName?: string;
   lastName?: string;
@@ -17,7 +19,7 @@ export interface KycDetails {
 }
 
 interface VerificationStatusSectionProps {
-  status: string;
+  status: VerificationStatus;
   myKycDetails: KycDetails | null | undefined;
   userId: string;
   onEdit: () => void;

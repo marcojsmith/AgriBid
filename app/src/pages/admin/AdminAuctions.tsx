@@ -214,7 +214,10 @@ export default function AdminAuctions() {
     }
   };
 
-  if (allAuctions === undefined || adminStats === undefined) {
+  if (
+    (auctionsStatus === "LoadingFirstPage" || auctionsStatus === undefined) &&
+    adminStats === undefined
+  ) {
     return (
       <AdminLayout
         title="Auction Marketplace"

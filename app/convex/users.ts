@@ -45,27 +45,13 @@ export const UserProfileValidator = v.object({
   userId: v.optional(v.string()),
   name: v.optional(v.string()),
   email: v.optional(v.string()),
-  profile: v.optional(v.union(ProfileValidator, v.null())),
+  profile: v.union(ProfileValidator, v.null()),
 });
 
 /**
  * Validator for profile with decrypted PII (used in getProfileForKYC).
  */
-export const ProfileForKYCValidator = v.object({
-  _id: v.id("profiles"),
-  _creationTime: v.number(),
-  userId: v.string(),
-  role: v.union(v.literal("buyer"), v.literal("seller"), v.literal("admin")),
-  isVerified: v.boolean(),
-  kycStatus: v.optional(
-    v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected"))
-  ),
-  kycDocuments: v.optional(v.array(v.string())),
-  kycRejectionReason: v.optional(v.string()),
-  bio: v.optional(v.string()),
-  companyName: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
+export const ProfileForKYCValidator = ProfileValidator.extend({
   name: v.optional(v.string()),
   email: v.optional(v.string()),
   firstName: v.optional(v.string()),
@@ -483,14 +469,26 @@ export const getMyKYCDetails = query({
 
       if (!profile) return null;
 
-      const [decFirstName, decLastName, decIdNumber, decPhone, decEmail] =
-        await Promise.all([
-          decryptPII(profile.firstName),
-          decryptPII(profile.lastName),
-          decryptPII(profile.idNumber),
-          decryptPII(profile.phoneNumber),
-          decryptPII(profile.kycEmail),
-        ]);
+      const [
+        decFirstName,
+        decLastName,
+        decIdNumber,
+        decPhone,
+        decEmail,
+        kycDocUrls,
+      ] = await Promise.all([
+        decryptPII(profile.firstName),
+        decryptPII(profile.lastName),
+        decryptPII(profile.idNumber),
+        decryptPII(profile.phoneNumber),
+        decryptPII(profile.kycEmail),
+        Promise.all(
+          (profile.kycDocuments || []).map(async (id) => {
+            const url = await ctx.storage.getUrl(id as Id<"_storage">);
+            return url;
+          })
+        ),
+      ]);
 
       return {
         firstName: decFirstName,
@@ -498,7 +496,7 @@ export const getMyKYCDetails = query({
         idNumber: decIdNumber,
         phoneNumber: decPhone,
         kycEmail: decEmail,
-        kycDocuments: profile.kycDocuments || [],
+        kycDocuments: kycDocUrls.filter((url): url is string => url !== null),
       };
     } catch (err) {
       if (err instanceof Error && !err.message.includes("Unauthenticated")) {

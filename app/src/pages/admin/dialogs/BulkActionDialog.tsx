@@ -10,6 +10,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 
+export interface BulkActionDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isProcessing: boolean;
+  selectedCount: number;
+  targetStatus: string | null;
+}
+
 /**
  * Dialog component for confirming bulk status updates on multiple auctions.
  *
@@ -30,14 +39,7 @@ export function BulkActionDialog({
   isProcessing,
   selectedCount,
   targetStatus,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  isProcessing: boolean;
-  selectedCount: number;
-  targetStatus: string | null;
-}) {
+}: BulkActionDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent className="rounded-2xl border-2">
