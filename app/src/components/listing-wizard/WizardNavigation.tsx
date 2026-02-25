@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
-import { useListingWizard } from "./context/ListingWizardContext";
+import { useListingWizard } from "./hooks/useListingWizard";
 import { useListingForm } from "./hooks/useListingForm";
 import { STEPS } from "./constants";
 

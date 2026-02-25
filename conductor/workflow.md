@@ -11,6 +11,17 @@
    
    **Note:** The `CI=true` syntax shown is for Unix-like shells (bash, zsh, sh). On Windows, use `$env:CI="true"` (PowerShell) or `set CI=true` (CMD).
 
+## Naming Conventions
+
+For consistency, this project follows these naming rules:
+- **Folders**: hyphen-case (e.g., `user-profile`)
+- **React component files**: PascalCase (e.g., `UserProfile.tsx`)
+- **Utility/module files**: camelCase or kebab-case (e.g., `queries.ts`, `authConfig.ts`)
+- **Variables and functions**: camelCase (e.g., `getUserProfile`)
+- **React components**: PascalCase (e.g., `UserProfile`)
+
+> This document is the authoritative source for naming conventions; other project documents should mirror it.
+
 ## Task Workflow
 
 All tasks follow a strict lifecycle:

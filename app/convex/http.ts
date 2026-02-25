@@ -2,36 +2,22 @@
 import { httpRouter } from "convex/server";
 import { createAuth } from "./auth";
 import { httpAction } from "./_generated/server";
-import { ALLOWED_ORIGINS } from "./config";
+import { isOriginAllowed } from "./config";
 
 const http = httpRouter();
 
 // ---------------------------------------------------------------------------
 // CORS Configuration
-// ---------------------------------------------------------------------------
+/**
+ * Builds CORS response headers using the request's Origin and the configured allowlist.
+ *
+ * @param request - The incoming HTTP Request; the `Origin` header is inspected to determine whether to include `Access-Control-Allow-Origin`.
+ * @returns A record of CORS header names to values. If the request origin is allowed, includes `Access-Control-Allow-Origin` set to that origin; always includes standard CORS headers for methods, headers, credentials and `Vary`.
+ */
 
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") ?? "";
-  let hostname = "";
-  try {
-    hostname = new URL(origin).hostname;
-  } catch {
-    // If origin is not a valid URL, stay with empty hostname
-  }
-
-  const isAllowed = ALLOWED_ORIGINS.some((allowed) => {
-    // Exact match for the full origin string
-    if (origin === allowed) return true;
-
-    // Wildcard/suffix matching based on hostname
-    if (allowed.startsWith(".")) {
-      const suffix = allowed.substring(1);
-      return hostname === suffix || hostname.endsWith("." + suffix);
-    }
-
-    // Direct hostname match
-    return hostname === allowed;
-  });
+  const isAllowed = isOriginAllowed(origin);
 
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -83,7 +69,8 @@ http.route({
 // ---------------------------------------------------------------------------
 
 const authHandler = httpAction(async (ctx, request) => {
-  const auth = createAuth(ctx);
+  const origin = request.headers.get("Origin") ?? "";
+  const auth = createAuth(ctx, { origin });
   const response = await auth.handler(request);
   return addCorsHeaders(response, request);
 });
@@ -93,7 +80,8 @@ const authHandler = httpAction(async (ctx, request) => {
 // ---------------------------------------------------------------------------
 
 const wellKnownHandler = httpAction(async (ctx, request) => {
-  const auth = createAuth(ctx);
+  const origin = request.headers.get("Origin") ?? "";
+  const auth = createAuth(ctx, { origin });
   const url = new URL(request.url);
 
   // Rewrite standard OIDC discovery path to the plugin's internal path

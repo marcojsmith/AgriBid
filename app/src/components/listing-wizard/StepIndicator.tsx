@@ -1,5 +1,5 @@
 import { Save } from "lucide-react";
-import { useListingWizard } from "./context/ListingWizardContext";
+import { useListingWizard } from "./hooks/useListingWizard";
 import { STEPS } from "./constants";
 import { cn } from "@/lib/utils";
 

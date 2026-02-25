@@ -169,6 +169,17 @@ Follow [Semantic Versioning (SemVer)](https://semver.org/) to manage the version
 - Always consider the user experience when making design and development decisions, and strive to create an intuitive and enjoyable experience for the users of the application. This includes providing clear feedback for user actions, ensuring that the interface is easy to navigate, and minimizing any potential friction points in the user journey.
 - Do not shy away from making significant changes to the codebase or design if it will lead to a better overall outcome for the project. Always prioritize the quality and maintainability of the codebase and the user experience over making small, incremental changes that may not have a significant impact.
 
+**Naming conventions:**
+
+- Use consistent naming conventions for variables, functions, components, and files throughout the codebase.
+- For folders use hyphen-case (e.g., `user-profile`)
+- For React component files use PascalCase (e.g., `UserProfile.tsx`, `MyComponent.tsx`)
+- For utility/module files use camelCase or kebab-case depending on context (e.g., `queries.ts`, `mutations.ts`, `helpers.ts`, `bidding.ts`, `authConfig.ts` or `auth-config.ts`)
+- For variables and functions use camelCase (e.g., `getUserProfile`)
+- For React components use PascalCase (e.g., `UserProfile`).
+
+> This document is the authoritative source for naming conventions; other project documents should mirror it.
+
 ## UI Design Rules
 
 **Clarity:**

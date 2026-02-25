@@ -7,13 +7,12 @@ import { useSession } from "../../lib/auth-client";
 import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
 import { toast } from "sonner";
 
-import {
-  ListingWizardProvider,
-  useListingWizard,
-} from "./context/ListingWizardContext";
+import { ListingWizardProvider } from "./context/ListingWizardContext";
+import { useListingWizard } from "./hooks/useListingWizard";
 import { useListingForm } from "./hooks/useListingForm";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
+import { STEPS } from "./constants";
 
 import { GeneralInfoStep } from "./steps/GeneralInfoStep";
 import { TechnicalSpecsStep } from "./steps/TechnicalSpecsStep";
@@ -22,10 +21,19 @@ import { MediaGalleryStep } from "./steps/MediaGalleryStep";
 import { PricingDurationStep } from "./steps/PricingDurationStep";
 import { ReviewSubmitStep } from "./steps/ReviewSubmitStep";
 
+/**
+ * Inner component that renders the listing wizard content and handles form submission.
+ * Consumes ListingWizardContext via useListingWizard, session state via useSession,
+ * routing via useLocation/useNavigate, validation via useListingForm, and auction
+ * creation via useMutation.
+ *
+ * @returns The wizard step UI based on currentStep or success/error states
+ */
 const ListingWizardContent = () => {
   const {
     formData,
     currentStep,
+    setCurrentStep,
     setIsSubmitting,
     isSubmitting,
     isSuccess,
@@ -38,6 +46,16 @@ const ListingWizardContent = () => {
   const { getStepError } = useListingForm();
   const createAuction = useMutation(api.auctions.createAuction);
 
+  /**
+   * Handles the final listing submission.
+   * - Prevents double-submit via isSubmitting guard
+   * - Validates all steps before submission
+   * - Calls createAuction mutation
+   * - Updates submission state and navigates on success
+   * - Shows error toast on failure
+   *
+   * @returns Promise that resolves when submission completes (success or failure)
+   */
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
@@ -55,10 +73,13 @@ const ListingWizardContent = () => {
       return;
     }
 
-    const error = getStepError(currentStep);
-    if (error) {
-      toast.error(error);
-      return;
+    for (const [stepIndex] of STEPS.entries()) {
+      const error = getStepError(stepIndex);
+      if (error) {
+        setCurrentStep(stepIndex);
+        toast.error(error);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -96,7 +117,11 @@ const ListingWizardContent = () => {
       setIsSuccess(true);
       toast.success("Listing submitted for review!");
     } catch (error) {
-      console.error(error);
+      console.error("Listing submission failed", {
+        error,
+        step: "listing submission",
+        formState: { title: formData.title, make: formData.make },
+      });
       toast.error(getErrorMessage(error, "Submission failed"));
     } finally {
       setIsSubmitting(false);

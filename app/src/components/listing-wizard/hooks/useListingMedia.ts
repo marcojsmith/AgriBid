@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "./useListingWizard";
 
 export const useListingMedia = () => {
   const { formData, setFormData, previews, setPreviews } = useListingWizard();
@@ -117,36 +117,47 @@ export const useListingMedia = () => {
       toast.error("Upload failed");
     } finally {
       setUploadingSlot(null);
+      if (e.currentTarget) {
+        e.currentTarget.value = "";
+      }
     }
   };
 
   const removeImage = (slotId: string, index?: number) => {
-    let storageIdToCleanup: string | undefined;
+    const currentImages = formData.images;
+    let targetId: string | undefined;
+    let previewKey: string;
+
+    if (slotId === "additional" && typeof index === "number") {
+      if (!Array.isArray(currentImages.additional)) return;
+      targetId = currentImages.additional[index];
+      previewKey = targetId;
+    } else {
+      const key = slotId as keyof Omit<typeof formData.images, "additional">;
+      targetId = currentImages[key];
+      previewKey = slotId;
+    }
 
     setFormData((prev) => {
       const newImages = { ...prev.images };
       if (slotId === "additional" && typeof index === "number") {
         if (!Array.isArray(newImages.additional)) return prev;
-        storageIdToCleanup = newImages.additional[index];
         newImages.additional = newImages.additional.filter(
           (_, i) => i !== index
         );
       } else {
         const key = slotId as keyof Omit<typeof formData.images, "additional">;
-        storageIdToCleanup = newImages[key];
         delete newImages[key];
       }
       return { ...prev, images: newImages };
     });
 
-    // Cleanup preview in a separate update to avoid stale closures and ensure functional updates
-    const targetId = slotId === "additional" ? storageIdToCleanup : slotId;
-    if (targetId) {
+    if (previewKey) {
       setPreviews((prevP) => {
         const next = { ...prevP };
-        if (next[targetId]) {
-          URL.revokeObjectURL(next[targetId]);
-          delete next[targetId];
+        if (next[previewKey]) {
+          URL.revokeObjectURL(next[previewKey]);
+          delete next[previewKey];
         }
         return next;
       });

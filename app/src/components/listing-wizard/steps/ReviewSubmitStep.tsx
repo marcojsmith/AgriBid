@@ -1,6 +1,6 @@
 import { Info, Camera, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "../hooks/useListingWizard";
 import { PHOTO_SLOTS } from "../constants";
 
 export const ReviewSubmitStep = () => {
@@ -96,7 +96,7 @@ export const ReviewSubmitStep = () => {
               <div className="flex flex-wrap gap-2 mt-1">
                 {Object.entries(formData.conditionChecklist).map(
                   ([key, value]) => {
-                    if (key === "notes" || value === null) return null;
+                    if (key === "notes" || value == null) return null;
                     return (
                       <Badge
                         key={key}

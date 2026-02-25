@@ -22,8 +22,7 @@ export const ProfileValidator = v.object({
   kycStatus: v.optional(
     v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected"))
   ),
-  kycDocumentIds: v.optional(v.array(v.string())),
-  kycDocumentUrls: v.optional(v.array(v.string())),
+  kycDocuments: v.optional(v.array(v.id("_storage"))),
   kycRejectionReason: v.optional(v.string()),
   firstName: v.optional(v.string()),
   lastName: v.optional(v.string()),
@@ -65,7 +64,7 @@ export const KYCDetailsValidator = v.object({
   idNumber: v.optional(v.string()),
   phoneNumber: v.optional(v.string()),
   kycEmail: v.optional(v.string()),
-  kycDocumentIds: v.optional(v.array(v.string())),
+  kycDocumentIds: v.optional(v.array(v.id("_storage"))),
   kycDocumentUrls: v.optional(v.array(v.string())),
 });
 
@@ -291,7 +290,6 @@ export const getProfileForKYC = mutation({
       phoneNumber: decPhone,
       kycEmail: decEmail,
       idNumber: decIdNumber,
-      kycDocumentIds: profile.kycDocuments,
       kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
     };
   },

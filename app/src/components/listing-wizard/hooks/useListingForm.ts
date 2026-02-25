@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { useListingWizard } from "../context/ListingWizardContext";
+import { useListingWizard } from "./useListingWizard";
 import { STEPS } from "../constants";
 
 const MIN_YEAR = 1901;
