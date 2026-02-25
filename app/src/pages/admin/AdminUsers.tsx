@@ -68,7 +68,8 @@ export default function AdminUsers() {
   }, [allProfiles, userSearch]);
 
   if (
-    (profilesStatus === "LoadingFirstPage" || profilesStatus === undefined) &&
+    profilesStatus === "LoadingFirstPage" ||
+    profilesStatus === undefined ||
     adminStats === undefined
   ) {
     return (

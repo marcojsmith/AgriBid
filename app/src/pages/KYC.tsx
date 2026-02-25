@@ -76,8 +76,8 @@ export default function KYC() {
 
   // Populate existing documents when myKycDetails loads
   useEffect(() => {
-    if (myKycDetails?.kycDocuments) {
-      setExistingDocuments(myKycDetails.kycDocuments);
+    if (myKycDetails?.kycDocumentIds) {
+      setExistingDocuments(myKycDetails.kycDocumentIds);
     }
   }, [myKycDetails, setExistingDocuments]);
 

@@ -14,7 +14,8 @@ export interface KycReviewUser {
   idNumber?: string;
   phoneNumber?: string;
   kycEmail?: string;
-  kycDocuments?: string[];
+  kycDocumentIds?: string[];
+  kycDocumentUrls?: string[];
 }
 
 /**

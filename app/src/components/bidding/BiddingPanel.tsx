@@ -1,5 +1,5 @@
 // app/src/components/bidding/BiddingPanel.tsx
-import { useState } from "react";
+import React, { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSession } from "@/lib/auth-client";
@@ -30,7 +30,9 @@ interface BiddingPanelProps {
  * @param props.auction - The auction object containing all auction data (status, currentPrice, minIncrement, endTime, etc.)
  * @returns A React element rendering the bidding panel with bid form and confirmation
  */
-export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
+export const BiddingPanel = ({
+  auction,
+}: BiddingPanelProps): React.ReactElement => {
   const { data: session, isPending } = useSession();
   const userData = useQuery(api.users.getMyProfile);
   const location = useLocation();
@@ -155,11 +157,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
   const handleBidConfirm = async () => {
     if (!pendingBid) return;
 
-    // Guard against submitting after auction ends
-    if (
-      auction.status !== "active" ||
-      (auction.endTime ? auction.endTime <= Date.now() : true)
-    ) {
+    if (isEnded) {
       toast.error("This auction has ended");
       setIsConfirmOpen(false);
       setPendingBid(null);
@@ -175,7 +173,6 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
         `Bid of R ${pendingBid.toLocaleString("en-ZA")} placed successfully!`
       );
     } catch (error) {
-      console.error(error);
       toast.error(getErrorMessage(error, "Failed to place bid"));
     } finally {
       setIsBidding(false);
@@ -280,7 +277,7 @@ export const BiddingPanel = ({ auction }: BiddingPanelProps) => {
             auction={auction}
             onBid={handleBidInitiate}
             isLoading={isBidding}
-            isVerified={!session || isVerified}
+            isBidFormEnabled={!session || isVerified}
           />
         </div>
       )}

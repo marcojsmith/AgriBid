@@ -3,11 +3,23 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Mail, Phone, FileText, Clock } from "lucide-react";
+import {
+  ShieldCheck,
+  ShieldX,
+  Mail,
+  Phone,
+  FileText,
+  Clock,
+} from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
 
-export type VerificationStatus = "verified" | "pending" | "null" | "unknown";
+export type VerificationStatus =
+  | "verified"
+  | "pending"
+  | "rejected"
+  | "null"
+  | "unknown";
 
 export interface KycDetails {
   firstName?: string;
@@ -15,7 +27,8 @@ export interface KycDetails {
   kycEmail?: string;
   phoneNumber?: string;
   idNumber?: string;
-  kycDocuments?: string[];
+  kycDocumentIds?: string[];
+  kycDocumentUrls?: string[];
 }
 
 interface VerificationStatusSectionProps {
@@ -53,7 +66,7 @@ export function VerificationStatusSection({
       );
     }
 
-    const hasDocs = !!myKycDetails.kycDocuments?.length;
+    const hasDocs = !!myKycDetails.kycDocumentUrls?.length;
 
     return (
       <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
@@ -110,10 +123,10 @@ export function VerificationStatusSection({
               </Label>
               <div className="flex flex-wrap gap-2">
                 {hasDocs ? (
-                  myKycDetails.kycDocuments?.map(
-                    (docId: string, idx: number) => (
+                  myKycDetails.kycDocumentUrls?.map(
+                    (url: string, idx: number) => (
                       <Badge
-                        key={docId}
+                        key={url}
                         variant="secondary"
                         className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
                       >
@@ -171,6 +184,28 @@ export function VerificationStatusSection({
           className="border-2 font-bold uppercase"
         >
           Return to Marketplace
+        </Button>
+      </Card>
+    );
+  }
+
+  if (status === "rejected") {
+    return (
+      <Card className="p-12 border-2 border-red-500/20 bg-red-500/5 text-center space-y-4">
+        <div className="h-16 w-16 bg-red-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-red-500/20">
+          <ShieldX className="h-8 w-8 text-white" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-2xl font-black uppercase">
+            Verification Rejected
+          </h2>
+          <p className="text-muted-foreground font-medium">
+            Your identity verification was not approved. Please review your
+            documents and try again.
+          </p>
+        </div>
+        <Button onClick={onEdit} className="border-2 font-bold uppercase">
+          Resubmit Documents
         </Button>
       </Card>
     );
