@@ -8,7 +8,12 @@ const http = httpRouter();
 
 // ---------------------------------------------------------------------------
 // CORS Configuration
-// ---------------------------------------------------------------------------
+/**
+ * Builds CORS response headers using the request's Origin and the configured allowlist.
+ *
+ * @param request - The incoming HTTP Request; the `Origin` header is inspected to determine whether to include `Access-Control-Allow-Origin`.
+ * @returns A record of CORS header names to values. If the request origin is allowed, includes `Access-Control-Allow-Origin` set to that origin; always includes standard CORS headers for methods, headers, credentials and `Vary`.
+ */
 
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") ?? "";

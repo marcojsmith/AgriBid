@@ -36,8 +36,16 @@ export const ALLOWED_ORIGINS = (getEnv("ALLOWED_ORIGINS") ?? "")
   .filter(Boolean);
 
 /**
- * Checks if a given origin (e.g., "http://localhost:5173") is allowed
- * based on the ALLOWED_ORIGINS configuration.
+ * Determine whether an origin is permitted by ALLOWED_ORIGINS.
+ *
+ * Accepts a full origin (e.g. "http://localhost:5173") or a raw hostname. Returns `false` for `null` or `undefined`.
+ * Matching rules:
+ * - Exact string match against ALLOWED_ORIGINS entries.
+ * - An allowed entry beginning with `.` (for example `.vercel.app`) matches hostnames equal to the suffix or ending with `.` + suffix.
+ * - If an allowed entry is a URL, its hostname is used for comparison.
+ *
+ * @param origin - The origin or hostname to check; may be a full URL, a hostname, or `null`/`undefined`
+ * @returns `true` if the origin is allowed according to ALLOWED_ORIGINS, `false` otherwise
  */
 export function isOriginAllowed(origin: string | null | undefined): boolean {
   if (!origin) return false;
