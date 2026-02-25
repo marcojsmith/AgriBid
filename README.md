@@ -95,8 +95,9 @@ AgriBid/
 
 3.  **Configure Environment Variables**:
     Create a `.env.local` file in the `app/` directory (see `.env.example` for required keys):
-    - `VITE_CONVEX_URL`
-    - `BETTER_AUTH_SECRET`
+    - `VITE_CONVEX_URL` - Your Convex deployment URL
+    - `BETTER_AUTH_SECRET` - Secret key for Better Auth
+    - `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (e.g., `http://localhost:5173,.vercel.app`). Use `.domain.com` syntax to allow all subdomains.
     - (Other Auth provider keys as needed)
 
 4.  **Launch Backend (Convex)**:
@@ -120,6 +121,16 @@ bunx convex run seed
 ## 🏗 Development Workflow
 
 This project follows a **Spec-Driven Development** (Conductor) approach. Major features are tracked in the `conductor/tracks/` directory, each with its own specification and implementation plan.
+
+### Coding Standards
+
+The project follows consistent naming conventions across the codebase:
+- **Folders**: Use `hyphen-case` (e.g., `listing-wizard/`)
+- **Files**: Use `PascalCase` (e.g., `UserProfile.tsx`)
+- **Variables & Functions**: Use `camelCase` (e.g., `getUserProfile`)
+- **React Components**: Use `PascalCase` (e.g., `UserProfile`)
+
+For complete coding guidelines and best practices, refer to [`AGENTS.md`](./AGENTS.md).
 
 ### Testing
 
