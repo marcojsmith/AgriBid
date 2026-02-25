@@ -105,7 +105,7 @@ export default defineSchema({
         v.literal("rejected")
       )
     ),
-    kycDocuments: v.optional(v.array(v.string())), // storageIds
+    kycDocuments: v.optional(v.array(v.id("_storage"))), // storageIds
     kycRejectionReason: v.optional(v.string()),
     firstName: v.optional(v.string()), // Encrypted PII
     lastName: v.optional(v.string()), // Encrypted PII

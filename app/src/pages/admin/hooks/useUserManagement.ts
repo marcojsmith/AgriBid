@@ -78,6 +78,19 @@ export function useUserManagement() {
   );
 
   /**
+   * Type guard to ensure profile has all required fields for KYC review.
+   */
+  const isKycReviewUser = (obj: unknown): obj is KycReviewUser => {
+    if (obj === null || typeof obj !== "object") return false;
+    const candidate = obj as Record<string, unknown>;
+    return (
+      typeof candidate.userId === "string" &&
+      Array.isArray(candidate.kycDocumentIds) &&
+      Array.isArray(candidate.kycDocumentUrls)
+    );
+  };
+
+  /**
    * Initiates KYC review by fetching full user profile data.
    * Shows loading state and error handling via toast notifications.
    */
@@ -90,14 +103,17 @@ export function useUserManagement() {
       // Verify we are still looking for this specific user to avoid race conditions
       if (
         fullProfile &&
-        typeof fullProfile === "object" &&
-        "userId" in fullProfile &&
-        fullProfile.userId === userId // Added condition
+        isKycReviewUser(fullProfile) &&
+        fullProfile.userId === userId
       ) {
-        setKycReviewUser(fullProfile as KycReviewUser);
+        setKycReviewUser(fullProfile);
         setShowFullId(false);
         setKycRejectionReason("");
-      } else if (fullProfile && fullProfile.userId !== userId) {
+      } else if (
+        fullProfile &&
+        "userId" in fullProfile &&
+        fullProfile.userId !== userId
+      ) {
         // Stale response, ignore
         return;
       } else {

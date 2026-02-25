@@ -157,7 +157,12 @@ export const BiddingPanel = ({
   const handleBidConfirm = async () => {
     if (!pendingBid) return;
 
-    if (isEnded) {
+    // Fresh check for auction end state to prevent late bids
+    const freshIsEnded =
+      auction.status !== "active" ||
+      (auction.endTime ? auction.endTime <= Date.now() : true);
+
+    if (freshIsEnded) {
       toast.error("This auction has ended");
       setIsConfirmOpen(false);
       setPendingBid(null);

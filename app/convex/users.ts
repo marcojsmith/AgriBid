@@ -9,7 +9,6 @@ import {
 import { getAuthUser, getCallerRole } from "./lib/auth";
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
-import type { Id } from "./_generated/dataModel";
 
 /**
  * Validator for a profile document from the database.
@@ -55,11 +54,6 @@ export const UserProfileValidator = v.object({
 export const ProfileForKYCValidator = ProfileValidator.extend({
   name: v.optional(v.string()),
   email: v.optional(v.string()),
-  firstName: v.optional(v.string()),
-  lastName: v.optional(v.string()),
-  phoneNumber: v.optional(v.string()),
-  kycEmail: v.optional(v.string()),
-  idNumber: v.optional(v.string()),
 });
 
 /**
@@ -276,7 +270,7 @@ export const getProfileForKYC = mutation({
       decryptPII(profile.kycEmail),
       Promise.all(
         (profile.kycDocuments || []).map(async (id) => {
-          const url = await ctx.storage.getUrl(id as Id<"_storage">);
+          const url = await ctx.storage.getUrl(id);
           return url;
         })
       ),
@@ -487,7 +481,7 @@ export const getMyKYCDetails = query({
         decryptPII(profile.kycEmail),
         Promise.all(
           (profile.kycDocuments || []).map(async (id) => {
-            const url = await ctx.storage.getUrl(id as Id<"_storage">);
+            const url = await ctx.storage.getUrl(id);
             return url;
           })
         ),

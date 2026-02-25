@@ -18,7 +18,7 @@ export type VerificationStatus =
   | "verified"
   | "pending"
   | "rejected"
-  | "null"
+  | "none"
   | "unknown";
 
 export interface KycDetails {
@@ -39,15 +39,17 @@ interface VerificationStatusSectionProps {
 }
 
 /**
- * Render a verification status panel showing identity, contact, and document details or a pending notice.
+ * Render a verification status panel showing identity, contact, and document details or status notices.
  *
- * Renders a detailed "verified" card when `status` is "verified" and `myKycDetails` is provided, a pending review card when `status` is "pending", and nothing for other statuses.
+ * Renders a detailed "verified" card when `status` is "verified", a pending review card when `status` is "pending",
+ * and a "rejected" card when `status` is "rejected" (displaying a resubmission CTA).
  *
- * @param status - Verification state; expected values include `"verified"` and `"pending"`.
- * @param myKycDetails - User's KYC details (may be `null` or `undefined` while loading).
- * @param userId - User identifier used to build the public profile link.
- * @param onEdit - Callback invoked when the "Edit Details" action is triggered.
- * @returns The JSX element for the verification status UI, or `null` if the `status` is not handled.
+ * @param props - Component props
+ * @param props.status - Verification state: "verified", "pending", "rejected", "none", or "unknown".
+ * @param props.myKycDetails - User's KYC details (may be null/undefined during load).
+ * @param props.userId - User identifier for public profile link.
+ * @param props.onEdit - Callback invoked when the "Edit Details" or "Resubmit" action is triggered.
+ * @returns The JSX element for "verified", "pending", or "rejected" statuses, or null if status is not handled.
  */
 export function VerificationStatusSection({
   status,

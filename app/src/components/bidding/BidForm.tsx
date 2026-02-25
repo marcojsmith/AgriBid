@@ -6,12 +6,22 @@ import type { Doc } from "convex/_generated/dataModel";
 import { TrendingUp, ArrowUpCircle } from "lucide-react";
 
 interface BidFormProps {
+  /** The auction document containing current pricing and status */
   auction: Doc<"auctions">;
+  /** Callback triggered when a bid amount is submitted */
   onBid: (amount: number) => void;
+  /** Loading state during bid submission */
   isLoading: boolean;
+  /** Whether the bid form is active; defaults to true */
   isBidFormEnabled?: boolean;
 }
 
+/**
+ * Interactive bid form for custom and quick bid submissions.
+ *
+ * @param props - Component props including auction data and handlers
+ * @returns A React element for placing bids
+ */
 export const BidForm = ({
   auction,
   onBid,

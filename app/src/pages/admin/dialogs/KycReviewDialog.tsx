@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { DetailItem } from "@/components/admin";
-import { toast } from "sonner";
 import type { KycReviewUser } from "../hooks/useUserManagement";
 
 /**
@@ -132,16 +131,9 @@ export function KycReviewDialog({
                       key={i}
                       variant="outline"
                       className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2"
-                      onClick={() => {
-                        try {
-                          if (typeof url !== "string")
-                            throw new Error("Invalid document URL");
-                          window.open(url, "_blank", "noopener,noreferrer");
-                        } catch (err) {
-                          console.error("KYC Document Access Error:", err);
-                          toast.error("Invalid or restricted document link");
-                        }
-                      }}
+                      onClick={() =>
+                        window.open(url, "_blank", "noopener,noreferrer")
+                      }
                     >
                       <Eye className="h-3 w-3" /> View Document {i + 1}
                     </Button>
