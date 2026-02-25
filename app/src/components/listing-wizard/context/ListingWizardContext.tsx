@@ -96,7 +96,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!saved) return DEFAULT_FORM_DATA;
     try {
       const parsed = JSON.parse(saved) as Partial<ListingFormData>;
-      if (!parsed || typeof parsed !== "object") {
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         return DEFAULT_FORM_DATA;
       }
       if (
@@ -107,7 +107,9 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         parsed.images = {
           ...DEFAULT_FORM_DATA.images,
           ...parsed.images,
-          additional: parsed.images.additional ?? [],
+          additional: Array.isArray(parsed.images.additional)
+            ? parsed.images.additional
+            : [],
         };
       }
       return deepMerge(DEFAULT_FORM_DATA, parsed);
