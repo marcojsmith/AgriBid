@@ -187,7 +187,6 @@ function AdminDashboardContent() {
         title="System"
         icon={<TrendingUp className="h-5 w-5" />}
         stats={[
-          { label: "Status", value: "Online", color: "text-green-600" },
           { label: "Version", value: `v${import.meta.env.VITE_APP_VERSION}` },
         ]}
         link="/admin/settings"
