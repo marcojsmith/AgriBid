@@ -217,4 +217,91 @@ export default defineSchema({
     resolved: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
+
+  // AI Chatbot Configuration
+  ai_config: defineTable({
+    key: v.string(), // Unique key for config lookup (e.g., "default")
+    modelId: v.string(), // Model identifier (e.g., "arcee-ai/trinity-mini:free")
+    systemPrompt: v.string(), // System prompt text
+    safetyLevel: v.optional(
+      v.union(v.literal("low"), v.literal("medium"), v.literal("high"))
+    ), // Safety level settings
+    isEnabled: v.boolean(), // Whether AI is enabled
+    rateLimitWindowSeconds: v.number(), // Rate limit window in seconds
+    rateLimitMaxMessages: v.number(), // Max messages per window
+    version: v.number(), // Version number for audit tracking
+    updatedAt: v.number(), // Last update timestamp
+    updatedBy: v.optional(v.string()), // Admin who made the change
+  }).index("by_key", ["key"]),
+
+  // AI Chat History
+  chat_history: defineTable({
+    userId: v.string(), // User who sent/received the message
+    sessionId: v.string(), // Session identifier
+    role: v.union(
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("system")
+    ),
+    content: v.string(), // Message content
+    auctionId: v.optional(v.id("auctions")), // Optional auction context reference
+    tokenCount: v.optional(v.number()), // Token usage for this message
+    metadata: v.optional(
+      v.record(
+        v.string(),
+        v.union(v.string(), v.number(), v.boolean(), v.null())
+      )
+    ), // Additional metadata with controlled types
+    toolCalls: v.optional(
+      v.array(
+        v.object({
+          toolName: v.string(),
+          args: v.optional(
+            v.record(
+              v.string(),
+              v.union(
+                v.string(),
+                v.number(),
+                v.boolean(),
+                v.null(),
+                v.array(v.any())
+              )
+            )
+          ),
+          result: v.optional(
+            v.union(
+              v.string(),
+              v.number(),
+              v.boolean(),
+              v.null(),
+              v.record(v.string(), v.any())
+            )
+          ),
+        })
+      )
+    ), // Tool call information
+    createdAt: v.number(), // Message timestamp
+  })
+    .index("by_user_session", ["userId", "sessionId"])
+    .index("by_session", ["sessionId"]),
+
+  // AI Usage Statistics
+  ai_usage_stats: defineTable({
+    date: v.string(), // Date string in YYYY-MM-DD format
+    totalRequests: v.number(), // Total request count
+    totalInputTokens: v.number(), // Total input tokens consumed
+    totalOutputTokens: v.number(), // Total output tokens consumed
+    totalCost: v.number(), // Total estimated cost
+    errorCount: v.number(), // Number of errors
+    uniqueUsers: v.number(), // Number of unique users
+    updatedAt: v.number(), // Last update timestamp
+  }).index("by_date", ["date"]),
+
+  // Rate Limits
+  rate_limits: defineTable({
+    userId: v.string(), // User identifier
+    timestamps: v.array(v.number()), // Array of message timestamps for sliding window
+    windowStart: v.number(), // Start of current window (for cleanup)
+    updatedAt: v.number(), // Last update timestamp
+  }).index("by_user", ["userId"]),
 });
