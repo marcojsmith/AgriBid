@@ -75,7 +75,7 @@ export const processChatMessage = internalAction({
     const model = await getModel(aiConfig.modelId);
 
     const executor = createToolExecutor(ctx);
-    const tools = createTools(executor, aiStatus.safetyLevel);
+    const tools = createTools(executor);
 
     const history = await ctx.runQuery(api.ai.chat.getSessionHistory, {
       sessionId: args.sessionId,
@@ -110,6 +110,7 @@ export const processChatMessage = internalAction({
             content: event.text || "",
             auctionId: args.auctionId,
             tokenCount: usage?.totalTokens ?? 0,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             toolCalls: event.toolCalls?.map((tc: any) => ({
               toolName: tc.toolName,
               args: tc.args,

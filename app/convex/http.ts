@@ -338,7 +338,7 @@ const aiChatHandler = httpAction(async (ctx, request) => {
     // 7. Get AI model, tools and stream
     const model = await getModel(aiConfig.modelId);
     const executor = createToolExecutor(ctx);
-    const tools = createTools(executor, aiConfig.safetyLevel);
+    const tools = createTools(executor);
 
     const result = streamText({
       model,
@@ -366,10 +366,10 @@ const aiChatHandler = httpAction(async (ctx, request) => {
             auctionId: validatedAuctionId,
             tokenCount: usage?.totalTokens ?? 0,
             // Store tool calls in metadata if present
-            toolCalls: event.toolCalls?.map((tc) => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            toolCalls: event.toolCalls?.map((tc: any) => ({
               toolName: tc.toolName,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              args: (tc as any).input ?? (tc as any).args ?? {},
+              args: tc.input ?? tc.args ?? {},
             })),
           });
 

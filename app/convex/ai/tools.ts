@@ -55,10 +55,7 @@ export type ToolExecutor = {
   draftBid: (input: DraftBidInput) => Promise<unknown>;
 };
 
-export function createTools(
-  executor: ToolExecutor,
-  _safetyLevel: string = "medium"
-) {
+export function createTools(executor: ToolExecutor) {
   return {
     searchAuctions: tool({
       description: "Search for agricultural equipment auctions",
@@ -81,7 +78,8 @@ export function createTools(
       execute: executor.getWatchlist,
     }),
     draftBid: tool({
-      description: "Draft a bid on an auction for the user to review and confirm",
+      description:
+        "Draft a bid on an auction for the user to review and confirm",
       parameters: draftBidSchema,
       execute: executor.draftBid,
     }),

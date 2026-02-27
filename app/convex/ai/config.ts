@@ -45,6 +45,15 @@ interface AIConfig {
   updatedBy: string | undefined;
 }
 
+interface OpenRouterModel {
+  id: string;
+  name?: string;
+}
+
+interface OpenRouterModelsResponse {
+  data: OpenRouterModel[];
+}
+
 export function getDefaultConfig(): AIConfig {
   return {
     key: DEFAULT_CONFIG_KEY,
@@ -127,7 +136,7 @@ export const validateModelId = action({
       url: string,
       options: RequestInit,
       timeout: number
-    ) => {
+    ): Promise<Response> => {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeout);
       try {
@@ -143,7 +152,7 @@ export const validateModelId = action({
       }
     };
 
-    let lastError: any = null;
+    let lastError: unknown = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
@@ -167,9 +176,11 @@ export const validateModelId = action({
         );
 
         if (response.ok) {
-          const data = await response.json();
+          const data = (await response.json()) as OpenRouterModelsResponse;
           const models = data.data || [];
-          const found = models.some((m: any) => m.id === args.modelId);
+          const found = models.some(
+            (m: OpenRouterModel) => m.id === args.modelId
+          );
 
           if (found) {
             return { isValid: true, message: "Model verified" };
@@ -203,10 +214,11 @@ export const validateModelId = action({
     }
 
     console.error("Model validation failed after retries:", lastError);
+
     return {
       isValid: false,
       message:
-        lastError?.name === "AbortError"
+        lastError instanceof Error && lastError.name === "AbortError"
           ? "Validation timed out"
           : "Network error during validation",
     };
@@ -284,7 +296,10 @@ export const getPublicAIStatus = query({
     return {
       isEnabled: config.isEnabled,
       modelId: config.modelId,
-      safetyLevel: (config.safetyLevel ?? "medium") as "low" | "medium" | "high",
+      safetyLevel: (config.safetyLevel ?? "medium") as
+        | "low"
+        | "medium"
+        | "high",
     };
   },
 });

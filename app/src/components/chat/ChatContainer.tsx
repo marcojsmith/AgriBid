@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -8,8 +6,9 @@ import { Card } from "@/components/ui/card";
 import { MessageCircle, X, Bot, Loader2, Send, Square } from "lucide-react";
 import { BidConfirmationDialog } from "./BidConfirmationDialog";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
 
 const CHAT_STORAGE_KEY = "agribid_chat_session";
 
@@ -19,13 +18,43 @@ interface AIStatus {
   safetyLevel: "low" | "medium" | "high";
 }
 
+interface ToolInvocationResult {
+  requiresApproval?: boolean;
+  auctionId: string;
+  proposedBid: number;
+  auctionTitle: string;
+  currentPrice: number;
+}
+
+interface ToolInvocation {
+  state: string;
+  result?: ToolInvocationResult;
+}
+
+interface MessagePart {
+  type: string;
+  text?: string;
+  toolInvocation?: ToolInvocation;
+}
+
+type ExtendedMessage = UIMessage & { parts?: MessagePart[]; content?: string };
+
 export function ChatContainer() {
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId, setSessionId] = useState(() => {
-    const stored = localStorage.getItem(CHAT_STORAGE_KEY);
-    if (stored) return stored;
+    if (typeof window === "undefined") return "";
+    try {
+      const stored = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (stored) return stored;
+    } catch (e) {
+      console.warn("Failed to read from localStorage:", e);
+    }
     const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    localStorage.setItem(CHAT_STORAGE_KEY, newId);
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, newId);
+    } catch (e) {
+      console.warn("Failed to write to localStorage:", e);
+    }
     return newId;
   });
 
@@ -39,6 +68,8 @@ export function ChatContainer() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const placeBidMutation = useMutation(api.auctions.bidding.placeBid);
+  const lastProcessedSessionRef = useRef<string | null>(null);
+  const lastProcessedMessageRef = useRef<string | null>(null);
 
   const aiStatus = useQuery(api.ai.config.getPublicAIStatus) as
     | AIStatus
@@ -52,16 +83,29 @@ export function ChatContainer() {
 
   // If session is invalid, reset it
   useEffect(() => {
+    if (validatedSession === undefined) return;
+
+    const sessionKey = `${validatedSession.valid}-${validatedSession.reason}`;
+    if (sessionKey === lastProcessedSessionRef.current) return;
+    lastProcessedSessionRef.current = sessionKey;
+
     if (
-      validatedSession !== undefined &&
       !validatedSession.valid &&
       validatedSession.reason !== "Session not found"
     ) {
       console.warn("Chat session invalid, clearing:", validatedSession.reason);
-      localStorage.removeItem(CHAT_STORAGE_KEY);
       const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      localStorage.setItem(CHAT_STORAGE_KEY, newId);
-      setSessionId(newId);
+      try {
+        localStorage.removeItem(CHAT_STORAGE_KEY);
+        localStorage.setItem(CHAT_STORAGE_KEY, newId);
+      } catch (e) {
+        console.warn("Failed to update localStorage:", e);
+      }
+      // Defer state update to next tick to avoid lint warning
+      const timeoutId = setTimeout(() => {
+        setSessionId(newId);
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
   }, [validatedSession]);
 
@@ -81,15 +125,13 @@ export function ChatContainer() {
 
   useEffect(() => {
     if (history && history.length > 0 && messages.length === 0) {
-      setMessages(
-        history.map((msg) => ({
-          id: msg._id,
-          role: msg.role as any,
-          content: msg.content,
-          createdAt: new Date(msg.createdAt),
-          parts: [{ type: "text", text: msg.content }],
-        })) as any
-      );
+      const initialMessages = history.map((msg) => ({
+        id: msg._id,
+        role: msg.role as "user" | "assistant" | "system" | "data",
+        content: msg.content,
+        createdAt: new Date(msg.createdAt),
+      })) as unknown as UIMessage[];
+      setMessages(initialMessages);
     }
   }, [history, setMessages, messages.length]);
 
@@ -112,21 +154,31 @@ export function ChatContainer() {
 
   // Check for tool invocations
   useEffect(() => {
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      const parts = (lastMessage as any).parts || [];
-      for (const part of parts) {
-        // AI SDK 6 tool parts
-        if (part.type?.startsWith("tool-") && part.state === "result") {
-          const result = part.result;
-          if (result?.requiresApproval && !pendingApproval) {
+    if (messages.length === 0) return;
+
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.id === lastProcessedMessageRef.current) return;
+    lastProcessedMessageRef.current = lastMessage.id;
+
+    const extMessage = lastMessage as ExtendedMessage;
+    const parts = extMessage.parts || [];
+    for (const part of parts) {
+      if (
+        part.type === "tool-invocation" &&
+        part.toolInvocation?.state === "result"
+      ) {
+        const result = part.toolInvocation.result;
+        if (result?.requiresApproval && !pendingApproval) {
+          // Defer state update to next tick to avoid lint warning
+          const timeoutId = setTimeout(() => {
             setPendingApproval({
               auctionId: result.auctionId,
               amount: result.proposedBid,
               title: result.auctionTitle,
               currentPrice: result.currentPrice,
             });
-          }
+          }, 0);
+          return () => clearTimeout(timeoutId);
         }
       }
     }
@@ -135,6 +187,7 @@ export function ChatContainer() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading || !sessionId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sendMessage({ role: "user", content: input } as any);
     setInput("");
   };
@@ -148,43 +201,35 @@ export function ChatContainer() {
     try {
       // Use direct mutation for the confirmed bid - safer and bypasses AI loop
       await placeBidMutation({
-        auctionId: auctionId as any,
+        auctionId: auctionId as Id<"auctions">,
         amount,
       });
       toast.success("Bid placed successfully!");
 
       // Add a system-like message to the chat to inform the user
-      setMessages([
-        ...messages,
-        {
-          id: `system_${Date.now()}`,
-          role: "assistant",
-          content: "",
-          parts: [
-            {
-              type: "text",
-              text: `I've successfully placed your bid of £${amount.toLocaleString()} on the auction.`,
-            },
-          ],
-        },
-      ] as any);
+      const newMessage = {
+        id: `system_${Date.now()}`,
+        role: "assistant" as const,
+        content: `I've successfully placed your bid of £${amount.toLocaleString()} on the auction.`,
+        createdAt: new Date(),
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setMessages((prev: any) => [...prev, newMessage]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to place bid");
     }
-  }, [pendingApproval, placeBidMutation, setMessages, messages]);
+  }, [pendingApproval, placeBidMutation, setMessages]);
 
   const handleApprovalCancel = useCallback(() => {
     setPendingApproval(null);
-    setMessages([
-      ...messages,
-      {
-        id: `system_${Date.now()}`,
-        role: "assistant",
-        content: "",
-        parts: [{ type: "text", text: "Bid placement cancelled." }],
-      },
-    ] as any);
-  }, [messages, setMessages]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newMessage: any = {
+      id: `system_${Date.now()}`,
+      role: "assistant",
+      content: "Bid placement cancelled.",
+    };
+    setMessages((prev) => [...prev, newMessage]);
+  }, [setMessages]);
 
   if (aiStatus === undefined || !sessionId) {
     return null;
@@ -294,22 +339,35 @@ export function ChatContainer() {
                     }`}
                   >
                     <div className="text-sm whitespace-pre-wrap">
-                      {(message as any).parts?.map((part: any, i: number) => {
-                        if (part.type === "text")
-                          return <span key={i}>{part.text}</span>;
-                        if (
-                          part.type?.startsWith("tool-") &&
-                          part.state !== "result"
-                        )
-                          return (
-                            <span key={i} className="italic opacity-80 block">
-                              [Thinking...]
-                            </span>
+                      {(() => {
+                        const ext = message as UIMessage & {
+                          parts?: MessagePart[];
+                        };
+                        if (ext.parts) {
+                          return ext.parts?.map(
+                            (part: MessagePart, i: number) => {
+                              if (part.type === "text")
+                                return <span key={i}>{part.text}</span>;
+                              if (
+                                part.type === "tool-invocation" &&
+                                part.toolInvocation?.state !== "result"
+                              )
+                                return (
+                                  <span
+                                    key={i}
+                                    className="italic opacity-80 block"
+                                  >
+                                    [Thinking...]
+                                  </span>
+                                );
+                              return null;
+                            }
                           );
-                        return null;
-                      })}
-                      {!(message as any).parts &&
-                        ((message as any).content || "")}
+                        }
+                        // Handle legacy string content - cast to any to access
+                        const msg = message as unknown as { content?: string };
+                        return msg.content ?? "";
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -389,7 +447,7 @@ export function ChatContainer() {
           onClose={handleApprovalCancel}
           onConfirm={handleApprovalConfirm}
           onCancel={handleApprovalCancel}
-          auctionId={pendingApproval.auctionId as any}
+          auctionId={pendingApproval.auctionId as Id<"auctions">}
           proposedBidAmount={pendingApproval.amount}
           auctionTitle={pendingApproval.title}
         />

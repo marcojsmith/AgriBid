@@ -1,9 +1,7 @@
 // app/convex/ai/chat_action.ts
 
 import { action } from "../_generated/server";
-import type { FunctionReference } from "convex/server";
 import { v, ConvexError } from "convex/values";
-import { api } from "../_generated/api";
 import { getModel } from "./provider";
 import { createTools } from "./tools";
 import { createToolExecutor } from "./executor";
@@ -11,6 +9,7 @@ import {
   streamText,
   createUIMessageStreamResponse,
   type LanguageModel,
+  stepCountIs,
 } from "ai";
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -36,22 +35,6 @@ type AIConfigResult = {
   updatedAt: number;
   updatedBy?: string;
 };
-
-// Typed references to break deep type instantiation chain
-const checkRateLimitRef = api.ai.rate_limiting
-  .checkRateLimit as FunctionReference<
-  "query",
-  "public",
-  Record<string, never>,
-  RateLimitStatus
->;
-
-const getAIConfigRef = api.ai.config.getAIConfig as FunctionReference<
-  "query",
-  "public",
-  Record<string, never>,
-  AIConfigResult
->;
 
 const MAX_INPUT_LENGTH = 2000;
 const SUSPICIOUS_PATTERNS = [
@@ -119,12 +102,22 @@ export const processMessage = action({
     ctx: ActionCtx,
     args: { sessionId: string; message: string; auctionId?: Id<"auctions"> }
   ): Promise<Response> => {
-    const rateLimitCheck = await ctx.runQuery(checkRateLimitRef, {});
+    const rateLimitCheck = (await ctx.runQuery(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      "ai/rate_limiting:checkRateLimit" as any,
+      {}
+    )) as RateLimitStatus;
+
     if (!rateLimitCheck.allowed) {
       throw new ConvexError("Rate limit exceeded");
     }
 
-    const aiConfig = await ctx.runQuery(getAIConfigRef, {});
+    const aiConfig = (await ctx.runQuery(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      "ai/config:getAIConfig" as any,
+      {}
+    )) as AIConfigResult;
+
     if (!aiConfig?.isEnabled) {
       throw new ConvexError("AI assistant is currently disabled");
     }
@@ -140,9 +133,11 @@ export const processMessage = action({
     const executor = createToolExecutor(ctx);
     const tools = createTools(executor);
 
-    const history = await ctx.runQuery(api.ai.chat.getSessionHistory, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const history = (await ctx.runQuery("ai/chat:getSessionHistory" as any, {
       sessionId: args.sessionId,
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    })) as any[];
 
     const messages: ChatMessage[] = [
       ...history
@@ -161,6 +156,7 @@ export const processMessage = action({
       system: systemPrompt,
       messages,
       tools,
+      stopWhen: stepCountIs(5),
       maxRetries: 2,
     });
 

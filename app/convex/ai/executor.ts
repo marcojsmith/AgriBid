@@ -2,7 +2,6 @@
 
 import { ConvexError } from "convex/values";
 import type { ActionCtx } from "../_generated/server";
-import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type {
   SearchAuctionsInput,
@@ -12,9 +11,14 @@ import type {
   DraftBidInput,
 } from "./tools";
 
-// @ts-expect-error - Convex API deep type instantiation issues
-const auctionsApi = api.auctions.queries;
-const watchlistApi = api.watchlist;
+// Import query functions directly to avoid deep type instantiation
+import {
+  getActiveAuctions,
+  getAuctionById,
+  getMyBids,
+} from "../auctions/queries";
+import { getWatchedAuctions } from "../watchlist";
+import type { AuctionSummary, AuctionDetail } from "../auctions/helpers";
 
 /**
  * Sanitizes tool results to normalize text and remove dangerous content.
@@ -60,8 +64,9 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     searchAuctions: async (
       input: SearchAuctionsInput
-    ): Promise<{ auctions: unknown[]; total: number }> => {
-      const auctions = await ctx.runQuery(auctionsApi.getActiveAuctions, {
+    ): Promise<{ auctions: AuctionSummary[]; total: number }> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const auctions = await ctx.runQuery(getActiveAuctions as any, {
         search: input.search,
         make: input.make,
         minYear: input.minYear,
@@ -83,8 +88,9 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     getAuctionDetails: async (
       input: GetAuctionDetailsInput
-    ): Promise<unknown> => {
-      const details = await ctx.runQuery(auctionsApi.getAuctionById, {
+    ): Promise<AuctionDetail> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const details = await ctx.runQuery(getAuctionById as any, {
         auctionId: input.auctionId as Id<"auctions">,
       });
 
@@ -100,8 +106,9 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     getUserBids: async (
       input: GetUserBidsInput
-    ): Promise<{ bids: unknown[]; count: number }> => {
-      const result = await ctx.runQuery(auctionsApi.getMyBids, {
+    ): Promise<{ bids: AuctionSummary[]; count: number }> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await ctx.runQuery(getMyBids as any, {
         paginationOpts: { numItems: input.limit, cursor: null },
       });
 
@@ -116,8 +123,9 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     getWatchlist: async (
       input: GetWatchlistInput
-    ): Promise<{ auctions: unknown[]; count: number }> => {
-      const result = await ctx.runQuery(watchlistApi.getWatchedAuctions, {
+    ): Promise<{ auctions: AuctionSummary[]; count: number }> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await ctx.runQuery(getWatchedAuctions as any, {
         paginationOpts: { numItems: input.limit, cursor: null },
       });
 
@@ -134,7 +142,8 @@ export function createToolExecutor(ctx: ActionCtx) {
       const auctionId = input.auctionId as Id<"auctions">;
 
       // Always validate auction state and minimum bid requirements
-      const auction = await ctx.runQuery(auctionsApi.getAuctionById, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const auction = await ctx.runQuery(getAuctionById as any, {
         auctionId,
       });
 

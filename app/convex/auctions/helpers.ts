@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
@@ -143,6 +143,8 @@ export const AuctionSummaryValidator = v.object({
   conditionChecklist: v.optional(ConditionChecklistValidator),
 });
 
+export type AuctionSummary = Infer<typeof AuctionSummaryValidator>;
+
 /**
  * Create a compact auction summary for list views.
  *
@@ -217,6 +219,8 @@ export const AuctionDetailValidator = v.object({
   seedId: v.optional(v.string()),
   conditionReportUrl: v.optional(v.string()),
 });
+
+export type AuctionDetail = Infer<typeof AuctionDetailValidator>;
 
 /**
  * Create a full auction object with image references resolved to accessible URLs.

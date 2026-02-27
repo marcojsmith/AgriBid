@@ -30,7 +30,7 @@ import { toast } from "sonner";
  */
 export function NotificationDropdown() {
   const navigate = useNavigate();
-  // @ts-ignore - Suppress deep type instantiation error from convex api
+  // @ts-expect-error - Suppress deep type instantiation error from convex api
   const notifications = useQuery(api.notifications.getMyNotifications);
   const markRead = useMutation(api.notifications.markAsRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
