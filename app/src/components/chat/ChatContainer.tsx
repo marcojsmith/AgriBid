@@ -4,7 +4,15 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MessageCircle, X, Bot, Loader2, Send, Square } from "lucide-react";
+import {
+  MessageCircle,
+  X,
+  Bot,
+  Loader2,
+  Send,
+  Square,
+  Trash2,
+} from "lucide-react";
 import { BidConfirmationDialog } from "./BidConfirmationDialog";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -53,7 +61,6 @@ function ToolStatus({
 }: {
   toolName: string;
   state: string;
-   
   result?: any;
   chatStatus?: string;
 }) {
@@ -115,7 +122,9 @@ export function ChatContainer() {
     title: string;
     currentPrice: number;
   } | null>(null);
-  const [input, setInput] = useState("");
+
+  // Use local state for input to avoid undefined issues with useChat destructuring
+  const [localInput, setLocalInput] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const placeBidMutation = useMutation(api.auctions.bidding.placeBid);
@@ -160,21 +169,16 @@ export function ChatContainer() {
     }
   }, [validatedSession]);
 
-  const {
-    messages,
-    status,
-    error,
-    stop,
-    setMessages,
-    append: sendMessage,
-  } = useChat({
-    transport: new DefaultChatTransport({
-      api: `${import.meta.env.VITE_CONVEX_SITE_URL}/api/ai/chat/`,
-      body: { sessionId },
-      credentials: "include",
-    }),
-    resume: false, // Disabling resume to avoid GET /api/ai/chat/:id/stream 404s
-  } as any) as any;
+  const { messages, status, error, stop, setMessages, append, reload } =
+    useChat({
+      transport: new DefaultChatTransport({
+        api: `${import.meta.env.VITE_CONVEX_SITE_URL}/api/ai/chat/`,
+        body: { sessionId },
+        credentials: "include",
+      }),
+      maxSteps: 10,
+      resume: false,
+    } as any) as any;
 
   const history = useQuery(
     api.ai.chat.getRecentMessages,
@@ -185,18 +189,13 @@ export function ChatContainer() {
     if (history && history.length > 0 && messages.length === 0) {
       const initialMessages = history.map((msg) => {
         const parts: MessagePart[] = [];
-
-        // Add text part if content exists
         if (msg.content) {
           parts.push({ type: "text", text: msg.content });
         }
-
-        // Map stored toolCalls to message parts
         if (msg.toolCalls && msg.toolCalls.length > 0) {
-          msg.toolCalls.forEach((tc) => {
+          msg.toolCalls.forEach((tc: any) => {
             parts.push({
               type: `tool-${tc.toolName}`,
-              // @ts-expect-error - specific mapping for visualization
               state: "result",
               result: tc.result,
               toolInvocation: {
@@ -204,42 +203,37 @@ export function ChatContainer() {
                 state: "result",
                 result: tc.result,
               },
-            });
+            } as any);
           });
         }
 
         return {
           id: msg._id,
-          role: msg.role as "user" | "assistant" | "system" | "data",
+          role: msg.role as any,
           content: msg.content,
           createdAt: new Date(msg.createdAt),
           parts: parts.length > 0 ? parts : undefined,
         };
-      }) as unknown as UIMessage[];
-      setMessages(initialMessages);
+      });
+      setMessages(initialMessages as any);
     }
   }, [history, setMessages, messages.length]);
 
   const isActuallyLoadingText =
     status === "submitted" || status === "streaming";
 
-  // Check if any tool is currently executing across all messages
   const activeToolName = messages.reduce((found: string | null, m: any) => {
     if (found) return found;
-
-    // Check standard AI SDK toolInvocations
-    const activeInvocation = (m as any).toolInvocations?.find(
+    const activeInvocation = m.toolInvocations?.find(
       (ti: any) => ti.state !== "result"
     );
     if (activeInvocation) return activeInvocation.toolName;
 
-    // Fallback to parts checking for history/manual mapping
     const ext = m as ExtendedMessage;
     const activePart = ext.parts?.find(
-      (p) =>
-        (p.type.startsWith("tool-") && !(p as any).result) ||
-        (p.type === "tool-invocation" &&
-          (p as any).toolInvocation?.state !== "result")
+      (p: any) =>
+        (p.type.startsWith("tool-") && !p.result) ||
+        (p.type === "tool-invocation" && p.toolInvocation?.state !== "result")
     );
     if (activePart) {
       if (activePart.type.startsWith("tool-"))
@@ -249,23 +243,25 @@ export function ChatContainer() {
     return null;
   }, null);
 
-  // If status is ready, we are not loading from the network anymore.
-  // We only consider it loading if the text is streaming OR a tool is actively running AND the stream is still open.
   const isLoading =
     isActuallyLoadingText || (!!activeToolName && status !== "ready");
 
   useEffect(() => {
     if (isLoading || status === "ready") {
       console.log(
-        `[Chat UI] Loading: ${isLoading}, Status: ${status}, Active Tool: ${activeToolName}`
+        `[Chat UI V3] Loading: ${isLoading}, Status: ${status}, Active Tool: ${activeToolName}`
       );
-      if (status === "ready" && activeToolName) {
-        console.warn(
-          `[Chat UI] Tool "${activeToolName}" stuck in non-result state while status is ready.`
-        );
-      }
     }
   }, [isLoading, status, activeToolName]);
+
+  const handleClearChat = useCallback(() => {
+    const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem(CHAT_STORAGE_KEY, newId);
+    setSessionId(newId);
+    setMessages([]);
+    setLocalInput("");
+    toast.success("Conversation reset");
+  }, [setMessages]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -285,7 +281,6 @@ export function ChatContainer() {
   // Check for tool invocations
   useEffect(() => {
     if (messages.length === 0) return;
-
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.id === lastProcessedMessageRef.current) return;
     lastProcessedMessageRef.current = lastMessage.id;
@@ -293,12 +288,8 @@ export function ChatContainer() {
     const extMessage = lastMessage as ExtendedMessage;
     const parts = extMessage.parts || [];
     for (const part of parts) {
-      // Handle AI SDK 5 format: tool-{toolName}
       if (part.type?.startsWith?.("tool-")) {
-        const toolPart = part as {
-          state?: string;
-          result?: ToolInvocationResult;
-        };
+        const toolPart = part as any;
         if (toolPart.state === "result" || toolPart.state === "completed") {
           const result = toolPart.result;
           if (result?.requiresApproval && !pendingApproval) {
@@ -314,14 +305,12 @@ export function ChatContainer() {
           }
         }
       }
-      // Handle legacy tool-invocation format
       if (
         part.type === "tool-invocation" &&
         part.toolInvocation?.state === "result"
       ) {
         const result = part.toolInvocation.result;
         if (result?.requiresApproval && !pendingApproval) {
-          // Defer state update to next tick to avoid lint warning
           const timeoutId = setTimeout(() => {
             setPendingApproval({
               auctionId: result.auctionId,
@@ -336,29 +325,25 @@ export function ChatContainer() {
     }
   }, [messages, pendingApproval]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !sessionId) return;
-     
-    sendMessage({ role: "user", content: input } as any);
-    setInput("");
+    if (!localInput.trim() || isLoading || !sessionId) return;
+
+    // Use append directly to send the message
+    append({ role: "user", content: localInput });
+    setLocalInput("");
   };
 
   const handleApprovalConfirm = useCallback(async () => {
     if (!pendingApproval) return;
-
     const { auctionId, amount } = pendingApproval;
     setPendingApproval(null);
-
     try {
-      // Use direct mutation for the confirmed bid - safer and bypasses AI loop
       await placeBidMutation({
         auctionId: auctionId as Id<"auctions">,
         amount,
       });
       toast.success("Bid placed successfully!");
-
-      // Add a system-like message to the chat to inform the user
       const newMessage = {
         id: `system_${Date.now()}`,
         role: "assistant" as const,
@@ -381,11 +366,7 @@ export function ChatContainer() {
     setMessages((prev: any) => [...prev, newMessage]);
   }, [setMessages]);
 
-  if (aiStatus === undefined || !sessionId) {
-    return null;
-  }
-
-  if (!aiStatus.isEnabled) {
+  if (aiStatus === undefined || !sessionId || !aiStatus.isEnabled) {
     return null;
   }
 
@@ -404,14 +385,25 @@ export function ChatContainer() {
                   <p className="text-xs text-muted-foreground">AI Helper</p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(false)}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClearChat}
+                  className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                  title="Clear conversation"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsOpen(false)}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -419,6 +411,14 @@ export function ChatContainer() {
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                   <p className="text-sm text-red-800 dark:text-red-200">
                     {error.message}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => reload()}
+                      className="ml-2 h-auto p-0"
+                    >
+                      Retry
+                    </Button>
                   </p>
                 </div>
               )}
@@ -434,18 +434,6 @@ export function ChatContainer() {
                   <p className="text-sm text-muted-foreground mb-4">
                     I can help you find equipment, check bids, and more.
                   </p>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>Try asking:</p>
-                    <p className="font-medium">
-                      &quot;Find John Deere tractors under £5000&quot;
-                    </p>
-                    <p className="font-medium">
-                      &quot;Show my current bids&quot;
-                    </p>
-                    <p className="font-medium">
-                      &quot;What&apos;s on my watchlist?&quot;
-                    </p>
-                  </div>
                 </div>
               )}
 
@@ -490,56 +478,44 @@ export function ChatContainer() {
                   >
                     <div className="text-sm whitespace-pre-wrap">
                       {(() => {
-                        const ext = message as UIMessage & {
-                          parts?: MessagePart[];
-                        };
-
-                        // Render live toolInvocations from AI SDK
-                        const toolInvocations = (
-                          message as any
-                        ).toolInvocations?.map((ti: any, i: number) => (
-                          <ToolStatus
-                            key={`ti-${i}`}
-                            toolName={ti.toolName}
-                            state={ti.state}
-                            result={(ti as any).result}
-                            chatStatus={status}
-                          />
-                        ));
-
-                        const parts = ext.parts?.map(
-                          (part: MessagePart, i: number) => {
+                        const toolInvocations = message.toolInvocations?.map(
+                          (ti: any, i: number) => (
+                            <ToolStatus
+                              key={`ti-${i}`}
+                              toolName={ti.toolName}
+                              state={ti.state}
+                              result={ti.result}
+                              chatStatus={status}
+                            />
+                          )
+                        );
+                        const parts = (message as any).parts?.map(
+                          (part: any, i: number) => {
                             if (part.type === "text")
                               return <span key={i}>{part.text}</span>;
-
-                            // Handle AI SDK tool format: tool-{toolName}
                             if (part.type?.startsWith?.("tool-")) {
                               const toolName = part.type.replace("tool-", "");
                               return (
                                 <ToolStatus
                                   key={i}
                                   toolName={toolName}
-                                  state={(part as any).state}
-                                  result={(part as any).result}
+                                  state={part.state}
+                                  result={part.result}
                                   chatStatus={status}
                                 />
                               );
                             }
-
-                            // Handle legacy/other tool-invocation format
                             if (part.type === "tool-invocation") {
                               return (
                                 <ToolStatus
                                   key={i}
                                   toolName={
-                                    (part as any).toolInvocation?.toolName ||
-                                    "tool"
+                                    part.toolInvocation?.toolName || "tool"
                                   }
                                   state={
-                                    (part as any).toolInvocation?.state ||
-                                    "loading"
+                                    part.toolInvocation?.state || "loading"
                                   }
-                                  result={(part as any).toolInvocation?.result}
+                                  result={part.toolInvocation?.result}
                                   chatStatus={status}
                                 />
                               );
@@ -547,14 +523,13 @@ export function ChatContainer() {
                             return null;
                           }
                         );
-
                         return (
                           <>
                             {toolInvocations}
                             {parts}
-                            {!ext.parts &&
-                              !(message as any).toolInvocations &&
-                              (message as any).content}
+                            {!parts &&
+                              !message.toolInvocations &&
+                              message.content}
                           </>
                         );
                       })()}
@@ -573,25 +548,25 @@ export function ChatContainer() {
             </div>
 
             <div className="p-4 border-t bg-muted/30">
-              <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+              <form onSubmit={handleFormSubmit} className="flex flex-col gap-2">
                 <textarea
                   id="chat-input"
                   name="chat-input"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  value={localInput}
+                  onChange={(e) => setLocalInput(e.target.value)}
                   placeholder="Ask me about equipment..."
                   className="min-h-[60px] max-h-[120px] resize-none rounded-lg border bg-background px-3 py-2 text-sm"
                   disabled={isLoading}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSubmit(e);
+                      handleFormSubmit(e);
                     }
                   }}
                 />
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {input.length}/2000
+                    {(localInput || "").length}/2000
                   </span>
                   <div className="flex gap-2">
                     {isLoading ? (
@@ -602,18 +577,16 @@ export function ChatContainer() {
                         onClick={() => stop()}
                         className="gap-2"
                       >
-                        <Square className="h-4 w-4" />
-                        Stop
+                        <Square className="h-4 w-4" /> Stop
                       </Button>
                     ) : (
                       <Button
                         type="submit"
                         size="sm"
-                        disabled={!input.trim()}
+                        disabled={!(localInput || "").trim()}
                         className="gap-2"
                       >
-                        <Send className="h-4 w-4" />
-                        Send
+                        <Send className="h-4 w-4" /> Send
                       </Button>
                     )}
                   </div>
