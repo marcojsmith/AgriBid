@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,14 @@ interface AIStatus {
 
 export function ChatContainer() {
   const [isOpen, setIsOpen] = useState(false);
-  const [sessionId, setSessionId] = useState("");
+  const [sessionId, setSessionId] = useState(() => {
+    const stored = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (stored) return stored;
+    const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem(CHAT_STORAGE_KEY, newId);
+    return newId;
+  });
+
   const [pendingApproval, setPendingApproval] = useState<{
     auctionId: string;
     amount: number;
@@ -35,41 +44,54 @@ export function ChatContainer() {
     | AIStatus
     | undefined;
 
-  // Initialize or validate session
-  const storedSessionId = localStorage.getItem(CHAT_STORAGE_KEY);
+  // Validate existing session if any
   const validatedSession = useQuery(
     api.ai.chat.validateSession,
-    storedSessionId ? { sessionId: storedSessionId } : "skip"
+    sessionId ? { sessionId } : "skip"
   );
 
+  // If session is invalid, reset it
   useEffect(() => {
-    if (validatedSession === undefined) return;
-
-    if (validatedSession.valid && validatedSession.sessionId) {
-      setSessionId(validatedSession.sessionId);
-    } else {
-      // Create new session if none exists or invalid/expired
+    if (
+      validatedSession !== undefined &&
+      !validatedSession.valid &&
+      validatedSession.reason !== "Session not found"
+    ) {
+      console.warn("Chat session invalid, clearing:", validatedSession.reason);
+      localStorage.removeItem(CHAT_STORAGE_KEY);
       const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       localStorage.setItem(CHAT_STORAGE_KEY, newId);
       setSessionId(newId);
     }
   }, [validatedSession]);
 
-  const {
-    messages,
-    status,
-    error,
-    stop,
-    setMessages,
-    sendMessage,
-  } = useChat({
+  const { messages, status, error, stop, setMessages, sendMessage } = useChat({
     transport: new DefaultChatTransport({
-      api: `${import.meta.env.VITE_CONVEX_SITE_URL}/api/ai/chat`,
+      api: `${import.meta.env.VITE_CONVEX_SITE_URL}/api/ai/chat/`,
       body: { sessionId },
       credentials: "include",
     }),
-    resume: true, // Allow resuming session if valid
+    resume: false, // Disabling resume to avoid GET /api/ai/chat/:id/stream 404s
   });
+
+  const history = useQuery(
+    api.ai.chat.getRecentMessages,
+    sessionId ? { sessionId, limit: 20 } : "skip"
+  );
+
+  useEffect(() => {
+    if (history && history.length > 0 && messages.length === 0) {
+      setMessages(
+        history.map((msg) => ({
+          id: msg._id,
+          role: msg.role as any,
+          content: msg.content,
+          createdAt: new Date(msg.createdAt),
+          parts: [{ type: "text", text: msg.content }],
+        })) as any
+      );
+    }
+  }, [history, setMessages, messages.length]);
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -95,7 +117,7 @@ export function ChatContainer() {
       const parts = (lastMessage as any).parts || [];
       for (const part of parts) {
         // AI SDK 6 tool parts
-        if (part.type?.startsWith('tool-') && part.state === 'result') {
+        if (part.type?.startsWith("tool-") && part.state === "result") {
           const result = part.result;
           if (result?.requiresApproval && !pendingApproval) {
             setPendingApproval({
@@ -117,7 +139,7 @@ export function ChatContainer() {
     setInput("");
   };
 
-  const handleApprovalConfirm = async () => {
+  const handleApprovalConfirm = useCallback(async () => {
     if (!pendingApproval) return;
 
     const { auctionId, amount } = pendingApproval;
@@ -137,25 +159,32 @@ export function ChatContainer() {
         {
           id: `system_${Date.now()}`,
           role: "assistant",
-          parts: [{ type: "text", text: `I've successfully placed your bid of £${amount.toLocaleString()} on the auction.` }]
-        } as any,
-      ]);
+          content: "",
+          parts: [
+            {
+              type: "text",
+              text: `I've successfully placed your bid of £${amount.toLocaleString()} on the auction.`,
+            },
+          ],
+        },
+      ] as any);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to place bid");
     }
-  };
+  }, [pendingApproval, placeBidMutation, setMessages, messages]);
 
-  const handleApprovalCancel = () => {
+  const handleApprovalCancel = useCallback(() => {
     setPendingApproval(null);
     setMessages([
       ...messages,
       {
         id: `system_${Date.now()}`,
         role: "assistant",
-        parts: [{ type: "text", text: "Bid placement cancelled." }]
-      } as any,
-    ]);
-  };
+        content: "",
+        parts: [{ type: "text", text: "Bid placement cancelled." }],
+      },
+    ] as any);
+  }, [messages, setMessages]);
 
   if (aiStatus === undefined || !sessionId) {
     return null;
@@ -266,11 +295,21 @@ export function ChatContainer() {
                   >
                     <div className="text-sm whitespace-pre-wrap">
                       {(message as any).parts?.map((part: any, i: number) => {
-                        if (part.type === 'text') return <span key={i}>{part.text}</span>;
-                        if (part.type?.startsWith('tool-') && part.state !== 'result') return <span key={i} className="italic opacity-80 block">[Thinking...]</span>;
+                        if (part.type === "text")
+                          return <span key={i}>{part.text}</span>;
+                        if (
+                          part.type?.startsWith("tool-") &&
+                          part.state !== "result"
+                        )
+                          return (
+                            <span key={i} className="italic opacity-80 block">
+                              [Thinking...]
+                            </span>
+                          );
                         return null;
                       })}
-                      {!(message as any).parts && ((message as any).content || "")}
+                      {!(message as any).parts &&
+                        ((message as any).content || "")}
                     </div>
                   </div>
                 </div>
@@ -337,6 +376,7 @@ export function ChatContainer() {
             onClick={() => setIsOpen(true)}
             className="h-14 w-14 rounded-full shadow-lg"
             size="icon"
+            aria-label="Open AgriBid Assistant"
           >
             <MessageCircle className="h-6 w-6" />
           </Button>
@@ -349,7 +389,7 @@ export function ChatContainer() {
           onClose={handleApprovalCancel}
           onConfirm={handleApprovalConfirm}
           onCancel={handleApprovalCancel}
-          auctionId={pendingApproval.auctionId}
+          auctionId={pendingApproval.auctionId as any}
           proposedBidAmount={pendingApproval.amount}
           auctionTitle={pendingApproval.title}
         />

@@ -125,7 +125,8 @@ export const validateSession = query({
       .first();
 
     const now = Date.now();
-    const isExpired = lastMessage && now - lastMessage.createdAt > SESSION_EXPIRY_MS;
+    const isExpired =
+      lastMessage && now - lastMessage.createdAt > SESSION_EXPIRY_MS;
 
     if (isExpired) {
       return { valid: false, reason: "Session expired" };
@@ -174,6 +175,7 @@ export const addMessage = mutation({
 export const addMessageInternal = internalMutation({
   args: {
     sessionId: v.string(),
+    userId: v.string(),
     role: roleValidator,
     content: v.string(),
     auctionId: v.optional(v.id("auctions")),
@@ -183,16 +185,10 @@ export const addMessageInternal = internalMutation({
   },
   returns: v.id("chat_history"),
   handler: async (ctx, args) => {
-    // Internal mutations are called from server-side (e.g., HTTP handler)
-    // which has already validated the user via BetterAuth.
-    // We derive userId from auth context if available, otherwise use a system user.
-    const authUser = await getAuthUser(ctx);
-    const userId = authUser ? (authUser.userId ?? authUser._id) : "system";
-
     const now = Date.now();
 
     const messageId = await ctx.db.insert("chat_history", {
-      userId,
+      userId: args.userId,
       sessionId: args.sessionId,
       role: args.role,
       content: args.content,

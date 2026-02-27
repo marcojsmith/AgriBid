@@ -14,14 +14,18 @@ import { createToolExecutor } from "./ai/executor";
 
 // Typed references to break deep type instantiation chain
 // Using unknown as intermediate to avoid type mismatches
-const recordMessageRef = makeFunctionReference("ai/rate_limiting:recordMessage") as unknown as FunctionReference<
+const recordMessageRef = makeFunctionReference(
+  "ai/rate_limiting:recordMessage"
+) as unknown as FunctionReference<
   "mutation",
   "public",
   { userId: string },
   unknown
 >;
 
-const updateUsageStatsRef = makeFunctionReference("ai/config:updateUsageStats") as unknown as FunctionReference<
+const updateUsageStatsRef = makeFunctionReference(
+  "ai/config:updateUsageStats"
+) as unknown as FunctionReference<
   "mutation",
   "public",
   { inputTokens: number; outputTokens: number; isError: boolean },
@@ -206,7 +210,12 @@ const aiChatHandler = httpAction(async (ctx, request) => {
     const userId = session.user.id;
 
     // 2. Parse request body
-    let body: { sessionId: string; message?: string; messages?: any[]; auctionId?: string };
+    let body: {
+      sessionId: string;
+      message?: string;
+      messages?: Array<{ role: string; content: string }>;
+      auctionId?: string;
+    };
     try {
       body = await request.json();
     } catch {
@@ -320,6 +329,7 @@ const aiChatHandler = httpAction(async (ctx, request) => {
     // 6. Save user message to database
     await ctx.runMutation(internal.ai.chat.addMessageInternal, {
       sessionId,
+      userId,
       role: "user",
       content: sanitizedMessage,
       auctionId: validatedAuctionId,
@@ -349,12 +359,14 @@ const aiChatHandler = httpAction(async (ctx, request) => {
           // Save assistant message
           await ctx.runMutation(internal.ai.chat.addMessageInternal, {
             sessionId,
+            userId,
             role: "assistant",
             content: event.text || "",
             auctionId: validatedAuctionId,
             tokenCount: usage?.totalTokens ?? 0,
             // Store tool calls in metadata if present
-            toolCalls: event.toolCalls?.map((tc: any) => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            toolCalls: (event.toolCalls as any[])?.map((tc: any) => ({
               toolName: tc.toolName,
               args: tc.args,
             })),
@@ -388,13 +400,13 @@ const aiChatHandler = httpAction(async (ctx, request) => {
 });
 
 http.route({
-  pathPrefix: "/api/ai/chat",
+  pathPrefix: "/api/ai/chat/",
   method: "POST",
   handler: aiChatHandler,
 });
 
 http.route({
-  pathPrefix: "/api/ai/chat",
+  pathPrefix: "/api/ai/chat/",
   method: "OPTIONS",
   handler: httpAction(async (_ctx, request) => {
     return new Response(null, {

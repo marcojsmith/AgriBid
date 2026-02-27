@@ -30,7 +30,9 @@ export function requireEnv(key: string): string {
  * Configure ALLOWED_ORIGINS in the .env.local file (e.g., "http://localhost:5173,.vercel.app")
  * and preview domains (e.g., .vercel.app) to allow all subdomains of vercel.app.
  */
-export const ALLOWED_ORIGINS = (getEnv("ALLOWED_ORIGINS") ?? "")
+export const ALLOWED_ORIGINS = (
+  getEnv("ALLOWED_ORIGINS") || "http://localhost:5173"
+)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
