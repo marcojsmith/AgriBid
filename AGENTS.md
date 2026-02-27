@@ -40,6 +40,14 @@ This project is focused on developing a digital prototype for an auction platfor
 - Communicate clearly and effectively with the team, providing constructive feedback and collaborating to achieve the best possible outcome for the project.
 - Stay up-to-date with the latest trends and best practices in software development, and continuously seek opportunities to learn and grow as a developer.
 
+## Expert Developer Assistance
+
+- You have access to an expert developer who can provide guidance and assistance on complex issues or challenges that may arise during development. 
+- This expert developer can help you navigate difficult problems, provide insights and suggestions, and offer support as needed to ensure the success of the project.
+- When dealing with a complex task or issue, do not hesitate to reach out to the expert developer for assistance.
+- To access the expert developer, simply ask for help and provide details about the issue or challenge you are facing. The expert developer will then provide guidance and support to help you overcome the issue and continue making progress on the project.
+- Provide clear and concise information about the issue or challenge you are facing when reaching out to the expert developer, including any relevant code snippets, error messages, or context that may help them understand the problem and provide effective assistance.
+
 ## Folder Structure
 
 - `app/`: Main application directory.
@@ -93,12 +101,6 @@ This project is focused on developing a digital prototype for an auction platfor
 - We are developing a new digital prototype, so there is no legacy code or data to consider. All code and data should be treated as new and can be modified freely.
 - Changing code could cause data issues, so be mindful of any data-related changes that need to be made as part of code changes and ensure that they are properly tested.
 
-**Commits and Branches:**
-
-- Follow the commit message format specified in `Checklist.md` for all commits. Ensure the commit message is clear, concise, and accurately describes the changes made in the commit.
-- Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
-- When committing changes, group the changes by functionality or related changes, and avoid making large commits that include unrelated changes. This will make it easier to review and understand the changes being made.
-
 **Pull Requests:**
 
 - Open a pull request for each completed feature or bug fix.
@@ -121,6 +123,9 @@ This project is focused on developing a digital prototype for an auction platfor
 - Group related changes together in a single commit to maintain cohesion and clarity in the commit history. Avoid making large commits that include unrelated changes, as this can make it difficult to review and understand the changes being made.
 - Before committing, ensure that all tests are passing and that there are no linting errors in the codebase. This will help maintain code quality and ensure that the changes being committed meet the project's standards.
 - After committing, push the changes to the appropriate branch to allow for code review and integration into the main codebase.
+- Follow the commit message format specified in `Checklist.md` for all commits. Ensure the commit message is clear, concise, and accurately describes the changes made in the commit.
+- Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
+- When committing changes, group the changes by functionality or related changes, and avoid making large commits that include unrelated changes. This will make it easier to review and understand the changes being made.
 
 ## Semantic Versioning
 
