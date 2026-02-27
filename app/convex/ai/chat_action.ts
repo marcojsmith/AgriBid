@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 // app/convex/ai/chat_action.ts
-// TypeScript type inference issues with AI SDK - no runtime impact
 
 import { action } from "../_generated/server";
 import type { FunctionReference } from "convex/server";
@@ -10,7 +7,13 @@ import { api } from "../_generated/api";
 import { getModel } from "./provider";
 import { createTools } from "./tools";
 import { createToolExecutor } from "./executor";
-import { streamText, createUIMessageStreamResponse } from "ai";
+import {
+  streamText,
+  createUIMessageStreamResponse,
+  type LanguageModel,
+} from "ai";
+import type { ActionCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 
 // Return types matching Convex function definitions
 type RateLimitStatus = {
@@ -35,12 +38,19 @@ type AIConfigResult = {
 };
 
 // Typed references to break deep type instantiation chain
-const checkRateLimitRef = api.ai.rate_limiting.checkRateLimit as FunctionReference<
-  "query", "public", {}, RateLimitStatus
+const checkRateLimitRef = api.ai.rate_limiting
+  .checkRateLimit as FunctionReference<
+  "query",
+  "public",
+  Record<string, never>,
+  RateLimitStatus
 >;
 
 const getAIConfigRef = api.ai.config.getAIConfig as FunctionReference<
-  "query", "public", {}, AIConfigResult
+  "query",
+  "public",
+  Record<string, never>,
+  AIConfigResult
 >;
 
 const MAX_INPUT_LENGTH = 2000;
@@ -88,12 +98,6 @@ For bidding:
 - Explain the current price and any minimum bid requirements
 - Warn about auction end times for time-sensitive decisions`;
 
-interface ProcessMessageArgs {
-  sessionId: string;
-  message: string;
-  auctionId?: string;
-}
-
 type MessageRole = "user" | "assistant";
 
 interface ChatMessage {
@@ -111,7 +115,10 @@ export const processMessage = action({
     message: v.string(),
     auctionId: v.optional(v.id("auctions")),
   },
-  handler: async (ctx, args: ProcessMessageArgs): Promise<Response> => {
+  handler: async (
+    ctx: ActionCtx,
+    args: { sessionId: string; message: string; auctionId?: Id<"auctions"> }
+  ): Promise<Response> => {
     const rateLimitCheck = await ctx.runQuery(checkRateLimitRef, {});
     if (!rateLimitCheck.allowed) {
       throw new ConvexError("Rate limit exceeded");
@@ -128,7 +135,7 @@ export const processMessage = action({
     }
 
     const modelId = aiConfig?.modelId ?? "arcee-ai/trinity-mini:free";
-    const model = await getModel(modelId);
+    const model: LanguageModel = await getModel(modelId);
 
     const executor = createToolExecutor(ctx);
     const tools = createTools(executor);

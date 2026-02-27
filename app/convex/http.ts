@@ -7,7 +7,7 @@ import { isOriginAllowed } from "./config";
 import { internal } from "./_generated/api";
 import type { FunctionReference } from "convex/server";
 import type { Id } from "./_generated/dataModel";
-import { streamText, createUIMessageStreamResponse } from "ai";
+import { streamText, createUIMessageStreamResponse, stepCountIs } from "ai";
 import { getModel } from "./ai/provider";
 import { createTools } from "./ai/tools";
 import { createToolExecutor } from "./ai/executor";
@@ -345,6 +345,7 @@ const aiChatHandler = httpAction(async (ctx, request) => {
       system: aiConfig.systemPrompt,
       messages,
       tools,
+      stopWhen: stepCountIs(5),
       maxRetries: 2,
       onFinish: async (event) => {
         const usage = event.usage as
@@ -365,10 +366,10 @@ const aiChatHandler = httpAction(async (ctx, request) => {
             auctionId: validatedAuctionId,
             tokenCount: usage?.totalTokens ?? 0,
             // Store tool calls in metadata if present
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            toolCalls: (event.toolCalls as any[])?.map((tc: any) => ({
+            toolCalls: event.toolCalls?.map((tc) => ({
               toolName: tc.toolName,
-              args: tc.args,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              args: (tc as any).input ?? (tc as any).args ?? {},
             })),
           });
 

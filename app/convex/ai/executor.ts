@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 // app/convex/ai/executor.ts
-// TypeScript type inference issues - no runtime impact
 
 import { ConvexError } from "convex/values";
 import type { ActionCtx } from "../_generated/server";
@@ -15,33 +12,37 @@ import type {
   DraftBidInput,
 } from "./tools";
 
-const auctionsApi: any = (api as any).auctions.queries;
-const watchlistApi: any = (api as any).watchlist;
+// @ts-expect-error - Convex API deep type instantiation issues
+const auctionsApi = api.auctions.queries;
+const watchlistApi = api.watchlist;
 
 /**
  * Sanitizes tool results to normalize text and remove dangerous content.
  */
-function sanitizeToolResult(result: any): any {
+function sanitizeToolResult<T>(result: T): T {
   if (result === null || result === undefined) return result;
 
   if (typeof result === "string") {
-    return result
-      .replace(/[#*`_~]/g, "") // Strip basic markdown
-      .replace(/[\x00-\x1F\x7F-\x9F]/g, "") // Strip control characters
-      .replace(/(javascript|data):/gi, "[REMOVED]:") // Block dangerous URLs
-      .trim();
+    return (
+      result
+        .replace(/[#*`_~]/g, "") // Strip basic markdown
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Strip control characters
+        .replace(/(javascript|data):/gi, "[REMOVED]:") // Block dangerous URLs
+        .trim() as unknown as T
+    );
   }
 
   if (Array.isArray(result)) {
-    return result.map(sanitizeToolResult);
+    return result.map(sanitizeToolResult) as unknown as T;
   }
 
   if (typeof result === "object") {
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(result)) {
       sanitized[key] = sanitizeToolResult(value);
     }
-    return sanitized;
+    return sanitized as unknown as T;
   }
 
   return result;
@@ -80,7 +81,9 @@ export function createToolExecutor(ctx: ActionCtx) {
     /**
      * Get detailed information about a specific auction.
      */
-    getAuctionDetails: async (input: GetAuctionDetailsInput) => {
+    getAuctionDetails: async (
+      input: GetAuctionDetailsInput
+    ): Promise<unknown> => {
       const details = await ctx.runQuery(auctionsApi.getAuctionById, {
         auctionId: input.auctionId as Id<"auctions">,
       });
@@ -95,7 +98,9 @@ export function createToolExecutor(ctx: ActionCtx) {
     /**
      * Retrieve the current user's active bids.
      */
-    getUserBids: async (input: GetUserBidsInput) => {
+    getUserBids: async (
+      input: GetUserBidsInput
+    ): Promise<{ bids: unknown[]; count: number }> => {
       const result = await ctx.runQuery(auctionsApi.getMyBids, {
         paginationOpts: { numItems: input.limit, cursor: null },
       });
@@ -109,7 +114,9 @@ export function createToolExecutor(ctx: ActionCtx) {
     /**
      * Get the user's watchlist.
      */
-    getWatchlist: async (input: GetWatchlistInput) => {
+    getWatchlist: async (
+      input: GetWatchlistInput
+    ): Promise<{ auctions: unknown[]; count: number }> => {
       const result = await ctx.runQuery(watchlistApi.getWatchedAuctions, {
         paginationOpts: { numItems: input.limit, cursor: null },
       });
