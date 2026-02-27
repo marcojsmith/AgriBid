@@ -341,11 +341,13 @@ const aiChatHandler = httpAction(async (ctx, request) => {
     const executor = createToolExecutor(ctx);
     const tools = createTools(executor);
 
-    console.log(`[HTTP AI Chat] Session: ${sessionId}, User: ${userId}`);
-    console.log(
-      `[HTTP AI Chat] System Prompt Length: ${aiConfig.systemPrompt.length}`
-    );
-    console.log(`[HTTP AI Chat] Messages Count: ${messages.length}`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[HTTP AI Chat] Session: ${sessionId}, User: ${userId}`);
+      console.log(
+        `[HTTP AI Chat] System Prompt Length: ${aiConfig.systemPrompt.length}`
+      );
+      console.log(`[HTTP AI Chat] Messages Count: ${messages.length}`);
+    }
 
     const result = streamText({
       model,
@@ -367,7 +369,6 @@ const aiChatHandler = httpAction(async (ctx, request) => {
           `[HTTP AI Chat] Finished. Tokens: ${usage?.totalTokens}. Text: ${event.text?.substring(0, 50)}...`
         );
         if (event.toolCalls && event.toolCalls.length > 0) {
-           
           console.log(
             `[HTTP AI Chat] Tool Calls: ${event.toolCalls.map((tc: any) => tc.toolName).join(", ")}`
           );
@@ -383,7 +384,7 @@ const aiChatHandler = httpAction(async (ctx, request) => {
             auctionId: validatedAuctionId,
             tokenCount: usage?.totalTokens ?? 0,
             // Store tool calls in metadata if present
-             
+
             toolCalls: event.toolCalls?.map((tc: any) => ({
               toolName: tc.toolName,
               args: tc.input ?? tc.args ?? {},

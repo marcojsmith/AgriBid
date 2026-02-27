@@ -156,14 +156,13 @@ export const processMessage = action({
       systemPrompt += `\n\nCURRENT CONTEXT: The user is currently viewing the auction with ID: "${args.auctionId}". If they refer to "this" item, "this auction", or ask for details about what they are looking at, use this ID.`;
     }
 
-    console.log(`[AI Chat] Session: ${args.sessionId}`);
-    console.log(`[AI Chat] Model: ${modelId}`);
-    console.log(`[AI Chat] System Prompt Length: ${systemPrompt.length}`);
-    console.log(`[AI Chat] Messages Count: ${messages.length}`);
-    console.log(
-      "[AI Chat] Full Prompt Context:",
-      JSON.stringify({ systemPrompt, messages }, null, 2)
-    );
+    // Debug logging for non-production environments
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[AI Chat] Session: ${args.sessionId}`);
+      console.log(`[AI Chat] Model: ${modelId}`);
+      console.log(`[AI Chat] System Prompt Length: ${systemPrompt.length}`);
+      console.log(`[AI Chat] Messages Count: ${messages.length}`);
+    }
 
     const result = streamText({
       model,
@@ -172,6 +171,17 @@ export const processMessage = action({
       tools,
       stopWhen: stepCountIs(5),
       maxRetries: 2,
+      onFinish: async (event) => {
+        const usage = event.usage;
+        console.log(
+          `[AI Chat] Finished. Tokens: ${usage?.totalTokens}. Text length: ${event.text?.length}`
+        );
+        if (event.toolCalls && event.toolCalls.length > 0) {
+          console.log(
+            `[AI Chat] Tool Calls: ${event.toolCalls.map((tc) => tc.toolName).join(", ")}`
+          );
+        }
+      },
     });
 
     const stream = await result.toUIMessageStream();

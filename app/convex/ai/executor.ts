@@ -1,8 +1,10 @@
 // app/convex/ai/executor.ts
 
 import { ConvexError } from "convex/values";
+import { makeFunctionReference } from "convex/server";
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import type { FunctionReference } from "convex/server";
 import type {
   SearchAuctionsInput,
   GetAuctionDetailsInput,
@@ -11,14 +13,46 @@ import type {
   DraftBidInput,
 } from "./tools";
 
-// Import query functions directly to avoid deep type instantiation
-import {
-  getActiveAuctions,
-  getAuctionById,
-  getMyBids,
-} from "../auctions/queries";
-import { getWatchedAuctions } from "../watchlist";
+// Import types for casting to bypass deep type instantiation
 import type { AuctionSummary, AuctionDetail } from "../auctions/helpers";
+
+/**
+ * Manually defined function references to bypass deep type instantiation in the 'api' object.
+ * This satisfies Convex's requirement to call functions via reference rather than direct object.
+ */
+const getActiveAuctionsRef = makeFunctionReference(
+  "auctions/queries:getActiveAuctions"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+) as unknown as FunctionReference<"query", "public", any, AuctionSummary[]>;
+
+const getAuctionByIdRef = makeFunctionReference(
+  "auctions/queries:getAuctionById"
+) as unknown as FunctionReference<
+  "query",
+  "public",
+  { auctionId: Id<"auctions"> },
+  AuctionDetail | null
+>;
+
+const getMyBidsRef = makeFunctionReference(
+  "auctions/queries:getMyBids"
+) as unknown as FunctionReference<
+  "query",
+  "public",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  { page: AuctionSummary[]; isDone: boolean; continueCursor: string }
+>;
+
+const getWatchedAuctionsRef = makeFunctionReference(
+  "watchlist:getWatchedAuctions"
+) as unknown as FunctionReference<
+  "query",
+  "public",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any,
+  { page: AuctionSummary[]; isDone: boolean; continueCursor: string }
+>;
 
 /**
  * Sanitizes tool results to normalize text and remove dangerous content.
@@ -65,10 +99,9 @@ export function createToolExecutor(ctx: ActionCtx) {
     searchAuctions: async (
       input: SearchAuctionsInput
     ): Promise<{ auctions: AuctionSummary[]; total: number }> => {
-      console.log("[AI Executor] searchAuctions called with:", input);
+      console.log(`[AI Tool: searchAuctions] Input: ${JSON.stringify(input)}`);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const auctions = await ctx.runQuery(getActiveAuctions as any, {
+        const auctions = await ctx.runQuery(getActiveAuctionsRef, {
           search: input.search,
           make: input.make,
           minYear: input.minYear,
@@ -80,8 +113,7 @@ export function createToolExecutor(ctx: ActionCtx) {
         });
 
         console.log(
-          "[AI Executor] searchAuctions result count:",
-          auctions.length
+          `[AI Tool: searchAuctions] Success. Found ${auctions.length} auctions.`
         );
 
         return sanitizeToolResult({
@@ -89,7 +121,7 @@ export function createToolExecutor(ctx: ActionCtx) {
           total: auctions.length,
         });
       } catch (error) {
-        console.error("[AI Executor] searchAuctions error:", error);
+        console.error(`[AI Tool: searchAuctions] Error:`, error);
         if (error instanceof ConvexError) {
           throw error;
         }
@@ -105,7 +137,9 @@ export function createToolExecutor(ctx: ActionCtx) {
     getAuctionDetails: async (
       input: GetAuctionDetailsInput
     ): Promise<AuctionDetail> => {
-      console.log("[AI Executor] getAuctionDetails called with:", input);
+      console.log(
+        `[AI Tool: getAuctionDetails] Input: ${JSON.stringify(input)}`
+      );
       try {
         if (!input.auctionId || typeof input.auctionId !== "string") {
           throw new ConvexError(
@@ -113,22 +147,26 @@ export function createToolExecutor(ctx: ActionCtx) {
           );
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const details = await ctx.runQuery(getAuctionById as any, {
+        const details = await ctx.runQuery(getAuctionByIdRef, {
           auctionId: input.auctionId as Id<"auctions">,
         });
 
-        console.log("[AI Executor] getAuctionDetails result:", details);
-
         if (!details) {
+          console.warn(
+            `[AI Tool: getAuctionDetails] Auction ${input.auctionId} not found.`
+          );
           throw new ConvexError(
             `Auction with ID '${input.auctionId}' was not found. The auction may have ended or been removed.`
           );
         }
 
+        console.log(
+          `[AI Tool: getAuctionDetails] Success. Title: "${details.title}"`
+        );
+
         return sanitizeToolResult(details);
       } catch (error) {
-        console.error("[AI Executor] getAuctionDetails error:", error);
+        console.error(`[AI Tool: getAuctionDetails] Error:`, error);
         if (error instanceof ConvexError) {
           throw error;
         }
@@ -144,15 +182,25 @@ export function createToolExecutor(ctx: ActionCtx) {
     getUserBids: async (
       input: GetUserBidsInput
     ): Promise<{ bids: AuctionSummary[]; count: number }> => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await ctx.runQuery(getMyBids as any, {
-        paginationOpts: { numItems: input.limit, cursor: null },
-      });
+      console.log(`[AI Tool: getUserBids] Input: ${JSON.stringify(input)}`);
+      try {
+        const limit = input.limit ?? 10;
+        const result = await ctx.runQuery(getMyBidsRef, {
+          paginationOpts: { numItems: limit, cursor: null },
+        });
 
-      return sanitizeToolResult({
-        bids: result.page,
-        count: result.page.length,
-      });
+        console.log(
+          `[AI Tool: getUserBids] Success. Found ${result.page.length} bids.`
+        );
+
+        return sanitizeToolResult({
+          bids: result.page,
+          count: result.page.length,
+        });
+      } catch (error) {
+        console.error(`[AI Tool: getUserBids] Error:`, error);
+        throw error;
+      }
     },
 
     /**
@@ -161,43 +209,66 @@ export function createToolExecutor(ctx: ActionCtx) {
     getWatchlist: async (
       input: GetWatchlistInput
     ): Promise<{ auctions: AuctionSummary[]; count: number }> => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await ctx.runQuery(getWatchedAuctions as any, {
-        paginationOpts: { numItems: input.limit, cursor: null },
-      });
+      console.log(`[AI Tool: getWatchlist] Input: ${JSON.stringify(input)}`);
+      try {
+        const limit = input.limit ?? 10;
+        const result = await ctx.runQuery(getWatchedAuctionsRef, {
+          paginationOpts: { numItems: limit, cursor: null },
+        });
 
-      return sanitizeToolResult({
-        auctions: result.page,
-        count: result.page.length,
-      });
+        console.log(
+          `[AI Tool: getWatchlist] Success. Found ${result.page.length} items.`
+        );
+
+        return sanitizeToolResult({
+          auctions: result.page,
+          count: result.page.length,
+        });
+      } catch (error) {
+        console.error(`[AI Tool: getWatchlist] Error:`, error);
+        throw error;
+      }
     },
 
     /**
      * Draft a bid for user review.
      */
     draftBid: async (input: DraftBidInput) => {
+      console.log(`[AI Tool: draftBid] Input: ${JSON.stringify(input)}`);
       const auctionId = input.auctionId as Id<"auctions">;
 
       // Always validate auction state and minimum bid requirements
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const auction = await ctx.runQuery(getAuctionById as any, {
+      const auction = await ctx.runQuery(getAuctionByIdRef, {
         auctionId,
       });
 
       if (!auction) {
+        console.warn(
+          `[AI Tool: draftBid] Auction ${input.auctionId} not found.`
+        );
         throw new ConvexError("Auction not found");
       }
 
       if (auction.status !== "active") {
+        console.warn(
+          `[AI Tool: draftBid] Auction ${auction.title} is ${auction.status}, not active.`
+        );
         throw new ConvexError("Auction is not active");
       }
 
       const minRequired = auction.currentPrice + (auction.minIncrement || 0);
       if (input.amount < minRequired) {
+        console.warn(
+          `[AI Tool: draftBid] Bid £${input.amount} below minimum £${minRequired}`
+        );
         throw new ConvexError(
           `Bid must be at least £${minRequired}. Current price is £${auction.currentPrice}.`
         );
       }
+
+      console.log(
+        `[AI Tool: draftBid] Success. Prepared bid of £${input.amount} for "${auction.title}"`
+      );
 
       return sanitizeToolResult({
         requiresApproval: true,

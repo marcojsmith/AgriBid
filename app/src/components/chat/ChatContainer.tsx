@@ -164,6 +164,28 @@ export function ChatContainer() {
     const extMessage = lastMessage as ExtendedMessage;
     const parts = extMessage.parts || [];
     for (const part of parts) {
+      // Handle AI SDK 5 format: tool-{toolName}
+      if (part.type?.startsWith?.("tool-")) {
+        const toolPart = part as {
+          state?: string;
+          result?: ToolInvocationResult;
+        };
+        if (toolPart.state === "result" || toolPart.state === "completed") {
+          const result = toolPart.result;
+          if (result?.requiresApproval && !pendingApproval) {
+            const timeoutId = setTimeout(() => {
+              setPendingApproval({
+                auctionId: result.auctionId,
+                amount: result.proposedBid,
+                title: result.auctionTitle,
+                currentPrice: result.currentPrice,
+              });
+            }, 0);
+            return () => clearTimeout(timeoutId);
+          }
+        }
+      }
+      // Handle legacy tool-invocation format
       if (
         part.type === "tool-invocation" &&
         part.toolInvocation?.state === "result"
@@ -349,6 +371,28 @@ export function ChatContainer() {
                             (part: MessagePart, i: number) => {
                               if (part.type === "text")
                                 return <span key={i}>{part.text}</span>;
+
+                              // Handle AI SDK 5 format: tool-{toolName}
+                              // Only show if not yet completed (no result)
+                              if (part.type?.startsWith?.("tool-")) {
+                                const hasResult =
+                                  (part as { result?: unknown }).result !==
+                                  undefined;
+                                if (hasResult) return null; // Don't show completed tools
+
+                                const toolName = part.type.replace("tool-", "");
+                                return (
+                                  <span
+                                    key={i}
+                                    className="italic opacity-80 block text-xs"
+                                  >
+                                    <Loader2 className="inline h-3 w-3 mr-1 animate-spin" />
+                                    Using {toolName}...
+                                  </span>
+                                );
+                              }
+
+                              // Handle legacy tool-invocation format
                               if (
                                 part.type === "tool-invocation" &&
                                 part.toolInvocation?.state !== "result"
@@ -364,7 +408,7 @@ export function ChatContainer() {
                                     className="italic opacity-80 block text-xs"
                                   >
                                     <Loader2 className="inline h-3 w-3 mr-1 animate-spin" />
-                                    [{toolDisplayName}...]
+                                    Using {toolDisplayName}...
                                   </span>
                                 );
                               }
@@ -384,7 +428,7 @@ export function ChatContainer() {
               {isLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Thinking...</span>
+                  <span>Using tools...</span>
                 </div>
               )}
               <div ref={messagesEndRef} />

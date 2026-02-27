@@ -93,11 +93,14 @@ export const processChatMessage = internalAction({
           content: msg.content,
         }));
 
-    console.log(`[AI Internal Chat] Session: ${args.sessionId}`);
-    console.log(
-      `[AI Internal Chat] System Prompt: ${aiConfig.systemPrompt.substring(0, 100)}...`
-    );
-    console.log(`[AI Internal Chat] Messages: ${messages.length}`);
+    // Debug logging for non-production environments
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[AI Internal Chat] Session: ${args.sessionId}`);
+      console.log(`[AI Internal Chat] Messages: ${messages.length}`);
+      console.log(
+        `[AI Internal Chat] System Prompt Length: ${aiConfig.systemPrompt.length}`
+      );
+    }
 
     // Return streaming response directly using onFinish for persistence
     const result = streamText({

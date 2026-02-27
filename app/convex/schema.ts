@@ -256,30 +256,11 @@ export default defineSchema({
       v.array(
         v.object({
           toolName: v.string(),
-          args: v.optional(
-            v.record(
-              v.string(),
-              v.union(
-                v.string(),
-                v.number(),
-                v.boolean(),
-                v.null(),
-                v.array(v.any())
-              )
-            )
-          ),
-          result: v.optional(
-            v.union(
-              v.string(),
-              v.number(),
-              v.boolean(),
-              v.null(),
-              v.record(v.string(), v.any())
-            )
-          ),
+          args: v.optional(v.any()),
+          result: v.optional(v.any()),
         })
       )
-    ), // Tool call information
+    ),
     createdAt: v.number(), // Message timestamp
   })
     .index("by_user_session", ["userId", "sessionId"])

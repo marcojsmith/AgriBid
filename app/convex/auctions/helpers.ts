@@ -20,6 +20,8 @@ export const ConditionChecklistValidator = v.object({
   notes: v.optional(v.string()),
 });
 
+export type ConditionChecklist = Infer<typeof ConditionChecklistValidator>;
+
 /**
  * Normalises image references and resolves them to accessible URLs.
  *

@@ -347,6 +347,15 @@ export const getRecentMessages = query({
       role: roleValidator,
       content: v.string(),
       createdAt: v.number(),
+      toolCalls: v.optional(
+        v.array(
+          v.object({
+            toolName: v.string(),
+            args: v.optional(v.any()),
+            result: v.optional(v.any()),
+          })
+        )
+      ),
     })
   ),
   handler: async (ctx, args) => {
@@ -371,6 +380,7 @@ export const getRecentMessages = query({
       role: msg.role,
       content: msg.content,
       createdAt: msg.createdAt,
+      toolCalls: msg.toolCalls,
     }));
   },
 });
