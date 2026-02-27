@@ -8,7 +8,7 @@ import { isOriginAllowed } from "./config";
 import { internal } from "./_generated/api";
 import type { FunctionReference } from "convex/server";
 import type { Id } from "./_generated/dataModel";
-import { streamText, createUIMessageStreamResponse, stepCountIs } from "ai";
+import { streamText, createUIMessageStreamResponse } from "ai";
 import { getModel } from "./ai/provider";
 import { createTools } from "./ai/tools";
 import { createToolExecutor } from "./ai/executor";
@@ -354,9 +354,9 @@ const aiChatHandler = httpAction(async (ctx, request) => {
       system: aiConfig.systemPrompt,
       messages,
       tools,
-      stopWhen: stepCountIs(5),
+      maxSteps: 10,
       maxRetries: 2,
-      onFinish: async (event) => {
+      onFinish: async (event: any) => {
         const usage = event.usage as
           | {
               totalTokens?: number;
@@ -401,7 +401,7 @@ const aiChatHandler = httpAction(async (ctx, request) => {
           console.error("Failed to save assistant response:", e);
         }
       },
-    });
+    } as any);
 
     // 8. Return UI message stream response
     const stream = await result.toUIMessageStream();

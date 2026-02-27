@@ -1,5 +1,5 @@
 // app/convex/ai/chat_action.ts
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { getModel } from "./provider";
@@ -9,7 +9,6 @@ import {
   streamText,
   createUIMessageStreamResponse,
   type LanguageModel,
-  stepCountIs,
 } from "ai";
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -103,7 +102,7 @@ export const processMessage = action({
     args: { sessionId: string; message: string; auctionId?: Id<"auctions"> }
   ): Promise<Response> => {
     const rateLimitCheck = (await ctx.runQuery(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       "ai/rate_limiting:checkRateLimit" as any,
       {}
     )) as RateLimitStatus;
@@ -113,7 +112,7 @@ export const processMessage = action({
     }
 
     const aiConfig = (await ctx.runQuery(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       "ai/config:getAIConfig" as any,
       {}
     )) as AIConfigResult;
@@ -133,10 +132,10 @@ export const processMessage = action({
     const executor = createToolExecutor(ctx);
     const tools = createTools(executor);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const history = (await ctx.runQuery("ai/chat:getSessionHistory" as any, {
       sessionId: args.sessionId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     })) as any[];
 
     const messages: ChatMessage[] = [
@@ -164,25 +163,31 @@ export const processMessage = action({
       console.log(`[AI Chat] Messages Count: ${messages.length}`);
     }
 
+     
     const result = streamText({
       model,
       system: systemPrompt,
       messages,
       tools,
-      stopWhen: stepCountIs(5),
+      maxSteps: 10,
       maxRetries: 2,
-      onFinish: async (event) => {
+      onStepFinish: (step: any) => {
+        console.log(
+          `[AI Chat] Step finished. Tool calls: ${step.toolCalls?.length || 0}. Text length: ${step.text?.length || 0}`
+        );
+      },
+      onFinish: async (event: any) => {
         const usage = event.usage;
         console.log(
           `[AI Chat] Finished. Tokens: ${usage?.totalTokens}. Text length: ${event.text?.length}`
         );
         if (event.toolCalls && event.toolCalls.length > 0) {
           console.log(
-            `[AI Chat] Tool Calls: ${event.toolCalls.map((tc) => tc.toolName).join(", ")}`
+            `[AI Chat] Tool Calls: ${event.toolCalls.map((tc: any) => tc.toolName).join(", ")}`
           );
         }
       },
-    });
+    } as any);
 
     const stream = await result.toUIMessageStream();
     return createUIMessageStreamResponse({ stream });

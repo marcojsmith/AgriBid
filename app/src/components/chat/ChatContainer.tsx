@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -8,6 +9,7 @@ import { BidConfirmationDialog } from "./BidConfirmationDialog";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { Id } from "convex/_generated/dataModel";
 
 const CHAT_STORAGE_KEY = "agribid_chat_session";
@@ -39,6 +41,41 @@ interface MessagePart {
 }
 
 type ExtendedMessage = UIMessage & { parts?: MessagePart[]; content?: string };
+
+/**
+ * Renders a compact status indicator for a tool invocation.
+ */
+function ToolStatus({
+  toolName,
+  state,
+  result,
+}: {
+  toolName: string;
+  state: string;
+   
+  result?: any;
+}) {
+  const displayName = toolName.replace(/([A-Z])/g, " $1").trim();
+  const isDone = state === "result" || state === "completed" || !!result;
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tight mb-2 border",
+        isDone
+          ? "bg-primary/5 border-primary/10 text-primary/70"
+          : "bg-muted border-transparent text-muted-foreground animate-pulse"
+      )}
+    >
+      {isDone ? (
+        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+      ) : (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      )}
+      <span>{isDone ? `Used ${displayName}` : `Using ${displayName}...`}</span>
+    </div>
+  );
+}
 
 export function ChatContainer() {
   const [isOpen, setIsOpen] = useState(false);
@@ -126,17 +163,86 @@ export function ChatContainer() {
 
   useEffect(() => {
     if (history && history.length > 0 && messages.length === 0) {
-      const initialMessages = history.map((msg) => ({
-        id: msg._id,
-        role: msg.role as "user" | "assistant" | "system" | "data",
-        content: msg.content,
-        createdAt: new Date(msg.createdAt),
-      })) as unknown as UIMessage[];
+      const initialMessages = history.map((msg) => {
+        const parts: MessagePart[] = [];
+
+        // Add text part if content exists
+        if (msg.content) {
+          parts.push({ type: "text", text: msg.content });
+        }
+
+        // Map stored toolCalls to message parts
+        if (msg.toolCalls && msg.toolCalls.length > 0) {
+          msg.toolCalls.forEach((tc) => {
+            parts.push({
+              type: `tool-${tc.toolName}`,
+              // @ts-expect-error - specific mapping for visualization
+              state: "result",
+              result: tc.result,
+              toolInvocation: {
+                toolName: tc.toolName,
+                state: "result",
+                result: tc.result,
+              },
+            });
+          });
+        }
+
+        return {
+          id: msg._id,
+          role: msg.role as "user" | "assistant" | "system" | "data",
+          content: msg.content,
+          createdAt: new Date(msg.createdAt),
+          parts: parts.length > 0 ? parts : undefined,
+        };
+      }) as unknown as UIMessage[];
       setMessages(initialMessages);
     }
   }, [history, setMessages, messages.length]);
 
-  const isLoading = status === "submitted" || status === "streaming";
+  const isActuallyLoadingText =
+    status === "submitted" || status === "streaming";
+
+  // Check if any tool is currently executing across all messages
+  const activeToolName = messages.reduce((found: string | null, m) => {
+    if (found) return found;
+
+    // Check standard AI SDK toolInvocations
+     
+    const activeInvocation = (m as any).toolInvocations?.find(
+       
+      (ti: any) => ti.state !== "result"
+    );
+    if (activeInvocation) return activeInvocation.toolName;
+
+    // Fallback to parts checking for history/manual mapping
+    const ext = m as ExtendedMessage;
+    const activePart = ext.parts?.find(
+      (p) =>
+         
+        (p.type.startsWith("tool-") && !(p as any).result) ||
+         
+        (p.type === "tool-invocation" &&
+          (p as any).toolInvocation?.state !== "result")
+    );
+    if (activePart) {
+      if (activePart.type.startsWith("tool-"))
+        return activePart.type.replace("tool-", "");
+       
+      return (activePart as any).toolInvocation?.toolName || "tool";
+    }
+    return null;
+  }, null);
+
+  const isLoading = isActuallyLoadingText || !!activeToolName;
+
+  useEffect(() => {
+    if (isLoading) {
+      console.log(
+        `[Chat UI] Loading state: ${isLoading}, Status: ${status}, Active Tool: ${activeToolName}`
+      );
+    }
+  }, [isLoading, status, activeToolName]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -210,7 +316,7 @@ export function ChatContainer() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading || !sessionId) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     sendMessage({ role: "user", content: input } as any);
     setInput("");
   };
@@ -236,7 +342,7 @@ export function ChatContainer() {
         content: `I've successfully placed your bid of £${amount.toLocaleString()} on the auction.`,
         createdAt: new Date(),
       };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       setMessages((prev: any) => [...prev, newMessage]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to place bid");
@@ -245,7 +351,7 @@ export function ChatContainer() {
 
   const handleApprovalCancel = useCallback(() => {
     setPendingApproval(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const newMessage: any = {
       id: `system_${Date.now()}`,
       role: "assistant",
@@ -366,69 +472,88 @@ export function ChatContainer() {
                         const ext = message as UIMessage & {
                           parts?: MessagePart[];
                         };
-                        if (ext.parts) {
-                          return ext.parts?.map(
-                            (part: MessagePart, i: number) => {
-                              if (part.type === "text")
-                                return <span key={i}>{part.text}</span>;
 
-                              // Handle AI SDK 5 format: tool-{toolName}
-                              // Only show if not yet completed (no result)
-                              if (part.type?.startsWith?.("tool-")) {
-                                const hasResult =
-                                  (part as { result?: unknown }).result !==
-                                  undefined;
-                                if (hasResult) return null; // Don't show completed tools
+                        // Render live toolInvocations from AI SDK
+                         
+                        const toolInvocations = (
+                          message as any
+                        ).toolInvocations?.map(
+                           
+                          (ti: any, i: number) => (
+                            <ToolStatus
+                              key={`ti-${i}`}
+                              toolName={ti.toolName}
+                              state={ti.state}
+                               
+                              result={(ti as any).result}
+                            />
+                          )
+                        );
 
-                                const toolName = part.type.replace("tool-", "");
-                                return (
-                                  <span
-                                    key={i}
-                                    className="italic opacity-80 block text-xs"
-                                  >
-                                    <Loader2 className="inline h-3 w-3 mr-1 animate-spin" />
-                                    Using {toolName}...
-                                  </span>
-                                );
-                              }
+                        const parts = ext.parts?.map(
+                          (part: MessagePart, i: number) => {
+                            if (part.type === "text")
+                              return <span key={i}>{part.text}</span>;
 
-                              // Handle legacy tool-invocation format
-                              if (
-                                part.type === "tool-invocation" &&
-                                part.toolInvocation?.state !== "result"
-                              ) {
-                                const toolName =
-                                  part.toolInvocation?.toolName || "tool";
-                                const toolDisplayName = toolName
-                                  .replace(/([A-Z])/g, " $1")
-                                  .trim();
-                                return (
-                                  <span
-                                    key={i}
-                                    className="italic opacity-80 block text-xs"
-                                  >
-                                    <Loader2 className="inline h-3 w-3 mr-1 animate-spin" />
-                                    Using {toolDisplayName}...
-                                  </span>
-                                );
-                              }
-                              return null;
+                            // Handle AI SDK tool format: tool-{toolName}
+                            if (part.type?.startsWith?.("tool-")) {
+                              const toolName = part.type.replace("tool-", "");
+                              return (
+                                <ToolStatus
+                                  key={i}
+                                  toolName={toolName}
+                                   
+                                  state={(part as any).state}
+                                   
+                                  result={(part as any).result}
+                                />
+                              );
                             }
-                          );
-                        }
-                        // Handle legacy string content - cast to any to access
-                        const msg = message as unknown as { content?: string };
-                        return msg.content ?? "";
+
+                            // Handle legacy/other tool-invocation format
+                            if (part.type === "tool-invocation") {
+                              return (
+                                <ToolStatus
+                                  key={i}
+                                   
+                                  toolName={
+                                    (part as any).toolInvocation?.toolName ||
+                                    "tool"
+                                  }
+                                   
+                                  state={
+                                    (part as any).toolInvocation?.state ||
+                                    "loading"
+                                  }
+                                   
+                                  result={(part as any).toolInvocation?.result}
+                                />
+                              );
+                            }
+                            return null;
+                          }
+                        );
+
+                        return (
+                          <>
+                            {toolInvocations}
+                            {parts}
+                            { }
+                            {!ext.parts &&
+                              !(message as any).toolInvocations &&
+                              (message as any).content}
+                          </>
+                        );
                       })()}
                     </div>
                   </div>
                 </div>
               ))}
 
-              {isLoading && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Using tools...</span>
+              {isLoading && !activeToolName && (
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 p-2 animate-in fade-in slide-in-from-bottom-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Thinking...</span>
                 </div>
               )}
               <div ref={messagesEndRef} />

@@ -108,6 +108,7 @@ export const processChatMessage = internalAction({
       system: aiConfig.systemPrompt,
       messages,
       tools,
+      maxSteps: 10,
       maxRetries: 2,
       onFinish: async (event) => {
         const usage = event.usage;
@@ -145,7 +146,8 @@ export const processChatMessage = internalAction({
           console.error("Failed to save assistant response:", persistError);
         }
       },
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     return result.toTextStreamResponse();
   },

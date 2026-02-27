@@ -181,7 +181,8 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     getUserBids: async (
       input: GetUserBidsInput
-    ): Promise<{ bids: AuctionSummary[]; count: number }> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ): Promise<{ bids: any[]; count: number }> => {
       console.log(`[AI Tool: getUserBids] Input: ${JSON.stringify(input)}`);
       try {
         const limit = input.limit ?? 10;
@@ -189,13 +190,23 @@ export function createToolExecutor(ctx: ActionCtx) {
           paginationOpts: { numItems: limit, cursor: null },
         });
 
+        // Minimize data passed back to model
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const simplifiedBids = result.page.map((b: any) => ({
+          id: b._id,
+          title: b.title,
+          currentPrice: b.currentPrice,
+          myHighestBid: b.myHighestBid,
+          status: b.status,
+        }));
+
         console.log(
           `[AI Tool: getUserBids] Success. Found ${result.page.length} bids.`
         );
 
         return sanitizeToolResult({
-          bids: result.page,
-          count: result.page.length,
+          bids: simplifiedBids,
+          count: simplifiedBids.length,
         });
       } catch (error) {
         console.error(`[AI Tool: getUserBids] Error:`, error);
@@ -208,7 +219,8 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     getWatchlist: async (
       input: GetWatchlistInput
-    ): Promise<{ auctions: AuctionSummary[]; count: number }> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ): Promise<{ auctions: any[]; count: number }> => {
       console.log(`[AI Tool: getWatchlist] Input: ${JSON.stringify(input)}`);
       try {
         const limit = input.limit ?? 10;
@@ -216,13 +228,23 @@ export function createToolExecutor(ctx: ActionCtx) {
           paginationOpts: { numItems: limit, cursor: null },
         });
 
+        // Minimize data passed back to model
+        const simplifiedAuctions = result.page.map((a) => ({
+          id: a._id,
+          title: a.title,
+          make: a.make,
+          model: a.model,
+          currentPrice: a.currentPrice,
+          status: a.status,
+        }));
+
         console.log(
           `[AI Tool: getWatchlist] Success. Found ${result.page.length} items.`
         );
 
         return sanitizeToolResult({
-          auctions: result.page,
-          count: result.page.length,
+          auctions: simplifiedAuctions,
+          count: simplifiedAuctions.length,
         });
       } catch (error) {
         console.error(`[AI Tool: getWatchlist] Error:`, error);
