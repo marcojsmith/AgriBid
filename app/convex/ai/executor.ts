@@ -65,22 +65,38 @@ export function createToolExecutor(ctx: ActionCtx) {
     searchAuctions: async (
       input: SearchAuctionsInput
     ): Promise<{ auctions: AuctionSummary[]; total: number }> => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const auctions = await ctx.runQuery(getActiveAuctions as any, {
-        search: input.search,
-        make: input.make,
-        minYear: input.minYear,
-        maxYear: input.maxYear,
-        minPrice: input.minPrice,
-        maxPrice: input.maxPrice,
-        maxHours: input.maxHours,
-        statusFilter: "active",
-      });
+      console.log("[AI Executor] searchAuctions called with:", input);
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const auctions = await ctx.runQuery(getActiveAuctions as any, {
+          search: input.search,
+          make: input.make,
+          minYear: input.minYear,
+          maxYear: input.maxYear,
+          minPrice: input.minPrice,
+          maxPrice: input.maxPrice,
+          maxHours: input.maxHours,
+          statusFilter: "active",
+        });
 
-      return sanitizeToolResult({
-        auctions,
-        total: auctions.length,
-      });
+        console.log(
+          "[AI Executor] searchAuctions result count:",
+          auctions.length
+        );
+
+        return sanitizeToolResult({
+          auctions,
+          total: auctions.length,
+        });
+      } catch (error) {
+        console.error("[AI Executor] searchAuctions error:", error);
+        if (error instanceof ConvexError) {
+          throw error;
+        }
+        throw new ConvexError(
+          `Failed to search auctions: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
     },
 
     /**
@@ -89,16 +105,37 @@ export function createToolExecutor(ctx: ActionCtx) {
     getAuctionDetails: async (
       input: GetAuctionDetailsInput
     ): Promise<AuctionDetail> => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const details = await ctx.runQuery(getAuctionById as any, {
-        auctionId: input.auctionId as Id<"auctions">,
-      });
+      console.log("[AI Executor] getAuctionDetails called with:", input);
+      try {
+        if (!input.auctionId || typeof input.auctionId !== "string") {
+          throw new ConvexError(
+            "Invalid auction ID provided. Please provide a valid auction ID."
+          );
+        }
 
-      if (!details) {
-        throw new ConvexError("Auction not found");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const details = await ctx.runQuery(getAuctionById as any, {
+          auctionId: input.auctionId as Id<"auctions">,
+        });
+
+        console.log("[AI Executor] getAuctionDetails result:", details);
+
+        if (!details) {
+          throw new ConvexError(
+            `Auction with ID '${input.auctionId}' was not found. The auction may have ended or been removed.`
+          );
+        }
+
+        return sanitizeToolResult(details);
+      } catch (error) {
+        console.error("[AI Executor] getAuctionDetails error:", error);
+        if (error instanceof ConvexError) {
+          throw error;
+        }
+        throw new ConvexError(
+          `Failed to retrieve auction details: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
       }
-
-      return sanitizeToolResult(details);
     },
 
     /**

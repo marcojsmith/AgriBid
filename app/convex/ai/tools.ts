@@ -58,28 +58,30 @@ export type ToolExecutor = {
 export function createTools(executor: ToolExecutor) {
   return {
     searchAuctions: tool({
-      description: "Search for agricultural equipment auctions",
+      description:
+        "Search for agricultural equipment auctions using criteria like make, model, or year. Returns a list of auctions with their IDs.",
       parameters: searchAuctionsSchema,
       execute: executor.searchAuctions,
     }),
     getAuctionDetails: tool({
-      description: "Get auction details by ID",
+      description:
+        "Get full details for a specific auction. REQUIRES a valid auctionId. If you don't have the ID, use searchAuctions first.",
       parameters: getAuctionDetailsSchema,
       execute: executor.getAuctionDetails,
     }),
     getUserBids: tool({
-      description: "Get user's current bids",
+      description: "Get user's current active bids.",
       parameters: getUserBidsSchema,
       execute: executor.getUserBids,
     }),
     getWatchlist: tool({
-      description: "Get user's watchlist",
+      description: "Get items in the user's watchlist.",
       parameters: getWatchlistSchema,
       execute: executor.getWatchlist,
     }),
     draftBid: tool({
       description:
-        "Draft a bid on an auction for the user to review and confirm",
+        "Draft a bid for user review. REQUIRES auctionId and amount. If you don't have the ID, search for the auction first.",
       parameters: draftBidSchema,
       execute: executor.draftBid,
     }),

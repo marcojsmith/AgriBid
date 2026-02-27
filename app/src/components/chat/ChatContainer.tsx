@@ -27,6 +27,7 @@ interface ToolInvocationResult {
 }
 
 interface ToolInvocation {
+  toolName: string;
   state: string;
   result?: ToolInvocationResult;
 }
@@ -351,15 +352,22 @@ export function ChatContainer() {
                               if (
                                 part.type === "tool-invocation" &&
                                 part.toolInvocation?.state !== "result"
-                              )
+                              ) {
+                                const toolName =
+                                  part.toolInvocation?.toolName || "tool";
+                                const toolDisplayName = toolName
+                                  .replace(/([A-Z])/g, " $1")
+                                  .trim();
                                 return (
                                   <span
                                     key={i}
-                                    className="italic opacity-80 block"
+                                    className="italic opacity-80 block text-xs"
                                   >
-                                    [Thinking...]
+                                    <Loader2 className="inline h-3 w-3 mr-1 animate-spin" />
+                                    [{toolDisplayName}...]
                                   </span>
                                 );
+                              }
                               return null;
                             }
                           );
@@ -385,6 +393,8 @@ export function ChatContainer() {
             <div className="p-4 border-t bg-muted/30">
               <form onSubmit={handleSubmit} className="flex flex-col gap-2">
                 <textarea
+                  id="chat-input"
+                  name="chat-input"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask me about equipment..."

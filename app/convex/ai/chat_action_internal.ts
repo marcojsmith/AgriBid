@@ -93,6 +93,12 @@ export const processChatMessage = internalAction({
           content: msg.content,
         }));
 
+    console.log(`[AI Internal Chat] Session: ${args.sessionId}`);
+    console.log(
+      `[AI Internal Chat] System Prompt: ${aiConfig.systemPrompt.substring(0, 100)}...`
+    );
+    console.log(`[AI Internal Chat] Messages: ${messages.length}`);
+
     // Return streaming response directly using onFinish for persistence
     const result = streamText({
       model,
@@ -102,6 +108,15 @@ export const processChatMessage = internalAction({
       maxRetries: 2,
       onFinish: async (event) => {
         const usage = event.usage;
+        console.log(
+          `[AI Internal Chat] Finished. Tokens: ${usage?.totalTokens}. Text length: ${event.text?.length}`
+        );
+        if (event.toolCalls && event.toolCalls.length > 0) {
+          console.log(
+            `[AI Internal Chat] Tool Calls: ${event.toolCalls.map((tc) => tc.toolName).join(", ")}`
+          );
+        }
+
         try {
           // Persist assistant message
           await ctx.runMutation(internal.ai.chat.addMessageInternal, {

@@ -149,7 +149,21 @@ export const processMessage = action({
       { role: "user" as const, content: sanitizedMessage },
     ];
 
-    const systemPrompt = aiConfig?.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+    let systemPrompt = aiConfig?.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+
+    // Inject current page context if available
+    if (args.auctionId) {
+      systemPrompt += `\n\nCURRENT CONTEXT: The user is currently viewing the auction with ID: "${args.auctionId}". If they refer to "this" item, "this auction", or ask for details about what they are looking at, use this ID.`;
+    }
+
+    console.log(`[AI Chat] Session: ${args.sessionId}`);
+    console.log(`[AI Chat] Model: ${modelId}`);
+    console.log(`[AI Chat] System Prompt Length: ${systemPrompt.length}`);
+    console.log(`[AI Chat] Messages Count: ${messages.length}`);
+    console.log(
+      "[AI Chat] Full Prompt Context:",
+      JSON.stringify({ systemPrompt, messages }, null, 2)
+    );
 
     const result = streamText({
       model,

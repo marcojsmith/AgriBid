@@ -1,4 +1,5 @@
 // app/convex/http.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { httpRouter } from "convex/server";
 import { makeFunctionReference } from "convex/server";
 import { createAuth } from "./auth";
@@ -340,6 +341,12 @@ const aiChatHandler = httpAction(async (ctx, request) => {
     const executor = createToolExecutor(ctx);
     const tools = createTools(executor);
 
+    console.log(`[HTTP AI Chat] Session: ${sessionId}, User: ${userId}`);
+    console.log(
+      `[HTTP AI Chat] System Prompt Length: ${aiConfig.systemPrompt.length}`
+    );
+    console.log(`[HTTP AI Chat] Messages Count: ${messages.length}`);
+
     const result = streamText({
       model,
       system: aiConfig.systemPrompt,
@@ -356,6 +363,16 @@ const aiChatHandler = httpAction(async (ctx, request) => {
             }
           | undefined;
 
+        console.log(
+          `[HTTP AI Chat] Finished. Tokens: ${usage?.totalTokens}. Text: ${event.text?.substring(0, 50)}...`
+        );
+        if (event.toolCalls && event.toolCalls.length > 0) {
+           
+          console.log(
+            `[HTTP AI Chat] Tool Calls: ${event.toolCalls.map((tc: any) => tc.toolName).join(", ")}`
+          );
+        }
+
         try {
           // Save assistant message
           await ctx.runMutation(internal.ai.chat.addMessageInternal, {
@@ -366,7 +383,7 @@ const aiChatHandler = httpAction(async (ctx, request) => {
             auctionId: validatedAuctionId,
             tokenCount: usage?.totalTokens ?? 0,
             // Store tool calls in metadata if present
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             toolCalls: event.toolCalls?.map((tc: any) => ({
               toolName: tc.toolName,
               args: tc.input ?? tc.args ?? {},
