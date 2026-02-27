@@ -11,14 +11,6 @@ import { toast } from "sonner";
 
 const CHAT_STORAGE_KEY = "agribid_chat_session";
 
-function getOrCreateSessionId(): string {
-  const stored = localStorage.getItem(CHAT_STORAGE_KEY);
-  if (stored) return stored;
-  const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  localStorage.setItem(CHAT_STORAGE_KEY, newId);
-  return newId;
-}
-
 interface AIStatus {
   isEnabled: boolean;
   modelId: string;
@@ -27,7 +19,7 @@ interface AIStatus {
 
 export function ChatContainer() {
   const [isOpen, setIsOpen] = useState(false);
-  const [sessionId] = useState(getOrCreateSessionId);
+  const [sessionId, setSessionId] = useState("");
   const [pendingApproval, setPendingApproval] = useState<{
     auctionId: string;
     amount: number;
@@ -43,6 +35,26 @@ export function ChatContainer() {
     | AIStatus
     | undefined;
 
+  // Initialize or validate session
+  const storedSessionId = localStorage.getItem(CHAT_STORAGE_KEY);
+  const validatedSession = useQuery(
+    api.ai.chat.validateSession,
+    storedSessionId ? { sessionId: storedSessionId } : "skip"
+  );
+
+  useEffect(() => {
+    if (validatedSession === undefined) return;
+
+    if (validatedSession.valid && validatedSession.sessionId) {
+      setSessionId(validatedSession.sessionId);
+    } else {
+      // Create new session if none exists or invalid/expired
+      const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem(CHAT_STORAGE_KEY, newId);
+      setSessionId(newId);
+    }
+  }, [validatedSession]);
+
   const {
     messages,
     status,
@@ -55,7 +67,8 @@ export function ChatContainer() {
       api: `${import.meta.env.VITE_CONVEX_SITE_URL}/api/ai/chat`,
       body: { sessionId },
       credentials: "include",
-    })
+    }),
+    resume: true, // Allow resuming session if valid
   });
 
   const isLoading = status === "submitted" || status === "streaming";
@@ -99,7 +112,7 @@ export function ChatContainer() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !sessionId) return;
     sendMessage({ role: "user", content: input } as any);
     setInput("");
   };
@@ -144,7 +157,7 @@ export function ChatContainer() {
     ]);
   };
 
-  if (aiStatus === undefined) {
+  if (aiStatus === undefined || !sessionId) {
     return null;
   }
 

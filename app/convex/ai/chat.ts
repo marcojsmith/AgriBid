@@ -89,6 +89,52 @@ export const createSession = mutation({
   },
 });
 
+export const validateSession = query({
+  args: {
+    sessionId: v.string(),
+  },
+  returns: v.object({
+    valid: v.boolean(),
+    sessionId: v.optional(v.string()),
+    reason: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    if (!authUser) {
+      return { valid: false, reason: "Not authenticated" };
+    }
+    const userId = authUser.userId ?? authUser._id;
+
+    const firstMessage = await ctx.db
+      .query("chat_history")
+      .withIndex("by_user_session", (q) =>
+        q.eq("userId", userId).eq("sessionId", args.sessionId)
+      )
+      .first();
+
+    if (!firstMessage) {
+      return { valid: false, reason: "Session not found" };
+    }
+
+    const lastMessage = await ctx.db
+      .query("chat_history")
+      .withIndex("by_user_session", (q) =>
+        q.eq("userId", userId).eq("sessionId", args.sessionId)
+      )
+      .order("desc")
+      .first();
+
+    const now = Date.now();
+    const isExpired = lastMessage && now - lastMessage.createdAt > SESSION_EXPIRY_MS;
+
+    if (isExpired) {
+      return { valid: false, reason: "Session expired" };
+    }
+
+    return { valid: true, sessionId: args.sessionId };
+  },
+});
+
 export const addMessage = mutation({
   args: {
     sessionId: v.string(),

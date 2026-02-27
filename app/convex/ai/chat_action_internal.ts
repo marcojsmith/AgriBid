@@ -93,58 +93,41 @@ export const processChatMessage = internalAction({
           content: msg.content,
         }));
 
-    // Consume the stream and await full response while ctx is valid
+    // Return streaming response directly using onFinish for persistence
     const result = streamText({
       model,
       system: aiConfig.systemPrompt,
       messages,
       tools,
       maxRetries: 2,
+      onFinish: async (event) => {
+        const usage = event.usage;
+        try {
+          // Persist assistant message
+          await ctx.runMutation(internal.ai.chat.addMessageInternal, {
+            sessionId: args.sessionId,
+            role: "assistant",
+            content: event.text || "",
+            auctionId: args.auctionId,
+            tokenCount: usage?.totalTokens ?? 0,
+            toolCalls: event.toolCalls?.map((tc: any) => ({
+              toolName: tc.toolName,
+              args: tc.args,
+            })),
+          });
+
+          // Update usage stats
+          await ctx.runMutation(api.ai.config.updateUsageStats, {
+            inputTokens: usage?.promptTokens ?? 0,
+            outputTokens: usage?.completionTokens ?? 0,
+            isError: false,
+          });
+        } catch (persistError) {
+          console.error("Failed to save assistant response:", persistError);
+        }
+      },
     });
 
-    // Await the full response to get usage data while ctx is valid
-    let fullText = "";
-    let usage = { totalTokens: 0, promptTokens: 0, completionTokens: 0 };
-
-    try {
-      // Consume the stream to get the full text and usage
-      for await (const chunk of result.textStream) {
-        fullText += chunk;
-      }
-
-      // Get usage after stream is complete
-      const resultUsage = await result.usage;
-      if (resultUsage) {
-        usage = {
-          totalTokens: resultUsage.totalTokens,
-          promptTokens: resultUsage.promptTokens,
-          completionTokens: resultUsage.completionTokens,
-        };
-      }
-    } catch (streamError) {
-      console.error("Stream error:", streamError);
-    }
-
-    // Persist assistant message and update usage stats while ctx is valid
-    try {
-      await ctx.runMutation(internal.ai.chat.addMessageInternal, {
-        sessionId: args.sessionId,
-        role: "assistant",
-        content: fullText,
-        auctionId: args.auctionId,
-        tokenCount: usage.totalTokens,
-      });
-
-      await ctx.runMutation(api.ai.config.updateUsageStats, {
-        inputTokens: usage.promptTokens,
-        outputTokens: usage.completionTokens,
-        isError: false,
-      });
-    } catch (persistError) {
-      console.error("Failed to save assistant response:", persistError);
-    }
-
-    // Return streaming response (already consumed, but this creates the response)
     return result.toTextStreamResponse();
   },
 });

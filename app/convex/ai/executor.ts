@@ -19,6 +19,35 @@ const auctionsApi: any = (api as any).auctions.queries;
 const watchlistApi: any = (api as any).watchlist;
 
 /**
+ * Sanitizes tool results to normalize text and remove dangerous content.
+ */
+function sanitizeToolResult(result: any): any {
+  if (result === null || result === undefined) return result;
+
+  if (typeof result === "string") {
+    return result
+      .replace(/[#*`_~]/g, "") // Strip basic markdown
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, "") // Strip control characters
+      .replace(/(javascript|data):/gi, "[REMOVED]:") // Block dangerous URLs
+      .trim();
+  }
+
+  if (Array.isArray(result)) {
+    return result.map(sanitizeToolResult);
+  }
+
+  if (typeof result === "object") {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(result)) {
+      sanitized[key] = sanitizeToolResult(value);
+    }
+    return sanitized;
+  }
+
+  return result;
+}
+
+/**
  * Tool executor that runs inside a Convex Action.
  * It uses ctx.runQuery and ctx.runMutation to interact with the database
  * via existing defined functions, ensuring consistency and reusability.
@@ -42,10 +71,10 @@ export function createToolExecutor(ctx: ActionCtx) {
         statusFilter: "active",
       });
 
-      return {
+      return sanitizeToolResult({
         auctions,
         total: auctions.length,
-      };
+      });
     },
 
     /**
@@ -60,7 +89,7 @@ export function createToolExecutor(ctx: ActionCtx) {
         throw new ConvexError("Auction not found");
       }
 
-      return details;
+      return sanitizeToolResult(details);
     },
 
     /**
@@ -71,10 +100,10 @@ export function createToolExecutor(ctx: ActionCtx) {
         paginationOpts: { numItems: input.limit, cursor: null },
       });
 
-      return {
+      return sanitizeToolResult({
         bids: result.page,
         count: result.page.length,
-      };
+      });
     },
 
     /**
@@ -85,10 +114,10 @@ export function createToolExecutor(ctx: ActionCtx) {
         paginationOpts: { numItems: input.limit, cursor: null },
       });
 
-      return {
+      return sanitizeToolResult({
         auctions: result.page,
         count: result.page.length,
-      };
+      });
     },
 
     /**
@@ -117,14 +146,14 @@ export function createToolExecutor(ctx: ActionCtx) {
         );
       }
 
-      return {
+      return sanitizeToolResult({
         requiresApproval: true,
         auctionId: input.auctionId,
         auctionTitle: auction.title,
         currentPrice: auction.currentPrice,
         proposedBid: input.amount,
         message: `I've drafted a bid of £${input.amount} for the "${auction.title}". Please confirm in the UI to place this bid.`,
-      };
+      });
     },
   };
 }

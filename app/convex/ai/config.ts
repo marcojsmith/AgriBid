@@ -7,10 +7,11 @@
  */
 
 import { v, ConvexError } from "convex/values";
-import { query, mutation } from "../_generated/server";
+import { query, mutation, action } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { logAudit } from "../admin_utils";
+import { getEnv } from "../config";
 
 const DEFAULT_MODEL = "arcee-ai/trinity-mini:free";
 const DEFAULT_SYSTEM_PROMPT = `You are AgriBid AI Assistant, a helpful AI assistant for an agricultural equipment auction platform.
@@ -97,6 +98,120 @@ export async function getOrCreateConfig(ctx: MutationCtx): Promise<AIConfig> {
   await ctx.db.insert("ai_config", newConfig);
   return newConfig;
 }
+
+export const countTokens = query({
+  args: { text: v.string() },
+  returns: v.number(),
+  handler: async (_ctx, args) => {
+    // Simple estimation: 1 token ~= 4 characters for English text
+    return Math.ceil(args.text.length / 4);
+  },
+});
+
+export const validateModelId = action({
+  args: { modelId: v.string() },
+  returns: v.object({
+    isValid: v.boolean(),
+    message: v.string(),
+  }),
+  handler: async (_ctx, args) => {
+    const apiKey = getEnv("OPENROUTER_API_KEY");
+    if (!apiKey) {
+      return { isValid: false, message: "API key not configured" };
+    }
+
+    const MAX_RETRIES = 2;
+    const TIMEOUT_MS = 5000;
+
+    const fetchWithTimeout = async (
+      url: string,
+      options: RequestInit,
+      timeout: number
+    ) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+        });
+        clearTimeout(id);
+        return response;
+      } catch (err) {
+        clearTimeout(id);
+        throw err;
+      }
+    };
+
+    let lastError: any = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        // Exponential backoff: 1s, 2s
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt - 1) * 1000)
+        );
+        console.log(`Retrying model validation, attempt ${attempt}...`);
+      }
+
+      try {
+        const response = await fetchWithTimeout(
+          "https://openrouter.ai/api/v1/models",
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          },
+          TIMEOUT_MS
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const models = data.data || [];
+          const found = models.some((m: any) => m.id === args.modelId);
+
+          if (found) {
+            return { isValid: true, message: "Model verified" };
+          } else {
+            return { isValid: false, message: "Model not found on OpenRouter" };
+          }
+        }
+
+        // Handle permanent vs transient errors
+        if (response.status === 401 || response.status === 403) {
+          return {
+            isValid: false,
+            message: "Authentication error with OpenRouter",
+          };
+        }
+
+        if (response.status >= 500) {
+          lastError = new Error(`Server error: ${response.status}`);
+          continue; // Retry on 5xx
+        }
+
+        return {
+          isValid: false,
+          message: `OpenRouter returned status ${response.status}`,
+        };
+      } catch (error) {
+        lastError = error;
+        // Retry on network/timeout errors
+        continue;
+      }
+    }
+
+    console.error("Model validation failed after retries:", lastError);
+    return {
+      isValid: false,
+      message:
+        lastError?.name === "AbortError"
+          ? "Validation timed out"
+          : "Network error during validation",
+    };
+  },
+});
 
 export const getAIConfig = query({
   args: {},

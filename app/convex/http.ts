@@ -297,17 +297,9 @@ const aiChatHandler = httpAction(async (ctx, request) => {
       );
     }
 
-    // 5. Save user message to database
-    await ctx.runMutation(internal.ai.chat.addMessageInternal, {
-      sessionId,
-      role: "user",
-      content: message,
-      auctionId: validatedAuctionId,
-    });
-
     const sanitizedMessage = message.trim();
 
-    // 6. Get chat history for context using internal query with userId
+    // 5. Get chat history for context using internal query with userId
     const history = await ctx.runQuery(
       internal.ai.chat.getSessionHistoryInternal,
       {
@@ -324,6 +316,14 @@ const aiChatHandler = httpAction(async (ctx, request) => {
       })),
       { role: "user" as const, content: sanitizedMessage },
     ];
+
+    // 6. Save user message to database
+    await ctx.runMutation(internal.ai.chat.addMessageInternal, {
+      sessionId,
+      role: "user",
+      content: sanitizedMessage,
+      auctionId: validatedAuctionId,
+    });
 
     // 7. Get AI model, tools and stream
     const model = await getModel(aiConfig.modelId);

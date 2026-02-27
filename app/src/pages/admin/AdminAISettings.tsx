@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "convex/_generated/api";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
@@ -31,6 +31,7 @@ import {
   Users,
   DollarSign,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -62,13 +63,22 @@ export default function AdminAISettings() {
   const configHistory = useQuery(api.ai.config.getConfigHistory);
   const todayStats = useQuery(api.ai.config.getTodayUsageStats);
   const weeklyStats = useQuery(api.ai.config.getWeeklyUsageStats);
+  const validateModel = useAction(api.ai.config.validateModelId);
 
   const [modelId, setModelId] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [safetyLevel, setSafetyLevel] = useState<SafetyLevel>("medium");
   const [isSaving, setIsSaving] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [showConfirmDisable, setShowConfirmDisable] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Token counting
+  const promptTokens = useQuery(api.ai.config.countTokens, {
+    text: systemPrompt,
+  });
+  const maxTokens = 4000; // 10% of typical 40k context window
+  const isOverTokenLimit = (promptTokens ?? 0) > maxTokens;
 
   // Sync config to local state when config changes
   useEffect(() => {
@@ -97,20 +107,37 @@ export default function AdminAISettings() {
   }
 
   const handleSave = async () => {
+    if (isOverTokenLimit) {
+      toast.error("System prompt exceeds token budget (10% of context)");
+      return;
+    }
+
     setIsSaving(true);
+    setIsValidating(true);
     try {
+      // 1. Validate Model ID
+      const validation = await validateModel({ modelId: modelId.trim() });
+      if (!validation.isValid) {
+        toast.error(`Model validation failed: ${validation.message}`);
+        setIsValidating(false);
+        setIsSaving(false);
+        return;
+      }
+
+      // 2. Update Config
       await updateConfig({
         modelId: modelId.trim(),
         systemPrompt: systemPrompt.trim(),
         safetyLevel: safetyLevel as SafetyLevel,
       });
-      toast.success("AI configuration saved");
+      toast.success("AI configuration saved and model verified");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save configuration"
       );
     } finally {
       setIsSaving(false);
+      setIsValidating(false);
     }
   };
 
@@ -300,8 +327,13 @@ export default function AdminAISettings() {
                     <History className="h-3 w-3" />
                     History
                   </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {systemPrompt.length} characters
+                  <span
+                    className={cn(
+                      "text-xs font-bold",
+                      isOverTokenLimit ? "text-red-500" : "text-muted-foreground"
+                    )}
+                  >
+                    {promptTokens ?? 0} / {maxTokens} tokens
                   </span>
                 </div>
               </div>
@@ -311,12 +343,22 @@ export default function AdminAISettings() {
                 onChange={(e) => setSystemPrompt(e.target.value)}
                 placeholder="You are AgriBid AI Assistant..."
                 rows={10}
-                disabled={!config.isEnabled}
-                className="font-mono text-sm"
+                disabled={!config.isEnabled || isSaving}
+                className={cn(
+                  "font-mono text-sm",
+                  isOverTokenLimit && "border-red-500 focus-visible:ring-red-500"
+                )}
               />
-              <p className="text-xs text-muted-foreground">
-                Instructions that define the AI's personality and behavior. This
-                prompt guides how the assistant responds to users.
+              <p className="text-xs text-muted-foreground flex items-center justify-between">
+                <span>
+                  Instructions that define the AI's personality and behavior.
+                </span>
+                {isOverTokenLimit && (
+                  <span className="text-red-500 font-bold flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Exceeds 10% context budget
+                  </span>
+                )}
               </p>
             </div>
 
@@ -397,11 +439,19 @@ export default function AdminAISettings() {
             <div className="flex items-center gap-4 pt-4 border-t">
               <Button
                 onClick={handleSave}
-                disabled={isSaving || !config.isEnabled}
+                disabled={isSaving || !config.isEnabled || isOverTokenLimit}
                 className="gap-2"
               >
-                <Save className="h-4 w-4" />
-                {isSaving ? "Saving..." : "Save Changes"}
+                {isValidating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {isValidating
+                  ? "Verifying Model..."
+                  : isSaving
+                    ? "Saving..."
+                    : "Save Changes"}
               </Button>
               {config.updatedAt && (
                 <span className="text-xs text-muted-foreground">
