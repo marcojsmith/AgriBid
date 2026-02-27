@@ -388,13 +388,13 @@ const aiChatHandler = httpAction(async (ctx, request) => {
 });
 
 http.route({
-  path: "/api/ai/chat",
+  pathPrefix: "/api/ai/chat",
   method: "POST",
   handler: aiChatHandler,
 });
 
 http.route({
-  path: "/api/ai/chat",
+  pathPrefix: "/api/ai/chat",
   method: "OPTIONS",
   handler: httpAction(async (_ctx, request) => {
     return new Response(null, {
