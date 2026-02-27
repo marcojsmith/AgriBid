@@ -15,6 +15,7 @@ import {
   MessageSquare,
   FileText,
   Settings,
+  Bot,
 } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const SIDEBAR_ITEMS = [
   { label: "Announcements", icon: Megaphone, path: "/admin/announcements" },
   { label: "Support", icon: MessageSquare, path: "/admin/support" },
   { label: "Audit", icon: FileText, path: "/admin/audit" },
+  { label: "AI Settings", icon: Bot, path: "/admin/ai-settings" },
   { label: "System", icon: Settings, path: "/admin/settings" },
 ];
 

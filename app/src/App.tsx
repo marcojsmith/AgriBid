@@ -29,6 +29,7 @@ const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
 const KYC = lazy(() => import("./pages/KYC"));
 const Support = lazy(() => import("./pages/Support"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const AdminAISettings = lazy(() => import("./pages/admin/AdminAISettings"));
 
 /**
  * Global loading fallback for lazy-loaded routes.
@@ -182,6 +183,14 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminSettings />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/ai-settings"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminAISettings />
                 </RoleProtectedRoute>
               }
             />

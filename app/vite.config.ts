@@ -8,11 +8,7 @@ import pkg from "./package.json";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
-  // For Vercel Previews, VERCEL_URL is the dynamic branch URL.
-  // We prioritize VITE_CONVEX_SITE_URL if available (set by bunx convex deploy).
-  const siteUrl =
-    env.VITE_CONVEX_SITE_URL ||
-    (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : "http://localhost:5173");
+  const siteUrl = env.VITE_CONVEX_SITE_URL || "";
 
   return {
     plugins: [react(), tailwindcss()],
@@ -23,9 +19,11 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         "/api/auth": {
-          target:
-            env.VITE_CONVEX_SITE_URL ||
-            "https://useful-blackbird-263.convex.site",
+          target: siteUrl,
+          changeOrigin: true,
+        },
+        "/api/ai/": {
+          target: siteUrl,
           changeOrigin: true,
         },
       },

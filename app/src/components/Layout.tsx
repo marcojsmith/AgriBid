@@ -9,6 +9,7 @@ import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { ChatContainer } from "./chat/ChatContainer";
 
 interface LayoutProps {
   children: ReactNode;
@@ -50,6 +51,7 @@ export const Layout = ({ children }: LayoutProps) => {
         >
           {children}
         </main>
+        {!isAdminPage && session && <ChatContainer />}
         {!isAdminPage && <Footer />}
       </div>
     </UserProfileProvider>
