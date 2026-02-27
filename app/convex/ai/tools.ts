@@ -15,6 +15,7 @@ export const searchAuctionsSchema = z.object({
   minPrice: z.number().optional(),
   maxPrice: z.number().optional(),
   maxHours: z.number().optional(),
+  limit: z.number().optional().default(5),
 });
 
 export type SearchAuctionsInput = z.infer<typeof searchAuctionsSchema>;
@@ -26,13 +27,13 @@ export const getAuctionDetailsSchema = z.object({
 export type GetAuctionDetailsInput = z.infer<typeof getAuctionDetailsSchema>;
 
 export const getUserBidsSchema = z.object({
-  limit: z.number().optional().default(10),
+  limit: z.number().optional().default(5),
 });
 
 export type GetUserBidsInput = z.infer<typeof getUserBidsSchema>;
 
 export const getWatchlistSchema = z.object({
-  limit: z.number().optional().default(10),
+  limit: z.number().optional().default(5),
 });
 
 export type GetWatchlistInput = z.infer<typeof getWatchlistSchema>;

@@ -98,7 +98,8 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     searchAuctions: async (
       input: SearchAuctionsInput
-    ): Promise<{ auctions: AuctionSummary[]; total: number }> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ): Promise<{ auctions: any[]; total: number }> => {
       console.log(`[AI Tool: searchAuctions] Input: ${JSON.stringify(input)}`);
       try {
         const auctions = await ctx.runQuery(getActiveAuctionsRef, {
@@ -112,12 +113,28 @@ export function createToolExecutor(ctx: ActionCtx) {
           statusFilter: "active",
         });
 
+        const limit = input.limit ?? 5;
+        const limitedAuctions = auctions.slice(0, limit);
+
+        // Minimize data passed back to model
+        const simplifiedAuctions = limitedAuctions.map((a) => ({
+          id: a._id,
+          title: a.title,
+          make: a.make,
+          model: a.model,
+          year: a.year,
+          currentPrice: a.currentPrice,
+          hours: a.operatingHours,
+          location: a.location,
+          status: a.status,
+        }));
+
         console.log(
-          `[AI Tool: searchAuctions] Success. Found ${auctions.length} auctions.`
+          `[AI Tool: searchAuctions] Success. Found ${auctions.length} auctions. Returning ${simplifiedAuctions.length}.`
         );
 
         return sanitizeToolResult({
-          auctions,
+          auctions: simplifiedAuctions,
           total: auctions.length,
         });
       } catch (error) {
@@ -136,7 +153,8 @@ export function createToolExecutor(ctx: ActionCtx) {
      */
     getAuctionDetails: async (
       input: GetAuctionDetailsInput
-    ): Promise<AuctionDetail> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ): Promise<any> => {
       console.log(
         `[AI Tool: getAuctionDetails] Input: ${JSON.stringify(input)}`
       );
@@ -160,11 +178,27 @@ export function createToolExecutor(ctx: ActionCtx) {
           );
         }
 
+        // Minimize data passed back to model
+        const simplifiedDetails = {
+          id: details._id,
+          title: details.title,
+          description: details.description,
+          make: details.make,
+          model: details.model,
+          year: details.year,
+          currentPrice: details.currentPrice,
+          minIncrement: details.minIncrement,
+          hours: details.operatingHours,
+          location: details.location,
+          status: details.status,
+          endTime: details.endTime,
+        };
+
         console.log(
           `[AI Tool: getAuctionDetails] Success. Title: "${details.title}"`
         );
 
-        return sanitizeToolResult(details);
+        return sanitizeToolResult(simplifiedDetails);
       } catch (error) {
         console.error(`[AI Tool: getAuctionDetails] Error:`, error);
         if (error instanceof ConvexError) {
@@ -185,7 +219,7 @@ export function createToolExecutor(ctx: ActionCtx) {
     ): Promise<{ bids: any[]; count: number }> => {
       console.log(`[AI Tool: getUserBids] Input: ${JSON.stringify(input)}`);
       try {
-        const limit = input.limit ?? 10;
+        const limit = input.limit ?? 5;
         const result = await ctx.runQuery(getMyBidsRef, {
           paginationOpts: { numItems: limit, cursor: null },
         });
@@ -223,7 +257,7 @@ export function createToolExecutor(ctx: ActionCtx) {
     ): Promise<{ auctions: any[]; count: number }> => {
       console.log(`[AI Tool: getWatchlist] Input: ${JSON.stringify(input)}`);
       try {
-        const limit = input.limit ?? 10;
+        const limit = input.limit ?? 5;
         const result = await ctx.runQuery(getWatchedAuctionsRef, {
           paginationOpts: { numItems: limit, cursor: null },
         });

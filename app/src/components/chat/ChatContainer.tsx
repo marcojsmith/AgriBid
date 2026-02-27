@@ -49,30 +49,43 @@ function ToolStatus({
   toolName,
   state,
   result,
+  chatStatus,
 }: {
   toolName: string;
   state: string;
    
   result?: any;
+  chatStatus?: string;
 }) {
   const displayName = toolName.replace(/([A-Z])/g, " $1").trim();
   const isDone = state === "result" || state === "completed" || !!result;
+  const isFailed = !isDone && chatStatus === "ready";
 
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tight mb-2 border",
+        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tight mb-2 border transition-all duration-300",
         isDone
           ? "bg-primary/5 border-primary/10 text-primary/70"
-          : "bg-muted border-transparent text-muted-foreground animate-pulse"
+          : isFailed
+            ? "bg-red-500/10 border-red-500/20 text-red-600"
+            : "bg-muted border-transparent text-muted-foreground animate-pulse"
       )}
     >
       {isDone ? (
         <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+      ) : isFailed ? (
+        <X className="h-3 w-3" />
       ) : (
         <Loader2 className="h-3 w-3 animate-spin" />
       )}
-      <span>{isDone ? `Used ${displayName}` : `Using ${displayName}...`}</span>
+      <span>
+        {isDone
+          ? `Used ${displayName}`
+          : isFailed
+            ? `Failed ${displayName}`
+            : `Using ${displayName}...`}
+      </span>
     </div>
   );
 }
@@ -147,14 +160,21 @@ export function ChatContainer() {
     }
   }, [validatedSession]);
 
-  const { messages, status, error, stop, setMessages, sendMessage } = useChat({
+  const {
+    messages,
+    status,
+    error,
+    stop,
+    setMessages,
+    append: sendMessage,
+  } = useChat({
     transport: new DefaultChatTransport({
       api: `${import.meta.env.VITE_CONVEX_SITE_URL}/api/ai/chat/`,
       body: { sessionId },
       credentials: "include",
     }),
     resume: false, // Disabling resume to avoid GET /api/ai/chat/:id/stream 404s
-  });
+  } as any) as any;
 
   const history = useQuery(
     api.ai.chat.getRecentMessages,
@@ -204,13 +224,11 @@ export function ChatContainer() {
     status === "submitted" || status === "streaming";
 
   // Check if any tool is currently executing across all messages
-  const activeToolName = messages.reduce((found: string | null, m) => {
+  const activeToolName = messages.reduce((found: string | null, m: any) => {
     if (found) return found;
 
     // Check standard AI SDK toolInvocations
-     
     const activeInvocation = (m as any).toolInvocations?.find(
-       
       (ti: any) => ti.state !== "result"
     );
     if (activeInvocation) return activeInvocation.toolName;
@@ -219,28 +237,33 @@ export function ChatContainer() {
     const ext = m as ExtendedMessage;
     const activePart = ext.parts?.find(
       (p) =>
-         
         (p.type.startsWith("tool-") && !(p as any).result) ||
-         
         (p.type === "tool-invocation" &&
           (p as any).toolInvocation?.state !== "result")
     );
     if (activePart) {
       if (activePart.type.startsWith("tool-"))
         return activePart.type.replace("tool-", "");
-       
       return (activePart as any).toolInvocation?.toolName || "tool";
     }
     return null;
   }, null);
 
-  const isLoading = isActuallyLoadingText || !!activeToolName;
+  // If status is ready, we are not loading from the network anymore.
+  // We only consider it loading if the text is streaming OR a tool is actively running AND the stream is still open.
+  const isLoading =
+    isActuallyLoadingText || (!!activeToolName && status !== "ready");
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || status === "ready") {
       console.log(
-        `[Chat UI] Loading state: ${isLoading}, Status: ${status}, Active Tool: ${activeToolName}`
+        `[Chat UI] Loading: ${isLoading}, Status: ${status}, Active Tool: ${activeToolName}`
       );
+      if (status === "ready" && activeToolName) {
+        console.warn(
+          `[Chat UI] Tool "${activeToolName}" stuck in non-result state while status is ready.`
+        );
+      }
     }
   }, [isLoading, status, activeToolName]);
 
@@ -342,7 +365,6 @@ export function ChatContainer() {
         content: `I've successfully placed your bid of £${amount.toLocaleString()} on the auction.`,
         createdAt: new Date(),
       };
-       
       setMessages((prev: any) => [...prev, newMessage]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to place bid");
@@ -351,13 +373,12 @@ export function ChatContainer() {
 
   const handleApprovalCancel = useCallback(() => {
     setPendingApproval(null);
-     
     const newMessage: any = {
       id: `system_${Date.now()}`,
       role: "assistant",
       content: "Bid placement cancelled.",
     };
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev: any) => [...prev, newMessage]);
   }, [setMessages]);
 
   if (aiStatus === undefined || !sessionId) {
@@ -428,7 +449,7 @@ export function ChatContainer() {
                 </div>
               )}
 
-              {messages.map((message) => (
+              {messages.map((message: any) => (
                 <div
                   key={message.id}
                   className={`flex gap-3 mb-4 ${
@@ -474,21 +495,17 @@ export function ChatContainer() {
                         };
 
                         // Render live toolInvocations from AI SDK
-                         
                         const toolInvocations = (
                           message as any
-                        ).toolInvocations?.map(
-                           
-                          (ti: any, i: number) => (
-                            <ToolStatus
-                              key={`ti-${i}`}
-                              toolName={ti.toolName}
-                              state={ti.state}
-                               
-                              result={(ti as any).result}
-                            />
-                          )
-                        );
+                        ).toolInvocations?.map((ti: any, i: number) => (
+                          <ToolStatus
+                            key={`ti-${i}`}
+                            toolName={ti.toolName}
+                            state={ti.state}
+                            result={(ti as any).result}
+                            chatStatus={status}
+                          />
+                        ));
 
                         const parts = ext.parts?.map(
                           (part: MessagePart, i: number) => {
@@ -502,10 +519,9 @@ export function ChatContainer() {
                                 <ToolStatus
                                   key={i}
                                   toolName={toolName}
-                                   
                                   state={(part as any).state}
-                                   
                                   result={(part as any).result}
+                                  chatStatus={status}
                                 />
                               );
                             }
@@ -515,18 +531,16 @@ export function ChatContainer() {
                               return (
                                 <ToolStatus
                                   key={i}
-                                   
                                   toolName={
                                     (part as any).toolInvocation?.toolName ||
                                     "tool"
                                   }
-                                   
                                   state={
                                     (part as any).toolInvocation?.state ||
                                     "loading"
                                   }
-                                   
                                   result={(part as any).toolInvocation?.result}
+                                  chatStatus={status}
                                 />
                               );
                             }
@@ -538,7 +552,6 @@ export function ChatContainer() {
                           <>
                             {toolInvocations}
                             {parts}
-                            { }
                             {!ext.parts &&
                               !(message as any).toolInvocations &&
                               (message as any).content}
