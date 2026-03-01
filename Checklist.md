@@ -12,6 +12,7 @@
 - [x] Create `.env.example` with required variables
 - [x] Set up Git repository with `.gitignore`
 - [x] Create initial folder structure (`src/components`, `src/pages`, `src/lib`, etc.)
+- [ ] Move `app/` and `convex/` to project root for cleaner structure (#60)
 
 ### Convex Configuration
 - [x] Install Convex CLI (`bun add convex`)
@@ -46,11 +47,13 @@
 ### Convex Queries
 - [x] `getActiveAuctions` - fetch all active auctions
 - [x] `getAuctionById` - fetch single auction with full details
-- [x] `getUserAuctions` - fetch auctions by seller (with status filter) -> \`getMyListings\`
+- [x] `getUserAuctions` - fetch auctions by seller (with status filter) -> `getMyListings`
 - [x] `getAuctionBids` - fetch bid history for an auction
-- [x] `getUserBids` - fetch bids placed by a user -> \`getMyBids\`
-- [x] `getWatchlist` - fetch user's watched auctions -> \`getWatchedAuctions\`
+- [x] `getUserBids` - fetch bids placed by a user -> `getMyBids`
+- [x] `getWatchlist` - fetch user's watched auctions -> `getWatchedAuctions`
 - [x] `searchAuctions` - implement search/filter logic (integrated into getActiveAuctions)
+- [ ] Implement pagination for all list-based queries (#82)
+- [ ] Optimize `readReceipts` with batching to avoid N+1 patterns (#66)
 
 ### Convex Mutations
 - [x] `createAuction` - create new auction (seller only)
@@ -59,8 +62,8 @@
 - [x] `placeBid` - place a bid with soft close logic
 - [x] `approveAuction` - admin approval to set active status
 - [x] `generateUploadUrl` - for Convex File Storage
-- [ ] `setProxyBid` - set maximum auto-bid amount
-- [x] `addToWatchlist` / `removeFromWatchlist` -> \`toggleWatchlist\`
+- [x] `setProxyBid` - set maximum auto-bid amount (Integrated into placeBid)
+- [x] `addToWatchlist` / `removeFromWatchlist` -> `toggleWatchlist`
 - [ ] `uploadConditionReport` - upload PDF to Convex Storage
 - [ ] `flagAuction` - report suspicious listing (buyer/admin)
 
@@ -70,6 +73,7 @@
 
 ### Convex Actions (External API Calls)
 - [ ] `sendEmailNotification` - trigger email via Resend/SendGrid
+- [ ] Capture errors to GitHub issues on production instance (#59)
 
 ---
 
@@ -81,10 +85,12 @@
 - [ ] Create password reset flow
 - [ ] Implement OAuth callback handler
 - [x] Create protected route wrapper component (RoleProtectedRoute)
+- [ ] Add "Remember Me" / persistence for user settings (#118)
 
 ### User Profile
 - [x] Create profile page (`/profile`)
 - [x] Create seller verification flow
+- [ ] Enhance profile page with more user details and stats (#131)
 
 ### Role-Based Access
 - [x] Buyer role: can bid, watchlist, view auctions
@@ -107,8 +113,11 @@
 ### Home Page (`/`)
 - [ ] **Hero Section**
 - [ ] **Filter Sidebar**
+  - [ ] Convert filters to drop-down menus for better UX (#112)
 - [x] **Auction Grid** (Basic implementation in `App.tsx`)
   - [x] `AuctionCard` component
+  - [ ] Ensure uniform image sizing in compact view (#114)
+  - [ ] Add resize animation to cards (#110)
 - [ ] Pagination or infinite scroll
 
 ### Auction Detail Page (`/auction/:id`)
@@ -119,22 +128,32 @@
 - [x] **Countdown Timer**
 
 ### Seller Dashboard (`/dashboard/seller`)
-- [x] **My Listings Tabs** -> \`/dashboard/listings\`
+- [x] **My Listings Tabs** -> `/dashboard/listings`
 - [ ] **Analytics Panel**
 - [ ] **Create Listing Button**
 - [x] **Create Listing Form** (Multi-Step Wizard)
 
 ### Buyer Dashboard (`/dashboard/buyer`)
-- [x] **Active Bids Tab** -> \`/dashboard/bids\`
-- [x] **Watchlist Tab** -> \`/watchlist\`
-- [x] **Won Auctions Tab** -> Integrated into \`/dashboard/bids\`
+- [x] **Active Bids Tab** -> `/dashboard/bids`
+  - [ ] Group bids by auction card instead of individual entries (#144)
+- [x] **Watchlist Tab** -> `/watchlist`
+- [x] **Won Auctions Tab** -> Integrated into `/dashboard/bids`
 
 ### Admin Dashboard (`/admin`)
 - [x] **Pending Verifications** (Listing Moderation)
 - [x] **Seller KYC Approval**
-- [x] **Audit Logs**
-- [x] **Financial Oversight**
-- [x] **Support Management**
+- [ ] **Audit Logs**
+- [ ] **Financial Oversight**
+- [ ] **Support Management**
+- [ ] Fix inconsistent user count data (#139)
+- [ ] Fix real-time loading in Live Monitor (#138)
+- [ ] Fix KPI data accuracy (#63)
+- [ ] Replace "Verified Users" KPI with "Online Users" (#74)
+- [ ] Integrate KYC pending count into User Base summary (#71)
+- [ ] Fix 200 auction limit in admin stats for accurate financials (#81)
+- [ ] Implement platform fee configuration page (#106)
+- [ ] Implement equipment metadata management page (#105)
+- [ ] Implement business info management page (#132)
 
 ---
 
@@ -150,13 +169,13 @@
 ### Soft Close Logic
 - [x] Detect if bid placed in final 2 minutes
 - [x] Extend `endTime` by 2 minutes
-- [ ] Notify all watchers of extension (toast/push)
+- [x] Notify all watchers of extension (Reactive UI updates)
 - [x] Update countdown timer for all connected clients
 
 ### Proxy Bidding
-- [ ] Allow user to set max bid amount
-- [ ] Store max bid in database
-- [ ] Auto-increment bid by minimum increment when outbid
+- [x] Allow user to set max bid amount
+- [x] Store max bid in database
+- [x] Auto-increment bid by minimum increment when outbid
 
 ### Watchlist
 - [x] Add/remove auctions from watchlist (mutation)
@@ -166,6 +185,7 @@
 
 ### Search & Filters
 - [x] Implement text search on title, make, model
+- [ ] SEO Optimization strategy implementation (#133)
 
 ### Countdown Timer
 - [x] Create reusable `CountdownTimer` component
@@ -173,6 +193,9 @@
 - [x] Update every second using `setInterval`
 - [x] Display format: "2d 5h 32m 15s" or "Ended"
 - [x] Change colour to red when < 1 hour remaining
+
+### AI Chatbot
+- [ ] Add AI chatbot support for user inquiries (#129)
 
 ---
 
@@ -183,11 +206,15 @@
 - [ ] Test Convex mutations
 - [ ] Test utility functions
 - [x] Test React components
+- [ ] Create comprehensive unit tests for entire codebase (#84)
 
 ### Integration Tests
 - [ ] Test full bidding flow
 - [ ] Test auction creation flow
 - [ ] Test authentication flow
+
+### UI/UX Polish
+- [ ] Fix missing `id` or `name` attributes on form fields (#140)
 
 ---
 
@@ -217,17 +244,21 @@
 - [x] Document Convex schema fields
 - [ ] Create `CONTRIBUTING.md`
 - [ ] Create `CHANGELOG.md`
+- [ ] Align notification scope conflict in Listing Storage spec (#148)
 
 ### User Documentation
 - [ ] Create FAQ page
 - [ ] Write "How to Sell" guide
 - [ ] Write "How to Buy" guide
+- [ ] Align Brief.md location features with implementation phases (#149)
+- [ ] Complete general project documentation (#40)
 
 ### README.md
 - [x] Project overview and features
 - [x] Tech stack
 - [x] Setup instructions
 - [x] Environment variables table
+- [ ] Revise for best practices and complete all sections (#75)
 - [ ] Deployment instructions
 
 ---

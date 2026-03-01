@@ -130,45 +130,31 @@ AgriBid bridges the trust gap through:
 **Must-Have:**
 1. [ ] **Dispute Resolution**
    - Admin mediation interface for post-auction disputes
-
 2. [ ] **Support Ticket System**
    - In-app support for users and admins
+3. [ ] **System Polish & Accuracy**
+   - Refined Admin KPIs and real-time monitoring stability
+   - Pagination for large datasets
 
 ---
 
 ### Phase 4: Advanced Features (Post-Launch)
 - **AI-Powered Pricing Suggestions**: Use historical sales data to recommend reserve prices
+- **AI Chatbot Support**: Real-time user assistance for bidding and listing queries
+- **SEO Optimization**: Enhanced search engine visibility for auction listings
 - **Mobile App**: React Native wrapper for iOS/Android
 - **Live Auction Events**: Scheduled "mega-auctions" with simulcast video
 
 ---
 
 ## 5. File Structure:
-The project uses a monorepo-style structure where all application code resides within the `app/` directory.
+The project is transitioning to a cleaner structure where application code resides at the root.
 
 ```
 / (Project Root)
-├── app/ (Application Root)
-│   ├── convex/
-│   │   ├── schema.ts
-│   │   ├── auctions.ts (queries/mutations)
-│   │   ├── seed.ts (static equipment & mock data)
-│   │   ├── betterAuth/
-│   │   ├── cron.ts
-│   │   └── http.ts
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/ (Shadcn components)
-│   │   │   ├── AuctionCard.tsx
-│   │   │   ├── BidForm.tsx
-│   │   │   └── ...
-│   │   ├── pages/
-│   │   │   ├── AdminDashboard.tsx
-│   │   │   └── ...
-│   │   ├── lib/
-│   │   └── App.tsx
-│   ├── tailwind.config.js
-│   └── package.json
+├── convex/ (Backend logic)
+├── src/ (Frontend React application)
+├── conductor/ (Documentation & Tracks)
 ├── Brief.md
 ├── Checklist.md
 └── README.md
@@ -489,17 +475,21 @@ export default crons;
 - [x] Implement image gallery component
 - [x] Add seller dashboard
 
-### Sprint 4 (Weeks 7-8): Trust Features
+### Sprint 4 (Weeks 7-8): Trust & Admin Hardening
 - [ ] Add condition report uploads
 - [ ] Build seller verification system
-- [ ] Implement admin review interface
+- [ ] Refine Admin Dashboard KPIs and Live Monitor
+- [ ] Implement pagination for all queries
 
-### Sprint 5 (Weeks 9-10): Refinement & Polish
-- [ ] Performance optimisation (lazy loading, code splitting)
-- [ ] Accessibility audit
-- [ ] Beta testing with 50 users
+### Sprint 5 (Weeks 9-10): Support & Polish
+- [ ] Implement Support Ticket system
+- [ ] Group bids in Buyer Dashboard
+- [ ] UI/UX Polish: resize animations, dropdown filters, uniform image sizing
+- [ ] Comprehensive unit test coverage
 
 ### Sprint 6 (Weeks 11-12): Production Launch
-- [ ] Production deployment (Vercel/Netlify + Convex Cloud)
+- [ ] SEO Strategy implementation
+- [ ] AI Chatbot integration (Beta)
+- [ ] Production deployment (Vercel + Convex Cloud)
 - [ ] Final security hardening
 
