@@ -143,15 +143,15 @@
 - [x] **Pending Verifications** (Listing Moderation)
 - [x] **Seller KYC Approval**
 - [ ] **Audit Logs**
-- [ ] **Financial Oversight**
+- [ ] **Financial Oversight** (out-of-scope — payment removal)
 - [ ] **Support Management**
 - [ ] Fix inconsistent user count data (#139)
 - [ ] Fix real-time loading in Live Monitor (#138)
 - [ ] Fix KPI data accuracy (#63)
 - [ ] Replace "Verified Users" KPI with "Online Users" (#74)
 - [ ] Integrate KYC pending count into User Base summary (#71)
-- [ ] Fix 200 auction limit in admin stats for accurate financials (#81)
-- [ ] Implement platform fee configuration page (#106)
+- [ ] Fix 200 auction limit in admin stats for accurate analytics review (#81)
+- [ ] Implement platform fee configuration page (out-of-scope — payment removal) (#106)
 - [ ] Implement equipment metadata management page (#105)
 - [ ] Implement business info management page (#132)
 
@@ -185,7 +185,7 @@
 
 ### Search & Filters
 - [x] Implement text search on title, make, model
-- [ ] SEO Optimization strategy implementation (#133)
+- [ ] SEO strategy implementation (#133)
 
 ### Countdown Timer
 - [x] Create reusable `CountdownTimer` component

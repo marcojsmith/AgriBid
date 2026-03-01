@@ -22,6 +22,7 @@
 - **Trust Gap**: Buyers of $50k–$500k machinery are hesitant about online-only transactions without inspection transparency
 
 ### Competitive Analysis:
+
 | Platform | Real-Time Bidding | Equipment Focus |
 |----------|-------------------|-----------------|
 | **eBay** | ❌ (polling-based) | General |
@@ -141,7 +142,7 @@ AgriBid bridges the trust gap through:
 ### Phase 4: Advanced Features (Post-Launch)
 - **AI-Powered Pricing Suggestions**: Use historical sales data to recommend reserve prices
 - **AI Chatbot Support**: Real-time user assistance for bidding and listing queries
-- **SEO Optimization**: Enhanced search engine visibility for auction listings
+- **SEO strategy**: Enhanced search engine visibility for auction listings
 - **Mobile App**: React Native wrapper for iOS/Android
 - **Live Auction Events**: Scheduled "mega-auctions" with simulcast video
 
@@ -150,7 +151,7 @@ AgriBid bridges the trust gap through:
 ## 5. File Structure:
 The project is transitioning to a cleaner structure where application code resides at the root.
 
-```
+```text
 / (Project Root)
 ├── convex/ (Backend logic)
 ├── src/ (Frontend React application)
@@ -200,7 +201,7 @@ The project is transitioning to a cleaner structure where application code resid
 
 ### 5.2 Starting Convex Schema Design
 ```typescript
-// app/convex/schema.ts
+// convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -275,7 +276,7 @@ export default defineSchema({
 
 #### Mutation: `placeBid`
 ```typescript
-// app/convex/auctions.ts
+// convex/auctions.ts
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
@@ -346,6 +347,14 @@ crons.interval(
 
 export default crons;
 ```
+
+> **Migration Checklist:** When moving code to the root structure, ensure you update:
+> - [ ] Frontend imports and asset paths
+> - [ ] Backend Convex functions and schema references
+> - [ ] Database seed data and configuration
+> - [ ] Security rules and auth configuration
+> - [ ] Automated tests (Vitest/MCP)
+> - [ ] Project documentation and guides
 
 ---
 
