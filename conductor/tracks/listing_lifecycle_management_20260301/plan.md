@@ -24,13 +24,13 @@
     - [x] Write UI unit tests for saving/resuming drafts
     - [x] Implement logic to persist drafts via `updateAuction` during listing creation
     - [x] Enable resuming/editing existing drafts
-- [ ] Task: Update Seller Dashboard
-    - [ ] Write UI unit tests for displaying drafts and pending items
-    - [ ] Modify Seller Dashboard to display `draft` and `pending_review` auctions
-    - [ ] Add UI controls to trigger `publishAuction` from the dashboard
-- [ ] Task: Update Auction Details Page
-    - [ ] Write UI unit tests for condition report rendering
-    - [ ] Display condition report PDF download link if one exists
+- [x] Task: Update Seller Dashboard [efb6c9d]
+    - [x] Write UI unit tests for displaying drafts and pending items
+    - [x] Modify Seller Dashboard to display `draft` and `pending_review` auctions
+    - [x] Add UI controls to trigger `publishAuction` from the dashboard
+- [x] Task: Update Auction Details Page [efb6c9d]
+    - [x] Write UI unit tests for condition report rendering
+    - [x] Display condition report PDF download link if one exists
 - [ ] Task: Refactor and verify coverage
     - [ ] Run coverage reports using Vitest to ensure >80% coverage for new frontend code
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Refinement (React)' (Protocol in workflow.md)
