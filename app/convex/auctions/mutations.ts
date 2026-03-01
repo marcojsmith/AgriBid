@@ -643,3 +643,44 @@ export const publishAuction = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: publishAuctionHandler,
 });
+
+export const updateConditionReportHandler = async (
+  ctx: MutationCtx,
+  args: { auctionId: Id<"auctions">; storageId: string }
+) => {
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) {
+    throw new Error("Not authenticated");
+  }
+  const userId = resolveUserId(authUser);
+
+  const auction = await ctx.db.get(args.auctionId);
+  if (!auction) {
+    throw new ConvexError("Auction not found");
+  }
+
+  if (auction.sellerId !== userId) {
+    throw new Error("Not authorized: You can only update your own auctions");
+  }
+
+  if (auction.conditionReportUrl) {
+    try {
+      await ctx.storage.delete(auction.conditionReportUrl as Id<"_storage">);
+    } catch (e) {
+      console.warn("Failed to delete old condition report", e);
+    }
+  }
+
+  await ctx.db.patch(args.auctionId, { conditionReportUrl: args.storageId });
+
+  return { success: true };
+};
+
+export const updateConditionReport = mutation({
+  args: {
+    auctionId: v.id("auctions"),
+    storageId: v.string(), // Accepts the storageId returned by upload
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: updateConditionReportHandler,
+});
