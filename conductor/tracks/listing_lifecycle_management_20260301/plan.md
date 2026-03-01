@@ -1,10 +1,10 @@
 # Implementation Plan: Listing Lifecycle & Management (Drafts & Refinement)
 
 ## Phase 1: Backend Mutations (Convex)
-- [ ] Task: Implement `updateAuction` mutation
-    - [ ] Write unit tests for `updateAuction` validating role and ownership
-    - [ ] Implement `updateAuction` logic in `app/convex/auctions/mutations.ts`
-    - [ ] Ensure all fields can be updated for `draft` and `pending_review` statuses
+- [x] Task: Implement `updateAuction` mutation [847c3ac]
+    - [x] Write unit tests for `updateAuction` validating role and ownership
+    - [x] Implement `updateAuction` logic in `app/convex/auctions/mutations.ts`
+    - [x] Ensure all fields can be updated for `draft` and `pending_review` statuses
 - [ ] Task: Implement `publishAuction` mutation
     - [ ] Write unit tests for `publishAuction` validating role and ownership
     - [ ] Implement `publishAuction` logic in `app/convex/auctions/mutations.ts` to transition `draft` to `pending_review`
