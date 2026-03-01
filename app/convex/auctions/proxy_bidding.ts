@@ -6,6 +6,15 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
 /**
+ * Constants for auction logic.
+ */
+const SOFT_CLOSE_THRESHOLD_MS = 120000; // 2 minutes
+const AUTO_BID_TIMESTAMP_OFFSET = 1; // Ensure auto-bid is chronologically after the manual bid
+const PRICE_THRESHOLD_FOR_SMALL_INCREMENT = 10000;
+const SMALL_INCREMENT_AMOUNT = 100;
+const LARGE_INCREMENT_AMOUNT = 500;
+
+/**
  * Result shape for the handleNewBid function.
  */
 export type HandleNewBidResult = {
@@ -54,7 +63,12 @@ export const getMyProxyBid = query({
  * @returns The minimum increment amount
  */
 export function getMinIncrement(auction: Doc<"auctions">): number {
-  return auction.minIncrement || (auction.startingPrice < 10000 ? 100 : 500);
+  return (
+    auction.minIncrement ||
+    (auction.startingPrice < PRICE_THRESHOLD_FOR_SMALL_INCREMENT
+      ? SMALL_INCREMENT_AMOUNT
+      : LARGE_INCREMENT_AMOUNT)
+  );
 }
 
 /**
@@ -88,16 +102,226 @@ export async function getCurrentHighestBidAmount(
   auctionId: Id<"auctions">
 ): Promise<number> {
   const auction = await ctx.db.get(auctionId);
-  if (!auction) return 0;
+  if (!auction) {
+    throw new Error(`Auction ${auctionId} not found`);
+  }
 
   const highestBid = await getCurrentHighestBid(ctx, auctionId);
   return highestBid ? highestBid.amount : auction.currentPrice;
 }
 
 /**
- * Offset added to auto-bids to ensure they appear after the manual bid that triggered them.
+ * Validates a potential bid against auction rules.
  */
-const AUTO_BID_TIMESTAMP_OFFSET = 1;
+async function validateBid(
+  ctx: MutationCtx,
+  auction: Doc<"auctions">,
+  bidAmount: number,
+  maxBid?: number
+) {
+  const highestBidDoc = await getCurrentHighestBid(ctx, auction._id);
+  const minIncrement = getMinIncrement(auction);
+
+  // 1. Basic Price Validation
+  if (!highestBidDoc) {
+    if (bidAmount < auction.currentPrice) {
+      throw new Error(`First bid must be at least R${auction.currentPrice}`);
+    }
+  } else {
+    if (bidAmount < auction.currentPrice + minIncrement) {
+      throw new Error(
+        `Bid amount must be at least R${auction.currentPrice + minIncrement}`
+      );
+    }
+  }
+
+  // 2. Proxy Validation
+  if (maxBid !== undefined && maxBid < bidAmount) {
+    throw new Error(
+      "Proxy maximum bid must be at least the current bid amount."
+    );
+  }
+}
+
+/**
+ * Creates or updates a proxy bid for a user.
+ */
+async function upsertProxyBid(
+  ctx: MutationCtx,
+  auctionId: Id<"auctions">,
+  bidderId: string,
+  maxBid: number
+) {
+  const existingProxy = await ctx.db
+    .query("proxy_bids")
+    .withIndex("by_bidder_auction", (q) =>
+      q.eq("bidderId", bidderId).eq("auctionId", auctionId)
+    )
+    .unique();
+
+  if (existingProxy) {
+    await ctx.db.patch(existingProxy._id, {
+      maxBid,
+      updatedAt: Date.now(),
+    });
+  } else {
+    await ctx.db.insert("proxy_bids", {
+      auctionId,
+      bidderId,
+      maxBid,
+      updatedAt: Date.now(),
+    });
+  }
+}
+
+/**
+ * Extends the auction endTime if within the soft-close threshold.
+ */
+async function extendAuctionIfNeeded(
+  ctx: MutationCtx,
+  auction: Doc<"auctions">,
+  now: number
+) {
+  if (auction.endTime && auction.endTime - now < SOFT_CLOSE_THRESHOLD_MS) {
+    await ctx.db.patch(auction._id, {
+      endTime: now + SOFT_CLOSE_THRESHOLD_MS,
+      isExtended: true,
+    });
+  }
+}
+
+/**
+ * Validates an auto-bid amount to ensure it meets requirements.
+ */
+function validateAutoBidAmount(
+  autoBidAmount: number,
+  currentBidAmount: number,
+  minIncrement: number,
+  maxBidLimit: number
+): number | null {
+  // If the computed amount is less than required, try to use the max bid limit
+  if (autoBidAmount < currentBidAmount + minIncrement) {
+    if (maxBidLimit >= currentBidAmount + minIncrement) {
+      return maxBidLimit;
+    }
+    return null; // Cannot meet minimum increment
+  }
+  return autoBidAmount;
+}
+
+/**
+ * Resolves all active proxy bids for an auction after a new bid is placed.
+ */
+async function resolveProxyBids(
+  ctx: MutationCtx,
+  auctionId: Id<"auctions">,
+  bidderId: string,
+  bidAmount: number
+): Promise<HandleNewBidResult | null> {
+  const auction = await ctx.db.get(auctionId);
+  if (!auction) throw new Error("Auction not found");
+
+  const minIncrement = getMinIncrement(auction);
+  const allProxyBids = await ctx.db
+    .query("proxy_bids")
+    .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+    .collect();
+
+  // Sort by maxBid descending, then by creationTime ascending (earliest bidder wins tie)
+  const sortedProxies = allProxyBids.sort((a, b) => {
+    if (b.maxBid !== a.maxBid) return b.maxBid - a.maxBid;
+    return a._creationTime - b._creationTime;
+  });
+
+  if (sortedProxies.length === 0) return null;
+
+  const highestProxy = sortedProxies[0];
+  const secondHighestProxy = sortedProxies[1] || null;
+
+  // Case A: Someone else has a proxy that outbids the current manual bid
+  if (highestProxy.bidderId !== bidderId && highestProxy.maxBid > bidAmount) {
+    let targetAmount = bidAmount + minIncrement;
+    if (secondHighestProxy) {
+      targetAmount = Math.max(
+        targetAmount,
+        secondHighestProxy.maxBid + minIncrement
+      );
+    }
+    targetAmount = Math.min(targetAmount, highestProxy.maxBid);
+
+    const validatedAmount = validateAutoBidAmount(
+      targetAmount,
+      bidAmount,
+      minIncrement,
+      highestProxy.maxBid
+    );
+
+    if (validatedAmount) {
+      await ctx.db.insert("bids", {
+        auctionId,
+        bidderId: highestProxy.bidderId,
+        amount: validatedAmount,
+        timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
+        status: "valid",
+      });
+
+      await ctx.db.patch(auctionId, { currentPrice: validatedAmount });
+
+      return {
+        success: true,
+        bidAmount: validatedAmount,
+        isProxyBid: true,
+        nextBidAmount: null,
+        proxyBidActive: false,
+        confirmedMaxBid: undefined,
+      };
+    }
+  }
+
+  // Case B: The current manual bidder is the highest proxy
+  if (
+    highestProxy.bidderId === bidderId &&
+    secondHighestProxy &&
+    secondHighestProxy.maxBid >= bidAmount
+  ) {
+    const targetAmount = Math.min(
+      highestProxy.maxBid,
+      secondHighestProxy.maxBid + minIncrement
+    );
+    const validatedAmount = validateAutoBidAmount(
+      targetAmount,
+      bidAmount,
+      minIncrement,
+      highestProxy.maxBid
+    );
+
+    if (validatedAmount && validatedAmount > bidAmount) {
+      await ctx.db.insert("bids", {
+        auctionId,
+        bidderId: highestProxy.bidderId,
+        amount: validatedAmount,
+        timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
+        status: "valid",
+      });
+
+      await ctx.db.patch(auctionId, { currentPrice: validatedAmount });
+
+      return {
+        success: true,
+        bidAmount: validatedAmount,
+        isProxyBid: true,
+        nextBidAmount:
+          highestProxy.maxBid > validatedAmount
+            ? validatedAmount + minIncrement
+            : null,
+        proxyBidActive: highestProxy.maxBid > validatedAmount,
+        confirmedMaxBid: highestProxy.maxBid,
+      };
+    }
+  }
+
+  return null;
+}
 
 /**
  * Handles the logic for when a new bid is placed, including proxy bidding.
@@ -119,218 +343,37 @@ export async function handleNewBid(
   const auction = await ctx.db.get(auctionId);
   if (!auction) throw new Error("Auction not found");
 
-  const highestBidDoc = await getCurrentHighestBid(ctx, auctionId);
+  // 1. Validation
+  await validateBid(ctx, auction, bidAmount, maxBid);
   const minIncrement = getMinIncrement(auction);
 
-  // 1. Basic Validation
-  if (!highestBidDoc) {
-    // First bid ever: must be at least the currentPrice (starting price)
-    if (bidAmount < auction.currentPrice) {
-      throw new Error(`First bid must be at least R${auction.currentPrice}`);
-    }
-  } else {
-    // Subsequent bids: must be at least currentPrice + increment
-    if (bidAmount < auction.currentPrice + minIncrement) {
-      throw new Error(
-        `Bid amount must be at least R${auction.currentPrice + minIncrement}`
-      );
-    }
-  }
-
-  // 2. Pre-validation for Proxy Bid
-  if (maxBid !== undefined && maxBid < bidAmount) {
-    throw new Error(
-      "Proxy maximum bid must be at least the current bid amount."
-    );
-  }
-
-  // 3. Upsert Proxy Bid if provided
+  // 2. Proxy Bid Update
   if (maxBid !== undefined) {
-    const existingProxy = await ctx.db
-      .query("proxy_bids")
-      .withIndex("by_bidder_auction", (q) =>
-        q.eq("bidderId", bidderId).eq("auctionId", auctionId)
-      )
-      .unique();
-
-    if (existingProxy) {
-      await ctx.db.patch(existingProxy._id, {
-        maxBid,
-        updatedAt: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("proxy_bids", {
-        auctionId,
-        bidderId,
-        maxBid,
-        updatedAt: Date.now(),
-      });
-    }
+    await upsertProxyBid(ctx, auctionId, bidderId, maxBid);
   }
 
-  // 4. Place the manual bid
+  // 3. Manual Bid Placement
+  const now = Date.now();
   await ctx.db.insert("bids", {
     auctionId,
     bidderId,
     amount: bidAmount,
-    timestamp: Date.now(),
+    timestamp: now,
     status: "valid",
   });
 
-  // 5. Update Auction Price and handle Soft Close
-  let newEndTime = auction.endTime;
-  let isExtended = auction.isExtended || false;
-  const now = Date.now();
+  // 4. Update Auction Price and handle Soft Close
+  await ctx.db.patch(auctionId, { currentPrice: bidAmount });
+  await extendAuctionIfNeeded(ctx, auction, now);
 
-  if (auction.endTime && auction.endTime - now < 120000) {
-    // 2 minutes
-    newEndTime = now + 120000;
-    isExtended = true;
-  }
-
-  await ctx.db.patch(auctionId, {
-    currentPrice: bidAmount,
-    endTime: newEndTime,
-    isExtended,
-  });
-
-  // 6. Trigger Proxy Bidding Resolution
-  // We include the caller's proxy bid in the calculation to ensure they are the winner if they have the highest maxBid.
-  const allProxyBids = await ctx.db
-    .query("proxy_bids")
-    .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
-    .collect();
-
-  // Sort all proxy bids by maxBid descending, then by creation time (first bidder wins tie)
-  const sortedProxies = allProxyBids.sort((a, b) => {
-    if (b.maxBid !== a.maxBid) return b.maxBid - a.maxBid;
-    return a.updatedAt - b.updatedAt;
-  });
-
-  if (sortedProxies.length > 0) {
-    const highestProxy = sortedProxies[0];
-    const secondHighestProxy = sortedProxies[1] || null;
-
-    // The auto-bid should be enough to outbid the second highest proxy or the manual bid
-    // We check if the highest proxy is NOT the current manual bidder OR if someone else's proxy can outbid the manual bid
-
-    // Case A: Someone else has a proxy that outbids the current manual bid
-    if (highestProxy.bidderId !== bidderId && highestProxy.maxBid > bidAmount) {
-      let autoBidAmount = bidAmount + minIncrement;
-
-      // If there's a second highest proxy, we must outbid it too
-      if (secondHighestProxy) {
-        autoBidAmount = Math.max(
-          autoBidAmount,
-          secondHighestProxy.maxBid + minIncrement
-        );
-      }
-
-      // Cap at highest proxy's max bid
-      autoBidAmount = Math.min(autoBidAmount, highestProxy.maxBid);
-
-      // Final Check: Ensure the capped amount still meets the required increment
-      // If it doesn't, we can only bid the maxBid if it's >= the minimum required,
-      // otherwise we skip this auto-bid to avoid invalid increments.
-      if (autoBidAmount < bidAmount + minIncrement) {
-        if (highestProxy.maxBid >= bidAmount + minIncrement) {
-          autoBidAmount = highestProxy.maxBid;
-        } else {
-          // Skip auto-bid if it cannot meet minimum increment
-          return {
-            success: true,
-            bidAmount: bidAmount,
-            isProxyBid: false,
-            nextBidAmount:
-              maxBid !== undefined && maxBid > bidAmount
-                ? bidAmount + minIncrement
-                : null,
-            proxyBidActive: maxBid !== undefined && maxBid > bidAmount,
-            confirmedMaxBid: maxBid,
-          };
-        }
-      }
-
-      // Place the auto-bid
-      await ctx.db.insert("bids", {
-        auctionId,
-        bidderId: highestProxy.bidderId,
-        amount: autoBidAmount,
-        timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET, // Ensure auto-bid is chronologically after the manual bid
-        status: "valid",
-      });
-
-      await ctx.db.patch(auctionId, {
-        currentPrice: autoBidAmount,
-      });
-
-      return {
-        success: true,
-        bidAmount: autoBidAmount,
-        isProxyBid: true,
-        nextBidAmount: null,
-        proxyBidActive: false,
-        confirmedMaxBid: undefined,
-      };
-    }
-
-    // Case B: The current manual bidder is the highest proxy
-    if (highestProxy.bidderId === bidderId) {
-      // If there was a previous highest proxy from someone else that our new proxy just outbid
-      if (secondHighestProxy && secondHighestProxy.maxBid >= bidAmount) {
-        let autoBidAmount = Math.min(
-          highestProxy.maxBid,
-          secondHighestProxy.maxBid + minIncrement
-        );
-
-        // Ensure autoBidAmount meets minimum required increment
-        if (autoBidAmount < bidAmount + minIncrement) {
-          if (highestProxy.maxBid >= bidAmount + minIncrement) {
-            autoBidAmount = highestProxy.maxBid;
-          } else {
-            // Cannot outbid the second highest proxy validly, skip auto-bid
-            return {
-              success: true,
-              bidAmount: bidAmount,
-              isProxyBid: false,
-              nextBidAmount:
-                maxBid !== undefined && maxBid > bidAmount
-                  ? bidAmount + minIncrement
-                  : null,
-              proxyBidActive: maxBid !== undefined && maxBid > bidAmount,
-              confirmedMaxBid: maxBid,
-            };
-          }
-        }
-
-        if (autoBidAmount > bidAmount) {
-          await ctx.db.insert("bids", {
-            auctionId,
-            bidderId: highestProxy.bidderId,
-            amount: autoBidAmount,
-            timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
-            status: "valid",
-          });
-
-          await ctx.db.patch(auctionId, {
-            currentPrice: autoBidAmount,
-          });
-
-          return {
-            success: true,
-            bidAmount: autoBidAmount,
-            isProxyBid: true,
-            nextBidAmount:
-              highestProxy.maxBid > autoBidAmount
-                ? autoBidAmount + minIncrement
-                : null,
-            proxyBidActive: highestProxy.maxBid > autoBidAmount,
-            confirmedMaxBid: highestProxy.maxBid,
-          };
-        }
-      }
-    }
-  }
+  // 5. Proxy Resolution
+  const proxyResult = await resolveProxyBids(
+    ctx,
+    auctionId,
+    bidderId,
+    bidAmount
+  );
+  if (proxyResult) return proxyResult;
 
   return {
     success: true,

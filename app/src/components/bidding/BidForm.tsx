@@ -80,6 +80,11 @@ export const BidForm = ({
     nextMinBid + auction.minIncrement * 5,
   ];
 
+  /**
+   * Submits a manual bid using the current manualAmount state.
+   * Handles both direct and proxy bids based on the isProxyEnabled toggle.
+   * Short-circuits if the manual bid is invalid or the proxy max bid is insufficient.
+   */
   const handleManualBid = () => {
     if (!isManualValid) return;
 
@@ -91,6 +96,13 @@ export const BidForm = ({
     }
   };
 
+  /**
+   * Submits a quick bid for a specific pre-calculated amount.
+   * Handles both direct and proxy bids based on the isProxyEnabled toggle.
+   * Short-circuits if the proxy max bid is insufficient.
+   *
+   * @param amount - The quick bid amount to submit
+   */
   const handleQuickBid = (amount: number) => {
     if (isProxyEnabled) {
       if (currentMaxBidNum < amount) return;
@@ -100,6 +112,12 @@ export const BidForm = ({
     }
   };
 
+  /**
+   * Calculates the available quick bid amounts based on the current auction state.
+   * When proxy bidding is enabled, filters out amounts that exceed the current max bid limit.
+   *
+   * @returns An array of valid quick bid amounts
+   */
   const getQuickBidAmounts = () => {
     if (isProxyEnabled) {
       // Show quick bids that are within the max bid range if max bid is valid for at least the minimum
@@ -128,14 +146,18 @@ export const BidForm = ({
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
+                id="proxy-enabled"
                 checked={isProxyEnabled}
                 onChange={(e) => setIsProxyEnabled(e.target.checked)}
                 disabled={isLoading}
                 className="h-4 w-4 text-primary-foreground border-primary-foreground"
               />
-              <span className="text-sm font-medium">
+              <label
+                htmlFor="proxy-enabled"
+                className="text-sm font-medium cursor-pointer"
+              >
                 Enable Auto-bid (Proxy Bidding)
-              </span>
+              </label>
             </div>
             {isProxyActive && (
               <span className="text-xs font-medium bg-primary/10 text-primary rounded-full px-2 py-1">
@@ -147,18 +169,22 @@ export const BidForm = ({
           {isProxyEnabled && (
             <div className="mt-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
+                <label
+                  htmlFor="proxy-max-bid"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Max Bid:
-                </span>
+                </label>
                 <input
                   type="number"
+                  id="proxy-max-bid"
                   value={maxBid}
                   onChange={(e) => setMaxBid(e.target.value)}
                   placeholder="Enter max amount"
                   className="w-32 h-8 px-2 py-1 text-sm rounded border border-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   disabled={isLoading}
                 />
-                {currentUserMaxBid !== undefined && (
+                {currentUserMaxBid != null && (
                   <span className="text-xs text-muted-foreground">
                     Current: R{currentUserMaxBid.toLocaleString()}
                   </span>
@@ -166,7 +192,9 @@ export const BidForm = ({
               </div>
               {!isMaxBidValid && maxBid !== "" && (
                 <p className="text-destructive text-xs font-bold mt-1">
-                  Max bid must be at least R{nextMinBid.toLocaleString()}
+                  {currentMaxBidNum < nextMinBid
+                    ? `Max bid must be at least R${nextMinBid.toLocaleString()}`
+                    : `Max bid must be at least the manual amount of R${currentManualNum.toLocaleString()}`}
                 </p>
               )}
             </div>
@@ -253,8 +281,8 @@ export const BidForm = ({
         maxBid !== "" && (
           <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
             <AlertTriangle className="h-3 w-3" />
-            Max bid must be at least the current bid amount (R{" "}
-            {currentManualNum.toLocaleString()})
+            Max bid must be at least the manual amount of R{" "}
+            {currentManualNum.toLocaleString()}
           </p>
         )}
 
