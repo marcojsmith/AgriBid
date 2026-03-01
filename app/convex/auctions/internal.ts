@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { updateCounter } from "../admin_utils";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 
 /**
  * Internal mutation to settle auctions that have reached their end time.
@@ -61,4 +62,51 @@ export const settleExpiredAuctions = internalMutation({
       );
     }
   },
+});
+
+export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const oldDrafts = await ctx.db
+    .query("auctions")
+    .withIndex("by_status", (q) => q.eq("status", "draft"))
+    .filter((q) => q.lt(q.field("_creationTime"), thirtyDaysAgo))
+    .collect();
+
+  for (const draft of oldDrafts) {
+    // Delete associated images
+    const storageIds = [];
+    if (draft.conditionReportUrl) storageIds.push(draft.conditionReportUrl);
+
+    if (draft.images) {
+      if (!Array.isArray(draft.images)) {
+        if (draft.images.front) storageIds.push(draft.images.front);
+        if (draft.images.engine) storageIds.push(draft.images.engine);
+        if (draft.images.cabin) storageIds.push(draft.images.cabin);
+        if (draft.images.rear) storageIds.push(draft.images.rear);
+        if (draft.images.additional) {
+          storageIds.push(...draft.images.additional);
+        }
+      } else {
+        storageIds.push(...draft.images);
+      }
+    }
+
+    for (const id of storageIds) {
+      try {
+        await ctx.storage.delete(id as Id<"_storage">);
+      } catch {
+        console.warn(
+          `Failed to delete storage item ${id} for draft ${draft._id}`
+        );
+      }
+    }
+
+    await ctx.db.delete(draft._id);
+  }
+};
+
+export const cleanupDrafts = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: cleanupDraftsHandler,
 });
