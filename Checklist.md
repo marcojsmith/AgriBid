@@ -59,7 +59,7 @@
 - [x] `placeBid` - place a bid with soft close logic
 - [x] `approveAuction` - admin approval to set active status
 - [x] `generateUploadUrl` - for Convex File Storage
-- [ ] `setProxyBid` - set maximum auto-bid amount
+- [x] `setProxyBid` - set maximum auto-bid amount (Integrated into placeBid)
 - [x] `addToWatchlist` / `removeFromWatchlist` -> \`toggleWatchlist\`
 - [ ] `uploadConditionReport` - upload PDF to Convex Storage
 - [ ] `flagAuction` - report suspicious listing (buyer/admin)
@@ -151,13 +151,13 @@
 ### Soft Close Logic
 - [x] Detect if bid placed in final 2 minutes
 - [x] Extend `endTime` by 2 minutes
-- [ ] Notify all watchers of extension (toast/push)
+- [x] Notify all watchers of extension (Reactive UI updates)
 - [x] Update countdown timer for all connected clients
 
 ### Proxy Bidding
-- [ ] Allow user to set max bid amount
-- [ ] Store max bid in database
-- [ ] Auto-increment bid by minimum increment when outbid
+- [x] Allow user to set max bid amount
+- [x] Store max bid in database
+- [x] Auto-increment bid by minimum increment when outbid
 
 ### Watchlist
 - [x] Add/remove auctions from watchlist (mutation)
