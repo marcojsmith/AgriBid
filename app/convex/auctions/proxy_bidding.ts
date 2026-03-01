@@ -102,20 +102,22 @@ export async function handleNewBid(
   const auction = await ctx.db.get(auctionId);
   if (!auction) throw new Error("Auction not found");
 
-  const currentHighest = await getCurrentHighestBidAmount(ctx, auctionId);
+  const highestBidDoc = await getCurrentHighestBid(ctx, auctionId);
   const minIncrement = getMinIncrement(auction);
 
   // 1. Basic Validation
-  if (bidAmount <= currentHighest && currentHighest > 0) {
-    // If it's the very first bid, it must be >= startingPrice (currentPrice)
-    // Actually currentPrice is initialized to startingPrice.
+  if (!highestBidDoc) {
+    // First bid ever: must be at least the currentPrice (starting price)
     if (bidAmount < auction.currentPrice) {
-      throw new Error(`Bid amount must be at least R${auction.currentPrice}`);
+      throw new Error(`First bid must be at least R${auction.currentPrice}`);
     }
-  } else if (bidAmount < currentHighest + minIncrement && currentHighest > 0) {
-    throw new Error(
-      `Bid amount must be at least R${currentHighest + minIncrement}`
-    );
+  } else {
+    // Subsequent bids: must be at least currentPrice + increment
+    if (bidAmount < auction.currentPrice + minIncrement) {
+      throw new Error(
+        `Bid amount must be at least R${auction.currentPrice + minIncrement}`
+      );
+    }
   }
 
   // 2. Upsert Proxy Bid if provided

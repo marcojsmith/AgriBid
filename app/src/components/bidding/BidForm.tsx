@@ -100,10 +100,10 @@ export const BidForm = ({
 
   return (
     <div className="space-y-6">
-      {/* Proxy Bidding Section */}
-      {currentUserMaxBid !== undefined && (
+      {/* Proxy Bidding Section - Show if the form is enabled (logged in) */}
+      {isBidFormEnabled && (
         <div
-          className={`border-2 border-${isProxyActive ? "primary" : "muted-foreground"} border-opacity-20 rounded-xl p-4 mb-4`}
+          className={`border-2 ${isProxyActive ? "border-primary" : "border-muted-foreground"} border-opacity-20 rounded-xl p-4 mb-4`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export const BidForm = ({
                 type="checkbox"
                 checked={isProxyEnabled}
                 onChange={(e) => setIsProxyEnabled(e.target.checked)}
-                disabled={!isBidFormEnabled || isLoading}
+                disabled={isLoading}
                 className="h-4 w-4 text-primary-foreground border-primary-foreground"
               />
               <span className="text-sm font-medium">
@@ -119,7 +119,7 @@ export const BidForm = ({
               </span>
             </div>
             {isProxyActive && (
-              <span className="text-xs font-medium bg-primary/10 text-primary-foreground rounded-full px-2 py-1">
+              <span className="text-xs font-medium bg-primary/10 text-primary rounded-full px-2 py-1">
                 Active
               </span>
             )}
@@ -137,11 +137,13 @@ export const BidForm = ({
                   onChange={(e) => setMaxBid(e.target.value)}
                   placeholder="Enter max amount"
                   className="w-32 h-8 px-2 py-1 text-sm rounded border border-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  disabled={!isBidFormEnabled || isLoading}
+                  disabled={isLoading}
                 />
-                <span className="text-xs text-muted-foreground">
-                  R{currentUserMaxBid.toLocaleString()}
-                </span>
+                {currentUserMaxBid !== undefined && (
+                  <span className="text-xs text-muted-foreground">
+                    Current: R{currentUserMaxBid.toLocaleString()}
+                  </span>
+                )}
               </div>
               {!isMaxBidValid && maxBid !== "" && (
                 <p className="text-destructive text-xs font-bold mt-1">
@@ -161,7 +163,11 @@ export const BidForm = ({
             variant="outline"
             className="h-14 flex flex-col items-center justify-center gap-0.5 border-2 hover:border-primary hover:bg-primary/5 transition-all group"
             onClick={() => handleQuickBid(amount)}
-            disabled={isLoading || !isBidFormEnabled || !isMaxBidValid}
+            disabled={
+              isLoading ||
+              !isBidFormEnabled ||
+              (isProxyEnabled && !isMaxBidValid)
+            }
           >
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
               Quick Bid
@@ -179,9 +185,7 @@ export const BidForm = ({
         </div>
         <div className="relative flex justify-center text-[10px] uppercase">
           <span className="bg-card px-2 text-muted-foreground font-black tracking-[0.2em]">
-            {isProxyEnabled
-              ? "Or Enter Custom Amount"
-              : "Or Enter Custom Amount"}
+            Or Enter Custom Amount
           </span>
         </div>
       </div>
@@ -208,7 +212,7 @@ export const BidForm = ({
               !isManualValid ||
               isLoading ||
               !isBidFormEnabled ||
-              (!isProxyEnabled && !isMaxBidValid)
+              (isProxyEnabled && !isMaxBidValid)
             }
             onClick={handleManualBid}
           >
