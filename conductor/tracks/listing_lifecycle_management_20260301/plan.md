@@ -12,9 +12,9 @@
     - [x] Write unit tests for uploading a condition report
     - [x] Create server-side logic for PDF upload to Convex Storage
     - [x] Implement replacement logic to silently overwrite/delete previous report
-- [ ] Task: Implement `cleanupDrafts` cron job
-    - [ ] Write unit tests for the cron job logic
-    - [ ] Add `cleanupDrafts` to `app/convex/crons.ts` to run daily and delete drafts older than 30 days
+- [x] Task: Implement `cleanupDrafts` cron job [bed250f]
+    - [x] Write unit tests for the cron job logic
+    - [x] Add `cleanupDrafts` to `app/convex/crons.ts` to run daily and delete drafts older than 30 days
 - [ ] Task: Refactor and verify coverage
     - [ ] Run coverage reports using Vitest to ensure >80% coverage for new backend code
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Backend Mutations (Convex)' (Protocol in workflow.md)
