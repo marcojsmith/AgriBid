@@ -75,17 +75,42 @@ export const getActiveAuctions = query({
 
     if (args.search) {
       const statuses = statusesForFilter(statusFilter);
-      const results = await Promise.all(
+      const searchTerm = args.search;
+
+      const titlePromise = Promise.all(
         statuses.map((status) =>
           auctionsQuery
             .withSearchIndex("search_title", (q) =>
-              q.search("title", args.search!).eq("status", status)
+              q.search("title", searchTerm).eq("status", status)
             )
             .collect()
         )
       );
-      // Status buckets are mutually exclusive so deduplication is a no-op
-      auctions = results.flat();
+
+      const makeModelPromise = Promise.all(
+        statuses.map((status) =>
+          auctionsQuery
+            .withSearchIndex("search_make_model", (q) =>
+              q.search("make", searchTerm).eq("status", status)
+            )
+            .collect()
+        )
+      );
+
+      const [titleResults, makeModelResults] = await Promise.all([
+        titlePromise,
+        makeModelPromise,
+      ]);
+
+      const seen = new Set<string>();
+      auctions = [...titleResults.flat(), ...makeModelResults.flat()].filter(
+        (auction) => {
+          const id = auction._id.toString();
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        }
+      );
     } else if (args.make) {
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
