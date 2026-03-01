@@ -75,17 +75,38 @@ export const getActiveAuctions = query({
 
     if (args.search) {
       const statuses = statusesForFilter(statusFilter);
-      const results = await Promise.all(
+      const searchTerm = args.search;
+
+      // Search both title and make/model indexes and combine results
+      const titleResults = await Promise.all(
         statuses.map((status) =>
           auctionsQuery
             .withSearchIndex("search_title", (q) =>
-              q.search("title", args.search!).eq("status", status)
+              q.search("title", searchTerm).eq("status", status)
             )
             .collect()
         )
       );
-      // Status buckets are mutually exclusive so deduplication is a no-op
-      auctions = results.flat();
+
+      const makeModelResults = await Promise.all(
+        statuses.map((status) =>
+          auctionsQuery
+            .withSearchIndex("search_make_model", (q) =>
+              q.search("make", searchTerm).eq("status", status)
+            )
+            .collect()
+        )
+      );
+
+      // Combine and deduplicate results
+      const combined = [...titleResults.flat(), ...makeModelResults.flat()];
+      const seen = new Set<string>();
+      auctions = combined.filter((auction) => {
+        const id = auction._id.toString();
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
     } else if (args.make) {
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
