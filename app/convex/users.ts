@@ -78,10 +78,16 @@ export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
   });
 
   if (!user) {
-    user = await ctx.runQuery(components.auth.adapter.findOne, {
-      model: "user",
-      where: [{ field: "_id", operator: "eq", value: id }],
-    });
+    try {
+      user = await ctx.runQuery(components.auth.adapter.findOne, {
+        model: "user",
+        where: [{ field: "_id", operator: "eq", value: id }],
+      });
+    } catch {
+      // If id is not a valid Convex ID format, findOne will throw.
+      // We catch this and return null as the user was not found.
+      return null;
+    }
   }
   return user;
 }
