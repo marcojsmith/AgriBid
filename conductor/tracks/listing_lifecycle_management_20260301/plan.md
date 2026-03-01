@@ -20,10 +20,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Backend Mutations (Convex)' (Protocol in workflow.md) [checkpoint: 1ec4c06]
 
 ## Phase 2: Frontend Refinement (React)
-- [ ] Task: Update Listing Wizard
-    - [ ] Write UI unit tests for saving/resuming drafts
-    - [ ] Implement logic to persist drafts via `updateAuction` during listing creation
-    - [ ] Enable resuming/editing existing drafts
+- [x] Task: Update Listing Wizard [23abe2e]
+    - [x] Write UI unit tests for saving/resuming drafts
+    - [x] Implement logic to persist drafts via `updateAuction` during listing creation
+    - [x] Enable resuming/editing existing drafts
 - [ ] Task: Update Seller Dashboard
     - [ ] Write UI unit tests for displaying drafts and pending items
     - [ ] Modify Seller Dashboard to display `draft` and `pending_review` auctions
