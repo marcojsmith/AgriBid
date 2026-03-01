@@ -5,9 +5,9 @@
     - [x] Write unit tests for `updateAuction` validating role and ownership
     - [x] Implement `updateAuction` logic in `app/convex/auctions/mutations.ts`
     - [x] Ensure all fields can be updated for `draft` and `pending_review` statuses
-- [ ] Task: Implement `publishAuction` mutation
-    - [ ] Write unit tests for `publishAuction` validating role and ownership
-    - [ ] Implement `publishAuction` logic in `app/convex/auctions/mutations.ts` to transition `draft` to `pending_review`
+- [x] Task: Implement `publishAuction` mutation [c71772c]
+    - [x] Write unit tests for `publishAuction` validating role and ownership
+    - [x] Implement `publishAuction` logic in `app/convex/auctions/mutations.ts` to transition `draft` to `pending_review`
 - [ ] Task: Implement Condition Report Upload logic
     - [ ] Write unit tests for uploading a condition report
     - [ ] Create server-side logic for PDF upload to Convex Storage
