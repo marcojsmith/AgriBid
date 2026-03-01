@@ -1,0 +1,1 @@
+Task: Implement updateAuction mutation. Added updateAuction mutation in app/convex/auctions/mutations.ts and tests in app/convex/auctions/updateAuction.test.ts
