@@ -12,7 +12,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
-- [ ] **Track: Listing Lifecycle & Management (Drafts & Refinement)**
+- [x] **Track: Listing Lifecycle & Management (Drafts & Refinement)**
 *Link: [./tracks/listing_lifecycle_management_20260301/](./tracks/listing_lifecycle_management_20260301/)*
 
 ---
