@@ -63,37 +63,37 @@ All tasks follow a strict lifecycle:
   - **CRITICAL:** If you deviate from the original task specification, you must document this clearly in `plan.md` with a dated note explaining the change and the rationale behind it. This ensures transparency and provides context for future reference.
    - Resume implementation
 
-8. **Commit Code Changes:**
-   - When implementing a new track, create a new branch and use appropriate naming conventions (e.g., `feat/calculate-sum`, `fix/bug-1234`).
+8. **Local Code Review (CodeRabbit CLI):**
+   - **Action:** Run the CodeRabbit CLI to analyze your uncommitted changes before you commit.
+   - **Command:** `coderabbit --prompt-only --type uncommitted` (Run this in the background if it takes a while).
+   - **Evaluate Findings:** Review the feedback provided by CodeRabbit. 
+   - **Implement Fixes:** Address any critical issues or meaningful improvements identified. You can ignore nits if they don't align with project standards.
+   - **Verify Fixes:** Run `coderabbit --prompt-only --type uncommitted` again if significant changes were made to ensure no new issues were introduced.
+
+9. **Commit Code Changes:**
+   - When implementing a new track, create a new branch and use appropriate naming conventions (e.g., `feature/description` or `bugfix/description`).
    - Stage all code changes related to the task.
-   - Propose a clear, concise commit message e.g, `feat(ui): Create basic HTML structure for calculator`.
+   - Propose a clear, concise commit message following the format in `Checklist.md` (e.g., `feat(auth): Add remember me functionality`).
    - Perform the commit.
 
-9. **Attach Task Summary with Git Notes:**
-   - **Step 9.1: Get Commit Hash:** Obtain the hash of the *just-completed commit* (`git log -1 --format="%H"`).
-   - **Step 9.2: Draft Note Content:** Create a detailed summary for the completed task. This should include the task name, a summary of changes, a list of all created/modified files, and the core "why" for the change.
-   - **Step 9.3: Attach Note:** Use the `git notes` command to attach the summary to the commit.
+10. **Attach Task Summary with Git Notes:**
+   - **Step 10.1: Get Commit Hash:** Obtain the hash of the *just-completed commit* (`git log -1 --format="%H"`).
+   - **Step 10.2: Draft Note Content:** Create a detailed summary for the completed task. This should include the task name, a summary of changes, a list of all created/modified files, and the core "why" for the change.
+   - **Step 10.3: Attach Note:** Use the `git notes` command to attach the summary to the commit.
      ```bash
      # The note content from the previous step is passed via the -m flag.
      git notes add -m "<note content>" <commit_hash>
      ```
 
-10. **Get and Record Task Commit SHA:**
-    - **Step 10.1: Update Plan:** Read `plan.md`, find the line for the completed task, update its status from `[~]` to `[x]`, and append the first 7 characters of the *just-completed commit's* commit hash.
-    - **Step 10.2: Write Plan:** Write the updated content back to `plan.md`.
+11. **Get and Record Task Commit SHA:**
+    - **Step 11.1: Update Plan:** Read `plan.md`, find the line for the completed task, update its status from `[~]` to `[x]`, and append the first 7 characters of the *just-completed commit's* commit hash.
+    - **Step 11.2: Write Plan:** Write the updated content back to `plan.md`.
 
-11. **Commit Plan Update:**
+12. **Commit Plan Update:**
     - **Action:** Stage the modified `plan.md` file.
     - **Action:** Commit this change with a descriptive message (e.g., `conductor(plan): Mark task 'Create user model' as complete`).
 
-12. **Announce Task Completion:** Inform the user that the task is complete and the commit has been made, with the summary attached as a git note.
-
-13. **Wait for CodeRabbit review feedback:**
-    - **PAUSE** and await any feedback from CodeRabbit. Do not proceed to the next task until you have received explicit confirmation that the current task is satisfactory.
-    - After each PR, as well as changes to open PR's, CodeRabbit will perform a code review and provide feedback. 
-    - You must address any feedback before moving on to the next task. This may involve additional commits to the same branch.
-    - You may have to repeat this process multiple times if CodeRabbit requests further changes. This is normal and expected. The goal is to ensure high code quality and alignment with project standards.
-    - Only once you have received explicit confirmation from CodeRabbit that the task is complete and satisfactory should you proceed to the next task in `plan.md`.
+13. **Announce Task Completion:** Inform the user that the task is complete and the commit has been made, with the summary attached as a git note.
 
 ### Phase Completion Verification and Checkpointing Protocol
 
