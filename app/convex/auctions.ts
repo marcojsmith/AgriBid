@@ -42,6 +42,9 @@ export {
 // Re-export bidding mutations
 export { placeBid } from "./auctions/bidding";
 
+// Re-export proxy bidding queries
+export { getMyProxyBid } from "./auctions/proxy_bidding";
+
 // Re-export internal mutations
 export { settleExpiredAuctions } from "./auctions/internal";
 

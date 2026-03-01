@@ -20,6 +20,7 @@ import type * as auctions_helpers from "../auctions/helpers.js";
 import type * as auctions_index from "../auctions/index.js";
 import type * as auctions_internal from "../auctions/internal.js";
 import type * as auctions_mutations from "../auctions/mutations.js";
+import type * as auctions_proxy_bidding from "../auctions/proxy_bidding.js";
 import type * as auctions_queries from "../auctions/queries.js";
 import type * as auth from "../auth.js";
 import type * as config from "../config.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   "auctions/index": typeof auctions_index;
   "auctions/internal": typeof auctions_internal;
   "auctions/mutations": typeof auctions_mutations;
+  "auctions/proxy_bidding": typeof auctions_proxy_bidding;
   "auctions/queries": typeof auctions_queries;
   auth: typeof auth;
   config: typeof config;

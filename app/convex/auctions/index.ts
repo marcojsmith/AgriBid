@@ -3,3 +3,4 @@ export * from "./mutations";
 export * from "./bidding";
 export * from "./internal";
 export * from "./helpers";
+export * from "./proxy_bidding";

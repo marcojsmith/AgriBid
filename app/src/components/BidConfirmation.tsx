@@ -15,6 +15,7 @@ import { Gavel } from "lucide-react";
 interface BidConfirmationProps {
   isOpen: boolean;
   amount: number;
+  maxAmount?: number;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -22,6 +23,7 @@ interface BidConfirmationProps {
 export const BidConfirmation = ({
   isOpen,
   amount,
+  maxAmount,
   onConfirm,
   onCancel,
 }: BidConfirmationProps) => {
@@ -29,6 +31,12 @@ export const BidConfirmation = ({
   const formattedAmount = new Intl.NumberFormat("en-ZA", {
     maximumFractionDigits: 0,
   }).format(amount);
+
+  const formattedMaxAmount = maxAmount
+    ? new Intl.NumberFormat("en-ZA", { maximumFractionDigits: 0 }).format(
+        maxAmount
+      )
+    : null;
 
   const handleConfirm = () => {
     isConfirmingRef.current = true;
@@ -60,10 +68,22 @@ export const BidConfirmation = ({
               You are about to place a bid for
             </AlertDialogDescription>
           </div>
-          <div className="bg-primary/5 border-2 border-primary/20 w-full py-6 rounded-2xl">
-            <span className="text-4xl font-black text-primary tracking-tight">
-              R {formattedAmount}
-            </span>
+          <div className="bg-primary/5 border-2 border-primary/20 w-full py-6 rounded-2xl space-y-2">
+            <div>
+              <span className="text-4xl font-black text-primary tracking-tight">
+                R {formattedAmount}
+              </span>
+            </div>
+            {formattedMaxAmount && (
+              <div className="pt-2 border-t border-primary/10 mx-8">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">
+                  Auto-bid Limit (Proxy)
+                </p>
+                <span className="text-lg font-black text-primary/70">
+                  R {formattedMaxAmount}
+                </span>
+              </div>
+            )}
           </div>
           <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest px-4">
             By confirming, you agree to purchase this equipment at this price if
