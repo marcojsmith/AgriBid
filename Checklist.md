@@ -69,7 +69,6 @@
 - [ ] `cleanupDrafts` - run daily to delete old drafts (>30 days)
 
 ### Convex Actions (External API Calls)
-- [ ] `calculateShipping` - call haulage API (Shiply/uShip)
 - [ ] `sendEmailNotification` - trigger email via Resend/SendGrid
 
 ---

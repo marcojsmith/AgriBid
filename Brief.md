@@ -9,7 +9,7 @@
 
 ### Key Differentiators:
 - **Real-Time Bidding**: Sub-200ms latency using Convex's reactive architecture
-- **Farming-Specific Features**: Equipment condition reports, operating hours tracking, and location-based logistics integration
+- **Farming-Specific Features**: Equipment condition reports and operating hours tracking
 - **Trust & Transparency**: Detailed inspection galleries, verified seller profiles, and immutable bid histories
 - **Mobile-First Design**: Optimised for on-the-go farmers and dealers
 
@@ -20,20 +20,18 @@
 ### Industry Landscape:
 - **Inventory Consolidation**: Post-2024 supply chain normalisation has created a secondary market boom for used equipment
 - **Trust Gap**: Buyers of $50k–$500k machinery are hesitant about online-only transactions without inspection transparency
-- **Logistics Friction**: Transporting a combine harvester can cost R2,000–R10,000+, representing 10–30% of the final bid
 
 ### Competitive Analysis:
-| Platform | Real-Time Bidding | Equipment Focus | Logistics Integration |
-|----------|-------------------|-----------------|----------------------|
-| **eBay** | ❌ (polling-based) | General | ❌ |
-| **TractorHouse** | ✅ (limited) | ✅ Farming | ⚠️ (manual quotes) |
-| **AgriBid** | ✅ (Convex-powered) | ✅ Farming | ✅ (API-driven estimates) |
+| Platform | Real-Time Bidding | Equipment Focus |
+|----------|-------------------|-----------------|
+| **eBay** | ❌ (polling-based) | General |
+| **TractorHouse** | ✅ (limited) | ✅ Farming |
+| **AgriBid** | ✅ (Convex-powered) | ✅ Farming |
 
 ### Solution Strategy:
 AgriBid bridges the trust gap through:
 1. **Mandatory Inspection Reports**: Multi-photo galleries with machine hour meters and service logs
-2. **Transparent Pricing**: Real-time shipping cost estimates based on buyer location
-3. **Verified Seller Profiles**: Better Auth integration with business verification
+2. **Verified Seller Profiles**: Better Auth integration with business verification
 
 ---
 
@@ -62,14 +60,13 @@ AgriBid bridges the trust gap through:
 - Avoid bidding wars through strategic proxy bidding
 
 **Pain Points:**
-- Hidden transport costs inflate final purchase price
 - Difficulty verifying equipment condition remotely
 
 **Use Cases:**
 1. Filter auctions by max operating hours, location radius, and budget
 2. View 360° photo galleries with zoom capability
 3. Set maximum bid and receive push notifications when outbid
-4. Calculate total landed cost (bid + transport + VAT)
+4. View equipment location and detailed condition reports
 
 ---
 
@@ -129,23 +126,13 @@ AgriBid bridges the trust gap through:
 
 ---
 
-### Phase 3: Logistics & Finalisation
+### Phase 3: Dispute Resolution & Support
 **Must-Have:**
-1. [ ] **Shipping Calculator Integration**
-   - API integration with haulage providers (e.g., Shiply, uShip)
-   - Display estimated transport cost on listing page
-   - Buyer can request formal quotes post-auction
+1. [ ] **Dispute Resolution**
+   - Admin mediation interface for post-auction disputes
 
-2. [ ] **Payment Escrow**
-   - Stripe Connect integration for seller payouts
-   - Buyer deposit system (10% of winning bid, refundable if item misrepresented)
-
-3. [ ] **Dispute Resolution**
-   - Buyer can open case within 48 hours of collection
-   - Admin mediation interface
-
-**Nice-to-Have:**
-- Automated VAT calculation for cross-border sales
+2. [ ] **Support Ticket System**
+   - In-app support for users and admins
 
 ---
 
@@ -153,7 +140,6 @@ AgriBid bridges the trust gap through:
 - **AI-Powered Pricing Suggestions**: Use historical sales data to recommend reserve prices
 - **Mobile App**: React Native wrapper for iOS/Android
 - **Live Auction Events**: Scheduled "mega-auctions" with simulcast video
-- **Finance Calculator**: Integrate agricultural lending partners for buyer financing options
 
 ---
 
@@ -402,7 +388,7 @@ export default crons;
   - Equipment specs table
   - Current bid + bid history (collapsible)
   - Bid form (amount input + "Place Bid" button)
-  - Shipping calculator (postcode input → API call → estimate display)
+  - Equipment location and inspection report availability
 
 #### 3. Seller Dashboard (`/dashboard/seller`)
 - **My Listings**: Tabs (Draft / Active / Ended)
@@ -486,36 +472,34 @@ export default crons;
 ## 8. Development Plan & Milestones
 
 ### Sprint 1 (Weeks 1-2): Foundation
-- [ ] Set up Vite + React + TypeScript project
-- [ ] Configure Convex (schema, basic queries)
-- [ ] Integrate Better Auth (email/password)
-- [ ] Build NavBar + Home page skeleton
+- [x] Set up Vite + React + TypeScript project
+- [x] Configure Convex (schema, basic queries)
+- [x] Integrate Better Auth (email/password)
+- [x] Build NavBar + Home page skeleton
 
 ### Sprint 2 (Weeks 3-4): Core Bidding
-- [ ] Implement `placeBid` mutation
-- [ ] Build Auction Detail page
-- [ ] Add real-time bid updates (Convex `useQuery`)
-- [ ] Create countdown timer component
+- [x] Implement `placeBid` mutation
+- [x] Build Auction Detail page
+- [x] Add real-time bid updates (Convex `useQuery`)
+- [x] Create countdown timer component
 
 ### Sprint 3 (Weeks 5-6): Listings & Images
-- [ ] Build "Create Listing" form (multi-step)
-- [ ] Integrate Convex File Storage
-- [ ] Implement image gallery component
-- [ ] Add seller dashboard
+- [x] Build "Create Listing" form (multi-step)
+- [x] Integrate Convex File Storage
+- [x] Implement image gallery component
+- [x] Add seller dashboard
 
 ### Sprint 4 (Weeks 7-8): Trust Features
 - [ ] Add condition report uploads
 - [ ] Build seller verification system
 - [ ] Implement admin review interface
 
-### Sprint 5 (Weeks 9-10): Logistics
-- [ ] Integrate shipping calculator API
-- [ ] Build payment escrow (Stripe Connect)
-- [ ] Add dispute resolution workflow
-
-### Sprint 6 (Weeks 11-12): Polish & Launch
+### Sprint 5 (Weeks 9-10): Refinement & Polish
 - [ ] Performance optimisation (lazy loading, code splitting)
 - [ ] Accessibility audit
 - [ ] Beta testing with 50 users
+
+### Sprint 6 (Weeks 11-12): Production Launch
 - [ ] Production deployment (Vercel/Netlify + Convex Cloud)
+- [ ] Final security hardening
 

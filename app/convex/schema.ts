@@ -158,28 +158,6 @@ export default defineSchema({
     .index("by_updatedAt", ["updatedAt"])
     .index("by_user_updatedAt", ["userId", "updatedAt"]),
 
-  transactions: defineTable({
-    auctionId: v.id("auctions"),
-    sellerId: v.string(),
-    buyerId: v.optional(v.string()),
-    amount: v.number(),
-    type: v.union(
-      v.literal("commission"),
-      v.literal("listing_fee"),
-      v.literal("sale")
-    ),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("completed"),
-      v.literal("failed")
-    ),
-    timestamp: v.number(),
-  })
-    .index("by_status", ["status"])
-    .index("by_auction", ["auctionId"])
-    .index("by_seller", ["sellerId"])
-    .index("by_buyer", ["buyerId"]),
-
   notifications: defineTable({
     recipientId: v.string(), // "all" for announcements
     type: v.union(

@@ -88,5 +88,5 @@ Implement a robust state machine to handle transitions between steps with the fo
 
 ## Out of Scope
 - Advanced AI-powered pricing suggestions (Future Phase).
-- Post-auction logistics and shipping calculator integration (Future Phase).
+- In-app notifications for listing approval and auction events (Future Phase).
 - Video upload support.
