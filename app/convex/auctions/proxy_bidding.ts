@@ -72,13 +72,14 @@ export function getMinIncrement(auction: Doc<"auctions">): number {
 }
 
 /**
- * Gets the current highest valid bid for an auction.
+ * Gets the most recent valid bid for an auction by timestamp.
+ * In a valid bidding sequence, the most recent bid is also the highest bid.
  *
  * @param ctx - Query or Mutation context
  * @param auctionId - ID of the auction
- * @returns The highest bid document or null if no bids
+ * @returns The most recent bid document or null if no bids
  */
-export async function getCurrentHighestBid(
+export async function getMostRecentBid(
   ctx: QueryCtx | MutationCtx,
   auctionId: Id<"auctions">
 ): Promise<Doc<"bids"> | null> {
@@ -92,6 +93,7 @@ export async function getCurrentHighestBid(
 
 /**
  * Gets the current highest bid amount for an auction.
+ * This is either the amount of the most recent valid bid or the starting price.
  *
  * @param ctx - Query or Mutation context
  * @param auctionId - ID of the auction
@@ -106,8 +108,8 @@ export async function getCurrentHighestBidAmount(
     throw new Error(`Auction ${auctionId} not found`);
   }
 
-  const highestBid = await getCurrentHighestBid(ctx, auctionId);
-  return highestBid ? highestBid.amount : auction.currentPrice;
+  const mostRecentBid = await getMostRecentBid(ctx, auctionId);
+  return mostRecentBid ? mostRecentBid.amount : auction.currentPrice;
 }
 
 /**
@@ -119,11 +121,11 @@ async function validateBid(
   bidAmount: number,
   maxBid?: number
 ) {
-  const highestBidDoc = await getCurrentHighestBid(ctx, auction._id);
+  const mostRecentBid = await getMostRecentBid(ctx, auction._id);
   const minIncrement = getMinIncrement(auction);
 
   // 1. Basic Price Validation
-  if (!highestBidDoc) {
+  if (!mostRecentBid) {
     if (bidAmount < auction.currentPrice) {
       throw new Error(`First bid must be at least R${auction.currentPrice}`);
     }

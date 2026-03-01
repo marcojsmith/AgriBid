@@ -1,5 +1,5 @@
 // app/src/components/bidding/BidForm.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Doc } from "convex/_generated/dataModel";
@@ -43,14 +43,22 @@ export const BidForm = ({
     currentUserMaxBid != null ? String(currentUserMaxBid) : ""
   );
 
+  // Keep track of the latest manualAmount without triggering effects
+  const manualAmountRef = useRef(manualAmount);
+  useEffect(() => {
+    manualAmountRef.current = manualAmount;
+  }, [manualAmount]);
+
   /**
    * Sync proxy states with server-backed props when they change.
    */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsProxyEnabled(isProxyActive || false);
   }, [isProxyActive]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMaxBid(currentUserMaxBid != null ? String(currentUserMaxBid) : "");
   }, [currentUserMaxBid]);
 
@@ -60,11 +68,13 @@ export const BidForm = ({
    * but doesn't clobber their input if they've already typed a higher value.
    */
   useEffect(() => {
-    const currentManualNum = parseFloat(manualAmount) || 0;
+    const currentManualNum = parseFloat(manualAmountRef.current) || 0;
     if (currentManualNum < nextMinBid) {
-      setManualAmount(nextMinBid.toString());
+      const newAmount = nextMinBid.toString();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setManualAmount(newAmount);
+      manualAmountRef.current = newAmount;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextMinBid]);
 
   const currentManualNum = parseFloat(manualAmount) || 0;
