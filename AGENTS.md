@@ -252,27 +252,39 @@ Avoid clutter and unnecessary elements.
     - Documentation updates that may be necessary as part of the changes, and ensuring that all relevant documentation is updated accordingly. Including the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder.
 - Provide constructive feedback and suggestions for improvement, and be open to discussion and collaboration with the author of the changes. Always aim to improve the overall quality of the codebase and ensure that the changes align with the project's goals and standards.
 
-**Step 1: List files and folders to Review**
+**Step 1: Local Code Review (CodeRabbit CLI)**
+
+- Before committing any changes, you must run the CodeRabbit CLI to analyze your uncommitted changes.
+- **Command:** `coderabbit --prompt-only --type uncommitted`
+- **Review Findings:** Carefully review the output from CodeRabbit. It will identify potential issues such as race conditions, logic errors, or security vulnerabilities.
+- **Address Issues:** For each finding:
+    - Evaluate if it is a critical issue, a meaningful improvement, or a nit.
+    - Fix major and critical issues immediately.
+    - Consider implementing meaningful improvements.
+    - You may ignore nits if they are not applicable to the current context.
+- **Verification:** After implementing fixes, run the command again to ensure the issues are resolved and no new bugs were introduced.
+
+**Step 2: List files and folders to Review**
 
 - Using terminal commands, list all the files and folders within the project that are not part of the .gitignore file.
 - This will help you identify all the relevant files and folders that may be impacted by the changes being made, and will allow you to review them thoroughly during the code review process.
 
-**Step 2: Identify files to review**
+**Step 3: Identify files to review**
 
 - Create a list in a markdown file of all the important files and folders to investigate.
 - Update this list regularly to keep track of the most relevant parts of the codebase and to keep track of which files you have already reviewed and which ones you still need to review.
 
-**Step 3: Review files**
+**Step 4: Review files**
 
 - For each file, review the code and identify any potential issues, improvements, or important information that is relevant to the changes being made.
 - Document your findings in the markdown file, including any specific lines of code or sections that are noteworthy.
 
-**Step 4: Summarise review**
+**Step 5: Summarise review**
 
 - After reviewing all the relevant files, compile your findings into a clear and concise summary that can be shared with the author of the changes.
 - This summary should highlight any important issues or improvements that were identified, as well as any relevant information that may impact the changes being made.
 
-**Step 5: Update documentation**
+**Step 6: Update documentation**
 
 - If any documentation updates were necessary as part of the code review process, ensure that all relevant documentation is updated accordingly. This includes the README.md, codebase_notes.md, and any relevant documentation in the `conductor/` folder. Make sure to document any important information or changes that were identified during the code review process, so that it can be easily referenced in the future.
 
