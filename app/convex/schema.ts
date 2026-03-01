@@ -86,12 +86,15 @@ export default defineSchema({
     .index("by_bidder", ["bidderId"])
     .index("by_timestamp", ["timestamp"]),
 
-  watchlist: defineTable({
-    userId: v.string(),
+  proxy_bids: defineTable({
     auctionId: v.id("auctions"),
+    bidderId: v.string(),
+    maxBid: v.number(),
+    updatedAt: v.number(),
   })
-    .index("by_user_auction", ["userId", "auctionId"])
-    .index("by_user", ["userId"]),
+    .index("by_auction", ["auctionId"])
+    .index("by_bidder_auction", ["bidderId", "auctionId"])
+    .index("by_auction_maxBid", ["auctionId", "maxBid", "updatedAt"]),
 
   // Application Profiles (Links Auth User to App Metadata)
   profiles: defineTable({
@@ -206,6 +209,13 @@ export default defineSchema({
   })
     .index("by_user_notification", ["userId", "notificationId"])
     .index("by_notification", ["notificationId"]),
+
+  watchlist: defineTable({
+    userId: v.string(),
+    auctionId: v.id("auctions"),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_auction", ["userId", "auctionId"]),
 
   counters: defineTable({
     name: v.string(), // e.g., "auctions", "profiles", "support", "announcements"

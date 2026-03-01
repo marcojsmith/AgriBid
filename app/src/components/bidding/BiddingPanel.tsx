@@ -35,10 +35,16 @@ export const BiddingPanel = ({
 }: BiddingPanelProps): React.ReactElement => {
   const { data: session, isPending } = useSession();
   const userData = useQuery(api.users.getMyProfile);
+  const myProxyBid = useQuery(api.auctions.getMyProxyBid, {
+    auctionId: auction._id,
+  });
   const location = useLocation();
   const navigate = useNavigate();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [pendingBid, setPendingBid] = useState<number | null>(null);
+  const [pendingBid, setPendingBid] = useState<{
+    amount: number;
+    maxBid?: number;
+  }>({ amount: 0 });
   const [isBidding, setIsBidding] = useState(false);
 
   const placeBid = useMutation(api.auctions.placeBid);
@@ -122,7 +128,7 @@ export const BiddingPanel = ({
     );
   }
 
-  const handleBidInitiate = (amount: number) => {
+  const handleBidInitiate = (amount: number, maxBid?: number) => {
     if (isPending) {
       toast.info("Checking sign-in status...");
       return;
@@ -150,12 +156,12 @@ export const BiddingPanel = ({
       return;
     }
 
-    setPendingBid(amount);
+    setPendingBid({ amount, maxBid });
     setIsConfirmOpen(true);
   };
 
   const handleBidConfirm = async () => {
-    if (!pendingBid) return;
+    if (!pendingBid.amount) return;
 
     // Fresh check for auction end state to prevent late bids
     const freshIsEnded =
@@ -165,7 +171,7 @@ export const BiddingPanel = ({
     if (freshIsEnded) {
       toast.error("This auction has ended");
       setIsConfirmOpen(false);
-      setPendingBid(null);
+      setPendingBid({ amount: 0 });
       return;
     }
 
@@ -173,15 +179,27 @@ export const BiddingPanel = ({
     setIsBidding(true);
 
     try {
-      await placeBid({ auctionId: auction._id, amount: pendingBid });
-      toast.success(
-        `Bid of R ${pendingBid.toLocaleString("en-ZA")} placed successfully!`
-      );
+      const result = await placeBid({
+        auctionId: auction._id,
+        amount: pendingBid.amount,
+        maxBid: pendingBid.maxBid,
+      });
+
+      if (result.success) {
+        toast.success(
+          `Bid of R ${pendingBid.amount.toLocaleString("en-ZA")} placed successfully!`
+        );
+        if (result.proxyBidActive && result.confirmedMaxBid) {
+          toast.info(
+            `Your proxy bid is active up to R ${result.confirmedMaxBid.toLocaleString("en-ZA")}`
+          );
+        }
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to place bid"));
     } finally {
       setIsBidding(false);
-      setPendingBid(null);
+      setPendingBid({ amount: 0 });
     }
   };
 
@@ -283,17 +301,20 @@ export const BiddingPanel = ({
             onBid={handleBidInitiate}
             isLoading={isBidding}
             isBidFormEnabled={!session || isVerified}
+            currentUserMaxBid={myProxyBid?.maxBid}
+            isProxyActive={!!myProxyBid}
           />
         </div>
       )}
 
       <BidConfirmation
         isOpen={isConfirmOpen}
-        amount={pendingBid || 0}
+        amount={pendingBid.amount || 0}
+        maxAmount={pendingBid.maxBid}
         onConfirm={handleBidConfirm}
         onCancel={() => {
           setIsConfirmOpen(false);
-          setPendingBid(null);
+          setPendingBid({ amount: 0 });
         }}
       />
     </div>

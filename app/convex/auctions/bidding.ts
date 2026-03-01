@@ -1,10 +1,21 @@
 import { v, ConvexError } from "convex/values";
 import { mutation } from "../_generated/server";
 import { requireAuth } from "../lib/auth";
+import { handleNewBid } from "./proxy_bidding";
 
 export const placeBid = mutation({
-  args: { auctionId: v.id("auctions"), amount: v.number() },
-  returns: v.object({ success: v.boolean() }),
+  args: {
+    auctionId: v.id("auctions"),
+    amount: v.number(),
+    maxBid: v.optional(v.number()), // Optional max bid for proxy bidding
+  },
+  returns: v.object({
+    success: v.boolean(),
+    nextBidAmount: v.optional(v.union(v.number(), v.null())), // Next bid amount if proxy bidding is active
+    isProxyBid: v.boolean(), // Whether this bid was placed via proxy
+    proxyBidActive: v.boolean(), // Whether the caller's proxy bid is active
+    confirmedMaxBid: v.optional(v.number()), // The maximum bid amount confirmed by the server
+  }),
   handler: async (ctx, args) => {
     const authUser = await requireAuth(ctx);
 
@@ -37,36 +48,21 @@ export const placeBid = mutation({
       throw new ConvexError("Auction ended");
     }
 
-    // Enforce Minimum Bid Increment
-    const minimumRequired = auction.currentPrice + auction.minIncrement;
-    if (args.amount < minimumRequired) {
-      throw new ConvexError(`Bid must be at least R${minimumRequired}`);
-    }
+    // Use handleNewBid for all bidding logic (including proxy and regular)
+    const result = await handleNewBid(
+      ctx,
+      args.auctionId,
+      userId,
+      args.amount,
+      args.maxBid
+    );
 
-    // Extend auction if bid placed in final 2 minutes (Soft Close)
-    const timeRemaining = auction.endTime - Date.now();
-    let newEndTime = auction.endTime;
-    let isExtended = auction.isExtended || false;
-
-    if (timeRemaining < 120000) {
-      // 2 minutes in ms
-      newEndTime = Date.now() + 120000;
-      isExtended = true;
-    }
-
-    await ctx.db.patch(args.auctionId, {
-      currentPrice: args.amount,
-      endTime: newEndTime,
-      isExtended,
-    });
-
-    await ctx.db.insert("bids", {
-      auctionId: args.auctionId,
-      bidderId: userId,
-      amount: args.amount,
-      timestamp: Date.now(),
-    });
-
-    return { success: true };
+    return {
+      success: result.success,
+      nextBidAmount: result.nextBidAmount,
+      isProxyBid: result.isProxyBid,
+      proxyBidActive: result.proxyBidActive,
+      confirmedMaxBid: result.confirmedMaxBid,
+    };
   },
 });
