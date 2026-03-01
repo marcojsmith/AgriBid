@@ -603,3 +603,43 @@ export const updateAuction = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: updateAuctionHandler,
 });
+
+export const publishAuctionHandler = async (
+  ctx: MutationCtx,
+  args: { auctionId: Id<"auctions"> }
+) => {
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) {
+    throw new Error("Not authenticated");
+  }
+  const userId = resolveUserId(authUser);
+
+  const auction = await ctx.db.get(args.auctionId);
+  if (!auction) {
+    throw new ConvexError("Auction not found");
+  }
+
+  if (auction.sellerId !== userId) {
+    throw new Error("Not authorized: You can only publish your own auctions");
+  }
+
+  if (auction.status !== "draft") {
+    throw new Error("Only draft auctions can be published");
+  }
+
+  // TODO: Add extra validation to ensure required fields are present before publishing if needed.
+
+  await ctx.db.patch(args.auctionId, { status: "pending_review" });
+
+  await adjustStatusCounters(ctx, "draft", "pending_review");
+
+  return { success: true };
+};
+
+export const publishAuction = mutation({
+  args: {
+    auctionId: v.id("auctions"),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: publishAuctionHandler,
+});
