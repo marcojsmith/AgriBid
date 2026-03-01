@@ -6,6 +6,7 @@ import { api } from "convex/_generated/api";
 import { useSession } from "../../lib/auth-client";
 import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
 
 import { ListingWizardProvider } from "./context/ListingWizardContext";
 import { useListingWizard } from "./hooks/useListingWizard";
@@ -45,12 +46,13 @@ const ListingWizardContent = () => {
   const navigate = useNavigate();
   const { getStepError } = useListingForm();
   const createAuction = useMutation(api.auctions.createAuction);
+  const publishAuction = useMutation(api.auctions.publishAuction);
 
   /**
    * Handles the final listing submission.
    * - Prevents double-submit via isSubmitting guard
    * - Validates all steps before submission
-   * - Calls createAuction mutation
+   * - Calls createAuction or publishAuction mutation
    * - Updates submission state and navigates on success
    * - Shows error toast on failure
    *
@@ -91,7 +93,7 @@ const ListingWizardContent = () => {
           : [],
       };
 
-      await createAuction({
+      const auctionData = {
         title: formData.title,
         make: formData.make,
         model: formData.model,
@@ -110,7 +112,17 @@ const ListingWizardContent = () => {
           serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
           notes: formData.conditionChecklist.notes,
         },
-      });
+      };
+
+      if (formData.auctionId) {
+        // If it's already a draft on the server, publish it
+        await publishAuction({
+          auctionId: formData.auctionId as Id<"auctions">,
+        });
+      } else {
+        // Create a new auction (which defaults to pending_review)
+        await createAuction(auctionData);
+      }
 
       localStorage.removeItem("agribid_listing_draft");
       localStorage.removeItem("agribid_listing_step");

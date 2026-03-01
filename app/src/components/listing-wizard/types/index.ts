@@ -37,6 +37,8 @@ export interface ListingImages {
  * Used throughout the listing wizard to manage form state.
  */
 export interface ListingFormData {
+  /** The Convex document ID if this draft has been saved to the server */
+  auctionId?: string;
   /** Manufacturing year of the equipment */
   year: number;
   /** Equipment manufacturer/make */

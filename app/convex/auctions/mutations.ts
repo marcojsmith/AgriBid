@@ -65,6 +65,7 @@ export const createAuction = mutation({
       serviceHistory: v.boolean(),
       notes: v.optional(v.string()),
     }),
+    isDraft: v.optional(v.boolean()),
   },
   returns: v.id("auctions"),
   handler: async (ctx, args) => {
@@ -77,7 +78,7 @@ export const createAuction = mutation({
       throw new Error("Unable to determine user ID");
     }
 
-    const { durationDays, ...restArgs } = args;
+    const { durationDays, isDraft, ...restArgs } = args;
 
     if (durationDays <= 0 || durationDays > 365) {
       throw new ConvexError("Invalid duration: must be between 1 and 365 days");
@@ -92,18 +93,24 @@ export const createAuction = mutation({
       additional: restArgs.images.additional || [],
     };
 
+    const status = isDraft ? "draft" : "pending_review";
+
     const auctionId = await ctx.db.insert("auctions", {
       ...restArgs,
       images,
       sellerId: userId,
-      status: "pending_review",
+      status,
       currentPrice: args.startingPrice,
       minIncrement: args.startingPrice < 10000 ? 100 : 500,
       durationDays: durationDays,
     });
 
     await updateCounter(ctx, "auctions", "total", 1);
-    await updateCounter(ctx, "auctions", "pending", 1);
+    if (isDraft) {
+      await updateCounter(ctx, "auctions", "draft", 1);
+    } else {
+      await updateCounter(ctx, "auctions", "pending", 1);
+    }
 
     return auctionId;
   },
