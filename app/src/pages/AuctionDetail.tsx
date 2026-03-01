@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Button } from "../components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, Download } from "lucide-react";
 import { AuctionHeader } from "../components/AuctionHeader";
 import { ImageGallery } from "../components/ImageGallery";
 import { BiddingPanel, BidHistory } from "../components/bidding";
@@ -86,10 +86,32 @@ export default function AuctionDetail() {
           />
 
           {/* Description Section */}
-          <div className="bg-card border-2 rounded-2xl p-8 space-y-4">
-            <h3 className="text-xl font-bold uppercase tracking-tight">
-              Equipment Description
-            </h3>
+          <div className="bg-card border-2 rounded-2xl p-8 space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h3 className="text-xl font-bold uppercase tracking-tight">
+                Equipment Description
+              </h3>
+
+              {auction.conditionReportUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5"
+                  asChild
+                >
+                  <a
+                    href={auction.conditionReportUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <FileText className="h-4 w-4 text-primary" />
+                    Condition Report (PDF)
+                    <Download className="h-3 w-3 opacity-50" />
+                  </a>
+                </Button>
+              )}
+            </div>
+
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
               {auction.description || "No description provided."}
             </p>

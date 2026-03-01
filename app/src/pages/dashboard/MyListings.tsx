@@ -1,11 +1,14 @@
 // app/src/pages/dashboard/MyListings.tsx
-import { usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Plus, Edit, Loader2 } from "lucide-react";
+import { LayoutDashboard, Plus, Edit, Loader2, Send } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
+import type { Id } from "convex/_generated/dataModel";
 
 /**
  * Renders the current user's auction listings dashboard.
@@ -16,6 +19,7 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
  * @returns The React element tree for the My Listings dashboard page.
  */
 export default function MyListings() {
+  const navigate = useNavigate();
   const {
     results: listings,
     status,
@@ -25,6 +29,67 @@ export default function MyListings() {
     {},
     { initialNumItems: 10 }
   );
+
+  const publishAuction = useMutation(api.auctions.publishAuction);
+
+  const handlePublish = async (auctionId: string) => {
+    try {
+      await publishAuction({ auctionId: auctionId as Id<"auctions"> });
+      toast.success("Listing submitted for review!");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to publish listing"));
+    }
+  };
+
+  const handleEdit = (auction: {
+    _id: Id<"auctions">;
+    year: number;
+    make: string;
+    model: string;
+    location: string;
+    description?: string;
+    operatingHours: number;
+    title: string;
+    conditionChecklist?: {
+      engine: boolean | null;
+      hydraulics: boolean | null;
+      tires: boolean | null;
+      serviceHistory: boolean | null;
+      notes?: string;
+    };
+    images: unknown;
+    startingPrice: number;
+    reservePrice: number;
+    durationDays?: number;
+    status: string;
+  }) => {
+    // Save to local storage and redirect to /sell
+    const draftData = {
+      auctionId: auction._id,
+      year: auction.year,
+      make: auction.make,
+      model: auction.model,
+      location: auction.location,
+      description: auction.description,
+      operatingHours: auction.operatingHours,
+      title: auction.title,
+      conditionChecklist: {
+        engine: auction.conditionChecklist?.engine ?? null,
+        hydraulics: auction.conditionChecklist?.hydraulics ?? null,
+        tires: auction.conditionChecklist?.tires ?? null,
+        serviceHistory: auction.conditionChecklist?.serviceHistory ?? null,
+        notes: auction.conditionChecklist?.notes ?? "",
+      },
+      images: auction.images,
+      startingPrice: auction.startingPrice,
+      reservePrice: auction.reservePrice,
+      durationDays: auction.durationDays ?? 7,
+    };
+
+    localStorage.setItem("agribid_listing_draft", JSON.stringify(draftData));
+    localStorage.setItem("agribid_listing_step", "0");
+    navigate("/sell");
+  };
 
   if (status === "LoadingFirstPage") {
     return (
@@ -48,12 +113,14 @@ export default function MyListings() {
         <Button
           size="lg"
           className="rounded-xl font-bold shadow-lg shadow-primary/20"
-          asChild
+          onClick={() => {
+            localStorage.removeItem("agribid_listing_draft");
+            localStorage.removeItem("agribid_listing_step");
+            navigate("/sell");
+          }}
         >
-          <Link to="/sell">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Listing
-          </Link>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Listing
         </Button>
       </div>
 
@@ -124,22 +191,38 @@ export default function MyListings() {
                 </div>
               </div>
 
-              <div className="flex gap-2 w-full md:w-auto">
+              <div className="flex flex-wrap gap-2 w-full md:w-auto">
                 <Button
                   variant="outline"
+                  size="sm"
                   className="flex-1 md:flex-none font-bold"
                   asChild
                 >
                   <Link to={`/auction/${auction._id}`}>View</Link>
                 </Button>
-                {auction.status === "draft" && (
+
+                {(auction.status === "draft" ||
+                  auction.status === "pending_review") && (
                   <Button
                     variant="secondary"
+                    size="sm"
                     className="flex-1 md:flex-none font-bold"
-                    disabled
+                    onClick={() => handleEdit(auction)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit (Soon)
+                    Edit
+                  </Button>
+                )}
+
+                {auction.status === "draft" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1 md:flex-none font-bold bg-green-600 hover:bg-green-700"
+                    onClick={() => handlePublish(auction._id)}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Publish
                   </Button>
                 )}
               </div>

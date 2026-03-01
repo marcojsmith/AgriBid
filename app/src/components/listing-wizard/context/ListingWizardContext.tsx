@@ -22,6 +22,7 @@ interface ListingWizardContextType {
     field: K,
     value: ConditionChecklist[K]
   ) => void;
+  resetForm: (initialData?: ListingFormData) => void;
 }
 
 const ListingWizardContext = createContext<
@@ -165,6 +166,14 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
+  const resetForm = (initialData?: ListingFormData) => {
+    setFormData(initialData ?? DEFAULT_FORM_DATA);
+    setCurrentStep(0);
+    setPreviews({});
+    localStorage.removeItem("agribid_listing_draft");
+    localStorage.removeItem("agribid_listing_step");
+  };
+
   return (
     <ListingWizardContext.Provider
       value={{
@@ -181,6 +190,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         setPreviews,
         updateField,
         updateChecklist,
+        resetForm,
       }}
     >
       {children}
