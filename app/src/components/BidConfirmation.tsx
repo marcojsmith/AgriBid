@@ -68,20 +68,27 @@ export const BidConfirmation = ({
               You are about to place a bid for
             </AlertDialogDescription>
           </div>
-          <div className="bg-primary/5 border-2 border-primary/20 w-full py-6 rounded-2xl space-y-2">
-            <div>
-              <span className="text-4xl font-black text-primary tracking-tight">
+          <div className="bg-primary/5 border-2 border-primary/20 w-full py-8 rounded-2xl flex flex-col items-center shadow-inner">
+            <div className="text-center mb-4">
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">
+                Current Bid Amount
+              </p>
+              <span className="text-5xl font-black text-primary tracking-tight">
                 R {formattedAmount}
               </span>
             </div>
+
             {formattedMaxAmount && (
-              <div className="pt-2 border-t border-primary/10 mx-8">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">
-                  Auto-bid Limit (Proxy)
-                </p>
-                <span className="text-lg font-black text-primary/70">
-                  R {formattedMaxAmount}
-                </span>
+              <div className="w-full flex flex-col items-center mt-2">
+                <div className="w-32 border-t-2 border-primary/10 mb-4" />
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">
+                    Auto-bid Limit (Proxy)
+                  </p>
+                  <span className="text-2xl font-black text-primary/60 tracking-tight">
+                    R {formattedMaxAmount}
+                  </span>
+                </div>
               </div>
             )}
           </div>
