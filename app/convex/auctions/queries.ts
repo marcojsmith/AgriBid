@@ -77,8 +77,7 @@ export const getActiveAuctions = query({
       const statuses = statusesForFilter(statusFilter);
       const searchTerm = args.search;
 
-      // Search both title and make/model indexes and combine results
-      const titleResults = await Promise.all(
+      const titlePromise = Promise.all(
         statuses.map((status) =>
           auctionsQuery
             .withSearchIndex("search_title", (q) =>
@@ -88,7 +87,7 @@ export const getActiveAuctions = query({
         )
       );
 
-      const makeModelResults = await Promise.all(
+      const makeModelPromise = Promise.all(
         statuses.map((status) =>
           auctionsQuery
             .withSearchIndex("search_make_model", (q) =>
@@ -98,15 +97,20 @@ export const getActiveAuctions = query({
         )
       );
 
-      // Combine and deduplicate results
-      const combined = [...titleResults.flat(), ...makeModelResults.flat()];
+      const [titleResults, makeModelResults] = await Promise.all([
+        titlePromise,
+        makeModelPromise,
+      ]);
+
       const seen = new Set<string>();
-      auctions = combined.filter((auction) => {
-        const id = auction._id.toString();
-        if (seen.has(id)) return false;
-        seen.add(id);
-        return true;
-      });
+      auctions = [...titleResults.flat(), ...makeModelResults.flat()].filter(
+        (auction) => {
+          const id = auction._id.toString();
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        }
+      );
     } else if (args.make) {
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
