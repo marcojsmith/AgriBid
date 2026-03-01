@@ -1,0 +1,1 @@
+Task: Update Listing Wizard. Implemented Save Draft button in WizardNavigation, added isDraft support to createAuction mutation, and updated ListingWizard to handle server-side drafts.
