@@ -494,3 +494,112 @@ export const closeAuctionEarly = mutation({
     };
   },
 });
+
+export const updateAuctionHandler = async (
+  ctx: MutationCtx,
+  args: {
+    auctionId: Id<"auctions">;
+    updates: {
+      title?: string;
+      make?: string;
+      model?: string;
+      year?: number;
+      operatingHours?: number;
+      location?: string;
+      description?: string;
+      startingPrice?: number;
+      reservePrice?: number;
+      durationDays?: number;
+      images?: {
+        front?: string;
+        engine?: string;
+        cabin?: string;
+        rear?: string;
+        additional?: string[];
+      };
+      conditionChecklist?: {
+        engine: boolean;
+        hydraulics: boolean;
+        tires: boolean;
+        serviceHistory: boolean;
+        notes?: string;
+      };
+    };
+  }
+) => {
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) {
+    throw new Error("Not authenticated");
+  }
+  const userId = resolveUserId(authUser);
+
+  const auction = await ctx.db.get(args.auctionId);
+  if (!auction) {
+    throw new ConvexError("Auction not found");
+  }
+
+  if (auction.sellerId !== userId) {
+    throw new Error("Not authorized: You can only edit your own auctions");
+  }
+
+  if (auction.status !== "draft" && auction.status !== "pending_review") {
+    throw new Error(
+      "You can only edit auctions in draft or pending_review status"
+    );
+  }
+
+  const { updates } = args;
+
+  if (
+    updates.durationDays !== undefined &&
+    (updates.durationDays <= 0 || updates.durationDays > 365)
+  ) {
+    throw new ConvexError("Invalid duration: must be between 1 and 365 days");
+  }
+
+  if (updates.images?.additional && updates.images.additional.length > 6) {
+    throw new ConvexError("Additional images limit exceeded (max 6)");
+  }
+
+  await ctx.db.patch(args.auctionId, updates);
+
+  return { success: true };
+};
+
+export const updateAuction = mutation({
+  args: {
+    auctionId: v.id("auctions"),
+    updates: v.object({
+      title: v.optional(v.string()),
+      make: v.optional(v.string()),
+      model: v.optional(v.string()),
+      year: v.optional(v.number()),
+      operatingHours: v.optional(v.number()),
+      location: v.optional(v.string()),
+      description: v.optional(v.string()),
+      startingPrice: v.optional(v.number()),
+      reservePrice: v.optional(v.number()),
+      durationDays: v.optional(v.number()),
+      images: v.optional(
+        v.object({
+          front: v.optional(v.string()),
+          engine: v.optional(v.string()),
+          cabin: v.optional(v.string()),
+          rear: v.optional(v.string()),
+          additional: v.optional(v.array(v.string())),
+        })
+      ),
+      conditionChecklist: v.optional(
+        v.object({
+          engine: v.boolean(),
+          hydraulics: v.boolean(),
+          tires: v.boolean(),
+          serviceHistory: v.boolean(),
+          notes: v.optional(v.string()),
+        })
+      ),
+    }),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: updateAuctionHandler,
+});
