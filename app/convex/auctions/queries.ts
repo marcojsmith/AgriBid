@@ -203,6 +203,10 @@ export const getAuctionBids = query({
 
     await Promise.all(
       uniqueBidderIds.map(async (bidderId) => {
+        if (!bidderId || bidderId.length < 10) {
+          bidderNames.set(bidderId, "Anonymous");
+          return;
+        }
         const user = await findUserById(ctx, bidderId);
 
         if (user) {

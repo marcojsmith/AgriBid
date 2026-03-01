@@ -14,6 +14,7 @@ import { BidConfirmation } from "@/components/BidConfirmation";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;
@@ -47,6 +48,8 @@ export const BiddingPanel = ({
     auction.status !== "active" ||
     (auction.endTime ? auction.endTime <= Date.now() : true);
   const nextMinBid = auction.currentPrice + auction.minIncrement;
+
+  const isHighlighted = usePriceHighlight(auction.currentPrice);
 
   // Use explicit loading check to avoid false positives for unverified status
   const isProfileLoading = userData === undefined;
@@ -192,7 +195,13 @@ export const BiddingPanel = ({
           <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">
             Current Bid
           </p>
-          <div className="flex items-baseline gap-2">
+          <div
+            className={`flex items-baseline gap-2 rounded-lg p-2 border-2 transition-colors duration-700 ${
+              !isEnded && isHighlighted
+                ? "bg-green-500/10 border-green-500/30"
+                : "border-transparent"
+            }`}
+          >
             <span className="text-4xl font-black text-primary tracking-tighter">
               R {auction.currentPrice.toLocaleString("en-ZA")}
             </span>

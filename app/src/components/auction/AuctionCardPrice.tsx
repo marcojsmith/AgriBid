@@ -1,5 +1,6 @@
 // app/src/components/auction/AuctionCardPrice.tsx
 import { CountdownTimer } from "../CountdownTimer";
+import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 
 interface AuctionCardPriceProps {
   currentPrice: number;
@@ -23,11 +24,19 @@ export function AuctionCardPrice({
   isCompact,
   isClosed,
 }: AuctionCardPriceProps) {
+  const isHighlighted = usePriceHighlight(currentPrice);
+
   if (isCompact) return null;
 
   return (
     <div className="flex justify-between items-end mt-2 md:mt-4">
-      <div>
+      <div
+        className={`rounded-lg p-2 border-2 transition-colors duration-700 ${
+          isHighlighted
+            ? "bg-green-500/10 border-green-500/30"
+            : "border-transparent"
+        }`}
+      >
         <p className="text-muted-foreground uppercase font-black tracking-widest text-[10px] md:text-xs">
           Current Bid
         </p>
