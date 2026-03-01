@@ -40,7 +40,7 @@ export const BidForm = ({
   );
   const [isProxyEnabled, setIsProxyEnabled] = useState(isProxyActive || false);
   const [maxBid, setMaxBid] = useState<string>(
-    currentUserMaxBid ? String(currentUserMaxBid) : ""
+    currentUserMaxBid != null ? String(currentUserMaxBid) : ""
   );
 
   /**
@@ -51,9 +51,7 @@ export const BidForm = ({
   }, [isProxyActive]);
 
   useEffect(() => {
-    if (currentUserMaxBid) {
-      setMaxBid(String(currentUserMaxBid));
-    }
+    setMaxBid(currentUserMaxBid != null ? String(currentUserMaxBid) : "");
   }, [currentUserMaxBid]);
 
   /**

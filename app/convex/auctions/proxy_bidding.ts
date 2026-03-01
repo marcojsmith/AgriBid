@@ -229,6 +229,28 @@ export async function handleNewBid(
       // Cap at highest proxy's max bid
       autoBidAmount = Math.min(autoBidAmount, highestProxy.maxBid);
 
+      // Final Check: Ensure the capped amount still meets the required increment
+      // If it doesn't, we can only bid the maxBid if it's >= the minimum required,
+      // otherwise we skip this auto-bid to avoid invalid increments.
+      if (autoBidAmount < bidAmount + minIncrement) {
+        if (highestProxy.maxBid >= bidAmount + minIncrement) {
+          autoBidAmount = highestProxy.maxBid;
+        } else {
+          // Skip auto-bid if it cannot meet minimum increment
+          return {
+            success: true,
+            bidAmount: bidAmount,
+            isProxyBid: false,
+            nextBidAmount:
+              maxBid !== undefined && maxBid > bidAmount
+                ? bidAmount + minIncrement
+                : null,
+            proxyBidActive: maxBid !== undefined && maxBid > bidAmount,
+            confirmedMaxBid: maxBid,
+          };
+        }
+      }
+
       // Place the auto-bid
       await ctx.db.insert("bids", {
         auctionId,
@@ -256,10 +278,30 @@ export async function handleNewBid(
     if (highestProxy.bidderId === bidderId) {
       // If there was a previous highest proxy from someone else that our new proxy just outbid
       if (secondHighestProxy && secondHighestProxy.maxBid >= bidAmount) {
-        const autoBidAmount = Math.min(
+        let autoBidAmount = Math.min(
           highestProxy.maxBid,
           secondHighestProxy.maxBid + minIncrement
         );
+
+        // Ensure autoBidAmount meets minimum required increment
+        if (autoBidAmount < bidAmount + minIncrement) {
+          if (highestProxy.maxBid >= bidAmount + minIncrement) {
+            autoBidAmount = highestProxy.maxBid;
+          } else {
+            // Cannot outbid the second highest proxy validly, skip auto-bid
+            return {
+              success: true,
+              bidAmount: bidAmount,
+              isProxyBid: false,
+              nextBidAmount:
+                maxBid !== undefined && maxBid > bidAmount
+                  ? bidAmount + minIncrement
+                  : null,
+              proxyBidActive: maxBid !== undefined && maxBid > bidAmount,
+              confirmedMaxBid: maxBid,
+            };
+          }
+        }
 
         if (autoBidAmount > bidAmount) {
           await ctx.db.insert("bids", {
