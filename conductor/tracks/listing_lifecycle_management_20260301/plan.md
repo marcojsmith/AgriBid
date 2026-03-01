@@ -1,21 +1,36 @@
-# Plan: Listing Lifecycle & Management (Drafts & Refinement)
+# Implementation Plan: Listing Lifecycle & Management (Drafts & Refinement)
 
-This track implements the missing auction lifecycle mutations (update, publish) and enhances the listing creation experience with draft persistence.
+## Phase 1: Backend Mutations (Convex)
+- [ ] Task: Implement `updateAuction` mutation
+    - [ ] Write unit tests for `updateAuction` validating role and ownership
+    - [ ] Implement `updateAuction` logic in `app/convex/auctions/mutations.ts`
+    - [ ] Ensure all fields can be updated for `draft` and `pending_review` statuses
+- [ ] Task: Implement `publishAuction` mutation
+    - [ ] Write unit tests for `publishAuction` validating role and ownership
+    - [ ] Implement `publishAuction` logic in `app/convex/auctions/mutations.ts` to transition `draft` to `pending_review`
+- [ ] Task: Implement Condition Report Upload logic
+    - [ ] Write unit tests for uploading a condition report
+    - [ ] Create server-side logic for PDF upload to Convex Storage
+    - [ ] Implement replacement logic to silently overwrite/delete previous report
+- [ ] Task: Implement `cleanupDrafts` cron job
+    - [ ] Write unit tests for the cron job logic
+    - [ ] Add `cleanupDrafts` to `app/convex/crons.ts` to run daily and delete drafts older than 30 days
+- [ ] Task: Refactor and verify coverage
+    - [ ] Run coverage reports using Vitest to ensure >80% coverage for new backend code
+- [ ] Task: Conductor - User Manual Verification 'Phase 1: Backend Mutations (Convex)' (Protocol in workflow.md)
 
-## Phase 1: Backend Mutations
-- [ ] 1. Implement `updateAuction` in `app/convex/auctions/mutations.ts` (allowing sellers to edit their own draft/pending auctions).
-- [ ] 2. Implement `publishAuction` in `app/convex/auctions/mutations.ts` (changing status from `draft` to `pending_review`).
-- [ ] 3. Implement `uploadConditionReport` action/mutation for handling PDF uploads to Convex Storage.
-- [ ] 4. Add `cleanupDrafts` cron job in `app/convex/crons.ts` to delete abandoned drafts (>30 days).
-
-## Phase 2: Frontend Refinement
-- [ ] 5. Update `ListingWizard` to support "Save as Draft" functionality.
-- [ ] 6. Implement "Edit Listing" page for sellers to modify existing drafts.
-- [ ] 7. Add `LoadingSpinner` and `ErrorBoundary` global components for improved UX.
-- [ ] 8. Implement `flagAuction` for buyers/admins to report suspicious listings.
-
-## Phase 3: Testing & Verification
-- [ ] 9. Unit tests for update/publish permissions (Vitest).
-- [ ] 10. Manual verification of the draft-to-publish flow.
-- [ ] 11. Verify file storage for PDFs (Condition Reports).
-- [ ] 12. Run lint and build.
+## Phase 2: Frontend Refinement (React)
+- [ ] Task: Update Listing Wizard
+    - [ ] Write UI unit tests for saving/resuming drafts
+    - [ ] Implement logic to persist drafts via `updateAuction` during listing creation
+    - [ ] Enable resuming/editing existing drafts
+- [ ] Task: Update Seller Dashboard
+    - [ ] Write UI unit tests for displaying drafts and pending items
+    - [ ] Modify Seller Dashboard to display `draft` and `pending_review` auctions
+    - [ ] Add UI controls to trigger `publishAuction` from the dashboard
+- [ ] Task: Update Auction Details Page
+    - [ ] Write UI unit tests for condition report rendering
+    - [ ] Display condition report PDF download link if one exists
+- [ ] Task: Refactor and verify coverage
+    - [ ] Run coverage reports using Vitest to ensure >80% coverage for new frontend code
+- [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Refinement (React)' (Protocol in workflow.md)
