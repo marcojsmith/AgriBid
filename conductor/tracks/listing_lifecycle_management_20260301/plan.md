@@ -31,6 +31,6 @@
 - [x] Task: Update Auction Details Page [efb6c9d]
     - [x] Write UI unit tests for condition report rendering
     - [x] Display condition report PDF download link if one exists
-- [ ] Task: Refactor and verify coverage
-    - [ ] Run coverage reports using Vitest to ensure >80% coverage for new frontend code
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Frontend Refinement (React)' (Protocol in workflow.md)
+- [x] Task: Refactor and verify coverage [cb17b2d]
+    - [x] Run coverage reports using Vitest to ensure >80% coverage for new frontend code
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Frontend Refinement (React)' (Protocol in workflow.md) [checkpoint: cb17b2d]
