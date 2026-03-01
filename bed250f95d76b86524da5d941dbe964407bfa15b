@@ -1,0 +1,1 @@
+Task: Implement cleanupDrafts cron job. Added internal mutation to clean up old drafts and scheduled it daily.
