@@ -1,11 +1,13 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../../lib/auth-client";
-import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { normalizeListingImages } from "@/lib/normalize-images";
+import { getErrorMessage } from "@/lib/utils";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
 
 import { ListingWizardProvider } from "./context/ListingWizardContext";
 import { useListingWizard } from "./hooks/useListingWizard";
@@ -38,13 +40,68 @@ const ListingWizardContent = () => {
     isSubmitting,
     isSuccess,
     setIsSuccess,
+    setDraftSaved,
   } = useListingWizard();
 
-  const { data: session, isPending } = useSession();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { ensureAuthenticated, isPending } = useAuthRedirect();
   const { getStepError } = useListingForm();
+
+  const [searchParams] = useSearchParams();
+  const editingAuctionId = searchParams.get("edit");
+
   const createAuction = useMutation(api.auctions.createAuction);
+  const saveDraft = useMutation(api.auctions.saveDraft);
+
+  const handleSaveDraft = async () => {
+    if (isSubmitting) return;
+
+    if (!ensureAuthenticated("Please sign in to save your draft")) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const images = normalizeListingImages(formData.images);
+
+      await saveDraft({
+        auctionId: editingAuctionId
+          ? (editingAuctionId as Id<"auctions">)
+          : undefined,
+        title: formData.title,
+        make: formData.make,
+        model: formData.model,
+        year: formData.year,
+        operatingHours: formData.operatingHours,
+        location: formData.location,
+        description: formData.description,
+        startingPrice: formData.startingPrice,
+        reservePrice: formData.reservePrice,
+        images,
+        durationDays: formData.durationDays,
+        conditionChecklist: {
+          engine: formData.conditionChecklist.engine ?? false,
+          hydraulics: formData.conditionChecklist.hydraulics ?? false,
+          tires: formData.conditionChecklist.tires ?? false,
+          serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
+          notes: formData.conditionChecklist.notes,
+        },
+      });
+
+      setDraftSaved(true);
+      localStorage.removeItem("agribid_listing_draft");
+      localStorage.removeItem("agribid_listing_step");
+      toast.success("Draft saved successfully!");
+    } catch (error) {
+      console.error("Draft save failed", {
+        error,
+        step: "draft save",
+        formState: { title: formData.title, make: formData.make },
+      });
+      toast.error(getErrorMessage(error, "Failed to save draft"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   /**
    * Handles the final listing submission.
@@ -63,13 +120,7 @@ const ListingWizardContent = () => {
       toast.info("Checking your session...");
       return;
     }
-    if (!session) {
-      toast.info("Please sign in to submit your listing");
-      const rawUrl = location.pathname;
-      const callbackUrl = isValidCallbackUrl(rawUrl)
-        ? encodeURIComponent(rawUrl)
-        : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
+    if (!ensureAuthenticated("Please sign in to submit your listing")) {
       return;
     }
 
@@ -84,12 +135,7 @@ const ListingWizardContent = () => {
 
     setIsSubmitting(true);
     try {
-      const images = {
-        ...formData.images,
-        additional: Array.isArray(formData.images.additional)
-          ? formData.images.additional
-          : [],
-      };
+      const images = normalizeListingImages(formData.images);
 
       await createAuction({
         title: formData.title,
@@ -110,6 +156,7 @@ const ListingWizardContent = () => {
           serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
           notes: formData.conditionChecklist.notes,
         },
+        isDraft: false,
       });
 
       localStorage.removeItem("agribid_listing_draft");
@@ -204,7 +251,10 @@ const ListingWizardContent = () => {
       <div className="bg-card border-2 rounded-2xl p-8 min-h-[450px]">
         {renderStep()}
       </div>
-      <WizardNavigation onFinalSubmit={handleSubmit} />
+      <WizardNavigation
+        onFinalSubmit={handleSubmit}
+        onSaveDraft={handleSaveDraft}
+      />
     </div>
   );
 };

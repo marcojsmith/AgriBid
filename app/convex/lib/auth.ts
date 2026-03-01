@@ -73,6 +73,29 @@ export async function requireAuth(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
+ * Get the authenticated user's ID, throwing if not authenticated or ID cannot be determined.
+ *
+ * This helper combines the common pattern of:
+ *   1. Getting the auth user
+ *   2. Checking if authenticated
+ *   3. Resolving the user ID
+ *
+ * @returns The resolved user ID string
+ * @throws Error("Not authenticated") if no user is authenticated
+ * @throws Error("Unable to determine user ID") if user ID cannot be resolved
+ */
+export async function getAuthenticatedUserId(
+  ctx: QueryCtx | MutationCtx
+): Promise<string> {
+  const authUser = await requireAuth(ctx);
+  const userId = resolveUserId(authUser);
+  if (!userId) {
+    throw new Error("Unable to determine user ID");
+  }
+  return userId;
+}
+
+/**
  * Retrieves the authenticated user's role from their profile.
  *
  * @param ctx - Query or Mutation context

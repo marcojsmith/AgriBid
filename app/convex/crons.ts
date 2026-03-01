@@ -15,4 +15,14 @@ crons.interval(
   internal.auctions.settleExpiredAuctions
 );
 
+/**
+ * Daily cleanup of old draft auctions.
+ * Deletes drafts older than 30 days to prevent database/storage bloat.
+ */
+crons.interval(
+  "cleanup old draft auctions",
+  { hours: 24 },
+  internal.auctions.cleanupDrafts
+);
+
 export default crons;

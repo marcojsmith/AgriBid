@@ -1,7 +1,11 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
-import { updateCounter } from "../admin_utils";
+import { updateCounter, logAudit } from "../admin_utils";
+import { deleteAuctionImages } from "../lib/storage";
 import type { Doc } from "../_generated/dataModel";
+
+const DRAFT_RETENTION_DAYS = 30;
+const DRAFT_RETENTION_MS = DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Internal mutation to settle auctions that have reached their end time.
@@ -60,5 +64,60 @@ export const settleExpiredAuctions = internalMutation({
         `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`
       );
     }
+  },
+});
+
+/**
+ * Internal mutation to clean up old draft auctions.
+ * Deletes drafts older than 30 days and their associated storage.
+ */
+export const cleanupDrafts = internalMutation({
+  args: {},
+  returns: v.object({
+    deleted: v.number(),
+    errors: v.number(),
+  }),
+  handler: async (ctx) => {
+    const cutoffTime = Date.now() - DRAFT_RETENTION_MS;
+
+    const oldDrafts = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "draft"))
+      .filter((q) => q.lte(q.field("_creationTime"), cutoffTime))
+      .collect();
+
+    let deleted = 0;
+    let errors = 0;
+
+    for (const auction of oldDrafts) {
+      try {
+        await deleteAuctionImages(ctx, auction.images);
+
+        await ctx.db.delete(auction._id);
+        deleted++;
+      } catch (e) {
+        console.error(`Failed to delete draft auction: ${auction._id}`, e);
+        errors++;
+      }
+    }
+
+    if (deleted > 0) {
+      await logAudit(ctx, {
+        action: "CLEANUP_DRAFT_AUCTIONS",
+        targetType: "system",
+        details: JSON.stringify({
+          deletedCount: deleted,
+          errorCount: errors,
+          cutoffTime: new Date(cutoffTime).toISOString(),
+          retentionDays: DRAFT_RETENTION_DAYS,
+        }),
+      });
+
+      await updateCounter(ctx, "auctions", "total", -deleted);
+    }
+
+    console.log(`Cleanup: deleted ${deleted} draft auctions, ${errors} errors`);
+
+    return { deleted, errors };
   },
 });

@@ -29,6 +29,7 @@ import type * as http from "../http.js";
 import type * as image_cache from "../image_cache.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_encryption from "../lib/encryption.js";
+import type * as lib_storage from "../lib/storage.js";
 import type * as notifications from "../notifications.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   image_cache: typeof image_cache;
   "lib/auth": typeof lib_auth;
   "lib/encryption": typeof lib_encryption;
+  "lib/storage": typeof lib_storage;
   notifications: typeof notifications;
   seed: typeof seed;
   support: typeof support;
