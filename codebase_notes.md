@@ -1,5 +1,11 @@
 # Development Notes
 
+## Current Status (2026-03-01)
+- **Proxy Bidding**: Fully implemented (backend & frontend). Auto-incrementing logic verified.
+- **Admin Portal**: Route-based refactor complete. KPIs and moderation flows are isolated to local route state.
+- **Performance**: Image caching, paginated queries, and context-based state management implemented.
+- **Next Focus**: Listing Lifecycle & Management (Drafts, Update/Publish flow, and Condition Reports).
+
 ## Naming Conventions
 
 For consistency, this project follows these naming rules:
