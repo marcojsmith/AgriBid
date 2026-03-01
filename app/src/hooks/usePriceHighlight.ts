@@ -38,7 +38,7 @@ export function usePriceHighlight(
   useLayoutEffect(() => {
     let shouldScheduleTimeout = false;
 
-    if (price !== previousPrice.current) {
+    if (price !== previousPrice.current && !Number.isNaN(price)) {
       previousPrice.current = price;
 
       if (timeoutRef.current) {
