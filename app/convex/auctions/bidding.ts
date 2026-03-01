@@ -8,12 +8,13 @@ export const placeBid = mutation({
     auctionId: v.id("auctions"),
     amount: v.number(),
     maxBid: v.optional(v.number()), // Optional max bid for proxy bidding
-    autoBidEnabled: v.optional(v.boolean()), // Optional auto-bid toggle
   },
   returns: v.object({
     success: v.boolean(),
     nextBidAmount: v.optional(v.union(v.number(), v.null())), // Next bid amount if proxy bidding is active
     isProxyBid: v.boolean(), // Whether this bid was placed via proxy
+    proxyBidActive: v.boolean(), // Whether the caller's proxy bid is active
+    confirmedMaxBid: v.optional(v.number()), // The maximum bid amount confirmed by the server
   }),
   handler: async (ctx, args) => {
     const authUser = await requireAuth(ctx);
@@ -60,6 +61,8 @@ export const placeBid = mutation({
       success: result.success,
       nextBidAmount: result.nextBidAmount,
       isProxyBid: result.isProxyBid,
+      proxyBidActive: result.proxyBidActive,
+      confirmedMaxBid: result.confirmedMaxBid,
     };
   },
 });

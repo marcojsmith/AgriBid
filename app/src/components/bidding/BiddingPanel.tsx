@@ -189,9 +189,9 @@ export const BiddingPanel = ({
         toast.success(
           `Bid of R ${pendingBid.amount.toLocaleString("en-ZA")} placed successfully!`
         );
-        if (result.nextBidAmount) {
+        if (result.proxyBidActive && result.confirmedMaxBid) {
           toast.info(
-            `Your proxy bid is active up to R ${pendingBid.maxBid?.toLocaleString("en-ZA")}`
+            `Your proxy bid is active up to R ${result.confirmedMaxBid.toLocaleString("en-ZA")}`
           );
         }
       }

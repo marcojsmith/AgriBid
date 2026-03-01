@@ -120,6 +120,13 @@ export async function handleNewBid(
     }
   }
 
+  // 2. Pre-validation for Proxy Bid
+  if (maxBid !== undefined && maxBid < bidAmount) {
+    throw new Error(
+      "Proxy maximum bid must be at least the current bid amount."
+    );
+  }
+
   // 2. Upsert Proxy Bid if provided
   if (maxBid !== undefined) {
     const existingProxy = await ctx.db
@@ -210,6 +217,8 @@ export async function handleNewBid(
         bidAmount: autoBidAmount,
         isProxyBid: true,
         nextBidAmount: null, // No next bid for the current caller as they were outbid
+        proxyBidActive: false,
+        confirmedMaxBid: undefined,
       };
     }
   }
@@ -222,6 +231,8 @@ export async function handleNewBid(
       maxBid !== undefined && maxBid > bidAmount
         ? bidAmount + minIncrement
         : null,
+    proxyBidActive: maxBid !== undefined && maxBid > bidAmount,
+    confirmedMaxBid: maxBid,
   };
 }
 

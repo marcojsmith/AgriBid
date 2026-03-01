@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Doc } from "convex/_generated/dataModel";
-import { TrendingUp, ArrowUpCircle, Clock, AlertTriangle } from "lucide-react";
+import { TrendingUp, ArrowUpCircle, Clock } from "lucide-react";
 
 interface BidFormProps {
   /** The auction document containing current pricing and status */
@@ -226,13 +226,6 @@ export const BidForm = ({
         <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
           <ArrowUpCircle className="h-3 w-3" />
           Minimum bid required: R {nextMinBid.toLocaleString()}
-        </p>
-      )}
-
-      {!isMaxBidValid && maxBid !== "" && (
-        <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
-          <AlertTriangle className="h-3 w-3" />
-          Max bid must be at least R {nextMinBid.toLocaleString()}
         </p>
       )}
 
