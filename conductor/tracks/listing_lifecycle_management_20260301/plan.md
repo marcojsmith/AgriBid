@@ -8,10 +8,10 @@
 - [x] Task: Implement `publishAuction` mutation [c71772c]
     - [x] Write unit tests for `publishAuction` validating role and ownership
     - [x] Implement `publishAuction` logic in `app/convex/auctions/mutations.ts` to transition `draft` to `pending_review`
-- [ ] Task: Implement Condition Report Upload logic
-    - [ ] Write unit tests for uploading a condition report
-    - [ ] Create server-side logic for PDF upload to Convex Storage
-    - [ ] Implement replacement logic to silently overwrite/delete previous report
+- [x] Task: Implement Condition Report Upload logic [42a3dd2]
+    - [x] Write unit tests for uploading a condition report
+    - [x] Create server-side logic for PDF upload to Convex Storage
+    - [x] Implement replacement logic to silently overwrite/delete previous report
 - [ ] Task: Implement `cleanupDrafts` cron job
     - [ ] Write unit tests for the cron job logic
     - [ ] Add `cleanupDrafts` to `app/convex/crons.ts` to run daily and delete drafts older than 30 days
