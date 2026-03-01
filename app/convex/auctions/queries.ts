@@ -198,28 +198,37 @@ export const getAuctionBids = query({
       .order("desc")
       .take(50);
 
+    // Minimum length for a valid Convex ID is 10 characters. IDs shorter than
+    // this are malformed or legacy data and should be treated as anonymous.
+    const MIN_VALID_BIDDER_ID_LENGTH = 10;
+    // Sentinel key for falsy bidderId values (null, empty string) to avoid
+    // using them as map keys which can cause issues with retrieval.
+    const ANONYMOUS_KEY = "anonymous";
+
     const uniqueBidderIds = Array.from(new Set(bids.map((b) => b.bidderId)));
     const bidderNames = new Map<string, string>();
 
     await Promise.all(
       uniqueBidderIds.map(async (bidderId) => {
-        if (!bidderId || bidderId.length < 10) {
-          bidderNames.set(bidderId, "Anonymous");
+        const mapKey = bidderId || ANONYMOUS_KEY;
+
+        if (!bidderId || bidderId.length < MIN_VALID_BIDDER_ID_LENGTH) {
+          bidderNames.set(mapKey, "Anonymous");
           return;
         }
         const user = await findUserById(ctx, bidderId);
 
         if (user) {
-          bidderNames.set(bidderId, user.name ?? "Anonymous");
+          bidderNames.set(mapKey, user.name ?? "Anonymous");
         } else {
-          bidderNames.set(bidderId, "Anonymous");
+          bidderNames.set(mapKey, "Anonymous");
         }
       })
     );
 
     const bidsWithUsers = bids.map((bid) => ({
       ...bid,
-      bidderName: bidderNames.get(bid.bidderId) || "Anonymous",
+      bidderName: bidderNames.get(bid.bidderId || ANONYMOUS_KEY) || "Anonymous",
     }));
 
     return bidsWithUsers;

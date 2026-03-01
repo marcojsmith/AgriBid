@@ -1,9 +1,29 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-interface UsePriceHighlightOptions {
+export interface UsePriceHighlightOptions {
+  /** Duration of the highlight animation in milliseconds. Default is 800ms. */
   duration?: number;
 }
 
+/**
+ * Hook to highlight a price value when it changes, creating a visual "flash" effect.
+ *
+ * Tracks the previous price value and returns true when a change is detected,
+ * allowing consumers to apply conditional styling (e.g., background highlight).
+ *
+ * @param price - The current price value to track for changes
+ * @param options - Optional configuration options
+ * @param options.duration - Duration of highlight animation in ms (default: 800)
+ * @returns boolean - True when price just changed, false otherwise
+ *
+ * @example
+ * // Default usage (800ms duration)
+ * const isHighlighted = usePriceHighlight(currentPrice);
+ *
+ * @example
+ * // Custom duration
+ * const isHighlighted = usePriceHighlight(currentPrice, { duration: 1000 });
+ */
 export function usePriceHighlight(
   price: number,
   options: UsePriceHighlightOptions = {}
