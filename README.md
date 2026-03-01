@@ -32,7 +32,6 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 ## 🗺️ Roadmap (Upcoming Features)
 
 - [ ] **Proxy Bidding**: Set maximum bid amounts and allow the system to auto-bid on your behalf.
-- [ ] **Shipping Calculator**: Integration with uShip/Shiply APIs for instant haulage quotes.
 - [ ] **Seller Verification**: Enhanced verification flow for commercial dealers.
 - [ ] **Optimistic Updates**: Further latency reduction for bid placement UI.
 - [ ] **Infinite Scroll**: Enhanced performance for large marketplace listings.

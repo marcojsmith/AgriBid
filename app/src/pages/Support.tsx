@@ -74,7 +74,7 @@ export default function Support() {
             Help & Support
           </h1>
           <p className="text-muted-foreground font-medium uppercase text-sm tracking-wide">
-            Get assistance with auctions, accounts, or payments.
+            Get assistance with auctions, accounts, or equipment.
           </p>
         </div>
         <div className="hidden md:flex gap-4">
@@ -134,7 +134,9 @@ export default function Support() {
                       <SelectItem value="medium">
                         Medium - Active Auction
                       </SelectItem>
-                      <SelectItem value="high">High - Payment/Legal</SelectItem>
+                      <SelectItem value="high">
+                        High - Technical Issue
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
