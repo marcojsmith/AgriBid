@@ -93,7 +93,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_auction", ["auctionId"])
-    .index("by_bidder_auction", ["bidderId", "auctionId"]),
+    .index("by_bidder_auction", ["bidderId", "auctionId"])
+    .index("by_auction_maxBid", ["auctionId", "maxBid", "updatedAt"]),
 
   // Application Profiles (Links Auth User to App Metadata)
   profiles: defineTable({

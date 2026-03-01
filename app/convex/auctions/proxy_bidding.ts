@@ -6,6 +6,18 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
 /**
+ * Result shape for the handleNewBid function.
+ */
+export type HandleNewBidResult = {
+  success: boolean;
+  bidAmount: number;
+  isProxyBid: boolean;
+  nextBidAmount: number | null;
+  proxyBidActive: boolean;
+  confirmedMaxBid?: number;
+};
+
+/**
  * Gets the current proxy bid for the authenticated user on an auction.
  */
 export const getMyProxyBid = query({
@@ -83,6 +95,11 @@ export async function getCurrentHighestBidAmount(
 }
 
 /**
+ * Offset added to auto-bids to ensure they appear after the manual bid that triggered them.
+ */
+const AUTO_BID_TIMESTAMP_OFFSET = 1;
+
+/**
  * Handles the logic for when a new bid is placed, including proxy bidding.
  *
  * @param ctx - Mutation context
@@ -98,7 +115,7 @@ export async function handleNewBid(
   bidderId: string,
   bidAmount: number,
   maxBid?: number
-) {
+): Promise<HandleNewBidResult> {
   const auction = await ctx.db.get(auctionId);
   if (!auction) throw new Error("Auction not found");
 
@@ -127,7 +144,7 @@ export async function handleNewBid(
     );
   }
 
-  // 2. Upsert Proxy Bid if provided
+  // 3. Upsert Proxy Bid if provided
   if (maxBid !== undefined) {
     const existingProxy = await ctx.db
       .query("proxy_bids")
@@ -151,7 +168,7 @@ export async function handleNewBid(
     }
   }
 
-  // 3. Place the manual bid
+  // 4. Place the manual bid
   await ctx.db.insert("bids", {
     auctionId,
     bidderId,
@@ -160,7 +177,7 @@ export async function handleNewBid(
     status: "valid",
   });
 
-  // 4. Update Auction Price and handle Soft Close
+  // 5. Update Auction Price and handle Soft Close
   let newEndTime = auction.endTime;
   let isExtended = auction.isExtended || false;
   const now = Date.now();
@@ -177,34 +194,47 @@ export async function handleNewBid(
     isExtended,
   });
 
-  // 5. Trigger Proxy Bidding for OTHER users
-  // Find other proxy bids that might want to outbid this new bid
-  const otherProxyBids = await ctx.db
+  // 6. Trigger Proxy Bidding Resolution
+  // We include the caller's proxy bid in the calculation to ensure they are the winner if they have the highest maxBid.
+  const allProxyBids = await ctx.db
     .query("proxy_bids")
     .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
-    .filter((q) => q.neq(q.field("bidderId"), bidderId))
     .collect();
 
-  // Sort other proxy bids by maxBid desc
-  const sortedOtherProxies = otherProxyBids.sort((a, b) => b.maxBid - a.maxBid);
+  // Sort all proxy bids by maxBid descending, then by creation time (first bidder wins tie)
+  const sortedProxies = allProxyBids.sort((a, b) => {
+    if (b.maxBid !== a.maxBid) return b.maxBid - a.maxBid;
+    return a.updatedAt - b.updatedAt;
+  });
 
-  if (sortedOtherProxies.length > 0) {
-    const highestOtherProxy = sortedOtherProxies[0];
+  if (sortedProxies.length > 0) {
+    const highestProxy = sortedProxies[0];
+    const secondHighestProxy = sortedProxies[1] || null;
 
-    if (highestOtherProxy.maxBid > bidAmount) {
-      // Someone else has a proxy bid that is higher than this new bid.
-      // They should automatically outbid this person.
+    // The auto-bid should be enough to outbid the second highest proxy or the manual bid
+    // We check if the highest proxy is NOT the current manual bidder OR if someone else's proxy can outbid the manual bid
+
+    // Case A: Someone else has a proxy that outbids the current manual bid
+    if (highestProxy.bidderId !== bidderId && highestProxy.maxBid > bidAmount) {
       let autoBidAmount = bidAmount + minIncrement;
-      if (autoBidAmount > highestOtherProxy.maxBid) {
-        autoBidAmount = highestOtherProxy.maxBid;
+
+      // If there's a second highest proxy, we must outbid it too
+      if (secondHighestProxy) {
+        autoBidAmount = Math.max(
+          autoBidAmount,
+          secondHighestProxy.maxBid + minIncrement
+        );
       }
 
-      // Recursively (or just once for now) place the auto-bid
+      // Cap at highest proxy's max bid
+      autoBidAmount = Math.min(autoBidAmount, highestProxy.maxBid);
+
+      // Place the auto-bid
       await ctx.db.insert("bids", {
         auctionId,
-        bidderId: highestOtherProxy.bidderId,
+        bidderId: highestProxy.bidderId,
         amount: autoBidAmount,
-        timestamp: Date.now() + 1,
+        timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET, // Ensure auto-bid is chronologically after the manual bid
         status: "valid",
       });
 
@@ -216,10 +246,47 @@ export async function handleNewBid(
         success: true,
         bidAmount: autoBidAmount,
         isProxyBid: true,
-        nextBidAmount: null, // No next bid for the current caller as they were outbid
+        nextBidAmount: null,
         proxyBidActive: false,
         confirmedMaxBid: undefined,
       };
+    }
+
+    // Case B: The current manual bidder is the highest proxy
+    if (highestProxy.bidderId === bidderId) {
+      // If there was a previous highest proxy from someone else that our new proxy just outbid
+      if (secondHighestProxy && secondHighestProxy.maxBid >= bidAmount) {
+        const autoBidAmount = Math.min(
+          highestProxy.maxBid,
+          secondHighestProxy.maxBid + minIncrement
+        );
+
+        if (autoBidAmount > bidAmount) {
+          await ctx.db.insert("bids", {
+            auctionId,
+            bidderId: highestProxy.bidderId,
+            amount: autoBidAmount,
+            timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
+            status: "valid",
+          });
+
+          await ctx.db.patch(auctionId, {
+            currentPrice: autoBidAmount,
+          });
+
+          return {
+            success: true,
+            bidAmount: autoBidAmount,
+            isProxyBid: true,
+            nextBidAmount:
+              highestProxy.maxBid > autoBidAmount
+                ? autoBidAmount + minIncrement
+                : null,
+            proxyBidActive: highestProxy.maxBid > autoBidAmount,
+            confirmedMaxBid: highestProxy.maxBid,
+          };
+        }
+      }
     }
   }
 

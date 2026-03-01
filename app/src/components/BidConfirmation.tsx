@@ -32,11 +32,12 @@ export const BidConfirmation = ({
     maximumFractionDigits: 0,
   }).format(amount);
 
-  const formattedMaxAmount = maxAmount
-    ? new Intl.NumberFormat("en-ZA", { maximumFractionDigits: 0 }).format(
-        maxAmount
-      )
-    : null;
+  const formattedMaxAmount =
+    maxAmount != null
+      ? new Intl.NumberFormat("en-ZA", { maximumFractionDigits: 0 }).format(
+          maxAmount
+        )
+      : null;
 
   const handleConfirm = () => {
     isConfirmingRef.current = true;
@@ -78,7 +79,7 @@ export const BidConfirmation = ({
               </span>
             </div>
 
-            {formattedMaxAmount && (
+            {formattedMaxAmount != null && (
               <div className="w-full flex flex-col items-center mt-2">
                 <div className="w-32 border-t-2 border-primary/10 mb-4" />
                 <div className="text-center">

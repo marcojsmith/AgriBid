@@ -11,7 +11,7 @@ This track implements a proxy bidding system where users can set a maximum bid, 
 ## Phase 2: Frontend Implementation
 - [ ] 5. Update `AuctionDetail` page to include a "Set Max Bid" input field in the bidding panel.
 - [ ] 6. Implement a toggle or checkbox for "Enable Auto-bid".
-- [ ] 7. Add validation to ensure max bid is higher than the current minimum required bid.
+- [ ] 7. Add validation to ensure max bid is at least the current minimum required amount.
 - [ ] 8. Update the bidding status UI to show if the user's current lead is via a proxy bid.
 
 ## Phase 3: Testing & Verification

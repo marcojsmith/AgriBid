@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Doc } from "convex/_generated/dataModel";
-import { TrendingUp, ArrowUpCircle, Clock } from "lucide-react";
+import { TrendingUp, ArrowUpCircle, Clock, AlertTriangle } from "lucide-react";
 
 interface BidFormProps {
   /** The auction document containing current pricing and status */
@@ -38,8 +38,23 @@ export const BidForm = ({
   const [manualAmount, setManualAmount] = useState<string>(
     nextMinBid.toString()
   );
-  const [isProxyEnabled, setIsProxyEnabled] = useState(false);
-  const [maxBid, setMaxBid] = useState<string>("");
+  const [isProxyEnabled, setIsProxyEnabled] = useState(isProxyActive || false);
+  const [maxBid, setMaxBid] = useState<string>(
+    currentUserMaxBid ? String(currentUserMaxBid) : ""
+  );
+
+  /**
+   * Sync proxy states with server-backed props when they change.
+   */
+  useEffect(() => {
+    setIsProxyEnabled(isProxyActive || false);
+  }, [isProxyActive]);
+
+  useEffect(() => {
+    if (currentUserMaxBid) {
+      setMaxBid(String(currentUserMaxBid));
+    }
+  }, [currentUserMaxBid]);
 
   /**
    * Sync manualAmount with nextMinBid whenever the current price updates.
@@ -57,7 +72,9 @@ export const BidForm = ({
   const currentManualNum = parseFloat(manualAmount) || 0;
   const currentMaxBidNum = parseFloat(maxBid) || 0;
   const isManualValid = currentManualNum >= nextMinBid;
-  const isMaxBidValid = currentMaxBidNum >= nextMinBid;
+  const isMaxBidValid =
+    currentMaxBidNum >= nextMinBid &&
+    (!isProxyEnabled || currentMaxBidNum >= currentManualNum);
 
   const quickBids = [
     nextMinBid,
@@ -68,7 +85,8 @@ export const BidForm = ({
   const handleManualBid = () => {
     if (!isManualValid) return;
 
-    if (isProxyEnabled && isMaxBidValid) {
+    if (isProxyEnabled) {
+      if (currentMaxBidNum < currentManualNum) return;
       onBid(currentManualNum, currentMaxBidNum, true);
     } else {
       onBid(currentManualNum);
@@ -76,7 +94,8 @@ export const BidForm = ({
   };
 
   const handleQuickBid = (amount: number) => {
-    if (isProxyEnabled && isMaxBidValid) {
+    if (isProxyEnabled) {
+      if (currentMaxBidNum < amount) return;
       onBid(amount, currentMaxBidNum, true);
     } else {
       onBid(amount);
@@ -84,15 +103,17 @@ export const BidForm = ({
   };
 
   const getQuickBidAmounts = () => {
-    if (isProxyEnabled && isMaxBidValid) {
-      // Show quick bids that are within the max bid range
+    if (isProxyEnabled) {
+      // Show quick bids that are within the max bid range if max bid is valid for at least the minimum
       const maxBidAmount = currentMaxBidNum;
-      const validQuickBids = quickBids.filter(
-        (bid) => bid >= nextMinBid && bid <= maxBidAmount
-      );
+      if (maxBidAmount >= nextMinBid) {
+        const validQuickBids = quickBids.filter(
+          (bid) => bid >= nextMinBid && bid <= maxBidAmount
+        );
 
-      if (validQuickBids.length > 0) {
-        return validQuickBids;
+        if (validQuickBids.length > 0) {
+          return validQuickBids;
+        }
       }
     }
     return quickBids;
@@ -166,7 +187,7 @@ export const BidForm = ({
             disabled={
               isLoading ||
               !isBidFormEnabled ||
-              (isProxyEnabled && !isMaxBidValid)
+              (isProxyEnabled && (!isMaxBidValid || currentMaxBidNum < amount))
             }
           >
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
@@ -228,6 +249,16 @@ export const BidForm = ({
           Minimum bid required: R {nextMinBid.toLocaleString()}
         </p>
       )}
+
+      {isProxyEnabled &&
+        currentMaxBidNum < currentManualNum &&
+        maxBid !== "" && (
+          <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
+            <AlertTriangle className="h-3 w-3" />
+            Max bid must be at least the current bid amount (R{" "}
+            {currentManualNum.toLocaleString()})
+          </p>
+        )}
 
       {isProxyEnabled && isMaxBidValid && (
         <p className="text-muted-foreground text-xs mt-2">
