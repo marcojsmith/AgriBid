@@ -15,9 +15,9 @@
 - [x] Task: Implement `cleanupDrafts` cron job [bed250f]
     - [x] Write unit tests for the cron job logic
     - [x] Add `cleanupDrafts` to `app/convex/crons.ts` to run daily and delete drafts older than 30 days
-- [ ] Task: Refactor and verify coverage
-    - [ ] Run coverage reports using Vitest to ensure >80% coverage for new backend code
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Backend Mutations (Convex)' (Protocol in workflow.md)
+- [x] Task: Refactor and verify coverage [1ec4c06]
+    - [x] Run coverage reports using Vitest to ensure >80% coverage for new backend code
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Backend Mutations (Convex)' (Protocol in workflow.md) [checkpoint: 1ec4c06]
 
 ## Phase 2: Frontend Refinement (React)
 - [ ] Task: Update Listing Wizard
