@@ -9,7 +9,7 @@
 
 ### Key Differentiators:
 - **Real-Time Bidding**: Sub-200ms latency using Convex's reactive architecture
-- **Farming-Specific Features**: Equipment condition reports, operating hours tracking, and location-based logistics integration
+- **Farming-Specific Features**: Equipment condition reports and operating hours tracking
 - **Trust & Transparency**: Detailed inspection galleries, verified seller profiles, and immutable bid histories
 - **Mobile-First Design**: Optimised for on-the-go farmers and dealers
 
@@ -20,20 +20,19 @@
 ### Industry Landscape:
 - **Inventory Consolidation**: Post-2024 supply chain normalisation has created a secondary market boom for used equipment
 - **Trust Gap**: Buyers of $50k–$500k machinery are hesitant about online-only transactions without inspection transparency
-- **Logistics Friction**: Transporting a combine harvester can cost R2,000–R10,000+, representing 10–30% of the final bid
 
 ### Competitive Analysis:
-| Platform | Real-Time Bidding | Equipment Focus | Logistics Integration |
-|----------|-------------------|-----------------|----------------------|
-| **eBay** | ❌ (polling-based) | General | ❌ |
-| **TractorHouse** | ✅ (limited) | ✅ Farming | ⚠️ (manual quotes) |
-| **AgriBid** | ✅ (Convex-powered) | ✅ Farming | ✅ (API-driven estimates) |
+
+| Platform | Real-Time Bidding | Equipment Focus |
+|----------|-------------------|-----------------|
+| **eBay** | ❌ (polling-based) | General |
+| **TractorHouse** | ✅ (limited) | ✅ Farming |
+| **AgriBid** | ✅ (Convex-powered) | ✅ Farming |
 
 ### Solution Strategy:
 AgriBid bridges the trust gap through:
 1. **Mandatory Inspection Reports**: Multi-photo galleries with machine hour meters and service logs
-2. **Transparent Pricing**: Real-time shipping cost estimates based on buyer location
-3. **Verified Seller Profiles**: Better Auth integration with business verification
+2. **Verified Seller Profiles**: Better Auth integration with business verification
 
 ---
 
@@ -62,14 +61,13 @@ AgriBid bridges the trust gap through:
 - Avoid bidding wars through strategic proxy bidding
 
 **Pain Points:**
-- Hidden transport costs inflate final purchase price
 - Difficulty verifying equipment condition remotely
 
 **Use Cases:**
 1. Filter auctions by max operating hours, location radius, and budget
 2. View 360° photo galleries with zoom capability
 3. Set maximum bid and receive push notifications when outbid
-4. Calculate total landed cost (bid + transport + VAT)
+4. View equipment location and detailed condition reports
 
 ---
 
@@ -129,60 +127,35 @@ AgriBid bridges the trust gap through:
 
 ---
 
-### Phase 3: Logistics & Finalisation
+### Phase 3: Dispute Resolution & Support
 **Must-Have:**
-1. [ ] **Shipping Calculator Integration**
-   - API integration with haulage providers (e.g., Shiply, uShip)
-   - Display estimated transport cost on listing page
-   - Buyer can request formal quotes post-auction
-
-2. [ ] **Payment Escrow**
-   - Stripe Connect integration for seller payouts
-   - Buyer deposit system (10% of winning bid, refundable if item misrepresented)
-
-3. [ ] **Dispute Resolution**
-   - Buyer can open case within 48 hours of collection
-   - Admin mediation interface
-
-**Nice-to-Have:**
-- Automated VAT calculation for cross-border sales
+1. [ ] **Dispute Resolution**
+   - Admin mediation interface for post-auction disputes
+2. [ ] **Support Ticket System**
+   - In-app support for users and admins
+3. [ ] **System Polish & Accuracy**
+   - Refined Admin KPIs and real-time monitoring stability
+   - Pagination for large datasets
 
 ---
 
 ### Phase 4: Advanced Features (Post-Launch)
 - **AI-Powered Pricing Suggestions**: Use historical sales data to recommend reserve prices
+- **AI Chatbot Support**: Real-time user assistance for bidding and listing queries
+- **SEO strategy**: Enhanced search engine visibility for auction listings
 - **Mobile App**: React Native wrapper for iOS/Android
 - **Live Auction Events**: Scheduled "mega-auctions" with simulcast video
-- **Finance Calculator**: Integrate agricultural lending partners for buyer financing options
 
 ---
 
 ## 5. File Structure:
-The project uses a monorepo-style structure where all application code resides within the `app/` directory.
+The project is transitioning to a cleaner structure where application code resides at the root.
 
-```
+```text
 / (Project Root)
-├── app/ (Application Root)
-│   ├── convex/
-│   │   ├── schema.ts
-│   │   ├── auctions.ts (queries/mutations)
-│   │   ├── seed.ts (static equipment & mock data)
-│   │   ├── betterAuth/
-│   │   ├── cron.ts
-│   │   └── http.ts
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/ (Shadcn components)
-│   │   │   ├── AuctionCard.tsx
-│   │   │   ├── BidForm.tsx
-│   │   │   └── ...
-│   │   ├── pages/
-│   │   │   ├── AdminDashboard.tsx
-│   │   │   └── ...
-│   │   ├── lib/
-│   │   └── App.tsx
-│   ├── tailwind.config.js
-│   └── package.json
+├── convex/ (Backend logic)
+├── src/ (Frontend React application)
+├── conductor/ (Documentation & Tracks)
 ├── Brief.md
 ├── Checklist.md
 └── README.md
@@ -228,7 +201,7 @@ The project uses a monorepo-style structure where all application code resides w
 
 ### 5.2 Starting Convex Schema Design
 ```typescript
-// app/convex/schema.ts
+// convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -303,7 +276,7 @@ export default defineSchema({
 
 #### Mutation: `placeBid`
 ```typescript
-// app/convex/auctions.ts
+// convex/auctions.ts
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
@@ -375,6 +348,14 @@ crons.interval(
 export default crons;
 ```
 
+> **Migration Checklist:** When moving code to the root structure, ensure you update:
+> - [ ] Frontend imports and asset paths
+> - [ ] Backend Convex functions and schema references
+> - [ ] Database seed data and configuration
+> - [ ] Security rules and auth configuration
+> - [ ] Automated tests (Vitest/MCP)
+> - [ ] Project documentation and guides
+
 ---
 
 ## 6. UI/UX Design Principles
@@ -402,7 +383,7 @@ export default crons;
   - Equipment specs table
   - Current bid + bid history (collapsible)
   - Bid form (amount input + "Place Bid" button)
-  - Shipping calculator (postcode input → API call → estimate display)
+  - Equipment location and inspection report availability
 
 #### 3. Seller Dashboard (`/dashboard/seller`)
 - **My Listings**: Tabs (Draft / Active / Ended)
@@ -486,36 +467,38 @@ export default crons;
 ## 8. Development Plan & Milestones
 
 ### Sprint 1 (Weeks 1-2): Foundation
-- [ ] Set up Vite + React + TypeScript project
-- [ ] Configure Convex (schema, basic queries)
-- [ ] Integrate Better Auth (email/password)
-- [ ] Build NavBar + Home page skeleton
+- [x] Set up Vite + React + TypeScript project
+- [x] Configure Convex (schema, basic queries)
+- [x] Integrate Better Auth (email/password)
+- [x] Build NavBar + Home page skeleton
 
 ### Sprint 2 (Weeks 3-4): Core Bidding
-- [ ] Implement `placeBid` mutation
-- [ ] Build Auction Detail page
-- [ ] Add real-time bid updates (Convex `useQuery`)
-- [ ] Create countdown timer component
+- [x] Implement `placeBid` mutation
+- [x] Build Auction Detail page
+- [x] Add real-time bid updates (Convex `useQuery`)
+- [x] Create countdown timer component
 
 ### Sprint 3 (Weeks 5-6): Listings & Images
-- [ ] Build "Create Listing" form (multi-step)
-- [ ] Integrate Convex File Storage
-- [ ] Implement image gallery component
-- [ ] Add seller dashboard
+- [x] Build "Create Listing" form (multi-step)
+- [x] Integrate Convex File Storage
+- [x] Implement image gallery component
+- [x] Add seller dashboard
 
-### Sprint 4 (Weeks 7-8): Trust Features
+### Sprint 4 (Weeks 7-8): Trust & Admin Hardening
 - [ ] Add condition report uploads
 - [ ] Build seller verification system
-- [ ] Implement admin review interface
+- [ ] Refine Admin Dashboard KPIs and Live Monitor
+- [ ] Implement pagination for all queries
 
-### Sprint 5 (Weeks 9-10): Logistics
-- [ ] Integrate shipping calculator API
-- [ ] Build payment escrow (Stripe Connect)
-- [ ] Add dispute resolution workflow
+### Sprint 5 (Weeks 9-10): Support & Polish
+- [ ] Implement Support Ticket system
+- [ ] Group bids in Buyer Dashboard
+- [ ] UI/UX Polish: resize animations, dropdown filters, uniform image sizing
+- [ ] Comprehensive unit test coverage
 
-### Sprint 6 (Weeks 11-12): Polish & Launch
-- [ ] Performance optimisation (lazy loading, code splitting)
-- [ ] Accessibility audit
-- [ ] Beta testing with 50 users
-- [ ] Production deployment (Vercel/Netlify + Convex Cloud)
+### Sprint 6 (Weeks 11-12): Production Launch
+- [ ] SEO Strategy implementation
+- [ ] AI Chatbot integration (Beta)
+- [ ] Production deployment (Vercel + Convex Cloud)
+- [ ] Final security hardening
 

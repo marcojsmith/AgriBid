@@ -34,5 +34,5 @@ This track focuses on implementing the core "active" experience of the AgriBid p
 
 ## Out of Scope
 - Seller dashboard analytics for the auction.
-- Logistics/shipping calculator integration (Phase 3).
+- In-app notifications for auction events (Phase 3).
 - User watchlist management (separate track).
