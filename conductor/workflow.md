@@ -28,7 +28,9 @@ All tasks follow a strict lifecycle:
 
 ### Standard Task Workflow
 
-1. **Select Task:** Choose the next available task from `plan.md` in sequential order
+1. **Select Task & Create Branch:**
+   - Choose the next available task from `plan.md` in sequential order.
+   - Create a branch for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
 
 2. **Mark In Progress:** Before beginning work, edit `plan.md` and change the task from `[ ]` to `[~]`
 
@@ -71,7 +73,6 @@ All tasks follow a strict lifecycle:
    - **Verify Fixes:** Run `coderabbit --prompt-only --type uncommitted` again if significant changes were made to ensure no new issues were introduced.
 
 9. **Commit Code Changes:**
-   - When implementing a new track, create a new branch and use appropriate naming conventions (e.g., `feature/description` or `bugfix/description`).
    - Stage all code changes related to the task.
    - Propose a clear, concise commit message following the format in `Checklist.md` (e.g., `feat(auth): Add remember me functionality`).
    - Perform the commit.
