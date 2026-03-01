@@ -85,6 +85,14 @@ All tasks follow a strict lifecycle:
      # The note content from the previous step is passed via the -m flag.
      git notes add -m "<note content>" <commit_hash>
      ```
+   - **Step 10.4: Push Notes:** Push the notes to the remote repository so collaborators and CI can see them.
+     ```bash
+     git push origin refs/notes/*
+     ```
+   - **Step 10.5: Fetch Notes:** Inform reviewers that they can fetch the remote notes to retrieve task summaries.
+     ```bash
+     git fetch origin refs/notes/*:refs/notes/*
+     ```
 
 11. **Get and Record Task Commit SHA:**
     - **Step 11.1: Update Plan:** Read `plan.md`, find the line for the completed task, update its status from `[~]` to `[x]`, and append the first 7 characters of the *just-completed commit's* commit hash.
@@ -150,9 +158,18 @@ All tasks follow a strict lifecycle:
     -   Stage all changes. If no changes occurred in this step, proceed with an empty commit.
     -   Perform the commit with a clear and concise message (e.g., `conductor(checkpoint): Checkpoint end of Phase X`).
 
-7.  **Attach Auditable Verification Report using Git Notes:**
+7. **Attach Auditable Verification Report using Git Notes:**
     -   **Step 7.1: Draft Note Content:** Create a detailed verification report including the automated test command, the manual verification steps, and the user's confirmation.
     -   **Step 7.2: Attach Note:** Use the `git notes` command and the full commit hash from the previous step to attach the full report to the checkpoint commit.
+    -   **Step 7.3: Push Notes:** Push the notes to the remote repository.
+        ```bash
+        git push origin refs/notes/*
+        ```
+    -   **Step 7.4: Fetch Notes:** Inform reviewers that they can fetch the remote notes.
+        ```bash
+        git fetch origin refs/notes/*:refs/notes/*
+        ```
+
 
 8.  **Get and Record Phase Checkpoint SHA:**
     -   **Step 8.1: Get Commit Hash:** Obtain the hash of the *just-created checkpoint commit* (`git log -1 --format="%H"`).
