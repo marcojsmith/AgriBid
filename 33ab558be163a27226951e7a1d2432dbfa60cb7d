@@ -1,0 +1,7 @@
+Task: Update app/convex/schema.ts to include equipmentCategories table and enhance equipmentMetadata.
+Summary: Added equipmentCategories table for dynamic category management and enhanced equipmentMetadata with categoryId relation, isActive flag, and updatedAt timestamp. Updated queries, seed data, and frontend components to match the new schema.
+Files:
+- app/convex/schema.ts
+- app/convex/auctions/queries.ts
+- app/convex/seed.ts
+- app/src/components/listing-wizard/steps/TechnicalSpecsStep.tsx
