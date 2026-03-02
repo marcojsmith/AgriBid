@@ -1,0 +1,6 @@
+Implement platform fees configuration backend.
+- Created platformConfig table in schema.
+- Implemented getPlatformConfig query and updatePlatformConfig mutation with validation.
+- Added comprehensive Vitest unit tests.
+- Exported functions from admin index.
+Files: app/convex/schema.ts, app/convex/admin/platformConfig.ts, app/convex/admin/platformConfig.test.ts, app/convex/admin/index.ts
