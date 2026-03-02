@@ -117,6 +117,7 @@ User Clicks "Create Listing"
 ### Step 3: Media Gallery
 
 **Image Requirements:**
+
 | Slot | Required | Description |
 |------|----------|-------------|
 | Front | Yes | Primary equipment photo |
@@ -241,7 +242,7 @@ export const createAuction = mutation({
     }))
   },
   handler: async (ctx, args) => {
-    // Require authenticated seller
+    // Require authenticated user
     const { profile, userId } = await requireProfile(ctx);
     
     // Validate role allows listing

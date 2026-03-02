@@ -304,7 +304,7 @@ export const adminAction = internalMutation({
 
 ### Auth User (Better Auth)
 
-```
+```text
 Table: users (internal)
 - id: string
 - email: string
@@ -317,7 +317,7 @@ Table: users (internal)
 
 ### Application Profile (AgriBid)
 
-```
+```text
 Table: profiles
 - userId: string (links to auth user)
 - role: "buyer" | "seller" | "admin"

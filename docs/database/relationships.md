@@ -4,7 +4,7 @@ This document describes the relationships between tables in the AgriBid database
 
 ## Entity Relationship Diagram
 
-```
+```text
 ┌─────────────────┐       ┌─────────────────┐
 │     users       │       │    profiles     │
 │  (Better Auth)  │◄──────│                 │
@@ -296,27 +296,27 @@ An admin user can perform multiple actions that are logged.
 ### Common Query Patterns
 
 1. **Get user's active bids:**
-   ```
+   ```text
    profiles (userId) → bids (bidderId) → auctions (status = 'active')
    ```
 
 2. **Get auction with all bids:**
-   ```
+   ```text
    auctions (id) → bids (auctionId) ordered by timestamp
    ```
 
 3. **Get user's watchlist with auction details:**
-   ```
+   ```text
    profiles (userId) → watchlist (userId) → auctions (auctionId)
    ```
 
 4. **Get notifications for user:**
-   ```
+   ```text
    profiles (userId) → notifications (recipientId) ordered by createdAt
    ```
 
 5. **Get seller's auction statistics:**
-   ```
+   ```text
    profiles (userId) → auctions (sellerId) grouped by status
    ```
 

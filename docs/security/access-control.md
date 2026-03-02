@@ -16,7 +16,7 @@ This document describes role-based access control (RBAC), permissions, and autho
 
 ## Role Hierarchy
 
-```
+```text
           ┌─────────────┐
           │    Admin    │
           │  (Full)     │
@@ -289,6 +289,7 @@ export const reviewKYC = mutation({
 ```typescript
 // Can user create listing?
 const canCreate = profile.role === "seller" || 
+                  profile.role === "buyer" || 
                   profile.role === "admin";
 ```
 

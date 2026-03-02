@@ -161,7 +161,6 @@ The project is transitioning to a cleaner structure where application code resid
 ├── Checklist.md
 └── README.md
 ```
-
 ---
 
 ## 5. Technical Architecture

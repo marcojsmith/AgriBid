@@ -166,7 +166,7 @@ async function checkBidRateLimit(ctx: MutationCtx, userId: string) {
 
 ### Login Flow
 
-```
+```text
 1. User enters credentials
           │
           ▼
@@ -190,7 +190,7 @@ async function checkBidRateLimit(ctx: MutationCtx, userId: string) {
 
 ### Logout Flow
 
-```
+```text
 1. User clicks logout
           │
           ▼
