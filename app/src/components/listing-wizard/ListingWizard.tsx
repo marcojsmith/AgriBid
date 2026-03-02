@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
@@ -39,6 +40,7 @@ const ListingWizardContent = () => {
     isSubmitting,
     isSuccess,
     setIsSuccess,
+    resetForm,
   } = useListingWizard();
 
   const { data: session, isPending } = useSession();
@@ -47,6 +49,24 @@ const ListingWizardContent = () => {
   const { getStepError } = useListingForm();
   const createAuction = useMutation(api.auctions.createAuction);
   const publishAuction = useMutation(api.auctions.publishAuction);
+
+  // Initialize form state on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem("agribid_listing_draft");
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        resetForm(parsed);
+      } catch (e) {
+        console.error("Failed to parse saved draft", e);
+        resetForm();
+      }
+    } else {
+      resetForm();
+    }
+    // Only run on initial mount to establish base state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * Handles the final listing submission.
