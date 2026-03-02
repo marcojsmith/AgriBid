@@ -1,0 +1,7 @@
+Integrate platform fees into settlement logic.
+- Updated schema to include fee breakdown fields in auctions table.
+- Implemented calculatePlatformFees utility in helpers.ts.
+- Updated settleExpiredAuctions internal mutation to calculate and store fees for sold auctions.
+- Updated getFinancialStats query to use recorded fees instead of estimates.
+- Added Vitest unit tests for fee calculation logic.
+Files: app/convex/schema.ts, app/convex/auctions/helpers.ts, app/convex/auctions/internal.ts, app/convex/auctions/settlement.test.ts, app/convex/admin/statistics.ts
