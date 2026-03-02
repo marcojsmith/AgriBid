@@ -212,7 +212,14 @@ function validateAutoBidAmount(
 }
 
 /**
- * Resolves all active proxy bids for an auction after a new bid is placed.
+ * Resolve competing proxy bids for an auction after a new manual bid and apply any automatic bids.
+ *
+ * May insert an automatic bid and update the auction's currentPrice and winnerId when a proxy bid is executed.
+ *
+ * @param auctionId - The auction id to resolve proxy bids for
+ * @param bidderId - The id of the bidder who placed the new manual bid
+ * @param bidAmount - The amount of the new manual bid
+ * @returns A HandleNewBidResult describing the proxy outcome if an automatic bid was placed, or `null` if no proxy action occurred
  */
 async function resolveProxyBids(
   ctx: MutationCtx,
@@ -267,7 +274,10 @@ async function resolveProxyBids(
         status: "valid",
       });
 
-      await ctx.db.patch(auctionId, { currentPrice: validatedAmount });
+      await ctx.db.patch(auctionId, {
+        currentPrice: validatedAmount,
+        winnerId: highestProxy.bidderId,
+      });
 
       return {
         success: true,
@@ -306,7 +316,10 @@ async function resolveProxyBids(
         status: "valid",
       });
 
-      await ctx.db.patch(auctionId, { currentPrice: validatedAmount });
+      await ctx.db.patch(auctionId, {
+        currentPrice: validatedAmount,
+        winnerId: highestProxy.bidderId,
+      });
 
       return {
         success: true,
@@ -326,15 +339,13 @@ async function resolveProxyBids(
 }
 
 /**
- * Handles the logic for when a new bid is placed, including proxy bidding.
+ * Process a new bid for an auction, update auction state, apply soft-close extensions, and resolve any competing proxy bids.
  *
- * @param ctx - Mutation context
  * @param auctionId - ID of the auction
- * @param bidderId - ID of the bidder (userId)
- * @param bidAmount - Amount of the new bid
- * @param maxBid - Optional max bid for proxy bidding
- * @returns Information about the bid result
- */
+ * @param bidderId - ID of the bidder placing the bid
+ * @param bidAmount - The amount offered by the bidder
+ * @param maxBid - Optional maximum amount for proxy (automatic) bidding
+ * @returns An object describing the bid outcome: `success` indicates the operation succeeded; `bidAmount` is the placed amount; `isProxyBid` is `true` if an automatic proxy bid was executed in response; `nextBidAmount` is the suggested next minimum bid or `null`; `proxyBidActive` is `true` if the bidder's proxy remains active after this action; `confirmedMaxBid` is the provided `maxBid` when present. */
 export async function handleNewBid(
   ctx: MutationCtx,
   auctionId: Id<"auctions">,
@@ -365,7 +376,10 @@ export async function handleNewBid(
   });
 
   // 4. Update Auction Price and handle Soft Close
-  await ctx.db.patch(auctionId, { currentPrice: bidAmount });
+  await ctx.db.patch(auctionId, {
+    currentPrice: bidAmount,
+    winnerId: bidderId,
+  });
   await extendAuctionIfNeeded(ctx, auction, now);
 
   // 5. Proxy Resolution

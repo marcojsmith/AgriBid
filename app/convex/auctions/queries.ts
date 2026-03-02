@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
+import type { Id, Doc } from "../_generated/dataModel";
 import { getCallerRole, findUserById } from "../users";
 import { authComponent } from "../auth";
 import {
@@ -380,6 +382,40 @@ export const getAllAuctions = query({
   },
 });
 
+export const getMyBidsStats = query({
+  args: {},
+  returns: v.object({
+    totalActive: v.number(),
+    winningCount: v.number(),
+    outbidCount: v.number(),
+    totalExposure: v.number(),
+  }),
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser)
+        return {
+          totalActive: 0,
+          winningCount: 0,
+          outbidCount: 0,
+          totalExposure: 0,
+        };
+      const userId = authUser.userId ?? authUser._id;
+
+      const { globalStats } = await calculateUserBidStats(ctx, userId);
+      return globalStats;
+    } catch (err) {
+      console.error("getMyBidsStats failure:", err);
+      return {
+        totalActive: 0,
+        winningCount: 0,
+        outbidCount: 0,
+        totalExposure: 0,
+      };
+    }
+  },
+});
+
 export const getMyBids = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -387,12 +423,20 @@ export const getMyBids = query({
       v.object({
         ...AuctionSummaryValidator.fields,
         myHighestBid: v.number(),
+        bidCount: v.number(),
         isWinning: v.boolean(),
         isWon: v.boolean(),
-        bidAmount: v.number(),
-        bidTimestamp: v.number(),
+        isOutbid: v.boolean(),
+        isCancelled: v.boolean(),
+        lastBidTimestamp: v.number(),
       })
     ),
+    stats: v.object({
+      totalActive: v.number(),
+      winningCount: v.number(),
+      outbidCount: v.number(),
+      totalExposure: v.number(),
+    }),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -404,6 +448,12 @@ export const getMyBids = query({
       if (!authUser)
         return {
           page: [],
+          stats: {
+            totalActive: 0,
+            winningCount: 0,
+            outbidCount: 0,
+            totalExposure: 0,
+          },
           isDone: true,
           continueCursor: "",
           pageStatus: null,
@@ -411,64 +461,95 @@ export const getMyBids = query({
         };
       const userId = authUser.userId ?? authUser._id;
 
-      const bidsResult = await ctx.db
-        .query("bids")
-        .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
-        // exclude voided bids from results
-        .filter((q) => q.neq(q.field("status"), "voided"))
-        .order("desc")
-        .paginate(args.paginationOpts);
-
-      const uniqueAuctionIds = Array.from(
-        new Set(bidsResult.page.map((bid) => bid.auctionId))
+      const { globalStats, auctionStatsMap } = await calculateUserBidStats(
+        ctx,
+        userId
       );
 
-      const bidsByAuction = new Map<string, number>();
+      const sortedAuctionIds = Array.from(auctionStatsMap.entries())
+        .sort((a, b) => b[1].lastBidTimestamp - a[1].lastBidTimestamp)
+        .map(([id]) => id as Id<"auctions">);
 
-      await Promise.all(
-        uniqueAuctionIds.map(async (auctionId) => {
-          const latestBid = await ctx.db
-            .query("bids")
-            .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
-            // only consider non-voided bids
-            .filter((q) => q.neq(q.field("status"), "voided"))
-            .order("desc")
-            .filter((q) => q.eq(q.field("bidderId"), userId))
-            .first();
+      const { numItems, cursor } = args.paginationOpts;
+      let startIndex = 0;
+      if (cursor) {
+        const index = (sortedAuctionIds as string[]).indexOf(
+          cursor as Id<"auctions">
+        );
+        if (index === -1) {
+          return {
+            page: [],
+            stats: globalStats,
+            isDone: true,
+            continueCursor: "",
+            pageStatus: null,
+            splitCursor: null,
+          };
+        }
+        startIndex = index + 1;
+      }
 
-          bidsByAuction.set(auctionId, latestBid?.amount || 0);
-        })
+      const paginatedIds = sortedAuctionIds.slice(
+        startIndex,
+        startIndex + numItems
       );
 
       const page = await Promise.all(
-        bidsResult.page.map(async (bid) => {
-          const auction = await ctx.db.get(bid.auctionId);
+        paginatedIds.map(async (auctionId) => {
+          const auction = await ctx.db.get(auctionId);
           if (!auction) return null;
 
+          const stats = auctionStatsMap.get(auctionId)!;
           const summary = await toAuctionSummary(ctx, auction);
-          const myHighestBid = bidsByAuction.get(auction._id) || 0;
+
+          const isWinning =
+            auction.status === "active" &&
+            stats.highestBid === auction.currentPrice &&
+            auction.winnerId === userId;
+          const isWon =
+            auction.status === "sold" && auction.winnerId === userId;
+          const isOutbid = auction.status === "active" && !isWinning;
+          const isCancelled =
+            auction.status === "rejected" || auction.status === "unsold";
 
           return {
             ...summary,
-            myHighestBid,
-            isWinning:
-              auction.status === "active" &&
-              myHighestBid === auction.currentPrice,
-            isWon: auction.status === "sold" && auction.winnerId === userId,
-            bidAmount: bid.amount,
-            bidTimestamp: bid.timestamp,
+            myHighestBid: stats.highestBid,
+            bidCount: stats.bidCount,
+            isWinning,
+            isWon,
+            isOutbid,
+            isCancelled,
+            lastBidTimestamp: stats.lastBidTimestamp,
           };
         })
       );
 
+      const filteredPage = page.filter(
+        (a): a is NonNullable<typeof a> => a !== null
+      );
+
       return {
-        ...bidsResult,
-        page: page.filter((a): a is NonNullable<typeof a> => a !== null),
+        page: filteredPage,
+        stats: globalStats,
+        isDone: startIndex + numItems >= sortedAuctionIds.length,
+        continueCursor:
+          filteredPage.length > 0
+            ? filteredPage[filteredPage.length - 1]._id
+            : "",
+        pageStatus: null,
+        splitCursor: null,
       };
     } catch (err) {
       if (err instanceof Error && err.message.includes("Unauthenticated")) {
         return {
           page: [],
+          stats: {
+            totalActive: 0,
+            winningCount: 0,
+            outbidCount: 0,
+            totalExposure: 0,
+          },
           isDone: true,
           continueCursor: "",
           pageStatus: null,
@@ -532,3 +613,76 @@ export const getMyListings = query({
     }
   },
 });
+
+/**
+ * Compute aggregated bid statistics for a user and per-auction bid summaries.
+ *
+ * Aggregates the user's non-voided bids to produce overall counts and exposure, and returns per-auction
+ * summaries containing the highest bid, number of bids and the timestamp of the last bid.
+ *
+ * @param userId - ID of the user to compute statistics for
+ * @returns An object with `globalStats` containing `totalActive`, `winningCount`, `outbidCount` and `totalExposure`, and `auctionStatsMap` mapping auction IDs to `{ lastBidTimestamp, highestBid, bidCount }`
+ */
+export async function calculateUserBidStats(ctx: QueryCtx, userId: string) {
+  const allUserBids = await ctx.db
+    .query("bids")
+    .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+    .filter((q) => q.neq(q.field("status"), "voided"))
+    .collect();
+
+  const auctionStatsMap = new Map<
+    string,
+    {
+      lastBidTimestamp: number;
+      highestBid: number;
+      bidCount: number;
+    }
+  >();
+
+  for (const bid of allUserBids) {
+    const stats = auctionStatsMap.get(bid.auctionId) || {
+      lastBidTimestamp: 0,
+      highestBid: 0,
+      bidCount: 0,
+    };
+    stats.bidCount++;
+    if (bid.amount > stats.highestBid) {
+      stats.highestBid = bid.amount;
+    }
+    if (bid.timestamp > stats.lastBidTimestamp) {
+      stats.lastBidTimestamp = bid.timestamp;
+    }
+    auctionStatsMap.set(bid.auctionId, stats);
+  }
+
+  const globalStats = {
+    totalActive: 0,
+    winningCount: 0,
+    outbidCount: 0,
+    totalExposure: 0,
+  };
+  const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
+  const fullAuctions = await Promise.all(
+    auctionIds.map((id) => ctx.db.get(id))
+  );
+
+  fullAuctions.forEach((auction: Doc<"auctions"> | null, index: number) => {
+    if (!auction) return;
+    const stats = auctionStatsMap.get(auctionIds[index])!;
+
+    if (auction.status === "active") {
+      globalStats.totalActive++;
+      const isWinning =
+        stats.highestBid === auction.currentPrice &&
+        auction.winnerId === userId;
+      if (isWinning) {
+        globalStats.winningCount++;
+        globalStats.totalExposure += stats.highestBid;
+      } else {
+        globalStats.outbidCount++;
+      }
+    }
+  });
+
+  return { globalStats, auctionStatsMap };
+}
