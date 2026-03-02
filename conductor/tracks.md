@@ -63,3 +63,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Seller Listing Flow**
 *Link: [./archive/seller_listing_flow_20260213/](./archive/seller_listing_flow_20260213/)*
+
+---
+
+- [ ] **Track: Pagination for Queries - Refactor hardcoded .take() limits to Convex .paginate()**
+*Link: [./tracks/query_pagination_20260302/](./tracks/query_pagination_20260302/)*
