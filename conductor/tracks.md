@@ -12,30 +12,39 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
-- [~] **Track: Admin Portal Refactor (Issues #62, #57, #56, #58)**
-*Link: [./tracks/admin_route_refactor_20260220/](./tracks/admin_route_refactor_20260220/)*
-
-- [x] **Track: Comprehensive Codebase Modularization & Refactor**
-*Link: [./tracks/modularization_refactor_20260219/](./tracks/modularization_refactor_20260219/)*
+- [ ] **Track: Listing Lifecycle & Management (Drafts & Refinement)**
+*Link: [./tracks/listing_lifecycle_management_20260301/](./tracks/listing_lifecycle_management_20260301/)*
 
 ---
 
 ## Archive
 
+- [x] **Track: Proxy Bidding (Auto-bid System)**
+*Link: [./archive/proxy_bidding_20260228/](./archive/proxy_bidding_20260228/)*
+
+- [x] **Track: Performance Optimization**
+*Link: [./archive/performance_optimization_20260222/](./archive/performance_optimization_20260222/)*
+
+- [x] **Track: Admin Portal Refactor (Issues #62, #57, #56, #58)**
+*Link: [./archive/admin_route_refactor_20260220/](./archive/admin_route_refactor_20260220/)*
+
+- [x] **Track: Comprehensive Codebase Modularization & Refactor**
+*Link: [./archive/modularization_refactor_20260219/](./archive/modularization_refactor_20260219/)*
+
 - [x] **Track: Seller Profiles & Verification**
-*Link: [./tracks/seller_profiles_verification_20260216/](./tracks/seller_profiles_verification_20260216/)*
+*Link: [./archive/seller_profiles_verification_20260216/](./archive/seller_profiles_verification_20260216/)*
 
 - [x] **Track: Wizard Hardening & Data Integrity**
-*Link: [./tracks/listing_integrity_technical_documentation_20260216/](./tracks/listing_integrity_technical_documentation_20260216/)*
+*Link: [./archive/listing_integrity_technical_documentation_20260216/](./archive/listing_integrity_technical_documentation_20260216/)*
 
 - [x] **Track: Auction Lifecycle & Settlement**
-*Link: [./tracks/auction_lifecycle_settlement_20260216/](./tracks/auction_lifecycle_settlement_20260216/)*
+*Link: [./archive/auction_lifecycle_settlement_20260216/](./archive/auction_lifecycle_settlement_20260216/)*
 
 - [x] **Track: deploy to vercel**
-*Link: [./tracks/vercel_deploy_20260213/](./tracks/vercel_deploy_20260213/)*
+*Link: [./archive/vercel_deploy_20260213/](./archive/vercel_deploy_20260213/)*
 
 - [x] **Track: Refactor ListingWizard for Modularity**
-*Link: [./tracks/listing_wizard_refactor_20260216/](./tracks/listing_wizard_refactor_20260216/)*
+*Link: [./archive/listing_wizard_refactor_20260216/](./archive/listing_wizard_refactor_20260216/)*
 
 - [x] **Track: Watchlist Functionality**
 *Link: [./archive/watchlist_functionality_20260216/](./archive/watchlist_functionality_20260216/)*
@@ -44,10 +53,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 *Link: [./archive/guest_restrictions_20260216/](./archive/guest_restrictions_20260216/)*
 
 - [x] **Track: Listing Creation & Convex File Storage Integration**
-*Link: [./tracks/listing_storage_20260215/](./tracks/listing_storage_20260215/)*
+*Link: [./archive/listing_storage_20260215/](./archive/listing_storage_20260215/)*
 
 - [x] **Track: Global Navigation & Brand Layout**
-*Link: [./tracks/global_nav_layout_20260213/](./tracks/global_nav_layout_20260213/)*
+*Link: [./archive/global_nav_layout_20260213/](./archive/global_nav_layout_20260213/)*
 
 - [x] **Track: Auction Detail Page and Bid Submission Flow**
 *Link: [./archive/auction_detail_20260213/](./archive/auction_detail_20260213/)*
