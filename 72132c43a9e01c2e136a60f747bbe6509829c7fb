@@ -1,0 +1,8 @@
+Refactor: Consolidate fee logic and improve type safety.
+- Created convex/lib/fee-logic.ts as single source of truth for fee calculations.
+- Removed duplicate logic from auctions/helpers.ts and src/lib/auction-utils.ts.
+- Improved type safety by reducing 'any' usage and fixing naming inconsistencies (payout vs sellerPayout).
+- Strictly enforced singleton pattern in updatePlatformConfig mutation.
+- Refactored AdminSettings to use URL-driven tab state for better deep linking.
+- Added UI constraints (min/max) to fee input fields.
+- Fixed unit tests following calculation logic migration.
