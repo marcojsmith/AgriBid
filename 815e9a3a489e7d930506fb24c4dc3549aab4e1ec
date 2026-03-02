@@ -1,0 +1,6 @@
+Integrate platform fees configuration UI.
+- Created FeesTab component with input validation.
+- Implemented real-time fee previewer for testing fee logic.
+- Refactored AdminSettings page to use Tabs and integrated Fees & Pricing.
+- Added comprehensive Vitest unit tests for the UI.
+Files: app/src/components/admin/FeesTab.tsx, app/src/components/admin/FeesTab.test.tsx, app/src/pages/admin/AdminSettings.tsx
