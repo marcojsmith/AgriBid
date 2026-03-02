@@ -8,8 +8,8 @@ This document describes role-based access control (RBAC), permissions, and autho
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| `buyer` | Standard user who can bid | View auctions, place bids, create watchlist |
-| `seller` | User who can list equipment | All buyer permissions + create listings |
+| `buyer` | Standard user who can bid | View auctions, place bids, create watchlist, and create own listings |
+| `seller` | User with advanced equipment inventory | All buyer permissions plus seller-specific tools like viewing all active auctions and managing large inventories |
 | `admin` | Platform administrator | Full system access |
 
 ---

@@ -81,14 +81,16 @@ A user with role `seller` can create multiple auction listings.
 
 ### profiles → auctions (as Winner)
 
-**Relationship:** One-to-Many (optional)
+**Relationship:** One-to-Many
 
 A user can win multiple auctions as the highest bidder.
 
 - **Profile Side:** `winnerId` field in `auctions` references profile's `userId`
-- **Auction Side:** Each auction can have at most one winner (only if status is `sold`)
+- **Auction Side:** Each auction has exactly one optional winner (only if status is `sold`)
 
-**Cardinality:** 0..1 : 0..N
+**Cardinality:** 1 : 0..N (profiles → auctions as Winner)
+
+> **Note:** The `winnerId` field in the `auctions` table is optional (nullable), meaning an auction may have zero or one winner (0..1 cardinality on the auction side).
 
 ---
 
@@ -171,12 +173,12 @@ A user can watch multiple auctions.
 
 **Relationship:** Many-to-One
 
-Each watchlist entry references a single auction.
+Each watchlist entry references exactly one auction.
 
-- **Watchlist Side:** `auctionId` field references auction
-- **Auction Side:** An auction can have many watchlist entries
+- **Watchlist Side:** `auctionId` field references a single auction
+- **Auction Side:** An auction can be watched by many users (0..N entries)
 
-**Cardinality:** watchlist: 0..N : auctions: 1
+**Cardinality:** 0..N : 1 (watchlist : auctions)
 
 **Index Usage:** `by_auction` (through auctions table)
 

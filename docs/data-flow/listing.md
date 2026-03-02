@@ -54,7 +54,7 @@ User Clicks "Create Listing"
     │ • Engine (optional)   │
     │ • Cabin (optional)    │
     │ • Rear (optional)     │
-    │ • Additional (up to10)│
+    │ • Additional (up to 10)│
     └────────────────────────┘
            │
            ▼
@@ -136,11 +136,15 @@ User Selects Image File
     (size: < 10MB)
            │
            ▼
-    Convex Storage Upload
-    (ctx.storage.store())
+    Request Upload URL
+    (ctx.storage.generateUploadUrl())
            │
            ▼
-    Get Storage ID
+    HTTP POST to URL
+    (Allocates Storage ID)
+           │
+           ▼
+    Receive Storage ID
            │
            ▼
     Display Preview
@@ -159,26 +163,25 @@ const handleImageUpload = async (file: File) => {
     throw new Error('Invalid file type');
   }
   
-  // Get upload URL from server mutation
-  const { uploadUrl, storageId } = await createUploadUrl();
+  // Get upload URL from server action
+  const uploadUrl = await generateUploadUrl();
   
   // Upload directly to Convex storage
-  await fetch(uploadUrl, {
+  const response = await fetch(uploadUrl, {
     method: 'POST',
     body: file,
     headers: { 'Content-Type': file.type }
   });
   
+  const { storageId } = await response.json();
   return storageId;
 };
 
-// Server mutation for getting upload URL
-export const createUploadUrl = mutation({
+// Server action for getting upload URL
+export const generateUploadUrl = action({
   args: {},
   handler: async (ctx) => {
-    const storageId = await ctx.storage.generateUploadId();
-    const uploadUrl = await ctx.storage.getUploadUrl(storageId);
-    return { uploadUrl, storageId };
+    return await ctx.storage.generateUploadUrl();
   }
 });
 ```
@@ -372,6 +375,9 @@ export const approveAuction = mutation({
 | Active | Sold | Auction ends, reserve met |
 | Active | Unsold | Auction ends, no bids/reserve not met |
 | Active | Rejected | Admin rejects active listing |
+| Sold | Archive | System archives after 30 days |
+| Unsold | Archive | System archives after 30 days |
+| Rejected | Archive | User/Admin archives rejected listing |
 
 ---
 
