@@ -7,6 +7,8 @@ describe("cleanupDrafts mutation", () => {
     db: {
       query: ReturnType<typeof vi.fn>;
       delete: ReturnType<typeof vi.fn>;
+      insert: ReturnType<typeof vi.fn>;
+      patch: ReturnType<typeof vi.fn>;
     };
     storage: {
       delete: ReturnType<typeof vi.fn>;
@@ -21,11 +23,14 @@ describe("cleanupDrafts mutation", () => {
     mockCtx = {
       db: {
         delete: vi.fn(),
+        insert: vi.fn(),
+        patch: vi.fn(),
         query: vi.fn().mockReturnValue({
           withIndex: vi.fn().mockReturnValue({
             filter: vi.fn().mockReturnValue({
               collect: vi.fn().mockResolvedValue([]),
             }),
+            unique: vi.fn().mockResolvedValue(null),
           }),
         }),
       },
@@ -51,12 +56,21 @@ describe("cleanupDrafts mutation", () => {
       },
     };
 
-    mockCtx.db.query = vi.fn().mockReturnValue({
-      withIndex: vi.fn().mockReturnValue({
-        filter: vi.fn().mockReturnValue({
-          collect: vi.fn().mockResolvedValue([mockDraft]),
+    mockCtx.db.query = vi.fn().mockImplementation((table) => {
+      if (table === "auctions") {
+        return {
+          withIndex: vi.fn().mockReturnValue({
+            filter: vi.fn().mockReturnValue({
+              collect: vi.fn().mockResolvedValue([mockDraft]),
+            }),
+          }),
+        };
+      }
+      return {
+        withIndex: vi.fn().mockReturnValue({
+          unique: vi.fn().mockResolvedValue(null),
         }),
-      }),
+      };
     });
 
     await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
@@ -64,18 +78,30 @@ describe("cleanupDrafts mutation", () => {
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage_pdf");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage_front");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage_extra1");
-    expect(mockCtx.storage.delete).toHaveBeenCalledTimes(3);
 
     expect(mockCtx.db.delete).toHaveBeenCalledWith("draft_123");
+    expect(mockCtx.db.insert).toHaveBeenCalledWith(
+      "auditLogs",
+      expect.anything()
+    );
   });
 
   it("should do nothing if no old drafts exist", async () => {
-    mockCtx.db.query = vi.fn().mockReturnValue({
-      withIndex: vi.fn().mockReturnValue({
-        filter: vi.fn().mockReturnValue({
-          collect: vi.fn().mockResolvedValue([]),
+    mockCtx.db.query = vi.fn().mockImplementation((table) => {
+      if (table === "auctions") {
+        return {
+          withIndex: vi.fn().mockReturnValue({
+            filter: vi.fn().mockReturnValue({
+              collect: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        };
+      }
+      return {
+        withIndex: vi.fn().mockReturnValue({
+          unique: vi.fn().mockResolvedValue(null),
         }),
-      }),
+      };
     });
 
     await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);

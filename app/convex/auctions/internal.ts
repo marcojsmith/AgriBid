@@ -1,8 +1,12 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
-import { updateCounter } from "../admin_utils";
+import { updateCounter, logAudit } from "../admin_utils";
+import { deleteAuctionImages } from "../lib/storage";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+
+const DRAFT_RETENTION_DAYS = 30;
+const DRAFT_RETENTION_MS = DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Internal mutation to settle auctions that have reached their end time.
@@ -65,48 +69,73 @@ export const settleExpiredAuctions = internalMutation({
 });
 
 export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const cutoffTime = Date.now() - DRAFT_RETENTION_MS;
+
   const oldDrafts = await ctx.db
     .query("auctions")
     .withIndex("by_status", (q) => q.eq("status", "draft"))
-    .filter((q) => q.lt(q.field("_creationTime"), thirtyDaysAgo))
+    .filter((q) => q.lte(q.field("_creationTime"), cutoffTime))
     .collect();
 
-  for (const draft of oldDrafts) {
-    // Delete associated images
-    const storageIds = [];
-    if (draft.conditionReportUrl) storageIds.push(draft.conditionReportUrl);
+  let deleted = 0;
+  let errors = 0;
 
-    if (draft.images) {
-      if (!Array.isArray(draft.images)) {
-        if (draft.images.front) storageIds.push(draft.images.front);
-        if (draft.images.engine) storageIds.push(draft.images.engine);
-        if (draft.images.cabin) storageIds.push(draft.images.cabin);
-        if (draft.images.rear) storageIds.push(draft.images.rear);
-        if (draft.images.additional) {
-          storageIds.push(...draft.images.additional);
+  for (const auction of oldDrafts) {
+    try {
+      // Delete images
+      await deleteAuctionImages(ctx, auction.images);
+
+      // Delete condition report PDF if it exists
+      if (auction.conditionReportUrl) {
+        try {
+          await ctx.storage.delete(
+            auction.conditionReportUrl as Id<"_storage">
+          );
+        } catch (e) {
+          console.warn(
+            `Failed to delete condition report: ${auction.conditionReportUrl}`,
+            e
+          );
         }
-      } else {
-        storageIds.push(...draft.images);
       }
-    }
 
-    for (const id of storageIds) {
-      try {
-        await ctx.storage.delete(id as Id<"_storage">);
-      } catch {
-        console.warn(
-          `Failed to delete storage item ${id} for draft ${draft._id}`
-        );
-      }
+      await ctx.db.delete(auction._id);
+      deleted++;
+    } catch (e) {
+      console.error(`Failed to delete draft auction: ${auction._id}`, e);
+      errors++;
     }
-
-    await ctx.db.delete(draft._id);
   }
+
+  if (deleted > 0) {
+    await logAudit(ctx, {
+      action: "CLEANUP_DRAFT_AUCTIONS",
+      targetType: "system",
+      details: JSON.stringify({
+        deletedCount: deleted,
+        errorCount: errors,
+        cutoffTime: new Date(cutoffTime).toISOString(),
+        retentionDays: DRAFT_RETENTION_DAYS,
+      }),
+    });
+
+    await updateCounter(ctx, "auctions", "total", -deleted);
+  }
+
+  console.log(`Cleanup: deleted ${deleted} draft auctions, ${errors} errors`);
+
+  return { deleted, errors };
 };
 
+/**
+ * Internal mutation to clean up old draft auctions.
+ * Deletes drafts older than 30 days and their associated storage.
+ */
 export const cleanupDrafts = internalMutation({
   args: {},
-  returns: v.null(),
+  returns: v.object({
+    deleted: v.number(),
+    errors: v.number(),
+  }),
   handler: cleanupDraftsHandler,
 });

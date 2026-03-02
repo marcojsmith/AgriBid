@@ -532,3 +532,127 @@ export const getMyListings = query({
     }
   },
 });
+
+/**
+ * Get flags for a specific auction (admin only).
+ */
+export const getAuctionFlags = query({
+  args: { auctionId: v.id("auctions") },
+  returns: v.array(
+    v.object({
+      _id: v.id("auctionFlags"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      reporterId: v.string(),
+      reason: v.union(
+        v.literal("misleading"),
+        v.literal("inappropriate"),
+        v.literal("suspicious"),
+        v.literal("other")
+      ),
+      details: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("reviewed"),
+        v.literal("dismissed")
+      ),
+      createdAt: v.number(),
+      reporterName: v.string(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    const flags = await ctx.db
+      .query("auctionFlags")
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .order("desc")
+      .collect();
+
+    const uniqueReporterIds = Array.from(
+      new Set(flags.map((f) => f.reporterId))
+    );
+    const reporterNames = new Map<string, string>();
+
+    await Promise.all(
+      uniqueReporterIds.map(async (reporterId) => {
+        const user = await findUserById(ctx, reporterId);
+        reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      })
+    );
+
+    return flags.map((flag) => ({
+      ...flag,
+      reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
+    }));
+  },
+});
+
+/**
+ * Get all pending flags across all auctions (admin only).
+ */
+export const getAllPendingFlags = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("auctionFlags"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      reporterId: v.string(),
+      reason: v.union(
+        v.literal("misleading"),
+        v.literal("inappropriate"),
+        v.literal("suspicious"),
+        v.literal("other")
+      ),
+      details: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("reviewed"),
+        v.literal("dismissed")
+      ),
+      createdAt: v.number(),
+      auctionTitle: v.string(),
+      reporterName: v.string(),
+    })
+  ),
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    const flags = await ctx.db
+      .query("auctionFlags")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("desc")
+      .collect();
+
+    const uniqueAuctionIds = Array.from(new Set(flags.map((f) => f.auctionId)));
+    const auctionTitles = new Map<string, string>();
+    const uniqueReporterIds = Array.from(
+      new Set(flags.map((f) => f.reporterId))
+    );
+    const reporterNames = new Map<string, string>();
+
+    await Promise.all([
+      ...uniqueAuctionIds.map(async (auctionId) => {
+        const auction = await ctx.db.get(auctionId);
+        auctionTitles.set(auctionId, auction?.title ?? "Unknown Auction");
+      }),
+      ...uniqueReporterIds.map(async (reporterId) => {
+        const user = await findUserById(ctx, reporterId);
+        reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      }),
+    ]);
+
+    return flags.map((flag) => ({
+      ...flag,
+      auctionTitle: auctionTitles.get(flag.auctionId) ?? "Unknown Auction",
+      reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
+    }));
+  },
+});

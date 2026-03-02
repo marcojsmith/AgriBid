@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 vi.mock("../lib/auth", () => ({
   getAuthUser: vi.fn(),
   resolveUserId: vi.fn(),
+  getAuthenticatedUserId: vi.fn(),
 }));
 
 describe("updateConditionReport mutation", () => {
@@ -34,10 +35,7 @@ describe("updateConditionReport mutation", () => {
   });
 
   it("should successfully update condition report and delete old one if it exists", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_123");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_123");
 
     const mockAuction = {
       _id: "auction_123",
@@ -65,7 +63,9 @@ describe("updateConditionReport mutation", () => {
   });
 
   it("should throw an error if the user is not authenticated", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+    vi.mocked(auth.getAuthenticatedUserId).mockRejectedValue(
+      new Error("Not authenticated")
+    );
 
     const args = {
       auctionId: "auction_123" as Id<"auctions">,
@@ -78,10 +78,7 @@ describe("updateConditionReport mutation", () => {
   });
 
   it("should throw an error if the user is not the owner", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_other");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_other");
 
     const mockAuction = {
       _id: "auction_123",
@@ -97,6 +94,6 @@ describe("updateConditionReport mutation", () => {
 
     await expect(
       updateConditionReportHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("Not authorized: You can only update your own auctions");
+    ).rejects.toThrow("You can only modify your own auctions");
   });
 });

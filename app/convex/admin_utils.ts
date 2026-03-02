@@ -3,16 +3,13 @@ import { getAuthUser } from "./lib/auth";
 import { encryptPII, decryptPII } from "./lib/encryption";
 
 /**
- * Create an audit log entry for the currently authenticated admin.
- *
- * Throws an Error if no authenticated user identity is present.
+ * Create an audit log entry for the currently authenticated admin or system process.
  *
  * @param args.action - Short identifier of the action performed (for example `delete_user` or `update_settings`)
  * @param args.targetId - Optional identifier of the resource affected by the action
  * @param args.targetType - Optional type or category of the resource (for example `user` or `project`)
  * @param args.details - Optional free-form details or context about the action
  * @param args.targetCount - Optional number of targets affected by the action
- * @throws Error When there is no authenticated user available in the provided context
  */
 export async function logAudit(
   ctx: MutationCtx,
@@ -25,14 +22,10 @@ export async function logAudit(
   }
 ) {
   const authUser = await getAuthUser(ctx);
-  if (!authUser) {
-    const errorContext = `Audit Log Failure: Missing identity for action ${args.action} on ${args.targetType}:${args.targetId}`;
-    console.error(errorContext);
-    throw new Error(errorContext);
-  }
+  const adminId = authUser ? (authUser.userId ?? authUser._id) : "SYSTEM";
 
   await ctx.db.insert("auditLogs", {
-    adminId: authUser.userId ?? authUser._id,
+    adminId,
     action: args.action,
     targetId: args.targetId,
     targetType: args.targetType,

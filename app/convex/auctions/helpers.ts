@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
+import { findUserById } from "../users";
 
 export interface RawImages {
   front?: string;
@@ -207,6 +208,7 @@ export const AuctionDetailValidator = v.object({
   }),
   conditionChecklist: v.optional(ConditionChecklistValidator),
   sellerId: v.string(),
+  sellerEmail: v.optional(v.string()),
   status: v.string(),
   currentPrice: v.number(),
   minIncrement: v.number(),
@@ -226,6 +228,8 @@ export const AuctionDetailValidator = v.object({
  * @returns The same auction object with `images` replaced by an object where `front`, `engine`, `cabin` and `rear` are resolved URL strings when present and `additional` is an array of resolved URL strings
  */
 export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
+  const seller = await findUserById(ctx, auction.sellerId);
+
   return {
     _id: auction._id,
     _creationTime: auction._creationTime,
@@ -245,6 +249,7 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     endTime: auction.endTime,
     status: auction.status,
     sellerId: auction.sellerId,
+    sellerEmail: seller?.email ?? null,
     winnerId: auction.winnerId,
     isExtended: auction.isExtended,
     seedId: auction.seedId,

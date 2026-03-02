@@ -8,6 +8,7 @@ vi.mock("../lib/auth", () => ({
   getAuthUser: vi.fn(),
   resolveUserId: vi.fn(),
   getCallerRole: vi.fn(),
+  getAuthenticatedUserId: vi.fn(),
 }));
 
 describe("updateAuction mutation", () => {
@@ -15,6 +16,7 @@ describe("updateAuction mutation", () => {
     db: {
       get: ReturnType<typeof vi.fn>;
       patch: ReturnType<typeof vi.fn>;
+      insert: ReturnType<typeof vi.fn>;
     };
   };
 
@@ -24,16 +26,13 @@ describe("updateAuction mutation", () => {
       db: {
         get: vi.fn(),
         patch: vi.fn(),
+        insert: vi.fn(),
       },
     };
   });
 
   it("should update the auction successfully if the user is the seller and auction is draft", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_123");
-    vi.mocked(auth.getCallerRole).mockResolvedValue("seller");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_123");
 
     const mockAuction = {
       _id: "auction_123",
@@ -57,10 +56,16 @@ describe("updateAuction mutation", () => {
     expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_123", {
       title: "New Title",
     });
+    expect(mockCtx.db.insert).toHaveBeenCalledWith(
+      "auditLogs",
+      expect.anything()
+    );
   });
 
   it("should throw an error if the user is not authenticated", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+    vi.mocked(auth.getAuthenticatedUserId).mockRejectedValue(
+      new Error("Not authenticated")
+    );
 
     const args = {
       auctionId: "auction_123" as Id<"auctions">,
@@ -73,11 +78,7 @@ describe("updateAuction mutation", () => {
   });
 
   it("should throw an error if the user is not the seller", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_other");
-    vi.mocked(auth.getCallerRole).mockResolvedValue("seller");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_other");
 
     const mockAuction = {
       _id: "auction_123",
@@ -94,15 +95,11 @@ describe("updateAuction mutation", () => {
 
     await expect(
       updateAuctionHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("Not authorized: You can only edit your own auctions");
+    ).rejects.toThrow("You can only modify your own auctions");
   });
 
   it("should throw an error if the auction is not in draft or pending_review", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_123");
-    vi.mocked(auth.getCallerRole).mockResolvedValue("seller");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_123");
 
     const mockAuction = {
       _id: "auction_123",
@@ -119,8 +116,6 @@ describe("updateAuction mutation", () => {
 
     await expect(
       updateAuctionHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow(
-      "You can only edit auctions in draft or pending_review status"
-    );
+    ).rejects.toThrow("Only draft or pending_review auctions can be edited");
   });
 });

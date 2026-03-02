@@ -8,6 +8,7 @@ vi.mock("../lib/auth", () => ({
   getAuthUser: vi.fn(),
   resolveUserId: vi.fn(),
   getCallerRole: vi.fn(),
+  getAuthenticatedUserId: vi.fn(),
 }));
 
 describe("publishAuction mutation", () => {
@@ -37,11 +38,7 @@ describe("publishAuction mutation", () => {
   });
 
   it("should successfully transition auction status from draft to pending_review", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_123");
-    vi.mocked(auth.getCallerRole).mockResolvedValue("seller");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_123");
 
     const mockAuction = {
       _id: "auction_123",
@@ -67,7 +64,9 @@ describe("publishAuction mutation", () => {
   });
 
   it("should throw an error if the user is not authenticated", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+    vi.mocked(auth.getAuthenticatedUserId).mockRejectedValue(
+      new Error("Not authenticated")
+    );
 
     const args = {
       auctionId: "auction_123" as Id<"auctions">,
@@ -79,11 +78,7 @@ describe("publishAuction mutation", () => {
   });
 
   it("should throw an error if the user is not the owner", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_other");
-    vi.mocked(auth.getCallerRole).mockResolvedValue("seller");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_other");
 
     const mockAuction = {
       _id: "auction_123",
@@ -99,15 +94,11 @@ describe("publishAuction mutation", () => {
 
     await expect(
       publishAuctionHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("Not authorized: You can only publish your own auctions");
+    ).rejects.toThrow("You can only modify your own auctions");
   });
 
   it("should throw an error if the auction is not in draft status", async () => {
-    vi.mocked(auth.getAuthUser).mockResolvedValue(
-      {} as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>
-    );
-    vi.mocked(auth.resolveUserId).mockReturnValue("user_123");
-    vi.mocked(auth.getCallerRole).mockResolvedValue("seller");
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_123");
 
     const mockAuction = {
       _id: "auction_123",

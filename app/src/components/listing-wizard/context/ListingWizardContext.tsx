@@ -14,6 +14,7 @@ interface ListingWizardContextType {
   setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>;
   setIsSuccess: React.Dispatch<React.SetStateAction<boolean>>;
   setPreviews: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setDraftSaved: React.Dispatch<React.SetStateAction<boolean>>;
   updateField: <K extends keyof ListingFormData>(
     field: K,
     value: ListingFormData[K]
@@ -188,6 +189,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsSubmitting,
         setIsSuccess,
         setPreviews,
+        setDraftSaved,
         updateField,
         updateChecklist,
         resetForm,

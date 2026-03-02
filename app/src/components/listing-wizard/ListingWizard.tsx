@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../../lib/auth-client";
-import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { normalizeListingImages } from "@/lib/normalize-images";
+import { getErrorMessage } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
@@ -41,14 +42,18 @@ const ListingWizardContent = () => {
     isSuccess,
     setIsSuccess,
     resetForm,
+    setDraftSaved,
   } = useListingWizard();
 
-  const { data: session, isPending } = useSession();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { ensureAuthenticated, isPending } = useAuthRedirect();
   const { getStepError } = useListingForm();
+
+  const [searchParams] = useSearchParams();
+  const editingAuctionId = searchParams.get("edit");
+
   const createAuction = useMutation(api.auctions.createAuction);
-  const publishAuction = useMutation(api.auctions.publishAuction);
+  const saveDraft = useMutation(api.auctions.saveDraft);
+  const submitForReview = useMutation(api.auctions.submitForReview);
 
   // Initialize form state on mount
   useEffect(() => {
@@ -68,11 +73,69 @@ const ListingWizardContent = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleSaveDraft = async () => {
+    if (isSubmitting) return;
+
+    if (!ensureAuthenticated("Please sign in to save your draft")) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const images = normalizeListingImages(formData.images);
+
+      const id = await saveDraft({
+        auctionId: editingAuctionId
+          ? (editingAuctionId as Id<"auctions">)
+          : (formData.auctionId as Id<"auctions"> | undefined),
+        title: formData.title,
+        make: formData.make,
+        model: formData.model,
+        year: formData.year,
+        operatingHours: formData.operatingHours,
+        location: formData.location,
+        description: formData.description,
+        startingPrice: formData.startingPrice,
+        reservePrice: formData.reservePrice,
+        images,
+        durationDays: formData.durationDays,
+        conditionChecklist: {
+          engine: formData.conditionChecklist.engine ?? false,
+          hydraulics: formData.conditionChecklist.hydraulics ?? false,
+          tires: formData.conditionChecklist.tires ?? false,
+          serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
+          notes: formData.conditionChecklist.notes,
+        },
+      });
+
+      setDraftSaved(true);
+      toast.success("Draft saved successfully!");
+
+      // Update local storage with the new auctionId if it was just created
+      if (!formData.auctionId && id) {
+        const updatedData = { ...formData, auctionId: id };
+        localStorage.setItem(
+          "agribid_listing_draft",
+          JSON.stringify(updatedData)
+        );
+      }
+    } catch (error) {
+      console.error("Draft save failed", {
+        error,
+        step: "draft save",
+        formState: { title: formData.title, make: formData.make },
+      });
+      toast.error(getErrorMessage(error, "Failed to save draft"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   /**
    * Handles the final listing submission.
    * - Prevents double-submit via isSubmitting guard
    * - Validates all steps before submission
-   * - Calls createAuction or publishAuction mutation
+   * - Calls createAuction or submitForReview mutation
    * - Updates submission state and navigates on success
    * - Shows error toast on failure
    *
@@ -85,13 +148,7 @@ const ListingWizardContent = () => {
       toast.info("Checking your session...");
       return;
     }
-    if (!session) {
-      toast.info("Please sign in to submit your listing");
-      const rawUrl = location.pathname;
-      const callbackUrl = isValidCallbackUrl(rawUrl)
-        ? encodeURIComponent(rawUrl)
-        : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
+    if (!ensureAuthenticated("Please sign in to submit your listing")) {
       return;
     }
 
@@ -106,12 +163,7 @@ const ListingWizardContent = () => {
 
     setIsSubmitting(true);
     try {
-      const images = {
-        ...formData.images,
-        additional: Array.isArray(formData.images.additional)
-          ? formData.images.additional
-          : [],
-      };
+      const images = normalizeListingImages(formData.images);
 
       const auctionData = {
         title: formData.title,
@@ -134,14 +186,24 @@ const ListingWizardContent = () => {
         },
       };
 
-      if (formData.auctionId) {
-        // If it's already a draft on the server, publish it
-        await publishAuction({
-          auctionId: formData.auctionId as Id<"auctions">,
+      const finalAuctionId = editingAuctionId || formData.auctionId;
+
+      if (finalAuctionId) {
+        // First update the draft with the latest data
+        await saveDraft({
+          auctionId: finalAuctionId as Id<"auctions">,
+          ...auctionData,
+        });
+        // Then submit it
+        await submitForReview({
+          auctionId: finalAuctionId as Id<"auctions">,
         });
       } else {
-        // Create a new auction (which defaults to pending_review)
-        await createAuction(auctionData);
+        // Create a new auction directly as pending_review
+        await createAuction({
+          ...auctionData,
+          isDraft: false,
+        });
       }
 
       localStorage.removeItem("agribid_listing_draft");
@@ -236,7 +298,10 @@ const ListingWizardContent = () => {
       <div className="bg-card border-2 rounded-2xl p-8 min-h-[450px]">
         {renderStep()}
       </div>
-      <WizardNavigation onFinalSubmit={handleSubmit} />
+      <WizardNavigation
+        onFinalSubmit={handleSubmit}
+        onSaveDraft={handleSaveDraft}
+      />
     </div>
   );
 };
