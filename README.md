@@ -56,7 +56,7 @@ AgriBid/
 │   │   ├── auctions/        # Auction logic (queries, mutations, bidding, settlement)
 │   │   ├── lib/             # Shared utilities (auth, encryption)
 │   │   ├── schema.ts        # Database schema definitions
-│   │   └── crons.ts         # Scheduled tasks (auction settlement)
+│   │   └── crons.ts        # Scheduled tasks (auction settlement)
 │   └── src/                 # React frontend
 │       ├── components/      # Reusable UI & business logic components
 │       ├── contexts/        # React contexts (admin stats, user profiles)
@@ -66,10 +66,26 @@ AgriBid/
 │               ├── dialogs/ # Modals for KYC review, bulk actions, promotions
 │               └── hooks/   # Custom hooks for admin state management
 ├── conductor/               # Spec-driven development tracks and project docs
+├── docs/                    # Project documentation
+│   ├── database/            # Database schema and relationships
+│   ├── ui-design/           # Design system and page layouts
+│   ├── data-flow/           # Authentication, bidding, and listing flows
+│   ├── security/           # Security policies and implementations
+│   └── features/           # Feature overview, completed, and roadmap
 ├── Brief.md                 # Project specification
 ├── Checklist.md             # Feature implementation tracker
-└── README.md                # Project overview
+└── README.md               # Project overview
 ```
+
+## 📚 Documentation
+
+Detailed project documentation is available in the `docs/` folder:
+
+- **[Database Documentation](docs/database/)**: Database schema, table relationships, and indexes
+- **[UI/UX Documentation](docs/ui-design/)**: Design system, component library, and page layouts
+- **[Data Flow Documentation](docs/data-flow/)**: Authentication, bidding, and listing creation flows
+- **[Security Documentation](docs/security/)**: Authentication, data protection, and access control policies
+- **[Features Documentation](docs/features/)**: Feature overview, completed features, and roadmap
 
 ## 🏁 Getting Started
 
