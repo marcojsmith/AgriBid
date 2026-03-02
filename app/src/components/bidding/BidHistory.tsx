@@ -1,5 +1,5 @@
 // app/src/components/bidding/BidHistory.tsx
-import { useQuery } from "convex/react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 import {
@@ -8,15 +8,26 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { History, User } from "lucide-react";
+import { History, User, ChevronDown } from "lucide-react";
 import { LoadingIndicator } from "../LoadingIndicator";
+import { Button } from "@/components/ui/button";
 
 interface BidHistoryProps {
   auctionId: Id<"auctions">;
 }
 
 export const BidHistory = ({ auctionId }: BidHistoryProps) => {
-  const bids = useQuery(api.auctions.getAuctionBids, { auctionId });
+  const {
+    results: bids,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.auctions.getAuctionBids,
+    { auctionId },
+    { initialNumItems: 20 }
+  );
+
+  const totalBids = useQuery(api.auctions.getAuctionBidCount, { auctionId });
 
   const anonymizeName = (name: string) => {
     if (!name) return "Anonymous";
@@ -46,7 +57,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
           <div className="flex items-center gap-2 text-lg font-bold uppercase tracking-tight">
             <History className="h-5 w-5 text-primary" />
             Bid History
-            {bids && bids.length > 0 && (
+            {bids.length > 0 && (
               <span className="ml-2 bg-primary/10 text-primary text-xs py-0.5 px-2 rounded-full font-black">
                 {bids.length}
               </span>
@@ -54,7 +65,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
           </div>
         </AccordionTrigger>
         <AccordionContent className="pt-2 pb-6">
-          {!bids ? (
+          {status === "LoadingFirstPage" ? (
             <div className="flex justify-center py-8">
               <LoadingIndicator size="sm" />
             </div>
@@ -113,6 +124,29 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
                     </div>
                   </div>
                 ))}
+
+              <div className="pt-2 flex flex-col items-center gap-2">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                  Showing {bids.length} of {totalBids ?? bids.length} Bids
+                </p>
+
+                {status === "CanLoadMore" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => loadMore(20)}
+                    className="group border-2 font-bold uppercase tracking-tight text-[10px] h-8 px-4"
+                  >
+                    Load More Bids
+                    <ChevronDown className="ml-1 h-3 w-3 group-hover:translate-y-0.5 transition-transform" />
+                  </Button>
+                )}
+              </div>
+              {status === "LoadingMore" && (
+                <div className="flex justify-center py-2">
+                  <LoadingIndicator size="sm" />
+                </div>
+              )}
             </div>
           )}
         </AccordionContent>

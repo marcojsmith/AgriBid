@@ -7,7 +7,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
-import { getCallerRole } from "../users";
+import { requireAdmin } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
 
 /**
@@ -36,8 +36,7 @@ export const getPendingKYC = query({
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     // Use Convex pagination to properly handle cursor and limits
     // Only return minimal info for the list. Details are fetched on demand.
@@ -86,8 +85,7 @@ export const reviewKYC = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const profile = await ctx.db
       .query("profiles")

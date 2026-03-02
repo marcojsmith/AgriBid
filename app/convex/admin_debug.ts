@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { components } from "./_generated/api";
-import { getCallerRole } from "./users";
+import { getCallerRole, resolveUserId } from "./lib/auth";
 import { logAudit } from "./admin_utils";
 
 // Dev-only feature: allows bypassing admin check for initial setup.
@@ -41,7 +41,7 @@ export const promoteToAdmin = mutation({
       throw new Error("User not found");
     }
 
-    const linkId = user.userId ?? user._id;
+    const linkId = resolveUserId(user);
     if (!linkId) {
       throw new Error("User identity not fully established (missing ID)");
     }

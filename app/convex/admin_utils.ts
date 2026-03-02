@@ -1,5 +1,5 @@
 import type { MutationCtx } from "./_generated/server";
-import { getAuthUser } from "./lib/auth";
+import { getAuthUser, resolveUserId } from "./lib/auth";
 import { encryptPII, decryptPII } from "./lib/encryption";
 
 /**
@@ -43,7 +43,7 @@ export async function logAudit(
 }
 
 // Re-export encryption functions from lib/encryption for backward compatibility
-export { encryptPII, decryptPII };
+export { encryptPII, decryptPII, resolveUserId };
 
 /**
  * Increment or decrement a named counter's numeric field and persist the change.

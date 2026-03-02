@@ -1,6 +1,6 @@
 // app/src/pages/Home.tsx
 import { useState, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { useSession } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
 import { api } from "convex/_generated/api";
@@ -8,9 +8,9 @@ import { AuctionCard } from "../components/auction";
 import { AuctionCardSkeleton } from "../components/AuctionCardSkeleton";
 import { FilterSidebar } from "../components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LoadingPage } from "../components/LoadingIndicator";
+import { LoadingPage, LoadingIndicator } from "../components/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.
@@ -84,16 +84,24 @@ export default function Home() {
   const maxPrice = parseFiniteInt("maxPrice");
   const maxHours = parseFiniteInt("maxHours");
 
-  const auctions = useQuery(api.auctions.getActiveAuctions, {
-    search: searchQuery,
-    make,
-    minYear,
-    maxYear,
-    minPrice,
-    maxPrice,
-    maxHours,
-    statusFilter,
-  });
+  const {
+    results: auctions,
+    status: auctionsStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.auctions.getActiveAuctions,
+    {
+      search: searchQuery,
+      make,
+      minYear,
+      maxYear,
+      minPrice,
+      maxPrice,
+      maxHours,
+      statusFilter,
+    },
+    { initialNumItems: 12 }
+  );
 
   // Batch-fetch watched auction IDs to avoid per-card queries
   const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
@@ -228,7 +236,7 @@ export default function Home() {
           </div>
         </div>
 
-        {!auctions ? (
+        {auctionsStatus === "LoadingFirstPage" ? (
           <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className={getItemWrapperClasses(viewMode)}>
@@ -253,19 +261,42 @@ export default function Home() {
             </Button>
           </div>
         ) : (
-          <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
-            {auctions.map((auction) => (
-              <div
-                key={auction._id}
-                className={getItemWrapperClasses(viewMode)}
-              >
-                <AuctionCard
-                  auction={auction}
-                  viewMode={viewMode}
-                  isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
-                />
+          <div className="space-y-8">
+            <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
+              {auctions.map((auction) => (
+                <div
+                  key={auction._id}
+                  className={getItemWrapperClasses(viewMode)}
+                >
+                  <AuctionCard
+                    auction={auction}
+                    viewMode={viewMode}
+                    isWatched={
+                      watchedAuctionIds?.includes(auction._id) ?? false
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
+            {auctionsStatus === "CanLoadMore" && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  onClick={() => loadMore(12)}
+                  variant="outline"
+                  className="rounded-xl font-black px-12 border-2 gap-2 h-12 uppercase tracking-widest text-xs"
+                >
+                  Load More Auctions
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
               </div>
-            ))}
+            )}
+
+            {auctionsStatus === "LoadingMore" && (
+              <div className="flex justify-center py-8">
+                <LoadingIndicator />
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -101,7 +101,8 @@ export default function AdminUsers() {
             />
           </div>
           <Badge variant="secondary" className="font-bold">
-            {allProfiles.length} Total Profiles
+            Showing {filteredUsers.length} of{" "}
+            {adminStats ? adminStats.totalUsers : "—"} Users
           </Badge>
         </div>
         <Card className="border-2 overflow-hidden bg-card/30 backdrop-blur-sm">

@@ -11,7 +11,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCallerRole } from "../users";
+import { requireAdmin } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
 import { getAuthUser } from "../lib/auth";
 
@@ -24,6 +24,7 @@ export {
   getSupportStats,
   initializeCounters,
 } from "./statistics";
+export { getSystemConfig, updateSystemConfig } from "./settings";
 
 // --- Bid Moderation ---
 
@@ -48,8 +49,7 @@ export const getRecentBids = query({
     })
   ),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
@@ -85,8 +85,7 @@ export const voidBid = mutation({
   args: { bidId: v.id("bids"), reason: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const bid = await ctx.db.get(args.bidId);
     if (!bid) throw new Error("Bid not found");
@@ -151,8 +150,7 @@ export const getTickets = query({
     })
   ),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
@@ -184,8 +182,7 @@ export const resolveTicket = mutation({
   args: { ticketId: v.id("supportTickets"), resolution: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const authUser = await getAuthUser(ctx);
     if (!authUser) {
@@ -230,35 +227,48 @@ const MAX_AUDIT_LOG_LIMIT = 100;
 /**
  * Query audit logs of admin actions.
  *
- * Returns a limited set of recent audit logs for admin review.
+ * Returns a limited set of recent audit logs for admin review with total count.
  * Only accessible to admin users.
  */
 export const getAuditLogs = query({
   args: { limit: v.optional(v.number()) },
-  returns: v.array(
-    v.object({
-      _id: v.id("auditLogs"),
-      _creationTime: v.number(),
-      adminId: v.string(),
-      action: v.string(),
-      targetId: v.optional(v.string()),
-      targetType: v.optional(v.string()),
-      details: v.optional(v.string()),
-      targetCount: v.optional(v.number()),
-      timestamp: v.number(),
-    })
-  ),
+  returns: v.object({
+    logs: v.array(
+      v.object({
+        _id: v.id("auditLogs"),
+        _creationTime: v.number(),
+        adminId: v.string(),
+        action: v.string(),
+        targetId: v.optional(v.string()),
+        targetType: v.optional(v.string()),
+        details: v.optional(v.string()),
+        targetCount: v.optional(v.number()),
+        timestamp: v.number(),
+      })
+    ),
+    totalCount: v.number(),
+  }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const limit = Math.max(1, Math.min(args.limit ?? 50, MAX_AUDIT_LOG_LIMIT));
 
-    return await ctx.db
-      .query("auditLogs")
-      .withIndex("by_timestamp")
-      .order("desc")
-      .take(limit);
+    const [logs, totalCount] = await Promise.all([
+      ctx.db
+        .query("auditLogs")
+        .withIndex("by_timestamp")
+        .order("desc")
+        .take(limit),
+      ctx.db
+        .query("auditLogs")
+        .collect()
+        .then((r) => r.length),
+    ]);
+
+    return {
+      logs,
+      totalCount,
+    };
   },
 });
 
@@ -274,8 +284,7 @@ export const createAnnouncement = mutation({
   args: { title: v.string(), message: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const title = args.title.trim();
     const message = args.message.trim();
@@ -332,8 +341,7 @@ export const listAnnouncements = query({
     })
   ),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 

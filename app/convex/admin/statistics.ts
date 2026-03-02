@@ -6,8 +6,9 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCallerRole } from "../users";
+import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
+import * as constants from "../constants";
 
 /**
  * Count results from a paginated query by repeatedly paginating until completion.
@@ -75,8 +76,7 @@ export const getFinancialStats = query({
     auctionCount: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     // Scan all sold auctions to compute global aggregates
     let totalSalesVolume = 0;
@@ -135,8 +135,7 @@ export const initializeCounters = mutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const [
       totalAuctions,
@@ -229,8 +228,7 @@ export const getAdminStats = query({
     kycPending: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const [auctionCounter, profileCounter, pendingKycProfiles] =
       await Promise.all([
@@ -245,7 +243,7 @@ export const getAdminStats = query({
         ctx.db
           .query("profiles")
           .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-          .collect(),
+          .take(constants.MAX_RESULTS_CAP),
       ]);
 
     return {
@@ -272,8 +270,7 @@ export const getAnnouncementStats = query({
     recent: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const announcementCounter = await ctx.db
       .query("counters")
@@ -291,7 +288,7 @@ export const getAnnouncementStats = query({
       .withIndex("by_recipient_createdAt", (q) =>
         q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
       )
-      .take(1000);
+      .take(constants.MAX_RESULTS_CAP);
     recent = recentNotifications.length;
 
     return {
@@ -315,8 +312,7 @@ export const getSupportStats = query({
     total: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const supportCounter = await ctx.db
       .query("counters")

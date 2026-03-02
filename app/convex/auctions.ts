@@ -19,12 +19,15 @@ export {
   getActiveMakes,
   getAuctionById,
   getAuctionBids,
+  getAuctionBidCount,
   getEquipmentMetadata,
   getSellerInfo,
   getSellerListings,
   getAllAuctions,
   getMyBids,
+  getMyBidsCount,
   getMyListings,
+  getMyListingsCount,
 } from "./auctions/queries";
 
 // Re-export all standard mutations

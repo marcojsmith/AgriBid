@@ -1,5 +1,5 @@
 // app/src/pages/dashboard/MyListings.tsx
-import { usePaginatedQuery } from "convex/react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ export default function MyListings() {
     {},
     { initialNumItems: 10 }
   );
+
+  const totalListings = useQuery(api.auctions.getMyListingsCount);
 
   if (status === "LoadingFirstPage") {
     return (
@@ -146,7 +148,11 @@ export default function MyListings() {
             </div>
           ))}
 
-          <div className="flex justify-center pt-8">
+          <div className="flex flex-col items-center gap-4 pt-8">
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+              Showing {listings.length} of {totalListings ?? listings.length}{" "}
+              Listings
+            </p>
             {status === "CanLoadMore" ? (
               <Button
                 variant="outline"

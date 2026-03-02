@@ -1,5 +1,5 @@
 // app/src/pages/dashboard/MyBids.tsx
-import { usePaginatedQuery } from "convex/react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,8 @@ export default function MyBids() {
     status,
     loadMore,
   } = usePaginatedQuery(api.auctions.getMyBids, {}, { initialNumItems: 12 });
+
+  const totalBids = useQuery(api.auctions.getMyBidsCount);
 
   if (status === "LoadingFirstPage") {
     return (
@@ -160,7 +162,10 @@ export default function MyBids() {
             })}
           </div>
 
-          <div className="flex justify-center pt-8">
+          <div className="flex flex-col items-center gap-4 pt-8">
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+              Showing {auctions.length} of {totalBids ?? auctions.length} Bids
+            </p>
             {status === "CanLoadMore" ? (
               <Button
                 variant="outline"

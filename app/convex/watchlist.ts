@@ -1,8 +1,8 @@
 // app/convex/watchlist.ts
-import { v, ConvexError } from "convex/values";
+import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { AuctionSummaryValidator, toAuctionSummary } from "./auctions";
-import { authComponent } from "./auth";
+import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel";
 
@@ -17,9 +17,9 @@ export const toggleWatchlist = mutation({
   args: { auctionId: v.id("auctions") },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) throw new ConvexError("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     const existing = await ctx.db
       .query("watchlist")
@@ -49,9 +49,10 @@ export const isWatched = query({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return false;
-      const userId = authUser.userId ?? authUser._id;
+      const userId = resolveUserId(authUser);
+      if (!userId) return false;
 
       const existing = await ctx.db
         .query("watchlist")
@@ -84,7 +85,7 @@ export const getWatchedAuctions = query({
   }),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser)
         return {
           page: [],
@@ -93,7 +94,15 @@ export const getWatchedAuctions = query({
           pageStatus: null,
           splitCursor: null,
         };
-      const userId = authUser.userId ?? authUser._id;
+      const userId = resolveUserId(authUser);
+      if (!userId)
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          pageStatus: null,
+          splitCursor: null,
+        };
 
       const watchlist = await ctx.db
         .query("watchlist")
@@ -139,9 +148,10 @@ export const getWatchedAuctionIds = query({
   returns: v.array(v.id("auctions")),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return [];
-      const userId = authUser.userId ?? authUser._id;
+      const userId = resolveUserId(authUser);
+      if (!userId) return [];
 
       const results: Id<"auctions">[] = [];
       let cursor: string | null = null;

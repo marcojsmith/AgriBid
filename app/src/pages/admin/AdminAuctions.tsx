@@ -247,7 +247,8 @@ export default function AdminAuctions() {
             />
           </div>
           <Badge variant="secondary" className="font-bold">
-            {allAuctions.length} Loaded Records
+            Showing {filteredAuctions.length} of{" "}
+            {adminStats ? adminStats.totalAuctions : "—"} Auctions
           </Badge>
         </div>
         <Card className="border-2 overflow-hidden bg-card/50 backdrop-blur-sm">

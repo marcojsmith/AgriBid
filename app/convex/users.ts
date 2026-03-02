@@ -6,9 +6,15 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { getAuthUser, getCallerRole } from "./lib/auth";
+import {
+  getAuthUser,
+  requireAuth,
+  resolveUserId,
+  requireAdmin,
+} from "./lib/auth";
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
+import type { Doc } from "./_generated/dataModel";
 
 /**
  * Validator for a profile document from the database.
@@ -72,11 +78,15 @@ export const KYCDetailsValidator = v.object({
  * Helper to find a user by ID, checking both internal _id and shared userId.
  */
 export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
+  if (!id) return null;
+
+  // 1. Try finding by userId (shared identifier used in profiles and mocks)
   let user = await ctx.runQuery(components.auth.adapter.findOne, {
     model: "user",
     where: [{ field: "userId", operator: "eq", value: id }],
   });
 
+  // 2. Try finding by internal Convex _id
   if (!user) {
     try {
       user = await ctx.runQuery(components.auth.adapter.findOne, {
@@ -101,11 +111,10 @@ export const syncUser = mutation({
   returns: v.union(v.null(), v.object({ success: v.boolean() })),
   handler: async (ctx) => {
     try {
-      const authUser = await getAuthUser(ctx);
-      if (!authUser) return null;
+      const authUser = await requireAuth(ctx);
 
       // Use userId if set (mocks), otherwise fall back to primary id
-      const linkId = authUser.userId ?? authUser._id;
+      const linkId = resolveUserId(authUser);
       if (!linkId) return null;
 
       const existingProfile = await ctx.db
@@ -148,7 +157,7 @@ export const getMyProfile = query({
       const authUser = await getAuthUser(ctx);
       if (!authUser) return null;
 
-      const linkId = authUser.userId ?? authUser._id;
+      const linkId = resolveUserId(authUser);
       if (!linkId) return null;
 
       const profile = await ctx.db
@@ -171,9 +180,6 @@ export const getMyProfile = query({
     }
   },
 });
-
-// Re-export getCallerRole for backward compatibility
-export { getCallerRole };
 
 /**
  * Admin: List all profiles for moderation and management.
@@ -199,23 +205,22 @@ export const listAllProfiles = query({
     ),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    totalCount: v.number(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Unauthorized");
-    }
+    await requireAdmin(ctx);
 
-    const profiles = await ctx.db
-      .query("profiles")
-      .order("desc")
-      .paginate(args.paginationOpts);
+    const profilesQuery = ctx.db.query("profiles");
+    const [profilesResult, totalCount] = await Promise.all([
+      profilesQuery.order("desc").paginate(args.paginationOpts),
+      profilesQuery.collect().then((r) => r.length),
+    ]);
 
     // Parallelize user lookups
     const page = await Promise.all(
-      profiles.page.map(async (p) => {
+      profilesResult.page.map(async (p: Doc<"profiles">) => {
         const user = await findUserById(ctx, p.userId);
 
         return {
@@ -233,8 +238,9 @@ export const listAllProfiles = query({
     );
 
     return {
-      ...profiles,
+      ...profilesResult,
       page,
+      totalCount,
     };
   },
 });
@@ -246,10 +252,7 @@ export const getProfileForKYC = mutation({
   args: { userId: v.string() },
   returns: v.union(v.null(), ProfileForKYCValidator),
   handler: async (ctx, { userId }) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Unauthorized");
-    }
+    await requireAdmin(ctx);
 
     const profile = await ctx.db
       .query("profiles")
@@ -308,10 +311,7 @@ export const verifyUser = mutation({
   args: { userId: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { userId }) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Unauthorized");
-    }
+    await requireAdmin(ctx);
 
     const profile = await ctx.db
       .query("profiles")
@@ -358,10 +358,7 @@ export const promoteToAdmin = mutation({
   args: { userId: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { userId }) => {
-    const callerRole = await getCallerRole(ctx);
-    if (callerRole !== "admin") {
-      throw new Error("Unauthorized");
-    }
+    await requireAdmin(ctx);
 
     const identity = await ctx.auth.getUserIdentity();
     if (identity?.subject === userId) {
@@ -406,9 +403,9 @@ export const submitKYC = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     // Validate documents are actual storage IDs
     for (const id of args.documents) {
@@ -460,7 +457,7 @@ export const getMyKYCDetails = query({
       const authUser = await getAuthUser(ctx);
       if (!authUser) return null;
 
-      const linkId = authUser.userId ?? authUser._id;
+      const linkId = resolveUserId(authUser);
       if (!linkId) return null;
 
       const profile = await ctx.db
@@ -518,9 +515,9 @@ export const deleteMyKYCDocument = mutation({
   args: { storageId: v.id("_storage") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { storageId }) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new ConvexError("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     const profile = await ctx.db
       .query("profiles")

@@ -1,6 +1,12 @@
 import { v, ConvexError } from "convex/values";
 import { mutation } from "../_generated/server";
-import { getCallerRole, getAuthUser, resolveUserId } from "../lib/auth";
+import {
+  requireAdmin,
+  requireAuth,
+  resolveUserId,
+  requireVerified,
+  getAuthUser,
+} from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -10,10 +16,7 @@ export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) {
-      throw new Error("Not authenticated");
-    }
+    await requireAuth(ctx);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -22,10 +25,7 @@ export const deleteUpload = mutation({
   args: { storageId: v.id("_storage") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Unauthorized: Only admins can delete storage items");
-    }
+    await requireAdmin(ctx);
 
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) {
@@ -68,14 +68,7 @@ export const createAuction = mutation({
   },
   returns: v.id("auctions"),
   handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) {
-      throw new Error("Not authenticated");
-    }
-    const userId = resolveUserId(authUser);
-    if (!userId) {
-      throw new Error("Unable to determine user ID");
-    }
+    const { userId } = await requireVerified(ctx);
 
     const { durationDays, ...restArgs } = args;
 
@@ -113,10 +106,7 @@ export const approveAuction = mutation({
   args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized: Admin privileges required");
-    }
+    await requireAdmin(ctx);
 
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new ConvexError("Auction not found");
@@ -170,10 +160,7 @@ export const rejectAuction = mutation({
   args: { auctionId: v.id("auctions") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized: Admin privileges required");
-    }
+    await requireAdmin(ctx);
 
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new ConvexError("Auction not found");
@@ -223,10 +210,7 @@ export const adminUpdateAuction = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized");
-    }
+    await requireAdmin(ctx);
 
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
@@ -308,10 +292,7 @@ export const bulkUpdateAuctions = mutation({
     skipped: v.array(v.id("auctions")),
   }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized");
-    }
+    await requireAdmin(ctx);
 
     if (args.auctionIds.length > MAX_BULK_UPDATE_SIZE) {
       throw new Error(
@@ -392,8 +373,9 @@ export const closeAuctionEarly = mutation({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args): Promise<CloseAuctionEarlyResult> => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
+    try {
+      await requireAdmin(ctx);
+    } catch {
       return {
         success: false,
         finalStatus: "",
