@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
 import { ListingWizardProvider } from "./context/ListingWizardContext";
-import { useListingWizard } from "./hooks/useListingWizard";
+import { useListingWizard } from "./context/useListingWizard";
 import { useListingForm } from "./hooks/useListingForm";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
@@ -43,6 +43,7 @@ const ListingWizardContent = () => {
     setIsSuccess,
     resetForm,
     setDraftSaved,
+    updateField,
   } = useListingWizard();
 
   const { ensureAuthenticated, isPending } = useAuthRedirect();
@@ -55,8 +56,12 @@ const ListingWizardContent = () => {
   const saveDraft = useMutation(api.auctions.saveDraft);
   const submitForReview = useMutation(api.auctions.submitForReview);
 
+  const initializedRef = useRef(false);
+
   // Initialize form state on mount
   useEffect(() => {
+    if (initializedRef.current) return;
+
     const savedDraft = localStorage.getItem("agribid_listing_draft");
     if (savedDraft) {
       try {
@@ -69,9 +74,9 @@ const ListingWizardContent = () => {
     } else {
       resetForm();
     }
-    // Only run on initial mount to establish base state
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    initializedRef.current = true;
+  }, [resetForm]);
 
   const handleSaveDraft = async () => {
     if (isSubmitting) return;
@@ -111,8 +116,9 @@ const ListingWizardContent = () => {
       setDraftSaved(true);
       toast.success("Draft saved successfully!");
 
-      // Update local storage with the new auctionId if it was just created
+      // Update in-memory state and local storage with the new auctionId if it was just created
       if (!formData.auctionId && id) {
+        updateField("auctionId", id);
         const updatedData = { ...formData, auctionId: id };
         localStorage.setItem(
           "agribid_listing_draft",
@@ -189,7 +195,7 @@ const ListingWizardContent = () => {
       const finalAuctionId = editingAuctionId || formData.auctionId;
 
       if (finalAuctionId) {
-        // First update the draft with the latest data
+        // Persist local edits before publishing
         await saveDraft({
           auctionId: finalAuctionId as Id<"auctions">,
           ...auctionData,

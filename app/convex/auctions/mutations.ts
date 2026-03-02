@@ -15,6 +15,8 @@ import type { Doc } from "../_generated/dataModel";
 const EDITABLE_STATUSES = ["draft", "pending_review"] as const;
 type EditableStatus = (typeof EDITABLE_STATUSES)[number];
 
+const MAX_BULK_UPDATE_SIZE = 50;
+
 /**
  * Result type for closeAuctionEarly mutation.
  */
@@ -24,6 +26,39 @@ interface CloseAuctionEarlyResult {
   winnerId?: string;
   winningAmount?: number;
   error?: string;
+}
+
+/**
+ * Interface for auction update data to ensure type safety.
+ */
+interface AuctionUpdates {
+  title?: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  operatingHours?: number;
+  location?: string;
+  description?: string;
+  startingPrice?: number;
+  reservePrice?: number;
+  durationDays?: number;
+  images?: {
+    front?: string;
+    engine?: string;
+    cabin?: string;
+    rear?: string;
+    additional?: string[];
+  };
+  conditionChecklist?: {
+    engine: boolean;
+    hydraulics: boolean;
+    tires: boolean;
+    serviceHistory: boolean;
+    notes?: string;
+  };
+  // Derived or internal fields that might be updated internally
+  currentPrice?: number;
+  minIncrement?: number;
 }
 
 /**
@@ -61,6 +96,39 @@ function validateAuctionStatus(
 }
 
 /**
+ * Validates that an auction has all required fields before it can be published.
+ *
+ * @param auction - The auction document to validate
+ * @throws ConvexError if any required field is missing or invalid
+ */
+function validateAuctionBeforePublish(auction: Doc<"auctions">): void {
+  if (!auction.title || auction.title.trim().length === 0) {
+    throw new ConvexError("Title is required before publishing");
+  }
+  if (!auction.description || auction.description.trim().length === 0) {
+    throw new ConvexError("Description is required before publishing");
+  }
+  if (auction.startingPrice <= 0) {
+    throw new ConvexError("Starting price must be greater than zero");
+  }
+  if (auction.reservePrice <= 0) {
+    throw new ConvexError("Reserve price must be greater than zero");
+  }
+
+  const hasImages =
+    !Array.isArray(auction.images) &&
+    (auction.images.front ||
+      auction.images.engine ||
+      auction.images.cabin ||
+      auction.images.rear ||
+      (auction.images.additional && auction.images.additional.length > 0));
+
+  if (!hasImages) {
+    throw new ConvexError("At least one image is required before submitting");
+  }
+}
+
+/**
  * Update global auction counters when an auction changes status.
  */
 async function adjustStatusCounters(
@@ -68,9 +136,13 @@ async function adjustStatusCounters(
   oldStatus: string,
   newStatus: string
 ) {
-  const statusToCounterKey: Record<string, "active" | "pending" | undefined> = {
+  const statusToCounterKey: Record<
+    string,
+    "active" | "pending" | "draft" | undefined
+  > = {
     active: "active",
     pending_review: "pending",
+    draft: "draft",
   };
 
   const oldKey = statusToCounterKey[oldStatus];
@@ -172,6 +244,8 @@ export const createAuction = mutation({
     await updateCounter(ctx, "auctions", "total", 1);
     if (status === "pending_review") {
       await updateCounter(ctx, "auctions", "pending", 1);
+    } else {
+      await updateCounter(ctx, "auctions", "draft", 1);
     }
 
     return auctionId;
@@ -220,6 +294,11 @@ export const saveDraft = mutation({
       throw new ConvexError("Invalid duration: must be between 1 and 365 days");
     }
 
+    // Enforce 6-image cap for additional images
+    if (restArgs.images.additional && restArgs.images.additional.length > 6) {
+      restArgs.images.additional = restArgs.images.additional.slice(0, 6);
+    }
+
     const images = normalizeImages(restArgs.images);
 
     if (auctionId) {
@@ -250,41 +329,25 @@ export const saveDraft = mutation({
     });
 
     await updateCounter(ctx, "auctions", "total", 1);
+    await updateCounter(ctx, "auctions", "draft", 1);
 
     return newAuctionId;
   },
 });
 
+/**
+ * Handler for updating an existing auction.
+ * Performs validation, ownership checks, and recomputes derived fields.
+ *
+ * @param ctx - Mutation context
+ * @param args - Arguments including auctionId and updates
+ * @returns Object with success boolean
+ */
 export const updateAuctionHandler = async (
   ctx: MutationCtx,
   args: {
     auctionId: Id<"auctions">;
-    updates: {
-      title?: string;
-      make?: string;
-      model?: string;
-      year?: number;
-      operatingHours?: number;
-      location?: string;
-      description?: string;
-      startingPrice?: number;
-      reservePrice?: number;
-      durationDays?: number;
-      images?: {
-        front?: string;
-        engine?: string;
-        cabin?: string;
-        rear?: string;
-        additional?: string[];
-      };
-      conditionChecklist?: {
-        engine: boolean;
-        hydraulics: boolean;
-        tires: boolean;
-        serviceHistory: boolean;
-        notes?: string;
-      };
-    };
+    updates: AuctionUpdates;
   }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
@@ -297,17 +360,38 @@ export const updateAuctionHandler = async (
   assertOwnership(auction, userId);
   assertEditable(auction);
 
-  const updates = { ...args.updates };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: Record<string, any> = { ...args.updates };
+
+  // If startingPrice is updated, recompute derived fields
+  if (updates.startingPrice !== undefined && updates.startingPrice !== null) {
+    updates.currentPrice = updates.startingPrice;
+    updates.minIncrement =
+      (updates.startingPrice as number) < 10000 ? 100 : 500;
+  }
 
   if (
     updates.durationDays !== undefined &&
-    (updates.durationDays <= 0 || updates.durationDays > 365)
+    updates.durationDays !== null &&
+    ((updates.durationDays as number) <= 0 ||
+      (updates.durationDays as number) > 365)
   ) {
     throw new ConvexError("Invalid duration: must be between 1 and 365 days");
   }
 
-  if (updates.images?.additional && updates.images.additional.length > 6) {
-    throw new ConvexError("Additional images limit exceeded (max 6)");
+  // Merge images if provided to prevent overwriting other slots
+  if (updates.images) {
+    const existingImages = Array.isArray(auction.images) ? {} : auction.images;
+    const mergedImages = {
+      ...existingImages,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...(updates.images as Record<string, any>),
+    };
+
+    if (mergedImages.additional && mergedImages.additional.length > 6) {
+      throw new ConvexError("Additional images limit exceeded (max 6)");
+    }
+    updates.images = mergedImages;
   }
 
   await ctx.db.patch(args.auctionId, updates);
@@ -368,6 +452,14 @@ export const updateAuction = mutation({
   handler: updateAuctionHandler,
 });
 
+/**
+ * Handler for publishing a draft auction.
+ * Validates required content before transitioning to review.
+ *
+ * @param ctx - Mutation context
+ * @param args - Arguments including auctionId
+ * @returns Object with success boolean
+ */
 export const publishAuctionHandler = async (
   ctx: MutationCtx,
   args: { auctionId: Id<"auctions"> }
@@ -385,6 +477,9 @@ export const publishAuctionHandler = async (
     throw new ConvexError("Only draft auctions can be published");
   }
 
+  // Validate required fields before allowing publish
+  validateAuctionBeforePublish(auction);
+
   await ctx.db.patch(args.auctionId, { status: "pending_review" });
 
   await adjustStatusCounters(ctx, "draft", "pending_review");
@@ -399,62 +494,11 @@ export const publishAuctionHandler = async (
 export const submitForReview = mutation({
   args: { auctionId: v.id("auctions") },
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    const userId = await getAuthenticatedUserId(ctx);
-
-    const auction = await ctx.db.get(args.auctionId);
-    if (!auction) {
-      throw new ConvexError("Auction not found");
-    }
-
-    assertOwnership(auction, userId);
-
-    if (auction.status !== "draft") {
-      throw new ConvexError("Only draft auctions can be submitted for review");
-    }
-
-    const hasImages =
-      !Array.isArray(auction.images) &&
-      (auction.images.front ||
-        auction.images.engine ||
-        auction.images.cabin ||
-        auction.images.rear ||
-        (auction.images.additional && auction.images.additional.length > 0));
-
-    if (!hasImages) {
-      throw new ConvexError("At least one image is required before submitting");
-    }
-
-    if (!auction.description || auction.description.trim().length === 0) {
-      throw new ConvexError("Description is required before submitting");
-    }
-
-    if (auction.startingPrice <= 0 || auction.reservePrice <= 0) {
-      throw new ConvexError("Valid pricing is required before submitting");
-    }
-
-    await ctx.db.patch(args.auctionId, {
-      status: "pending_review",
-    });
-
-    await updateCounter(ctx, "auctions", "pending", 1);
-
-    await logAudit(ctx, {
-      action: "SUBMIT_FOR_REVIEW",
-      targetId: args.auctionId,
-      targetType: "auction",
-      details: JSON.stringify({
-        sellerId: userId,
-        title: auction.title,
-      }),
-    });
-
-    return { success: true };
-  },
+  handler: publishAuctionHandler,
 });
 
 /**
- * Alias for submitForReview to maintain backward compatibility.
+ * Alias for submitForReview.
  */
 export const publishAuction = mutation({
   args: { auctionId: v.id("auctions") },
@@ -485,6 +529,8 @@ export const deleteDraft = mutation({
     await deleteAuctionImages(ctx, auction.images);
 
     await ctx.db.delete(args.auctionId);
+    await updateCounter(ctx, "auctions", "draft", -1);
+    await updateCounter(ctx, "auctions", "total", -1);
 
     await logAudit(ctx, {
       action: "DELETE_DRAFT",
@@ -500,9 +546,16 @@ export const deleteDraft = mutation({
   },
 });
 
+/**
+ * Handler for updating an auction's condition report.
+ *
+ * @param ctx - Mutation context
+ * @param args - Arguments including auctionId and typed storageId
+ * @returns Object with success boolean
+ */
 export const updateConditionReportHandler = async (
   ctx: MutationCtx,
-  args: { auctionId: Id<"auctions">; storageId: string }
+  args: { auctionId: Id<"auctions">; storageId: Id<"_storage"> }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
@@ -515,14 +568,14 @@ export const updateConditionReportHandler = async (
 
   if (auction.conditionReportUrl) {
     try {
-      await ctx.storage.delete(auction.conditionReportUrl as Id<"_storage">);
+      await ctx.storage.delete(auction.conditionReportUrl);
     } catch (e) {
       console.warn("Failed to delete old condition report", e);
     }
   }
 
   await ctx.db.patch(args.auctionId, {
-    conditionReportUrl: args.storageId as Id<"_storage">,
+    conditionReportUrl: args.storageId,
   });
 
   return { success: true };
@@ -534,7 +587,7 @@ export const updateConditionReportHandler = async (
 export const uploadConditionReport = mutation({
   args: {
     auctionId: v.id("auctions"),
-    storageId: v.string(), // Accepts the storageId returned by upload
+    storageId: v.id("_storage"),
   },
   returns: v.object({ success: v.boolean() }),
   handler: updateConditionReportHandler,
@@ -558,7 +611,7 @@ export const deleteConditionReport = mutation({
 
     if (auction.conditionReportUrl) {
       try {
-        await ctx.storage.delete(auction.conditionReportUrl as Id<"_storage">);
+        await ctx.storage.delete(auction.conditionReportUrl);
       } catch (e) {
         console.warn("Failed to delete condition report", e);
       }
@@ -631,6 +684,7 @@ export const flagAuction = mutation({
       if (auction.status === "active") {
         await ctx.db.patch(args.auctionId, {
           status: "pending_review",
+          hiddenByFlags: true,
         });
 
         await updateCounter(ctx, "auctions", "active", -1);
@@ -687,7 +741,11 @@ export const dismissFlag = mutation({
     let auctionRestored = false;
 
     const auction = await ctx.db.get(flag.auctionId);
-    if (auction && auction.status === "pending_review") {
+    if (
+      auction &&
+      auction.status === "pending_review" &&
+      auction.hiddenByFlags === true
+    ) {
       const remainingFlags = await ctx.db
         .query("auctionFlags")
         .withIndex("by_auction_status", (q) =>
@@ -698,6 +756,7 @@ export const dismissFlag = mutation({
       if (remainingFlags.length === 0) {
         await ctx.db.patch(flag.auctionId, {
           status: "active",
+          hiddenByFlags: false,
         });
 
         await updateCounter(ctx, "auctions", "pending", -1);
@@ -755,6 +814,7 @@ export const approveAuction = mutation({
       status: "active",
       startTime,
       endTime,
+      hiddenByFlags: false,
     });
 
     await updateCounter(ctx, "auctions", "pending", -1);
@@ -783,6 +843,7 @@ export const rejectAuction = mutation({
       status: "rejected",
       startTime: undefined,
       endTime: undefined,
+      hiddenByFlags: false,
     });
 
     await updateCounter(ctx, "auctions", "pending", -1);
@@ -837,7 +898,10 @@ export const adminUpdateAuction = mutation({
       validateAuctionStatus(patched, newStatus);
     }
 
-    await ctx.db.patch(args.auctionId, args.updates);
+    await ctx.db.patch(args.auctionId, {
+      ...args.updates,
+      hiddenByFlags: false,
+    });
 
     if (newStatus && oldStatus !== newStatus) {
       await adjustStatusCounters(ctx, oldStatus, newStatus);
@@ -853,8 +917,6 @@ export const adminUpdateAuction = mutation({
     return { success: true };
   },
 });
-
-const MAX_BULK_UPDATE_SIZE = 50;
 
 export const bulkUpdateAuctions = mutation({
   args: {

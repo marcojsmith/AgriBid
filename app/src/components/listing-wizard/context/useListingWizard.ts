@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { ListingWizardContext } from "../context/ListingWizardContextDef";
+import { ListingWizardContext } from "./ListingWizardContextDef";
 
 /**
  * Custom hook to consume the ListingWizardContext.

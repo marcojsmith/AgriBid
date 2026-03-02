@@ -42,6 +42,39 @@ type StatusFilter =
   | "sold"
   | "unsold";
 
+export interface AuctionEditPayload {
+  _id: Id<"auctions">;
+  year: number;
+  make: string;
+  model: string;
+  location: string;
+  description?: string;
+  operatingHours: number;
+  title: string;
+  conditionChecklist?: {
+    engine: boolean | null;
+    hydraulics: boolean | null;
+    tires: boolean | null;
+    serviceHistory: boolean | null;
+    notes?: string;
+  };
+  images:
+    | {
+        front?: string;
+        engine?: string;
+        cabin?: string;
+        rear?: string;
+        additional?: string[];
+      }
+    | string[];
+  startingPrice: number;
+  reservePrice: number;
+  durationDays?: number;
+  status: string;
+  currentPrice: number;
+  endTime?: number;
+}
+
 /**
  * Renders the current user's auction listings dashboard.
  *
@@ -53,6 +86,7 @@ type StatusFilter =
 export default function MyListings() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const {
@@ -74,6 +108,8 @@ export default function MyListings() {
   }, [listings, statusFilter]);
 
   const handleSubmitForReview = async (auctionId: Id<"auctions">) => {
+    if (publishingId) return;
+    setPublishingId(auctionId);
     try {
       await submitForReview({ auctionId });
       toast.success("Listing submitted for review!");
@@ -81,6 +117,8 @@ export default function MyListings() {
       toast.error(
         error instanceof Error ? error.message : "Failed to submit for review"
       );
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -98,27 +136,27 @@ export default function MyListings() {
     }
   };
 
-  const handleEdit = (auction: {
-    _id: Id<"auctions">;
-    year: number;
-    make: string;
-    model: string;
-    location: string;
-    description?: string;
-    operatingHours: number;
-    title: string;
-    conditionChecklist?: {
-      engine: boolean | null;
-      hydraulics: boolean | null;
-      tires: boolean | null;
-      serviceHistory: boolean | null;
-      notes?: string;
-    };
-    images: unknown;
-    startingPrice: number;
-    reservePrice: number;
-    durationDays?: number;
-  }) => {
+  /**
+   * Normalizes images for the edit flow.
+   * Ensures /sell always receives a predictable images object with an additional array.
+   */
+  const normalizeImagesForDraft = (images: AuctionEditPayload["images"]) => {
+    if (Array.isArray(images)) {
+      return {
+        front: images[0] || "",
+        additional: images.slice(1),
+      };
+    }
+    if (images && typeof images === "object") {
+      return {
+        ...images,
+        additional: Array.isArray(images.additional) ? images.additional : [],
+      };
+    }
+    return { additional: [] };
+  };
+
+  const handleEdit = (auction: AuctionEditPayload) => {
     // Save to local storage and redirect to /sell?edit=ID
     const draftData = {
       auctionId: auction._id,
@@ -136,7 +174,7 @@ export default function MyListings() {
         serviceHistory: auction.conditionChecklist?.serviceHistory ?? null,
         notes: auction.conditionChecklist?.notes ?? "",
       },
-      images: auction.images,
+      images: normalizeImagesForDraft(auction.images),
       startingPrice: auction.startingPrice,
       reservePrice: auction.reservePrice,
       durationDays: auction.durationDays ?? 7,
@@ -294,74 +332,72 @@ export default function MyListings() {
                   </Link>
                 </Button>
 
-                {auction.status === "draft" && (
+                {(auction.status === "draft" ||
+                  auction.status === "pending_review") && (
                   <>
                     <Button
                       variant="secondary"
                       size="sm"
                       className="flex-1 md:flex-none font-bold"
-                      onClick={() => handleEdit(auction)}
+                      onClick={() => handleEdit(auction as AuctionEditPayload)}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
                     </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="flex-1 md:flex-none font-bold"
-                      onClick={() => handleSubmitForReview(auction._id)}
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Submit
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="flex-1 md:flex-none font-bold"
-                          disabled={deletingId === auction._id}
-                        >
-                          {deletingId === auction._id ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4 mr-2" />
-                          )}
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Draft</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete this draft? This
-                            action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteDraft(auction._id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    {auction.status === "draft" && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="flex-1 md:flex-none font-bold"
+                        disabled={publishingId === auction._id}
+                        onClick={() => handleSubmitForReview(auction._id)}
+                      >
+                        {publishingId === auction._id ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4 mr-2" />
+                        )}
+                        Submit
+                      </Button>
+                    )}
+                    {auction.status === "draft" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1 md:flex-none font-bold"
+                            disabled={deletingId === auction._id}
                           >
+                            {deletingId === auction._id ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 mr-2" />
+                            )}
                             Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Draft</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this draft? This
+                              action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteDraft(auction._id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </>
-                )}
-
-                {auction.status === "pending_review" && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="flex-1 md:flex-none font-bold"
-                    onClick={() => handleEdit(auction)}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
                 )}
               </div>
             </div>

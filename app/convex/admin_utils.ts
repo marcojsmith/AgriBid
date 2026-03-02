@@ -19,10 +19,19 @@ export async function logAudit(
     targetType?: string;
     details?: string;
     targetCount?: number;
+    system?: boolean;
   }
 ) {
   const authUser = await getAuthUser(ctx);
-  const adminId = authUser ? (authUser.userId ?? authUser._id) : "SYSTEM";
+  let adminId: string;
+
+  if (authUser) {
+    adminId = authUser.userId ?? authUser._id;
+  } else if (args.system === true) {
+    adminId = "SYSTEM";
+  } else {
+    adminId = "UNAUTHENTICATED";
+  }
 
   await ctx.db.insert("auditLogs", {
     adminId,

@@ -7,6 +7,7 @@ import type { MutationCtx } from "../_generated/server";
 
 const DRAFT_RETENTION_DAYS = 30;
 const DRAFT_RETENTION_MS = DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const CLEANUP_BATCH_SIZE = 100;
 
 /**
  * Internal mutation to settle auctions that have reached their end time.
@@ -68,14 +69,21 @@ export const settleExpiredAuctions = internalMutation({
   },
 });
 
+/**
+ * Handler for cleaning up abandoned drafts.
+ * Uses batching to stay within Convex mutation limits.
+ *
+ * @param ctx - Mutation context
+ */
 export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
   const cutoffTime = Date.now() - DRAFT_RETENTION_MS;
 
+  // Process in batches to avoid hitting Convex limits
   const oldDrafts = await ctx.db
     .query("auctions")
     .withIndex("by_status", (q) => q.eq("status", "draft"))
     .filter((q) => q.lte(q.field("_creationTime"), cutoffTime))
-    .collect();
+    .take(CLEANUP_BATCH_SIZE);
 
   let deleted = 0;
   let errors = 0;
@@ -111,6 +119,7 @@ export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
     await logAudit(ctx, {
       action: "CLEANUP_DRAFT_AUCTIONS",
       targetType: "system",
+      system: true,
       details: JSON.stringify({
         deletedCount: deleted,
         errorCount: errors,

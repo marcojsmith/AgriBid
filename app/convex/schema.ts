@@ -47,6 +47,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     conditionReportUrl: v.optional(v.id("_storage")), // PDF storage ID
     isExtended: v.optional(v.boolean()),
+    hiddenByFlags: v.optional(v.boolean()),
     seedId: v.optional(v.string()),
     conditionChecklist: v.optional(
       v.object({
@@ -226,6 +227,7 @@ export default defineSchema({
     verified: v.optional(v.number()),
     open: v.optional(v.number()),
     resolved: v.optional(v.number()),
+    draft: v.optional(v.number()), // Support for draft counter
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 });

@@ -3,7 +3,7 @@
  */
 
 import type { MutationCtx } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 
 /**
  * Normalizes images object to ensure additional array exists.
@@ -37,26 +37,33 @@ type AuctionImages = {
  * Silently handles missing or already-deleted storage items.
  *
  * @param ctx - Mutation context with storage access
- * @param images - The images object containing storage IDs
+ * @param images - The images object or legacy array containing storage IDs
  */
 export async function deleteAuctionImages(
   ctx: MutationCtx,
   images: AuctionImages | Doc<"auctions">["images"]
 ): Promise<void> {
-  if (Array.isArray(images)) return;
+  let storageIds: string[] = [];
 
-  const storageIds = [
-    images.front,
-    images.engine,
-    images.cabin,
-    images.rear,
-    ...(images.additional || []),
-  ].filter(Boolean) as string[];
+  if (Array.isArray(images)) {
+    storageIds = (images as string[]).filter(Boolean);
+  } else if (images && typeof images === "object") {
+    const imagesObj = images as AuctionImages;
+    storageIds = [
+      imagesObj.front,
+      imagesObj.engine,
+      imagesObj.cabin,
+      imagesObj.rear,
+      ...(imagesObj.additional || []),
+    ].filter((id): id is string => !!id);
+  }
+
+  if (storageIds.length === 0) return;
 
   await Promise.allSettled(
     storageIds.map(async (storageId) => {
       try {
-        await ctx.storage.delete(storageId);
+        await ctx.storage.delete(storageId as Id<"_storage">);
       } catch (e) {
         console.warn(`Failed to delete storage item: ${storageId}`, e);
       }

@@ -106,9 +106,7 @@ export default function AdminModeration() {
       } else {
         toast.success("Flag dismissed");
       }
-      setShowDismissDialog(false);
-      setSelectedFlag(null);
-      setDismissReason("");
+      handleCloseDismissDialog();
     } catch (err) {
       console.error(err);
       toast.error("Failed to dismiss flag");
@@ -116,8 +114,15 @@ export default function AdminModeration() {
   };
 
   const openDismissDialog = (flag: PendingFlag) => {
+    setDismissReason("");
     setSelectedFlag(flag);
     setShowDismissDialog(true);
+  };
+
+  const handleCloseDismissDialog = () => {
+    setShowDismissDialog(false);
+    setSelectedFlag(null);
+    setDismissReason("");
   };
 
   if (pendingAuctions === undefined || allPendingFlags === undefined) {
@@ -249,7 +254,10 @@ export default function AdminModeration() {
       </div>
 
       {/* Dismiss Flag Dialog */}
-      <AlertDialog open={showDismissDialog} onOpenChange={setShowDismissDialog}>
+      <AlertDialog
+        open={showDismissDialog}
+        onOpenChange={(open) => !open && handleCloseDismissDialog()}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Dismiss Flag</AlertDialogTitle>
@@ -263,10 +271,11 @@ export default function AdminModeration() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <label htmlFor="dismiss-reason" className="text-sm font-medium">
               Reason for dismissal (optional)
             </label>
             <Textarea
+              id="dismiss-reason"
               placeholder="Explain why this flag is being dismissed..."
               value={dismissReason}
               onChange={(e) => setDismissReason(e.target.value)}
@@ -274,7 +283,9 @@ export default function AdminModeration() {
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCloseDismissDialog}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleDismissFlag}>
               Dismiss Flag
             </AlertDialogAction>
