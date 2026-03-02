@@ -66,5 +66,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Pagination for Queries - Refactor hardcoded .take() limits to Convex .paginate()**
+- [x] **Track: Pagination for Queries - Refactor hardcoded .take() limits to Convex .paginate()**
 *Link: [./tracks/query_pagination_20260302/](./tracks/query_pagination_20260302/)*
