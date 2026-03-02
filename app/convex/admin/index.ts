@@ -24,6 +24,7 @@ export {
   getSupportStats,
   initializeCounters,
 } from "./statistics";
+export { getSystemConfig, updateSystemConfig } from "./settings";
 
 // --- Bid Moderation ---
 
