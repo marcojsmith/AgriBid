@@ -10,6 +10,7 @@ import {
   toAuctionSummary,
   AuctionDetailValidator,
   toAuctionDetail,
+  BidValidator,
 } from "./helpers";
 
 /**
@@ -81,27 +82,29 @@ export const getActiveAuctions = query({
     const statusFilter: StatusFilter = args.statusFilter ?? "active";
     const statuses = statusesForFilter(statusFilter);
     const auctionsQuery = ctx.db.query("auctions");
-    let results;
+    let baseQuery;
 
     if (args.search) {
-      // Search index queries return a Query object which supports .paginate()
-      // However, we can only paginate on a single search index call.
-      // For now, we search on the first status in the filter.
-      // Future improvement: use a single search index that doesn't filter by status, then filter in query.
-      results = await auctionsQuery
-        .withSearchIndex("search_title", (q) =>
-          q.search("title", args.search!).eq("status", statuses[0])
-        )
-        .paginate(args.paginationOpts);
+      // Prioritize active auctions in search results
+      const statusToSearch = statuses.includes("active")
+        ? "active"
+        : statuses[0];
+      baseQuery = auctionsQuery.withSearchIndex("search_title", (q) =>
+        q.search("title", args.search!).eq("status", statusToSearch)
+      );
     } else if (args.make) {
-      results = await auctionsQuery
-        .withIndex("by_status_make", (q) =>
+      // Use by_status_make index if only one status, otherwise use global order
+      if (statuses.length === 1) {
+        baseQuery = auctionsQuery.withIndex("by_status_make", (q) =>
           q.eq("status", statuses[0]).eq("make", args.make!)
-        )
-        .paginate(args.paginationOpts);
+        );
+      } else {
+        baseQuery = auctionsQuery.order("desc");
+      }
     } else if (args.minYear !== undefined || args.maxYear !== undefined) {
-      results = await auctionsQuery
-        .withIndex("by_status_year", (q) => {
+      // Use by_status_year index if only one status, otherwise fallback to global order
+      if (statuses.length === 1) {
+        baseQuery = auctionsQuery.withIndex("by_status_year", (q) => {
           const statusQuery = q.eq("status", statuses[0]);
           if (args.minYear !== undefined && args.maxYear !== undefined) {
             return statusQuery
@@ -115,14 +118,76 @@ export const getActiveAuctions = query({
             return statusQuery.lte("year", args.maxYear);
           }
           return statusQuery;
-        })
-        .paginate(args.paginationOpts);
+        });
+      } else {
+        baseQuery = auctionsQuery.order("desc");
+      }
     } else {
-      results = await auctionsQuery
-        .withIndex("by_status", (q) => q.eq("status", statuses[0]))
-        .order("desc")
-        .paginate(args.paginationOpts);
+      // Default listing: use by_status if single status
+      if (statuses.length === 1) {
+        baseQuery = auctionsQuery
+          .withIndex("by_status", (q) => q.eq("status", statuses[0]))
+          .order("desc");
+      } else {
+        baseQuery = auctionsQuery.order("desc");
+      }
     }
+
+    // Apply all other filters (including status if multiple)
+    // Note: Search index queries do not support .filter()
+    if (args.search) {
+      const results = await baseQuery.paginate(args.paginationOpts);
+
+      // Manual filtering for search results (may result in smaller pages)
+      const filteredPage = results.page.filter((a) => {
+        if (args.make && a.make !== args.make) return false;
+        if (args.minYear !== undefined && a.year < args.minYear) return false;
+        if (args.maxYear !== undefined && a.year > args.maxYear) return false;
+        if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
+          return false;
+        if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
+          return false;
+        if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
+          return false;
+        return true;
+      });
+
+      const page = await Promise.all(
+        filteredPage.map((auction) => toAuctionSummary(ctx, auction))
+      );
+
+      return {
+        ...results,
+        page,
+      };
+    }
+
+    // For non-search queries, use efficient .filter() before pagination
+    const results = await baseQuery
+      .filter((q) => {
+        const expressions = [];
+
+        // Status filter: if multiple statuses, or if we didn't use a status index
+        if (statuses.length > 1) {
+          expressions.push(
+            q.or(...statuses.map((s) => q.eq(q.field("status"), s)))
+          );
+        }
+
+        if (args.minYear !== undefined)
+          expressions.push(q.gte(q.field("year"), args.minYear));
+        if (args.maxYear !== undefined)
+          expressions.push(q.lte(q.field("year"), args.maxYear));
+        if (args.minPrice !== undefined)
+          expressions.push(q.gte(q.field("currentPrice"), args.minPrice));
+        if (args.maxPrice !== undefined)
+          expressions.push(q.lte(q.field("currentPrice"), args.maxPrice));
+        if (args.maxHours !== undefined)
+          expressions.push(q.lte(q.field("operatingHours"), args.maxHours));
+
+        return expressions.length > 0 ? q.and(...expressions) : true;
+      })
+      .paginate(args.paginationOpts);
 
     const page = await Promise.all(
       results.page.map((auction) => toAuctionSummary(ctx, auction))
@@ -167,18 +232,7 @@ export const getAuctionBids = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(
-      v.object({
-        _id: v.id("bids"),
-        _creationTime: v.number(),
-        auctionId: v.id("auctions"),
-        bidderId: v.string(),
-        amount: v.number(),
-        timestamp: v.number(),
-        status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
-        bidderName: v.string(),
-      })
-    ),
+    page: v.array(BidValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
