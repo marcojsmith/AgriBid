@@ -1,0 +1,8 @@
+Task: Foundation & Configuration
+Summary: Created app/convex/constants.ts for centralized pagination limits and added a 'settings' table to schema.ts for dynamic configuration. Implemented getSystemConfig and updateSystemConfig in app/convex/admin/settings.ts.
+Files:
+- app/convex/constants.ts
+- app/convex/schema.ts
+- app/convex/admin/settings.ts
+- app/convex/admin/index.ts
+Why: To provide a robust foundation for cursor-based pagination and allow administrators to adjust limits without code changes.
