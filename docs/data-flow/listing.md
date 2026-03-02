@@ -4,7 +4,7 @@ This document describes the listing creation workflow, data flows, and processes
 
 ## Listing Lifecycle
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        Listing Lifecycle                            │
 │                                                                     │
@@ -25,7 +25,7 @@ This document describes the listing creation workflow, data flows, and processes
 
 ### Multi-Step Form Process
 
-```
+```text
 User Clicks "Create Listing"
            │
            ▼
@@ -126,7 +126,7 @@ User Clicks "Create Listing"
 | Additional | No | Up to 10 extra photos |
 
 **Upload Process:**
-```
+```text
 User Selects Image File
            │
            ▼
@@ -265,14 +265,9 @@ export const createAuction = mutation({
       isExtended: false
     });
     
-    // Log creation
-    await ctx.db.insert('auditLogs', {
-      adminId: userId,
-      action: 'create_auction',
-      targetId: auctionId,
-      targetType: 'auction',
-      timestamp: now
-    });
+    // Update global counters
+    await updateCounter(ctx, "auctions", "total", 1);
+    await updateCounter(ctx, "auctions", "pending", 1);
     
     return auctionId;
   }
@@ -285,7 +280,7 @@ export const createAuction = mutation({
 
 ### Listing Approval Process
 
-```
+```text
 Listing Submitted (Pending Review)
            │
            ▼
@@ -396,7 +391,7 @@ export const approveAuction = mutation({
 
 ### Cancellation Flow
 
-```
+```text
 Seller Requests Cancellation
            │
            ▼

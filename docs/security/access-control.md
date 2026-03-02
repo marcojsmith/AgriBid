@@ -44,9 +44,9 @@ This document describes role-based access control (RBAC), permissions, and autho
 | View auction details | Yes | Yes | Yes | Yes |
 | Search auctions | Yes | Yes | Yes | Yes |
 | Place bid | No | Yes | Yes | Yes |
-| Create auction | No | Seller only | Yes | Yes |
-| Edit own auction (draft) | No | No | Yes | Yes |
-| Cancel own auction | No | No | Yes** | Yes |
+| Create auction | No | Yes | Yes | Yes |
+| Edit own auction (draft) | No | Yes | Yes | Yes |
+| Cancel own auction | No | Yes | Yes | Yes |
 | View all auctions | No | No | Yes | Yes |
 | Moderation actions | No | No | No | Yes |
 

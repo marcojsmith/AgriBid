@@ -257,7 +257,7 @@ AgriBid supports two marketplace view modes:
 
 ### Page Layout
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │              Header/Nav                  │
 ├─────────────────────────────────────────┤
@@ -272,7 +272,7 @@ AgriBid supports two marketplace view modes:
 
 ### Auction Card Layout
 
-```
+```text
 ┌─────────────────────────┐
 │    [Image Thumbnail]   │
 ├─────────────────────────┤

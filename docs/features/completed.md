@@ -19,12 +19,12 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Bid History
 - **Status**: ✅ Complete
 - **Description**: Immutable record of all bids with timestamp
-- **Location**: `app/convex/auctions/bidding.ts`, `components/bidding/BidHistory.tsx`
+- **Location**: `app/convex/auctions/bidding.ts`, `app/src/components/bidding/BidHistory.tsx`
 
 ### Bid Confirmation
 - **Status**: ✅ Complete
 - **Description**: Modal confirmation before placing bids
-- **Location**: `components/BidConfirmation.tsx`
+- **Location**: `app/src/components/BidConfirmation.tsx`
 
 ---
 
@@ -33,27 +33,27 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Auction Dashboard
 - **Status**: ✅ Complete
 - **Description**: Grid view of active auctions with real-time updates
-- **Location**: `pages/Home.tsx`
+- **Location**: `app/src/pages/Home.tsx`
 
 ### Auction Detail Page
 - **Status**: ✅ Complete
 - **Description**: Full auction details with image gallery, bidding panel, bid history
-- **Location**: `pages/AuctionDetail.tsx`
+- **Location**: `app/src/pages/AuctionDetail.tsx`
 
 ### Countdown Timers
 - **Status**: ✅ Complete
 - **Description**: Real-time countdown showing time remaining
-- **Location**: `components/CountdownTimer.tsx`
+- **Location**: `app/src/components/CountdownTimer.tsx`
 
 ### Dynamic Density Views
 - **Status**: ✅ Complete
 - **Description**: Toggle between Detailed and Compact views for different screen sizes
-- **Location**: `pages/Home.tsx`
+- **Location**: `app/src/pages/Home.tsx`
 
 ### Advanced Filtering
 - **Status**: ✅ Complete
 - **Description**: Filter by Make, Year Range, Price Range, Max Operating Hours
-- **Location**: `components/FilterSidebar.tsx`
+- **Location**: `app/src/components/FilterSidebar.tsx`
 
 ---
 
@@ -62,22 +62,22 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Multi-Step Listing Wizard
 - **Status**: ✅ Complete
 - **Description**: 4-step flow: General Info → Technical Specs → Media Gallery → Review & Submit
-- **Location**: `components/listing-wizard/`
+- **Location**: `app/src/components/listing-wizard/`
 
 ### Image Upload
 - **Status**: ✅ Complete
 - **Description**: Upload to Convex File Storage with preview
-- **Location**: `components/listing-wizard/steps/MediaGalleryStep.tsx`
+- **Location**: `app/src/components/listing-wizard/steps/MediaGalleryStep.tsx`
 
 ### Image Gallery (Display)
 - **Status**: ✅ Complete
 - **Description**: Lightbox view for auction images
-- **Location**: `components/ImageGallery.tsx`
+- **Location**: `app/src/components/ImageGallery.tsx`
 
 ### Condition Checklist
 - **Status**: ✅ Complete
 - **Description**: Seller can document equipment condition (engine, hydraulics, tires, service history)
-- **Location**: `components/listing-wizard/steps/TechnicalSpecsStep.tsx`
+- **Location**: `app/src/components/listing-wizard/steps/TechnicalSpecsStep.tsx`
 
 ### Listing Status Tracking
 - **Status**: ✅ Complete
@@ -110,12 +110,12 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Buyer Dashboard
 - **Status**: ✅ Complete
 - **Description**: Track active bids, winning items, lost auctions
-- **Location**: `pages/dashboard/MyBids.tsx`
+- **Location**: `app/src/pages/dashboard/MyBids.tsx`
 
 ### Seller Dashboard
 - **Status**: ✅ Complete
 - **Description**: Manage equipment inventory, track listing status, view sales
-- **Location**: `pages/dashboard/MyListings.tsx`
+- **Location**: `app/src/pages/dashboard/MyListings.tsx`
 
 ---
 
@@ -124,7 +124,7 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Add to Watchlist
 - **Status**: ✅ Complete
 - **Description**: Save auctions for monitoring
-- **Location**: `components/auction/AuctionCard.tsx`, `pages/Watchlist.tsx`
+- **Location**: `app/src/components/auction/AuctionCard.tsx`, `app/src/pages/Watchlist.tsx`
 
 ### Real-Time Watchlist Updates
 - **Status**: ✅ Complete
@@ -138,7 +138,7 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Outbid Notifications
 - **Status**: ✅ Complete
 - **Description**: Toast notification when outbid
-- **Location**: `components/NotificationListener.tsx`
+- **Location**: `app/src/components/NotificationListener.tsx`
 
 ### Auction Extension Notifications
 - **Status**: ✅ Complete
@@ -153,7 +153,7 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Notifications Page
 - **Status**: ✅ Complete
 - **Description**: Dedicated page for all notifications
-- **Location**: `pages/Notifications.tsx`
+- **Location**: `app/src/pages/Notifications.tsx`
 
 ---
 
@@ -162,7 +162,7 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Email/Password Authentication
 - **Status**: ✅ Complete
 - **Description**: Traditional registration and login
-- **Location**: `pages/Login.tsx`, Better Auth
+- **Location**: `app/src/pages/Login.tsx`, Better Auth
 
 ### Google OAuth
 - **Status**: ✅ Complete
@@ -181,22 +181,22 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Profile Management
 - **Status**: ✅ Complete
 - **Description**: View and edit user profile
-- **Location**: `pages/Profile.tsx`
+- **Location**: `app/src/pages/Profile.tsx`
 
 ### KYC Verification Flow
 - **Status**: ✅ Complete
 - **Description**: Multi-step KYC submission with document upload
-- **Location**: `pages/kyc/`
+- **Location**: `app/src/pages/kyc/`
 
 ### KYC Document Upload
 - **Status**: ✅ Complete
 - **Description**: Upload government ID for verification
-- **Location**: `pages/kyc/sections/DocumentUploadSection.tsx`
+- **Location**: `app/src/pages/kyc/sections/DocumentUploadSection.tsx`
 
 ### Verification Status Display
 - **Status**: ✅ Complete
 - **Description**: Show pending/verified/rejected status
-- **Location**: `pages/kyc/sections/VerificationStatusSection.tsx`
+- **Location**: `app/src/pages/kyc/sections/VerificationStatusSection.tsx`
 
 ---
 
@@ -205,47 +205,47 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Admin Dashboard
 - **Status**: ✅ Complete
 - **Description**: Overview with key metrics and statistics
-- **Location**: `pages/admin/AdminDashboard.tsx`
+- **Location**: `app/src/pages/admin/AdminDashboard.tsx`
 
-### Listing Moderation
+### Admin Moderation
 - **Status**: ✅ Complete
 - **Description**: Review and approve/reject pending listings
-- **Location**: `pages/admin/AdminModeration.tsx`
+- **Location**: `app/src/pages/admin/AdminModeration.tsx`
 
 ### Bulk Operations
 - **Status**: ✅ Complete
 - **Description**: Process multiple auctions simultaneously
-- **Location**: `pages/admin/dialogs/BulkActionDialog.tsx`
+- **Location**: `app/src/pages/admin/dialogs/BulkActionDialog.tsx`
 
 ### KYC Management
 - **Status**: ✅ Complete
 - **Description**: Review and approve/reject KYC submissions
-- **Location**: `pages/admin/AdminUsers.tsx`, KYC review dialogs
+- **Location**: `app/src/pages/admin/AdminUsers.tsx`, KYC review dialogs
 
 ### Support Ticket System
 - **Status**: ✅ Complete
 - **Description**: Manage user inquiries with status tracking
-- **Location**: `pages/admin/AdminSupport.tsx`, `pages/Support.tsx`
+- **Location**: `app/src/pages/admin/AdminSupport.tsx`, `app/src/pages/Support.tsx`
 
 ### Real-Time Statistics
 - **Status**: ✅ Complete
 - **Description**: Financial metrics, user counts, auction states
-- **Location**: `pages/admin/AdminDashboard.tsx`, `components/admin/StatCard.tsx`
+- **Location**: `app/src/pages/admin/AdminDashboard.tsx`, `app/src/components/admin/StatCard.tsx`
 
 ### Audit Logs
 - **Status**: ✅ Complete
 - **Description**: Track all administrative actions
-- **Location**: `pages/admin/AdminAudit.tsx`
+- **Location**: `app/src/pages/admin/AdminAudit.tsx`
 
 ### Announcements
 - **Status**: ✅ Complete
 - **Description**: Create platform-wide announcements
-- **Location**: `pages/admin/AdminAnnouncements.tsx`
+- **Location**: `app/src/pages/admin/AdminAnnouncements.tsx`
 
 ### Bid Monitor
 - **Status**: ✅ Complete
 - **Description**: Real-time monitoring of bid activity
-- **Location**: `components/admin/BidMonitor.tsx`
+- **Location**: `app/src/components/admin/BidMonitor.tsx`
 
 ---
 
@@ -288,7 +288,7 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Loading States
 - **Status**: ✅ Complete
 - **Description**: Skeleton loaders and loading indicators
-- **Location**: `components/AuctionCardSkeleton.tsx`, `components/LoadingIndicator.tsx`
+- **Location**: `app/src/components/AuctionCardSkeleton.tsx`, `app/src/components/LoadingIndicator.tsx`
 
 ### Error Handling
 - **Status**: ✅ Complete

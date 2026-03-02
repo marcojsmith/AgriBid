@@ -104,7 +104,7 @@ AgriBid is a real-time, high-integrity auction platform purpose-built for the **
 
 ### 2. Bidding
 - Place manual bids
-- Set proxy bids
+- Set proxy bids (planned/in progress)
 - View bid history
 - Real-time price updates
 - Outbid notifications

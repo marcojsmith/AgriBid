@@ -68,6 +68,7 @@ AgriBid bridges the trust gap through:
 2. View 360° photo galleries with zoom capability
 3. Set maximum bid and receive push notifications when outbid
 4. View equipment location and detailed condition reports
+5. Create auction listings for own equipment
 
 ---
 

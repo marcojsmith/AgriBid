@@ -4,7 +4,7 @@ This document describes the bidding system architecture, data flows, and process
 
 ## Bidding Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (React)                         │
 │                                                              │
@@ -43,7 +43,7 @@ This document describes the bidding system architecture, data flows, and process
 
 ### Manual Bidding
 
-```
+```text
 User Views Auction Detail
            │
            ▼
@@ -168,7 +168,7 @@ export const placeBid = mutation({
 
 The soft close feature extends auctions by 2 minutes if a bid is placed in the final 2 minutes.
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │         Auction End Time                 │
 │                                         │
@@ -215,7 +215,7 @@ Proxy bidding allows users to set a maximum amount they're willing to pay. The s
 
 ### Flow
 
-```
+```text
 User Sets Maximum Bid (Proxy Bid)
            │
            ▼
@@ -306,7 +306,7 @@ export const placeProxyBid = mutation({
 
 ### Cron Job Process
 
-```
+```text
 Scheduled Function (every 1 minute)
            │
            ▼

@@ -75,7 +75,7 @@ if (IS_PRODUCTION && !ENCRYPTION_KEY_STR) {
 
 ### Encryption Flow
 
-```
+```text
 Plaintext PII
       │
       ▼
@@ -100,7 +100,7 @@ Store in Database
 
 ### Decryption Flow
 
-```
+```text
 Encrypted String
 (IV + Ciphertext, Base64)
       │
@@ -133,7 +133,7 @@ Return Plaintext
 | Other Profiles | Admins only | Admin queries |
 | Own Bids | Self | Authenticated query |
 | All Bids (auction) | Authenticated users | Public query |
-| PII Fields | Only when needed | Server-side only |
+| PII Fields | Admin/Self | Accessed server-side only |
 
 ### Server-Side Processing
 
@@ -178,7 +178,7 @@ export const getUserProfile = query({
 
 ### Deletion Process
 
-```
+```text
 User Requests Deletion
           │
           ▼

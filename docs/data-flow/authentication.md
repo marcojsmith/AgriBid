@@ -6,7 +6,7 @@ This document describes the authentication system architecture and data flows in
 
 AgriBid uses **Better Auth** integrated with **Convex** for authentication and authorization.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (React)                         │
 │                                                              │
@@ -57,7 +57,7 @@ AgriBid uses **Better Auth** integrated with **Convex** for authentication and a
 
 ### 1. User Registration
 
-```
+```text
 User → Login Page → Sign Up Form
               │
               ▼
@@ -84,7 +84,7 @@ User → Login Page → Sign Up Form
 
 ### 2. User Login
 
-```
+```text
 User → Login Page → Email/Password
               │
               ▼
@@ -109,7 +109,7 @@ User → Login Page → Email/Password
 
 ### 3. OAuth Login (Google)
 
-```
+```text
 User → Login Page → Click Google OAuth
               │
               ▼
@@ -138,7 +138,7 @@ User → Login Page → Click Google OAuth
 
 ### Role-Based Access Control (RBAC)
 
-```
+```text
 Request → Auth Middleware
               │
               ▼
@@ -182,7 +182,7 @@ Located in `app/convex/lib/auth.ts`:
 
 ### Session Token Flow
 
-```
+```text
 Browser                        Convex Server
    │                                  │
    │──── Login Request ──────────────▶│
@@ -209,7 +209,7 @@ Browser                        Convex Server
 
 ### First Login Profile Creation
 
-```
+```text
 User logs in via Better Auth
            │
            ▼

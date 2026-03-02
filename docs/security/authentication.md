@@ -215,10 +215,10 @@ async function checkBidRateLimit(ctx: MutationCtx, userId: string) {
 |--------|-------|---------|
 | X-Content-Type-Options | nosniff | Prevent MIME sniffing |
 | X-Frame-Options | DENY | Prevent iframe embedding |
-| X-XSS-Protection | 1; mode=block | XSS filtering |
+| X-XSS-Protection | 0 (Legacy) | Recommendation: Use Content-Security-Policy (CSP) |
 | Strict-Transport-Security | max-age=31536000 | Force HTTPS |
 
-*Note: These are handled by Vercel deployment platform*
+*Note: These are handled by Vercel deployment platform. A strong CSP using nonces or strict-dynamic is recommended for modern XSS mitigation.*
 
 ---
 

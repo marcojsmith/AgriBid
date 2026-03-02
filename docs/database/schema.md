@@ -339,7 +339,7 @@ Aggregated statistics counters for dashboard and analytics.
 - `error` - Error message
 
 **User Role:**
-- `buyer` - Can bid on auctions
+- `buyer` - Can bid on auctions and create listings
 - `seller` - Can create listings
 - `admin` - Full platform access
 
