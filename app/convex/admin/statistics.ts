@@ -8,6 +8,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCallerRole } from "../users";
 import { COMMISSION_RATE } from "../config";
+import * as constants from "../constants";
 
 /**
  * Count results from a paginated query by repeatedly paginating until completion.
@@ -245,7 +246,7 @@ export const getAdminStats = query({
         ctx.db
           .query("profiles")
           .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-          .collect(),
+          .take(constants.MAX_RESULTS_CAP),
       ]);
 
     return {
@@ -291,7 +292,7 @@ export const getAnnouncementStats = query({
       .withIndex("by_recipient_createdAt", (q) =>
         q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
       )
-      .take(1000);
+      .take(constants.MAX_RESULTS_CAP);
     recent = recentNotifications.length;
 
     return {

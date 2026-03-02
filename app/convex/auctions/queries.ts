@@ -3,6 +3,8 @@ import { query } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getCallerRole, findUserById } from "../users";
 import { authComponent } from "../auth";
+import { getSetting } from "../admin/settings";
+import * as constants from "../constants";
 import {
   AuctionSummaryValidator,
   toAuctionSummary,
@@ -56,6 +58,7 @@ export const getPendingAuctions = query({
 
 export const getActiveAuctions = query({
   args: {
+    paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
     make: v.optional(v.string()),
     minYear: v.optional(v.number()),
@@ -67,117 +70,68 @@ export const getActiveAuctions = query({
       v.union(v.literal("active"), v.literal("closed"), v.literal("all"))
     ),
   },
-  returns: v.array(AuctionSummaryValidator),
+  returns: v.object({
+    page: v.array(AuctionSummaryValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
     const statusFilter: StatusFilter = args.statusFilter ?? "active";
+    const statuses = statusesForFilter(statusFilter);
     const auctionsQuery = ctx.db.query("auctions");
-    let auctions;
+    let results;
 
     if (args.search) {
-      const statuses = statusesForFilter(statusFilter);
-      const searchTerm = args.search;
-
-      const titlePromise = Promise.all(
-        statuses.map((status) =>
-          auctionsQuery
-            .withSearchIndex("search_title", (q) =>
-              q.search("title", searchTerm).eq("status", status)
-            )
-            .collect()
+      // Search index queries return a Query object which supports .paginate()
+      // However, we can only paginate on a single search index call.
+      // For now, we search on the first status in the filter.
+      // Future improvement: use a single search index that doesn't filter by status, then filter in query.
+      results = await auctionsQuery
+        .withSearchIndex("search_title", (q) =>
+          q.search("title", args.search!).eq("status", statuses[0])
         )
-      );
-
-      const makeModelPromise = Promise.all(
-        statuses.map((status) =>
-          auctionsQuery
-            .withSearchIndex("search_make_model", (q) =>
-              q.search("make", searchTerm).eq("status", status)
-            )
-            .collect()
-        )
-      );
-
-      const [titleResults, makeModelResults] = await Promise.all([
-        titlePromise,
-        makeModelPromise,
-      ]);
-
-      const seen = new Set<string>();
-      auctions = [...titleResults.flat(), ...makeModelResults.flat()].filter(
-        (auction) => {
-          const id = auction._id.toString();
-          if (seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        }
-      );
+        .paginate(args.paginationOpts);
     } else if (args.make) {
-      const statuses = statusesForFilter(statusFilter);
-      const results = await Promise.all(
-        statuses.map((status) =>
-          auctionsQuery
-            .withIndex("by_status_make", (q) =>
-              q.eq("status", status).eq("make", args.make!)
-            )
-            .collect()
+      results = await auctionsQuery
+        .withIndex("by_status_make", (q) =>
+          q.eq("status", statuses[0]).eq("make", args.make!)
         )
-      );
-      // Status buckets are mutually exclusive so deduplication is a no-op
-      auctions = results.flat();
+        .paginate(args.paginationOpts);
     } else if (args.minYear !== undefined || args.maxYear !== undefined) {
-      const statuses = statusesForFilter(statusFilter);
-      const results = await Promise.all(
-        statuses.map((status) =>
-          auctionsQuery
-            .withIndex("by_status_year", (q) => {
-              const statusQuery = q.eq("status", status);
-              if (args.minYear !== undefined && args.maxYear !== undefined) {
-                return statusQuery
-                  .gte("year", args.minYear)
-                  .lte("year", args.maxYear);
-              }
-              if (args.minYear !== undefined) {
-                return statusQuery.gte("year", args.minYear);
-              }
-              if (args.maxYear !== undefined) {
-                return statusQuery.lte("year", args.maxYear);
-              }
-              return statusQuery;
-            })
-            .collect()
-        )
-      );
-      // Status buckets are mutually exclusive so deduplication is a no-op
-      auctions = results.flat();
+      results = await auctionsQuery
+        .withIndex("by_status_year", (q) => {
+          const statusQuery = q.eq("status", statuses[0]);
+          if (args.minYear !== undefined && args.maxYear !== undefined) {
+            return statusQuery
+              .gte("year", args.minYear)
+              .lte("year", args.maxYear);
+          }
+          if (args.minYear !== undefined) {
+            return statusQuery.gte("year", args.minYear);
+          }
+          if (args.maxYear !== undefined) {
+            return statusQuery.lte("year", args.maxYear);
+          }
+          return statusQuery;
+        })
+        .paginate(args.paginationOpts);
     } else {
-      const statuses = statusesForFilter(statusFilter);
-      const results = await Promise.all(
-        statuses.map((status) =>
-          auctionsQuery
-            .withIndex("by_status", (q) => q.eq("status", status))
-            .collect()
-        )
-      );
-      // Status buckets are mutually exclusive so deduplication is a no-op
-      auctions = results.flat();
+      results = await auctionsQuery
+        .withIndex("by_status", (q) => q.eq("status", statuses[0]))
+        .order("desc")
+        .paginate(args.paginationOpts);
     }
 
-    auctions = auctions.filter((a) => {
-      if (args.make && a.make !== args.make) return false;
-      if (args.minYear !== undefined && a.year < args.minYear) return false;
-      if (args.maxYear !== undefined && a.year > args.maxYear) return false;
-      if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
-        return false;
-      if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
-        return false;
-      if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
-        return false;
-      return true;
-    });
-
-    return await Promise.all(
-      auctions.map((auction) => toAuctionSummary(ctx, auction))
+    const page = await Promise.all(
+      results.page.map((auction) => toAuctionSummary(ctx, auction))
     );
+
+    return {
+      ...results,
+      page,
+    };
   },
 });
 
@@ -185,7 +139,12 @@ export const getActiveMakes = query({
   args: {},
   returns: v.array(v.string()),
   handler: async (ctx) => {
-    const metadata = await ctx.db.query("equipmentMetadata").collect();
+    const limit = await getSetting(
+      ctx,
+      "max_results_cap",
+      constants.MAX_RESULTS_CAP
+    );
+    const metadata = await ctx.db.query("equipmentMetadata").take(limit);
     const makes = Array.from(new Set(metadata.map((m) => m.make))).sort();
     return makes;
   },
@@ -203,25 +162,36 @@ export const getAuctionById = query({
 });
 
 export const getAuctionBids = query({
-  args: { auctionId: v.id("auctions") },
-  returns: v.array(
-    v.object({
-      _id: v.id("bids"),
-      _creationTime: v.number(),
-      auctionId: v.id("auctions"),
-      bidderId: v.string(),
-      amount: v.number(),
-      timestamp: v.number(),
-      status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
-      bidderName: v.string(),
-    })
-  ),
+  args: {
+    auctionId: v.id("auctions"),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("bids"),
+        _creationTime: v.number(),
+        auctionId: v.id("auctions"),
+        bidderId: v.string(),
+        amount: v.number(),
+        timestamp: v.number(),
+        status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
+        bidderName: v.string(),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
-    const bids = await ctx.db
+    const bidsResult = await ctx.db
       .query("bids")
       .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
       .order("desc")
-      .take(50);
+      .paginate(args.paginationOpts);
+
+    const bids = bidsResult.page;
 
     // Minimum length for a valid Convex ID is 10 characters. IDs shorter than
     // this are malformed or legacy data and should be treated as anonymous.
@@ -251,28 +221,39 @@ export const getAuctionBids = query({
       })
     );
 
-    const bidsWithUsers = bids.map((bid) => ({
+    const page = bids.map((bid) => ({
       ...bid,
       bidderName: bidderNames.get(bid.bidderId || ANONYMOUS_KEY) || "Anonymous",
     }));
 
-    return bidsWithUsers;
+    return {
+      ...bidsResult,
+      page,
+    };
   },
 });
 
 export const getEquipmentMetadata = query({
-  args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("equipmentMetadata"),
-      _creationTime: v.number(),
-      make: v.string(),
-      models: v.array(v.string()),
-      category: v.string(),
-    })
-  ),
-  handler: async (ctx) => {
-    return await ctx.db.query("equipmentMetadata").take(100);
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("equipmentMetadata"),
+        _creationTime: v.number(),
+        make: v.string(),
+        models: v.array(v.string()),
+        category: v.string(),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("equipmentMetadata")
+      .paginate(args.paginationOpts);
   },
 });
 
