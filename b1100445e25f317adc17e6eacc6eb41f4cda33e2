@@ -1,0 +1,8 @@
+Implement platform fee visibility and estimates.
+- Created FeeEstimateBreakdown component for detailed fee transparency.
+- Integrated fee estimates into Pricing & Duration step of listing wizard.
+- Integrated fee estimates into Review & Submit step of listing wizard.
+- Updated MyListings page to show actual fee breakdown for sold auctions.
+- Shared fee calculation logic in auction-utils.ts.
+- Added Vitest unit tests for FeeEstimateBreakdown.
+Files: app/src/lib/auction-utils.ts, app/src/components/auction/FeeEstimateBreakdown.tsx, app/src/components/auction/FeeEstimateBreakdown.test.tsx, app/src/components/listing-wizard/steps/PricingDurationStep.tsx, app/src/components/listing-wizard/steps/ReviewSubmitStep.tsx, app/src/pages/dashboard/MyListings.tsx
