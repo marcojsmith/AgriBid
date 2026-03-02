@@ -1,8 +1,8 @@
 # Implementation Plan - Pagination Refactor for Queries
 
 ## Phase 1: Foundation & Configuration
-- [ ] Task: Create `app/convex/constants.ts` and define `PAGINATION_DEFAULT_LIMIT` and `MAX_RESULTS_CAP`.
-- [ ] Task: Implement a configuration mechanism (e.g., `getSystemConfig` query) to allow dynamic adjustment of limits.
+- [x] Task: Create `app/convex/constants.ts` and define `PAGINATION_DEFAULT_LIMIT` and `MAX_RESULTS_CAP`. 2a3b6f2
+- [x] Task: Implement a configuration mechanism (e.g., `getSystemConfig` query) to allow dynamic adjustment of limits. 2a3b6f2
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Configuration' (Protocol in workflow.md)
 
 ## Phase 2: Backend Query Pagination
