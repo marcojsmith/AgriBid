@@ -12,12 +12,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
-- [x] **Track: Listing Lifecycle & Management (Drafts & Refinement)**
-*Link: [./tracks/listing_lifecycle_management_20260301/](./tracks/listing_lifecycle_management_20260301/)*
-
 ---
 
 ## Archive
+
+- [x] **Track: Listing Lifecycle & Management (Drafts & Refinement)**
+*Link: [./archive/listing_lifecycle_management_20260301/](./archive/listing_lifecycle_management_20260301/)*
 
 - [x] **Track: Proxy Bidding (Auto-bid System)**
 *Link: [./archive/proxy_bidding_20260228/](./archive/proxy_bidding_20260228/)*
