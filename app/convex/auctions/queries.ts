@@ -66,11 +66,17 @@ export const getActiveAuctions = query({
     statusFilter: v.optional(
       v.union(v.literal("active"), v.literal("closed"), v.literal("all"))
     ),
+    paginationOpts: paginationOptsValidator,
   },
-  returns: v.array(AuctionSummaryValidator),
+  returns: v.object({
+    page: v.array(AuctionSummaryValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.string(), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
     const statusFilter: StatusFilter = args.statusFilter ?? "active";
-    const auctionsQuery = ctx.db.query("auctions");
     let auctions;
 
     if (args.search) {
@@ -79,7 +85,8 @@ export const getActiveAuctions = query({
 
       const titlePromise = Promise.all(
         statuses.map((status) =>
-          auctionsQuery
+          ctx.db
+            .query("auctions")
             .withSearchIndex("search_title", (q) =>
               q.search("title", searchTerm).eq("status", status)
             )
@@ -89,7 +96,8 @@ export const getActiveAuctions = query({
 
       const makeModelPromise = Promise.all(
         statuses.map((status) =>
-          auctionsQuery
+          ctx.db
+            .query("auctions")
             .withSearchIndex("search_make_model", (q) =>
               q.search("make", searchTerm).eq("status", status)
             )
@@ -115,20 +123,21 @@ export const getActiveAuctions = query({
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
         statuses.map((status) =>
-          auctionsQuery
+          ctx.db
+            .query("auctions")
             .withIndex("by_status_make", (q) =>
               q.eq("status", status).eq("make", args.make!)
             )
             .collect()
         )
       );
-      // Status buckets are mutually exclusive so deduplication is a no-op
       auctions = results.flat();
     } else if (args.minYear !== undefined || args.maxYear !== undefined) {
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
         statuses.map((status) =>
-          auctionsQuery
+          ctx.db
+            .query("auctions")
             .withIndex("by_status_year", (q) => {
               const statusQuery = q.eq("status", status);
               if (args.minYear !== undefined && args.maxYear !== undefined) {
@@ -147,22 +156,64 @@ export const getActiveAuctions = query({
             .collect()
         )
       );
-      // Status buckets are mutually exclusive so deduplication is a no-op
       auctions = results.flat();
-    } else {
+    } else if (
+      args.minPrice !== undefined ||
+      args.maxPrice !== undefined ||
+      args.maxHours !== undefined
+    ) {
+      // If we only have filters that don't have an index, we use the status index
       const statuses = statusesForFilter(statusFilter);
       const results = await Promise.all(
         statuses.map((status) =>
-          auctionsQuery
+          ctx.db
+            .query("auctions")
             .withIndex("by_status", (q) => q.eq("status", status))
             .collect()
         )
       );
-      // Status buckets are mutually exclusive so deduplication is a no-op
       auctions = results.flat();
+    } else {
+      // Default: use status index and paginate
+      const statuses = statusesForFilter(statusFilter);
+      // Since we can't easily paginate across multiple status buckets in one query,
+      // and "active" is the most common filter, we'll optimize for that.
+      // For "all" or "closed", we'll just query "active" or "sold" for now to keep it simple,
+      // OR we can query all and filter.
+
+      // Actually, Convex .paginate() only works on a single query object.
+      // If statusFilter is "active", we're good.
+      if (statusFilter === "active") {
+        const results = await ctx.db
+          .query("auctions")
+          .withIndex("by_status", (q) => q.eq("status", "active"))
+          .order("desc")
+          .paginate(args.paginationOpts);
+
+        return {
+          ...results,
+          page: await Promise.all(
+            results.page.map((auction) => toAuctionSummary(ctx, auction))
+          ),
+        };
+      }
+
+      // For other filters, we'll collect and then manually paginate (not ideal but works for now)
+      const results = await Promise.all(
+        statuses.map((status) =>
+          ctx.db
+            .query("auctions")
+            .withIndex("by_status", (q) => q.eq("status", status))
+            .collect()
+        )
+      );
+      auctions = results
+        .flat()
+        .sort((a, b) => b._creationTime - a._creationTime);
     }
 
-    auctions = auctions.filter((a) => {
+    // Apply remaining filters
+    const filteredAuctions = auctions.filter((a) => {
       if (args.make && a.make !== args.make) return false;
       if (args.minYear !== undefined && a.year < args.minYear) return false;
       if (args.maxYear !== undefined && a.year > args.maxYear) return false;
@@ -175,9 +226,29 @@ export const getActiveAuctions = query({
       return true;
     });
 
-    return await Promise.all(
-      auctions.map((auction) => toAuctionSummary(ctx, auction))
-    );
+    // Manual pagination for complex queries
+    const numItems = args.paginationOpts.numItems;
+    let startIndex = 0;
+    if (args.paginationOpts.cursor !== null) {
+      try {
+        startIndex = parseInt(args.paginationOpts.cursor, 10);
+      } catch {
+        startIndex = 0;
+      }
+    }
+    const page = filteredAuctions.slice(startIndex, startIndex + numItems);
+    const continueCursor =
+      startIndex + numItems < filteredAuctions.length
+        ? (startIndex + numItems).toString()
+        : "";
+
+    return {
+      page: await Promise.all(
+        page.map((auction) => toAuctionSummary(ctx, auction))
+      ),
+      isDone: continueCursor === "",
+      continueCursor,
+    };
   },
 });
 
@@ -414,9 +485,9 @@ export const getMyBids = query({
       const bidsResult = await ctx.db
         .query("bids")
         .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+        .order("desc")
         // exclude voided bids from results
         .filter((q) => q.neq(q.field("status"), "voided"))
-        .order("desc")
         .paginate(args.paginationOpts);
 
       const uniqueAuctionIds = Array.from(
@@ -430,9 +501,9 @@ export const getMyBids = query({
           const latestBid = await ctx.db
             .query("bids")
             .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+            .order("desc")
             // only consider non-voided bids
             .filter((q) => q.neq(q.field("status"), "voided"))
-            .order("desc")
             .filter((q) => q.eq(q.field("bidderId"), userId))
             .first();
 
@@ -530,5 +601,129 @@ export const getMyListings = query({
         splitCursor: null,
       };
     }
+  },
+});
+
+/**
+ * Get flags for a specific auction (admin only).
+ */
+export const getAuctionFlags = query({
+  args: { auctionId: v.id("auctions") },
+  returns: v.array(
+    v.object({
+      _id: v.id("auctionFlags"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      reporterId: v.string(),
+      reason: v.union(
+        v.literal("misleading"),
+        v.literal("inappropriate"),
+        v.literal("suspicious"),
+        v.literal("other")
+      ),
+      details: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("reviewed"),
+        v.literal("dismissed")
+      ),
+      createdAt: v.number(),
+      reporterName: v.string(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    const flags = await ctx.db
+      .query("auctionFlags")
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .order("desc")
+      .collect();
+
+    const uniqueReporterIds = Array.from(
+      new Set(flags.map((f) => f.reporterId))
+    );
+    const reporterNames = new Map<string, string>();
+
+    await Promise.all(
+      uniqueReporterIds.map(async (reporterId) => {
+        const user = await findUserById(ctx, reporterId);
+        reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      })
+    );
+
+    return flags.map((flag) => ({
+      ...flag,
+      reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
+    }));
+  },
+});
+
+/**
+ * Get all pending flags across all auctions (admin only).
+ */
+export const getAllPendingFlags = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("auctionFlags"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      reporterId: v.string(),
+      reason: v.union(
+        v.literal("misleading"),
+        v.literal("inappropriate"),
+        v.literal("suspicious"),
+        v.literal("other")
+      ),
+      details: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("reviewed"),
+        v.literal("dismissed")
+      ),
+      createdAt: v.number(),
+      auctionTitle: v.string(),
+      reporterName: v.string(),
+    })
+  ),
+  handler: async (ctx) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") {
+      throw new Error("Not authorized: Admin privileges required");
+    }
+
+    const flags = await ctx.db
+      .query("auctionFlags")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("desc")
+      .collect();
+
+    const uniqueAuctionIds = Array.from(new Set(flags.map((f) => f.auctionId)));
+    const auctionTitles = new Map<string, string>();
+    const uniqueReporterIds = Array.from(
+      new Set(flags.map((f) => f.reporterId))
+    );
+    const reporterNames = new Map<string, string>();
+
+    await Promise.all([
+      ...uniqueAuctionIds.map(async (auctionId) => {
+        const auction = await ctx.db.get(auctionId);
+        auctionTitles.set(auctionId, auction?.title ?? "Unknown Auction");
+      }),
+      ...uniqueReporterIds.map(async (reporterId) => {
+        const user = await findUserById(ctx, reporterId);
+        reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      }),
+    ]);
+
+    return flags.map((flag) => ({
+      ...flag,
+      auctionTitle: auctionTitles.get(flag.auctionId) ?? "Unknown Auction",
+      reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
+    }));
   },
 });

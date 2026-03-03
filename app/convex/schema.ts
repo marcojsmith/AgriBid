@@ -45,8 +45,9 @@ export default defineSchema({
       v.array(v.string()) // legacy format
     ),
     description: v.optional(v.string()),
-    conditionReportUrl: v.optional(v.string()),
+    conditionReportUrl: v.optional(v.id("_storage")), // PDF storage ID
     isExtended: v.optional(v.boolean()),
+    hiddenByFlags: v.optional(v.boolean()),
     seedId: v.optional(v.string()),
     conditionChecklist: v.optional(
       v.object({
@@ -59,6 +60,7 @@ export default defineSchema({
     ),
   })
     .index("by_status", ["status"])
+    .index("by_status_creationTime", ["status"])
     .index("by_seller", ["sellerId"])
     .index("by_seller_status", ["sellerId", "status"])
     .index("by_end_time", ["endTime"])
@@ -74,6 +76,29 @@ export default defineSchema({
       searchField: "make",
       filterFields: ["status", "model"],
     }),
+
+  // Auction flagging system for community moderation
+  auctionFlags: defineTable({
+    auctionId: v.id("auctions"),
+    reporterId: v.string(),
+    reason: v.union(
+      v.literal("misleading"),
+      v.literal("inappropriate"),
+      v.literal("suspicious"),
+      v.literal("other")
+    ),
+    details: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewed"),
+      v.literal("dismissed")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_auction", ["auctionId"])
+    .index("by_reporter", ["reporterId"])
+    .index("by_status", ["status"])
+    .index("by_auction_status", ["auctionId", "status"]),
 
   bids: defineTable({
     auctionId: v.id("auctions"),
@@ -203,6 +228,7 @@ export default defineSchema({
     verified: v.optional(v.number()),
     open: v.optional(v.number()),
     resolved: v.optional(v.number()),
+    draft: v.optional(v.number()), // Support for draft counter
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 });

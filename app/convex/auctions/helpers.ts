@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
+import { findUserById } from "../users";
 
 export interface RawImages {
   front?: string;
@@ -27,6 +28,7 @@ export const ConditionChecklistValidator = v.object({
  * front/engine/cabin/rear/additional fields, applies an optional limit to the
  * `additional` list, and resolves each reference to a public URL.
  *
+ * @param storage - Convex storage context
  * @param images - An array of image ids or an object with image fields; non-object inputs are treated as empty.
  * @param options - Optional settings.
  * @param options.limit - If provided, truncates the `additional` images array to this length.
@@ -207,6 +209,7 @@ export const AuctionDetailValidator = v.object({
   }),
   conditionChecklist: v.optional(ConditionChecklistValidator),
   sellerId: v.string(),
+  sellerEmail: v.optional(v.string()),
   status: v.string(),
   currentPrice: v.number(),
   minIncrement: v.number(),
@@ -220,12 +223,19 @@ export const AuctionDetailValidator = v.object({
 
 /**
  * Create a full auction object with image references resolved to accessible URLs.
+ * The returned object includes a sellerEmail string (resolved from the seller lookup)
+ * in addition to the described images transformation.
  *
  * @param ctx - Query context providing storage used to resolve image references
  * @param auction - Auction document to convert
- * @returns The same auction object with `images` replaced by an object where `front`, `engine`, `cabin` and `rear` are resolved URL strings when present and `additional` is an array of resolved URL strings
+ * @returns The same auction object with resolved images and seller details.
+ * sellerEmail may be undefined if no seller is found.
  */
 export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
+  const seller = await findUserById(ctx, auction.sellerId);
+  const identity = await ctx.auth.getUserIdentity();
+  const isAuthenticated = identity !== null;
+
   return {
     _id: auction._id,
     _creationTime: auction._creationTime,
@@ -245,6 +255,7 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     endTime: auction.endTime,
     status: auction.status,
     sellerId: auction.sellerId,
+    sellerEmail: isAuthenticated ? (seller?.email ?? undefined) : undefined,
     winnerId: auction.winnerId,
     isExtended: auction.isExtended,
     seedId: auction.seedId,

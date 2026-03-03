@@ -1,6 +1,6 @@
 // app/src/pages/Home.tsx
 import { useState, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { useSession } from "../lib/auth-client";
 import { Button } from "../components/ui/button";
 import { api } from "convex/_generated/api";
@@ -8,7 +8,7 @@ import { AuctionCard } from "../components/auction";
 import { AuctionCardSkeleton } from "../components/AuctionCardSkeleton";
 import { FilterSidebar } from "../components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LoadingPage } from "../components/LoadingIndicator";
 
@@ -84,16 +84,24 @@ export default function Home() {
   const maxPrice = parseFiniteInt("maxPrice");
   const maxHours = parseFiniteInt("maxHours");
 
-  const auctions = useQuery(api.auctions.getActiveAuctions, {
-    search: searchQuery,
-    make,
-    minYear,
-    maxYear,
-    minPrice,
-    maxPrice,
-    maxHours,
-    statusFilter,
-  });
+  const {
+    results: auctions,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.auctions.getActiveAuctions,
+    {
+      search: searchQuery,
+      make,
+      minYear,
+      maxYear,
+      minPrice,
+      maxPrice,
+      maxHours,
+      statusFilter,
+    },
+    { initialNumItems: 12 }
+  );
 
   // Batch-fetch watched auction IDs to avoid per-card queries
   const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
@@ -125,8 +133,10 @@ export default function Home() {
   const getItemWrapperClasses = (mode: "compact" | "detailed") =>
     cn("w-full h-full", mode === "compact" && "max-w-[500px]");
 
+  const isLoading = status === "LoadingFirstPage";
+
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
+    <div className="flex flex-col lg:flex-row gap-8 pb-12">
       {/* Desktop Sidebar */}
       {isDesktopSidebarOpen && (
         <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
@@ -228,7 +238,7 @@ export default function Home() {
           </div>
         </div>
 
-        {!auctions ? (
+        {isLoading ? (
           <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className={getItemWrapperClasses(viewMode)}>
@@ -253,20 +263,41 @@ export default function Home() {
             </Button>
           </div>
         ) : (
-          <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
-            {auctions.map((auction) => (
-              <div
-                key={auction._id}
-                className={getItemWrapperClasses(viewMode)}
-              >
-                <AuctionCard
-                  auction={auction}
-                  viewMode={viewMode}
-                  isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
-                />
-              </div>
-            ))}
-          </div>
+          <>
+            <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
+              {auctions.map((auction) => (
+                <div
+                  key={auction._id}
+                  className={getItemWrapperClasses(viewMode)}
+                >
+                  <AuctionCard
+                    auction={auction}
+                    viewMode={viewMode}
+                    isWatched={
+                      watchedAuctionIds?.includes(auction._id) ?? false
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-center pt-8">
+              {status === "CanLoadMore" ? (
+                <Button
+                  variant="outline"
+                  onClick={() => loadMore(12)}
+                  className="font-bold min-w-[200px]"
+                >
+                  Load More
+                </Button>
+              ) : status === "LoadingMore" ? (
+                <Button disabled variant="outline" className="min-w-[200px]">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </Button>
+              ) : null}
+            </div>
+          </>
         )}
       </div>
     </div>

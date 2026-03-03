@@ -19,6 +19,17 @@ import {
   handleNotificationClick,
 } from "@/lib/notifications";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
+interface NotificationItem {
+  _id: Id<"notifications">;
+  type: "info" | "success" | "warning" | "error";
+  title: string;
+  message: string;
+  createdAt: number;
+  isRead: boolean;
+  link?: string;
+}
 
 /**
  * Renders a bell button with an unread badge and a dropdown listing the current user's notifications.
@@ -32,11 +43,12 @@ export function NotificationDropdown() {
   const navigate = useNavigate();
   // @ts-expect-error - Convex type instantiation complexity
   const notifications = useQuery(api.notifications.getMyNotifications);
-  const markRead = useMutation(api.notifications.markAsRead);
+  const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
 
-  const unreadCount = notifications?.filter((n) => !n.isRead).length || 0;
+  const unreadCount =
+    notifications?.filter((n: NotificationItem) => !n.isRead).length || 0;
 
   const handleMarkAllRead = async () => {
     setIsMarkingAllRead(true);
@@ -99,7 +111,7 @@ export function NotificationDropdown() {
                 Syncing...
               </p>
             </div>
-          ) : notifications.length === 0 ? (
+          ) : (notifications as NotificationItem[]).length === 0 ? (
             <div className="py-8 text-center space-y-2">
               <Clock className="h-8 w-8 text-muted-foreground/20 mx-auto" />
               <p className="text-[10px] font-black uppercase text-muted-foreground">
@@ -107,44 +119,46 @@ export function NotificationDropdown() {
               </p>
             </div>
           ) : null}
-          {notifications?.map((n) => (
-            <DropdownMenuItem
-              key={n._id}
-              className={cn(
-                "flex flex-col items-start gap-1 p-3 rounded-xl cursor-pointer transition-all border-2 border-transparent",
-                "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
-                !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
-              )}
-              onClick={async () => {
-                try {
-                  await handleNotificationClick(
-                    n._id,
-                    n.link,
-                    navigate,
-                    markRead
-                  );
-                } catch (e) {
-                  console.error("Notification action failed:", e);
-                  toast.error("Failed to process notification");
-                }
-              }}
-            >
-              <div className="flex items-center gap-2 w-full">
-                {getNotificationIcon(n.type)}
-                <span className="font-black uppercase text-[10px] tracking-tight flex-1 truncate">
-                  {n.title}
-                </span>
-                <span className="text-[8px] font-bold text-muted-foreground">
-                  {new Date(n.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-                {n.message}
-              </p>
-            </DropdownMenuItem>
-          ))}
+          {(notifications as NotificationItem[] | undefined)?.map(
+            (n: NotificationItem) => (
+              <DropdownMenuItem
+                key={n._id}
+                className={cn(
+                  "flex flex-col items-start gap-1 p-3 rounded-xl cursor-pointer transition-all border-2 border-transparent",
+                  "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
+                  !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
+                )}
+                onClick={async () => {
+                  try {
+                    await handleNotificationClick(
+                      n._id,
+                      n.link,
+                      navigate,
+                      markAsRead
+                    );
+                  } catch (e) {
+                    console.error("Notification action failed:", e);
+                    toast.error("Failed to process notification");
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2 w-full">
+                  {getNotificationIcon(n.type)}
+                  <span className="font-black uppercase text-[10px] tracking-tight flex-1 truncate">
+                    {n.title}
+                  </span>
+                  <span className="text-[8px] font-bold text-muted-foreground">
+                    {new Date(n.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-xs font-medium leading-relaxed text-muted-foreground">
+                  {n.message}
+                </p>
+              </DropdownMenuItem>
+            )
+          )}
         </div>
-        {notifications && notifications.length > 0 && (
+        {notifications && (notifications as NotificationItem[]).length > 0 && (
           <>
             <DropdownMenuSeparator />
             <div className="p-1">
