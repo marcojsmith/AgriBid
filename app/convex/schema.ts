@@ -60,6 +60,7 @@ export default defineSchema({
     ),
   })
     .index("by_status", ["status"])
+    .index("by_status_creationTime", ["status"])
     .index("by_seller", ["sellerId"])
     .index("by_seller_status", ["sellerId", "status"])
     .index("by_end_time", ["endTime"])

@@ -5,6 +5,32 @@ import { normalizeListingImages } from "@/lib/normalize-images";
 import { ListingWizardContext } from "./ListingWizardContextDef";
 
 /**
+ * Validates and normalizes saved draft data to ensure it matches the ListingFormData shape.
+ *
+ * @param saved - The raw parsed data from localStorage
+ * @returns A normalized ListingFormData object
+ */
+const validateAndNormalizeDraft = (saved: unknown): ListingFormData => {
+  const data = (
+    saved && typeof saved === "object" ? saved : {}
+  ) as Partial<ListingFormData>;
+
+  const normalizedImages = normalizeListingImages(
+    data.images || DEFAULT_FORM_DATA.images
+  );
+
+  return {
+    ...DEFAULT_FORM_DATA,
+    ...data,
+    images: normalizedImages,
+    conditionChecklist: {
+      ...DEFAULT_FORM_DATA.conditionChecklist,
+      ...(data.conditionChecklist || {}),
+    },
+  };
+};
+
+/**
  * Provider component for the Listing Wizard state.
  * Manages form data, current step, submission status, and image previews.
  * Persists state to localStorage for session recovery.
@@ -23,23 +49,20 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedDraft = localStorage.getItem("agribid_listing_draft");
       if (savedDraft) {
         try {
-          const parsed = JSON.parse(savedDraft) as Partial<ListingFormData>;
-          const normalizedImages = normalizeListingImages(
-            parsed.images || DEFAULT_FORM_DATA.images
-          );
+          const parsed = JSON.parse(savedDraft);
+          const normalized = validateAndNormalizeDraft(parsed);
           // eslint-disable-next-line react-hooks/set-state-in-effect
-          setFormData({
-            ...DEFAULT_FORM_DATA,
-            ...parsed,
-            images: normalizedImages,
-          });
+          setFormData(normalized);
         } catch {
           // silently fallback to DEFAULT_FORM_DATA
         }
       }
       const savedStep = localStorage.getItem("agribid_listing_step");
       if (savedStep) {
-        setCurrentStep(parseInt(savedStep, 10));
+        const step = parseInt(savedStep, 10);
+        if (!isNaN(step)) {
+          setCurrentStep(step);
+        }
       }
     }
   }, []);
