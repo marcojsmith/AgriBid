@@ -28,7 +28,10 @@ export interface ListingWizardContextType {
     data: ListingFormData | ((prev: ListingFormData) => ListingFormData)
   ) => void;
   setDraftSaved: (saved: boolean) => void;
-  resetForm: (initialData?: Partial<ListingFormData>) => void;
+  resetForm: (
+    initialData?: Partial<ListingFormData>,
+    initialStep?: number
+  ) => void;
 }
 
 export const ListingWizardContext = createContext<

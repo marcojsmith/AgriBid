@@ -158,6 +158,8 @@ export const MediaGalleryStep = () => {
                   <CheckCircle2 className="h-8 w-8 text-primary/40" />
                 )}
                 <button
+                  type="button"
+                  aria-label="Remove image"
                   onClick={() => handleRemove("additional", index)}
                   className="absolute -top-1 -right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                 >

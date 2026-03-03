@@ -306,6 +306,9 @@ export const saveDraft = mutation({
     let validAuctionId: Id<"auctions"> | null = null;
     if (auctionId) {
       validAuctionId = ctx.db.normalizeId("auctions", auctionId);
+      if (!validAuctionId) {
+        throw new ConvexError("Invalid auctionId provided");
+      }
     }
 
     if (validAuctionId) {
@@ -397,6 +400,11 @@ export const updateAuctionHandler = async (
       throw new ConvexError("Additional images limit exceeded (max 6)");
     }
     updates.images = mergedImages;
+  }
+
+  if (auction.status === "pending_review") {
+    const mergedState = { ...auction, ...updates } as Doc<"auctions">;
+    validateAuctionBeforePublish(mergedState);
   }
 
   await ctx.db.patch(args.auctionId, updates);
@@ -581,6 +589,7 @@ export const updateConditionReportHandler = async (
   }
 
   assertOwnership(auction, userId);
+  assertEditable(auction);
 
   if (auction.conditionReportUrl) {
     try {
@@ -624,6 +633,7 @@ export const deleteConditionReport = mutation({
     }
 
     assertOwnership(auction, userId);
+    assertEditable(auction);
 
     if (auction.conditionReportUrl) {
       try {
@@ -914,10 +924,18 @@ export const adminUpdateAuction = mutation({
       validateAuctionStatus(patched, newStatus);
     }
 
-    await ctx.db.patch(args.auctionId, {
+    const patchData: typeof args.updates & { hiddenByFlags?: boolean } = {
       ...args.updates,
-      hiddenByFlags: false,
-    });
+    };
+    if (
+      oldStatus === "pending_review" &&
+      newStatus &&
+      newStatus !== "pending_review"
+    ) {
+      patchData.hiddenByFlags = false;
+    }
+
+    await ctx.db.patch(args.auctionId, patchData);
 
     if (newStatus && oldStatus !== newStatus) {
       await adjustStatusCounters(ctx, oldStatus, newStatus);

@@ -63,10 +63,12 @@ const ListingWizardContent = () => {
     if (initializedRef.current) return;
 
     const savedDraft = localStorage.getItem("agribid_listing_draft");
+    const savedStep = localStorage.getItem("agribid_listing_step");
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
-        resetForm(parsed);
+        const step = savedStep ? parseInt(savedStep, 10) : 0;
+        resetForm(parsed, step);
       } catch (e) {
         console.error("Failed to parse saved draft", e);
         resetForm();

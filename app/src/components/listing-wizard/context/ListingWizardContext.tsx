@@ -23,8 +23,16 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedDraft = localStorage.getItem("agribid_listing_draft");
       if (savedDraft) {
         try {
+          const parsed = JSON.parse(savedDraft) as Partial<ListingFormData>;
+          const normalizedImages = normalizeListingImages(
+            parsed.images || DEFAULT_FORM_DATA.images
+          );
           // eslint-disable-next-line react-hooks/set-state-in-effect
-          setFormData({ ...DEFAULT_FORM_DATA, ...JSON.parse(savedDraft) });
+          setFormData({
+            ...DEFAULT_FORM_DATA,
+            ...parsed,
+            images: normalizedImages,
+          });
         } catch {
           // silently fallback to DEFAULT_FORM_DATA
         }
@@ -78,7 +86,10 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
    *
    * @param initialData - Optional partial data to hydrate the form with
    */
-  const resetForm = (initialData?: Partial<ListingFormData>) => {
+  const resetForm = (
+    initialData?: Partial<ListingFormData>,
+    initialStep?: number
+  ) => {
     if (initialData) {
       // Hydration path: normalize and set state, but don't clear storage
       const normalizedImages = normalizeListingImages(
@@ -89,7 +100,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         ...initialData,
         images: normalizedImages,
       });
-      setCurrentStep(0);
+      setCurrentStep(initialStep ?? 0);
       setIsSuccess(false);
       setIsSubmitting(false);
       setDraftSaved(true);

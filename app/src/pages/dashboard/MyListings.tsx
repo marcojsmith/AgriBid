@@ -146,7 +146,7 @@ export default function MyListings() {
       make: auction.make,
       model: auction.model,
       location: auction.location,
-      description: auction.description,
+      description: auction.description ?? "",
       operatingHours: auction.operatingHours,
       title: auction.title,
       conditionChecklist: {

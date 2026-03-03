@@ -67,7 +67,6 @@ export default defineSchema({
     .index("by_status_make", ["status", "make"])
     .index("by_status_year", ["status", "year"])
     .index("by_status_endTime", ["status", "endTime"])
-    .index("by_status_creationTime", ["status", "_creationTime"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["status"],

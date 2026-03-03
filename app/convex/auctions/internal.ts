@@ -81,8 +81,9 @@ export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
   // Process in batches to avoid hitting Convex limits
   const oldDrafts = await ctx.db
     .query("auctions")
-    .withIndex("by_status", (q) => q.eq("status", "draft"))
-    .filter((q) => q.lte(q.field("_creationTime"), cutoffTime))
+    .withIndex("by_status", (q) =>
+      q.eq("status", "draft").lte("_creationTime", cutoffTime)
+    )
     .take(CLEANUP_BATCH_SIZE);
 
   let deleted = 0;
