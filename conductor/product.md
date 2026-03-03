@@ -16,8 +16,8 @@ Auction platform for WeBuyTractors
 
 ## Core Features (MVP)
 - **Real-time Bidding Engine**: High-performance bidding with sub-200ms latency, reactive price updates, and "soft-close" logic to prevent last-second sniping.
-- **Listing Creation & Management**: A high-integrity listing wizard for heavy machinery with draft persistence, guided condition checklists, and Pricing/Duration configuration. Sellers can manage drafts and publish listings from their dashboard.
-- **Auction Dashboard**: A real-time grid view for monitoring active auctions, tracking countdown timers, and managing a personal equipment watchlist.
+- **Listing Creation & Management**: A high-integrity listing wizard for heavy machinery with draft persistence, automated metadata lookups, guided condition checklists, and pricing intelligence. Sellers can manage drafts and publish listings from their dashboard.
+- **Auction Dashboard**: A real-time grid view for monitoring active auctions, tracking countdown timers, managing a personal equipment watchlist, and a grouped "My Bids" summary for tracking bidding status and financial exposure.
 - **Secure Authentication**: Robust user management via Better Auth, supporting email/password and future OAuth integrations.
 
 ## Visual Identity & Brand Messaging

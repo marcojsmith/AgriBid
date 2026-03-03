@@ -110,15 +110,23 @@ export const voidBid = mutation({
     const newPrice = latestValidBid
       ? latestValidBid.amount
       : auction.startingPrice;
+    const newWinnerId = latestValidBid ? latestValidBid.bidderId : null;
 
-    await ctx.db.patch(bid.auctionId, { currentPrice: newPrice });
+    const patchData: { currentPrice: number; winnerId?: string | null } = {
+      currentPrice: newPrice,
+    };
+    if (auction.winnerId !== newWinnerId) {
+      patchData.winnerId = newWinnerId;
+    }
+
+    await ctx.db.patch(bid.auctionId, patchData);
 
     // Log Action
     await logAudit(ctx, {
       action: "VOID_BID",
       targetId: args.bidId,
       targetType: "bid",
-      details: `Reason: ${args.reason}. New Price: ${newPrice}`,
+      details: `Reason: ${args.reason}. New Price: ${newPrice}${auction.winnerId !== newWinnerId ? `. Winner recalculated to ${newWinnerId}` : ""}`,
     });
 
     return { success: true };
@@ -364,5 +372,79 @@ export const listAnnouncements = query({
       ...announcement,
       readCount: readCounts.get(announcement._id) || 0,
     }));
+  },
+});
+
+/**
+ * Maintenance mutation to synchronize winnerId with the highest bidder for all auctions.
+ *
+ * Processes auctions in batches to avoid runtime/memory limits.
+ * Returns a cursor if more auctions need processing.
+ *
+ * Only accessible to admin users.
+ */
+export const syncAuctionWinners = mutation({
+  args: {
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    processed: v.number(),
+    updated: v.number(),
+    continueCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const role = await getCallerRole(ctx);
+    if (role !== "admin") throw new Error("Unauthorized");
+
+    const batchSize = Math.max(
+      1,
+      Math.min(Math.floor(Number(args.batchSize ?? 50) || 50), 100)
+    );
+
+    const query = ctx.db.query("auctions");
+
+    // We use the default ordering which is by _creationTime
+    const results = await query.paginate({
+      numItems: batchSize,
+      cursor: args.cursor || null,
+    });
+
+    let updatedCount = 0;
+
+    for (const auction of results.page) {
+      const highestBid = await ctx.db
+        .query("bids")
+        .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+        .filter((q) => q.neq(q.field("status"), "voided"))
+        .order("desc")
+        .first();
+
+      const currentWinnerId = highestBid ? highestBid.bidderId : null;
+
+      if (auction.winnerId !== currentWinnerId) {
+        await ctx.db.patch(auction._id, {
+          winnerId: currentWinnerId,
+        });
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0) {
+      await logAudit(ctx, {
+        action: "SYNC_AUCTION_WINNERS_BATCH",
+        targetId: "batch",
+        targetType: "auction",
+        details: `Processed batch of ${results.page.length} auctions, updated ${updatedCount} winners.`,
+      });
+    }
+
+    return {
+      processed: results.page.length,
+      updated: updatedCount,
+      continueCursor: results.continueCursor,
+      isDone: results.isDone,
+    };
   },
 });

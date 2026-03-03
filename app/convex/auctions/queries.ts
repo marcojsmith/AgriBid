@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
+import type { Id, Doc } from "../_generated/dataModel";
 import { getCallerRole, findUserById } from "../users";
 import { authComponent } from "../auth";
 import {
@@ -451,19 +453,113 @@ export const getAllAuctions = query({
   },
 });
 
+const ZERO_AUCTION_STATS = {
+  totalActive: 0,
+  winningCount: 0,
+  outbidCount: 0,
+  totalExposure: 0,
+};
+
+/**
+ * Global statistics for a user's bidding activity.
+ * - `totalActive`: The number of active auctions the user has bid on.
+ * - `winningCount`: The number of active auctions where the user is the current highest bidder.
+ * - `outbidCount`: The number of active auctions where the user has been outbid.
+ * - `totalExposure`: The total currency value of the user's current highest bids across all winning auctions.
+ */
+export interface GlobalUserBidStats {
+  totalActive: number;
+  winningCount: number;
+  outbidCount: number;
+  totalExposure: number;
+}
+
+/**
+ * Bidding statistics for a user on a specific auction.
+ * - `lastBidTimestamp`: The epoch timestamp (ms) of the user's most recent bid on this auction.
+ * - `highestBid`: The highest currency amount the user has bid on this auction.
+ * - `bidCount`: The total number of times the user has bid on this auction.
+ */
+export interface AuctionBidStats {
+  lastBidTimestamp: number;
+  highestBid: number;
+  bidCount: number;
+}
+
+/**
+ * Result of the user bid statistics calculation.
+ * Contains both global user statistics and a map of per-auction bid statistics.
+ */
+export interface CalculateUserBidStatsResult {
+  globalStats: GlobalUserBidStats;
+  auctionStatsMap: Map<string, AuctionBidStats>;
+  auctionsMap: Map<string, Doc<"auctions"> | null>;
+}
+
+/**
+ * Fetches bidding statistics for the authenticated user, including active bid counts
+ * and total financial exposure across winning auctions.
+ *
+ * @param ctx - Convex Query Context
+ * @returns Object containing totalActive, winningCount, outbidCount, and totalExposure.
+ */
+export const getMyBidsStats = query({
+  args: {},
+  returns: v.object({
+    totalActive: v.number(),
+    winningCount: v.number(),
+    outbidCount: v.number(),
+    totalExposure: v.number(),
+  }),
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return ZERO_AUCTION_STATS;
+
+      const userId = authUser.userId ?? authUser._id;
+
+      const { globalStats } = await calculateUserBidStats(ctx, userId);
+      return globalStats;
+    } catch (err) {
+      console.error("getMyBidsStats failure:", err);
+      return ZERO_AUCTION_STATS;
+    }
+  },
+});
+
+/**
+ * Fetches the paginated list of bids for the authenticated user, grouped by auction.
+ * Calculates real-time bid statistics (myHighestBid, bidCount, isWinning, isWon, etc.)
+ * and includes global statistics for the user's bids.
+ *
+ * @param ctx - Convex Query Context
+ * @param args - Pagination options
+ * @returns Paginated results containing auctions with bid-specific statistics, plus global stats.
+ */
 export const getMyBids = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    paginationOpts: paginationOptsValidator,
+    sort: v.optional(v.string()),
+  },
   returns: v.object({
     page: v.array(
       v.object({
         ...AuctionSummaryValidator.fields,
         myHighestBid: v.number(),
+        bidCount: v.number(),
         isWinning: v.boolean(),
         isWon: v.boolean(),
-        bidAmount: v.number(),
-        bidTimestamp: v.number(),
+        isOutbid: v.boolean(),
+        isCancelled: v.boolean(),
+        lastBidTimestamp: v.number(),
       })
     ),
+    stats: v.object({
+      totalActive: v.number(),
+      winningCount: v.number(),
+      outbidCount: v.number(),
+      totalExposure: v.number(),
+    }),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
@@ -475,6 +571,7 @@ export const getMyBids = query({
       if (!authUser)
         return {
           page: [],
+          stats: ZERO_AUCTION_STATS,
           isDone: true,
           continueCursor: "",
           pageStatus: null,
@@ -482,64 +579,114 @@ export const getMyBids = query({
         };
       const userId = authUser.userId ?? authUser._id;
 
-      const bidsResult = await ctx.db
-        .query("bids")
-        .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
-        .order("desc")
-        // exclude voided bids from results
-        .filter((q) => q.neq(q.field("status"), "voided"))
-        .paginate(args.paginationOpts);
+      const { globalStats, auctionStatsMap, auctionsMap } =
+        await calculateUserBidStats(ctx, userId);
 
-      const uniqueAuctionIds = Array.from(
-        new Set(bidsResult.page.map((bid) => bid.auctionId))
+      const sortedAuctionIds = Array.from(auctionStatsMap.entries());
+
+      if (args.sort === "ending") {
+        sortedAuctionIds.sort(([idA], [idB]) => {
+          const auctionA = auctionsMap.get(idA);
+          const auctionB = auctionsMap.get(idB);
+
+          const statusA = auctionA?.status ?? "unknown";
+          const statusB = auctionB?.status ?? "unknown";
+
+          if (statusA === "active" && statusB !== "active") return -1;
+          if (statusA !== "active" && statusB === "active") return 1;
+
+          const timeA = auctionA?.endTime ?? Infinity;
+          const timeB = auctionB?.endTime ?? Infinity;
+
+          return timeA - timeB;
+        });
+      } else {
+        // Default to "recent"
+        sortedAuctionIds.sort(
+          (a, b) => b[1].lastBidTimestamp - a[1].lastBidTimestamp
+        );
+      }
+
+      const paginatedAuctionIds = sortedAuctionIds.map(
+        ([id]) => id as Id<"auctions">
       );
 
-      const bidsByAuction = new Map<string, number>();
+      const { numItems, cursor } = args.paginationOpts;
+      let startIndex = 0;
+      if (cursor) {
+        const index = paginatedAuctionIds.indexOf(cursor as Id<"auctions">);
+        if (index === -1) {
+          // Fallback to the beginning if cursor is invalid or not found
+          startIndex = 0;
+        } else {
+          startIndex = index + 1;
+        }
+      }
 
-      await Promise.all(
-        uniqueAuctionIds.map(async (auctionId) => {
-          const latestBid = await ctx.db
-            .query("bids")
-            .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
-            .order("desc")
-            // only consider non-voided bids
-            .filter((q) => q.neq(q.field("status"), "voided"))
-            .filter((q) => q.eq(q.field("bidderId"), userId))
-            .first();
-
-          bidsByAuction.set(auctionId, latestBid?.amount || 0);
-        })
+      const paginatedIds = paginatedAuctionIds.slice(
+        startIndex,
+        startIndex + numItems
       );
 
       const page = await Promise.all(
-        bidsResult.page.map(async (bid) => {
-          const auction = await ctx.db.get(bid.auctionId);
+        paginatedIds.map(async (auctionId) => {
+          const auction = await ctx.db.get(auctionId);
           if (!auction) return null;
 
+          const stats = auctionStatsMap.get(auctionId)!;
           const summary = await toAuctionSummary(ctx, auction);
-          const myHighestBid = bidsByAuction.get(auction._id) || 0;
+
+          const isWinning =
+            auction.status === "active" &&
+            stats.highestBid === auction.currentPrice &&
+            auction.winnerId === userId;
+          const isWon =
+            auction.status === "sold" && auction.winnerId === userId;
+          const isOutbid = auction.status === "active" && !isWinning;
+          const isCancelled = auction.status === "rejected";
 
           return {
             ...summary,
-            myHighestBid,
-            isWinning:
-              auction.status === "active" &&
-              myHighestBid === auction.currentPrice,
-            isWon: auction.status === "sold" && auction.winnerId === userId,
-            bidAmount: bid.amount,
-            bidTimestamp: bid.timestamp,
+            myHighestBid: stats.highestBid,
+            bidCount: stats.bidCount,
+            isWinning,
+            isWon,
+            isOutbid,
+            isCancelled,
+            lastBidTimestamp: stats.lastBidTimestamp,
           };
         })
       );
 
+      const filteredPage = page.filter(
+        (a): a is NonNullable<typeof a> => a !== null
+      );
+
+      const isDone = startIndex + numItems >= paginatedAuctionIds.length;
+      let continueCursor = "";
+      if (filteredPage.length > 0) {
+        continueCursor = filteredPage[filteredPage.length - 1]._id;
+      } else if (!isDone && paginatedAuctionIds.length > 0) {
+        // Pagination stalling fix: advance cursor even if slice is empty
+        continueCursor =
+          paginatedAuctionIds[
+            Math.min(startIndex + numItems - 1, paginatedAuctionIds.length - 1)
+          ];
+      }
+
       return {
-        ...bidsResult,
-        page: page.filter((a): a is NonNullable<typeof a> => a !== null),
+        page: filteredPage,
+        stats: globalStats,
+        isDone,
+        continueCursor,
+        pageStatus: null,
+        splitCursor: null,
       };
     } catch (err) {
       if (err instanceof Error && err.message.includes("Unauthenticated")) {
         return {
           page: [],
+          stats: ZERO_AUCTION_STATS,
           isDone: true,
           continueCursor: "",
           pageStatus: null,
@@ -552,6 +699,13 @@ export const getMyBids = query({
   },
 });
 
+/**
+ * Fetches the paginated list of auctions created by the authenticated user.
+ *
+ * @param ctx - Convex Query Context
+ * @param args - Pagination options
+ * @returns Paginated results containing the user's auction listings.
+ */
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -603,6 +757,76 @@ export const getMyListings = query({
     }
   },
 });
+
+/**
+ * Helper to calculate aggregate bid statistics and per-auction highest bids for a user.
+ *
+ * @param ctx - Query context
+ * @param userId - ID of the user to calculate stats for
+ * @returns An object containing the aggregated stats and a map of per-auction bid information
+ */
+export async function calculateUserBidStats(
+  ctx: QueryCtx,
+  userId: string
+): Promise<CalculateUserBidStatsResult> {
+  const allUserBids = await ctx.db
+    .query("bids")
+    .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+    .filter((q) => q.neq(q.field("status"), "voided"))
+    .collect();
+
+  const auctionStatsMap = new Map<string, AuctionBidStats>();
+
+  for (const bid of allUserBids) {
+    const stats = auctionStatsMap.get(bid.auctionId) || {
+      lastBidTimestamp: 0,
+      highestBid: 0,
+      bidCount: 0,
+    };
+    stats.bidCount++;
+    if (bid.amount > stats.highestBid) {
+      stats.highestBid = bid.amount;
+    }
+    if (bid.timestamp > stats.lastBidTimestamp) {
+      stats.lastBidTimestamp = bid.timestamp;
+    }
+    auctionStatsMap.set(bid.auctionId, stats);
+  }
+
+  const globalStats: GlobalUserBidStats = {
+    totalActive: 0,
+    winningCount: 0,
+    outbidCount: 0,
+    totalExposure: 0,
+  };
+  const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
+  const fullAuctions = await Promise.all(
+    auctionIds.map((id) => ctx.db.get(id))
+  );
+
+  const auctionsMap = new Map<string, Doc<"auctions"> | null>();
+
+  fullAuctions.forEach((auction: Doc<"auctions"> | null, index: number) => {
+    auctionsMap.set(auctionIds[index], auction);
+    if (!auction) return;
+    const stats = auctionStatsMap.get(auctionIds[index])!;
+
+    if (auction.status === "active") {
+      globalStats.totalActive++;
+      const isWinning =
+        stats.highestBid === auction.currentPrice &&
+        auction.winnerId === userId;
+      if (isWinning) {
+        globalStats.winningCount++;
+        globalStats.totalExposure += stats.highestBid;
+      } else {
+        globalStats.outbidCount++;
+      }
+    }
+  });
+
+  return { globalStats, auctionStatsMap, auctionsMap };
+}
 
 /**
  * Get flags for a specific auction (admin only).

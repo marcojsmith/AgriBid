@@ -9,6 +9,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    env: {
+      ALLOW_PII_DEV_FALLBACK: "true",
+      CONVEX_SITE_URL: "http://localhost:3000",
+      PII_ENCRYPTION_KEY: "12345678901234567890123456789012",
+    },
   },
   resolve: {
     alias: {

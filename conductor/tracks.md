@@ -16,6 +16,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Archive
 
+- [x] **Track: My Bids Page - Group Bids by Auction**
+*Link: [./archive/my_bids_grouping_20260302/](./archive/my_bids_grouping_20260302/)*
+
 - [x] **Track: Listing Lifecycle & Management (Drafts & Refinement)**
 *Link: [./archive/listing_lifecycle_management_20260301/](./archive/listing_lifecycle_management_20260301/)*
 
