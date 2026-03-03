@@ -56,7 +56,7 @@
 - [ ] Optimize `readReceipts` with batching to avoid N+1 patterns (#66)
 
 ### Convex Mutations
-- [x] `createAuction` - create new auction (seller only)
+- [x] `createAuction` - create new auction
 - [ ] `updateAuction` - edit draft auction
 - [ ] `publishAuction` - change status from "draft" to "active"
 - [x] `placeBid` - place a bid with soft close logic
@@ -93,7 +93,7 @@
 - [ ] Enhance profile page with more user details and stats (#131)
 
 ### Role-Based Access
-- [x] Buyer role: can bid, watchlist, view auctions
+- [x] Buyer role: can bid, watchlist, view auctions, create listings
 - [x] Seller role: can create listings, view analytics
 - [x] Admin role: can approve sellers, flag listings, view audit logs
 - [x] Implement route guards for role-specific pages (AdminDashboard)
