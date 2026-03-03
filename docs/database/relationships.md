@@ -191,7 +191,7 @@ Each watchlist entry references exactly one auction.
 A user can receive multiple notifications.
 
 - **Profile Side:** Primary entity
-- **Notification Side:** `recipientId` field references profile's `userId` (or "all" for announcements)
+- **Notification Side:** `recipientId` field references profile's `userId` or holds the literal "all" for platform-wide announcements. This is a polymorphic reference managed at the application level and not enforced by a database foreign key constraint.
 
 **Cardinality:** 1 : 0..N
 
@@ -253,7 +253,7 @@ A support ticket may be related to a specific auction.
 - **Auction Side:** Optional referenced entity
 - **Ticket Side:** `auctionId` field optionally references auction
 
-**Cardinality:** 0..1 : 0..N
+**Cardinality:** 0..N : 0..1 (auctions : supportTickets)
 
 ---
 
@@ -284,7 +284,7 @@ An admin user can perform multiple actions that are logged.
 | `proxy_bids` | `profiles` | `bidderId` | Many-to-One |
 | `watchlist` | `auctions` | `auctionId` | Many-to-One |
 | `watchlist` | `profiles` | `userId` | Many-to-One |
-| `notifications` | `profiles` | `recipientId` | Many-to-One |
+| `notifications` | `profiles` | `recipientId` | Many-to-One (Application-level) |
 | `readReceipts` | `notifications` | `notificationId` | Many-to-One |
 | `readReceipts` | `profiles` | `userId` | Many-to-One |
 | `supportTickets` | `profiles` | `userId` | Many-to-One |

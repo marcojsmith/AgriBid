@@ -196,7 +196,7 @@ export function RoleProtectedRoute({
 ```typescript
 // Protect routes
 <Route path="/sell" element={
-  <RoleProtectedRoute allowedRoles={["seller", "admin"]}>
+  <RoleProtectedRoute allowedRoles={["buyer", "seller", "admin"]}>
     <SellPage />
   </RoleProtectedRoute>
 } />
@@ -340,9 +340,9 @@ Users can only access their own data:
 
 | Scenario | Expected Result |
 |----------|-----------------|
-| Guest tries to access /sell | Redirect to login |
-| Buyer tries to access /admin | Redirect to home |
-| Seller tries to bid on own auction | Error message |
+| Guest attempts to access /sell | Redirect to login |
+| Buyer attempts to access /admin | Redirect to home |
+| Seller attempts to bid on their own auction | Error message |
 | Admin accesses all pages | Allowed |
 
 ---
