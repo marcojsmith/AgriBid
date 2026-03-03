@@ -61,7 +61,6 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       if (savedStep) {
         const step = parseInt(savedStep, 10);
         if (Number.isInteger(step) && step >= 0 && step <= 5) {
-           
           setCurrentStep(() => step);
         }
       }

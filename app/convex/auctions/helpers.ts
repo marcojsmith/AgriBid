@@ -130,7 +130,7 @@ export const AuctionSummaryValidator = v.object({
   durationDays: v.optional(v.number()),
   sellerId: v.string(),
   status: v.string(),
-  winnerId: v.optional(v.string()),
+  winnerId: v.optional(v.union(v.string(), v.null())),
   description: v.optional(v.string()),
   conditionReportUrl: v.optional(v.string()),
   isExtended: v.optional(v.boolean()),
@@ -216,7 +216,7 @@ export const AuctionDetailValidator = v.object({
   startTime: v.optional(v.number()),
   endTime: v.optional(v.number()),
   isExtended: v.optional(v.boolean()),
-  winnerId: v.optional(v.string()),
+  winnerId: v.optional(v.union(v.string(), v.null())),
   seedId: v.optional(v.string()),
   conditionReportUrl: v.optional(v.string()),
 });

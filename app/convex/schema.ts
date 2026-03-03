@@ -33,7 +33,7 @@ export default defineSchema({
       v.literal("unsold"),
       v.literal("rejected")
     ),
-    winnerId: v.optional(v.string()),
+    winnerId: v.optional(v.union(v.string(), v.null())),
     images: v.union(
       v.object({
         front: v.optional(v.string()), // storageId
@@ -108,6 +108,7 @@ export default defineSchema({
   })
     .index("by_auction", ["auctionId", "timestamp"])
     .index("by_bidder", ["bidderId"])
+    .index("by_bidder_auction", ["bidderId", "auctionId"])
     .index("by_timestamp", ["timestamp"]),
 
   proxy_bids: defineTable({
