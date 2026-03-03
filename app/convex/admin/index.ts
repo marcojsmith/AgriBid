@@ -110,15 +110,23 @@ export const voidBid = mutation({
     const newPrice = latestValidBid
       ? latestValidBid.amount
       : auction.startingPrice;
+    const newWinnerId = latestValidBid ? latestValidBid.bidderId : null;
 
-    await ctx.db.patch(bid.auctionId, { currentPrice: newPrice });
+    const patchData: { currentPrice: number; winnerId?: string | null } = {
+      currentPrice: newPrice,
+    };
+    if (auction.winnerId !== newWinnerId) {
+      patchData.winnerId = newWinnerId;
+    }
+
+    await ctx.db.patch(bid.auctionId, patchData);
 
     // Log Action
     await logAudit(ctx, {
       action: "VOID_BID",
       targetId: args.bidId,
       targetType: "bid",
-      details: `Reason: ${args.reason}. New Price: ${newPrice}`,
+      details: `Reason: ${args.reason}. New Price: ${newPrice}${auction.winnerId !== newWinnerId ? `. Winner recalculated to ${newWinnerId}` : ""}`,
     });
 
     return { success: true };
@@ -390,7 +398,10 @@ export const syncAuctionWinners = mutation({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new Error("Unauthorized");
 
-    const batchSize = Math.min(args.batchSize || 50, 100);
+    const batchSize = Math.max(
+      1,
+      Math.min(Math.floor(Number(args.batchSize ?? 50) || 50), 100)
+    );
 
     const query = ctx.db.query("auctions");
 

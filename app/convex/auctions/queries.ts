@@ -453,6 +453,31 @@ export const getAllAuctions = query({
   },
 });
 
+const ZERO_AUCTION_STATS = {
+  totalActive: 0,
+  winningCount: 0,
+  outbidCount: 0,
+  totalExposure: 0,
+};
+
+export interface GlobalUserBidStats {
+  totalActive: number;
+  winningCount: number;
+  outbidCount: number;
+  totalExposure: number;
+}
+
+export interface AuctionBidStats {
+  lastBidTimestamp: number;
+  highestBid: number;
+  bidCount: number;
+}
+
+export interface CalculateUserBidStatsResult {
+  globalStats: GlobalUserBidStats;
+  auctionStatsMap: Map<string, AuctionBidStats>;
+}
+
 /**
  * Fetches bidding statistics for the authenticated user, including active bid counts
  * and total financial exposure across winning auctions.
@@ -471,29 +496,28 @@ export const getMyBidsStats = query({
   handler: async (ctx) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser)
-        return {
-          totalActive: 0,
-          winningCount: 0,
-          outbidCount: 0,
-          totalExposure: 0,
-        };
+      if (!authUser) return ZERO_AUCTION_STATS;
+
       const userId = authUser.userId ?? authUser._id;
 
       const { globalStats } = await calculateUserBidStats(ctx, userId);
       return globalStats;
     } catch (err) {
       console.error("getMyBidsStats failure:", err);
-      return {
-        totalActive: 0,
-        winningCount: 0,
-        outbidCount: 0,
-        totalExposure: 0,
-      };
+      return ZERO_AUCTION_STATS;
     }
   },
 });
 
+/**
+ * Fetches the paginated list of bids for the authenticated user, grouped by auction.
+ * Calculates real-time bid statistics (myHighestBid, bidCount, isWinning, isWon, etc.)
+ * and includes global statistics for the user's bids.
+ *
+ * @param ctx - Convex Query Context
+ * @param args - Pagination options
+ * @returns Paginated results containing auctions with bid-specific statistics, plus global stats.
+ */
 export const getMyBids = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -526,12 +550,7 @@ export const getMyBids = query({
       if (!authUser)
         return {
           page: [],
-          stats: {
-            totalActive: 0,
-            winningCount: 0,
-            outbidCount: 0,
-            totalExposure: 0,
-          },
+          stats: ZERO_AUCTION_STATS,
           isDone: true,
           continueCursor: "",
           pageStatus: null,
@@ -553,16 +572,11 @@ export const getMyBids = query({
       if (cursor) {
         const index = (sortedAuctionIds as string[]).indexOf(cursor);
         if (index === -1) {
-          return {
-            page: [],
-            stats: globalStats,
-            isDone: true,
-            continueCursor: "",
-            pageStatus: null,
-            splitCursor: null,
-          };
+          // Fallback to the beginning if cursor is invalid or not found
+          startIndex = 0;
+        } else {
+          startIndex = index + 1;
         }
-        startIndex = index + 1;
       }
 
       const paginatedIds = sortedAuctionIds.slice(
@@ -628,12 +642,7 @@ export const getMyBids = query({
       if (err instanceof Error && err.message.includes("Unauthenticated")) {
         return {
           page: [],
-          stats: {
-            totalActive: 0,
-            winningCount: 0,
-            outbidCount: 0,
-            totalExposure: 0,
-          },
+          stats: ZERO_AUCTION_STATS,
           isDone: true,
           continueCursor: "",
           pageStatus: null,
@@ -646,6 +655,13 @@ export const getMyBids = query({
   },
 });
 
+/**
+ * Fetches the paginated list of auctions created by the authenticated user.
+ *
+ * @param ctx - Convex Query Context
+ * @param args - Pagination options
+ * @returns Paginated results containing the user's auction listings.
+ */
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -705,21 +721,17 @@ export const getMyListings = query({
  * @param userId - ID of the user to calculate stats for
  * @returns An object containing the aggregated stats and a map of per-auction bid information
  */
-export async function calculateUserBidStats(ctx: QueryCtx, userId: string) {
+export async function calculateUserBidStats(
+  ctx: QueryCtx,
+  userId: string
+): Promise<CalculateUserBidStatsResult> {
   const allUserBids = await ctx.db
     .query("bids")
     .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
     .filter((q) => q.neq(q.field("status"), "voided"))
     .collect();
 
-  const auctionStatsMap = new Map<
-    string,
-    {
-      lastBidTimestamp: number;
-      highestBid: number;
-      bidCount: number;
-    }
-  >();
+  const auctionStatsMap = new Map<string, AuctionBidStats>();
 
   for (const bid of allUserBids) {
     const stats = auctionStatsMap.get(bid.auctionId) || {
@@ -737,7 +749,7 @@ export async function calculateUserBidStats(ctx: QueryCtx, userId: string) {
     auctionStatsMap.set(bid.auctionId, stats);
   }
 
-  const globalStats = {
+  const globalStats: GlobalUserBidStats = {
     totalActive: 0,
     winningCount: 0,
     outbidCount: 0,

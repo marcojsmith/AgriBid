@@ -89,7 +89,7 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
       label: "WINNING",
       variant: "secondary",
       icon: <TrendingUp className="h-3 w-3 mr-1" />,
-      colorClass: "bg-blue-600 hover:bg-blue-700 text-white",
+      colorClass: "bg-green-600 hover:bg-green-700 text-white",
     };
   }
   if (auction.isOutbid) {
@@ -292,7 +292,10 @@ export default function MyBids() {
             <div className="flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[180px] font-bold text-xs uppercase tracking-widest bg-muted/30 border-2 transition-[border-color,background-color]">
+                <SelectTrigger
+                  aria-label="Sort bids"
+                  className="w-[180px] font-bold text-xs uppercase tracking-widest bg-muted/30 border-2 transition-[border-color,background-color]"
+                >
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -366,7 +369,7 @@ export default function MyBids() {
                       </Badge>
                     </div>
 
-                    {auction.status === "active" && (
+                    {auction.status === "active" && auction.endTime != null && (
                       <div className="absolute bottom-2 right-2">
                         <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 shadow-lg">
                           <div className="flex items-center gap-1.5">
