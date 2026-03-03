@@ -118,7 +118,6 @@ User Clicks "Create Listing"
 ### Step 3: Media Gallery
 
 **Image Requirements:**
-**Image Requirements:**
 
 | Slot | Required | Description |
 |------|----------|-------------|

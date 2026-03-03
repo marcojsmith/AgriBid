@@ -90,22 +90,29 @@ This document describes role-based access control (RBAC), permissions, and autho
 
 ### Authorization Utilities
 
-Located in `app/convex/lib/auth.ts`:
+Located in `app/convex/lib/auth.ts`. Choose the utility that matches your required access level:
 
+**1. Optional Authentication (Guests allowed)**
 ```typescript
-// Get current user (may be null)
+// returns user object or null
 const authUser = await getAuthUser(ctx);
+```
 
-// Require authentication (throws if not)
-const authUser = await requireAuth(ctx);
+**2. Mandatory Authentication (Guests blocked)**
+```typescript
+// returns user object or throws "Not authenticated"
+const user = await requireAuth(ctx);
+```
 
-// Require admin role (throws if not admin)
+**3. Role & Verification Checks**
+```typescript
+// Throws if not admin
 const admin = await requireAdmin(ctx);
 
-// Require verified status (throws if not verified)
+// Throws if not KYC verified
 const verified = await requireVerified(ctx);
 
-// Get user's profile with auth
+// Returns { profile, userId } or throws
 const { profile, userId } = await requireProfile(ctx);
 ```
 
@@ -121,6 +128,9 @@ export const placeBid = mutation({
     
     // 2. Get auction
     const auction = await ctx.db.get(args.auctionId);
+    if (!auction) {
+      throw new Error("Auction not found");
+    }
     
     // 3. Prevent self-bidding
     if (auction.sellerId === userId) {
@@ -284,7 +294,7 @@ export const reviewKYC = mutation({
 
 ## Permission Check Examples
 
-### Seller Creating Listing
+### Roles Allowed to Create Listings
 
 ```typescript
 // Can user create listing?
