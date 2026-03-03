@@ -162,15 +162,33 @@ export default function MyListings() {
       durationDays: auction.durationDays ?? 7,
     };
 
-    localStorage.setItem("agribid_listing_draft", JSON.stringify(draftData));
-    localStorage.setItem("agribid_listing_step", "0");
+    try {
+      localStorage.setItem("agribid_listing_draft", JSON.stringify(draftData));
+      localStorage.setItem("agribid_listing_step", "0");
+    } catch (e) {
+      console.warn("Failed to save draft to localStorage:", e);
+    }
     navigate(`/sell?edit=${auction._id}`);
   };
 
-  const getStatusCount = (status: StatusFilter) => {
-    if (status === "all") return listings.length;
-    return listings.filter((l) => l.status === status).length;
-  };
+  const counts = useMemo(() => {
+    const acc: Record<StatusFilter, number> = {
+      all: listings.length,
+      draft: 0,
+      pending_review: 0,
+      active: 0,
+      sold: 0,
+      unsold: 0,
+    };
+    for (const listing of listings) {
+      if (listing.status in acc) {
+        acc[listing.status as keyof typeof acc]++;
+      }
+    }
+    return acc;
+  }, [listings]);
+
+  const getStatusCount = (status: StatusFilter) => counts[status];
 
   if (status === "LoadingFirstPage") {
     return (
@@ -195,9 +213,14 @@ export default function MyListings() {
           size="lg"
           className="rounded-xl font-bold shadow-lg shadow-primary/20"
           onClick={() => {
-            localStorage.removeItem("agribid_listing_draft");
-            localStorage.removeItem("agribid_listing_step");
-            navigate("/sell");
+            try {
+              localStorage.removeItem("agribid_listing_draft");
+              localStorage.removeItem("agribid_listing_step");
+            } catch (e) {
+              console.warn("Failed to clear localStorage:", e);
+            } finally {
+              navigate("/sell");
+            }
           }}
         >
           <Plus className="h-4 w-4 mr-2" />

@@ -52,7 +52,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
           const parsed = JSON.parse(savedDraft);
           const normalized = validateAndNormalizeDraft(parsed);
           // eslint-disable-next-line react-hooks/set-state-in-effect
-          setFormData(normalized);
+          setFormData(() => normalized);
         } catch {
           // silently fallback to DEFAULT_FORM_DATA
         }
@@ -60,8 +60,9 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedStep = localStorage.getItem("agribid_listing_step");
       if (savedStep) {
         const step = parseInt(savedStep, 10);
-        if (!isNaN(step)) {
-          setCurrentStep(step);
+        if (Number.isInteger(step) && step >= 0 && step <= 5) {
+           
+          setCurrentStep(() => step);
         }
       }
     }

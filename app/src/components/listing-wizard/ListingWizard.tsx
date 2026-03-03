@@ -191,13 +191,13 @@ const ListingWizardContent = () => {
 
       if (finalAuctionId) {
         // Persist local edits before publishing
-        await saveDraft({
+        const savedId = await saveDraft({
           auctionId: finalAuctionId as Id<"auctions">,
           ...auctionData,
         });
         // Then submit it
         await submitForReview({
-          auctionId: finalAuctionId as Id<"auctions">,
+          auctionId: savedId as Id<"auctions">,
         });
       } else {
         // Create a new auction directly as pending_review

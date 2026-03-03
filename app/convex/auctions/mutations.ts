@@ -233,6 +233,18 @@ export const createAuction = mutation({
     const images = normalizeImages(restArgs.images);
     const status = isDraft ? "draft" : "pending_review";
 
+    if (!isDraft) {
+      validateAuctionBeforePublish({
+        ...restArgs,
+        images,
+        sellerId: userId,
+        status,
+        currentPrice: args.startingPrice,
+        minIncrement: args.startingPrice < 10000 ? 100 : 500,
+        durationDays: durationDays,
+      } as unknown as Doc<"auctions">);
+    }
+
     const auctionId = await ctx.db.insert("auctions", {
       ...restArgs,
       images,
@@ -319,6 +331,15 @@ export const saveDraft = mutation({
       assertOwnership(existing, userId);
       assertEditable(existing);
 
+      if (existing.status === "pending_review") {
+        const mergedState = {
+          ...existing,
+          ...restArgs,
+          images,
+        } as Doc<"auctions">;
+        validateAuctionBeforePublish(mergedState);
+      }
+
       await ctx.db.patch(validAuctionId, {
         ...restArgs,
         images,
@@ -390,7 +411,20 @@ export const updateAuctionHandler = async (
 
   // Merge images if provided to prevent overwriting other slots
   if (updates.images) {
-    const existingImages = Array.isArray(auction.images) ? {} : auction.images;
+    let existingImages: Record<string, string | string[] | undefined> = {};
+    if (Array.isArray(auction.images)) {
+      if (auction.images.length > 0) {
+        existingImages.front = auction.images[0];
+        if (auction.images.length > 1) {
+          existingImages.additional = auction.images.slice(1);
+        }
+      }
+    } else {
+      existingImages = auction.images as Record<
+        string,
+        string | string[] | undefined
+      >;
+    }
     const mergedImages = {
       ...existingImages,
       ...updates.images,
@@ -779,7 +813,7 @@ export const dismissFlag = mutation({
         )
         .collect();
 
-      if (remainingFlags.length === 0) {
+      if (remainingFlags.length < FLAG_THRESHOLD) {
         await ctx.db.patch(flag.auctionId, {
           status: "active",
           hiddenByFlags: false,

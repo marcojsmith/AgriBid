@@ -228,15 +228,26 @@ export const getActiveAuctions = query({
 
     // Manual pagination for complex queries
     const numItems = args.paginationOpts.numItems;
-    const startIndex = 0; // In a real app we'd use the cursor
+    let startIndex = 0;
+    if (args.paginationOpts.cursor !== null) {
+      try {
+        startIndex = parseInt(args.paginationOpts.cursor, 10);
+      } catch {
+        startIndex = 0;
+      }
+    }
     const page = filteredAuctions.slice(startIndex, startIndex + numItems);
+    const continueCursor =
+      startIndex + numItems < filteredAuctions.length
+        ? (startIndex + numItems).toString()
+        : "";
 
     return {
       page: await Promise.all(
         page.map((auction) => toAuctionSummary(ctx, auction))
       ),
-      isDone: filteredAuctions.length <= startIndex + numItems,
-      continueCursor: "", // Simplification
+      isDone: continueCursor === "",
+      continueCursor,
     };
   },
 });
