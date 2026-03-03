@@ -90,9 +90,7 @@ const ListingWizardContent = () => {
       const images = normalizeListingImages(formData.images);
 
       const id = await saveDraft({
-        auctionId: editingAuctionId
-          ? (editingAuctionId as Id<"auctions">)
-          : (formData.auctionId as Id<"auctions"> | undefined),
+        auctionId: editingAuctionId || formData.auctionId || undefined,
         title: formData.title,
         make: formData.make,
         model: formData.model,
@@ -116,14 +114,9 @@ const ListingWizardContent = () => {
       setDraftSaved(true);
       toast.success("Draft saved successfully!");
 
-      // Update in-memory state and local storage with the new auctionId if it was just created
+      // Update in-memory state with the new auctionId if it was just created
       if (!formData.auctionId && id) {
         updateField("auctionId", id);
-        const updatedData = { ...formData, auctionId: id };
-        localStorage.setItem(
-          "agribid_listing_draft",
-          JSON.stringify(updatedData)
-        );
       }
     } catch (error) {
       console.error("Draft save failed", {

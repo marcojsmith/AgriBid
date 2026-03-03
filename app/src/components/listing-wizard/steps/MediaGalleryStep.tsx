@@ -1,5 +1,14 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, X, CheckCircle2, Plus, Info, Check } from "lucide-react";
+import {
+  Camera,
+  X,
+  CheckCircle2,
+  Plus,
+  Info,
+  Check,
+  Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListingWizard } from "../hooks/useListingWizard";
 import { useListingMedia } from "../hooks/useListingMedia";
@@ -9,18 +18,29 @@ export const MediaGalleryStep = () => {
   const { formData, previews, isSubmitting } = useListingWizard();
   const { handleUpload, handleAdditionalUpload, handleRemove } =
     useListingMedia();
+  const [uploadingSlots, setUploadingSlots] = React.useState<
+    Record<string, boolean>
+  >({});
 
-  const handleFileChange = (
+  const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     slotId: string
   ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (slotId === "additional") {
-      handleAdditionalUpload(Array.from(files));
-    } else {
-      handleUpload(slotId as "front" | "engine" | "cabin" | "rear", files[0]);
+    setUploadingSlots((prev) => ({ ...prev, [slotId]: true }));
+    try {
+      if (slotId === "additional") {
+        await handleAdditionalUpload(Array.from(files));
+      } else {
+        await handleUpload(
+          slotId as "front" | "engine" | "cabin" | "rear",
+          files[0]
+        );
+      }
+    } finally {
+      setUploadingSlots((prev) => ({ ...prev, [slotId]: false }));
     }
   };
 
@@ -84,7 +104,7 @@ export const MediaGalleryStep = () => {
                     id={`file-upload-${slot.id}`}
                     aria-label={`Upload image for slot ${slot.label}`}
                     onChange={(e) => handleFileChange(e, slot.id)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || uploadingSlots[slot.id]}
                   />
                   <label
                     htmlFor={`file-upload-${slot.id}`}
@@ -93,7 +113,11 @@ export const MediaGalleryStep = () => {
                     )}
                   >
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Camera className="h-6 w-6 text-primary" />
+                      {uploadingSlots[slot.id] ? (
+                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                      ) : (
+                        <Camera className="h-6 w-6 text-primary" />
+                      )}
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-black uppercase tracking-tight">
@@ -152,13 +176,17 @@ export const MediaGalleryStep = () => {
                 id="file-upload-additional"
                 aria-label="Upload additional photo"
                 onChange={(e) => handleFileChange(e, "additional")}
-                disabled={isSubmitting}
+                disabled={isSubmitting || uploadingSlots["additional"]}
               />
               <label
                 htmlFor="file-upload-additional"
                 className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer"
               >
-                <Plus className="h-5 w-5 text-muted-foreground" />
+                {uploadingSlots["additional"] ? (
+                  <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                ) : (
+                  <Plus className="h-5 w-5 text-muted-foreground" />
+                )}
                 <span className="text-[8px] font-bold uppercase">
                   Add Photo
                 </span>

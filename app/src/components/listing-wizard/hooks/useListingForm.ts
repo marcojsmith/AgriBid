@@ -32,6 +32,21 @@ export function useListingForm() {
         )
           return "Operating hours are required";
         return null;
+      case 3: {
+        // Media Gallery
+        const hasImages = Array.isArray(formData.images)
+          ? formData.images.length > 0
+          : !!(
+              formData.images?.front ||
+              formData.images?.engine ||
+              formData.images?.cabin ||
+              formData.images?.rear ||
+              (formData.images?.additional &&
+                formData.images.additional.length > 0)
+            );
+        if (!hasImages) return "At least one photo is required";
+        return null;
+      }
       case 4: // Pricing
         if (!formData.startingPrice || formData.startingPrice <= 0)
           return "Starting price must be greater than 0";

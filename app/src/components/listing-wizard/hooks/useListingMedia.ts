@@ -38,10 +38,15 @@ export function useListingMedia() {
   ) => {
     // 1. Create local preview
     const blobUrl = URL.createObjectURL(file);
-    setPreviews((prev: Record<string, string>) => ({
-      ...prev,
-      [slotId]: blobUrl,
-    }));
+    setPreviews((prev: Record<string, string>) => {
+      if (prev[slotId]?.startsWith("blob:")) {
+        URL.revokeObjectURL(prev[slotId]);
+      }
+      return {
+        ...prev,
+        [slotId]: blobUrl,
+      };
+    });
 
     try {
       // 2. Get upload URL from Convex

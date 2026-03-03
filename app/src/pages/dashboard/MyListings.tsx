@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Id } from "convex/_generated/dataModel";
 
+import { normalizeListingImages } from "@/lib/normalize-images";
+
 type StatusFilter =
   | "all"
   | "draft"
@@ -136,27 +138,7 @@ export default function MyListings() {
     }
   };
 
-  /**
-   * Normalizes images for the edit flow.
-   * Ensures /sell always receives a predictable images object with an additional array.
-   */
-  const normalizeImagesForDraft = (images: AuctionEditPayload["images"]) => {
-    if (Array.isArray(images)) {
-      return {
-        front: images[0] || "",
-        additional: images.slice(1),
-      };
-    }
-    if (images && typeof images === "object") {
-      return {
-        ...images,
-        additional: Array.isArray(images.additional) ? images.additional : [],
-      };
-    }
-    return { additional: [] };
-  };
-
-  const handleEdit = (auction: AuctionEditPayload) => {
+  const handleEdit = (auction: (typeof listings)[0]) => {
     // Save to local storage and redirect to /sell?edit=ID
     const draftData = {
       auctionId: auction._id,
@@ -174,7 +156,7 @@ export default function MyListings() {
         serviceHistory: auction.conditionChecklist?.serviceHistory ?? null,
         notes: auction.conditionChecklist?.notes ?? "",
       },
-      images: normalizeImagesForDraft(auction.images),
+      images: normalizeListingImages(auction.images),
       startingPrice: auction.startingPrice,
       reservePrice: auction.reservePrice,
       durationDays: auction.durationDays ?? 7,
@@ -339,7 +321,7 @@ export default function MyListings() {
                       variant="secondary"
                       size="sm"
                       className="flex-1 md:flex-none font-bold"
-                      onClick={() => handleEdit(auction as AuctionEditPayload)}
+                      onClick={() => handleEdit(auction)}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit

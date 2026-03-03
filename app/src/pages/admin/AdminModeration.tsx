@@ -40,6 +40,7 @@ interface PendingFlag {
   status: "pending" | "reviewed" | "dismissed";
   auctionTitle: string;
   reporterName: string;
+  createdAt: number;
 }
 
 /**

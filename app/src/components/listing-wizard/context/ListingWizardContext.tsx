@@ -14,22 +14,27 @@ import { ListingWizardContext } from "./ListingWizardContextDef";
 export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [formData, setFormData] = useState<ListingFormData>(() => {
-    const saved = localStorage.getItem("agribid_listing_draft");
-    if (saved) {
-      try {
-        return { ...DEFAULT_FORM_DATA, ...JSON.parse(saved) };
-      } catch {
-        return DEFAULT_FORM_DATA;
+  const [formData, setFormData] = useState<ListingFormData>(DEFAULT_FORM_DATA);
+  const [currentStep, setCurrentStep] = useState<number>(0);
+
+  // Initialize from localStorage on client side only to avoid SSR mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedDraft = localStorage.getItem("agribid_listing_draft");
+      if (savedDraft) {
+        try {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setFormData({ ...DEFAULT_FORM_DATA, ...JSON.parse(savedDraft) });
+        } catch {
+          // silently fallback to DEFAULT_FORM_DATA
+        }
+      }
+      const savedStep = localStorage.getItem("agribid_listing_step");
+      if (savedStep) {
+        setCurrentStep(parseInt(savedStep, 10));
       }
     }
-    return DEFAULT_FORM_DATA;
-  });
-
-  const [currentStep, setCurrentStep] = useState<number>(() => {
-    const saved = localStorage.getItem("agribid_listing_step");
-    return saved ? parseInt(saved, 10) : 0;
-  });
+  }, []);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);

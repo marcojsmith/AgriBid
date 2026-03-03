@@ -233,6 +233,8 @@ export const AuctionDetailValidator = v.object({
  */
 export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
   const seller = await findUserById(ctx, auction.sellerId);
+  const identity = await ctx.auth.getUserIdentity();
+  const isAuthenticated = identity !== null;
 
   return {
     _id: auction._id,
@@ -253,7 +255,7 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     endTime: auction.endTime,
     status: auction.status,
     sellerId: auction.sellerId,
-    sellerEmail: seller?.email ?? undefined,
+    sellerEmail: isAuthenticated ? (seller?.email ?? undefined) : undefined,
     winnerId: auction.winnerId,
     isExtended: auction.isExtended,
     seedId: auction.seedId,

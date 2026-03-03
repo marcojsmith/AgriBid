@@ -129,6 +129,7 @@ export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
     });
 
     await updateCounter(ctx, "auctions", "total", -deleted);
+    await updateCounter(ctx, "auctions", "draft", -deleted);
   }
 
   console.log(`Cleanup: deleted ${deleted} draft auctions, ${errors} errors`);

@@ -93,6 +93,7 @@ export async function updateCounter(
       verified: field === "verified" ? initialValue : 0,
       open: field === "open" ? initialValue : 0,
       resolved: field === "resolved" ? initialValue : 0,
+      draft: field === "draft" ? initialValue : 0,
       updatedAt: Date.now(),
     });
   }

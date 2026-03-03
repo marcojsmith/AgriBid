@@ -115,13 +115,15 @@ function validateAuctionBeforePublish(auction: Doc<"auctions">): void {
     throw new ConvexError("Reserve price must be greater than zero");
   }
 
-  const hasImages =
-    !Array.isArray(auction.images) &&
-    (auction.images.front ||
-      auction.images.engine ||
-      auction.images.cabin ||
-      auction.images.rear ||
-      (auction.images.additional && auction.images.additional.length > 0));
+  const hasImages = Array.isArray(auction.images)
+    ? auction.images.length > 0
+    : !!(
+        auction.images.front ||
+        auction.images.engine ||
+        auction.images.cabin ||
+        auction.images.rear ||
+        (auction.images.additional && auction.images.additional.length > 0)
+      );
 
   if (!hasImages) {
     throw new ConvexError("At least one image is required before submitting");
@@ -258,7 +260,7 @@ export const createAuction = mutation({
  */
 export const saveDraft = mutation({
   args: {
-    auctionId: v.optional(v.id("auctions")),
+    auctionId: v.optional(v.string()),
     title: v.string(),
     make: v.string(),
     model: v.string(),
@@ -301,21 +303,28 @@ export const saveDraft = mutation({
 
     const images = normalizeImages(restArgs.images);
 
+    let validAuctionId: Id<"auctions"> | null = null;
     if (auctionId) {
-      const existing = await ctx.db.get(auctionId);
+      validAuctionId = ctx.db.normalizeId("auctions", auctionId);
+    }
+
+    if (validAuctionId) {
+      const existing = await ctx.db.get(validAuctionId);
       if (!existing) {
         throw new ConvexError("Auction not found");
       }
       assertOwnership(existing, userId);
       assertEditable(existing);
 
-      await ctx.db.patch(auctionId, {
+      await ctx.db.patch(validAuctionId, {
         ...restArgs,
         images,
         durationDays,
+        currentPrice: restArgs.startingPrice,
+        minIncrement: restArgs.startingPrice < 10000 ? 100 : 500,
       });
 
-      return auctionId;
+      return validAuctionId;
     }
 
     const newAuctionId = await ctx.db.insert("auctions", {
@@ -360,21 +369,18 @@ export const updateAuctionHandler = async (
   assertOwnership(auction, userId);
   assertEditable(auction);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updates: Record<string, any> = { ...args.updates };
+  const updates: AuctionUpdates = { ...args.updates };
 
   // If startingPrice is updated, recompute derived fields
   if (updates.startingPrice !== undefined && updates.startingPrice !== null) {
     updates.currentPrice = updates.startingPrice;
-    updates.minIncrement =
-      (updates.startingPrice as number) < 10000 ? 100 : 500;
+    updates.minIncrement = updates.startingPrice < 10000 ? 100 : 500;
   }
 
   if (
     updates.durationDays !== undefined &&
     updates.durationDays !== null &&
-    ((updates.durationDays as number) <= 0 ||
-      (updates.durationDays as number) > 365)
+    (updates.durationDays <= 0 || updates.durationDays > 365)
   ) {
     throw new ConvexError("Invalid duration: must be between 1 and 365 days");
   }
@@ -384,8 +390,7 @@ export const updateAuctionHandler = async (
     const existingImages = Array.isArray(auction.images) ? {} : auction.images;
     const mergedImages = {
       ...existingImages,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(updates.images as Record<string, any>),
+      ...updates.images,
     };
 
     if (mergedImages.additional && mergedImages.additional.length > 6) {
@@ -527,6 +532,17 @@ export const deleteDraft = mutation({
     }
 
     await deleteAuctionImages(ctx, auction.images);
+
+    if (auction.conditionReportUrl) {
+      try {
+        await ctx.storage.delete(auction.conditionReportUrl as Id<"_storage">);
+      } catch (e) {
+        console.warn(
+          `Failed to delete condition report: ${auction.conditionReportUrl}`,
+          e
+        );
+      }
+    }
 
     await ctx.db.delete(args.auctionId);
     await updateCounter(ctx, "auctions", "draft", -1);
