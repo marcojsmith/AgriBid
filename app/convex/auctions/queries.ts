@@ -460,6 +460,13 @@ const ZERO_AUCTION_STATS = {
   totalExposure: 0,
 };
 
+/**
+ * Global statistics for a user's bidding activity.
+ * - `totalActive`: The number of active auctions the user has bid on.
+ * - `winningCount`: The number of active auctions where the user is the current highest bidder.
+ * - `outbidCount`: The number of active auctions where the user has been outbid.
+ * - `totalExposure`: The total currency value of the user's current highest bids across all winning auctions.
+ */
 export interface GlobalUserBidStats {
   totalActive: number;
   winningCount: number;
@@ -467,15 +474,26 @@ export interface GlobalUserBidStats {
   totalExposure: number;
 }
 
+/**
+ * Bidding statistics for a user on a specific auction.
+ * - `lastBidTimestamp`: The epoch timestamp (ms) of the user's most recent bid on this auction.
+ * - `highestBid`: The highest currency amount the user has bid on this auction.
+ * - `bidCount`: The total number of times the user has bid on this auction.
+ */
 export interface AuctionBidStats {
   lastBidTimestamp: number;
   highestBid: number;
   bidCount: number;
 }
 
+/**
+ * Result of the user bid statistics calculation.
+ * Contains both global user statistics and a map of per-auction bid statistics.
+ */
 export interface CalculateUserBidStatsResult {
   globalStats: GlobalUserBidStats;
   auctionStatsMap: Map<string, AuctionBidStats>;
+  auctionsMap: Map<string, Doc<"auctions"> | null>;
 }
 
 /**
@@ -519,7 +537,10 @@ export const getMyBidsStats = query({
  * @returns Paginated results containing auctions with bid-specific statistics, plus global stats.
  */
 export const getMyBids = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    paginationOpts: paginationOptsValidator,
+    sort: v.optional(v.string()),
+  },
   returns: v.object({
     page: v.array(
       v.object({
@@ -558,19 +579,42 @@ export const getMyBids = query({
         };
       const userId = authUser.userId ?? authUser._id;
 
-      const { globalStats, auctionStatsMap } = await calculateUserBidStats(
-        ctx,
-        userId
-      );
+      const { globalStats, auctionStatsMap, auctionsMap } =
+        await calculateUserBidStats(ctx, userId);
 
-      const sortedAuctionIds = Array.from(auctionStatsMap.entries())
-        .sort((a, b) => b[1].lastBidTimestamp - a[1].lastBidTimestamp)
-        .map(([id]) => id as Id<"auctions">);
+      const sortedAuctionIds = Array.from(auctionStatsMap.entries());
+
+      if (args.sort === "ending") {
+        sortedAuctionIds.sort(([idA], [idB]) => {
+          const auctionA = auctionsMap.get(idA);
+          const auctionB = auctionsMap.get(idB);
+
+          const statusA = auctionA?.status ?? "unknown";
+          const statusB = auctionB?.status ?? "unknown";
+
+          if (statusA === "active" && statusB !== "active") return -1;
+          if (statusA !== "active" && statusB === "active") return 1;
+
+          const timeA = auctionA?.endTime ?? Infinity;
+          const timeB = auctionB?.endTime ?? Infinity;
+
+          return timeA - timeB;
+        });
+      } else {
+        // Default to "recent"
+        sortedAuctionIds.sort(
+          (a, b) => b[1].lastBidTimestamp - a[1].lastBidTimestamp
+        );
+      }
+
+      const paginatedAuctionIds = sortedAuctionIds.map(
+        ([id]) => id as Id<"auctions">
+      );
 
       const { numItems, cursor } = args.paginationOpts;
       let startIndex = 0;
       if (cursor) {
-        const index = (sortedAuctionIds as string[]).indexOf(cursor);
+        const index = paginatedAuctionIds.indexOf(cursor as Id<"auctions">);
         if (index === -1) {
           // Fallback to the beginning if cursor is invalid or not found
           startIndex = 0;
@@ -579,7 +623,7 @@ export const getMyBids = query({
         }
       }
 
-      const paginatedIds = sortedAuctionIds.slice(
+      const paginatedIds = paginatedAuctionIds.slice(
         startIndex,
         startIndex + numItems
       );
@@ -618,15 +662,15 @@ export const getMyBids = query({
         (a): a is NonNullable<typeof a> => a !== null
       );
 
-      const isDone = startIndex + numItems >= sortedAuctionIds.length;
+      const isDone = startIndex + numItems >= paginatedAuctionIds.length;
       let continueCursor = "";
       if (filteredPage.length > 0) {
         continueCursor = filteredPage[filteredPage.length - 1]._id;
-      } else if (!isDone && sortedAuctionIds.length > 0) {
+      } else if (!isDone && paginatedAuctionIds.length > 0) {
         // Pagination stalling fix: advance cursor even if slice is empty
         continueCursor =
-          sortedAuctionIds[
-            Math.min(startIndex + numItems - 1, sortedAuctionIds.length - 1)
+          paginatedAuctionIds[
+            Math.min(startIndex + numItems - 1, paginatedAuctionIds.length - 1)
           ];
       }
 
@@ -760,7 +804,10 @@ export async function calculateUserBidStats(
     auctionIds.map((id) => ctx.db.get(id))
   );
 
+  const auctionsMap = new Map<string, Doc<"auctions"> | null>();
+
   fullAuctions.forEach((auction: Doc<"auctions"> | null, index: number) => {
+    auctionsMap.set(auctionIds[index], auction);
     if (!auction) return;
     const stats = auctionStatsMap.get(auctionIds[index])!;
 
@@ -778,7 +825,7 @@ export async function calculateUserBidStats(
     }
   });
 
-  return { globalStats, auctionStatsMap };
+  return { globalStats, auctionStatsMap, auctionsMap };
 }
 
 /**

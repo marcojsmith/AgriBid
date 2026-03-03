@@ -36,6 +36,15 @@ interface StatusDisplay {
   colorClass: string;
 }
 
+/**
+ * Allowed statuses for an auction.
+ * - `draft`: Listing is being created, not yet published.
+ * - `pending_review`: Submitted and awaiting admin approval.
+ * - `active`: Auction is currently open for bidding.
+ * - `sold`: Auction ended with a winning bid meeting reserve.
+ * - `unsold`: Auction ended without meeting reserve or no bids.
+ * - `rejected`: Admin rejected the listing.
+ */
 type AuctionStatus =
   | "draft"
   | "pending_review"
@@ -44,23 +53,42 @@ type AuctionStatus =
   | "unsold"
   | "rejected";
 
+/**
+ * Represents the auction data and the user's bid statistics for that auction.
+ */
 interface Auction {
+  /** The unique Convex ID of the auction. */
   _id: string;
+  /** The title of the auction listing. */
   title: string;
+  /** The equipment manufacturer. */
   make: string;
+  /** The equipment model. */
   model: string;
+  /** The current highest bid or starting price if no bids. */
   currentPrice: number;
+  /** The highest bid amount placed by the current user. */
   myHighestBid: number;
+  /** The total number of bids placed by the current user on this auction. */
   bidCount: number;
+  /** The current lifecycle status of the auction. */
   status: AuctionStatus;
+  /** The epoch timestamp (ms) when the auction ends, if applicable. */
   endTime?: number;
+  /** True if the user is currently the highest bidder on an active auction. */
   isWinning: boolean;
+  /** True if the auction is sold and the user is the winner. */
   isWon: boolean;
+  /** True if the auction is active but the user is not the highest bidder. */
   isOutbid: boolean;
+  /** True if the auction was rejected. */
   isCancelled: boolean;
+  /** Images associated with the auction. */
   images: {
+    /** The main front image URL. */
     front?: string;
   };
+  /** The epoch timestamp (ms) of the user's most recent bid on this auction. */
   lastBidTimestamp?: number;
 }
 
@@ -129,7 +157,7 @@ export default function MyBids() {
     loadMore,
   } = usePaginatedQuery(
     api.auctions.queries.getMyBids,
-    {},
+    { sort: sortBy === "ending" ? "ending" : undefined },
     { initialNumItems: 50 }
   ); // Higher limit for client filtering
 
@@ -160,13 +188,6 @@ export default function MyBids() {
       result.sort(
         (a, b) => (b.lastBidTimestamp || 0) - (a.lastBidTimestamp || 0)
       );
-    } else if (sortBy === "ending") {
-      // Active auctions first, then by end time
-      result.sort((a, b) => {
-        if (a.status === "active" && b.status !== "active") return -1;
-        if (a.status !== "active" && b.status === "active") return 1;
-        return (a.endTime || 0) - (b.endTime || 0);
-      });
     } else if (sortBy === "bid") {
       result.sort((a, b) => b.myHighestBid - a.myHighestBid);
     }
