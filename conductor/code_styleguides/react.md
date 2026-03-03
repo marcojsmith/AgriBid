@@ -13,7 +13,7 @@ To maintain readability and testability, we follow these size guidelines:
 ### 1. Feature Directory Structure
 For complex features (e.g., `AdminDashboard`, `KYC`, `ListingWizard`), use a dedicated directory structure:
 
-```
+```text
 src/pages/feature-name/
 ├── context/             # React Context and Provider
 ├── hooks/               # Feature-specific custom hooks
