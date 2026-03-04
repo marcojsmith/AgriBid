@@ -116,7 +116,11 @@ export const getRecentBids = query({
         };
       });
     } catch (err) {
-      if (err instanceof UnauthorizedError) {
+      if (
+        err instanceof UnauthorizedError ||
+        (err instanceof Error &&
+          (err.name === "UnauthorizedError" || /unauthor/i.test(err.message)))
+      ) {
         throw err;
       }
       console.error("Critical error in getRecentBids:", err);

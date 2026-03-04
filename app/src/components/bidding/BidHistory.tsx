@@ -16,12 +16,14 @@ interface BidHistoryProps {
   auctionId: Id<"auctions">;
 }
 
+const PAGE_SIZE = 20;
+
 /**
  * Renders a paginated history of bids for a specific auction within an accordion.
  *
  * This component fetches paginated bids using `usePaginatedQuery(api.auctions.getAuctionBids)`
  * and the total bid count via `useQuery(api.auctions.getAuctionBidCount)`. It initially
- * loads `initialNumItems` (20) bids and allows loading more via the `loadMore` function.
+ * loads `initialNumItems` (PAGE_SIZE) bids and allows loading more via the `loadMore` function.
  *
  * @param props - The component props
  * @param props.auctionId - The unique identifier of the auction
@@ -37,7 +39,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
   } = usePaginatedQuery(
     api.auctions.getAuctionBids,
     { auctionId },
-    { initialNumItems: 20 }
+    { initialNumItems: PAGE_SIZE }
   );
 
   const totalBids = useQuery(api.auctions.getAuctionBidCount, { auctionId });
@@ -141,14 +143,15 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
 
               <div className="pt-2 flex flex-col items-center gap-2">
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                  Showing {bids.length} of {totalBids ?? bids.length} Bids
+                  Showing {bids.length}
+                  {totalBids !== undefined ? ` of ${totalBids}` : ""} Bids
                 </p>
 
                 {status === "CanLoadMore" && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => loadMore(20)}
+                    onClick={() => loadMore(PAGE_SIZE)}
                     className="group border-2 font-bold uppercase tracking-tight text-[10px] h-8 px-4"
                   >
                     Load More Bids

@@ -1077,7 +1077,8 @@ export const closeAuctionEarly = mutation({
         error instanceof Error &&
         (error.message.includes("Unauthenticated") ||
           error.message.includes("Unauthorized") ||
-          error.message.includes("Not authenticated"))
+          error.message.includes("Not authenticated") ||
+          error.message.includes("Not authorized"))
       ) {
         return {
           success: false,

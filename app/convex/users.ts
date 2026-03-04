@@ -222,7 +222,7 @@ export const listAllProfiles = query({
         .withIndex("by_name", (q) => q.eq("name", "profiles"))
         .unique(),
     ]);
-    const totalCount = counter?.total ?? 0;
+    const totalCount = counter?.total ?? profiles.page.length;
 
     const now = Date.now();
 
