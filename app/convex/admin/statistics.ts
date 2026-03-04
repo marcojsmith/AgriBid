@@ -7,6 +7,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCallerRole } from "../users";
+import { UnauthorizedError } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
 
 /**
@@ -76,52 +77,68 @@ export const getFinancialStats = query({
   }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
-    // Scan all sold auctions to compute global aggregates
-    let totalSalesVolume = 0;
-    let auctionCount = 0;
-    let cursor: string | null = null;
-    let isDone = false;
+    try {
+      // Scan all sold auctions to compute global aggregates
+      // SAFETY: We add a circuit breaker to avoid long-running queries
+      let totalSalesVolume = 0;
+      let auctionCount = 0;
+      let cursor: string | null = null;
+      let isDone = false;
+      let iterations = 0;
+      const MAX_ITERATIONS = 20; // Limit to 10,000 auctions total for now
 
-    while (!isDone) {
-      const page = await ctx.db
-        .query("auctions")
-        .withIndex("by_status", (q) => q.eq("status", "sold"))
-        .paginate({ numItems: 500, cursor });
+      while (!isDone && iterations < MAX_ITERATIONS) {
+        const page = await ctx.db
+          .query("auctions")
+          .withIndex("by_status", (q) => q.eq("status", "sold"))
+          .paginate({ numItems: 500, cursor });
 
-      for (const a of page.page) {
-        totalSalesVolume += a.currentPrice;
-        auctionCount++;
+        for (const a of page.page) {
+          totalSalesVolume += a.currentPrice;
+          auctionCount++;
+        }
+        cursor = page.continueCursor;
+        isDone = page.isDone;
+        iterations++;
       }
-      cursor = page.continueCursor;
-      isDone = page.isDone;
+
+      if (iterations >= MAX_ITERATIONS) {
+        throw new Error(
+          "getFinancialStats reached iteration limit. Totals may be incomplete."
+        );
+      }
+
+      const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
+
+      // Fetch only the most recent sales for the activity list
+      const recentSoldAuctions = await ctx.db
+        .query("auctions")
+        .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+        .order("desc")
+        .take(10);
+
+      const recentSales = recentSoldAuctions.map((a) => ({
+        id: a._id,
+        title: a.title,
+        amount: a.currentPrice,
+        estimatedCommission: a.currentPrice * COMMISSION_RATE,
+        date: a.endTime ?? 0,
+      }));
+
+      return {
+        totalSalesVolume,
+        estimatedCommission,
+        commissionRate: COMMISSION_RATE,
+        recentSales,
+        auctionCount,
+      };
+    } catch (err) {
+      console.error("Error in getFinancialStats:", err);
+      // Re-throw to allow frontend to catch and show error state
+      throw err;
     }
-
-    const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
-
-    // Fetch only the most recent sales for the activity list
-    const recentSoldAuctions = await ctx.db
-      .query("auctions")
-      .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
-      .order("desc")
-      .take(10);
-
-    const recentSales = recentSoldAuctions.map((a) => ({
-      id: a._id,
-      title: a.title,
-      amount: a.currentPrice,
-      estimatedCommission: a.currentPrice * COMMISSION_RATE,
-      date: a.endTime ?? 0,
-    }));
-
-    return {
-      totalSalesVolume,
-      estimatedCommission,
-      commissionRate: COMMISSION_RATE,
-      recentSales,
-      auctionCount,
-    };
   },
 });
 
@@ -136,7 +153,7 @@ export const initializeCounters = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const [
       totalAuctions,
@@ -144,6 +161,7 @@ export const initializeCounters = mutation({
       pendingAuctions,
       totalUsers,
       verifiedSellers,
+      pendingKycProfiles,
     ] = await Promise.all([
       countQuery(() => ctx.db.query("auctions")),
       countQuery(() =>
@@ -161,6 +179,11 @@ export const initializeCounters = mutation({
         ctx.db
           .query("profiles")
           .withIndex("by_isVerified", (q) => q.eq("isVerified", true))
+      ),
+      countQuery(() =>
+        ctx.db
+          .query("profiles")
+          .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
       ),
     ]);
 
@@ -195,7 +218,7 @@ export const initializeCounters = mutation({
       total: totalUsers,
       verified: verifiedSellers,
       active: 0, // Profiles don't use active/pending in this context currently
-      pending: 0,
+      pending: pendingKycProfiles,
       updatedAt: Date.now(),
     };
 
@@ -227,13 +250,15 @@ export const getAdminStats = query({
     totalUsers: v.number(),
     verifiedSellers: v.number(),
     kycPending: v.number(),
+    status: v.union(v.literal("partial"), v.literal("healthy")), // To indicate partial/cached data
   }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
-    const [auctionCounter, profileCounter, pendingKycProfiles] =
-      await Promise.all([
+    try {
+      // We prioritize counters for performance and scalability
+      const [auctionCounter, profileCounter] = await Promise.all([
         ctx.db
           .query("counters")
           .withIndex("by_name", (q) => q.eq("name", "auctions"))
@@ -242,20 +267,32 @@ export const getAdminStats = query({
           .query("counters")
           .withIndex("by_name", (q) => q.eq("name", "profiles"))
           .unique(),
-        ctx.db
-          .query("profiles")
-          .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-          .collect(),
       ]);
 
-    return {
-      totalAuctions: auctionCounter?.total ?? 0,
-      activeAuctions: auctionCounter?.active ?? 0,
-      pendingReview: auctionCounter?.pending ?? 0,
-      totalUsers: profileCounter?.total ?? 0,
-      verifiedSellers: profileCounter?.verified ?? 0,
-      kycPending: pendingKycProfiles.length,
-    };
+      // If counters are missing, we return zeros but log a warning
+      // This is safer than scanning the whole DB in a reactive query
+      let status: "partial" | "healthy" = "healthy";
+      if (!auctionCounter || !profileCounter) {
+        console.warn(
+          "Admin stats: Some counters are missing. Run initializeCounters."
+        );
+        status = "partial";
+      }
+
+      return {
+        totalAuctions: auctionCounter?.total ?? 0,
+        activeAuctions: auctionCounter?.active ?? 0,
+        pendingReview: auctionCounter?.pending ?? 0,
+        totalUsers: profileCounter?.total ?? 0,
+        verifiedSellers: profileCounter?.verified ?? 0,
+        kycPending: profileCounter?.pending ?? 0,
+        status,
+      };
+    } catch (err) {
+      console.error("Critical error in getAdminStats:", err);
+      // Re-throw to allow frontend to catch and show error state
+      throw err;
+    }
   },
 });
 
@@ -273,7 +310,7 @@ export const getAnnouncementStats = query({
   }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const announcementCounter = await ctx.db
       .query("counters")
@@ -316,7 +353,7 @@ export const getSupportStats = query({
   }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const supportCounter = await ctx.db
       .query("counters")

@@ -16,6 +16,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Archive
 
+- [x] **Track: Admin Live Monitor - Loading Never Completes**
+*Link: [./archive/admin_live_monitor_fix_20260302/](./archive/admin_live_monitor_fix_20260302/)*
+
 - [x] **Track: My Bids Page - Group Bids by Auction**
 *Link: [./archive/my_bids_grouping_20260302/](./archive/my_bids_grouping_20260302/)*
 

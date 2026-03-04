@@ -10,6 +10,16 @@ import { authComponent } from "../auth";
 import type { AuthUser } from "../auth";
 
 /**
+ * Custom error class for unauthorized access attempts.
+ */
+export class UnauthorizedError extends Error {
+  constructor(message = "Unauthorized") {
+    super(message);
+    this.name = "UnauthorizedError";
+  }
+}
+
+/**
  * Retrieve the authenticated user associated with the provided context.
  *
  * @param ctx - Query or Mutation context used to resolve the current user
