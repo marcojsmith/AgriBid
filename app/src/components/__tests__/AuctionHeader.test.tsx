@@ -1,9 +1,10 @@
 // app/src/components/__tests__/AuctionHeader.test.tsx
 import { render, screen } from "@testing-library/react";
-import { AuctionHeader } from "../AuctionHeader";
 import { describe, it, expect, vi } from "vitest";
 import type { Doc, Id } from "convex/_generated/dataModel";
 import { MemoryRouter } from "react-router-dom";
+
+import { AuctionHeader } from "../AuctionHeader";
 
 // Mock Convex
 vi.mock("convex/react", () => ({

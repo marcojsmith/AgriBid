@@ -8,9 +8,10 @@ interface LoadingIndicatorProps {
 /**
  * Renders a marketplace-style spinner used to indicate a loading state.
  *
- * @param className - Optional additional CSS classes to apply to the spinner container
- * @param size - Visual size of the spinner; one of "sm", "md", or "lg"
- * @returns A spinner element with role="status", an accessible label, and a visually-hidden "Loading..." announcement for screen readers. The spinner is not keyboard-focusable.
+ * @param props - Component props
+ * @param props.className - Optional additional CSS classes to apply to the spinner container
+ * @param props.size - Visual size of the spinner; one of "sm", "md", or "lg"
+ * @returns A spinner element with role="status"
  */
 export function LoadingIndicator({
   className,
@@ -45,6 +46,10 @@ interface LoadingPageProps {
 /**
  * Full page loading state wrapper.
  * Conforms to the marketplace page loading style (pulse text).
+ * @param props - Component props
+ * @param props.className - Additional CSS classes
+ * @param props.message - Custom loading message
+ * @returns A full-height loading state with pulse animation
  */
 export function LoadingPage({
   className,

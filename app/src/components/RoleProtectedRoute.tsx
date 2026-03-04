@@ -1,17 +1,27 @@
 import type { ReactNode } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { useSession } from "@/lib/auth-client";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Button } from "./ui/button";
+
+import { useSession } from "@/lib/auth-client";
 import { isValidCallbackUrl } from "@/lib/utils";
 import { LoadingPage } from "@/components/LoadingIndicator";
+
+import { Button } from "./ui/button";
 
 interface RoleProtectedRouteProps {
   children: ReactNode;
   allowedRole: string;
 }
 
+/**
+ * Component for a role-protected route.
+ *
+ * @param props - Component props.
+ * @param props.children - The children to render if the user has the required role.
+ * @param props.allowedRole - The role required to view the page.
+ * @returns The rendered role-protected route.
+ */
 export const RoleProtectedRoute = ({
   children,
   allowedRole,

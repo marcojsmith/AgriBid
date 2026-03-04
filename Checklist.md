@@ -1,8 +1,18 @@
-# AgriBid - Development Checklist
+# AgriBid Project Roadmap & Progress
 
-## Project Setup & Infrastructure
+This document tracks the overall health, completed milestones, and pending features of the AgriBid project. For development processes (Commit, PR, Review), use the **Skills** in `/skills/`.
 
-### Initial Setup
+## 1. Development Status
+- **General Standards:** See `skills/coding-standards.md`
+- **Pre-Commit:** See `skills/process-commit.md`
+- **Pull Requests:** See `skills/process-pr.md`
+- **Review Process:** See `skills/process-review.md`
+
+---
+
+## 2. Roadmap
+
+### Project Setup & Infrastructure
 - [x] Create `app/` directory for monorepo-style structure
 - [x] Initialise Vite + React + TypeScript project in `app/`
 - [x] Configure Tailwind CSS with custom theme (Earth tones)
@@ -57,19 +67,19 @@
 
 ### Convex Mutations
 - [x] `createAuction` - create new auction
-- [ ] `updateAuction` - edit draft auction
-- [ ] `publishAuction` - change status from "draft" to "active"
+- [x] `updateAuction` - edit draft auction
+- [x] `publishAuction` - change status from "draft" to "active"
 - [x] `placeBid` - place a bid with soft close logic
 - [x] `approveAuction` - admin approval to set active status
 - [x] `generateUploadUrl` - for Convex File Storage
 - [x] `setProxyBid` - set maximum auto-bid amount (Integrated into placeBid)
 - [x] `addToWatchlist` / `removeFromWatchlist` -> `toggleWatchlist`
-- [ ] `uploadConditionReport` - upload PDF to Convex Storage
+- [x] `uploadConditionReport` - upload PDF to Convex Storage
 - [ ] `flagAuction` - report suspicious listing (buyer/admin)
 
 ### Scheduled Functions (Cron)
 - [x] `settleExpiredAuctions` - run every 1 minute
-- [ ] `cleanupDrafts` - run daily to delete old drafts (>30 days)
+- [x] `cleanupDrafts` - run daily to delete old drafts (>30 days)
 
 ### Convex Actions (External API Calls)
 - [ ] `sendEmailNotification` - trigger email via Resend/SendGrid
@@ -135,7 +145,7 @@
 
 ### Buyer Dashboard (`/dashboard/buyer`)
 - [x] **Active Bids Tab** -> `/dashboard/bids`
-  - [ ] Group bids by auction card instead of individual entries (#144)
+  - [x] Group bids by auction card instead of individual entries (#144)
 - [x] **Watchlist Tab** -> `/watchlist`
 - [x] **Won Auctions Tab** -> Integrated into `/dashboard/bids`
 
@@ -206,6 +216,7 @@
 - [ ] Test Convex mutations
 - [ ] Test utility functions
 - [x] Test React components
+- [x] Configure coverage thresholds (35/29/41/36)
 - [ ] Create comprehensive unit tests for entire codebase (#84)
 
 ### Integration Tests
@@ -229,9 +240,9 @@
 - [ ] Deploy to Convex Cloud (`bunx convex deploy`)
 
 ### Vercel Deployment
-- [ ] Connect GitHub repository to Vercel
-- [ ] Configure build settings (build command: `bun run build`, output directory: `dist/`)
-- [ ] Set environment variables in Vercel dashboard
+- [x] Connect GitHub repository to Vercel
+- [x] Configure build settings
+- [x] Set environment variables in Vercel dashboard
 - [ ] Deploy staging environment for testing
 - [ ] Deploy production environment after testing
 
@@ -241,7 +252,9 @@
 
 ### Code Documentation
 - [x] Add JSDoc comments to all functions
-- [x] Document Convex schema fields
+- [ ] Document Convex schema fields
+- [x] Create AgriBid Agent Manifesto (AGENTS.md)
+- [x] Register Core AI Skills (.gemini/skills/)
 - [ ] Create `CONTRIBUTING.md`
 - [ ] Create `CHANGELOG.md`
 - [ ] Align notification scope conflict in Listing Storage spec (#148)
@@ -251,14 +264,14 @@
 - [ ] Write "How to Sell" guide
 - [ ] Write "How to Buy" guide
 - [ ] Align Brief.md location features with implementation phases (#149)
-- [ ] Complete general project documentation (#40)
+- [x] Complete general project documentation (#40)
 
 ### README.md
 - [x] Project overview and features
 - [x] Tech stack
 - [x] Setup instructions
 - [x] Environment variables table
-- [ ] Revise for best practices and complete all sections (#75)
+- [x] Revise for best practices and complete all sections (#75)
 - [ ] Deployment instructions
 
 ---

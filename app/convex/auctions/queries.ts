@@ -1,7 +1,8 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
+
 import { query } from "../_generated/server";
 import type { QueryCtx } from "../_generated/server";
-import { paginationOptsValidator } from "convex/server";
 import type { Id, Doc } from "../_generated/dataModel";
 import { getCallerRole, findUserById } from "../users";
 import { authComponent } from "../auth";

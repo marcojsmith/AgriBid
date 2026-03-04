@@ -1,5 +1,6 @@
 // app/src/components/admin/StatCard.tsx
 import React from "react";
+
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,14 @@ export interface StatCardProps {
  * Renders a compact statistic card showing a label, a prominent value, and an icon.
  *
  * @param props - Component properties including label, value, icon, and optional styling
+ * @param props.label
+ * @param props.value
+ * @param props.icon
+ * @param props.color
+ * @param props.className
+ * @param props.padding
+ * @param props.bgVariant
+ * @param props.iconSize
  * @returns A Card element containing the labeled statistic and icon
  */
 export function StatCard({

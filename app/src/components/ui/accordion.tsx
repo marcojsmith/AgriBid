@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 /**
  * Renders an Accordion root element that forwards all received props and sets `data-slot="accordion"`.
  *
+ * @param root0
  * @returns The rendered Accordion root element with forwarded props and a `data-slot="accordion"` attribute.
  */
 function Accordion({
@@ -18,6 +19,7 @@ function Accordion({
 /**
  * Renders an accordion item element with base bottom-border styling and a data-slot attribute.
  *
+ * @param className.className
  * @param className - Additional CSS classes to merge with the default border classes
  * @returns The rendered accordion item element with merged classes and forwarded props
  */
@@ -39,8 +41,10 @@ function AccordionItem({
  *
  * The trigger forwards all native trigger props to the underlying Radix primitive, applies focused/open styling, and sets `data-slot="accordion-trigger"`.
  *
+ * @param className.className
  * @param className - Additional CSS classes to merge with the trigger's base classes.
  * @param children - Content shown inside the trigger (e.g., title or label).
+ * @param className.children
  * @returns The accordion trigger element that toggles its associated content panel.
  */
 function AccordionTrigger({
@@ -68,8 +72,10 @@ function AccordionTrigger({
 /**
  * Renders accordion panel content with open/close animations and an inner padded container.
  *
+ * @param className.className
  * @param className - Additional classes applied to the inner content wrapper
  * @param children - Content to display inside the accordion panel
+ * @param className.children
  * @returns The accordion content element that animates between open and closed states and wraps `children` in a padded container
  */
 function AccordionContent({

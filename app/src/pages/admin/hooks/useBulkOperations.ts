@@ -2,8 +2,9 @@ import { useState, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import type { Doc, Id } from "convex/_generated/dataModel";
+
+import { getErrorMessage } from "@/lib/utils";
 
 /**
  * Manage auction bulk operations including selection state, search term and bulk status updates.
@@ -65,6 +66,8 @@ export function useBulkOperations() {
   /**
    * Toggles select-all checkbox: selects all visible auctions or clears selection.
    * This respects the current visible/filtered auctions, not all auctions.
+   * @param auctions
+   * @param checked
    */
   const handleSelectAll = (auctions: Doc<"auctions">[], checked: boolean) => {
     if (checked === true) {
@@ -80,6 +83,8 @@ export function useBulkOperations() {
 
   /**
    * Toggles individual auction selection
+   * @param auctionId
+   * @param selected
    */
   const handleToggleSelection = (
     auctionId: Id<"auctions">,

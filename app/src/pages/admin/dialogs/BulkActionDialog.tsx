@@ -25,12 +25,14 @@ export interface BulkActionDialogProps {
  * Displays a confirmation message showing the number of auctions that will be updated
  * and the target status, with Cancel and Confirm actions.
  *
- * @param isOpen - Controls whether the dialog is visible
- * @param onClose - Called when the dialog is dismissed
- * @param onConfirm - Called when the user confirms the bulk update
- * @param isProcessing - When true, disables actions and shows loading indicator on button
- * @param selectedCount - Number of auctions that will be updated
- * @param targetStatus - The status to apply to the selected auctions (may be null if not specified)
+ * @param props - Component props
+ * @param props.isOpen - Controls whether the dialog is visible
+ * @param props.onClose - Called when the dialog is dismissed
+ * @param props.onConfirm - Called when the user confirms the bulk update
+ * @param props.isProcessing - When true, disables actions and shows loading indicator on button
+ * @param props.selectedCount - Number of auctions that will be updated
+ * @param props.targetStatus - The status to apply to the selected auctions
+ * @returns A bulk action confirmation dialog component
  */
 export function BulkActionDialog({
   isOpen,

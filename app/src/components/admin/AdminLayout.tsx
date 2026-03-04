@@ -1,7 +1,6 @@
 // app/src/components/admin/AdminLayout.tsx
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import {
   Megaphone,
   Gavel,
@@ -16,10 +15,13 @@ import {
   FileText,
   Settings,
 } from "lucide-react";
-import { StatCard } from "./StatCard";
+
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AdminStatsProvider } from "@/contexts/AdminStatsContext";
 import { useAdminStats } from "@/contexts/useAdminStats";
+
+import { StatCard } from "./StatCard";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -63,10 +65,14 @@ export function AdminLayout(props: AdminLayoutProps) {
  * button when `onAnnounce` is provided. `title` and `subtitle` appear in the header and
  * `children` are rendered as the main content.
  *
+ * @param children.children
  * @param children - Content to display in the main area
  * @param title - Header title (defaults to "Admin Dashboard")
  * @param subtitle - Header subtitle (defaults to "Global Marketplace Oversight")
  * @param onAnnounce - Optional callback invoked when the Announce button is clicked
+ * @param children.title
+ * @param children.subtitle
+ * @param children.onAnnounce
  * @returns The layout content element for admin pages
  */
 function AdminLayoutContent({

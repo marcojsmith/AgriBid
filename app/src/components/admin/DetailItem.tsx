@@ -4,9 +4,12 @@ import React from "react";
 /**
  * Render a labeled detail row with an icon and a value.
  *
+ * @param label.label
  * @param label - Text label displayed above the value
  * @param value - Value to display; if `null` or `undefined`, displays "Not Provided"
  * @param icon - Icon element shown inside the square icon container
+ * @param label.value
+ * @param label.icon
  * @returns The detail item as a React element
  */
 export function DetailItem({

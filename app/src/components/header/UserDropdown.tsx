@@ -11,8 +11,7 @@ import {
   ShieldAlert,
   MessageSquare,
 } from "lucide-react";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LoadingIndicator } from "../LoadingIndicator";
 import type { UserDataWithProfile } from "@/types/auth";
+
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { LoadingIndicator } from "../LoadingIndicator";
 
 interface UserDropdownProps {
   userData: UserDataWithProfile | null | undefined;
@@ -39,6 +41,7 @@ interface UserDropdownProps {
  *
  * Renders a trigger button that reflects loading and verification states and a content menu that conditionally includes a KYC prompt, public profile link (or syncing state), an admin dashboard link for admins, common navigation items (My Bids, Watchlist, My Listings, Support Tickets) and a Sign Out item.
  *
+ * @param userData.userData
  * @param userData - Optional user object; used to display the user's name when available
  * @param isLoadingProfile - When true, disables interaction and shows loading placeholders in the trigger
  * @param isVerified - Whether the user's identity/KYC is verified; controls badge and KYC prompt visibility
@@ -46,6 +49,12 @@ interface UserDropdownProps {
  * @param profileId - Public profile identifier; when present enables the Public Profile link, otherwise shows a syncing state
  * @param role - User role (for example `"admin"`); when `"admin"` shows the Admin Dashboard link
  * @param onSignOut - Callback invoked when the user selects "Sign Out"; errors from this callback are caught and surfaced to the user
+ * @param userData.isLoadingProfile
+ * @param userData.isVerified
+ * @param userData.kycStatus
+ * @param userData.profileId
+ * @param userData.role
+ * @param userData.onSignOut
  * @returns The dropdown menu JSX containing the trigger and account-related menu items
  */
 export function UserDropdown({

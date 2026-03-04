@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+
 import { internalMutation } from "../_generated/server";
 import { updateCounter, logAudit } from "../admin_utils";
 import { deleteAuctionImages } from "../lib/storage";
@@ -74,17 +75,20 @@ export const settleExpiredAuctions = internalMutation({
  * Uses batching to stay within Convex mutation limits.
  *
  * @param ctx - Mutation context
+ * @returns Object containing the number of deleted auctions and errors encountered.
  */
 export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
   const cutoffTime = Date.now() - DRAFT_RETENTION_MS;
 
   // Process in batches to avoid hitting Convex limits
-  const oldDrafts = await ctx.db
-    .query("auctions")
-    .withIndex("by_status", (q) =>
-      q.eq("status", "draft").lte("_creationTime", cutoffTime)
-    )
-    .take(CLEANUP_BATCH_SIZE);
+  const oldDrafts = (
+    await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) =>
+        q.eq("status", "draft").lte("_creationTime", cutoffTime)
+      )
+      .collect()
+  ).slice(0, CLEANUP_BATCH_SIZE);
 
   let deleted = 0;
   let errors = 0;

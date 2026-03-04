@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 import { cleanupDraftsHandler } from "./internal";
 import type { MutationCtx } from "../_generated/server";
 
@@ -60,9 +61,7 @@ describe("cleanupDrafts mutation", () => {
       if (table === "auctions") {
         return {
           withIndex: vi.fn().mockReturnValue({
-            filter: vi.fn().mockReturnValue({
-              collect: vi.fn().mockResolvedValue([mockDraft]),
-            }),
+            collect: vi.fn().mockResolvedValue([mockDraft]),
           }),
         };
       }
@@ -91,9 +90,7 @@ describe("cleanupDrafts mutation", () => {
       if (table === "auctions") {
         return {
           withIndex: vi.fn().mockReturnValue({
-            filter: vi.fn().mockReturnValue({
-              collect: vi.fn().mockResolvedValue([]),
-            }),
+            collect: vi.fn().mockResolvedValue([]),
           }),
         };
       }

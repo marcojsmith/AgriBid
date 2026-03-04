@@ -1,4 +1,5 @@
 import { createContext } from "react";
+
 import type { Id } from "../../convex/_generated/dataModel";
 
 export interface PublicProfile {

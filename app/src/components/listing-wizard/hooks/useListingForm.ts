@@ -19,11 +19,7 @@ export function useListingForm() {
     switch (stepIndex) {
       case 0: // General Info
         if (!formData.title?.trim()) return "Title is required";
-        if (!formData.make?.trim()) return "Make is required";
-        if (!formData.model?.trim()) return "Model is required";
         if (!formData.location?.trim()) return "Location is required";
-        return null;
-      case 1: // Technical Specs
         if (!formData.year || formData.year < 1900)
           return "Valid year is required";
         if (
@@ -31,6 +27,10 @@ export function useListingForm() {
           formData.operatingHours < 0
         )
           return "Operating hours are required";
+        return null;
+      case 1: // Technical Specs
+        if (!formData.make?.trim()) return "Make is required";
+        if (!formData.model?.trim()) return "Model is required";
         return null;
       case 3: {
         // Media Gallery
@@ -63,6 +63,7 @@ export function useListingForm() {
 
   /**
    * Checks if current step is valid.
+   * @returns True if current step is valid, false otherwise.
    */
   const isCurrentStepValid = () => {
     return getStepError(currentStep) === null;
@@ -70,6 +71,7 @@ export function useListingForm() {
 
   /**
    * Navigates to the next step if current step is valid.
+   * @returns Error message if navigation failed, null otherwise.
    */
   const next = () => {
     const error = getStepError(currentStep);
@@ -81,6 +83,7 @@ export function useListingForm() {
 
   /**
    * Navigates to the previous step.
+   * @returns void
    */
   const prev = () => setCurrentStep(Math.max(currentStep - 1, 0));
 

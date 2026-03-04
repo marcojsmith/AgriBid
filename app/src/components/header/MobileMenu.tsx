@@ -9,10 +9,12 @@ import {
   Settings,
   ShieldAlert,
 } from "lucide-react";
-import { Button } from "../ui/button";
+
 import { cn } from "@/lib/utils";
-import { SearchBar } from "./SearchBar";
 import type { UserDataWithProfile } from "@/types/auth";
+
+import { Button } from "../ui/button";
+import { SearchBar } from "./SearchBar";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ interface MobileMenuProps {
  *
  * Displays nothing when closed; when open it traps focus, handles Escape to close, and focuses the search input.
  *
+ * @param isOpen.isOpen
  * @param isOpen - Whether the mobile menu is visible
  * @param onClose - Callback to close the menu
  * @param navLinks - Navigation items rendered as links; each item should include `name` and `href`
@@ -40,6 +43,14 @@ interface MobileMenuProps {
  * @param role - User role (e.g., `"admin"`) used to show role-specific actions
  * @param profileId - ID used to construct the profile route; absence shows a disabled "Profile (Syncing...)" button
  * @param onSignOut - Async function invoked when the user chooses to sign out
+ * @param isOpen.onClose
+ * @param isOpen.navLinks
+ * @param isOpen.userData
+ * @param isOpen.isVerified
+ * @param isOpen.kycStatus
+ * @param isOpen.role
+ * @param isOpen.profileId
+ * @param isOpen.onSignOut
  * @returns The menu element when open, or `null` when closed
  */
 export function MobileMenu({

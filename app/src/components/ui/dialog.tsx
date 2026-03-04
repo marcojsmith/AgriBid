@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 /**
  * Renders the root Dialog element with a `data-slot="dialog"` attribute and forwards all received props.
  *
+ * @param root0
  * @returns A dialog root element with `data-slot="dialog"` and the provided props applied.
  */
 function Dialog({
@@ -21,6 +22,7 @@ function Dialog({
  *
  * Renders a Radix Dialog Trigger element with data-slot="dialog-trigger" and forwards received props.
  *
+ * @param root0
  * @returns A React element that acts as the dialog trigger
  */
 function DialogTrigger({
@@ -34,6 +36,7 @@ function DialogTrigger({
  *
  * Note: The `data-slot` attribute will be ignored as Radix's Portal doesn't render a wrapper element.
  *
+ * @param root0
  * @returns The portal element used to mount dialog content, forwarding all received props to the underlying Radix primitive.
  */
 function DialogPortal({
@@ -59,6 +62,8 @@ function DialogClose({
  *
  * The returned element is the Radix Dialog overlay with data-slot="dialog-overlay" and combined classes for positioning, z-index, a semi-opaque black backdrop, and state-based animations.
  *
+ * @param root0
+ * @param root0.className
  * @returns The overlay element used as the dialog backdrop.
  */
 function DialogOverlay({
@@ -80,7 +85,10 @@ function DialogOverlay({
 /**
  * Renders the dialog's content inside a portal with an overlay and an optional close control.
  *
+ * @param showCloseIcon.className
  * @param showCloseIcon - When `true`, includes a close control (an X button) in the top-right of the content; when `false`, omits the close control.
+ * @param showCloseIcon.children
+ * @param showCloseIcon.showCloseIcon
  * @returns The dialog content element including its portal and overlay, with children rendered inside and the close control included conditionally.
  */
 function DialogContent({
@@ -122,6 +130,7 @@ function DialogContent({
  *
  * Renders a div with consistent header layout classes and a `data-slot="dialog-header"` attribute; forwards remaining div props.
  *
+ * @param className.className
  * @param className - Additional CSS classes to merge with the component's default header classes
  * @returns The header container element for dialog content
  */
@@ -138,8 +147,11 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 /**
  * Layout container for dialog footer actions that can optionally render a close button.
  *
+ * @param showFooterClose.className
  * @param showFooterClose - When `true`, renders a "Close" button that triggers the dialog to close.
  * @param children - Elements to display inside the footer (e.g., action buttons).
+ * @param showFooterClose.showFooterClose
+ * @param showFooterClose.children
  * @returns The rendered footer element containing `children` and, if enabled, a close control.
  */
 function DialogFooter({
@@ -174,6 +186,8 @@ function DialogFooter({
  *
  * Renders a Radix Dialog Title with consistent typography classes and a `data-slot="dialog-title"` attribute.
  *
+ * @param root0
+ * @param root0.className
  * @returns The rendered dialog title element with applied classes and attributes.
  */
 function DialogTitle({
@@ -192,6 +206,8 @@ function DialogTitle({
 /**
  * Dialog description element used to display descriptive text within a dialog.
  *
+ * @param root0
+ * @param root0.className
  * @returns A React element that displays descriptive text styled for dialogs, with a `data-slot="dialog-description"` attribute.
  */
 function DialogDescription({

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import { publishAuctionHandler } from "./mutations";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
@@ -44,6 +45,11 @@ describe("publishAuction mutation", () => {
       _id: "auction_123",
       sellerId: "user_123",
       status: "draft",
+      title: "Test Tractor",
+      description: "A very nice tractor",
+      startingPrice: 1000,
+      reservePrice: 5000,
+      images: { front: "image_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
@@ -84,6 +90,11 @@ describe("publishAuction mutation", () => {
       _id: "auction_123",
       sellerId: "user_123",
       status: "draft",
+      title: "Test Tractor",
+      description: "A very nice tractor",
+      startingPrice: 1000,
+      reservePrice: 5000,
+      images: { front: "image_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);

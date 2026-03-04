@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { Bell, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,16 +15,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell, Clock } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   getNotificationIcon,
   handleNotificationClick,
 } from "@/lib/notifications";
-import { toast } from "sonner";
-import type { Id } from "convex/_generated/dataModel";
 
 interface NotificationItem {
   _id: Id<"notifications">;

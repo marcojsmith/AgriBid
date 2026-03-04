@@ -1,14 +1,4 @@
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
   Fingerprint,
   UserCheck,
   Phone,
@@ -18,8 +8,20 @@ import {
   Check,
   X,
 } from "lucide-react";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { DetailItem } from "@/components/admin";
+
 import type { KycReviewUser } from "../hooks/useUserManagement";
 
 /**
@@ -28,15 +30,17 @@ import type { KycReviewUser } from "../hooks/useUserManagement";
  * Displays personal details, submitted documents, a rejection-reason textarea,
  * and action buttons to approve or reject the KYC application.
  *
- * @param user - The KYC user to review; when falsy the dialog content is not rendered
- * @param isOpen - Controls whether the dialog is open and visible
- * @param onClose - Called when the dialog is closed/dismissed by the user
- * @param onReview - Called with "approve" or "reject" when the corresponding action is confirmed
- * @param isProcessing - Disables actions and shows loading indicators while a review is being processed
- * @param rejectionReason - Current text for the rejection reason textarea
- * @param setRejectionReason - Updates the rejection reason state
- * @param showFullId - When true, displays the full ID/passport number; otherwise masks it
- * @param setShowFullId - Toggles the visibility of the full ID/passport number
+ * @param props - Component props
+ * @param props.user - The KYC user to review; when falsy the dialog content is not rendered
+ * @param props.isOpen - Controls whether the dialog is open and visible
+ * @param props.onClose - Called when the dialog is closed/dismissed by the user
+ * @param props.onReview - Called with "approve" or "reject" when the corresponding action is confirmed
+ * @param props.isProcessing - Disables actions and shows loading indicators while a review is being processed
+ * @param props.rejectionReason - Current text for the rejection reason textarea
+ * @param props.setRejectionReason - Updates the rejection reason state
+ * @param props.showFullId - When true, displays the full ID/passport number; otherwise masks it
+ * @param props.setShowFullId - Toggles the visibility of the full ID/passport number
+ * @returns A KYC review dialog component
  */
 export function KycReviewDialog({
   user,

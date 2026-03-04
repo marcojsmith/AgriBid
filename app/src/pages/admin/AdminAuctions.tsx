@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Doc } from "convex/_generated/dataModel";
+import { Clock, MoreVertical, Eye, AlertCircle, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,17 +36,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Clock, MoreVertical, Eye, AlertCircle, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/lib/currency";
-import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+
 import { BulkActionDialog } from "./dialogs";
 import { useBulkOperations } from "./hooks";
 
 /**
  * Format time remaining until a given timestamp.
+ * @param endTime - The timestamp when the auction ends
+ * @returns A human-readable string representing the time remaining
  */
 function formatTimeRemaining(endTime: number): string {
   const now = Date.now();

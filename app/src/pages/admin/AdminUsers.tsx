@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
+import { ShieldCheck, AlertCircle, ArrowRight, Search } from "lucide-react";
+import { Link } from "react-router-dom";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,10 +16,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, AlertCircle, ArrowRight, Search } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { Link } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+
 import { KycReviewDialog, PromoteAdminDialog } from "./dialogs";
 import { useUserManagement, type AdminProfile } from "./hooks";
 

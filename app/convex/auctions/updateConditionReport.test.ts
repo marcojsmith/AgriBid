@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
 import { updateConditionReportHandler } from "./mutations";
 import * as auth from "../lib/auth";
 import type { Id } from "../_generated/dataModel";
@@ -18,6 +19,7 @@ describe("updateConditionReportHandler", () => {
   const mockAuction = {
     _id: "auction_123" as Id<"auctions">,
     sellerId: "user_123",
+    status: "draft",
     conditionReportUrl: "old_storage_id" as Id<"_storage">,
   };
 

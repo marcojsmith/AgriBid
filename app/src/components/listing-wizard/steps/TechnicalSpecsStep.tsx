@@ -1,8 +1,10 @@
-import { Button } from "@/components/ui/button";
 import { Check, Search } from "lucide-react";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
+
+import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { Button } from "@/components/ui/button";
+
 import { useListingWizard } from "../hooks/useListingWizard";
 
 /**

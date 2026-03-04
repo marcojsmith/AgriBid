@@ -1,8 +1,15 @@
 import { Info, Camera, CheckCircle2 } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+
 import { useListingWizard } from "../hooks/useListingWizard";
 import { PHOTO_SLOTS } from "../constants";
 
+/**
+ * Step 5 of the listing wizard: Review and Submit.
+ *
+ * @returns The rendered review and submit step.
+ */
 export const ReviewSubmitStep = () => {
   const { formData, previews } = useListingWizard();
 

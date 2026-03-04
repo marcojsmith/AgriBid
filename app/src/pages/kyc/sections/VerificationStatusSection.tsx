@@ -1,8 +1,4 @@
 // app/src/pages/kyc/sections/VerificationStatusSection.tsx
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import {
   ShieldCheck,
   ShieldX,
@@ -11,8 +7,13 @@ import {
   FileText,
   Clock,
 } from "lucide-react";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useNavigate } from "react-router-dom";
+
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 export type VerificationStatus =
   | "verified"

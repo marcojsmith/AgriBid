@@ -1,5 +1,6 @@
 // app/convex/http.ts
 import { httpRouter } from "convex/server";
+
 import { createAuth } from "./auth";
 import { httpAction } from "./_generated/server";
 import { isOriginAllowed } from "./config";

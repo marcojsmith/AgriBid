@@ -1,9 +1,11 @@
 // app/src/components/header/SearchBar.tsx
 import { Search } from "lucide-react";
-import { Input } from "../ui/input";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { cn } from "@/lib/utils";
+
+import { Input } from "../ui/input";
 
 interface SearchBarProps {
   onSearch?: () => void;
@@ -18,9 +20,11 @@ interface SearchBarProps {
  * When a non-empty query is submitted the input is cleared and the optional `onSearch` callback
  * is invoked.
  *
- * @param onSearch - Optional callback invoked after a successful search submission
- * @param className - Optional additional CSS classes applied to the root form element
- * @param id - Optional id for the input element (default: `"search"`)
+ * @param props - Component props
+ * @param props.onSearch - Optional callback invoked after a successful search submission
+ * @param props.className - Optional additional CSS classes applied to the root form element
+ * @param props.id - Optional id for the input element (default: `"search"`)
+ * @returns A search bar component
  */
 export function SearchBar({
   onSearch,

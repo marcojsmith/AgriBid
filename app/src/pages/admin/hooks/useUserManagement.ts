@@ -79,6 +79,8 @@ export function useUserManagement() {
 
   /**
    * Type guard to ensure profile has all required fields for KYC review.
+   * @param obj - The object to check
+   * @returns True if the object is a KycReviewUser, false otherwise.
    */
   const isKycReviewUser = (obj: unknown): obj is KycReviewUser => {
     if (obj === null || typeof obj !== "object") return false;
@@ -93,6 +95,7 @@ export function useUserManagement() {
   /**
    * Initiates KYC review by fetching full user profile data.
    * Shows loading state and error handling via toast notifications.
+   * @param userId
    */
   const handleReviewKYCClick = async (userId: string) => {
     if (isFetchingKYC) return;
@@ -131,6 +134,7 @@ export function useUserManagement() {
   /**
    * Manually verifies a user without KYC review.
    * Tracks verification state per user to prevent duplicate requests.
+   * @param userId
    */
   const handleManualVerify = async (userId: string) => {
     let added = false;
@@ -161,6 +165,7 @@ export function useUserManagement() {
   /**
    * Submits KYC approval or rejection decision.
    * Validates rejection reason is provided when rejecting.
+   * @param decision
    */
   const handleKycReview = async (decision: "approve" | "reject") => {
     if (!kycReviewUser) return;
