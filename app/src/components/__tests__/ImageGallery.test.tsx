@@ -1,6 +1,6 @@
 // app/src/components/__tests__/ImageGallery.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ImageGallery } from "../ImageGallery";
+import { ImageGallery } from "@/components/ImageGallery";
 import { describe, it, expect, vi } from "vitest";
 
 describe("ImageGallery", () => {

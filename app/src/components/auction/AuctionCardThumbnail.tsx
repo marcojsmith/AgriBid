@@ -1,8 +1,8 @@
 // app/src/components/auction/AuctionCardThumbnail.tsx
 import { Heart } from "lucide-react";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CountdownTimer } from "../CountdownTimer";
+import { CountdownTimer } from "@/components/CountdownTimer";
 
 interface AuctionCardThumbnailProps {
   primaryImage: string | undefined;

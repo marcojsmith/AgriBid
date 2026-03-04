@@ -11,8 +11,8 @@ import {
   ShieldAlert,
   MessageSquare,
 } from "lucide-react";
-import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LoadingIndicator } from "../LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { UserDataWithProfile } from "@/types/auth";
 
 interface UserDropdownProps {

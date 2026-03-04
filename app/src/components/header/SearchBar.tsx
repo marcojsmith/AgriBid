@@ -1,6 +1,6 @@
 // app/src/components/header/SearchBar.tsx
 import { Search } from "lucide-react";
-import { Input } from "../ui/input";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
