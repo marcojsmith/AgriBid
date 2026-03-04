@@ -14,7 +14,8 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCallerRole } from "../users";
 import { logAudit, updateCounter } from "../admin_utils";
-import { getAuthUser } from "../lib/auth";
+import { getAuthUser, UnauthorizedError } from "../lib/auth";
+import type { Doc, Id } from "../_generated/dataModel";
 
 // --- Re-export specialized modules for backward compatibility ---
 export { getPendingKYC, reviewKYC } from "./kyc";
@@ -45,30 +46,86 @@ export const getRecentBids = query({
       amount: v.number(),
       timestamp: v.number(),
       status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
-      auctionTitle: v.string(),
+      auctionTitle: v.optional(v.string()),
+      auctionLookupStatus: v.union(
+        v.literal("FOUND"),
+        v.literal("NOT_FOUND"),
+        v.literal("ERROR")
+      ),
     })
   ),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    try {
+      const role = await getCallerRole(ctx);
+      if (role !== "admin") {
+        throw new UnauthorizedError();
+      }
 
-    const limit = Math.max(1, Math.min(args.limit || 50, 100));
+      const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
 
-    const bids = await ctx.db
-      .query("bids")
-      .withIndex("by_timestamp")
-      .order("desc")
-      .take(limit);
+      const bids = await ctx.db
+        .query("bids")
+        .withIndex("by_timestamp")
+        .order("desc")
+        .take(limit);
 
-    return await Promise.all(
-      bids.map(async (bid) => {
-        const auction = await ctx.db.get(bid.auctionId);
+      if (bids.length === 0) return [];
+
+      // Collect unique auction IDs
+      const uniqueAuctionIds = [...new Set(bids.map((b) => b.auctionId))];
+
+      // Fetch all unique auctions in parallel
+      const auctionMap = new Map<
+        Id<"auctions">,
+        Doc<"auctions"> | null | { _error: true }
+      >();
+      const failedAuctionIds: Id<"auctions">[] = [];
+      await Promise.all(
+        uniqueAuctionIds.map(async (id) => {
+          try {
+            const auction = await ctx.db.get(id);
+            auctionMap.set(id, auction);
+          } catch {
+            failedAuctionIds.push(id);
+            auctionMap.set(id, { _error: true });
+          }
+        })
+      );
+
+      if (failedAuctionIds.length > 0) {
+        console.error(
+          `Admin Monitor: Failed to fetch auction context for ${failedAuctionIds.length} IDs:`,
+          failedAuctionIds.slice(0, 5)
+        );
+      }
+
+      return bids.map((bid) => {
+        const auction = auctionMap.get(bid.auctionId);
+        let auctionTitle: string | undefined;
+        let auctionLookupStatus: "FOUND" | "NOT_FOUND" | "ERROR" = "NOT_FOUND";
+
+        if (auction) {
+          if ("_error" in auction) {
+            auctionLookupStatus = "ERROR";
+          } else {
+            auctionTitle = auction.title;
+            auctionLookupStatus = "FOUND";
+          }
+        }
         return {
           ...bid,
-          auctionTitle: auction?.title || "Unknown Auction",
+          auctionTitle,
+          auctionLookupStatus,
         };
-      })
-    );
+      });
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        throw err;
+      }
+      console.error("Critical error in getRecentBids:", err);
+      // Re-throw to allow frontend to catch and show error state
+      throw err;
+    }
   },
 });
 
@@ -87,7 +144,7 @@ export const voidBid = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const bid = await ctx.db.get(args.bidId);
     if (!bid) throw new Error("Bid not found");
@@ -161,7 +218,7 @@ export const getTickets = query({
   ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
@@ -194,7 +251,7 @@ export const resolveTicket = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const authUser = await getAuthUser(ctx);
     if (!authUser) {
@@ -259,7 +316,7 @@ export const getAuditLogs = query({
   ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const limit = Math.max(1, Math.min(args.limit ?? 50, MAX_AUDIT_LOG_LIMIT));
 
@@ -284,7 +341,7 @@ export const createAnnouncement = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const title = args.title.trim();
     const message = args.message.trim();
@@ -342,7 +399,7 @@ export const listAnnouncements = query({
   ),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
@@ -397,7 +454,7 @@ export const syncAuctionWinners = mutation({
   }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const batchSize = Math.max(
       1,

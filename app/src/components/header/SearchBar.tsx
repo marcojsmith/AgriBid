@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
-
-import { Input } from "../ui/input";
+import { Input } from "@/components/ui/input";
 
 interface SearchBarProps {
   onSearch?: () => void;

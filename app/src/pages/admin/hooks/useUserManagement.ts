@@ -30,6 +30,7 @@ export interface AdminProfile {
   isVerified?: boolean;
   kycStatus?: string;
   createdAt: number;
+  isOnline?: boolean;
 }
 
 /**

@@ -6,11 +6,10 @@ import { api } from "convex/_generated/api";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
+import { useSession } from "@/lib/auth-client";
 import { Badge } from "@/components/ui/badge";
 import { cn, isValidCallbackUrl } from "@/lib/utils";
-
-import { Button } from "./ui/button";
-import { useSession } from "../lib/auth-client";
+import { Button } from "@/components/ui/button";
 
 interface AuctionHeaderProps {
   auction: Doc<"auctions">;

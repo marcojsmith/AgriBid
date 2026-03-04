@@ -8,13 +8,13 @@ import { toast } from "sonner";
 import { Clock, MapPin, Gavel } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useSession } from "@/lib/auth-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BidConfirmation } from "@/components/BidConfirmation";
 import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
 
-import { useSession } from "../../lib/auth-client";
-import { BidConfirmation } from "../BidConfirmation";
 import { AuctionCardThumbnail } from "./AuctionCardThumbnail";
 import { AuctionCardPrice } from "./AuctionCardPrice";
 

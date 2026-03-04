@@ -13,7 +13,7 @@ vi.mock("convex/react", () => ({
 }));
 
 // Mock auth client
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: () => ({ data: null, isPending: false }),
 }));
 

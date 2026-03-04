@@ -9,6 +9,7 @@ import { paginationOptsValidator } from "convex/server";
 
 import { mutation, query } from "../_generated/server";
 import { getCallerRole } from "../users";
+import { UnauthorizedError } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
 
 /**
@@ -38,7 +39,7 @@ export const getPendingKYC = query({
   }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     // Use Convex pagination to properly handle cursor and limits
     // Only return minimal info for the list. Details are fetched on demand.
@@ -88,7 +89,7 @@ export const reviewKYC = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new Error("Unauthorized");
+    if (role !== "admin") throw new UnauthorizedError();
 
     const profile = await ctx.db
       .query("profiles")
@@ -96,6 +97,8 @@ export const reviewKYC = mutation({
       .unique();
 
     if (!profile) throw new Error("Profile not found");
+
+    const wasPending = profile.kycStatus === "pending";
 
     if (args.decision === "approve") {
       const wasVerified = profile.isVerified;
@@ -110,6 +113,9 @@ export const reviewKYC = mutation({
 
       if (!wasVerified) {
         await updateCounter(ctx, "profiles", "verified", 1);
+      }
+      if (wasPending) {
+        await updateCounter(ctx, "profiles", "pending", -1);
       }
 
       // Send Success Notification
@@ -140,6 +146,9 @@ export const reviewKYC = mutation({
 
       if (wasVerified) {
         await updateCounter(ctx, "profiles", "verified", -1);
+      }
+      if (wasPending) {
+        await updateCounter(ctx, "profiles", "pending", -1);
       }
       // Send Rejection Notification
       await ctx.db.insert("notifications", {

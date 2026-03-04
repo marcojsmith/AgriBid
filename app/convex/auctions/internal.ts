@@ -63,6 +63,16 @@ export const settleExpiredAuctions = internalMutation({
 
       await updateCounter(ctx, "auctions", "active", -1);
 
+      if (finalStatus === "sold") {
+        await updateCounter(ctx, "auctions", "soldCount", 1);
+        await updateCounter(
+          ctx,
+          "auctions",
+          "salesVolume",
+          auction.currentPrice
+        );
+      }
+
       console.log(
         `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`
       );
@@ -75,9 +85,14 @@ export const settleExpiredAuctions = internalMutation({
  * Uses batching to stay within Convex mutation limits.
  *
  * @param ctx - Mutation context
+ * @param args - Arguments object
+ * @param args.system - Whether this is a system-initiated cleanup (default: true)
  * @returns Object containing the number of deleted auctions and errors encountered.
  */
-export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
+export const cleanupDraftsHandler = async (
+  ctx: MutationCtx,
+  args: { system?: boolean } = { system: true }
+) => {
   const cutoffTime = Date.now() - DRAFT_RETENTION_MS;
 
   // Process in batches to avoid hitting Convex limits
@@ -124,7 +139,7 @@ export const cleanupDraftsHandler = async (ctx: MutationCtx) => {
     await logAudit(ctx, {
       action: "CLEANUP_DRAFT_AUCTIONS",
       targetType: "system",
-      system: true,
+      system: args.system ?? true,
       details: JSON.stringify({
         deletedCount: deleted,
         errorCount: errors,
@@ -152,5 +167,5 @@ export const cleanupDrafts = internalMutation({
     deleted: v.number(),
     errors: v.number(),
   }),
-  handler: cleanupDraftsHandler,
+  handler: (ctx) => cleanupDraftsHandler(ctx),
 });

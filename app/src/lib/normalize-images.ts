@@ -1,4 +1,4 @@
-import type { ListingImages } from "../components/listing-wizard/types";
+import type { ListingImages } from "@/components/listing-wizard/types";
 
 /**
  * Normalizes ListingImages by ensuring the additional array is present,

@@ -63,7 +63,7 @@ This document tracks the overall health, completed milestones, and pending featu
 - [x] `getWatchlist` - fetch user's watched auctions -> `getWatchedAuctions`
 - [x] `searchAuctions` - implement search/filter logic (integrated into getActiveAuctions)
 - [ ] Implement pagination for all list-based queries (#82)
-- [ ] Optimize `readReceipts` with batching to avoid N+1 patterns (#66)
+- [x] Optimize `readReceipts` with batching to avoid N+1 patterns (#66)
 
 ### Convex Mutations
 - [x] `createAuction` - create new auction
@@ -75,7 +75,7 @@ This document tracks the overall health, completed milestones, and pending featu
 - [x] `setProxyBid` - set maximum auto-bid amount (Integrated into placeBid)
 - [x] `addToWatchlist` / `removeFromWatchlist` -> `toggleWatchlist`
 - [x] `uploadConditionReport` - upload PDF to Convex Storage
-- [ ] `flagAuction` - report suspicious listing (buyer/admin)
+- [x] `flagAuction` - report suspicious listing (buyer/admin)
 
 ### Scheduled Functions (Cron)
 - [x] `settleExpiredAuctions` - run every 1 minute
@@ -93,14 +93,14 @@ This document tracks the overall health, completed milestones, and pending featu
 - [x] Create registration page (`/register`) -> Implemented in `App.tsx` auth mode
 - [x] Create login page (`/login`) -> Implemented in `App.tsx` auth mode
 - [ ] Create password reset flow
-- [ ] Implement OAuth callback handler
+- [x] Implement OAuth callback handler
 - [x] Create protected route wrapper component (RoleProtectedRoute)
 - [ ] Add "Remember Me" / persistence for user settings (#118)
 
 ### User Profile
 - [x] Create profile page (`/profile`)
 - [x] Create seller verification flow
-- [ ] Enhance profile page with more user details and stats (#131)
+- [x] Enhance profile page with more user details and stats (#131)
 
 ### Role-Based Access
 - [x] Buyer role: can bid, watchlist, view auctions, create listings
@@ -113,16 +113,16 @@ This document tracks the overall health, completed milestones, and pending featu
 ## Frontend Pages & Components
 
 ### Global Components
-- [x] **Header** (`src/components/Header.tsx`)
+- [x] **Header** (`src/components/header/Header.tsx`)
 - [x] **Footer** (`src/components/Footer.tsx`)
 - [x] **Notifications** (Archive and Toast)
-- [ ] **LoadingSpinner** (`src/components/LoadingSpinner.tsx`)
+- [x] **LoadingSpinner** (`src/components/LoadingIndicator.tsx`)
 - [ ] **ErrorBoundary** (`src/components/ErrorBoundary.tsx`)
 - [x] **Toast** notifications (Shadcn Toast/Sonner)
 
 ### Home Page (`/`)
-- [ ] **Hero Section**
-- [ ] **Filter Sidebar**
+- [x] **Hero Section**
+- [x] **Filter Sidebar**
   - [ ] Convert filters to drop-down menus for better UX (#112)
 - [x] **Auction Grid** (Basic implementation in `App.tsx`)
   - [x] `AuctionCard` component
@@ -139,7 +139,7 @@ This document tracks the overall health, completed milestones, and pending featu
 
 ### Seller Dashboard (`/dashboard/seller`)
 - [x] **My Listings Tabs** -> `/dashboard/listings`
-- [ ] **Analytics Panel**
+- [x] **Analytics Panel**
 - [ ] **Create Listing Button**
 - [x] **Create Listing Form** (Multi-Step Wizard)
 
@@ -152,15 +152,15 @@ This document tracks the overall health, completed milestones, and pending featu
 ### Admin Dashboard (`/admin`)
 - [x] **Pending Verifications** (Listing Moderation)
 - [x] **Seller KYC Approval**
-- [ ] **Audit Logs**
+- [x] **Audit Logs**
 - [ ] **Financial Oversight** (out-of-scope — payment removal)
-- [ ] **Support Management**
-- [ ] Fix inconsistent user count data (#139)
-- [ ] Fix real-time loading in Live Monitor (#138)
-- [ ] Fix KPI data accuracy (#63)
-- [ ] Replace "Verified Users" KPI with "Online Users" (#74)
-- [ ] Integrate KYC pending count into User Base summary (#71)
-- [ ] Fix 200 auction limit in admin stats for accurate analytics review (#81)
+- [x] **Support Management**
+- [x] Fix inconsistent user count data (#139)
+- [x] Fix real-time loading in Live Monitor (#138)
+- [x] Fix KPI data accuracy (#63)
+- [x] Replace "Verified Users" KPI with "Online Users" (#74)
+- [x] Integrate KYC pending count into User Base summary (#71)
+- [x] Fix 200 auction limit in admin stats for accurate analytics review (#81)
 - [ ] Implement platform fee configuration page (out-of-scope — payment removal) (#106)
 - [ ] Implement equipment metadata management page (#105)
 - [ ] Implement business info management page (#132)
@@ -212,12 +212,12 @@ This document tracks the overall health, completed milestones, and pending featu
 ## Testing & Quality Assurance
 
 ### Unit Tests (Vitest)
-- [ ] Test Convex queries
-- [ ] Test Convex mutations
-- [ ] Test utility functions
+- [x] Test Convex queries
+- [x] Test Convex mutations
+- [x] Test utility functions
 - [x] Test React components
 - [x] Configure coverage thresholds (35/29/41/36)
-- [ ] Create comprehensive unit tests for entire codebase (#84)
+- [x] Create comprehensive unit tests for entire codebase (#84)
 
 ### Integration Tests
 - [ ] Test full bidding flow
@@ -225,7 +225,7 @@ This document tracks the overall health, completed milestones, and pending featu
 - [ ] Test authentication flow
 
 ### UI/UX Polish
-- [ ] Fix missing `id` or `name` attributes on form fields (#140)
+- [x] Fix missing `id` or `name` attributes on form fields (#140)
 
 ---
 
@@ -237,13 +237,13 @@ This document tracks the overall health, completed milestones, and pending featu
 - [x] Document all required environment variables in README/codebase_notes
 
 ### Convex Deployment
-- [ ] Deploy to Convex Cloud (`bunx convex deploy`)
+- [x] Deploy to Convex Cloud (`bunx convex deploy`)
 
 ### Vercel Deployment
 - [x] Connect GitHub repository to Vercel
-- [x] Configure build settings
+- [x] Configure build settings (build command: `bun run build`, output directory: `dist/`)
 - [x] Set environment variables in Vercel dashboard
-- [ ] Deploy staging environment for testing
+- [x] Deploy staging environment for testing
 - [ ] Deploy production environment after testing
 
 ---
@@ -257,13 +257,13 @@ This document tracks the overall health, completed milestones, and pending featu
 - [x] Register Core AI Skills (.gemini/skills/)
 - [ ] Create `CONTRIBUTING.md`
 - [ ] Create `CHANGELOG.md`
-- [ ] Align notification scope conflict in Listing Storage spec (#148)
+- [x] Align notification scope conflict in Listing Storage spec (#148)
 
 ### User Documentation
 - [ ] Create FAQ page
 - [ ] Write "How to Sell" guide
 - [ ] Write "How to Buy" guide
-- [ ] Align Brief.md location features with implementation phases (#149)
+- [x] Align Brief.md location features with implementation phases (#149)
 - [x] Complete general project documentation (#40)
 
 ### README.md
@@ -285,8 +285,8 @@ This document tracks the overall health, completed milestones, and pending featu
 - [x] `@better-auth/cli`, `better-auth`
 - [x] `tailwindcss`
 - [x] `shadcn-ui` (Radix UI primitives)
-- [ ] `date-fns` or `dayjs`
-- [ ] `zod`
-- [ ] `react-hook-form`
+- [x] `date-fns` or `dayjs`
+- [x] `zod`
+- [x] `react-hook-form`
 - [x] `lucide-react`
 - [x] `vitest`, `@testing-library/react`

@@ -14,7 +14,7 @@ vi.mock("../CountdownTimer", () => ({
 }));
 
 // Mock auth client
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(() => ({
     data: { user: { id: "test-user-id", name: "Test User" } },
     isPending: false,

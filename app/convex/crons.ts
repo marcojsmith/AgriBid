@@ -25,4 +25,10 @@ crons.daily(
   internal.auctions.cleanupDrafts
 );
 
+crons.interval(
+  "cleanup presence records",
+  { minutes: 15 },
+  internal.presence.cleanup
+);
+
 export default crons;

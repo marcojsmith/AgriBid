@@ -25,7 +25,7 @@ vi.mock("convex/react", () => ({
 }));
 
 // Mock auth client
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(() => ({
     data: { user: { name: "Test Seller" } },
     isPending: false,
@@ -58,7 +58,8 @@ describe("ListingWizard", () => {
         <ListingWizard />
       </MemoryRouter>
     );
-  const navigateToStep4 = () => {
+
+  const fillStep1 = () => {
     fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), {
       target: { value: "2024" },
     });
@@ -71,6 +72,10 @@ describe("ListingWizard", () => {
     fireEvent.change(screen.getByLabelText(/Operating Hours/i), {
       target: { value: "1200" },
     });
+  };
+
+  const navigateToStep4 = () => {
+    fillStep1();
     fireEvent.click(screen.getByText(/Next Step/i));
 
     fireEvent.click(screen.getByText("John Deere"));
@@ -96,18 +101,7 @@ describe("ListingWizard", () => {
   it("navigates to step 2 when fields are filled", () => {
     renderWizard();
 
-    fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), {
-      target: { value: "2024" },
-    });
-    fireEvent.change(screen.getByLabelText(/Location/i), {
-      target: { value: "Pretoria, ZA" },
-    });
-    fireEvent.change(screen.getByLabelText(/Listing Title/i), {
-      target: { value: "Test Auction Title" },
-    });
-    fireEvent.change(screen.getByLabelText(/Operating Hours/i), {
-      target: { value: "1200" },
-    });
+    fillStep1();
 
     fireEvent.click(screen.getByText(/Next Step/i));
 
@@ -119,18 +113,7 @@ describe("ListingWizard", () => {
     renderWizard();
 
     // Fill Step 1
-    fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), {
-      target: { value: "2024" },
-    });
-    fireEvent.change(screen.getByLabelText(/Location/i), {
-      target: { value: "Pretoria, ZA" },
-    });
-    fireEvent.change(screen.getByLabelText(/Listing Title/i), {
-      target: { value: "Test Auction Title" },
-    });
-    fireEvent.change(screen.getByLabelText(/Operating Hours/i), {
-      target: { value: "1200" },
-    });
+    fillStep1();
     fireEvent.click(screen.getByText(/Next Step/i));
 
     // Fill Step 2 (Manufacturer/Model)

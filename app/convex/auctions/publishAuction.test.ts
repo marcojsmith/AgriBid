@@ -49,7 +49,7 @@ describe("publishAuction mutation", () => {
       description: "A very nice tractor",
       startingPrice: 1000,
       reservePrice: 5000,
-      images: { front: "image_id" },
+      images: { front: "storage_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
@@ -94,7 +94,7 @@ describe("publishAuction mutation", () => {
       description: "A very nice tractor",
       startingPrice: 1000,
       reservePrice: 5000,
-      images: { front: "image_id" },
+      images: { front: "storage_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
@@ -115,6 +115,9 @@ describe("publishAuction mutation", () => {
       _id: "auction_123",
       sellerId: "user_123",
       status: "pending_review",
+      title: "Test Auction",
+      description: "Test Description",
+      images: { front: "storage_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);

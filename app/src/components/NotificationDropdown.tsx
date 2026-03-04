@@ -42,7 +42,6 @@ interface NotificationItem {
  */
 export function NotificationDropdown() {
   const navigate = useNavigate();
-  // @ts-expect-error - Convex type instantiation complexity
   const notifications = useQuery(api.notifications.getMyNotifications);
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllRead = useMutation(api.notifications.markAllRead);

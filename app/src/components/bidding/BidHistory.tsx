@@ -10,8 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
-import { LoadingIndicator } from "../LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 interface BidHistoryProps {
   auctionId: Id<"auctions">;

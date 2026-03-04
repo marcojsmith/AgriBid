@@ -23,14 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-import { Button } from "../components/ui/button";
-import { AuctionHeader } from "../components/AuctionHeader";
-import { ImageGallery } from "../components/ImageGallery";
-import { BiddingPanel, BidHistory } from "../components/bidding";
-import { SellerInfo } from "../components/SellerInfo";
-import { LoadingIndicator } from "../components/LoadingIndicator";
-import { useSession } from "../lib/auth-client";
+import { Button } from "@/components/ui/button";
+import { AuctionHeader } from "@/components/AuctionHeader";
+import { ImageGallery } from "@/components/ImageGallery";
+import { BiddingPanel, BidHistory } from "@/components/bidding";
+import { SellerInfo } from "@/components/SellerInfo";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { useSession } from "@/lib/auth-client";
 
 type FlagReason = "misleading" | "inappropriate" | "suspicious" | "other";
 

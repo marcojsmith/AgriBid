@@ -1,7 +1,6 @@
 // app/src/components/auction/AuctionCardPrice.tsx
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
-
-import { CountdownTimer } from "../CountdownTimer";
+import { CountdownTimer } from "@/components/CountdownTimer";
 
 interface AuctionCardPriceProps {
   currentPrice: number;
@@ -13,14 +12,11 @@ interface AuctionCardPriceProps {
 /**
  * Display the current bid and auction countdown, or render nothing in compact mode.
  *
- * @param currentPrice.currentPrice
- * @param currentPrice - The current bid amount in rand
- * @param endTime - Optional auction end timestamp in milliseconds used to initialise the countdown
- * @param isCompact - If `true`, nothing is rendered
- * @param isClosed - If `true`, the countdown is hidden (auction is sold or unsold)
- * @param currentPrice.endTime
- * @param currentPrice.isCompact
- * @param currentPrice.isClosed
+ * @param props - Component props.
+ * @param props.currentPrice - The current bid amount in rand
+ * @param props.endTime - Optional auction end timestamp in milliseconds used to initialise the countdown
+ * @param props.isCompact - If `true`, nothing is rendered
+ * @param props.isClosed - If `true`, the countdown is hidden (auction is sold or unsold)
  * @returns The rendered price-and-countdown markup, or `null` when `isCompact` is `true`.
  */
 export function AuctionCardPrice({

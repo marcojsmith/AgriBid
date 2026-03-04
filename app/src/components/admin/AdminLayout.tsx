@@ -14,6 +14,7 @@ import {
   MessageSquare,
   FileText,
   Settings,
+  Activity,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -154,9 +155,9 @@ function AdminLayoutContent({
               {stats && (
                 <div className="flex flex-wrap gap-2">
                   <StatCard
-                    label="Live"
-                    value={stats.activeAuctions}
-                    icon={<Gavel className="h-3 w-3" />}
+                    label="Live Users"
+                    value={stats.liveUsers}
+                    icon={<Activity className="h-3 w-3" />}
                     color="text-green-500"
                     padding="p-2"
                     className="min-w-[100px] h-14"

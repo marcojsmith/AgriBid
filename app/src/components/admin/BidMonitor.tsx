@@ -25,6 +25,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
+
+import { AdminConnectionError } from "./AdminConnectionError";
 
 /**
  * Render an admin real-time feed of recent bids with controls to void individual bids.
@@ -39,6 +42,7 @@ export function BidMonitor() {
   const voidBid = useMutation(api.admin.voidBid);
   const [voidTarget, setVoidTarget] = useState<Id<"bids"> | null>(null);
   const [isVoiding, setIsVoiding] = useState(false);
+  const hasTimedOut = useLoadingTimeout(bids === undefined);
 
   const handleVoid = async () => {
     if (!voidTarget) return;
@@ -55,10 +59,23 @@ export function BidMonitor() {
     }
   };
 
-  if (!bids) {
+  if (bids === undefined) {
     return (
-      <div className="flex justify-center p-8">
-        <LoadingIndicator />
+      <div className="flex flex-col items-center justify-center p-12 space-y-4 border-2 border-dashed rounded-2xl bg-muted/10 min-h-[400px]">
+        {!hasTimedOut ? (
+          <>
+            <LoadingIndicator size="lg" />
+            <p className="text-muted-foreground font-medium animate-pulse">
+              Connecting to real-time bid stream...
+            </p>
+          </>
+        ) : (
+          <AdminConnectionError
+            title="Feed Timeout"
+            description="Unable to establish real-time connection to the bid stream."
+            iconSize="sm"
+          />
+        )}
       </div>
     );
   }
@@ -109,9 +126,13 @@ export function BidMonitor() {
                   </TableCell>
                   <TableCell
                     className="font-medium truncate"
-                    title={bid.auctionTitle}
+                    title={bid.auctionTitle || bid.auctionLookupStatus}
                   >
-                    {bid.auctionTitle}
+                    {bid.auctionLookupStatus === "FOUND"
+                      ? bid.auctionTitle
+                      : bid.auctionLookupStatus === "ERROR"
+                        ? "Auction Data Unavailable"
+                        : "Unknown Auction (Deleted)"}
                   </TableCell>
                   <TableCell className="font-mono text-xs" title={bid.bidderId}>
                     {bid.bidderId.substring(0, 8)}...
