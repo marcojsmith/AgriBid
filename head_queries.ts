@@ -375,12 +375,12 @@ export const getSellerInfo = query({
       ctx.db
         .query("auctions")
         .withIndex("by_seller_status", (q) =>
-          q.eq("sellerId", args.sellerId).eq("status", "sold")
+          q.eq("sellerId", linkId).eq("status", "sold")
         )
         .collect(),
       ctx.db
         .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", args.sellerId))
+        .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
         .filter((q) =>
           q.or(
             q.eq(q.field("status"), "active"),

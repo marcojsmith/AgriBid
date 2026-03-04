@@ -630,21 +630,46 @@ export const getMyBids = query({
       );
 
       const bidsByAuction = new Map<string, number>();
+      const auctionStatsMap = new Map<
+        string,
+        { bidCount: number; lastBidTimestamp: number }
+      >();
 
       await Promise.all(
         uniqueAuctionIds.map(async (auctionId) => {
-          const latestBid = await ctx.db
-            .query("bids")
-            .withIndex("by_auction", (q) =>
-              q.eq("auctionId", auctionId as Id<"auctions">)
-            )
-            // only consider non-voided bids
-            .filter((q) => q.neq(q.field("status"), "voided"))
-            .order("desc")
-            .filter((q) => q.eq(q.field("bidderId"), linkId))
-            .first();
+          const [latestUserBid, lastBid, bidCount] = await Promise.all([
+            ctx.db
+              .query("bids")
+              .withIndex("by_auction", (q) =>
+                q.eq("auctionId", auctionId as Id<"auctions">)
+              )
+              .filter((q) => q.neq(q.field("status"), "voided"))
+              .filter((q) => q.eq(q.field("bidderId"), linkId))
+              .order("desc")
+              .first(),
+            ctx.db
+              .query("bids")
+              .withIndex("by_auction", (q) =>
+                q.eq("auctionId", auctionId as Id<"auctions">)
+              )
+              .filter((q) => q.neq(q.field("status"), "voided"))
+              .order("desc")
+              .first(),
+            countQuery(
+              ctx.db
+                .query("bids")
+                .withIndex("by_auction", (q) =>
+                  q.eq("auctionId", auctionId as Id<"auctions">)
+                )
+                .filter((q) => q.neq(q.field("status"), "voided"))
+            ),
+          ]);
 
-          bidsByAuction.set(auctionId as string, latestBid?.amount || 0);
+          bidsByAuction.set(auctionId as string, latestUserBid?.amount || 0);
+          auctionStatsMap.set(auctionId as string, {
+            bidCount,
+            lastBidTimestamp: lastBid?.timestamp || 0,
+          });
         })
       );
 
@@ -655,9 +680,14 @@ export const getMyBids = query({
 
           const summary = await toAuctionSummary(ctx, auction);
           const myHighestBid = bidsByAuction.get(auction._id) || 0;
+          const stats = auctionStatsMap.get(auction._id) || {
+            bidCount: 1,
+            lastBidTimestamp: bid.timestamp,
+          };
           const isWinning =
             auction.status === "active" &&
-            myHighestBid === auction.currentPrice;
+            myHighestBid === auction.currentPrice &&
+            auction.winnerId === linkId;
 
           return {
             ...summary,
@@ -668,8 +698,8 @@ export const getMyBids = query({
             isCancelled: auction.status === "rejected",
             bidAmount: bid.amount,
             bidTimestamp: bid.timestamp,
-            lastBidTimestamp: bid.timestamp,
-            bidCount: 1, // approximate, if they need exact we'd need another query, but keeping 1 for now to satisfy type
+            lastBidTimestamp: stats.lastBidTimestamp,
+            bidCount: stats.bidCount,
           };
         })
       );

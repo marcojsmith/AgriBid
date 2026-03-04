@@ -13,7 +13,13 @@ import {
   requireAdmin,
 } from "./lib/auth";
 import { components } from "./_generated/api";
-import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
+import {
+  logAudit,
+  encryptPII,
+  decryptPII,
+  updateCounter,
+  countQuery,
+} from "./admin_utils";
 import type { Doc } from "./_generated/dataModel";
 import { PRESENCE_HEARTBEAT_THRESHOLD } from "./presence";
 
@@ -222,7 +228,8 @@ export const listAllProfiles = query({
         .withIndex("by_name", (q) => q.eq("name", "profiles"))
         .unique(),
     ]);
-    const totalCount = counter?.total ?? profiles.page.length;
+    const totalCount =
+      counter?.total ?? (await countQuery(ctx.db.query("profiles")));
 
     const now = Date.now();
 

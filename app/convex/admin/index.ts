@@ -119,7 +119,8 @@ export const getRecentBids = query({
       if (
         err instanceof UnauthorizedError ||
         (err instanceof Error &&
-          (err.name === "UnauthorizedError" || /unauthor/i.test(err.message)))
+          (err.name === "UnauthorizedError" ||
+            /(unauthor|not authoriz)/i.test(err.message)))
       ) {
         throw err;
       }
