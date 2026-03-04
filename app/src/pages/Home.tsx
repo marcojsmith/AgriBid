@@ -8,9 +8,9 @@ import { AuctionCard } from "@/components/auction";
 import { AuctionCardSkeleton } from "@/components/AuctionCardSkeleton";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, Loader2 } from "lucide-react";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LoadingPage } from "@/components/LoadingIndicator";
+import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.
@@ -86,7 +86,7 @@ export default function Home() {
 
   const {
     results: auctions,
-    status,
+    status: auctionsStatus,
     loadMore,
   } = usePaginatedQuery(
     api.auctions.getActiveAuctions,
@@ -132,8 +132,6 @@ export default function Home() {
 
   const getItemWrapperClasses = (mode: "compact" | "detailed") =>
     cn("w-full h-full", mode === "compact" && "max-w-[500px]");
-
-  const isLoading = status === "LoadingFirstPage";
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 pb-12">
@@ -238,7 +236,7 @@ export default function Home() {
           </div>
         </div>
 
-        {isLoading ? (
+        {auctionsStatus === "LoadingFirstPage" ? (
           <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className={getItemWrapperClasses(viewMode)}>
@@ -263,7 +261,7 @@ export default function Home() {
             </Button>
           </div>
         ) : (
-          <>
+          <div className="space-y-8">
             <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
               {auctions.map((auction) => (
                 <div
@@ -280,24 +278,25 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
-            <div className="flex justify-center pt-8">
-              {status === "CanLoadMore" ? (
+            {auctionsStatus === "CanLoadMore" && (
+              <div className="flex justify-center pt-4">
                 <Button
-                  variant="outline"
                   onClick={() => loadMore(12)}
-                  className="font-bold min-w-[200px]"
+                  variant="outline"
+                  className="rounded-xl font-black px-12 border-2 gap-2 h-12 uppercase tracking-widest text-xs"
                 >
-                  Load More
+                  Load More Auctions
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
-              ) : status === "LoadingMore" ? (
-                <Button disabled variant="outline" className="min-w-[200px]">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </Button>
-              ) : null}
-            </div>
-          </>
+              </div>
+            )}
+
+            {auctionsStatus === "LoadingMore" && (
+              <div className="flex justify-center py-8">
+                <LoadingIndicator />
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

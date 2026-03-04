@@ -25,7 +25,14 @@ export class UnauthorizedError extends Error {
  * @param ctx - Query or Mutation context used to resolve the current user
  * @returns The authenticated user object, or `null` if no user is authenticated
  */
-export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
+export async function getAuthUser(ctx: QueryCtx | MutationCtx): Promise<{
+  userId?: string | null;
+  _id: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+  _creationTime?: number;
+} | null> {
   try {
     return await authComponent.getAuthUser(ctx);
   } catch (err) {
@@ -131,7 +138,7 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const role = await _getCallerRoleFromAuthUser(ctx, authUser);
 
   if (role !== "admin") {
-    throw new Error("Not authorized: Admin privileges required");
+    throw new UnauthorizedError("Not authorized: Admin privileges required");
   }
 
   return authUser;

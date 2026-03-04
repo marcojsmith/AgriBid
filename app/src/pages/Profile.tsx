@@ -210,7 +210,14 @@ export default function Profile() {
 
       {/* Pagination Control */}
       {(status === "CanLoadMore" || status === "LoadingMore") && (
-        <div className="flex justify-center pt-8">
+        <div className="flex flex-col items-center gap-4 pt-8">
+          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+            Showing {listings.length}
+            {sellerInfo.totalListings !== undefined
+              ? ` of ${sellerInfo.totalListings}`
+              : ""}{" "}
+            Listings
+          </p>
           <Button
             variant="outline"
             size="lg"

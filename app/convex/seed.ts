@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { components } from "./_generated/api";
-import { getCallerRole } from "./users";
+import { getCallerRole } from "./lib/auth";
 
 type SeedTableNames =
   | "auctions"

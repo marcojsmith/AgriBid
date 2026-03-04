@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "../_generated/server";
-import { getCallerRole } from "../users";
-import { UnauthorizedError } from "../lib/auth";
+import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
 import {
   countQuery,
@@ -67,8 +66,7 @@ export const getFinancialStats = query({
     truncated: v.optional(v.boolean()),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     try {
       const counter = await getCounter(ctx, "auctions");
@@ -152,8 +150,7 @@ export const initializeCounters = mutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const [
       totalAuctions,
@@ -227,17 +224,26 @@ export const getAdminStats = query({
     activeWatch: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     try {
-      const [auctionCounter, profileCounter, watchlistCounter, liveUsers] =
-        await Promise.all([
-          getCounter(ctx, "auctions"),
-          getCounter(ctx, "profiles"),
-          getCounter(ctx, "watchlist"),
-          countOnlineUsers(ctx),
-        ]);
+      const [
+        auctionCounter,
+        profileCounter,
+        watchlistCounter,
+        liveUsers,
+        pendingKycProfiles,
+      ] = await Promise.all([
+        getCounter(ctx, "auctions"),
+        getCounter(ctx, "profiles"),
+        getCounter(ctx, "watchlist"),
+        countOnlineUsers(ctx),
+        countQuery(
+          ctx.db
+            .query("profiles")
+            .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
+        ),
+      ]);
 
       // If counters are missing, we return zeros but log a warning
       let status: "partial" | "healthy" = "healthy";
@@ -254,7 +260,7 @@ export const getAdminStats = query({
         pendingReview: auctionCounter?.pending ?? 0,
         totalUsers: profileCounter?.total ?? 0,
         verifiedSellers: profileCounter?.verified ?? 0,
-        kycPending: profileCounter?.pending ?? 0,
+        kycPending: pendingKycProfiles,
         liveUsers,
         activeWatch: watchlistCounter?.total ?? 0,
         status,
@@ -277,26 +283,24 @@ export const getAnnouncementStats = query({
     recent: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const counter = await getCounter(ctx, "announcements");
 
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    const recentCount = (
-      await ctx.db
+    const recent = await countQuery(
+      ctx.db
         .query("notifications")
         .withIndex("by_recipient_createdAt", (q) =>
           q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
         )
-        .take(1000)
-    ).length;
+    );
 
     return {
       total: counter?.total ?? 0,
-      recent: recentCount,
+      recent,
     };
   },
 });
@@ -312,8 +316,7 @@ export const getSupportStats = query({
     total: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const counter = await getCounter(ctx, "support");
 

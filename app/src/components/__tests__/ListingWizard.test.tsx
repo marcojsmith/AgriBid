@@ -10,6 +10,14 @@ vi.mock("convex/react", () => ({
     { make: "John Deere", models: ["6155R", "8R 410"], category: "Tractor" },
     { make: "Case IH", models: ["Magnum 340"], category: "Tractor" },
   ],
+  usePaginatedQuery: () => ({
+    results: [
+      { make: "John Deere", models: ["6155R", "8R 410"], category: "Tractor" },
+      { make: "Case IH", models: ["Magnum 340"], category: "Tractor" },
+    ],
+    status: "Exhausted",
+    loadMore: vi.fn(),
+  }),
   useMutation: (apiFunc: unknown) => {
     const func = apiFunc as { _path?: string } | string;
     const path = typeof func === "string" ? func : func?._path || "";

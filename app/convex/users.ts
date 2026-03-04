@@ -6,7 +6,12 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { getAuthUser, getCallerRole, UnauthorizedError } from "./lib/auth";
+import {
+  getAuthUser,
+  requireAuth,
+  resolveUserId,
+  requireAdmin,
+} from "./lib/auth";
 import { components } from "./_generated/api";
 import {
   logAudit,
@@ -80,11 +85,15 @@ export const KYCDetailsValidator = v.object({
  * Helper to find a user by ID, checking both internal _id and shared userId.
  */
 export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
+  if (!id) return null;
+
+  // 1. Try finding by userId (shared identifier used in profiles and mocks)
   let user = await ctx.runQuery(components.auth.adapter.findOne, {
     model: "user",
     where: [{ field: "userId", operator: "eq", value: id }],
   });
 
+  // 2. Try finding by internal Convex _id
   if (!user) {
     try {
       user = await ctx.runQuery(components.auth.adapter.findOne, {
@@ -109,11 +118,10 @@ export const syncUser = mutation({
   returns: v.union(v.null(), v.object({ success: v.boolean() })),
   handler: async (ctx) => {
     try {
-      const authUser = await getAuthUser(ctx);
-      if (!authUser) return null;
+      const authUser = await requireAuth(ctx);
 
       // Use userId if set (mocks), otherwise fall back to primary id
-      const linkId = authUser.userId ?? authUser._id;
+      const linkId = resolveUserId(authUser);
       if (!linkId) return null;
 
       const existingProfile = await ctx.db
@@ -156,7 +164,7 @@ export const getMyProfile = query({
       const authUser = await getAuthUser(ctx);
       if (!authUser) return null;
 
-      const linkId = authUser.userId ?? authUser._id;
+      const linkId = resolveUserId(authUser);
       if (!linkId) return null;
 
       const profile = await ctx.db
@@ -179,9 +187,6 @@ export const getMyProfile = query({
     }
   },
 });
-
-// Re-export getCallerRole for backward compatibility
-export { getCallerRole };
 
 /**
  * Admin: List all profiles for moderation and management.
@@ -213,19 +218,16 @@ export const listAllProfiles = query({
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new UnauthorizedError();
-    }
+    await requireAdmin(ctx);
 
+    const profilesQuery = ctx.db.query("profiles");
     const [profiles, counter] = await Promise.all([
-      ctx.db.query("profiles").order("desc").paginate(args.paginationOpts),
+      profilesQuery.order("desc").paginate(args.paginationOpts),
       ctx.db
         .query("counters")
         .withIndex("by_name", (q) => q.eq("name", "profiles"))
         .unique(),
     ]);
-
     const totalCount =
       counter?.total ?? (await countQuery(ctx.db.query("profiles")));
 
@@ -287,10 +289,7 @@ export const getProfileForKYC = mutation({
   args: { userId: v.string() },
   returns: v.union(v.null(), ProfileForKYCValidator),
   handler: async (ctx, { userId }) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new UnauthorizedError();
-    }
+    await requireAdmin(ctx);
 
     const profile = await ctx.db
       .query("profiles")
@@ -349,10 +348,7 @@ export const verifyUser = mutation({
   args: { userId: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { userId }) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new UnauthorizedError();
-    }
+    await requireAdmin(ctx);
 
     const profile = await ctx.db
       .query("profiles")
@@ -399,10 +395,7 @@ export const promoteToAdmin = mutation({
   args: { userId: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { userId }) => {
-    const callerRole = await getCallerRole(ctx);
-    if (callerRole !== "admin") {
-      throw new Error("Unauthorized");
-    }
+    await requireAdmin(ctx);
 
     const identity = await ctx.auth.getUserIdentity();
     if (identity?.subject === userId) {
@@ -447,9 +440,9 @@ export const submitKYC = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     // Validate documents are actual storage IDs
     for (const id of args.documents) {
@@ -507,7 +500,7 @@ export const getMyKYCDetails = query({
       const authUser = await getAuthUser(ctx);
       if (!authUser) return null;
 
-      const linkId = authUser.userId ?? authUser._id;
+      const linkId = resolveUserId(authUser);
       if (!linkId) return null;
 
       const profile = await ctx.db
@@ -565,9 +558,9 @@ export const deleteMyKYCDocument = mutation({
   args: { storageId: v.id("_storage") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, { storageId }) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new ConvexError("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     const profile = await ctx.db
       .query("profiles")

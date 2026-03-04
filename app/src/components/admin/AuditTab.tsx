@@ -21,9 +21,9 @@ import { Button } from "@/components/ui/button";
  */
 export function AuditTab() {
   const [limit, setLimit] = useState(50);
-  const logs = useQuery(api.admin.getAuditLogs, { limit: limit + 1 });
+  const result = useQuery(api.admin.getAuditLogs, { limit });
 
-  if (!logs) {
+  if (!result) {
     return (
       <div className="flex justify-center p-8">
         <LoadingIndicator />
@@ -31,8 +31,9 @@ export function AuditTab() {
     );
   }
 
-  const hasMore = logs.length > limit;
-  const displayLogs = logs.slice(0, limit);
+  const { logs, totalCount } = result;
+  const hasMore = totalCount > limit;
+  const displayLogs = logs;
 
   const formatDetails = (details?: string) => {
     if (!details) return "—";
@@ -107,7 +108,7 @@ export function AuditTab() {
         {displayLogs.length > 0 && (
           <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
             <p className="text-[10px] font-black uppercase text-muted-foreground">
-              Showing latest {displayLogs.length} entries
+              Showing {displayLogs.length} of {totalCount} entries
             </p>
             <div className="flex gap-2">
               <Button
