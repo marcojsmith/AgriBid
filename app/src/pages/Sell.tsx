@@ -1,5 +1,5 @@
 // app/src/pages/Sell.tsx
-import { ListingWizard } from "../components/listing-wizard";
+import { ListingWizard } from "@/components/listing-wizard";
 
 /**
  * Render the Sell page: show the listing wizard for all users.

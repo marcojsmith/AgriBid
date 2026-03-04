@@ -267,7 +267,10 @@ async function resolveProxyBids(
         status: "valid",
       });
 
-      await ctx.db.patch(auctionId, { currentPrice: validatedAmount });
+      await ctx.db.patch(auctionId, {
+        currentPrice: validatedAmount,
+        winnerId: highestProxy.bidderId,
+      });
 
       return {
         success: true,
@@ -306,7 +309,10 @@ async function resolveProxyBids(
         status: "valid",
       });
 
-      await ctx.db.patch(auctionId, { currentPrice: validatedAmount });
+      await ctx.db.patch(auctionId, {
+        currentPrice: validatedAmount,
+        winnerId: highestProxy.bidderId,
+      });
 
       return {
         success: true,
@@ -365,7 +371,10 @@ export async function handleNewBid(
   });
 
   // 4. Update Auction Price and handle Soft Close
-  await ctx.db.patch(auctionId, { currentPrice: bidAmount });
+  await ctx.db.patch(auctionId, {
+    currentPrice: bidAmount,
+    winnerId: bidderId,
+  });
   await extendAuctionIfNeeded(ctx, auction, now);
 
   // 5. Proxy Resolution

@@ -1,14 +1,17 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../../lib/auth-client";
-import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { normalizeListingImages } from "@/lib/normalize-images";
+import { getErrorMessage } from "@/lib/utils";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
 
 import { ListingWizardProvider } from "./context/ListingWizardContext";
-import { useListingWizard } from "./hooks/useListingWizard";
+import { useListingWizard } from "./context/useListingWizard";
 import { useListingForm } from "./hooks/useListingForm";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
@@ -38,60 +41,58 @@ const ListingWizardContent = () => {
     isSubmitting,
     isSuccess,
     setIsSuccess,
+    resetForm,
+    setDraftSaved,
+    updateField,
   } = useListingWizard();
 
-  const { data: session, isPending } = useSession();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { ensureAuthenticated, isPending } = useAuthRedirect();
   const { getStepError } = useListingForm();
-  const createAuction = useMutation(api.auctions.createAuction);
 
-  /**
-   * Handles the final listing submission.
-   * - Prevents double-submit via isSubmitting guard
-   * - Validates all steps before submission
-   * - Calls createAuction mutation
-   * - Updates submission state and navigates on success
-   * - Shows error toast on failure
-   *
-   * @returns Promise that resolves when submission completes (success or failure)
-   */
-  const handleSubmit = async () => {
+  const [searchParams] = useSearchParams();
+  const editingAuctionId = searchParams.get("edit");
+
+  const createAuction = useMutation(api.auctions.createAuction);
+  const saveDraft = useMutation(api.auctions.saveDraft);
+  const submitForReview = useMutation(api.auctions.submitForReview);
+
+  const initializedRef = useRef(false);
+
+  // Initialize form state on mount
+  useEffect(() => {
+    if (initializedRef.current) return;
+
+    const savedDraft = localStorage.getItem("agribid_listing_draft");
+    const savedStep = localStorage.getItem("agribid_listing_step");
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        const step = savedStep ? parseInt(savedStep, 10) : 0;
+        resetForm(parsed, step);
+      } catch (e) {
+        console.error("Failed to parse saved draft", e);
+        resetForm();
+      }
+    } else {
+      resetForm();
+    }
+
+    initializedRef.current = true;
+  }, [resetForm]);
+
+  const handleSaveDraft = async () => {
     if (isSubmitting) return;
 
-    if (isPending) {
-      toast.info("Checking your session...");
+    if (!ensureAuthenticated("Please sign in to save your draft")) {
       return;
-    }
-    if (!session) {
-      toast.info("Please sign in to submit your listing");
-      const rawUrl = location.pathname;
-      const callbackUrl = isValidCallbackUrl(rawUrl)
-        ? encodeURIComponent(rawUrl)
-        : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
-      return;
-    }
-
-    for (const [stepIndex] of STEPS.entries()) {
-      const error = getStepError(stepIndex);
-      if (error) {
-        setCurrentStep(stepIndex);
-        toast.error(error);
-        return;
-      }
     }
 
     setIsSubmitting(true);
     try {
-      const images = {
-        ...formData.images,
-        additional: Array.isArray(formData.images.additional)
-          ? formData.images.additional
-          : [],
-      };
+      const images = normalizeListingImages(formData.images);
 
-      await createAuction({
+      const id = await saveDraft({
+        auctionId: editingAuctionId || formData.auctionId || undefined,
         title: formData.title,
         make: formData.make,
         model: formData.model,
@@ -111,6 +112,100 @@ const ListingWizardContent = () => {
           notes: formData.conditionChecklist.notes,
         },
       });
+
+      setDraftSaved(true);
+      toast.success("Draft saved successfully!");
+
+      // Update in-memory state with the new auctionId if it was just created
+      if (!formData.auctionId && id) {
+        updateField("auctionId", id);
+      }
+    } catch (error) {
+      console.error("Draft save failed", {
+        error,
+        step: "draft save",
+        formState: { title: formData.title, make: formData.make },
+      });
+      toast.error(getErrorMessage(error, "Failed to save draft"));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Handles the final listing submission.
+   * - Prevents double-submit via isSubmitting guard
+   * - Validates all steps before submission
+   * - Calls createAuction or submitForReview mutation
+   * - Updates submission state and navigates on success
+   * - Shows error toast on failure
+   *
+   * @returns Promise that resolves when submission completes (success or failure)
+   */
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    if (isPending) {
+      toast.info("Checking your session...");
+      return;
+    }
+    if (!ensureAuthenticated("Please sign in to submit your listing")) {
+      return;
+    }
+
+    for (const [stepIndex] of STEPS.entries()) {
+      const error = getStepError(stepIndex);
+      if (error) {
+        setCurrentStep(stepIndex);
+        toast.error(error);
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      const images = normalizeListingImages(formData.images);
+
+      const auctionData = {
+        title: formData.title,
+        make: formData.make,
+        model: formData.model,
+        year: formData.year,
+        operatingHours: formData.operatingHours,
+        location: formData.location,
+        description: formData.description,
+        startingPrice: formData.startingPrice,
+        reservePrice: formData.reservePrice,
+        images,
+        durationDays: formData.durationDays,
+        conditionChecklist: {
+          engine: formData.conditionChecklist.engine ?? false,
+          hydraulics: formData.conditionChecklist.hydraulics ?? false,
+          tires: formData.conditionChecklist.tires ?? false,
+          serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
+          notes: formData.conditionChecklist.notes,
+        },
+      };
+
+      const finalAuctionId = editingAuctionId || formData.auctionId;
+
+      if (finalAuctionId) {
+        // Persist local edits before publishing
+        const savedId = await saveDraft({
+          auctionId: finalAuctionId as Id<"auctions">,
+          ...auctionData,
+        });
+        // Then submit it
+        await submitForReview({
+          auctionId: savedId as Id<"auctions">,
+        });
+      } else {
+        // Create a new auction directly as pending_review
+        await createAuction({
+          ...auctionData,
+          isDraft: false,
+        });
+      }
 
       localStorage.removeItem("agribid_listing_draft");
       localStorage.removeItem("agribid_listing_step");
@@ -204,7 +299,10 @@ const ListingWizardContent = () => {
       <div className="bg-card border-2 rounded-2xl p-8 min-h-[450px]">
         {renderStep()}
       </div>
-      <WizardNavigation onFinalSubmit={handleSubmit} />
+      <WizardNavigation
+        onFinalSubmit={handleSubmit}
+        onSaveDraft={handleSaveDraft}
+      />
     </div>
   );
 };

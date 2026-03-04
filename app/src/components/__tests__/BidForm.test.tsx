@@ -1,6 +1,6 @@
 // app/src/components/__tests__/BidForm.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BidForm } from "../bidding/BidForm";
+import { BidForm } from "@/components/bidding/BidForm";
 import { describe, it, expect, vi } from "vitest";
 import type { Doc, Id } from "convex/_generated/dataModel";
 
@@ -31,9 +31,24 @@ describe("BidForm", () => {
   it("renders quick bid buttons with correct amounts", () => {
     render(<BidForm auction={mockAuction} onBid={vi.fn()} isLoading={false} />);
 
-    expect(screen.getByText(/R\s+50,500/)).toBeInTheDocument();
-    expect(screen.getByText(/R\s+51,000/)).toBeInTheDocument();
-    expect(screen.getByText(/R\s+53,000/)).toBeInTheDocument();
+    // Use a custom matcher to handle non-breaking spaces and different separators
+    const matchCurrency = (amount: string) => {
+      return screen.getByText((_content, element) => {
+        if (!element) return false;
+        const hasText = (node: Element) =>
+          node.textContent?.replace(/[,.\s\u00A0]+/g, " ").trim() ===
+          `R ${amount}`.replace(/[,.\s\u00A0]+/g, " ").trim();
+        const nodeHasText = hasText(element);
+        const childrenDontHaveText = Array.from(element.children).every(
+          (child) => !hasText(child)
+        );
+        return nodeHasText && childrenDontHaveText;
+      });
+    };
+
+    expect(matchCurrency("50 500")).toBeInTheDocument();
+    expect(matchCurrency("51 000")).toBeInTheDocument();
+    expect(matchCurrency("53 000")).toBeInTheDocument();
   });
 
   it("disables bidding and shows banner when user is unverified", () => {

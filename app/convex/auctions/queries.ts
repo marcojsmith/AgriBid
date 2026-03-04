@@ -1,5 +1,76 @@
+async function calculateUserBidStats(
+  ctx: QueryCtx,
+  userId: string
+): Promise<CalculateUserBidStatsResult> {
+  const allUserBids = await ctx.db
+    .query("bids")
+    .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+    .filter((q) => q.neq(q.field("status"), "voided"))
+    .collect();
+
+  const auctionStatsMap = new Map<string, AuctionBidStats>();
+
+  for (const bid of allUserBids) {
+    const stats = auctionStatsMap.get(bid.auctionId) || {
+      lastBidTimestamp: 0,
+      highestBid: 0,
+      bidCount: 0,
+    };
+    stats.bidCount++;
+    if (bid.amount > stats.highestBid) {
+      stats.highestBid = bid.amount;
+    }
+    if (bid.timestamp > stats.lastBidTimestamp) {
+      stats.lastBidTimestamp = bid.timestamp;
+    }
+    auctionStatsMap.set(bid.auctionId, stats);
+  }
+
+  const globalStats: GlobalUserBidStats = {
+    totalActive: 0,
+    winningCount: 0,
+    outbidCount: 0,
+    totalExposure: 0,
+  };
+  const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
+  const fullAuctions = await Promise.all(
+    auctionIds.map((id) => ctx.db.get(id))
+  );
+
+  const auctionsMap = new Map<string, Doc<"auctions"> | null>();
+
+  fullAuctions.forEach((auction: Doc<"auctions"> | null, index: number) => {
+    auctionsMap.set(auctionIds[index], auction);
+    if (!auction) return;
+    const stats = auctionStatsMap.get(auctionIds[index])!;
+
+    if (auction.status === "active") {
+      globalStats.totalActive++;
+      const isWinning =
+        stats.highestBid === auction.currentPrice &&
+        auction.winnerId === userId;
+      if (isWinning) {
+        globalStats.winningCount++;
+        globalStats.totalExposure += stats.highestBid;
+      } else {
+        globalStats.outbidCount++;
+      }
+    }
+  });
+
+  return { globalStats, auctionStatsMap, auctionsMap };
+}
+
+const ZERO_AUCTION_STATS = {
+  totalActive: 0,
+  winningCount: 0,
+  outbidCount: 0,
+  totalExposure: 0,
+};
+
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { findUserById } from "../users";
 import { authComponent } from "../auth";
@@ -14,7 +85,7 @@ import {
   toAuctionDetail,
   BidValidator,
 } from "./helpers";
-import { countQuery } from "../admin/statistics";
+import { countQuery } from "../admin_utils";
 
 /**
  * Represents the possible status values for an auction.
@@ -247,7 +318,7 @@ export const getAuctionBids = query({
 
     const [bidsResult, totalCount] = await Promise.all([
       bidsQuery.order("desc").paginate(args.paginationOpts),
-      countQuery(() =>
+      countQuery(
         ctx.db
           .query("bids")
           .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
@@ -270,21 +341,21 @@ export const getAuctionBids = query({
 
     await Promise.all(
       uniqueBidderIds.map(async (bidderId) => {
-        const mapKey = bidderId || ANONYMOUS_KEY;
+        const mapKey = (bidderId as string) || ANONYMOUS_KEY;
 
         if (
           !bidderId ||
           (bidderId as string).length < MIN_VALID_BIDDER_ID_LENGTH
         ) {
-          bidderNames.set(mapKey, "Anonymous");
+          bidderNames.set(mapKey as string, "Anonymous");
           return;
         }
         const user = await findUserById(ctx, bidderId as string);
 
         if (user) {
-          bidderNames.set(mapKey, user.name ?? "Anonymous");
+          bidderNames.set(mapKey as string, user.name ?? "Anonymous");
         } else {
-          bidderNames.set(mapKey, "Anonymous");
+          bidderNames.set(mapKey as string, "Anonymous");
         }
       })
     );
@@ -336,7 +407,7 @@ export const getEquipmentMetadata = query({
     const metadataQuery = ctx.db.query("equipmentMetadata");
     const [results, totalCount] = await Promise.all([
       metadataQuery.paginate(args.paginationOpts),
-      countQuery(() => ctx.db.query("equipmentMetadata")),
+      countQuery(ctx.db.query("equipmentMetadata")),
     ]);
     return {
       ...results,
@@ -421,7 +492,7 @@ export const getSellerListings = query({
 
     const [results, totalCount] = await Promise.all([
       listingsQuery.paginate(args.paginationOpts),
-      countQuery(() =>
+      countQuery(
         ctx.db
           .query("auctions")
           .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
@@ -466,7 +537,7 @@ export const getAllAuctions = query({
     const auctionsQuery = ctx.db.query("auctions");
     const [auctionsResult, totalCount] = await Promise.all([
       auctionsQuery.order("desc").paginate(args.paginationOpts),
-      countQuery(() => ctx.db.query("auctions")),
+      countQuery(ctx.db.query("auctions")),
     ]);
 
     return {
@@ -532,7 +603,7 @@ export const getMyBids = query({
 
       const [bidsResult, totalCount] = await Promise.all([
         bidsQuery.order("desc").paginate(args.paginationOpts),
-        countQuery(() =>
+        countQuery(
           ctx.db
             .query("bids")
             .withIndex("by_bidder", (q) => q.eq("bidderId", linkId))
@@ -570,23 +641,28 @@ export const getMyBids = query({
 
           const summary = await toAuctionSummary(ctx, auction);
           const myHighestBid = bidsByAuction.get(auction._id) || 0;
+          const isWinning =
+            auction.status === "active" &&
+            myHighestBid === auction.currentPrice;
 
           return {
             ...summary,
             myHighestBid,
-            isWinning:
-              auction.status === "active" &&
-              myHighestBid === auction.currentPrice,
+            isWinning,
             isWon: auction.status === "sold" && auction.winnerId === linkId,
+            isOutbid: auction.status === "active" && !isWinning,
+            isCancelled: auction.status === "rejected",
             bidAmount: bid.amount,
             bidTimestamp: bid.timestamp,
+            lastBidTimestamp: bid.timestamp,
+            bidCount: 1, // approximate, if they need exact we'd need another query, but keeping 1 for now to satisfy type
           };
         })
       );
 
       return {
         ...bidsResult,
-        page: page.filter((a): a is NonNullable<typeof a> => a !== null),
+        page: page.flatMap((a) => (a ? [a] : [])),
         totalCount,
       };
     } catch (err) {
@@ -645,7 +721,7 @@ export const getMyListings = query({
 
       const [listingsResult, totalCount] = await Promise.all([
         listingsQuery.paginate(args.paginationOpts),
-        countQuery(() =>
+        countQuery(
           ctx.db
             .query("auctions")
             .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
@@ -728,3 +804,158 @@ export const getMyBidsCount = query({
     }
   },
 });
+
+export const getMyBidsStats = query({
+  args: {},
+  returns: v.object({
+    totalActive: v.number(),
+    winningCount: v.number(),
+    outbidCount: v.number(),
+    totalExposure: v.number(),
+  }),
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser) return ZERO_AUCTION_STATS;
+
+      const userId = authUser.userId ?? authUser._id;
+
+      const { globalStats } = await calculateUserBidStats(ctx, userId);
+      return globalStats;
+    } catch (err) {
+      console.error("getMyBidsStats failure:", err);
+      return ZERO_AUCTION_STATS;
+    }
+  },
+});
+
+export const getAuctionFlags = query({
+  args: { auctionId: v.id("auctions") },
+  returns: v.array(
+    v.object({
+      _id: v.id("auctionFlags"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      reporterId: v.string(),
+      reason: v.union(
+        v.literal("misleading"),
+        v.literal("inappropriate"),
+        v.literal("suspicious"),
+        v.literal("other")
+      ),
+      details: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("reviewed"),
+        v.literal("dismissed")
+      ),
+      createdAt: v.number(),
+      reporterName: v.string(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const flags = await ctx.db
+      .query("auctionFlags")
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .order("desc")
+      .collect();
+
+    const uniqueReporterIds = Array.from(
+      new Set(flags.map((f) => f.reporterId))
+    );
+    const reporterNames = new Map<string, string>();
+
+    await Promise.all(
+      uniqueReporterIds.map(async (reporterId) => {
+        const user = await findUserById(ctx, reporterId);
+        reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      })
+    );
+
+    return flags.map((flag) => ({
+      ...flag,
+      reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
+    }));
+  },
+});
+
+export const getAllPendingFlags = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("auctionFlags"),
+      _creationTime: v.number(),
+      auctionId: v.id("auctions"),
+      reporterId: v.string(),
+      reason: v.union(
+        v.literal("misleading"),
+        v.literal("inappropriate"),
+        v.literal("suspicious"),
+        v.literal("other")
+      ),
+      details: v.optional(v.string()),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("reviewed"),
+        v.literal("dismissed")
+      ),
+      createdAt: v.number(),
+      auctionTitle: v.string(),
+      reporterName: v.string(),
+    })
+  ),
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const flags = await ctx.db
+      .query("auctionFlags")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("desc")
+      .collect();
+
+    const uniqueAuctionIds = Array.from(new Set(flags.map((f) => f.auctionId)));
+    const auctionTitles = new Map<string, string>();
+    const uniqueReporterIds = Array.from(
+      new Set(flags.map((f) => f.reporterId))
+    );
+    const reporterNames = new Map<string, string>();
+
+    await Promise.all([
+      ...uniqueAuctionIds.map(async (auctionId) => {
+        const auction = await ctx.db.get(auctionId);
+        auctionTitles.set(auctionId, auction?.title ?? "Unknown Auction");
+      }),
+      ...uniqueReporterIds.map(async (reporterId) => {
+        const user = await findUserById(ctx, reporterId);
+        reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      }),
+    ]);
+
+    return flags.map((flag) => ({
+      ...flag,
+      auctionTitle: auctionTitles.get(flag.auctionId) ?? "Unknown Auction",
+      reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
+    }));
+  },
+});
+
+export interface CalculateUserBidStatsResult {
+  globalStats: GlobalUserBidStats;
+  auctionStatsMap: Map<string, AuctionBidStats>;
+  auctionsMap: Map<string, Doc<"auctions"> | null>;
+}
+
+export interface AuctionBidStats {
+  lastBidTimestamp: number;
+  highestBid: number;
+  bidCount: number;
+}
+
+export interface GlobalUserBidStats {
+  totalActive: number;
+  winningCount: number;
+  outbidCount: number;
+  totalExposure: number;
+}

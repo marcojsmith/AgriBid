@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { Layout } from "../Layout";
+import { Layout } from "@/components/Layout";
 import { describe, it, expect, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 
@@ -25,7 +25,7 @@ vi.mock("convex/react", () => ({
 }));
 
 // Mock auth client for NotificationListener
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(() => ({ data: null, isPending: false })),
 }));
 

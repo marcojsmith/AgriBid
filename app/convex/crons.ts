@@ -15,4 +15,19 @@ crons.interval(
   internal.auctions.settleExpiredAuctions
 );
 
+/**
+ * Daily job to delete abandoned drafts older than 30 days.
+ */
+crons.daily(
+  "cleanup abandoned drafts",
+  { hourUTC: 0, minuteUTC: 0 },
+  internal.auctions.cleanupDrafts
+);
+
+crons.interval(
+  "cleanup presence records",
+  { minutes: 15 },
+  internal.presence.cleanup
+);
+
 export default crons;

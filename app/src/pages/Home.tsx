@@ -1,16 +1,16 @@
 // app/src/pages/Home.tsx
 import { useState, useEffect } from "react";
 import { useQuery, usePaginatedQuery } from "convex/react";
-import { useSession } from "../lib/auth-client";
-import { Button } from "../components/ui/button";
+import { useSession } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
 import { api } from "convex/_generated/api";
-import { AuctionCard } from "../components/auction";
-import { AuctionCardSkeleton } from "../components/AuctionCardSkeleton";
-import { FilterSidebar } from "../components/FilterSidebar";
+import { AuctionCard } from "@/components/auction";
+import { AuctionCardSkeleton } from "@/components/AuctionCardSkeleton";
+import { FilterSidebar } from "@/components/FilterSidebar";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LoadingPage, LoadingIndicator } from "../components/LoadingIndicator";
+import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.
@@ -134,7 +134,7 @@ export default function Home() {
     cn("w-full h-full", mode === "compact" && "max-w-[500px]");
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
+    <div className="flex flex-col lg:flex-row gap-8 pb-12">
       {/* Desktop Sidebar */}
       {isDesktopSidebarOpen && (
         <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
@@ -278,7 +278,6 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
             {auctionsStatus === "CanLoadMore" && (
               <div className="flex justify-center pt-4">
                 <Button

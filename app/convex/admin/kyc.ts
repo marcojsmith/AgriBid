@@ -94,6 +94,8 @@ export const reviewKYC = mutation({
 
     if (!profile) throw new Error("Profile not found");
 
+    const wasPending = profile.kycStatus === "pending";
+
     if (args.decision === "approve") {
       const wasVerified = profile.isVerified;
 
@@ -107,6 +109,9 @@ export const reviewKYC = mutation({
 
       if (!wasVerified) {
         await updateCounter(ctx, "profiles", "verified", 1);
+      }
+      if (wasPending) {
+        await updateCounter(ctx, "profiles", "pending", -1);
       }
 
       // Send Success Notification
@@ -137,6 +142,9 @@ export const reviewKYC = mutation({
 
       if (wasVerified) {
         await updateCounter(ctx, "profiles", "verified", -1);
+      }
+      if (wasPending) {
+        await updateCounter(ctx, "profiles", "pending", -1);
       }
       // Send Rejection Notification
       await ctx.db.insert("notifications", {

@@ -4,7 +4,7 @@ import { MapPin, Calendar, HardDrive, Heart, Gavel } from "lucide-react";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../lib/auth-client";
+import { useSession } from "@/lib/auth-client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "./ui/button";

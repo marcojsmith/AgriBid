@@ -4,7 +4,14 @@
 - **Proxy Bidding**: Fully implemented (backend & frontend). Auto-incrementing logic verified.
 - **Admin Portal**: Route-based refactor complete. KPIs and moderation flows are isolated to local route state.
 - **Performance**: Image caching, paginated queries, and context-based state management implemented.
-- **Next Focus**: Listing Lifecycle & Management (Drafts, Update/Publish flow, and Condition Reports).
+- **Listing Lifecycle & Management**: Implemented draft persistence, update/publish flow, and condition report uploads.
+- **Admin Moderation**: Integrated flagging system with auto-hide thresholds and admin review dashboard.
+- **Settlement & Cleanup**: Automated auction settlement (Sold/Unsold) and periodic cleanup of abandoned drafts.
+
+## Next Focus
+- **Real-time Bidding Enhancements**: Refining bid concurrency handling and proxy bidding notifications.
+- **User Profile Extensions**: Implementing detailed KYC verification for commercial sellers.
+- **Performance Optimization**: Optimizing image delivery and caching for high-traffic auctions.
 
 ## Naming Conventions
 
@@ -112,3 +119,11 @@ The Admin Dashboard has been refactored from a monolithic context-based design t
 - **Auditability**: All administrative actions are automatically logged via the `logAudit` helper.
 - **Performance**: N+1 queries in administrative views (e.g., fetching read counts for announcements) are optimized via batched or parallelized lookups.
 - **Type Safety**: Backend queries used with `usePaginatedQuery` must have required `paginationOpts` in their validators to enable correct frontend type inference.
+
+## My Bids Implementation
+
+- **Grouping**: Bids are grouped by auction on the server in the `getMyBids` query. This prevents duplicate auction cards when a user has placed multiple bids on the same item.
+- **Winner Tracking**: The `winnerId` field in the `auctions` table is the source of truth for the current winning bidder. It is updated in real-time by the `handleNewBid` function (in `proxy_bidding.ts`).
+- **Dashboard Stats**: Overall stats (Winning, Outbid, Exposure) are calculated on the server via `getMyBidsStats` to ensure accuracy regardless of frontend pagination state.
+- **Pagination Strategy**: Currently uses an `indexOf(cursor) + 1` approach on an in-memory sorted array of auction IDs. While functional for current scale, this should be refactored to a more robust cursor-based query if the number of bid-on auctions per user exceeds 1,000.
+

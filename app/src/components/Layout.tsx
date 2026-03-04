@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import { Header } from "./header";
 import { Footer } from "./Footer";
 import { NotificationListener } from "./NotificationListener";
-import { UserProfileProvider } from "../contexts/UserProfileContext";
-import { useSession } from "../lib/auth-client";
+import { PresenceListener } from "./PresenceListener";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import { useSession } from "@/lib/auth-client";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useLocation } from "react-router-dom";
@@ -40,7 +41,12 @@ export const Layout = ({ children }: LayoutProps) => {
   return (
     <UserProfileProvider>
       <div className="min-h-screen flex flex-col bg-background text-foreground">
-        {session && <NotificationListener />}
+        {session && (
+          <>
+            <NotificationListener />
+            <PresenceListener />
+          </>
+        )}
         <Header />
         <main
           className={cn(

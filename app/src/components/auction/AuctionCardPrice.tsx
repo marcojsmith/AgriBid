@@ -1,5 +1,5 @@
 // app/src/components/auction/AuctionCardPrice.tsx
-import { CountdownTimer } from "../CountdownTimer";
+import { CountdownTimer } from "@/components/CountdownTimer";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 
 interface AuctionCardPriceProps {

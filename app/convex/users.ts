@@ -15,6 +15,7 @@ import {
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
 import type { Doc } from "./_generated/dataModel";
+import { PRESENCE_HEARTBEAT_THRESHOLD } from "./presence";
 
 /**
  * Validator for a profile document from the database.
@@ -201,6 +202,7 @@ export const listAllProfiles = query({
         name: v.optional(v.string()),
         email: v.optional(v.string()),
         createdAt: v.number(),
+        isOnline: v.boolean(),
       })
     ),
     isDone: v.boolean(),
@@ -213,20 +215,42 @@ export const listAllProfiles = query({
     await requireAdmin(ctx);
 
     const profilesQuery = ctx.db.query("profiles");
-    const [profilesResult, counter] = await Promise.all([
+    const [profiles, counter] = await Promise.all([
       profilesQuery.order("desc").paginate(args.paginationOpts),
       ctx.db
         .query("counters")
         .withIndex("by_name", (q) => q.eq("name", "profiles"))
         .unique(),
     ]);
-
     const totalCount = counter?.total ?? 0;
 
-    // Parallelize user lookups
+    const now = Date.now();
+
+    // Batch presence lookups for the entire page, deduplicating IDs first
+    const userIds = Array.from(new Set(profiles.page.map((p) => p.userId)));
+    const presences = await Promise.all(
+      userIds.map((uid) =>
+        ctx.db
+          .query("presence")
+          .withIndex("by_userId", (q) => q.eq("userId", uid))
+          .unique()
+      )
+    );
+    const presenceMap = new Map(
+      presences
+        .filter((presence): presence is Doc<"presence"> => presence !== null)
+        .map((presence) => [presence.userId, presence])
+    );
+
+    // Parallelize user lookups and map presence from the pre-fetched map
     const page = await Promise.all(
-      profilesResult.page.map(async (p: Doc<"profiles">) => {
+      profiles.page.map(async (p: Doc<"profiles">) => {
         const user = await findUserById(ctx, p.userId);
+        const presence = presenceMap.get(p.userId);
+
+        const isOnline = presence
+          ? now - presence.updatedAt < PRESENCE_HEARTBEAT_THRESHOLD
+          : false;
 
         return {
           _id: p._id,
@@ -238,12 +262,13 @@ export const listAllProfiles = query({
           name: user?.name,
           email: user?.email,
           createdAt: p.createdAt,
+          isOnline,
         };
       })
     );
 
     return {
-      ...profilesResult,
+      ...profiles,
       page,
       totalCount,
     };
@@ -436,6 +461,8 @@ export const submitKYC = mutation({
         encryptPII(args.email),
       ]);
 
+    const wasPending = profile.kycStatus === "pending";
+
     await ctx.db.patch(profile._id, {
       kycStatus: "pending",
       kycDocuments: args.documents,
@@ -446,6 +473,10 @@ export const submitKYC = mutation({
       kycEmail: encEmail,
       updatedAt: Date.now(),
     });
+
+    if (!wasPending) {
+      await updateCounter(ctx, "profiles", "pending", 1);
+    }
 
     return { success: true };
   },

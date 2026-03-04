@@ -9,7 +9,7 @@ import {
   Settings,
   ShieldAlert,
 } from "lucide-react";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SearchBar } from "./SearchBar";
 import type { UserDataWithProfile } from "@/types/auth";

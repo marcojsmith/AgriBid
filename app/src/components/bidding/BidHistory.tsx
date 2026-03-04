@@ -9,7 +9,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { History, User, ChevronDown } from "lucide-react";
-import { LoadingIndicator } from "../LoadingIndicator";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 
 interface BidHistoryProps {

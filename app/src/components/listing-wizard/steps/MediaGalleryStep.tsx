@@ -1,12 +1,13 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import {
   Camera,
   X,
   CheckCircle2,
   Plus,
-  TrendingUp,
   Info,
   Check,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListingWizard } from "../hooks/useListingWizard";
@@ -14,8 +15,34 @@ import { useListingMedia } from "../hooks/useListingMedia";
 import { PHOTO_SLOTS } from "../constants";
 
 export const MediaGalleryStep = () => {
-  const { formData, previews } = useListingWizard();
-  const { uploadingSlot, handleImageUpload, removeImage } = useListingMedia();
+  const { formData, previews, isSubmitting } = useListingWizard();
+  const { handleUpload, handleAdditionalUpload, handleRemove } =
+    useListingMedia();
+  const [uploadingSlots, setUploadingSlots] = React.useState<
+    Record<string, boolean>
+  >({});
+
+  const handleFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    slotId: string
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingSlots((prev) => ({ ...prev, [slotId]: true }));
+    try {
+      if (slotId === "additional") {
+        await handleAdditionalUpload(Array.from(files));
+      } else {
+        await handleUpload(
+          slotId as "front" | "engine" | "cabin" | "rear",
+          files[0]
+        );
+      }
+    } finally {
+      setUploadingSlots((prev) => ({ ...prev, [slotId]: false }));
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -56,7 +83,7 @@ export const MediaGalleryStep = () => {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => removeImage(slot.id)}
+                      onClick={() => handleRemove(slot.id)}
                       className="rounded-xl font-bold gap-2"
                     >
                       <X className="h-4 w-4" />
@@ -76,28 +103,25 @@ export const MediaGalleryStep = () => {
                     className="hidden"
                     id={`file-upload-${slot.id}`}
                     aria-label={`Upload image for slot ${slot.label}`}
-                    onChange={(e) => handleImageUpload(e, slot.id)}
-                    disabled={!!uploadingSlot}
+                    onChange={(e) => handleFileChange(e, slot.id)}
+                    disabled={isSubmitting || uploadingSlots[slot.id]}
                   />
                   <label
                     htmlFor={`file-upload-${slot.id}`}
                     className={cn(
-                      "w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer outline-none",
-                      uploadingSlot === slot.id && "animate-pulse"
+                      "w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer outline-none"
                     )}
                   >
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      {uploadingSlot === slot.id ? (
-                        <TrendingUp className="h-6 w-6 text-primary" />
+                      {uploadingSlots[slot.id] ? (
+                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
                       ) : (
                         <Camera className="h-6 w-6 text-primary" />
                       )}
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-black uppercase tracking-tight">
-                        {uploadingSlot === slot.id
-                          ? "Uploading..."
-                          : slot.label}
+                        {slot.label}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-medium uppercase">
                         {slot.desc}
@@ -116,7 +140,7 @@ export const MediaGalleryStep = () => {
           Additional Photos (Optional)
         </label>
         <div className="flex flex-wrap gap-4">
-          {formData.images.additional.map((id, index) => {
+          {formData.images.additional.map((id: string, index: number) => {
             const previewUrl =
               previews[id] || (id.startsWith("http") ? id : null);
             return (
@@ -134,7 +158,9 @@ export const MediaGalleryStep = () => {
                   <CheckCircle2 className="h-8 w-8 text-primary/40" />
                 )}
                 <button
-                  onClick={() => removeImage("additional", index)}
+                  type="button"
+                  aria-label="Remove image"
+                  onClick={() => handleRemove("additional", index)}
                   className="absolute -top-1 -right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                 >
                   <X className="h-3 w-3" />
@@ -147,26 +173,25 @@ export const MediaGalleryStep = () => {
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 id="file-upload-additional"
                 aria-label="Upload additional photo"
-                onChange={(e) => handleImageUpload(e, "additional")}
-                disabled={!!uploadingSlot}
+                onChange={(e) => handleFileChange(e, "additional")}
+                disabled={isSubmitting || uploadingSlots["additional"]}
               />
               <label
                 htmlFor="file-upload-additional"
                 className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer"
               >
-                {uploadingSlot === "additional" ? (
-                  <TrendingUp className="h-5 w-5 text-primary animate-pulse" />
+                {uploadingSlots["additional"] ? (
+                  <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
                 ) : (
-                  <>
-                    <Plus className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-[8px] font-bold uppercase">
-                      Add Photo
-                    </span>
-                  </>
+                  <Plus className="h-5 w-5 text-muted-foreground" />
                 )}
+                <span className="text-[8px] font-bold uppercase">
+                  Add Photo
+                </span>
               </label>
             </div>
           )}

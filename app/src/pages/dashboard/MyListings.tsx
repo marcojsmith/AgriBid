@@ -1,11 +1,81 @@
 // app/src/pages/dashboard/MyListings.tsx
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useState, useMemo } from "react";
+import { usePaginatedQuery, useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Plus, Edit, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  LayoutDashboard,
+  Plus,
+  Edit,
+  Trash2,
+  Send,
+  Loader2,
+  Eye,
+} from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { toast } from "sonner";
+import {
+  AUCTION_STATUS_BADGE_VARIANTS,
+  getAuctionStatusLabel,
+} from "@/lib/auction-badges";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import type { Id } from "convex/_generated/dataModel";
+
+import { normalizeListingImages } from "@/lib/normalize-images";
+
+type StatusFilter =
+  | "all"
+  | "draft"
+  | "pending_review"
+  | "active"
+  | "sold"
+  | "unsold";
+
+export interface AuctionEditPayload {
+  _id: Id<"auctions">;
+  year: number;
+  make: string;
+  model: string;
+  location: string;
+  description?: string;
+  operatingHours: number;
+  title: string;
+  conditionChecklist?: {
+    engine: boolean | null;
+    hydraulics: boolean | null;
+    tires: boolean | null;
+    serviceHistory: boolean | null;
+    notes?: string;
+  };
+  images:
+    | {
+        front?: string;
+        engine?: string;
+        cabin?: string;
+        rear?: string;
+        additional?: string[];
+      }
+    | string[];
+  startingPrice: number;
+  reservePrice: number;
+  durationDays?: number;
+  status: string;
+  currentPrice: number;
+  endTime?: number;
+}
 
 /**
  * Renders the current user's auction listings dashboard.
@@ -16,6 +86,11 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
  * @returns The React element tree for the My Listings dashboard page.
  */
 export default function MyListings() {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
   const {
     results: listings,
     status,
@@ -23,10 +98,98 @@ export default function MyListings() {
   } = usePaginatedQuery(
     api.auctions.getMyListings,
     {},
-    { initialNumItems: 10 }
+    { initialNumItems: 50 }
   );
 
   const totalListings = useQuery(api.auctions.getMyListingsCount);
+  const submitForReview = useMutation(api.auctions.submitForReview);
+  const deleteDraft = useMutation(api.auctions.deleteDraft);
+
+  const filteredListings = useMemo(() => {
+    if (statusFilter === "all") return listings;
+    return listings.filter((listing) => listing.status === statusFilter);
+  }, [listings, statusFilter]);
+
+  const handleSubmitForReview = async (auctionId: Id<"auctions">) => {
+    if (publishingId) return;
+    setPublishingId(auctionId);
+    try {
+      await submitForReview({ auctionId });
+      toast.success("Listing submitted for review!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit for review"
+      );
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
+  const handleDeleteDraft = async (auctionId: Id<"auctions">) => {
+    try {
+      setDeletingId(auctionId);
+      await deleteDraft({ auctionId });
+      toast.success("Draft deleted successfully");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete draft"
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleEdit = (auction: (typeof listings)[0]) => {
+    // Save to local storage and redirect to /sell?edit=ID
+    const draftData = {
+      auctionId: auction._id,
+      year: auction.year,
+      make: auction.make,
+      model: auction.model,
+      location: auction.location,
+      description: auction.description ?? "",
+      operatingHours: auction.operatingHours,
+      title: auction.title,
+      conditionChecklist: {
+        engine: auction.conditionChecklist?.engine ?? null,
+        hydraulics: auction.conditionChecklist?.hydraulics ?? null,
+        tires: auction.conditionChecklist?.tires ?? null,
+        serviceHistory: auction.conditionChecklist?.serviceHistory ?? null,
+        notes: auction.conditionChecklist?.notes ?? "",
+      },
+      images: normalizeListingImages(auction.images),
+      startingPrice: auction.startingPrice,
+      reservePrice: auction.reservePrice,
+      durationDays: auction.durationDays ?? 7,
+    };
+
+    try {
+      localStorage.setItem("agribid_listing_draft", JSON.stringify(draftData));
+      localStorage.setItem("agribid_listing_step", "0");
+    } catch (e) {
+      console.warn("Failed to save draft to localStorage:", e);
+    }
+    navigate(`/sell?edit=${auction._id}`);
+  };
+
+  const counts = useMemo(() => {
+    const acc: Record<StatusFilter, number> = {
+      all: listings.length,
+      draft: 0,
+      pending_review: 0,
+      active: 0,
+      sold: 0,
+      unsold: 0,
+    };
+    for (const listing of listings) {
+      if (listing.status in acc) {
+        acc[listing.status as keyof typeof acc]++;
+      }
+    }
+    return acc;
+  }, [listings]);
+
+  const getStatusCount = (status: StatusFilter) => counts[status];
 
   if (status === "LoadingFirstPage") {
     return (
@@ -50,31 +213,65 @@ export default function MyListings() {
         <Button
           size="lg"
           className="rounded-xl font-bold shadow-lg shadow-primary/20"
-          asChild
+          onClick={() => {
+            try {
+              localStorage.removeItem("agribid_listing_draft");
+              localStorage.removeItem("agribid_listing_step");
+            } catch (e) {
+              console.warn("Failed to clear localStorage:", e);
+            } finally {
+              navigate("/sell");
+            }
+          }}
         >
-          <Link to="/sell">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Listing
-          </Link>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Listing
         </Button>
       </div>
 
-      {listings.length === 0 ? (
+      <Tabs
+        value={statusFilter}
+        onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+      >
+        <TabsList className="flex flex-wrap h-auto gap-1">
+          <TabsTrigger value="all" className="flex-1 min-w-[80px]">
+            All ({getStatusCount("all")})
+          </TabsTrigger>
+          <TabsTrigger value="draft" className="flex-1 min-w-[80px]">
+            Drafts ({getStatusCount("draft")})
+          </TabsTrigger>
+          <TabsTrigger value="pending_review" className="flex-1 min-w-[80px]">
+            Pending ({getStatusCount("pending_review")})
+          </TabsTrigger>
+          <TabsTrigger value="active" className="flex-1 min-w-[80px]">
+            Active ({getStatusCount("active")})
+          </TabsTrigger>
+          <TabsTrigger value="sold" className="flex-1 min-w-[80px]">
+            Sold ({getStatusCount("sold")})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {filteredListings.length === 0 ? (
         <div className="max-w-4xl mx-auto space-y-8 py-24 text-center bg-card border-2 border-dashed rounded-3xl border-primary/10">
           <p className="text-muted-foreground text-lg max-w-md mx-auto font-bold uppercase tracking-widest">
-            You haven't listed any equipment yet.
+            {statusFilter === "all"
+              ? "You haven't listed any equipment yet."
+              : `No listings with status: ${statusFilter.replace("_", " ")}`}
           </p>
-          <Button
-            size="lg"
-            className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20"
-            asChild
-          >
-            <Link to="/sell">Start Selling</Link>
-          </Button>
+          {statusFilter === "all" && (
+            <Button
+              size="lg"
+              className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20"
+              asChild
+            >
+              <Link to="/sell">Start Selling</Link>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
-          {listings.map((auction) => (
+          {filteredListings.map((auction) => (
             <div
               key={auction._id}
               className="bg-card border-2 rounded-2xl p-4 flex flex-col md:flex-row gap-6 items-start md:items-center group hover:border-primary/50 transition-colors"
@@ -102,10 +299,12 @@ export default function MyListings() {
                     {auction.title}
                   </h3>
                   <Badge
-                    variant="outline"
+                    variant={
+                      AUCTION_STATUS_BADGE_VARIANTS[auction.status] ?? "outline"
+                    }
                     className="font-bold uppercase tracking-wider shrink-0"
                   >
-                    {auction.status.replaceAll("_", " ")}
+                    {getAuctionStatusLabel(auction.status)}
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -126,23 +325,85 @@ export default function MyListings() {
                 </div>
               </div>
 
-              <div className="flex gap-2 w-full md:w-auto">
+              <div className="flex gap-2 w-full md:w-auto flex-wrap">
                 <Button
                   variant="outline"
+                  size="sm"
                   className="flex-1 md:flex-none font-bold"
                   asChild
                 >
-                  <Link to={`/auction/${auction._id}`}>View</Link>
+                  <Link to={`/auction/${auction._id}`}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View
+                  </Link>
                 </Button>
-                {auction.status === "draft" && (
-                  <Button
-                    variant="secondary"
-                    className="flex-1 md:flex-none font-bold"
-                    disabled
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit (Soon)
-                  </Button>
+
+                {(auction.status === "draft" ||
+                  auction.status === "pending_review") && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1 md:flex-none font-bold"
+                      onClick={() => handleEdit(auction)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    {auction.status === "draft" && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="flex-1 md:flex-none font-bold"
+                        disabled={publishingId === auction._id}
+                        onClick={() => handleSubmitForReview(auction._id)}
+                      >
+                        {publishingId === auction._id ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4 mr-2" />
+                        )}
+                        Submit
+                      </Button>
+                    )}
+                    {auction.status === "draft" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1 md:flex-none font-bold"
+                            disabled={deletingId === auction._id}
+                          >
+                            {deletingId === auction._id ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 mr-2" />
+                            )}
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Draft</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this draft? This
+                              action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteDraft(auction._id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </>
                 )}
               </div>
             </div>

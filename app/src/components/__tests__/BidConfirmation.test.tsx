@@ -1,6 +1,6 @@
 // app/src/components/__tests__/BidConfirmation.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BidConfirmation } from "../BidConfirmation";
+import { BidConfirmation } from "@/components/BidConfirmation";
 import { describe, it, expect, vi } from "vitest";
 
 describe("BidConfirmation", () => {

@@ -33,7 +33,7 @@ export default defineSchema({
       v.literal("unsold"),
       v.literal("rejected")
     ),
-    winnerId: v.optional(v.string()),
+    winnerId: v.optional(v.union(v.string(), v.null())),
     images: v.union(
       v.object({
         front: v.optional(v.string()), // storageId
@@ -45,8 +45,9 @@ export default defineSchema({
       v.array(v.string()) // legacy format
     ),
     description: v.optional(v.string()),
-    conditionReportUrl: v.optional(v.string()),
+    conditionReportUrl: v.optional(v.id("_storage")), // PDF storage ID
     isExtended: v.optional(v.boolean()),
+    hiddenByFlags: v.optional(v.boolean()),
     seedId: v.optional(v.string()),
     conditionChecklist: v.optional(
       v.object({
@@ -75,6 +76,29 @@ export default defineSchema({
       filterFields: ["status", "model"],
     }),
 
+  // Auction flagging system for community moderation
+  auctionFlags: defineTable({
+    auctionId: v.id("auctions"),
+    reporterId: v.string(),
+    reason: v.union(
+      v.literal("misleading"),
+      v.literal("inappropriate"),
+      v.literal("suspicious"),
+      v.literal("other")
+    ),
+    details: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewed"),
+      v.literal("dismissed")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_auction", ["auctionId"])
+    .index("by_reporter", ["reporterId"])
+    .index("by_status", ["status"])
+    .index("by_auction_status", ["auctionId", "status"]),
+
   bids: defineTable({
     auctionId: v.id("auctions"),
     bidderId: v.string(),
@@ -84,6 +108,7 @@ export default defineSchema({
   })
     .index("by_auction", ["auctionId", "timestamp"])
     .index("by_bidder", ["bidderId"])
+    .index("by_bidder_auction", ["bidderId", "auctionId"])
     .index("by_timestamp", ["timestamp"]),
 
   proxy_bids: defineTable({
@@ -195,6 +220,13 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_auction", ["userId", "auctionId"]),
 
+  presence: defineTable({
+    userId: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_updatedAt", ["updatedAt"]),
+
   counters: defineTable({
     name: v.string(), // e.g., "auctions", "profiles", "support", "announcements"
     total: v.number(),
@@ -203,6 +235,9 @@ export default defineSchema({
     verified: v.optional(v.number()),
     open: v.optional(v.number()),
     resolved: v.optional(v.number()),
+    draft: v.optional(v.number()), // Support for draft counter
+    salesVolume: v.optional(v.number()),
+    soldCount: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 

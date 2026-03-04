@@ -1,172 +1,188 @@
-import { useState, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { useListingWizard } from "../context/useListingWizard";
 import { toast } from "sonner";
-import { useListingWizard } from "./useListingWizard";
+import { getErrorMessage } from "@/lib/utils";
+import type { ListingFormData } from "../types";
 
-export const useListingMedia = () => {
+/**
+ * Custom hook for managing media uploads and previews in the listing wizard.
+ *
+ * @returns Object with media upload and removal handlers
+ */
+export function useListingMedia() {
   const { formData, setFormData, previews, setPreviews } = useListingWizard();
-  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
 
-  const imagesRef = useRef(formData.images);
-  const previewsRef = useRef(previews);
-
-  useEffect(() => {
-    imagesRef.current = formData.images;
-  }, [formData.images]);
-
-  useEffect(() => {
-    previewsRef.current = previews;
+  /**
+   * Cleans up local preview URLs to prevent memory leaks.
+   */
+  const cleanupPreviews = useCallback(() => {
+    Object.values(previews).forEach((url) => {
+      if (url.startsWith("blob:")) {
+        URL.revokeObjectURL(url);
+      }
+    });
   }, [previews]);
 
-  // Unmount cleanup for all blob URLs
-  useEffect(() => {
-    return () => {
-      const images = imagesRef.current;
-      const currentPreviews = previewsRef.current;
-
-      // Revoke from images state (if they are blobs)
-      if (images && typeof images === "object" && !Array.isArray(images)) {
-        const { additional, ...slots } = images;
-        const allUrls = [...Object.values(slots), ...(additional || [])];
-        allUrls.forEach((url) => {
-          if (typeof url === "string" && url.startsWith("blob:")) {
-            URL.revokeObjectURL(url);
-          }
-        });
-      }
-
-      // Revoke from previews state
-      Object.values(currentPreviews).forEach((url) => {
-        if (url && typeof url === "string" && url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
-    };
-  }, []);
-
-  const handleImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    slotId: string
+  /**
+   * Handles single image upload for specific slots (front, engine, cabin, rear).
+   *
+   * @param slotId - The slot identifier
+   * @param file - The file to upload
+   */
+  const handleUpload = async (
+    slotId: "front" | "engine" | "cabin" | "rear",
+    file: File
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Create local preview immediately
+    // 1. Create local preview
     const blobUrl = URL.createObjectURL(file);
-    if (slotId !== "additional") {
-      setPreviews((prev) => ({ ...prev, [slotId]: blobUrl }));
-    }
+    setPreviews((prev: Record<string, string>) => {
+      if (prev[slotId]?.startsWith("blob:")) {
+        URL.revokeObjectURL(prev[slotId]);
+      }
+      return {
+        ...prev,
+        [slotId]: blobUrl,
+      };
+    });
 
     try {
-      setUploadingSlot(slotId);
-      const postUrl = await generateUploadUrl();
-      const result = await fetch(postUrl, {
+      // 2. Get upload URL from Convex
+      const uploadUrl = await generateUploadUrl();
+
+      // 3. POST binary data to Convex storage
+      const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
       });
 
-      if (!result.ok) {
-        throw new Error(`Upload failed: ${result.statusText}`);
-      }
+      if (!result.ok) throw new Error("Upload failed");
 
       const { storageId } = await result.json();
 
-      setFormData((prev) => {
-        const currentImages = prev.images || { additional: [] };
-        if (slotId === "additional") {
-          return {
-            ...prev,
-            images: {
-              ...currentImages,
-              additional: [...(currentImages.additional || []), storageId],
-            },
-          };
-        }
-        return {
+      // 4. Update form state with storageId
+      setFormData((prev: ListingFormData) => ({
+        ...prev,
+        images: {
+          ...prev.images,
+          [slotId]: storageId,
+        },
+      }));
+    } catch (error) {
+      console.error("Upload failed", error);
+      toast.error(getErrorMessage(error, "Image upload failed"));
+      // Cleanup preview on failure
+      setPreviews((prev: Record<string, string>) => {
+        const next = { ...prev };
+        delete next[slotId];
+        return next;
+      });
+      URL.revokeObjectURL(blobUrl);
+    }
+  };
+
+  /**
+   * Handles multiple image uploads for the 'additional' slot.
+   *
+   * @param files - The files to upload
+   */
+  const handleAdditionalUpload = async (files: File[]) => {
+    const currentCount = formData.images.additional.length;
+    const remainingSlots = 6 - currentCount;
+
+    if (remainingSlots <= 0) {
+      toast.error("Maximum of 6 additional images allowed");
+      return;
+    }
+
+    const filesToUpload = files.slice(0, remainingSlots);
+
+    for (const file of filesToUpload) {
+      const blobUrl = URL.createObjectURL(file);
+
+      try {
+        const uploadUrl = await generateUploadUrl();
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!result.ok) throw new Error("Upload failed");
+        const { storageId } = await result.json();
+
+        setPreviews((prev: Record<string, string>) => ({
+          ...prev,
+          [storageId]: blobUrl,
+        }));
+        setFormData((prev: ListingFormData) => ({
           ...prev,
           images: {
-            ...currentImages,
-            [slotId]: storageId,
+            ...prev.images,
+            additional: [...prev.images.additional, storageId],
           },
-        };
-      });
-
-      // For additional photos, we track previews by storageId after upload
-      if (slotId === "additional") {
-        setPreviews((prev) => ({ ...prev, [storageId]: blobUrl }));
-      }
-
-      const successMessage =
-        slotId === "additional"
-          ? "Additional photo uploaded"
-          : `${slotId.toUpperCase()} photo uploaded`;
-      toast.success(successMessage);
-    } catch (error) {
-      console.error(error);
-      URL.revokeObjectURL(blobUrl);
-      if (slotId !== "additional") {
-        setPreviews((prev) => {
-          const next = { ...prev };
-          delete next[slotId];
-          return next;
-        });
-      }
-      toast.error("Upload failed");
-    } finally {
-      setUploadingSlot(null);
-      if (e.currentTarget) {
-        e.currentTarget.value = "";
+        }));
+      } catch (error) {
+        console.error("Additional upload failed", error);
+        toast.error("Failed to upload one or more images");
+        URL.revokeObjectURL(blobUrl);
       }
     }
   };
 
-  const removeImage = (slotId: string, index?: number) => {
-    const currentImages = formData.images;
-    let targetId: string | undefined;
-    let previewKey: string;
+  /**
+   * Removes an image from a specific slot.
+   *
+   * @param targetId - The slot ID or storage ID to remove
+   */
+  const handleRemove = (targetId: string, index?: number) => {
+    let previewKey = targetId;
 
-    if (slotId === "additional" && typeof index === "number") {
-      if (!Array.isArray(currentImages.additional)) return;
-      targetId = currentImages.additional[index];
-      previewKey = targetId;
-    } else {
-      const key = slotId as keyof Omit<typeof formData.images, "additional">;
-      targetId = currentImages[key];
-      previewKey = slotId;
+    if (targetId === "additional" && index !== undefined) {
+      previewKey = formData.images.additional[index];
     }
 
-    setFormData((prev) => {
-      const newImages = { ...prev.images };
-      if (slotId === "additional" && typeof index === "number") {
-        if (!Array.isArray(newImages.additional)) return prev;
-        newImages.additional = newImages.additional.filter(
-          (_, i) => i !== index
-        );
-      } else {
-        const key = slotId as keyof Omit<typeof formData.images, "additional">;
-        delete newImages[key];
-      }
-      return { ...prev, images: newImages };
-    });
-
-    if (previewKey) {
-      setPreviews((prevP) => {
-        const next = { ...prevP };
-        if (next[previewKey]) {
-          URL.revokeObjectURL(next[previewKey]);
-          delete next[previewKey];
-        }
+    // Revoke preview
+    if (previews[previewKey]) {
+      URL.revokeObjectURL(previews[previewKey]);
+      setPreviews((prev: Record<string, string>) => {
+        const next = { ...prev };
+        delete next[previewKey];
         return next;
       });
     }
+
+    // Update form state
+    setFormData((prev: ListingFormData) => {
+      if (targetId === "additional" && index !== undefined) {
+        return {
+          ...prev,
+          images: {
+            ...prev.images,
+            additional: prev.images.additional.filter(
+              (_: string, i: number) => i !== index
+            ),
+          },
+        };
+      } else {
+        return {
+          ...prev,
+          images: {
+            ...prev.images,
+            [targetId]: undefined,
+          },
+        };
+      }
+    });
   };
 
   return {
-    uploadingSlot,
-    handleImageUpload,
-    removeImage,
+    handleUpload,
+    handleAdditionalUpload,
+    handleRemove,
+    cleanupPreviews,
   };
-};
+}

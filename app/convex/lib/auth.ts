@@ -10,6 +10,16 @@ import { authComponent } from "../auth";
 import type { AuthUser } from "../auth";
 
 /**
+ * Custom error class for unauthorized access attempts.
+ */
+export class UnauthorizedError extends Error {
+  constructor(message = "Unauthorized") {
+    super(message);
+    this.name = "UnauthorizedError";
+  }
+}
+
+/**
  * Retrieve the authenticated user associated with the provided context.
  *
  * @param ctx - Query or Mutation context used to resolve the current user
@@ -77,6 +87,29 @@ export async function requireAuth(ctx: QueryCtx | MutationCtx) {
     throw new Error("Not authenticated");
   }
   return authUser;
+}
+
+/**
+ * Get the authenticated user's ID, throwing if not authenticated or ID cannot be determined.
+ *
+ * This helper combines the common pattern of:
+ *   1. Getting the auth user
+ *   2. Checking if authenticated
+ *   3. Resolving the user ID
+ *
+ * @returns The resolved user ID string
+ * @throws Error("Not authenticated") if no user is authenticated
+ * @throws Error("Unable to determine user ID") if user ID cannot be resolved
+ */
+export async function getAuthenticatedUserId(
+  ctx: QueryCtx | MutationCtx
+): Promise<string> {
+  const authUser = await requireAuth(ctx);
+  const userId = resolveUserId(authUser);
+  if (!userId) {
+    throw new Error("Unable to determine user ID");
+  }
+  return userId;
 }
 
 /**

@@ -1,161 +1,97 @@
-import React, { createContext, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import type { ListingFormData, ConditionChecklist } from "../types";
-import { DEFAULT_FORM_DATA, STEPS } from "../constants";
-
-interface ListingWizardContextType {
-  formData: ListingFormData;
-  currentStep: number;
-  isSubmitting: boolean;
-  isSuccess: boolean;
-  previews: Record<string, string>;
-  draftSaved: boolean;
-  setFormData: React.Dispatch<React.SetStateAction<ListingFormData>>;
-  setCurrentStep: React.Dispatch<React.SetStateAction<number>>;
-  setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsSuccess: React.Dispatch<React.SetStateAction<boolean>>;
-  setPreviews: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  updateField: <K extends keyof ListingFormData>(
-    field: K,
-    value: ListingFormData[K]
-  ) => void;
-  updateChecklist: <K extends keyof ConditionChecklist>(
-    field: K,
-    value: ConditionChecklist[K]
-  ) => void;
-}
-
-const ListingWizardContext = createContext<
-  ListingWizardContextType | undefined
->(undefined);
+import { DEFAULT_FORM_DATA } from "../constants";
+import { normalizeListingImages } from "@/lib/normalize-images";
+import { ListingWizardContext } from "./ListingWizardContextDef";
 
 /**
- * Deeply merges a source object into a target object.
- * - Skips undefined values from source
- * - Replaces arrays (not merged)
- * - Recursively merges nested plain objects
- * - Guards against prototype pollution by skipping __proto__, prototype, constructor
+ * Validates and normalizes saved draft data to ensure it matches the ListingFormData shape.
  *
- * @param target - The target object to merge into
- * @param source - The source object to merge from
- * @returns The merged result with type T
+ * @param saved - The raw parsed data from localStorage
+ * @returns A normalized ListingFormData object
  */
-function deepMerge<T extends object>(target: T, source: Partial<T>): T {
-  const result = { ...target } as Record<string, unknown>;
-  for (const key in source) {
-    if (
-      Object.prototype.hasOwnProperty.call(source, key) &&
-      source[key] !== undefined &&
-      key !== "__proto__" &&
-      key !== "prototype" &&
-      key !== "constructor"
-    ) {
-      const sourceVal = source[key];
-      const targetVal = result[key];
-      if (
-        sourceVal !== null &&
-        typeof sourceVal === "object" &&
-        !Array.isArray(sourceVal) &&
-        targetVal !== null &&
-        typeof targetVal === "object" &&
-        !Array.isArray(targetVal)
-      ) {
-        result[key] = deepMerge(targetVal, sourceVal);
-      } else {
-        result[key] = sourceVal;
-      }
-    }
-  }
-  return result as T;
-}
+const validateAndNormalizeDraft = (saved: unknown): ListingFormData => {
+  const data = (
+    saved && typeof saved === "object" ? saved : {}
+  ) as Partial<ListingFormData>;
 
-export { ListingWizardContext, type ListingWizardContextType };
+  const normalizedImages = normalizeListingImages(
+    data.images || DEFAULT_FORM_DATA.images
+  );
 
+  return {
+    ...DEFAULT_FORM_DATA,
+    ...data,
+    images: normalizedImages,
+    conditionChecklist: {
+      ...DEFAULT_FORM_DATA.conditionChecklist,
+      ...(data.conditionChecklist || {}),
+    },
+  };
+};
+
+/**
+ * Provider component for the Listing Wizard state.
+ * Manages form data, current step, submission status, and image previews.
+ * Persists state to localStorage for session recovery.
+ *
+ * @param props.children - Child components that will have access to the context
+ */
 export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [currentStep, setCurrentStep] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    const saved = localStorage.getItem("agribid_listing_step");
-    if (saved) {
-      const parsed = parseInt(saved, 10);
-      if (Number.isFinite(parsed) && parsed >= 0 && parsed < STEPS.length) {
-        return parsed;
+  const [formData, setFormData] = useState<ListingFormData>(DEFAULT_FORM_DATA);
+  const [currentStep, setCurrentStep] = useState<number>(0);
+
+  // Initialize from localStorage on client side only to avoid SSR mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedDraft = localStorage.getItem("agribid_listing_draft");
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft);
+          const normalized = validateAndNormalizeDraft(parsed);
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setFormData(() => normalized);
+        } catch {
+          // silently fallback to DEFAULT_FORM_DATA
+        }
+      }
+      const savedStep = localStorage.getItem("agribid_listing_step");
+      if (savedStep) {
+        const step = parseInt(savedStep, 10);
+        if (Number.isInteger(step) && step >= 0 && step <= 5) {
+          setCurrentStep(() => step);
+        }
       }
     }
-    return 0;
-  });
+  }, []);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [draftSaved, setDraftSaved] = useState(false);
 
-  const [formData, setFormData] = useState<ListingFormData>(() => {
-    if (typeof window === "undefined") return DEFAULT_FORM_DATA;
-
-    const saved = localStorage.getItem("agribid_listing_draft");
-    if (!saved) return DEFAULT_FORM_DATA;
-    try {
-      const parsed = JSON.parse(saved) as Partial<ListingFormData>;
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        return DEFAULT_FORM_DATA;
-      }
-      if (
-        parsed.images &&
-        typeof parsed.images === "object" &&
-        !Array.isArray(parsed.images)
-      ) {
-        parsed.images = {
-          ...DEFAULT_FORM_DATA.images,
-          ...parsed.images,
-          additional: Array.isArray(parsed.images.additional)
-            ? parsed.images.additional
-            : [],
-        };
-      }
-      return deepMerge(DEFAULT_FORM_DATA, parsed);
-    } catch (e) {
-      console.error("Failed to parse listing draft", e);
-      localStorage.removeItem("agribid_listing_draft");
-      return DEFAULT_FORM_DATA;
-    }
-  });
-
+  // Persistence effect
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const timer = setTimeout(() => {
+    if (!isSuccess) {
       localStorage.setItem("agribid_listing_draft", JSON.stringify(formData));
       localStorage.setItem("agribid_listing_step", currentStep.toString());
-      setDraftSaved(true);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [formData, currentStep]);
+    }
+  }, [formData, currentStep, isSuccess]);
 
   const updateField = <K extends keyof ListingFormData>(
     field: K,
     value: ListingFormData[K]
   ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
     setDraftSaved(false);
-    setFormData((prev) => {
-      const newData = { ...prev, [field]: value };
-      if (field === "make" || field === "model" || field === "year") {
-        const parts = [newData.year, newData.make, newData.model].filter(
-          (v) => v !== undefined && v !== null && v !== ""
-        );
-        if (parts.length > 0) {
-          newData.title = parts.join(" ");
-        }
-      }
-      return newData;
-    });
   };
 
   const updateChecklist = <K extends keyof ConditionChecklist>(
     field: K,
     value: ConditionChecklist[K]
   ) => {
-    setDraftSaved(false);
     setFormData((prev) => ({
       ...prev,
       conditionChecklist: {
@@ -163,24 +99,65 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         [field]: value,
       },
     }));
+    setDraftSaved(false);
+  };
+
+  /**
+   * Resets the form state.
+   * If initialData is provided, it hydrates the form (hydration path).
+   * If no initialData is provided, it resets to defaults and clears storage (reset path).
+   *
+   * @param initialData - Optional partial data to hydrate the form with
+   */
+  const resetForm = (
+    initialData?: Partial<ListingFormData>,
+    initialStep?: number
+  ) => {
+    if (initialData) {
+      // Hydration path: normalize and set state, but don't clear storage
+      const normalizedImages = normalizeListingImages(
+        initialData.images || DEFAULT_FORM_DATA.images
+      );
+      setFormData({
+        ...DEFAULT_FORM_DATA,
+        ...initialData,
+        images: normalizedImages,
+      });
+      setCurrentStep(initialStep ?? 0);
+      setIsSuccess(false);
+      setIsSubmitting(false);
+      setDraftSaved(true);
+    } else {
+      // Reset path: clear state and clear storage
+      setFormData(DEFAULT_FORM_DATA);
+      setCurrentStep(0);
+      setIsSuccess(false);
+      setIsSubmitting(false);
+      setDraftSaved(false);
+      localStorage.removeItem("agribid_listing_draft");
+      localStorage.removeItem("agribid_listing_step");
+    }
+    setPreviews({});
   };
 
   return (
     <ListingWizardContext.Provider
       value={{
         formData,
-        currentStep,
-        isSubmitting,
-        isSuccess,
-        previews,
-        draftSaved,
         setFormData,
+        currentStep,
         setCurrentStep,
+        isSubmitting,
         setIsSubmitting,
+        isSuccess,
         setIsSuccess,
+        previews,
         setPreviews,
+        draftSaved,
+        setDraftSaved,
         updateField,
         updateChecklist,
+        resetForm,
       }}
     >
       {children}
