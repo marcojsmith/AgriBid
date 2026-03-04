@@ -25,7 +25,7 @@ vi.mock("convex/react", () => ({
 }));
 
 // Mock auth client for NotificationListener
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(() => ({ data: null, isPending: false })),
 }));
 
