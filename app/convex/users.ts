@@ -6,7 +6,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { getAuthUser, getCallerRole } from "./lib/auth";
+import { getAuthUser, getCallerRole, UnauthorizedError } from "./lib/auth";
 import { components } from "./_generated/api";
 import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
 
@@ -205,7 +205,7 @@ export const listAllProfiles = query({
   handler: async (ctx, args) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
-      throw new Error("Unauthorized");
+      throw new UnauthorizedError();
     }
 
     const profiles = await ctx.db
@@ -248,7 +248,7 @@ export const getProfileForKYC = mutation({
   handler: async (ctx, { userId }) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
-      throw new Error("Unauthorized");
+      throw new UnauthorizedError();
     }
 
     const profile = await ctx.db
@@ -310,7 +310,7 @@ export const verifyUser = mutation({
   handler: async (ctx, { userId }) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") {
-      throw new Error("Unauthorized");
+      throw new UnauthorizedError();
     }
 
     const profile = await ctx.db
@@ -434,6 +434,8 @@ export const submitKYC = mutation({
         encryptPII(args.email),
       ]);
 
+    const wasPending = profile.kycStatus === "pending";
+
     await ctx.db.patch(profile._id, {
       kycStatus: "pending",
       kycDocuments: args.documents,
@@ -444,6 +446,10 @@ export const submitKYC = mutation({
       kycEmail: encEmail,
       updatedAt: Date.now(),
     });
+
+    if (!wasPending) {
+      await updateCounter(ctx, "profiles", "pending", 1);
+    }
 
     return { success: true };
   },
