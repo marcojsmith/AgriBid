@@ -1,4 +1,5 @@
 import { v, ConvexError } from "convex/values";
+
 import { mutation } from "../_generated/server";
 import {
   getCallerRole,
@@ -63,6 +64,7 @@ interface AuctionUpdates {
 
 /**
  * Ensures an auction can be edited (must be in draft or pending_review).
+ * @param auction
  */
 function assertEditable(auction: Doc<"auctions">): void {
   if (!EDITABLE_STATUSES.includes(auction.status as EditableStatus)) {
@@ -74,6 +76,8 @@ function assertEditable(auction: Doc<"auctions">): void {
 
 /**
  * Ensures the caller owns the auction.
+ * @param auction
+ * @param userId
  */
 function assertOwnership(auction: Doc<"auctions">, userId: string): void {
   if (auction.sellerId !== userId) {
@@ -83,6 +87,10 @@ function assertOwnership(auction: Doc<"auctions">, userId: string): void {
 
 /**
  * Validate that an auction record contains required fields for a target status.
+ * @param auction
+ * @param auction.status
+ * @param auction.endTime
+ * @param newStatus
  */
 function validateAuctionStatus(
   auction: { status: string; endTime?: number | null },
@@ -132,6 +140,9 @@ function validateAuctionBeforePublish(auction: Doc<"auctions">): void {
 
 /**
  * Update global auction counters when an auction changes status.
+ * @param ctx
+ * @param oldStatus
+ * @param newStatus
  */
 async function adjustStatusCounters(
   ctx: MutationCtx,
@@ -374,6 +385,8 @@ export const saveDraft = mutation({
  *
  * @param ctx - Mutation context
  * @param args - Arguments including auctionId and updates
+ * @param args.auctionId
+ * @param args.updates
  * @returns Object with success boolean
  */
 export const updateAuctionHandler = async (
@@ -505,6 +518,7 @@ export const updateAuction = mutation({
  *
  * @param ctx - Mutation context
  * @param args - Arguments including auctionId
+ * @param args.auctionId
  * @returns Object with success boolean
  */
 export const publishAuctionHandler = async (
@@ -609,6 +623,8 @@ export const deleteDraft = mutation({
  *
  * @param ctx - Mutation context
  * @param args - Arguments including auctionId and typed storageId
+ * @param args.auctionId
+ * @param args.storageId
  * @returns Object with success boolean
  */
 export const updateConditionReportHandler = async (

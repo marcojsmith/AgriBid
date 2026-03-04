@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import App from "./App";
 import { describe, it, expect, vi } from "vitest";
 import type { ReactNode } from "react";
+
+import App from "./App";
 
 // Mock the pages to avoid Convex dependencies in this unit test
 vi.mock("./pages/Home", () => ({

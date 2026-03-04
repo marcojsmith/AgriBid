@@ -1,5 +1,6 @@
 // app/src/components/auction/AuctionCardThumbnail.tsx
 import { Heart } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CountdownTimer } from "@/components/CountdownTimer";
@@ -17,13 +18,14 @@ interface AuctionCardThumbnailProps {
 /**
  * Render a responsive auction thumbnail containing an image or placeholder, a watchlist toggle and an optional countdown.
  *
- * @param primaryImage - URL of the primary image; if undefined a placeholder is shown
- * @param title - Title used for the image alt text
- * @param isCompact - When true, render the compact layout (fixed width and inline countdown)
- * @param isWatched - Whether the item is currently on the user's watchlist
- * @param onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
- * @param endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
- * @param isClosed - Whether the auction is closed; when true the countdown is hidden
+ * @param props - Component props
+ * @param props.primaryImage - URL of the primary image; if undefined a placeholder is shown
+ * @param props.title - Title used for the image alt text
+ * @param props.isCompact - When true, render the compact layout (fixed width and inline countdown)
+ * @param props.isWatched - Whether the item is currently on the user's watchlist
+ * @param props.onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
+ * @param props.endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
+ * @param props.isClosed - Whether the auction is closed; when true the countdown is hidden
  * @returns The JSX element representing the auction thumbnail
  */
 export function AuctionCardThumbnail({

@@ -2,19 +2,27 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
+import { History, User } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { History, User } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 interface BidHistoryProps {
   auctionId: Id<"auctions">;
 }
 
+/**
+ * Component for displaying the bid history of an auction.
+ *
+ * @param props - Component props.
+ * @param props.auctionId - The ID of the auction to display history for.
+ * @returns The rendered bid history accordion.
+ */
 export const BidHistory = ({ auctionId }: BidHistoryProps) => {
   const bids = useQuery(api.auctions.getAuctionBids, { auctionId });
 

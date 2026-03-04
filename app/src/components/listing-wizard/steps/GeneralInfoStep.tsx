@@ -1,9 +1,16 @@
 import { useState, useMemo } from "react";
+
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+
 import { useListingWizard } from "../hooks/useListingWizard";
 import { SOUTHERN_AFRICA_LOCATIONS } from "../constants";
 
+/**
+ * Step 1 of the listing wizard: General Information.
+ *
+ * @returns The rendered general info step.
+ */
 export const GeneralInfoStep = () => {
   const { formData, updateField } = useListingWizard();
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);

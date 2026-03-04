@@ -1,5 +1,6 @@
 // app/src/components/admin/SettingsCard.tsx
 import React from "react";
+
 import { Card } from "@/components/ui/card";
 
 export interface SettingsCardProps {
@@ -14,10 +15,14 @@ export interface SettingsCardProps {
  *
  * The card invokes the provided `action` when activated (click or Enter/Space) and exposes a button role with an ARIA label composed from the title and description.
  *
+ * @param title.title
  * @param title - Visible card title
  * @param description - Supporting description shown below the title
  * @param icon - Visual node rendered in the icon container
  * @param action - Callback invoked when the card is activated
+ * @param title.description
+ * @param title.icon
+ * @param title.action
  * @returns A Card element that visually represents the setting and invokes `action` on activation
  */
 export function SettingsCard({

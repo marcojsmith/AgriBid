@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { Layout } from "@/components/Layout";
 import { describe, it, expect, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
+
+import { Layout } from "../Layout";
 
 // Mock Header and Footer to isolate Layout testing
 vi.mock("../header/Header", () => ({

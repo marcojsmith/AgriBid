@@ -1,7 +1,6 @@
 // app/src/components/SellerInfo.tsx
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Badge } from "@/components/ui/badge";
 import {
   UserCheck,
   ShieldCheck,
@@ -9,13 +8,22 @@ import {
   Calendar,
   TrendingUp,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface SellerInfoProps {
   sellerId: string;
 }
 
+/**
+ * Component for a seller info card.
+ *
+ * @param props - Component props.
+ * @param props.sellerId - The ID of the seller to display information for.
+ * @returns The rendered seller info card.
+ */
 export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
   const seller = useQuery(api.auctions.getSellerInfo, { sellerId });
 

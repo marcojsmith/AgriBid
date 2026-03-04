@@ -1,5 +1,6 @@
 // app/convex/auctions/proxy_bidding.ts
 import { v } from "convex/values";
+
 import { query } from "../_generated/server";
 import { authComponent } from "../auth";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -114,6 +115,10 @@ export async function getCurrentHighestBidAmount(
 
 /**
  * Validates a potential bid against auction rules.
+ * @param ctx
+ * @param auction
+ * @param bidAmount
+ * @param maxBid
  */
 async function validateBid(
   ctx: MutationCtx,
@@ -147,6 +152,10 @@ async function validateBid(
 
 /**
  * Creates or updates a proxy bid for a user.
+ * @param ctx
+ * @param auctionId
+ * @param bidderId
+ * @param maxBid
  */
 async function upsertProxyBid(
   ctx: MutationCtx,
@@ -178,6 +187,9 @@ async function upsertProxyBid(
 
 /**
  * Extends the auction endTime if within the soft-close threshold.
+ * @param ctx
+ * @param auction
+ * @param now
  */
 async function extendAuctionIfNeeded(
   ctx: MutationCtx,
@@ -194,6 +206,11 @@ async function extendAuctionIfNeeded(
 
 /**
  * Validates an auto-bid amount to ensure it meets requirements.
+ * @param autoBidAmount
+ * @param currentBidAmount
+ * @param minIncrement
+ * @param maxBidLimit
+ * @returns The validated auto-bid amount or null if it cannot meet requirements.
  */
 function validateAutoBidAmount(
   autoBidAmount: number,
@@ -213,6 +230,11 @@ function validateAutoBidAmount(
 
 /**
  * Resolves all active proxy bids for an auction after a new bid is placed.
+ * @param ctx
+ * @param auctionId
+ * @param bidderId
+ * @param bidAmount
+ * @returns Result of the proxy bid resolution or null if no proxies are active.
  */
 async function resolveProxyBids(
   ctx: MutationCtx,
@@ -235,9 +257,9 @@ async function resolveProxyBids(
     return a._creationTime - b._creationTime;
   });
 
-  if (sortedProxies.length === 0) return null;
-
   const highestProxy = sortedProxies[0];
+  if (!highestProxy) return null;
+
   const secondHighestProxy = sortedProxies[1] || null;
 
   // Case A: Someone else has a proxy that outbids the current manual bid
@@ -401,6 +423,10 @@ export async function handleNewBid(
 
 /**
  * Gets the current proxy bid for a user on an auction.
+ * @param ctx
+ * @param auctionId
+ * @param userId
+ * @returns The user's proxy bid or null if none exists.
  */
 export async function getProxyBid(
   ctx: QueryCtx,

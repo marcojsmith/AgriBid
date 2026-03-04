@@ -3,8 +3,6 @@ import { useState, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Gavel,
   Loader2,
@@ -15,6 +13,9 @@ import {
   XCircle,
   ArrowUpDown,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";
@@ -94,6 +95,8 @@ interface Auction {
 
 /**
  * Determine the user-facing badge label, visual variant, icon, and color for an auction's bid status.
+ * @param auction - The auction data to analyze
+ * @returns A StatusDisplay object containing label, variant, icon, and color
  */
 function getStatusDisplay(auction: Auction): StatusDisplay {
   if (auction.isWon) {
@@ -145,6 +148,10 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
   };
 }
 
+/**
+ * Renders the user's personal bidding dashboard.
+ * @returns The MyBids page component
+ */
 export default function MyBids() {
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("ending");

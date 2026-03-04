@@ -1,5 +1,7 @@
 // app/src/components/ImageGallery.tsx
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -7,7 +9,6 @@ import {
   DialogTrigger,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageGalleryProps {
@@ -15,6 +16,14 @@ interface ImageGalleryProps {
   title: string;
 }
 
+/**
+ * Component for an image gallery with a lightbox.
+ *
+ * @param props - Component props.
+ * @param props.images - An array of image URLs.
+ * @param props.title - The title of the equipment for alt text.
+ * @returns The rendered image gallery.
+ */
 export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);

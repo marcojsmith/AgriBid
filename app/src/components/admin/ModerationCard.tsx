@@ -1,5 +1,7 @@
 // app/src/components/admin/ModerationCard.tsx
 import { Check, X, Clock } from "lucide-react";
+import type { Doc } from "convex/_generated/dataModel";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,16 +10,20 @@ import {
   type AuctionImages,
 } from "@/lib/auction-utils";
 import { formatCurrency } from "@/lib/currency";
+
 import { ConditionItem } from "./ConditionItem";
-import type { Doc } from "convex/_generated/dataModel";
 
 /**
  * Renders a moderation card for a single auction with actions to approve, reject, or view details.
  *
+ * @param auction.auction
  * @param auction - Auction document providing images, year, title, make, location, startingPrice, and conditionChecklist
  * @param onApprove - Callback invoked when the Approve button is clicked
  * @param onReject - Callback invoked when the Reject button is clicked
  * @param onView - Callback invoked when the Details button is clicked
+ * @param auction.onApprove
+ * @param auction.onReject
+ * @param auction.onView
  * @returns The moderation card React element
  */
 export function ModerationCard({

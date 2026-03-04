@@ -1,8 +1,9 @@
 // app/src/components/__tests__/BidHistory.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BidHistory } from "@/components/bidding/BidHistory";
 import { describe, it, expect, vi } from "vitest";
 import type { Id } from "convex/_generated/dataModel";
+
+import { BidHistory } from "../bidding/BidHistory";
 
 // Mock Convex hooks
 vi.mock("convex/react", () => ({

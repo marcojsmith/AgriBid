@@ -89,6 +89,10 @@ export async function sumQuery<T extends Record<string, unknown>>(
  *
  * @param ctx - Query or Mutation context
  * @param options - Filtering options
+ * @param options.isVerified - Filter by verification status.
+ * @param options.kycStatus - Filter by KYC workflow status.
+ * @param options.role - Filter by user role.
+ * @param options.useCounter - Whether to prefer pre-computed counters for performance.
  * @returns Total number of matching users
  */
 export async function countUsers(
@@ -213,11 +217,14 @@ export async function countUsers(
 /**
  * Create an audit log entry for the currently authenticated admin or system process.
  *
+ * @param ctx - Mutation context.
+ * @param args - Arguments object.
  * @param args.action - Short identifier of the action performed (for example `delete_user` or `update_settings`)
  * @param args.targetId - Optional identifier of the resource affected by the action
  * @param args.targetType - Optional type or category of the resource (for example `user` or `project`)
  * @param args.details - Optional free-form details or context about the action
  * @param args.targetCount - Optional number of targets affected by the action
+ * @param args.system - Whether this is a system-initiated action.
  */
 export async function logAudit(
   ctx: MutationCtx,
@@ -257,6 +264,13 @@ export { encryptPII, decryptPII };
 
 /**
  * Increment or decrement a named counter's numeric field and persist the change.
+ *
+ * Updates the existing counter document's specified field by `delta` (clamped to a minimum of 0) and sets `updatedAt` to the current time. If no counter exists for `name` a new document is created with the targeted field initialised to `max(0, delta)` and common fields (`total`, `active`, `pending`, `verified`, `open`, `resolved`) populated (other fields set to 0). A warning is emitted to the console if the computed value would underflow below zero.
+ *
+ * @param ctx - Mutation context.
+ * @param name - The identifier of the counter (for example `auctions`, `profiles`, `support`, `announcements`)
+ * @param field - The counter field to adjust (for example `total`, `active`, `pending`, `verified`, `open`, `resolved`)
+ * @param delta - The amount to change the field by; may be negative, but the stored value will never be less than 0
  */
 export async function updateCounter(
   ctx: MutationCtx,

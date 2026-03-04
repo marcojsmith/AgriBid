@@ -1,4 +1,5 @@
 import { v, ConvexError } from "convex/values";
+
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getAuthUser } from "./lib/auth";
 import type { Doc } from "./_generated/dataModel";
@@ -6,6 +7,7 @@ import type { Doc } from "./_generated/dataModel";
 /**
  * Augments a list of announcement notifications with a per-user `isRead` flag.
  *
+ * @param ctx
  * @param userId - ID of the user whose read status will be applied
  * @param announcements - Announcement notification documents to enrich
  * @returns The provided announcements where each item includes `isRead`: `true` if the user has a read receipt for that notification, `false` otherwise

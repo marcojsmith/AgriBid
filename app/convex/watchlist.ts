@@ -1,9 +1,10 @@
 // app/convex/watchlist.ts
 import { v, ConvexError } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
+
 import { mutation, query } from "./_generated/server";
 import { AuctionSummaryValidator, toAuctionSummary } from "./auctions";
 import { authComponent } from "./auth";
-import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel";
 
 /**

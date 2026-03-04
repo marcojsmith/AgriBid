@@ -2,7 +2,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Badge } from "@/components/ui/badge";
 import {
   UserCheck,
   ShieldCheck,
@@ -11,6 +10,8 @@ import {
   Award,
   ArrowLeft,
 } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/auction";

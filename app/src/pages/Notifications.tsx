@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { Clock, ArrowRight, Inbox } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import type { Id } from "convex/_generated/dataModel";
+import { toast } from "sonner";
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, ArrowRight, Inbox } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   getNotificationIcon,
   handleNotificationClick,
 } from "@/lib/notifications";
-import type { Id } from "convex/_generated/dataModel";
-import { toast } from "sonner";
 
 /**
  * Render the Notification Archive page with a list of user notifications and controls.

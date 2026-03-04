@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+
+import { normalizeListingImages } from "@/lib/normalize-images";
+
 import type { ListingFormData, ConditionChecklist } from "../types";
 import { DEFAULT_FORM_DATA } from "../constants";
-import { normalizeListingImages } from "@/lib/normalize-images";
 import { ListingWizardContext } from "./ListingWizardContextDef";
 
 /**
@@ -35,7 +37,9 @@ const validateAndNormalizeDraft = (saved: unknown): ListingFormData => {
  * Manages form data, current step, submission status, and image previews.
  * Persists state to localStorage for session recovery.
  *
+ * @param props - Component props
  * @param props.children - Child components that will have access to the context
+ * @returns The context provider component
  */
 export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -108,6 +112,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
    * If no initialData is provided, it resets to defaults and clears storage (reset path).
    *
    * @param initialData - Optional partial data to hydrate the form with
+   * @param initialStep
    */
   const resetForm = (
     initialData?: Partial<ListingFormData>,

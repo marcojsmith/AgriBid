@@ -1,8 +1,18 @@
-# AgriBid - Development Checklist
+# AgriBid Project Roadmap & Progress
 
-## Project Setup & Infrastructure
+This document tracks the overall health, completed milestones, and pending features of the AgriBid project. For development processes (Commit, PR, Review), use the **Skills** in `/skills/`.
 
-### Initial Setup
+## 1. Development Status
+- **General Standards:** See `skills/coding-standards.md`
+- **Pre-Commit:** See `skills/process-commit.md`
+- **Pull Requests:** See `skills/process-pr.md`
+- **Review Process:** See `skills/process-review.md`
+
+---
+
+## 2. Roadmap
+
+### Project Setup & Infrastructure
 - [x] Create `app/` directory for monorepo-style structure
 - [x] Initialise Vite + React + TypeScript project in `app/`
 - [x] Configure Tailwind CSS with custom theme (Earth tones)
@@ -206,6 +216,7 @@
 - [x] Test Convex mutations
 - [x] Test utility functions
 - [x] Test React components
+- [x] Configure coverage thresholds (35/29/41/36)
 - [x] Create comprehensive unit tests for entire codebase (#84)
 
 ### Integration Tests
@@ -241,7 +252,9 @@
 
 ### Code Documentation
 - [x] Add JSDoc comments to all functions
-- [x] Document Convex schema fields
+- [ ] Document Convex schema fields
+- [x] Create AgriBid Agent Manifesto (AGENTS.md)
+- [x] Register Core AI Skills (.gemini/skills/)
 - [ ] Create `CONTRIBUTING.md`
 - [ ] Create `CHANGELOG.md`
 - [x] Align notification scope conflict in Listing Storage spec (#148)

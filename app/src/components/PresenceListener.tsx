@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "../lib/auth-client";
+
+import { useSession } from "@/lib/auth-client";
 
 const HEARTBEAT_INTERVAL = 25 * 1000; // 25 seconds (threshold is 30s)
 

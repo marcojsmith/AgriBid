@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+
 import { mutation, query, type MutationCtx } from "../_generated/server";
 import { getCallerRole } from "../users";
 import { UnauthorizedError } from "../lib/auth";
@@ -14,6 +15,11 @@ import { countOnlineUsers } from "../presence";
 
 /**
  * Internal helper to upsert a counter document with multiple fields.
+ *
+ * @param ctx - Mutation context.
+ * @param name - Name of the counter.
+ * @param payload - Data to update.
+ * @returns A promise that resolves when the update is complete.
  */
 async function upsertCounter(
   ctx: MutationCtx,

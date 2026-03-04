@@ -1,9 +1,10 @@
 // app/src/pages/Login.tsx
+import { useState } from "react";
+import { useSearchParams, Navigate } from "react-router-dom";
+
 import { useSession, signIn, signUp } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
-import { useSearchParams, Navigate } from "react-router-dom";
 import { isValidCallbackUrl } from "@/lib/utils";
 import { LoadingPage } from "@/components/LoadingIndicator";
 

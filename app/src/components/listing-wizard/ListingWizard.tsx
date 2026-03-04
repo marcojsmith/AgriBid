@@ -1,14 +1,15 @@
 import { useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { normalizeListingImages } from "@/lib/normalize-images";
 import { getErrorMessage } from "@/lib/utils";
-import { toast } from "sonner";
-import type { Id } from "convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
 
 import { ListingWizardProvider } from "./context/ListingWizardContext";
 import { useListingWizard } from "./context/useListingWizard";
@@ -16,7 +17,6 @@ import { useListingForm } from "./hooks/useListingForm";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
 import { STEPS } from "./constants";
-
 import { GeneralInfoStep } from "./steps/GeneralInfoStep";
 import { TechnicalSpecsStep } from "./steps/TechnicalSpecsStep";
 import { ConditionChecklistStep } from "./steps/ConditionChecklistStep";

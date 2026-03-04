@@ -9,6 +9,11 @@ import {
   MapPin,
 } from "lucide-react";
 
+/**
+ * Footer component for the application.
+ *
+ * @returns The rendered footer.
+ */
 export const Footer = () => {
   const footerSections = [
     {

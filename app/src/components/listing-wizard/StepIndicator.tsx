@@ -1,8 +1,15 @@
 import { Save } from "lucide-react";
-import { useListingWizard } from "./hooks/useListingWizard";
-import { STEPS } from "./constants";
+
 import { cn } from "@/lib/utils";
 
+import { useListingWizard } from "./hooks/useListingWizard";
+import { STEPS } from "./constants";
+
+/**
+ * Component for a step indicator in the listing wizard.
+ *
+ * @returns The rendered step indicator.
+ */
 export const StepIndicator = () => {
   const { currentStep, draftSaved } = useListingWizard();
 

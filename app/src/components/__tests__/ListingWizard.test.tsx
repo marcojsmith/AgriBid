@@ -1,8 +1,9 @@
 // app/src/components/__tests__/ListingWizard.test.tsx
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ListingWizard } from "@/components/listing-wizard/ListingWizard";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
+
+import { ListingWizard } from "../listing-wizard/ListingWizard";
 
 // Mock Convex hooks
 vi.mock("convex/react", () => ({
@@ -146,7 +147,7 @@ describe("ListingWizard", () => {
 
     // Mock file upload for a non-front slot (e.g., Engine Bay)
     const file = new File(["(⌐□_□)"], "engine.png", { type: "image/png" });
-    const input = screen.getByLabelText(/Engine Bay/i);
+    const input = screen.getByLabelText(/Upload image for slot Engine Bay/i);
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {

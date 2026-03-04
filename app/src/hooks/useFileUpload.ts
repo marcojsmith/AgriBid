@@ -81,6 +81,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
   /**
    * Internal helper to handle cleanup using either the injected handler or the default mutation.
+   * @param storageIds
    */
   const performCleanup = async (storageIds: string[]) => {
     if (storageIds.length === 0) return;

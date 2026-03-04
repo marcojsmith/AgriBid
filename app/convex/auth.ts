@@ -3,9 +3,10 @@ import { v } from "convex/values";
 import { createClient } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth";
+import type { GenericCtx } from "@convex-dev/better-auth";
+
 import { components } from "./_generated/api";
 import { query } from "./_generated/server";
-import type { GenericCtx } from "@convex-dev/better-auth";
 import type { DataModel } from "./_generated/dataModel";
 import { ALLOWED_ORIGINS, isOriginAllowed } from "./config";
 
@@ -13,6 +14,15 @@ import { ALLOWED_ORIGINS, isOriginAllowed } from "./config";
 // as well as helper methods for general use.
 export const authComponent = createClient<DataModel>(components.auth);
 
+/**
+ * Creates the auth instance with the provided context and options.
+ *
+ * @param ctx - The generic context for the data model.
+ * @param options - Configuration options for auth creation.
+ * @param options.optionsOnly - Whether to only include options in the logger.
+ * @param options.origin - The origin of the request.
+ * @returns The Better Auth instance.
+ */
 export const createAuth = (
   ctx: GenericCtx<DataModel>,
   options: { optionsOnly?: boolean; origin?: string } = {}

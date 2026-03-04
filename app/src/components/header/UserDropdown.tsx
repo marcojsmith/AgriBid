@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   MessageSquare,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,13 +40,14 @@ interface UserDropdownProps {
  *
  * Renders a trigger button that reflects loading and verification states and a content menu that conditionally includes a KYC prompt, public profile link (or syncing state), an admin dashboard link for admins, common navigation items (My Bids, Watchlist, My Listings, Support Tickets) and a Sign Out item.
  *
- * @param userData - Optional user object; used to display the user's name when available
- * @param isLoadingProfile - When true, disables interaction and shows loading placeholders in the trigger
- * @param isVerified - Whether the user's identity/KYC is verified; controls badge and KYC prompt visibility
- * @param kycStatus - KYC status string (for example `"pending"`); used to determine KYC-related UI states and labels
- * @param profileId - Public profile identifier; when present enables the Public Profile link, otherwise shows a syncing state
- * @param role - User role (for example `"admin"`); when `"admin"` shows the Admin Dashboard link
- * @param onSignOut - Callback invoked when the user selects "Sign Out"; errors from this callback are caught and surfaced to the user
+ * @param props - Component props
+ * @param props.userData - Optional user object; used to display the user's name when available
+ * @param props.isLoadingProfile - When true, disables interaction and shows loading placeholders in the trigger
+ * @param props.isVerified - Whether the user's identity/KYC is verified; controls badge and KYC prompt visibility
+ * @param props.kycStatus - KYC status string (for example `"pending"`); used to determine KYC-related UI states and labels
+ * @param props.profileId - Public profile identifier; when present enables the Public Profile link, otherwise shows a syncing state
+ * @param props.role - User role (for example `"admin"`); when `"admin"` shows the Admin Dashboard link
+ * @param props.onSignOut - Callback invoked when the user selects "Sign Out"; errors from this callback are caught and surfaced to the user
  * @returns The dropdown menu JSX containing the trigger and account-related menu items
  */
 export function UserDropdown({

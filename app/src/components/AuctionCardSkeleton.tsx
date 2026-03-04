@@ -5,6 +5,13 @@ interface AuctionCardSkeletonProps {
   viewMode?: "compact" | "detailed";
 }
 
+/**
+ * A loading skeleton for an auction card.
+ *
+ * @param props - Component props.
+ * @param props.viewMode - The display mode (compact or detailed).
+ * @returns The rendered loading skeleton.
+ */
 export const AuctionCardSkeleton = ({
   viewMode = "detailed",
 }: AuctionCardSkeletonProps) => {

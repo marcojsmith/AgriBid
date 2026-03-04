@@ -1,11 +1,12 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { AdminLayout } from "@/components/admin/AdminLayout";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Hammer, TrendingUp, ShieldCheck } from "lucide-react";
-import { SettingsCard } from "@/components/admin";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { SettingsCard } from "@/components/admin";
 
 /**
  * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees and security logs.

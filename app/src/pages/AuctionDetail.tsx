@@ -3,15 +3,10 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, Flag, FileText, Download } from "lucide-react";
-import { AuctionHeader } from "@/components/AuctionHeader";
-import { ImageGallery } from "@/components/ImageGallery";
-import { BiddingPanel, BidHistory } from "@/components/bidding";
-import { SellerInfo } from "@/components/SellerInfo";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
 import {
   Dialog,
   DialogContent,
@@ -28,7 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Id } from "convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { AuctionHeader } from "@/components/AuctionHeader";
+import { ImageGallery } from "@/components/ImageGallery";
+import { BiddingPanel, BidHistory } from "@/components/bidding";
+import { SellerInfo } from "@/components/SellerInfo";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { useSession } from "@/lib/auth-client";
 
 type FlagReason = "misleading" | "inappropriate" | "suspicious" | "other";
 

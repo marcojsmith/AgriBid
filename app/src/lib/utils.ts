@@ -2,6 +2,11 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { ConvexError } from "convex/values";
 
+/**
+ * Merges class names using tailwind-merge and clsx.
+ * @param inputs - Array of class values to merge
+ * @returns A merged string of class names
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

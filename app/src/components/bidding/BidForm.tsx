@@ -1,9 +1,10 @@
 // app/src/components/bidding/BidForm.tsx
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import type { Doc } from "convex/_generated/dataModel";
 import { TrendingUp, ArrowUpCircle, Clock, AlertTriangle } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface BidFormProps {
   /** The auction document containing current pricing and status */
@@ -24,6 +25,12 @@ interface BidFormProps {
  * Interactive bid form for custom and quick bid submissions with proxy bidding support.
  *
  * @param props - Component props including auction data and handlers
+ * @param props.auction
+ * @param props.onBid
+ * @param props.isLoading
+ * @param props.isBidFormEnabled
+ * @param props.currentUserMaxBid
+ * @param props.isProxyActive
  * @returns A React element for placing bids
  */
 export const BidForm = ({

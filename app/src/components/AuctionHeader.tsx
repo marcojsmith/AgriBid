@@ -1,19 +1,27 @@
 // app/src/components/AuctionHeader.tsx
-import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, HardDrive, Heart, Gavel } from "lucide-react";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "@/lib/auth-client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
-import { Button } from "./ui/button";
+
+import { useSession } from "@/lib/auth-client";
+import { Badge } from "@/components/ui/badge";
 import { cn, isValidCallbackUrl } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface AuctionHeaderProps {
   auction: Doc<"auctions">;
 }
 
+/**
+ * Header component for an auction detailing the auction info and title.
+ *
+ * @param props - Component props.
+ * @param props.auction - The auction document.
+ * @returns The rendered auction header.
+ */
 export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   const { data: session } = useSession();
   const navigate = useNavigate();

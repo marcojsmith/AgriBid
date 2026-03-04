@@ -3,9 +3,6 @@ import { useState, useMemo } from "react";
 import { usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LayoutDashboard,
   Plus,
@@ -15,8 +12,13 @@ import {
   Loader2,
   Eye,
 } from "lucide-react";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import {
   AUCTION_STATUS_BADGE_VARIANTS,
   getAuctionStatusLabel,
@@ -32,8 +34,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { Id } from "convex/_generated/dataModel";
-
 import { normalizeListingImages } from "@/lib/normalize-images";
 
 type StatusFilter =
