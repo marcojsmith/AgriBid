@@ -5,23 +5,32 @@ import { requireAdmin } from "../lib/auth";
 import { logAudit } from "../admin_utils";
 import * as constants from "../constants";
 
+type SettingsSchema = {
+  pagination_default_limit: number;
+  max_results_cap: number;
+  equipment_metadata_limit: number;
+  bid_history_limit: number;
+};
+
+type SettingsKey = keyof SettingsSchema;
+
 /**
  * Fetch a specific system setting by key.
  *
  * Falls back to hardcoded constants if the setting is not found in the database.
  */
-export async function getSetting<T extends string | number | boolean>(
+export async function getSetting<K extends SettingsKey>(
   ctx: QueryCtx,
-  key: string,
-  defaultValue: T
-): Promise<T> {
+  key: K,
+  defaultValue: SettingsSchema[K]
+): Promise<SettingsSchema[K]> {
   const setting = await ctx.db
     .query("settings")
-    .withIndex("by_key", (q) => q.eq("key", key))
+    .withIndex("by_key", (q) => q.eq("key", key as string))
     .unique();
 
-  if (setting) {
-    return setting.value as T;
+  if (setting && typeof setting.value === typeof defaultValue) {
+    return setting.value as SettingsSchema[K];
   }
 
   return defaultValue;
@@ -91,6 +100,22 @@ export const updateSystemConfig = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+
+    const allowedKeys: Record<string, "string" | "number" | "boolean"> = {
+      pagination_default_limit: "number",
+      max_results_cap: "number",
+      equipment_metadata_limit: "number",
+      bid_history_limit: "number",
+    };
+
+    if (!(args.key in allowedKeys)) {
+      throw new Error(`Invalid setting key: ${args.key}`);
+    }
+    if (typeof args.value !== allowedKeys[args.key]) {
+      throw new Error(
+        `Invalid type for setting ${args.key}: expected ${allowedKeys[args.key]}`
+      );
+    }
 
     const existing = await ctx.db
       .query("settings")

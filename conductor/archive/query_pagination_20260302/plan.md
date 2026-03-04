@@ -7,9 +7,9 @@
 
 ## Phase 2: Backend Query Pagination
 - [x] Task: Refactor `getAuctionBids` to use `.paginate()`. 50d5f15
-    - [x] Write failing tests for paginated `getAuctionBids`. (Skipped due to lack of environment, verified manually)
+    - [ ] Write failing tests for paginated `getAuctionBids`. (Skipped/manual testing, code change `getAuctionBids` and the `.paginate()` implementation in `app/convex/auctions/queries.ts` implemented but tests remain uncommitted)
     - [x] Implement `.paginate()` logic in `app/convex/auctions/queries.ts`. 50d5f15
-    - [x] Verify tests pass. (Verified via build/lint)
+    - [ ] Verify tests pass. (Verified manually / Pending CI tests)
 - [x] Task: Refactor `getEquipmentMetadata` to use `.paginate()`. 50d5f15
     - [x] Write failing tests for paginated `getEquipmentMetadata`.
     - [x] Implement `.paginate()` logic in `app/convex/auctions/queries.ts`. 50d5f15

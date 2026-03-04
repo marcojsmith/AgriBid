@@ -156,8 +156,10 @@ export const getWatchedAuctionIds = query({
       const results: Id<"auctions">[] = [];
       let cursor: string | null = null;
       let isDone = false;
+      let pageCount = 0;
+      const MAX_PAGES = 10;
 
-      while (!isDone) {
+      while (!isDone && pageCount < MAX_PAGES) {
         const page = await ctx.db
           .query("watchlist")
           .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -166,6 +168,11 @@ export const getWatchedAuctionIds = query({
         results.push(...page.page.map((item) => item.auctionId));
         cursor = page.continueCursor;
         isDone = page.isDone;
+        pageCount++;
+      }
+
+      if (!isDone) {
+        console.warn(`getWatchedAuctionIds truncated after ${MAX_PAGES} pages`);
       }
 
       return results;

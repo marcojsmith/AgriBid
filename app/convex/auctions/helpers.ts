@@ -158,8 +158,11 @@ export const BidValidator = v.object({
 });
 
 /**
-  * Create a compact auction summary for list views.
-  ...
+ * Create a compact auction summary for list views.
+ *
+ * Resolves image references into accessible URLs and selects only the necessary
+ * fields required for displaying an auction in a list or grid view.
+ *
  * @param ctx - Query context used to resolve image URLs
  * @param auction - Full auction document to convert into a summary
  * @returns An object with selected auction fields and an `images` object whose entries are resolved URLs for `front`, `engine`, `cabin`, `rear` and an `additional` array of resolved URLs

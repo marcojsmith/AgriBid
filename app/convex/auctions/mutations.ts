@@ -375,12 +375,20 @@ export const closeAuctionEarly = mutation({
   handler: async (ctx, args): Promise<CloseAuctionEarlyResult> => {
     try {
       await requireAdmin(ctx);
-    } catch {
-      return {
-        success: false,
-        finalStatus: "",
-        error: "Not authorized",
-      };
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("Unauthenticated") ||
+          error.message.includes("Unauthorized") ||
+          error.message.includes("Not authenticated"))
+      ) {
+        return {
+          success: false,
+          finalStatus: "",
+          error: "Not authorized",
+        };
+      }
+      throw error;
     }
 
     const auction = await ctx.db.get(args.auctionId);

@@ -40,6 +40,8 @@ export async function logAudit(
     targetCount: args.targetCount,
     timestamp: Date.now(),
   });
+
+  await updateCounter(ctx, "auditLogs", "total", 1);
 }
 
 // Re-export encryption functions from lib/encryption for backward compatibility

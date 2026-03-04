@@ -4,6 +4,7 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useListingWizard } from "../hooks/useListingWizard";
+import { EQUIPMENT_METADATA_LIMIT } from "../../../../convex/constants";
 
 /**
  * Technical specifications step component for the listing wizard.
@@ -21,7 +22,7 @@ export const TechnicalSpecsStep = () => {
   } = usePaginatedQuery(
     api.auctions.getEquipmentMetadata,
     {},
-    { initialNumItems: 100 }
+    { initialNumItems: EQUIPMENT_METADATA_LIMIT }
   );
 
   if (status === "LoadingFirstPage") {
@@ -64,16 +65,26 @@ export const TechnicalSpecsStep = () => {
           ))}
         </div>
 
-        {status === "CanLoadMore" && (
+        {(status === "CanLoadMore" || status === "LoadingMore") && (
           <div className="flex justify-center pt-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => loadMore(100)}
+              onClick={() => loadMore(EQUIPMENT_METADATA_LIMIT)}
+              disabled={status === "LoadingMore"}
               className="text-[10px] font-black uppercase tracking-widest"
             >
-              Load More Manufacturers
-              <ChevronDown className="ml-1 h-3 w-3" />
+              {status === "LoadingMore" ? (
+                <>
+                  <LoadingIndicator size="sm" />
+                  <span className="ml-2">Loading...</span>
+                </>
+              ) : (
+                <>
+                  Load More Manufacturers
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </>
+              )}
             </Button>
           </div>
         )}

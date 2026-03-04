@@ -8,7 +8,6 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
-import * as constants from "../constants";
 
 /**
  * Count results from a paginated query by repeatedly paginating until completion.
@@ -18,7 +17,7 @@ import * as constants from "../constants";
  * @returns The total number of items across all pages
  * @throws Error if the pagination loop exceeds `maxIterations`
  */
-async function countQuery(
+export async function countQuery(
   queryFn: () => {
     paginate: (options: {
       numItems: number;
@@ -240,10 +239,11 @@ export const getAdminStats = query({
           .query("counters")
           .withIndex("by_name", (q) => q.eq("name", "profiles"))
           .unique(),
-        ctx.db
-          .query("profiles")
-          .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-          .take(constants.MAX_RESULTS_CAP),
+        countQuery(() =>
+          ctx.db
+            .query("profiles")
+            .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
+        ),
       ]);
 
     return {
@@ -252,7 +252,7 @@ export const getAdminStats = query({
       pendingReview: auctionCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
       verifiedSellers: profileCounter?.verified ?? 0,
-      kycPending: pendingKycProfiles.length,
+      kycPending: pendingKycProfiles,
     };
   },
 });
@@ -282,14 +282,13 @@ export const getAnnouncementStats = query({
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    let recent = 0;
-    const recentNotifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) =>
-        q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
-      )
-      .take(constants.MAX_RESULTS_CAP);
-    recent = recentNotifications.length;
+    const recent = await countQuery(() =>
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) =>
+          q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
+        )
+    );
 
     return {
       total: counter?.total ?? 0,

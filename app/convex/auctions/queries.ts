@@ -14,6 +14,7 @@ import {
   toAuctionDetail,
   BidValidator,
 } from "./helpers";
+import { countQuery } from "../admin/statistics";
 
 /**
  * Represents the possible status values for an auction.
@@ -84,13 +85,13 @@ export const getActiveAuctions = query({
     let baseQuery;
 
     if (args.search) {
-      // Prioritize active auctions in search results
-      const statusToSearch = statuses.includes("active")
-        ? "active"
-        : statuses[0];
-      baseQuery = auctionsQuery.withSearchIndex("search_title", (q) =>
-        q.search("title", args.search!).eq("status", statusToSearch)
-      );
+      baseQuery = auctionsQuery.withSearchIndex("search_title", (q) => {
+        const sq = q.search("title", args.search!);
+        if (statuses.length === 1) {
+          return sq.eq("status", statuses[0]);
+        }
+        return sq;
+      });
     } else if (args.make) {
       // Use by_status_make index if only one status, otherwise use global order
       if (statuses.length === 1) {
@@ -139,6 +140,7 @@ export const getActiveAuctions = query({
 
       // Manual filtering for search results (may result in smaller pages)
       const filteredPage = results.page.filter((a) => {
+        if (!statuses.includes(a.status as AuctionStatus)) return false;
         if (args.make && a.make !== args.make) return false;
         if (args.minYear !== undefined && a.year < args.minYear) return false;
         if (args.maxYear !== undefined && a.year > args.maxYear) return false;
@@ -245,7 +247,11 @@ export const getAuctionBids = query({
 
     const [bidsResult, totalCount] = await Promise.all([
       bidsQuery.order("desc").paginate(args.paginationOpts),
-      bidsQuery.collect().then((r) => r.length),
+      countQuery(() =>
+        ctx.db
+          .query("bids")
+          .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      ),
     ]);
 
     const bids = bidsResult.page;
@@ -330,7 +336,7 @@ export const getEquipmentMetadata = query({
     const metadataQuery = ctx.db.query("equipmentMetadata");
     const [results, totalCount] = await Promise.all([
       metadataQuery.paginate(args.paginationOpts),
-      metadataQuery.collect().then((r) => r.length),
+      countQuery(() => ctx.db.query("equipmentMetadata")),
     ]);
     return {
       ...results,
@@ -415,7 +421,17 @@ export const getSellerListings = query({
 
     const [results, totalCount] = await Promise.all([
       listingsQuery.paginate(args.paginationOpts),
-      listingsQuery.collect().then((r) => r.length),
+      countQuery(() =>
+        ctx.db
+          .query("auctions")
+          .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
+          .filter((q) =>
+            q.or(
+              q.eq(q.field("status"), "active"),
+              q.eq(q.field("status"), "sold")
+            )
+          )
+      ),
     ]);
 
     const page = await Promise.all(
@@ -450,7 +466,7 @@ export const getAllAuctions = query({
     const auctionsQuery = ctx.db.query("auctions");
     const [auctionsResult, totalCount] = await Promise.all([
       auctionsQuery.order("desc").paginate(args.paginationOpts),
-      auctionsQuery.collect().then((r) => r.length),
+      countQuery(() => ctx.db.query("auctions")),
     ]);
 
     return {
@@ -516,7 +532,12 @@ export const getMyBids = query({
 
       const [bidsResult, totalCount] = await Promise.all([
         bidsQuery.order("desc").paginate(args.paginationOpts),
-        bidsQuery.collect().then((r) => r.length),
+        countQuery(() =>
+          ctx.db
+            .query("bids")
+            .withIndex("by_bidder", (q) => q.eq("bidderId", linkId))
+            .filter((q) => q.neq(q.field("status"), "voided"))
+        ),
       ]);
 
       const uniqueAuctionIds = Array.from(
@@ -624,7 +645,11 @@ export const getMyListings = query({
 
       const [listingsResult, totalCount] = await Promise.all([
         listingsQuery.paginate(args.paginationOpts),
-        listingsQuery.collect().then((r) => r.length),
+        countQuery(() =>
+          ctx.db
+            .query("auctions")
+            .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
+        ),
       ]);
 
       const page = await Promise.all(

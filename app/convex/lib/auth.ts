@@ -15,7 +15,14 @@ import type { AuthUser } from "../auth";
  * @param ctx - Query or Mutation context used to resolve the current user
  * @returns The authenticated user object, or `null` if no user is authenticated
  */
-export async function getAuthUser(ctx: QueryCtx | MutationCtx) {
+export async function getAuthUser(ctx: QueryCtx | MutationCtx): Promise<{
+  userId?: string | null;
+  _id: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+  _creationTime?: number;
+} | null> {
   try {
     return await authComponent.getAuthUser(ctx);
   } catch (err) {

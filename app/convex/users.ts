@@ -213,10 +213,15 @@ export const listAllProfiles = query({
     await requireAdmin(ctx);
 
     const profilesQuery = ctx.db.query("profiles");
-    const [profilesResult, totalCount] = await Promise.all([
+    const [profilesResult, counter] = await Promise.all([
       profilesQuery.order("desc").paginate(args.paginationOpts),
-      profilesQuery.collect().then((r) => r.length),
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "profiles"))
+        .unique(),
     ]);
+
+    const totalCount = counter?.total ?? 0;
 
     // Parallelize user lookups
     const page = await Promise.all(

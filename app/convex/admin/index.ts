@@ -253,21 +253,21 @@ export const getAuditLogs = query({
 
     const limit = Math.max(1, Math.min(args.limit ?? 50, MAX_AUDIT_LOG_LIMIT));
 
-    const [logs, totalCount] = await Promise.all([
+    const [logs, auditCounter] = await Promise.all([
       ctx.db
         .query("auditLogs")
         .withIndex("by_timestamp")
         .order("desc")
         .take(limit),
       ctx.db
-        .query("auditLogs")
-        .collect()
-        .then((r) => r.length),
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "auditLogs"))
+        .unique(),
     ]);
 
     return {
       logs,
-      totalCount,
+      totalCount: auditCounter?.total ?? 0,
     };
   },
 });
