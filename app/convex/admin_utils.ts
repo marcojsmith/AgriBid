@@ -169,30 +169,38 @@ export async function countUsers(
   }
 
   // Complex case: Multiple filters or no index match
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let finalQuery: any = ctx.db.query("profiles");
+  // Choose the best index if possible, then filter manually for others in memory
+  let results: Doc<"profiles">[];
 
-  // Choose the best index if possible, then filter manually for others
   if (options.role !== undefined) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    finalQuery = finalQuery.withIndex("by_role", (q: any) =>
-      q.eq("role", options.role)
-    );
+    results = await ctx.db
+      .query("profiles")
+      .withIndex("by_role", (q) =>
+        q.eq("role", options.role as "buyer" | "seller" | "admin")
+      )
+      .collect();
   } else if (options.kycStatus !== undefined) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    finalQuery = finalQuery.withIndex("by_kycStatus", (q: any) =>
-      q.eq("kycStatus", options.kycStatus)
-    );
+    results = await ctx.db
+      .query("profiles")
+      .withIndex("by_kycStatus", (q) =>
+        q.eq(
+          "kycStatus",
+          options.kycStatus as "pending" | "verified" | "rejected"
+        )
+      )
+      .collect();
   } else if (options.isVerified !== undefined) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    finalQuery = finalQuery.withIndex("by_isVerified", (q: any) =>
-      q.eq("isVerified", options.isVerified)
-    );
+    results = await ctx.db
+      .query("profiles")
+      .withIndex("by_isVerified", (q) =>
+        q.eq("isVerified", options.isVerified as boolean)
+      )
+      .collect();
+  } else {
+    results = await ctx.db.query("profiles").collect();
   }
 
-  const results = await finalQuery.collect();
-
-  return results.filter((p: Doc<"profiles">) => {
+  return results.filter((p) => {
     if (options.role !== undefined && p.role !== options.role) return false;
     if (options.kycStatus !== undefined && p.kycStatus !== options.kycStatus)
       return false;
