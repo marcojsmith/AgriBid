@@ -8,6 +8,7 @@ import {
   getAuthenticatedUserId,
   getAuthUser,
   resolveUserId,
+  UnauthorizedError,
 } from "../lib/auth";
 import { normalizeImages, deleteAuctionImages } from "../lib/storage";
 import { logAudit, updateCounter } from "../admin_utils";
@@ -1074,11 +1075,13 @@ export const closeAuctionEarly = mutation({
       await requireAdmin(ctx);
     } catch (error) {
       if (
-        error instanceof Error &&
-        (error.message.includes("Unauthenticated") ||
-          error.message.includes("Unauthorized") ||
-          error.message.includes("Not authenticated") ||
-          error.message.includes("Not authorized"))
+        error instanceof UnauthorizedError ||
+        (error instanceof Error &&
+          (error.name === "UnauthorizedError" ||
+            error.message.includes("Unauthenticated") ||
+            error.message.includes("Unauthorized") ||
+            error.message.includes("Not authenticated") ||
+            error.message.includes("Not authorized")))
       ) {
         return {
           success: false,

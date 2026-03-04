@@ -138,7 +138,7 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const role = await _getCallerRoleFromAuthUser(ctx, authUser);
 
   if (role !== "admin") {
-    throw new Error("Not authorized: Admin privileges required");
+    throw new UnauthorizedError("Not authorized: Admin privileges required");
   }
 
   return authUser;

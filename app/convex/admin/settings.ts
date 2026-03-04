@@ -44,6 +44,40 @@ export async function getSetting<K extends SettingsKey>(
  */
 export const getSystemConfig = query({
   args: {},
+  returns: v.object({
+    pagination: v.object({
+      defaultLimit: v.object({
+        current: v.number(),
+        default: v.number(),
+        key: v.string(),
+      }),
+      maxResultsCap: v.object({
+        current: v.number(),
+        default: v.number(),
+        key: v.string(),
+      }),
+      equipmentMetadataLimit: v.object({
+        current: v.number(),
+        default: v.number(),
+        key: v.string(),
+      }),
+      bidHistoryLimit: v.object({
+        current: v.number(),
+        default: v.number(),
+        key: v.string(),
+      }),
+    }),
+    dbSettings: v.array(
+      v.object({
+        _id: v.id("settings"),
+        _creationTime: v.number(),
+        key: v.string(),
+        value: v.union(v.string(), v.number(), v.boolean()),
+        description: v.optional(v.string()),
+        updatedAt: v.number(),
+      })
+    ),
+  }),
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
@@ -56,27 +90,29 @@ export const getSystemConfig = query({
       pagination: {
         defaultLimit: {
           current:
-            settingsMap.get("pagination_default_limit") ??
+            (settingsMap.get("pagination_default_limit") as number) ??
             constants.PAGINATION_DEFAULT_LIMIT,
           default: constants.PAGINATION_DEFAULT_LIMIT,
           key: "pagination_default_limit",
         },
         maxResultsCap: {
           current:
-            settingsMap.get("max_results_cap") ?? constants.MAX_RESULTS_CAP,
+            (settingsMap.get("max_results_cap") as number) ??
+            constants.MAX_RESULTS_CAP,
           default: constants.MAX_RESULTS_CAP,
           key: "max_results_cap",
         },
         equipmentMetadataLimit: {
           current:
-            settingsMap.get("equipment_metadata_limit") ??
+            (settingsMap.get("equipment_metadata_limit") as number) ??
             constants.EQUIPMENT_METADATA_LIMIT,
           default: constants.EQUIPMENT_METADATA_LIMIT,
           key: "equipment_metadata_limit",
         },
         bidHistoryLimit: {
           current:
-            settingsMap.get("bid_history_limit") ?? constants.BID_HISTORY_LIMIT,
+            (settingsMap.get("bid_history_limit") as number) ??
+            constants.BID_HISTORY_LIMIT,
           default: constants.BID_HISTORY_LIMIT,
           key: "bid_history_limit",
         },

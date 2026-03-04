@@ -12,7 +12,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
-import { logAudit, updateCounter } from "../admin_utils";
+import { logAudit, updateCounter, countQuery } from "../admin_utils";
 import { getAuthUser, UnauthorizedError } from "../lib/auth";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -421,19 +421,20 @@ export const listAnnouncements = query({
 
     if (announcements.length === 0) return [];
 
-    // Parallel fetch read counts using indexed queries; still issues N queries
+    // Parallel fetch read counts using indexed queries
     const announcementIds = announcements.map((a) => a._id);
-    const allReadReceipts = await Promise.all(
+    const readCountsList = await Promise.all(
       announcementIds.map((id) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_notification", (q) => q.eq("notificationId", id))
-          .collect()
+        countQuery(
+          ctx.db
+            .query("readReceipts")
+            .withIndex("by_notification", (q) => q.eq("notificationId", id))
+        )
       )
     );
 
     const readCounts = new Map(
-      announcementIds.map((id, index) => [id, allReadReceipts[index].length])
+      announcementIds.map((id, index) => [id, readCountsList[index]])
     );
 
     return announcements.map((announcement) => ({

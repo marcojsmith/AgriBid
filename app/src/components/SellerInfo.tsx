@@ -58,7 +58,7 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
                 {seller.name}
               </h3>
               {seller.isVerified && (
-                <ShieldCheck className="h-5 w-5 text-green-600 fill-green-50" />
+                <ShieldCheck className="h-5 w-5 text-success fill-success/10" />
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -101,12 +101,14 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
       </div>
 
       {seller.isVerified && (
-        <div className="bg-green-50/50 border border-green-100 rounded-xl p-3 flex items-start gap-3">
-          <ShieldCheck className="h-4 w-4 text-green-600 mt-0.5" />
-          <p className="text-[10px] text-green-800 font-medium leading-relaxed uppercase tracking-wide">
+        <div className="bg-success/10 border border-success/20 rounded-xl p-3 flex items-start gap-3">
+          <ShieldCheck className="h-4 w-4 text-success mt-0.5" />
+          <p className="text-[10px] text-success font-bold leading-relaxed uppercase tracking-wide">
             This seller has completed our{" "}
-            <strong>High-Integrity Verification</strong> process, including
-            identity and business registration checks.
+            <strong className="text-success-foreground bg-success px-1 rounded-sm">
+              High-Integrity Verification
+            </strong>{" "}
+            process, including identity and business registration checks.
           </p>
         </div>
       )}

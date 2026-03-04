@@ -255,7 +255,11 @@ export const getActiveAuctions = query({
           );
         }
 
-        if (args.make !== undefined && statuses.length > 1) {
+        // Always apply make filter if provided and not already covered by the index
+        if (args.make !== undefined) {
+          // If statuses.length > 1, we used order("desc") without index, so we need the filter.
+          // If statuses.length === 1, we used by_status_make index, so it's redundant but safe.
+          // If we used by_status_year or by_status, we definitely need it.
           expressions.push(q.eq(q.field("make"), args.make));
         }
 
@@ -465,13 +469,13 @@ export const getSellerInfo = query({
         ctx.db
           .query("auctions")
           .withIndex("by_seller_status", (q) =>
-            q.eq("sellerId", linkId).eq("status", "sold")
+            q.eq("sellerId", args.sellerId).eq("status", "sold")
           )
       ),
       countQuery(
         ctx.db
           .query("auctions")
-          .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
+          .withIndex("by_seller", (q) => q.eq("sellerId", args.sellerId))
       ),
     ]);
 
@@ -576,8 +580,12 @@ export const getMyBids = query({
         myHighestBid: v.number(),
         isWinning: v.boolean(),
         isWon: v.boolean(),
+        isOutbid: v.boolean(),
+        isCancelled: v.boolean(),
         bidAmount: v.number(),
         bidTimestamp: v.number(),
+        lastBidTimestamp: v.number(),
+        bidCount: v.number(),
       })
     ),
     isDone: v.boolean(),
@@ -680,10 +688,7 @@ export const getMyBids = query({
 
           const summary = await toAuctionSummary(ctx, auction);
           const myHighestBid = bidsByAuction.get(auction._id) || 0;
-          const stats = auctionStatsMap.get(auction._id) || {
-            bidCount: 1,
-            lastBidTimestamp: bid.timestamp,
-          };
+          const stats = auctionStatsMap.get(auction._id)!;
           const isWinning =
             auction.status === "active" &&
             myHighestBid === auction.currentPrice &&
