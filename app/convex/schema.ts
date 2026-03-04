@@ -236,6 +236,8 @@ export default defineSchema({
     open: v.optional(v.number()),
     resolved: v.optional(v.number()),
     draft: v.optional(v.number()), // Support for draft counter
+    salesVolume: v.optional(v.number()),
+    soldCount: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 });

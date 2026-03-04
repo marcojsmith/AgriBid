@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { cleanupDraftsHandler } from "./internal";
 import type { MutationCtx } from "../_generated/server";
+import * as auth from "../lib/auth";
+
+vi.mock("../lib/auth", () => ({
+  getAuthUser: vi.fn(),
+}));
 
 describe("cleanupDrafts mutation", () => {
   let mockCtx: {
@@ -16,10 +21,13 @@ describe("cleanupDrafts mutation", () => {
     auth: {
       getUserIdentity: ReturnType<typeof vi.fn>;
     };
+    // Prewired for getAuthUser/audit logging lookups
     runQuery: ReturnType<typeof vi.fn>;
   };
 
-  const makeQueryChainMock = (results: Record<string, unknown>[] = []) => ({
+  const makeQueryChainMock = <T = Record<string, unknown>>(
+    results: T[] = []
+  ) => ({
     withIndex: vi.fn().mockReturnThis(),
     filter: vi.fn().mockReturnThis(),
     collect: vi.fn().mockResolvedValue(results),
@@ -88,7 +96,7 @@ describe("cleanupDrafts mutation", () => {
     );
   });
 
-  it("should record SYSTEM actor in audit logs even if authenticated (as system: true is used)", async () => {
+  it("should record SYSTEM actor in audit logs when system is true and no user is authenticated", async () => {
     const mockDraft = {
       _id: "draft_123",
       status: "draft",
@@ -96,22 +104,55 @@ describe("cleanupDrafts mutation", () => {
       images: { front: "storage_front" },
     };
 
-    mockCtx.auth.getUserIdentity.mockResolvedValue({
-      subject: "admin_user_id",
-      email: "admin@example.com",
-    });
+    vi.mocked(auth.getAuthUser).mockResolvedValue(null);
 
     mockCtx.db.query = vi.fn().mockImplementation((table) => {
       if (table === "auctions") return makeQueryChainMock([mockDraft]);
       return makeQueryChainMock();
     });
 
-    await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
+    await cleanupDraftsHandler(mockCtx as unknown as MutationCtx, {
+      system: true,
+    });
 
     expect(mockCtx.db.insert).toHaveBeenCalledWith(
       "auditLogs",
       expect.objectContaining({
         adminId: "SYSTEM",
+        action: "CLEANUP_DRAFT_AUCTIONS",
+      })
+    );
+  });
+
+  it("should record authenticated actor in audit logs when system is false", async () => {
+    const mockDraft = {
+      _id: "draft_123",
+      status: "draft",
+      _creationTime: Date.now() - 31 * 24 * 60 * 60 * 1000,
+      images: { front: "storage_front" },
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockUser: any = {
+      userId: "admin_user_id",
+      email: "admin@example.com",
+    };
+
+    vi.mocked(auth.getAuthUser).mockResolvedValue(mockUser);
+
+    mockCtx.db.query = vi.fn().mockImplementation((table) => {
+      if (table === "auctions") return makeQueryChainMock([mockDraft]);
+      return makeQueryChainMock();
+    });
+
+    await cleanupDraftsHandler(mockCtx as unknown as MutationCtx, {
+      system: false,
+    });
+
+    expect(mockCtx.db.insert).toHaveBeenCalledWith(
+      "auditLogs",
+      expect.objectContaining({
+        adminId: "admin_user_id",
         action: "CLEANUP_DRAFT_AUCTIONS",
       })
     );

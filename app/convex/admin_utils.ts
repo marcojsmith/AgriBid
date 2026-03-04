@@ -13,7 +13,9 @@ export type CounterField =
   | "verified"
   | "open"
   | "resolved"
-  | "draft";
+  | "draft"
+  | "salesVolume"
+  | "soldCount";
 
 /**
  * Fetch a counter document by name.
@@ -281,6 +283,8 @@ export async function updateCounter(
       open: field === "open" ? initialValue : 0,
       resolved: field === "resolved" ? initialValue : 0,
       draft: field === "draft" ? initialValue : 0,
+      salesVolume: field === "salesVolume" ? initialValue : 0,
+      soldCount: field === "soldCount" ? initialValue : 0,
       updatedAt: Date.now(),
     });
   }

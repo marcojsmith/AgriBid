@@ -6,6 +6,7 @@ import { COMMISSION_RATE } from "../config";
 import {
   countQuery,
   countUsers,
+  sumQuery,
   getCounter,
   type CounterField,
 } from "../admin_utils";
@@ -37,6 +38,8 @@ async function upsertCounter(
       open: 0,
       resolved: 0,
       draft: 0,
+      salesVolume: 0,
+      soldCount: 0,
       ...data,
     });
   }
@@ -68,36 +71,45 @@ export const getFinancialStats = query({
     if (role !== "admin") throw new UnauthorizedError();
 
     try {
-      // Scan all sold auctions to compute global aggregates
-      // SAFETY: We add a circuit breaker to avoid long-running queries
-      let totalSalesVolume = 0;
-      let auctionCount = 0;
-      let cursor: string | null = null;
-      let isDone = false;
-      let iterations = 0;
+      const counter = await getCounter(ctx, "auctions");
+
+      let totalSalesVolume = counter?.salesVolume ?? 0;
+      let auctionCount = counter?.soldCount ?? 0;
       let truncated = false;
-      const MAX_ITERATIONS = 20; // Limit to 10,000 auctions total for now
 
-      while (!isDone && iterations < MAX_ITERATIONS) {
-        const page = await ctx.db
-          .query("auctions")
-          .withIndex("by_status", (q) => q.eq("status", "sold"))
-          .paginate({ numItems: 500, cursor });
+      // Fallback: If counters are missing or look wrong, we can still do a scan
+      // For now, we trust the counter if it exists.
+      if (!counter || counter.soldCount === undefined) {
+        // Scan all sold auctions to compute global aggregates
+        // SAFETY: We add a circuit breaker to avoid long-running queries
+        totalSalesVolume = 0;
+        auctionCount = 0;
+        let cursor: string | null = null;
+        let isDone = false;
+        let iterations = 0;
+        const MAX_ITERATIONS = 20; // Limit to 10,000 auctions total for now
 
-        for (const a of page.page) {
-          totalSalesVolume += a.currentPrice;
-          auctionCount++;
+        while (!isDone && iterations < MAX_ITERATIONS) {
+          const page = await ctx.db
+            .query("auctions")
+            .withIndex("by_status", (q) => q.eq("status", "sold"))
+            .paginate({ numItems: 500, cursor });
+
+          for (const a of page.page) {
+            totalSalesVolume += a.currentPrice;
+            auctionCount++;
+          }
+          cursor = page.continueCursor;
+          isDone = page.isDone;
+          iterations++;
         }
-        cursor = page.continueCursor;
-        isDone = page.isDone;
-        iterations++;
-      }
 
-      if (iterations >= MAX_ITERATIONS) {
-        console.warn(
-          "getFinancialStats reached iteration limit. Totals are truncated."
-        );
-        truncated = true;
+        if (iterations >= MAX_ITERATIONS) {
+          console.warn(
+            "getFinancialStats reached iteration limit during fallback scan. Totals are truncated."
+          );
+          truncated = true;
+        }
       }
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
@@ -151,6 +163,7 @@ export const initializeCounters = mutation({
       verifiedSellers,
       kycPending,
       activeWatch,
+      soldStats,
     ] = await Promise.all([
       countQuery(ctx.db.query("auctions")),
       countQuery(
@@ -167,6 +180,12 @@ export const initializeCounters = mutation({
       countUsers(ctx, { isVerified: true }),
       countUsers(ctx, { kycStatus: "pending" }),
       countQuery(ctx.db.query("watchlist")),
+      sumQuery(
+        ctx.db
+          .query("auctions")
+          .withIndex("by_status", (q) => q.eq("status", "sold")),
+        "currentPrice"
+      ),
     ]);
 
     await Promise.all([
@@ -174,6 +193,8 @@ export const initializeCounters = mutation({
         total: totalAuctions,
         active: activeAuctions,
         pending: pendingAuctions,
+        salesVolume: soldStats.sum,
+        soldCount: soldStats.count,
       }),
       upsertCounter(ctx, "profiles", {
         total: totalUsers,
@@ -264,13 +285,14 @@ export const getAnnouncementStats = query({
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    const recentCount = await countQuery(
-      ctx.db
+    const recentCount = (
+      await ctx.db
         .query("notifications")
         .withIndex("by_recipient_createdAt", (q) =>
           q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
         )
-    );
+        .take(1000)
+    ).length;
 
     return {
       total: counter?.total ?? 0,

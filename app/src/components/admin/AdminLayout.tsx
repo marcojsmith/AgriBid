@@ -149,7 +149,7 @@ function AdminLayoutContent({
               {stats && (
                 <div className="flex flex-wrap gap-2">
                   <StatCard
-                    label="Live"
+                    label="Live Users"
                     value={stats.liveUsers}
                     icon={<Activity className="h-3 w-3" />}
                     color="text-green-500"

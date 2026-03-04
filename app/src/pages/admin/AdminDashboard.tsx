@@ -102,7 +102,7 @@ function AdminDashboardContent() {
             },
             { label: "Registered Users", value: adminStats.totalUsers },
             {
-              label: "Verified",
+              label: "Verified Sellers",
               value: adminStats.verifiedSellers,
               color: "text-blue-600",
             },

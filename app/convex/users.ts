@@ -231,8 +231,8 @@ export const listAllProfiles = query({
 
     const now = Date.now();
 
-    // Batch presence lookups for the entire page
-    const userIds = profiles.page.map((p) => p.userId);
+    // Batch presence lookups for the entire page, deduplicating IDs first
+    const userIds = Array.from(new Set(profiles.page.map((p) => p.userId)));
     const presences = await Promise.all(
       userIds.map((uid) =>
         ctx.db
