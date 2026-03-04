@@ -100,9 +100,14 @@ export default function AdminUsers() {
               onChange={(e) => setUserSearch(e.target.value)}
             />
           </div>
-          <Badge variant="secondary" className="font-bold">
-            {allProfiles.length} Total Profiles
-          </Badge>
+          <div className="flex gap-2">
+            <Badge variant="secondary" className="font-bold">
+              {adminStats.totalUsers} Registered Users
+            </Badge>
+            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 font-bold">
+              {adminStats.verifiedSellers} Verified
+            </Badge>
+          </div>
         </div>
         <Card className="border-2 overflow-hidden bg-card/30 backdrop-blur-sm">
           <Table>
@@ -147,8 +152,16 @@ export default function AdminUsers() {
                           {p.name?.[0] || "?"}
                         </div>
                         <div className="space-y-0.5">
-                          <p className="font-bold text-sm">
+                          <p className="font-bold text-sm flex items-center gap-2">
                             {p.name || "Anonymous"}
+                            {p.isOnline && (
+                              <span
+                                className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"
+                                title="Online now"
+                                aria-label="Online now"
+                                role="status"
+                              />
+                            )}
                           </p>
                           <p className="text-xs text-muted-foreground font-medium">
                             {p.email}

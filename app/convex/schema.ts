@@ -220,6 +220,13 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_auction", ["userId", "auctionId"]),
 
+  presence: defineTable({
+    userId: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_updatedAt", ["updatedAt"]),
+
   counters: defineTable({
     name: v.string(), // e.g., "auctions", "profiles", "support", "announcements"
     total: v.number(),
@@ -229,6 +236,8 @@ export default defineSchema({
     open: v.optional(v.number()),
     resolved: v.optional(v.number()),
     draft: v.optional(v.number()), // Support for draft counter
+    salesVolume: v.optional(v.number()),
+    soldCount: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 });

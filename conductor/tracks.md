@@ -12,6 +12,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
+- [~] **Track: Admin Dashboard - Inconsistent User Count Data**
+*Link: [./tracks/admin_dashboard_user_count_20260302/](./tracks/admin_dashboard_user_count_20260302/)*
+
 ---
 
 ## Archive
