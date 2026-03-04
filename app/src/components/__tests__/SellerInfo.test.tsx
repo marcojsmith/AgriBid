@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { SellerInfo } from "../SellerInfo";
+import { SellerInfo } from "@/components/SellerInfo";
 import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import * as convexReact from "convex/react";

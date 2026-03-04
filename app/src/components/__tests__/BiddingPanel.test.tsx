@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { BiddingPanel } from "../bidding/BiddingPanel";
+import { BiddingPanel } from "@/components/bidding/BiddingPanel";
 import { describe, it, expect, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import type { Doc, Id } from "convex/_generated/dataModel";
@@ -13,7 +13,7 @@ vi.mock("../CountdownTimer", () => ({
 }));
 
 // Mock auth client
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(() => ({
     data: { user: { id: "test-user-id", name: "Test User" } },
     isPending: false,

@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
-import { useSession } from "../lib/auth-client";
+import { useSession } from "@/lib/auth-client";
 
 /**
  * Monitors auctions the user is participating in (bidding/watching)

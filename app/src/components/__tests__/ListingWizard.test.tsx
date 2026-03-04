@@ -1,6 +1,6 @@
 // app/src/components/__tests__/ListingWizard.test.tsx
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ListingWizard } from "../listing-wizard/ListingWizard";
+import { ListingWizard } from "@/components/listing-wizard/ListingWizard";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -24,7 +24,7 @@ vi.mock("convex/react", () => ({
 }));
 
 // Mock auth client
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(() => ({
     data: { user: { name: "Test Seller" } },
     isPending: false,

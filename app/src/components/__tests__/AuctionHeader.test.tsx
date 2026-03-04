@@ -1,6 +1,6 @@
 // app/src/components/__tests__/AuctionHeader.test.tsx
 import { render, screen } from "@testing-library/react";
-import { AuctionHeader } from "../AuctionHeader";
+import { AuctionHeader } from "@/components/AuctionHeader";
 import { describe, it, expect, vi } from "vitest";
 import type { Doc, Id } from "convex/_generated/dataModel";
 import { MemoryRouter } from "react-router-dom";
@@ -12,7 +12,7 @@ vi.mock("convex/react", () => ({
 }));
 
 // Mock auth client
-vi.mock("../../lib/auth-client", () => ({
+vi.mock("@/lib/auth-client", () => ({
   useSession: () => ({ data: null, isPending: false }),
 }));
 

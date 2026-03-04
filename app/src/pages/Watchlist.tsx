@@ -2,10 +2,10 @@
 import { Link } from "react-router-dom";
 import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Button } from "../components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Heart, Loader2 } from "lucide-react";
-import { AuctionCard } from "../components/auction";
-import { LoadingIndicator } from "../components/LoadingIndicator";
+import { AuctionCard } from "@/components/auction";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
  * Renders the user's watchlist page.
