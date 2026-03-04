@@ -8,7 +8,6 @@ import {
   MessageSquare,
   DollarSign,
   TrendingUp,
-  Activity,
   AlertCircle,
 } from "lucide-react";
 import { AdminLayout, AdminConnectionError } from "@/components/admin";
@@ -91,16 +90,25 @@ function AdminDashboardContent() {
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        {/* Real-Time Card (Placeholder for now) */}
+        {/* User Base Card (Combined with Real-Time) */}
         <SummaryCard
-          title="Real-Time"
-          icon={<Activity className="h-5 w-5" />}
+          title="User Base"
+          icon={<Users className="h-5 w-5" />}
           stats={[
-            { label: "Live Bidders", value: "—" },
-            { label: "Active Watch", value: "—" },
+            {
+              label: "Currently Connected",
+              value: adminStats.liveUsers,
+              color: "text-green-600",
+            },
+            { label: "Registered Users", value: adminStats.totalUsers },
+            {
+              label: "Verified",
+              value: adminStats.verifiedSellers,
+              color: "text-blue-600",
+            },
           ]}
-          link="/admin/marketplace"
-          linkLabel="Open Monitor"
+          link="/admin/users"
+          linkLabel="Manage Accounts"
         />
 
         {/* Auctions Card */}
@@ -113,6 +121,7 @@ function AdminDashboardContent() {
               value: adminStats.activeAuctions,
               color: "text-primary",
             },
+            { label: "Active Watch", value: adminStats.activeWatch },
             { label: "Total Created", value: adminStats.totalAuctions },
           ]}
           link="/admin/auctions"
@@ -136,22 +145,6 @@ function AdminDashboardContent() {
           ]}
           link="/admin/moderation"
           linkLabel="Review Queue"
-        />
-
-        {/* Users Card */}
-        <SummaryCard
-          title="User Base"
-          icon={<Users className="h-5 w-5" />}
-          stats={[
-            { label: "Total Users", value: adminStats.totalUsers },
-            {
-              label: "Verified",
-              value: adminStats.verifiedSellers,
-              color: "text-blue-600",
-            },
-          ]}
-          link="/admin/users"
-          linkLabel="Manage Accounts"
         />
 
         {/* Finance Card */}

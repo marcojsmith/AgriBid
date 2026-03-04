@@ -8,7 +8,15 @@ import {
 } from "./_generated/server";
 import { getAuthUser, getCallerRole, UnauthorizedError } from "./lib/auth";
 import { components } from "./_generated/api";
-import { logAudit, encryptPII, decryptPII, updateCounter } from "./admin_utils";
+import {
+  logAudit,
+  encryptPII,
+  decryptPII,
+  updateCounter,
+  countQuery,
+} from "./admin_utils";
+import type { Doc } from "./_generated/dataModel";
+import { PRESENCE_HEARTBEAT_THRESHOLD } from "./presence";
 
 /**
  * Validator for a profile document from the database.
@@ -195,10 +203,12 @@ export const listAllProfiles = query({
         name: v.optional(v.string()),
         email: v.optional(v.string()),
         createdAt: v.number(),
+        isOnline: v.boolean(),
       })
     ),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    totalCount: v.number(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
@@ -208,15 +218,44 @@ export const listAllProfiles = query({
       throw new UnauthorizedError();
     }
 
-    const profiles = await ctx.db
-      .query("profiles")
-      .order("desc")
-      .paginate(args.paginationOpts);
+    const [profiles, counter] = await Promise.all([
+      ctx.db.query("profiles").order("desc").paginate(args.paginationOpts),
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "profiles"))
+        .unique(),
+    ]);
 
-    // Parallelize user lookups
+    const totalCount =
+      counter?.total ?? (await countQuery(ctx.db.query("profiles")));
+
+    const now = Date.now();
+
+    // Batch presence lookups for the entire page
+    const userIds = profiles.page.map((p) => p.userId);
+    const presences = await Promise.all(
+      userIds.map((uid) =>
+        ctx.db
+          .query("presence")
+          .withIndex("by_userId", (q) => q.eq("userId", uid))
+          .unique()
+      )
+    );
+    const presenceMap = new Map(
+      presences
+        .filter((presence): presence is Doc<"presence"> => presence !== null)
+        .map((presence) => [presence.userId, presence])
+    );
+
+    // Parallelize user lookups and map presence from the pre-fetched map
     const page = await Promise.all(
-      profiles.page.map(async (p) => {
+      profiles.page.map(async (p: Doc<"profiles">) => {
         const user = await findUserById(ctx, p.userId);
+        const presence = presenceMap.get(p.userId);
+
+        const isOnline = presence
+          ? now - presence.updatedAt < PRESENCE_HEARTBEAT_THRESHOLD
+          : false;
 
         return {
           _id: p._id,
@@ -228,6 +267,7 @@ export const listAllProfiles = query({
           name: user?.name,
           email: user?.email,
           createdAt: p.createdAt,
+          isOnline,
         };
       })
     );
@@ -235,6 +275,7 @@ export const listAllProfiles = query({
     return {
       ...profiles,
       page,
+      totalCount,
     };
   },
 });

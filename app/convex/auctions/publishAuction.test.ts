@@ -44,6 +44,9 @@ describe("publishAuction mutation", () => {
       _id: "auction_123",
       sellerId: "user_123",
       status: "draft",
+      title: "Test Auction",
+      description: "Test Description",
+      images: { front: "storage_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
@@ -84,6 +87,9 @@ describe("publishAuction mutation", () => {
       _id: "auction_123",
       sellerId: "user_123",
       status: "draft",
+      title: "Test Auction",
+      description: "Test Description",
+      images: { front: "storage_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
@@ -104,6 +110,9 @@ describe("publishAuction mutation", () => {
       _id: "auction_123",
       sellerId: "user_123",
       status: "pending_review",
+      title: "Test Auction",
+      description: "Test Description",
+      images: { front: "storage_id" },
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);

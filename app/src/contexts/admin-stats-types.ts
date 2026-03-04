@@ -8,6 +8,8 @@ export interface AdminStats {
   verifiedSellers: number;
   kycPending: number;
   status: "partial" | "healthy";
+  liveUsers: number;
+  activeWatch: number;
 }
 
 export const NO_PROVIDER = Symbol("NO_PROVIDER");

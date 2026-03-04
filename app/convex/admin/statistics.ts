@@ -1,62 +1,49 @@
-/**
- * Statistics, reporting, and analytics queries for the admin dashboard.
- *
- * Provides aggregated metrics about auctions, users, support, and communications.
- */
-
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { mutation, query, type MutationCtx } from "../_generated/server";
 import { getCallerRole } from "../users";
 import { UnauthorizedError } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
+import {
+  countQuery,
+  countUsers,
+  getCounter,
+  type CounterField,
+} from "../admin_utils";
+import { countOnlineUsers } from "../presence";
 
 /**
- * Count results from a paginated query by repeatedly paginating until completion.
- *
- * @param queryFn - Function that returns a fresh query object with a `paginate` method for retrieving pages
- * @param maxIterations - Maximum pagination iterations before aborting to prevent infinite loops (default: 1000)
- * @returns The total number of items across all pages
- * @throws Error if the pagination loop exceeds `maxIterations`
+ * Internal helper to upsert a counter document with multiple fields.
  */
-async function countQuery(
-  queryFn: () => {
-    paginate: (options: {
-      numItems: number;
-      cursor: string | null;
-    }) => Promise<{
-      page: Record<string, unknown>[];
-      continueCursor: string;
-      isDone: boolean;
-    }>;
-  },
-  maxIterations: number = 1000
+async function upsertCounter(
+  ctx: MutationCtx,
+  name: string,
+  payload: Partial<Record<CounterField, number>>
 ) {
-  let count = 0;
-  let cursor: string | null = null;
-  let isDone = false;
-  let iterations = 0;
+  const existing = await getCounter(ctx, name);
+  const data = {
+    ...payload,
+    updatedAt: Date.now(),
+  };
 
-  while (!isDone) {
-    if (iterations >= maxIterations) {
-      throw new Error(
-        `countQuery exceeded max iterations (${maxIterations}). Possible infinite loop or cursor invalidation.`
-      );
-    }
-    const result = await queryFn().paginate({ numItems: 500, cursor });
-    count += result.page.length;
-    cursor = result.continueCursor;
-    isDone = result.isDone;
-    iterations++;
+  if (existing) {
+    await ctx.db.patch(existing._id, data);
+  } else {
+    await ctx.db.insert("counters", {
+      name,
+      total: 0,
+      active: 0,
+      pending: 0,
+      verified: 0,
+      open: 0,
+      resolved: 0,
+      draft: 0,
+      ...data,
+    });
   }
-
-  return count;
 }
 
 /**
  * Financial statistics including total sales volume and estimated commissions.
- *
- * Scans all sold auctions to compute global aggregates.
- * Only accessible to admin users.
  */
 export const getFinancialStats = query({
   args: {},
@@ -74,6 +61,7 @@ export const getFinancialStats = query({
       })
     ),
     auctionCount: v.number(),
+    truncated: v.optional(v.boolean()),
   }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
@@ -87,6 +75,7 @@ export const getFinancialStats = query({
       let cursor: string | null = null;
       let isDone = false;
       let iterations = 0;
+      let truncated = false;
       const MAX_ITERATIONS = 20; // Limit to 10,000 auctions total for now
 
       while (!isDone && iterations < MAX_ITERATIONS) {
@@ -105,9 +94,10 @@ export const getFinancialStats = query({
       }
 
       if (iterations >= MAX_ITERATIONS) {
-        throw new Error(
-          "getFinancialStats reached iteration limit. Totals may be incomplete."
+        console.warn(
+          "getFinancialStats reached iteration limit. Totals are truncated."
         );
+        truncated = true;
       }
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
@@ -133,6 +123,7 @@ export const getFinancialStats = query({
         commissionRate: COMMISSION_RATE,
         recentSales,
         auctionCount,
+        truncated,
       };
     } catch (err) {
       console.error("Error in getFinancialStats:", err);
@@ -143,10 +134,7 @@ export const getFinancialStats = query({
 });
 
 /**
- * Recalculates all counters from scratch by scanning the database.
- *
- * Should only be run manually or during migration to ensure counter accuracy.
- * Only accessible to admin users.
+ * Recalculates all counters from scratch.
  */
 export const initializeCounters = mutation({
   args: {},
@@ -161,75 +149,41 @@ export const initializeCounters = mutation({
       pendingAuctions,
       totalUsers,
       verifiedSellers,
-      pendingKycProfiles,
+      kycPending,
+      activeWatch,
     ] = await Promise.all([
-      countQuery(() => ctx.db.query("auctions")),
-      countQuery(() =>
+      countQuery(ctx.db.query("auctions")),
+      countQuery(
         ctx.db
           .query("auctions")
           .withIndex("by_status", (q) => q.eq("status", "active"))
       ),
-      countQuery(() =>
+      countQuery(
         ctx.db
           .query("auctions")
           .withIndex("by_status", (q) => q.eq("status", "pending_review"))
       ),
-      countQuery(() => ctx.db.query("profiles")),
-      countQuery(() =>
-        ctx.db
-          .query("profiles")
-          .withIndex("by_isVerified", (q) => q.eq("isVerified", true))
-      ),
-      countQuery(() =>
-        ctx.db
-          .query("profiles")
-          .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-      ),
+      countUsers(ctx),
+      countUsers(ctx, { isVerified: true }),
+      countUsers(ctx, { kycStatus: "pending" }),
+      countQuery(ctx.db.query("watchlist")),
     ]);
 
-    // Update or insert auction counters
-    const auctionCounter = await ctx.db
-      .query("counters")
-      .withIndex("by_name", (q) => q.eq("name", "auctions"))
-      .unique();
-    const auctionPayload = {
-      total: totalAuctions,
-      active: activeAuctions,
-      pending: pendingAuctions,
-      verified: 0, // Auctions don't use verified
-      updatedAt: Date.now(),
-    };
-
-    if (auctionCounter) {
-      await ctx.db.patch(auctionCounter._id, auctionPayload);
-    } else {
-      await ctx.db.insert("counters", {
-        name: "auctions",
-        ...auctionPayload,
-      });
-    }
-
-    // Update or insert profile counters
-    const profileCounter = await ctx.db
-      .query("counters")
-      .withIndex("by_name", (q) => q.eq("name", "profiles"))
-      .unique();
-    const profilePayload = {
-      total: totalUsers,
-      verified: verifiedSellers,
-      active: 0, // Profiles don't use active/pending in this context currently
-      pending: pendingKycProfiles,
-      updatedAt: Date.now(),
-    };
-
-    if (profileCounter) {
-      await ctx.db.patch(profileCounter._id, profilePayload);
-    } else {
-      await ctx.db.insert("counters", {
-        name: "profiles",
-        ...profilePayload,
-      });
-    }
+    await Promise.all([
+      upsertCounter(ctx, "auctions", {
+        total: totalAuctions,
+        active: activeAuctions,
+        pending: pendingAuctions,
+      }),
+      upsertCounter(ctx, "profiles", {
+        total: totalUsers,
+        verified: verifiedSellers,
+        pending: kycPending,
+      }),
+      upsertCounter(ctx, "watchlist", {
+        total: activeWatch,
+      }),
+    ]);
 
     return { success: true };
   },
@@ -237,9 +191,6 @@ export const initializeCounters = mutation({
 
 /**
  * Core admin dashboard statistics.
- *
- * Returns high-level metrics about auctions and users.
- * Only accessible to admin users.
  */
 export const getAdminStats = query({
   args: {},
@@ -251,28 +202,25 @@ export const getAdminStats = query({
     verifiedSellers: v.number(),
     kycPending: v.number(),
     status: v.union(v.literal("partial"), v.literal("healthy")), // To indicate partial/cached data
+    liveUsers: v.number(),
+    activeWatch: v.number(),
   }),
   handler: async (ctx) => {
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new UnauthorizedError();
 
     try {
-      // We prioritize counters for performance and scalability
-      const [auctionCounter, profileCounter] = await Promise.all([
-        ctx.db
-          .query("counters")
-          .withIndex("by_name", (q) => q.eq("name", "auctions"))
-          .unique(),
-        ctx.db
-          .query("counters")
-          .withIndex("by_name", (q) => q.eq("name", "profiles"))
-          .unique(),
-      ]);
+      const [auctionCounter, profileCounter, watchlistCounter, liveUsers] =
+        await Promise.all([
+          getCounter(ctx, "auctions"),
+          getCounter(ctx, "profiles"),
+          getCounter(ctx, "watchlist"),
+          countOnlineUsers(ctx),
+        ]);
 
       // If counters are missing, we return zeros but log a warning
-      // This is safer than scanning the whole DB in a reactive query
       let status: "partial" | "healthy" = "healthy";
-      if (!auctionCounter || !profileCounter) {
+      if (!auctionCounter || !profileCounter || !watchlistCounter) {
         console.warn(
           "Admin stats: Some counters are missing. Run initializeCounters."
         );
@@ -286,6 +234,8 @@ export const getAdminStats = query({
         totalUsers: profileCounter?.total ?? 0,
         verifiedSellers: profileCounter?.verified ?? 0,
         kycPending: profileCounter?.pending ?? 0,
+        liveUsers,
+        activeWatch: watchlistCounter?.total ?? 0,
         status,
       };
     } catch (err) {
@@ -297,10 +247,7 @@ export const getAdminStats = query({
 });
 
 /**
- * Announcement/communication statistics.
- *
- * Tracks total and recent announcements distributed to users.
- * Only accessible to admin users.
+ * Announcement statistics.
  */
 export const getAnnouncementStats = query({
   args: {},
@@ -312,37 +259,28 @@ export const getAnnouncementStats = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new UnauthorizedError();
 
-    const announcementCounter = await ctx.db
-      .query("counters")
-      .withIndex("by_name", (q) => q.eq("name", "announcements"))
-      .unique();
-
-    const counter = announcementCounter as { total?: number } | null;
+    const counter = await getCounter(ctx, "announcements");
 
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    let recent = 0;
-    const recentNotifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) =>
-        q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
-      )
-      .take(1000);
-    recent = recentNotifications.length;
+    const recentCount = await countQuery(
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) =>
+          q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
+        )
+    );
 
     return {
       total: counter?.total ?? 0,
-      recent,
+      recent: recentCount,
     };
   },
 });
 
 /**
  * Support ticket statistics.
- *
- * Tracks open, resolved, and total support tickets.
- * Only accessible to admin users.
  */
 export const getSupportStats = query({
   args: {},
@@ -355,16 +293,7 @@ export const getSupportStats = query({
     const role = await getCallerRole(ctx);
     if (role !== "admin") throw new UnauthorizedError();
 
-    const supportCounter = await ctx.db
-      .query("counters")
-      .withIndex("by_name", (q) => q.eq("name", "support"))
-      .unique();
-
-    const counter = supportCounter as {
-      open?: number;
-      resolved?: number;
-      total?: number;
-    } | null;
+    const counter = await getCounter(ctx, "support");
 
     return {
       open: counter?.open ?? 0,
