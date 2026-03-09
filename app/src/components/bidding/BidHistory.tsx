@@ -25,6 +25,11 @@ const PAGE_SIZE = 20;
  * and the total bid count via `useQuery(api.auctions.getAuctionBidCount)`. It initially
  * loads `initialNumItems` (PAGE_SIZE) bids and allows loading more via the `loadMore` function.
  *
+ * The "Highest" badge logic identifies the leading bid by comparing each bid's amount
+ * against the auction's `currentPrice`. Since the backend enforces a minimum increment
+ * and ensures `currentPrice` always reflects the most recent valid bid, this global
+ * comparison is robust even across paginated results.
+ *
  * @param props - The component props
  * @param props.auctionId - The unique identifier of the auction
  */

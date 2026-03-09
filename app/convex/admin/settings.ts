@@ -29,8 +29,14 @@ export async function getSetting<K extends SettingsKey>(
     .withIndex("by_key", (q) => q.eq("key", key as string))
     .unique();
 
-  if (setting && typeof setting.value === typeof defaultValue) {
-    return setting.value as SettingsSchema[K];
+  if (setting) {
+    // Validate type compatibility before returning
+    if (typeof setting.value === typeof defaultValue) {
+      return setting.value as SettingsSchema[K];
+    }
+    console.warn(
+      `System setting type mismatch for "${key}": expected ${typeof defaultValue}, got ${typeof setting.value}. Using default.`
+    );
   }
 
   return defaultValue;

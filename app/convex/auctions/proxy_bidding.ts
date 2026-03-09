@@ -42,7 +42,7 @@ export const getMyProxyBid = query({
       updatedAt: v.number(),
     })
   ),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Doc<"proxy_bids"> | null> => {
     const authUser = await getAuthUser(ctx);
     if (!authUser) return null;
     const userId = authUser.userId ?? authUser._id;

@@ -101,8 +101,6 @@ import { paginationOptsValidator } from "convex/server";
 import { findUserById } from "../users";
 import { authComponent } from "../auth";
 import { requireAdmin, resolveUserId } from "../lib/auth";
-import { getSetting } from "../admin/settings";
-import * as constants from "../constants";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   AuctionSummaryValidator,
@@ -340,14 +338,8 @@ export const getActiveMakes = query({
   args: {},
   returns: v.array(v.string()),
   handler: async (ctx) => {
-    const limit = await getSetting(
-      ctx,
-      "max_results_cap",
-      constants.MAX_RESULTS_CAP
-    );
-    const metadata = await ctx.db.query("equipmentMetadata").take(limit);
-    const makes = Array.from(new Set(metadata.map((m) => m.make))).sort();
-    return makes;
+    const metadata = await ctx.db.query("equipmentMetadata").collect();
+    return Array.from(new Set(metadata.map((m) => m.make))).sort();
   },
 });
 
