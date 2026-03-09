@@ -17,6 +17,7 @@ describe("updateAuction mutation", () => {
       get: ReturnType<typeof vi.fn>;
       patch: ReturnType<typeof vi.fn>;
       insert: ReturnType<typeof vi.fn>;
+      query: ReturnType<typeof vi.fn>;
     };
   };
 
@@ -27,6 +28,10 @@ describe("updateAuction mutation", () => {
         get: vi.fn(),
         patch: vi.fn(),
         insert: vi.fn(),
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(null),
+        }),
       },
     };
   });

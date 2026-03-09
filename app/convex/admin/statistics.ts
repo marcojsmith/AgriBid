@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "../_generated/server";
-import { getCallerRole } from "../users";
-import { UnauthorizedError } from "../lib/auth";
+import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
 import {
   countQuery,
@@ -67,49 +66,25 @@ export const getFinancialStats = query({
     truncated: v.optional(v.boolean()),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     try {
       const counter = await getCounter(ctx, "auctions");
 
       let totalSalesVolume = counter?.salesVolume ?? 0;
       let auctionCount = counter?.soldCount ?? 0;
-      let truncated = false;
+      const truncated = false;
 
       // Fallback: If counters are missing or look wrong, we can still do a scan
-      // For now, we trust the counter if it exists.
       if (!counter || counter.soldCount === undefined) {
-        // Scan all sold auctions to compute global aggregates
-        // SAFETY: We add a circuit breaker to avoid long-running queries
-        totalSalesVolume = 0;
-        auctionCount = 0;
-        let cursor: string | null = null;
-        let isDone = false;
-        let iterations = 0;
-        const MAX_ITERATIONS = 20; // Limit to 10,000 auctions total for now
-
-        while (!isDone && iterations < MAX_ITERATIONS) {
-          const page = await ctx.db
+        const soldStats = await sumQuery(
+          ctx.db
             .query("auctions")
-            .withIndex("by_status", (q) => q.eq("status", "sold"))
-            .paginate({ numItems: 500, cursor });
-
-          for (const a of page.page) {
-            totalSalesVolume += a.currentPrice;
-            auctionCount++;
-          }
-          cursor = page.continueCursor;
-          isDone = page.isDone;
-          iterations++;
-        }
-
-        if (iterations >= MAX_ITERATIONS) {
-          console.warn(
-            "getFinancialStats reached iteration limit during fallback scan. Totals are truncated."
-          );
-          truncated = true;
-        }
+            .withIndex("by_status", (q) => q.eq("status", "sold")),
+          "currentPrice"
+        );
+        totalSalesVolume = soldStats.sum;
+        auctionCount = soldStats.count;
       }
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
@@ -152,8 +127,7 @@ export const initializeCounters = mutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const [
       totalAuctions,
@@ -227,17 +201,26 @@ export const getAdminStats = query({
     activeWatch: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     try {
-      const [auctionCounter, profileCounter, watchlistCounter, liveUsers] =
-        await Promise.all([
-          getCounter(ctx, "auctions"),
-          getCounter(ctx, "profiles"),
-          getCounter(ctx, "watchlist"),
-          countOnlineUsers(ctx),
-        ]);
+      const [
+        auctionCounter,
+        profileCounter,
+        watchlistCounter,
+        liveUsers,
+        pendingKycProfiles,
+      ] = await Promise.all([
+        getCounter(ctx, "auctions"),
+        getCounter(ctx, "profiles"),
+        getCounter(ctx, "watchlist"),
+        countOnlineUsers(ctx),
+        countQuery(
+          ctx.db
+            .query("profiles")
+            .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
+        ),
+      ]);
 
       // If counters are missing, we return zeros but log a warning
       let status: "partial" | "healthy" = "healthy";
@@ -254,7 +237,7 @@ export const getAdminStats = query({
         pendingReview: auctionCounter?.pending ?? 0,
         totalUsers: profileCounter?.total ?? 0,
         verifiedSellers: profileCounter?.verified ?? 0,
-        kycPending: profileCounter?.pending ?? 0,
+        kycPending: pendingKycProfiles,
         liveUsers,
         activeWatch: watchlistCounter?.total ?? 0,
         status,
@@ -277,26 +260,24 @@ export const getAnnouncementStats = query({
     recent: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const counter = await getCounter(ctx, "announcements");
 
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-    const recentCount = (
-      await ctx.db
+    const recent = await countQuery(
+      ctx.db
         .query("notifications")
         .withIndex("by_recipient_createdAt", (q) =>
           q.eq("recipientId", "all").gte("createdAt", sevenDaysAgo)
         )
-        .take(1000)
-    ).length;
+    );
 
     return {
       total: counter?.total ?? 0,
-      recent: recentCount,
+      recent,
     };
   },
 });
@@ -312,8 +293,7 @@ export const getSupportStats = query({
     total: v.number(),
   }),
   handler: async (ctx) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const counter = await getCounter(ctx, "support");
 

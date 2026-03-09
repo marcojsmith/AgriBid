@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Check, Search } from "lucide-react";
+import { Check, Search, ChevronDown } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useListingWizard } from "../hooks/useListingWizard";
+import { EQUIPMENT_METADATA_LIMIT } from "../../../../convex/constants";
 
 /**
  * Technical specifications step component for the listing wizard.
@@ -14,9 +15,17 @@ import { useListingWizard } from "../hooks/useListingWizard";
  */
 export const TechnicalSpecsStep = () => {
   const { formData, updateField } = useListingWizard();
-  const metadata = useQuery(api.auctions.getEquipmentMetadata);
+  const {
+    results: metadata,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.auctions.getEquipmentMetadata,
+    {},
+    { initialNumItems: EQUIPMENT_METADATA_LIMIT }
+  );
 
-  if (metadata === undefined) {
+  if (status === "LoadingFirstPage") {
     return (
       <div className="h-[300px] flex flex-col items-center justify-center gap-4 text-muted-foreground animate-in fade-in duration-500">
         <LoadingIndicator />
@@ -55,6 +64,30 @@ export const TechnicalSpecsStep = () => {
             </Button>
           ))}
         </div>
+
+        {(status === "CanLoadMore" || status === "LoadingMore") && (
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => loadMore(EQUIPMENT_METADATA_LIMIT)}
+              disabled={status === "LoadingMore"}
+              className="text-[10px] font-black uppercase tracking-widest"
+            >
+              {status === "LoadingMore" ? (
+                <>
+                  <LoadingIndicator size="sm" />
+                  <span className="ml-2">Loading...</span>
+                </>
+              ) : (
+                <>
+                  Load More Manufacturers
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {formData.make && (

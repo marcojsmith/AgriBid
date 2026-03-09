@@ -1,7 +1,7 @@
 // app/convex/auctions/proxy_bidding.ts
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { authComponent } from "../auth";
+import { getAuthUser } from "../lib/auth";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -42,8 +42,8 @@ export const getMyProxyBid = query({
       updatedAt: v.number(),
     })
   ),
-  handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
+  handler: async (ctx, args): Promise<Doc<"proxy_bids"> | null> => {
+    const authUser = await getAuthUser(ctx);
     if (!authUser) return null;
     const userId = authUser.userId ?? authUser._id;
 

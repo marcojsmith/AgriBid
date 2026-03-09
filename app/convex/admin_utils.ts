@@ -1,5 +1,5 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { getAuthUser } from "./lib/auth";
+import { getAuthUser, resolveUserId } from "./lib/auth";
 import { encryptPII, decryptPII } from "./lib/encryption";
 import type { Doc } from "./_generated/dataModel";
 
@@ -250,10 +250,16 @@ export async function logAudit(
     targetCount: args.targetCount,
     timestamp: Date.now(),
   });
+
+  try {
+    await updateCounter(ctx, "auditLogs", "total", 1);
+  } catch (err) {
+    console.warn("Failed to update auditLogs counter:", err);
+  }
 }
 
-// Re-export encryption functions
-export { encryptPII, decryptPII };
+// Re-export encryption functions from lib/encryption for backward compatibility
+export { encryptPII, decryptPII, resolveUserId };
 
 /**
  * Increment or decrement a named counter's numeric field and persist the change.

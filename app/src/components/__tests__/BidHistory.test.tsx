@@ -20,6 +20,24 @@ vi.mock("convex/react", () => ({
       timestamp: Date.now() - 5000,
     },
   ],
+  usePaginatedQuery: () => ({
+    results: [
+      {
+        _id: "bid1",
+        amount: 50000,
+        bidderName: "John Doe",
+        timestamp: Date.now() - 10000,
+      },
+      {
+        _id: "bid2",
+        amount: 51000,
+        bidderName: "Jane Smith",
+        timestamp: Date.now() - 5000,
+      },
+    ],
+    status: "Exhausted",
+    loadMore: vi.fn(),
+  }),
 }));
 
 describe("BidHistory", () => {

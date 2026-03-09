@@ -11,8 +11,8 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCallerRole } from "../users";
-import { logAudit, updateCounter } from "../admin_utils";
+import { requireAdmin } from "../lib/auth";
+import { logAudit, updateCounter, countQuery } from "../admin_utils";
 import { getAuthUser, UnauthorizedError } from "../lib/auth";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -25,6 +25,7 @@ export {
   getSupportStats,
   initializeCounters,
 } from "./statistics";
+export { getSystemConfig, updateSystemConfig } from "./settings";
 
 // --- Bid Moderation ---
 
@@ -55,10 +56,7 @@ export const getRecentBids = query({
   ),
   handler: async (ctx, args) => {
     try {
-      const role = await getCallerRole(ctx);
-      if (role !== "admin") {
-        throw new UnauthorizedError();
-      }
+      await requireAdmin(ctx);
 
       const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
 
@@ -118,11 +116,17 @@ export const getRecentBids = query({
         };
       });
     } catch (err) {
-      if (err instanceof UnauthorizedError) {
+      if (
+        err instanceof UnauthorizedError ||
+        (err instanceof Error &&
+          (err.name === "UnauthorizedError" ||
+            /unauthorized|not authorized|authenticated|not authenticated|unauthenticated/i.test(
+              err.message
+            )))
+      ) {
         throw err;
       }
       console.error("Critical error in getRecentBids:", err);
-      // Re-throw to allow frontend to catch and show error state
       throw err;
     }
   },
@@ -142,8 +146,7 @@ export const voidBid = mutation({
   args: { bidId: v.id("bids"), reason: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const bid = await ctx.db.get(args.bidId);
     if (!bid) throw new Error("Bid not found");
@@ -216,8 +219,7 @@ export const getTickets = query({
     })
   ),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
@@ -249,8 +251,7 @@ export const resolveTicket = mutation({
   args: { ticketId: v.id("supportTickets"), resolution: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const authUser = await getAuthUser(ctx);
     if (!authUser) {
@@ -295,35 +296,49 @@ const MAX_AUDIT_LOG_LIMIT = 100;
 /**
  * Query audit logs of admin actions.
  *
- * Returns a limited set of recent audit logs for admin review.
+ * Returns a limited set of recent audit logs for admin review with total count.
  * Only accessible to admin users.
  */
 export const getAuditLogs = query({
   args: { limit: v.optional(v.number()) },
-  returns: v.array(
-    v.object({
-      _id: v.id("auditLogs"),
-      _creationTime: v.number(),
-      adminId: v.string(),
-      action: v.string(),
-      targetId: v.optional(v.string()),
-      targetType: v.optional(v.string()),
-      details: v.optional(v.string()),
-      targetCount: v.optional(v.number()),
-      timestamp: v.number(),
-    })
-  ),
+  returns: v.object({
+    logs: v.array(
+      v.object({
+        _id: v.id("auditLogs"),
+        _creationTime: v.number(),
+        adminId: v.string(),
+        action: v.string(),
+        targetId: v.optional(v.string()),
+        targetType: v.optional(v.string()),
+        details: v.optional(v.string()),
+        targetCount: v.optional(v.number()),
+        timestamp: v.number(),
+      })
+    ),
+    totalCount: v.number(),
+  }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const limit = Math.max(1, Math.min(args.limit ?? 50, MAX_AUDIT_LOG_LIMIT));
 
-    return await ctx.db
-      .query("auditLogs")
-      .withIndex("by_timestamp")
-      .order("desc")
-      .take(limit);
+    const [logs, auditCounter] = await Promise.all([
+      ctx.db
+        .query("auditLogs")
+        .withIndex("by_timestamp")
+        .order("desc")
+        .take(limit),
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "auditLogs"))
+        .unique(),
+    ]);
+
+    return {
+      logs,
+      totalCount:
+        auditCounter?.total ?? (await countQuery(ctx.db.query("auditLogs"))),
+    };
   },
 });
 
@@ -339,8 +354,7 @@ export const createAnnouncement = mutation({
   args: { title: v.string(), message: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const title = args.title.trim();
     const message = args.message.trim();
@@ -397,8 +411,7 @@ export const listAnnouncements = query({
     })
   ),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
@@ -410,19 +423,20 @@ export const listAnnouncements = query({
 
     if (announcements.length === 0) return [];
 
-    // Parallel fetch read counts using indexed queries; still issues N queries
+    // Parallel fetch read counts using indexed queries
     const announcementIds = announcements.map((a) => a._id);
-    const allReadReceipts = await Promise.all(
+    const readCountsList = await Promise.all(
       announcementIds.map((id) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_notification", (q) => q.eq("notificationId", id))
-          .collect()
+        countQuery(
+          ctx.db
+            .query("readReceipts")
+            .withIndex("by_notification", (q) => q.eq("notificationId", id))
+        )
       )
     );
 
     const readCounts = new Map(
-      announcementIds.map((id, index) => [id, allReadReceipts[index].length])
+      announcementIds.map((id, index) => [id, readCountsList[index]])
     );
 
     return announcements.map((announcement) => ({
@@ -452,8 +466,7 @@ export const syncAuctionWinners = mutation({
     isDone: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") throw new UnauthorizedError();
+    await requireAdmin(ctx);
 
     const batchSize = Math.max(
       1,

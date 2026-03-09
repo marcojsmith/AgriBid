@@ -40,13 +40,13 @@ export function FinanceTab() {
           label="Total Sales Volume"
           value={`R ${stats.totalSalesVolume.toLocaleString()}`}
           icon={<DollarSign className="h-5 w-5" />}
-          color="text-green-600"
+          color="text-success"
           padding="p-6"
           bgVariant="bg-card/50"
           iconSize="h-12 w-12"
         />
         <StatCard
-          label={`Est. Commission (${(stats.commissionRate ?? 0.05) * 100}%)`}
+          label={`Est. Commission (${stats.commissionRate * 100}%)`}
           value={`R ${stats.estimatedCommission.toLocaleString()}`}
           icon={<TrendingUp className="h-5 w-5" />}
           color="text-primary"

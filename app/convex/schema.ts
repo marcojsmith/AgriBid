@@ -71,6 +71,9 @@ export default defineSchema({
       searchField: "title",
       filterFields: ["status"],
     })
+    .searchIndex("search_title_simple", {
+      searchField: "title",
+    })
     .searchIndex("search_make_model", {
       searchField: "make",
       filterFields: ["status", "model"],
@@ -240,4 +243,12 @@ export default defineSchema({
     soldCount: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
+
+  // Application Settings (Global configuration for limits, pagination, etc.)
+  settings: defineTable({
+    key: v.string(), // e.g., "pagination_limit", "max_results_cap"
+    value: v.union(v.string(), v.number(), v.boolean()),
+    description: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

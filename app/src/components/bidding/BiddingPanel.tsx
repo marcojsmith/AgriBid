@@ -36,9 +36,10 @@ export const BiddingPanel = ({
 }: BiddingPanelProps): React.ReactElement => {
   const { data: session, isPending } = useSession();
   const userData = useQuery(api.users.getMyProfile);
-  const myProxyBid = useQuery(api.auctions.getMyProxyBid, {
-    auctionId: auction._id,
-  });
+  const myProxyBid = useQuery(
+    api.auctions.getMyProxyBid,
+    session ? { auctionId: auction._id } : "skip"
+  );
   const location = useLocation();
   const navigate = useNavigate();
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);

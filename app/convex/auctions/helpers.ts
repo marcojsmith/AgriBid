@@ -146,7 +146,24 @@ export const AuctionSummaryValidator = v.object({
 });
 
 /**
+ * Validator for a bid object, including enriched bidder name.
+ */
+export const BidValidator = v.object({
+  _id: v.id("bids"),
+  _creationTime: v.number(),
+  auctionId: v.id("auctions"),
+  bidderId: v.string(),
+  amount: v.number(),
+  timestamp: v.number(),
+  status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
+  bidderName: v.string(),
+});
+
+/**
  * Create a compact auction summary for list views.
+ *
+ * Resolves image references into accessible URLs and selects only the necessary
+ * fields required for displaying an auction in a list or grid view.
  *
  * @param ctx - Query context used to resolve image URLs
  * @param auction - Full auction document to convert into a summary

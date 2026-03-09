@@ -195,6 +195,8 @@ export default function MyBids() {
     return result;
   }, [rawAuctions, filter, sortBy]);
 
+  const totalBids = useQuery(api.auctions.getMyBidsCount);
+
   if (status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
@@ -490,7 +492,11 @@ export default function MyBids() {
             </div>
           )}
 
-          <div className="flex justify-center pt-8">
+          <div className="flex flex-col items-center gap-4 pt-8">
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+              Showing {filteredAndSortedAuctions.length} of{" "}
+              {totalBids ?? filteredAndSortedAuctions.length} Auctions
+            </p>
             {status === "CanLoadMore" ? (
               <Button
                 variant="outline"

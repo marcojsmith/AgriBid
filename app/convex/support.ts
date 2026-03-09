@@ -1,6 +1,6 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import { updateCounter } from "./admin_utils";
 
 export const createTicket = mutation({
@@ -12,9 +12,9 @@ export const createTicket = mutation({
   },
   returns: v.id("supportTickets"),
   handler: async (ctx, args) => {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) throw new ConvexError("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     const subject = args.subject.trim();
     const message = args.message.trim();
@@ -71,9 +71,10 @@ export const getMyTickets = query({
   ),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
+      const authUser = await getAuthUser(ctx);
       if (!authUser) return [];
-      const userId = authUser.userId ?? authUser._id;
+      const userId = resolveUserId(authUser);
+      if (!userId) return [];
 
       const limit = Math.max(1, Math.min(args.limit || 50, 100));
 

@@ -76,6 +76,8 @@ export const settleExpiredAuctions = internalMutation({
         `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`
       );
     }
+
+    return null;
   },
 });
 

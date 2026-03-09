@@ -1,10 +1,14 @@
 import { v, ConvexError } from "convex/values";
 import { mutation } from "../_generated/server";
 import {
+  requireAdmin,
+  requireAuth,
+  requireVerified,
   getCallerRole,
   getAuthenticatedUserId,
   getAuthUser,
   resolveUserId,
+  UnauthorizedError,
 } from "../lib/auth";
 import { normalizeImages, deleteAuctionImages } from "../lib/storage";
 import { logAudit, updateCounter } from "../admin_utils";
@@ -158,7 +162,7 @@ export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
-    await getAuthenticatedUserId(ctx);
+    await requireAuth(ctx);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -167,20 +171,18 @@ export const deleteUpload = mutation({
   args: { storageId: v.id("_storage") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Unauthorized: Only admins can delete storage items");
-    }
+    await requireAdmin(ctx);
 
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) {
       console.warn(
         `Attempted to delete non-existent storage item: ${args.storageId}`
       );
-      return;
+      return null;
     }
 
     await ctx.storage.delete(args.storageId);
+    return null;
   },
 });
 
@@ -300,7 +302,7 @@ export const saveDraft = mutation({
   },
   returns: v.id("auctions"),
   handler: async (ctx, args) => {
-    const userId = await getAuthenticatedUserId(ctx);
+    const { userId } = await requireVerified(ctx);
 
     const { auctionId, durationDays, ...restArgs } = args;
 
@@ -850,10 +852,7 @@ export const approveAuction = mutation({
   args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized: Admin privileges required");
-    }
+    await requireAdmin(ctx);
 
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new ConvexError("Auction not found");
@@ -888,10 +887,7 @@ export const rejectAuction = mutation({
   args: { auctionId: v.id("auctions") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized: Admin privileges required");
-    }
+    await requireAdmin(ctx);
 
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new ConvexError("Auction not found");
@@ -942,10 +938,7 @@ export const adminUpdateAuction = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized");
-    }
+    await requireAdmin(ctx);
 
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
@@ -1011,10 +1004,7 @@ export const bulkUpdateAuctions = mutation({
     skipped: v.array(v.id("auctions")),
   }),
   handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new Error("Not authorized");
-    }
+    await requireAdmin(ctx);
 
     if (args.auctionIds.length > MAX_BULK_UPDATE_SIZE) {
       throw new Error(
@@ -1082,13 +1072,25 @@ export const closeAuctionEarly = mutation({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args): Promise<CloseAuctionEarlyResult> => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      return {
-        success: false,
-        finalStatus: "",
-        error: "Not authorized",
-      };
+    try {
+      await requireAdmin(ctx);
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedError ||
+        (error instanceof Error &&
+          (error.name === "UnauthorizedError" ||
+            error.message.includes("Unauthenticated") ||
+            error.message.includes("Unauthorized") ||
+            error.message.includes("Not authenticated") ||
+            error.message.includes("Not authorized")))
+      ) {
+        return {
+          success: false,
+          finalStatus: "",
+          error: error instanceof Error ? error.message : "Not authorized",
+        };
+      }
+      throw error;
     }
 
     const auction = await ctx.db.get(args.auctionId);

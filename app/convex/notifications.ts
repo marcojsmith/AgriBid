@@ -1,6 +1,6 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query, type QueryCtx } from "./_generated/server";
-import { getAuthUser } from "./lib/auth";
+import { getAuthUser, requireAuth, resolveUserId } from "./lib/auth";
 import type { Doc } from "./_generated/dataModel";
 
 /**
@@ -150,9 +150,9 @@ export const markAsRead = mutation({
   args: { notificationId: v.id("notifications") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new ConvexError("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     const notification = await ctx.db.get(args.notificationId);
     if (!notification) throw new ConvexError("Notification not found");
@@ -181,6 +181,8 @@ export const markAsRead = mutation({
       }
       await ctx.db.patch(args.notificationId, { isRead: true });
     }
+
+    return null;
   },
 });
 
@@ -188,9 +190,9 @@ export const markAllRead = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new ConvexError("Not authenticated");
-    const userId = authUser.userId ?? authUser._id;
+    const authUser = await requireAuth(ctx);
+    const userId = resolveUserId(authUser);
+    if (!userId) throw new Error("Unable to determine user ID");
 
     // Helper for chunking arrays
     const chunk = <T>(arr: T[], size: number): T[][] => {
@@ -264,5 +266,7 @@ export const markAllRead = mutation({
         );
       }
     }
+
+    return null;
   },
 });

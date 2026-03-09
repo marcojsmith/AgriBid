@@ -102,10 +102,11 @@ export default function AdminUsers() {
           </div>
           <div className="flex gap-2">
             <Badge variant="secondary" className="font-bold">
-              {adminStats.totalUsers} Registered Users
+              Showing {filteredUsers.length} of{" "}
+              {adminStats ? adminStats.totalUsers : "—"} Users
             </Badge>
             <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 font-bold">
-              {adminStats.verifiedSellers} Verified
+              {adminStats ? adminStats.verifiedSellers : "—"} Verified
             </Badge>
           </div>
         </div>

@@ -36,9 +36,9 @@ export const ConditionChecklistStep = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="bg-amber-50 border-2 border-amber-100 p-4 rounded-xl flex items-start gap-3">
-        <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-        <p className="text-[11px] text-amber-900 font-bold uppercase tracking-wide leading-relaxed">
+      <div className="bg-warning/10 border-2 border-warning/20 p-4 rounded-xl flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
+        <p className="text-[11px] text-warning font-black uppercase tracking-wide leading-relaxed">
           Honesty ensures the highest final bid. Buyers value transparency above
           all else.
         </p>
