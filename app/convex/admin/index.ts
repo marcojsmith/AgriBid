@@ -335,7 +335,8 @@ export const getAuditLogs = query({
 
     return {
       logs,
-      totalCount: auditCounter?.total ?? 0,
+      totalCount:
+        auditCounter?.total ?? (await countQuery(ctx.db.query("auditLogs"))),
     };
   },
 });

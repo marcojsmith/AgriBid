@@ -155,68 +155,106 @@ export const getActiveAuctions = query({
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
     splitCursor: v.optional(v.union(v.string(), v.null())),
+    totalCount: v.number(),
   }),
   handler: async (ctx, args) => {
     const statusFilter: StatusFilter = args.statusFilter ?? "active";
     const statuses = statusesForFilter(statusFilter);
-    const auctionsQuery = ctx.db.query("auctions");
-    let baseQuery;
 
-    if (args.search) {
-      baseQuery = auctionsQuery.withSearchIndex("search_title", (q) => {
-        const sq = q.search("title", args.search!);
+    // Helper to construct the base query with index selection
+    const getBaseQuery = () => {
+      const auctionsQuery = ctx.db.query("auctions");
+
+      if (args.search) {
+        return auctionsQuery.withSearchIndex("search_title", (q) => {
+          const sq = q.search("title", args.search!);
+          if (statuses.length === 1) {
+            return sq.eq("status", statuses[0]);
+          }
+          return sq;
+        });
+      }
+
+      if (args.make) {
         if (statuses.length === 1) {
-          return sq.eq("status", statuses[0]);
+          return auctionsQuery.withIndex("by_status_make", (q) =>
+            q.eq("status", statuses[0]).eq("make", args.make!)
+          );
         }
-        return sq;
-      });
-    } else if (args.make) {
-      // Use by_status_make index if only one status, otherwise use global order
-      if (statuses.length === 1) {
-        baseQuery = auctionsQuery.withIndex("by_status_make", (q) =>
-          q.eq("status", statuses[0]).eq("make", args.make!)
-        );
-      } else {
-        baseQuery = auctionsQuery
+        return auctionsQuery
           .order("desc")
           .filter((q) => q.eq(q.field("make"), args.make!));
       }
-    } else if (args.minYear !== undefined || args.maxYear !== undefined) {
-      // Use by_status_year index if only one status, otherwise fallback to global order
-      if (statuses.length === 1) {
-        baseQuery = auctionsQuery.withIndex("by_status_year", (q) => {
-          const statusQuery = q.eq("status", statuses[0]);
-          if (args.minYear !== undefined && args.maxYear !== undefined) {
-            return statusQuery
-              .gte("year", args.minYear)
-              .lte("year", args.maxYear);
-          }
-          if (args.minYear !== undefined) {
-            return statusQuery.gte("year", args.minYear);
-          }
-          if (args.maxYear !== undefined) {
-            return statusQuery.lte("year", args.maxYear);
-          }
-          return statusQuery;
-        });
-      } else {
-        baseQuery = auctionsQuery.order("desc");
+
+      if (args.minYear !== undefined || args.maxYear !== undefined) {
+        if (statuses.length === 1) {
+          return auctionsQuery.withIndex("by_status_year", (q) => {
+            const statusQuery = q.eq("status", statuses[0]);
+            if (args.minYear !== undefined && args.maxYear !== undefined) {
+              return statusQuery
+                .gte("year", args.minYear)
+                .lte("year", args.maxYear);
+            }
+            if (args.minYear !== undefined) {
+              return statusQuery.gte("year", args.minYear);
+            }
+            if (args.maxYear !== undefined) {
+              return statusQuery.lte("year", args.maxYear);
+            }
+            return statusQuery;
+          });
+        }
+        return auctionsQuery.order("desc");
       }
-    } else {
-      // Default listing: use by_status if single status
+
+      // Default listing
       if (statuses.length === 1) {
-        baseQuery = auctionsQuery
+        return auctionsQuery
           .withIndex("by_status", (q) => q.eq("status", statuses[0]))
           .order("desc");
-      } else {
-        baseQuery = auctionsQuery.order("desc");
       }
-    }
+      return auctionsQuery.order("desc");
+    };
 
-    // Apply all other filters (including status if multiple)
-    // Note: Search index queries do not support .filter()
+    // Helper to apply filters and return a fresh query instance
+    const getFilteredQuery = () => {
+      const q = getBaseQuery();
+
+      // Search index queries do not support .filter()
+      if (args.search) return q;
+
+      return q.filter((f) => {
+        const expressions = [];
+
+        // Status filter: if multiple statuses, or if we didn't use a status index
+        if (statuses.length > 1) {
+          expressions.push(
+            f.or(...statuses.map((s) => f.eq(f.field("status"), s)))
+          );
+        }
+
+        // Always apply make filter if provided and not already covered by the index
+        if (args.make !== undefined) {
+          expressions.push(f.eq(f.field("make"), args.make));
+        }
+
+        if (args.minYear !== undefined)
+          expressions.push(f.gte(f.field("year"), args.minYear));
+        if (args.maxYear !== undefined)
+          expressions.push(f.lte(f.field("year"), args.maxYear));
+        if (args.minPrice !== undefined)
+          expressions.push(f.gte(f.field("currentPrice"), args.minPrice));
+        if (args.maxPrice !== undefined)
+          expressions.push(f.lte(f.field("currentPrice"), args.maxPrice));
+        if (args.maxHours !== undefined)
+          expressions.push(f.lte(f.field("operatingHours"), args.maxHours));
+
+        return expressions.length > 0 ? f.and(...expressions) : true;
+      });
+    };
+
     if (args.search) {
-      const results = await baseQuery.paginate(args.paginationOpts);
+      const results = await getFilteredQuery().paginate(args.paginationOpts);
 
       // Manual filtering for search results (may result in smaller pages)
       const filteredPage = results.page.filter((a) => {
@@ -237,46 +275,34 @@ export const getActiveAuctions = query({
         filteredPage.map((auction) => toAuctionSummary(ctx, auction))
       );
 
+      // Total count for search results is expensive, but for consistency we provide it
+      // Note: This collects all search results which could impact performance if many matches
+      const allSearchResults = await getFilteredQuery().collect();
+      const totalCount = allSearchResults.filter((a) => {
+        if (!statuses.includes(a.status as AuctionStatus)) return false;
+        if (args.make && a.make !== args.make) return false;
+        if (args.minYear !== undefined && a.year < args.minYear) return false;
+        if (args.maxYear !== undefined && a.year > args.maxYear) return false;
+        if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
+          return false;
+        if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
+          return false;
+        if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
+          return false;
+        return true;
+      }).length;
+
       return {
         ...results,
         page,
+        totalCount,
       };
     }
 
-    // For non-search queries, use efficient .filter() before pagination
-    const results = await baseQuery
-      .filter((q) => {
-        const expressions = [];
-
-        // Status filter: if multiple statuses, or if we didn't use a status index
-        if (statuses.length > 1) {
-          expressions.push(
-            q.or(...statuses.map((s) => q.eq(q.field("status"), s)))
-          );
-        }
-
-        // Always apply make filter if provided and not already covered by the index
-        if (args.make !== undefined) {
-          // If statuses.length > 1, we used order("desc") without index, so we need the filter.
-          // If statuses.length === 1, we used by_status_make index, so it's redundant but safe.
-          // If we used by_status_year or by_status, we definitely need it.
-          expressions.push(q.eq(q.field("make"), args.make));
-        }
-
-        if (args.minYear !== undefined)
-          expressions.push(q.gte(q.field("year"), args.minYear));
-        if (args.maxYear !== undefined)
-          expressions.push(q.lte(q.field("year"), args.maxYear));
-        if (args.minPrice !== undefined)
-          expressions.push(q.gte(q.field("currentPrice"), args.minPrice));
-        if (args.maxPrice !== undefined)
-          expressions.push(q.lte(q.field("currentPrice"), args.maxPrice));
-        if (args.maxHours !== undefined)
-          expressions.push(q.lte(q.field("operatingHours"), args.maxHours));
-
-        return expressions.length > 0 ? q.and(...expressions) : true;
-      })
-      .paginate(args.paginationOpts);
+    const [results, totalCount] = await Promise.all([
+      getFilteredQuery().paginate(args.paginationOpts),
+      countQuery(getFilteredQuery()),
+    ]);
 
     const page = await Promise.all(
       results.page.map((auction) => toAuctionSummary(ctx, auction))
@@ -285,6 +311,7 @@ export const getActiveAuctions = query({
     return {
       ...results,
       page,
+      totalCount,
     };
   },
 });
@@ -469,13 +496,13 @@ export const getSellerInfo = query({
         ctx.db
           .query("auctions")
           .withIndex("by_seller_status", (q) =>
-            q.eq("sellerId", args.sellerId).eq("status", "sold")
+            q.eq("sellerId", linkId).eq("status", "sold")
           )
       ),
       countQuery(
         ctx.db
           .query("auctions")
-          .withIndex("by_seller", (q) => q.eq("sellerId", args.sellerId))
+          .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
       ),
     ]);
 
@@ -572,7 +599,10 @@ export const getAllAuctions = query({
 });
 
 export const getMyBids = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    paginationOpts: paginationOptsValidator,
+    sort: v.optional(v.string()),
+  },
   returns: v.object({
     page: v.array(
       v.object({
@@ -617,102 +647,81 @@ export const getMyBids = query({
           splitCursor: null,
         };
 
-      const bidsQuery = ctx.db
-        .query("bids")
-        .withIndex("by_bidder", (q) => q.eq("bidderId", linkId))
-        // exclude voided bids from results
-        .filter((q) => q.neq(q.field("status"), "voided"));
-
-      const [bidsResult, totalCount] = await Promise.all([
-        bidsQuery.order("desc").paginate(args.paginationOpts),
-        countQuery(
-          ctx.db
-            .query("bids")
-            .withIndex("by_bidder", (q) => q.eq("bidderId", linkId))
-            .filter((q) => q.neq(q.field("status"), "voided"))
-        ),
-      ]);
-
-      const uniqueAuctionIds = Array.from(
-        new Set(bidsResult.page.map((bid: Doc<"bids">) => bid.auctionId))
+      // 1. Get all bid stats for the user (handles grouping and basic metrics)
+      const { auctionStatsMap, auctionsMap } = await calculateUserBidStats(
+        ctx,
+        linkId
       );
 
-      const bidsByAuction = new Map<string, number>();
-      const auctionStatsMap = new Map<
-        string,
-        { bidCount: number; lastBidTimestamp: number }
-      >();
+      // 2. Transform into the required return format
+      const allAuctionSummaries = await Promise.all(
+        Array.from(auctionStatsMap.entries()).map(
+          async ([auctionId, stats]) => {
+            const auction = auctionsMap.get(auctionId);
+            if (!auction) return null;
 
-      await Promise.all(
-        uniqueAuctionIds.map(async (auctionId) => {
-          const [latestUserBid, lastBid, bidCount] = await Promise.all([
-            ctx.db
-              .query("bids")
-              .withIndex("by_auction", (q) =>
-                q.eq("auctionId", auctionId as Id<"auctions">)
-              )
-              .filter((q) => q.neq(q.field("status"), "voided"))
-              .filter((q) => q.eq(q.field("bidderId"), linkId))
-              .order("desc")
-              .first(),
-            ctx.db
-              .query("bids")
-              .withIndex("by_auction", (q) =>
-                q.eq("auctionId", auctionId as Id<"auctions">)
-              )
-              .filter((q) => q.neq(q.field("status"), "voided"))
-              .order("desc")
-              .first(),
-            countQuery(
-              ctx.db
-                .query("bids")
-                .withIndex("by_auction", (q) =>
-                  q.eq("auctionId", auctionId as Id<"auctions">)
-                )
-                .filter((q) => q.neq(q.field("status"), "voided"))
-            ),
-          ]);
+            const summary = await toAuctionSummary(ctx, auction);
+            const isWinning =
+              auction.status === "active" &&
+              stats.highestBid === auction.currentPrice &&
+              auction.winnerId === linkId;
 
-          bidsByAuction.set(auctionId as string, latestUserBid?.amount || 0);
-          auctionStatsMap.set(auctionId as string, {
-            bidCount,
-            lastBidTimestamp: lastBid?.timestamp || 0,
-          });
-        })
+            return {
+              ...summary,
+              myHighestBid: stats.highestBid,
+              isWinning,
+              isWon: auction.status === "sold" && auction.winnerId === linkId,
+              isOutbid: auction.status === "active" && !isWinning,
+              isCancelled: auction.status === "rejected",
+              bidAmount: stats.highestBid,
+              bidTimestamp: stats.lastBidTimestamp,
+              lastBidTimestamp: stats.lastBidTimestamp,
+              bidCount: stats.bidCount,
+            };
+          }
+        )
       );
 
-      const page = await Promise.all(
-        bidsResult.page.map(async (bid: Doc<"bids">) => {
-          const auction = await ctx.db.get(bid.auctionId);
-          if (!auction) return null;
-
-          const summary = await toAuctionSummary(ctx, auction);
-          const myHighestBid = bidsByAuction.get(auction._id) || 0;
-          const stats = auctionStatsMap.get(auction._id)!;
-          const isWinning =
-            auction.status === "active" &&
-            myHighestBid === auction.currentPrice &&
-            auction.winnerId === linkId;
-
-          return {
-            ...summary,
-            myHighestBid,
-            isWinning,
-            isWon: auction.status === "sold" && auction.winnerId === linkId,
-            isOutbid: auction.status === "active" && !isWinning,
-            isCancelled: auction.status === "rejected",
-            bidAmount: bid.amount,
-            bidTimestamp: bid.timestamp,
-            lastBidTimestamp: stats.lastBidTimestamp,
-            bidCount: stats.bidCount,
-          };
-        })
+      // Filter out invalid items
+      const validAuctions = allAuctionSummaries.filter(
+        (a): a is NonNullable<typeof a> => a !== null
       );
+
+      // 3. Sort based on user preference
+      const sortBy = args.sort || "recent";
+      validAuctions.sort((a, b) => {
+        if (sortBy === "ending") {
+          const timeA = a.endTime ?? Number.MAX_SAFE_INTEGER;
+          const timeB = b.endTime ?? Number.MAX_SAFE_INTEGER;
+          return timeA - timeB; // Ending soonest first
+        }
+        // Default: Most recent activity first
+        return b.lastBidTimestamp - a.lastBidTimestamp;
+      });
+
+      // 4. Apply manual pagination
+      const totalCount = validAuctions.length;
+      const numItems = args.paginationOpts.numItems;
+
+      let startIndex = 0;
+      if (args.paginationOpts.cursor) {
+        const parsed = parseInt(args.paginationOpts.cursor, 10);
+        if (!isNaN(parsed) && parsed >= 0) {
+          startIndex = Math.min(parsed, totalCount);
+        }
+      }
+
+      const page = validAuctions.slice(startIndex, startIndex + numItems);
+      const isDone = startIndex + numItems >= totalCount;
+      const continueCursor = isDone ? "" : (startIndex + numItems).toString();
 
       return {
-        ...bidsResult,
-        page: page.flatMap((a) => (a ? [a] : [])),
+        page,
+        isDone,
+        continueCursor,
         totalCount,
+        pageStatus: null,
+        splitCursor: null,
       };
     } catch (err) {
       if (err instanceof Error && err.message.includes("Unauthenticated")) {
@@ -849,12 +858,8 @@ export const getMyBidsCount = query({
       const userId = resolveUserId(authUser);
       if (!userId) return 0;
 
-      return await countQuery(
-        ctx.db
-          .query("bids")
-          .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
-          .filter((q) => q.neq(q.field("status"), "voided"))
-      );
+      const { auctionStatsMap } = await calculateUserBidStats(ctx, userId);
+      return auctionStatsMap.size;
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyBidsCount failure:", err);

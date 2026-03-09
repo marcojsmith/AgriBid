@@ -495,7 +495,7 @@ export default function MyBids() {
           <div className="flex flex-col items-center gap-4 pt-8">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
               Showing {filteredAndSortedAuctions.length} of{" "}
-              {totalBids ?? filteredAndSortedAuctions.length} Bids
+              {totalBids ?? filteredAndSortedAuctions.length} Auctions
             </p>
             {status === "CanLoadMore" ? (
               <Button

@@ -83,41 +83,50 @@ export const getSystemConfig = query({
 
     const dbSettings = await ctx.db.query("settings").collect();
 
-    // Map of current settings for easy lookup
-    const settingsMap = new Map(dbSettings.map((s) => [s.key, s.value]));
+    const [
+      defaultLimit,
+      maxResultsCap,
+      equipmentMetadataLimit,
+      bidHistoryLimit,
+    ] = await Promise.all([
+      getSetting(
+        ctx,
+        "pagination_default_limit",
+        constants.PAGINATION_DEFAULT_LIMIT
+      ),
+      getSetting(ctx, "max_results_cap", constants.MAX_RESULTS_CAP),
+      getSetting(
+        ctx,
+        "equipment_metadata_limit",
+        constants.EQUIPMENT_METADATA_LIMIT
+      ),
+      getSetting(ctx, "bid_history_limit", constants.BID_HISTORY_LIMIT),
+    ]);
 
     return {
       pagination: {
         defaultLimit: {
-          current:
-            (settingsMap.get("pagination_default_limit") as number) ??
-            constants.PAGINATION_DEFAULT_LIMIT,
+          current: defaultLimit,
           default: constants.PAGINATION_DEFAULT_LIMIT,
           key: "pagination_default_limit",
         },
         maxResultsCap: {
-          current:
-            (settingsMap.get("max_results_cap") as number) ??
-            constants.MAX_RESULTS_CAP,
+          current: maxResultsCap,
           default: constants.MAX_RESULTS_CAP,
           key: "max_results_cap",
         },
         equipmentMetadataLimit: {
-          current:
-            (settingsMap.get("equipment_metadata_limit") as number) ??
-            constants.EQUIPMENT_METADATA_LIMIT,
+          current: equipmentMetadataLimit,
           default: constants.EQUIPMENT_METADATA_LIMIT,
           key: "equipment_metadata_limit",
         },
         bidHistoryLimit: {
-          current:
-            (settingsMap.get("bid_history_limit") as number) ??
-            constants.BID_HISTORY_LIMIT,
+          current: bidHistoryLimit,
           default: constants.BID_HISTORY_LIMIT,
           key: "bid_history_limit",
         },
       },
-      dbSettings, // Raw settings for management
+      dbSettings,
     };
   },
 });
@@ -147,10 +156,23 @@ export const updateSystemConfig = mutation({
     if (!(args.key in allowedKeys)) {
       throw new Error(`Invalid setting key: ${args.key}`);
     }
-    if (typeof args.value !== allowedKeys[args.key]) {
+
+    const expectedType = allowedKeys[args.key];
+    if (typeof args.value !== expectedType) {
       throw new Error(
-        `Invalid type for setting ${args.key}: expected ${allowedKeys[args.key]}`
+        `Invalid type for setting ${args.key}: expected ${expectedType}`
       );
+    }
+
+    // Numeric domain validation for limits
+    if (expectedType === "number") {
+      const val = args.value as number;
+      if (!Number.isInteger(val) || val <= 0) {
+        throw new Error(`Setting ${args.key} must be a positive integer`);
+      }
+      if (val > 5000) {
+        throw new Error(`Setting ${args.key} cannot exceed 5000`);
+      }
     }
 
     const existing = await ctx.db

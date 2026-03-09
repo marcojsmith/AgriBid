@@ -10,14 +10,14 @@
     - [ ] Write failing tests for paginated `getAuctionBids`. (Skipped/manual testing, code change `getAuctionBids` and the `.paginate()` implementation in `app/convex/auctions/queries.ts` implemented but tests remain uncommitted)
     - [x] Implement `.paginate()` logic in `app/convex/auctions/queries.ts`. 50d5f15
     - [ ] Verify tests pass. (Verified manually / Pending CI tests)
-- [x] Task: Refactor `getEquipmentMetadata` to use `.paginate()`. 50d5f15
-    - [x] Write failing tests for paginated `getEquipmentMetadata`.
-    - [x] Implement `.paginate()` logic in `app/convex/auctions/queries.ts`. 50d5f15
-    - [x] Verify tests pass.
-- [x] Task: Refactor active auctions/makes computation to use `.paginate()`. 50d5f15
-    - [x] Write failing tests for paginated active auctions.
-    - [x] Implement `.paginate()` logic. 50d5f15
-    - [x] Verify tests pass.
+    - [ ] Task: Refactor `getEquipmentMetadata` to use `.paginate()`. 50d5f15
+        - [ ] Write failing tests for paginated `getEquipmentMetadata`. (Skipped/manual testing)
+        - [x] Implement `.paginate()` logic in `app/convex/auctions/queries.ts`. 50d5f15
+        - [ ] Verify tests pass. (Verified manually / Pending CI tests)
+    - [ ] Task: Refactor active auctions/makes computation to use `.paginate()`. 50d5f15
+        - [ ] Write failing tests for paginated active auctions. (Skipped/manual testing)
+        - [x] Implement `.paginate()` logic. 50d5f15
+        - [ ] Verify tests pass. (Verified manually / Pending CI tests)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Backend Query Pagination' (Protocol in workflow.md)
 
 ## Phase 3: Frontend Integration

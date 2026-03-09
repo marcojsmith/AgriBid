@@ -178,10 +178,11 @@ export const deleteUpload = mutation({
       console.warn(
         `Attempted to delete non-existent storage item: ${args.storageId}`
       );
-      return;
+      return null;
     }
 
     await ctx.storage.delete(args.storageId);
+    return null;
   },
 });
 
@@ -1086,7 +1087,7 @@ export const closeAuctionEarly = mutation({
         return {
           success: false,
           finalStatus: "",
-          error: "Not authorized",
+          error: error instanceof Error ? error.message : "Not authorized",
         };
       }
       throw error;

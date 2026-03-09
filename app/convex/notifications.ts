@@ -181,6 +181,8 @@ export const markAsRead = mutation({
       }
       await ctx.db.patch(args.notificationId, { isRead: true });
     }
+
+    return null;
   },
 });
 
@@ -264,5 +266,7 @@ export const markAllRead = mutation({
         );
       }
     }
+
+    return null;
   },
 });
