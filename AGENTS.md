@@ -239,7 +239,7 @@ Use Git worktrees to run multiple agents in parallel on separate branches withou
 
 ## Workflow Overview
 
-```
+```text
 1. User    → Provides list of issues/branches
 2. Agent   → Creates worktrees + prompt.md for each
 3. Agent   → Provides "start prompts" for each worktree
@@ -251,7 +251,7 @@ Use Git worktrees to run multiple agents in parallel on separate branches withou
 
 ## Directory Structure
 
-```
+```text
 AgriBid-82/
 ├── app/
 ├── conductor/

@@ -202,16 +202,16 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 
 ## Phase 2: Backend Refactoring
 
-### P2-1: Fix admin.ts 200 Auction Limit Bug
+### P2-1: Fix Admin Scalability and Statistics
 - **Issue**: #81
 - **Priority**: HIGH
-- **Description**: `.take(200)` silently truncates results, causing inaccurate financial stats
+- **Description**: Inefficient full-table scans and result truncation in admin stats
 - **Steps**:
-  1. Read `app/convex/admin.ts` lines 207-211
-  2. Implement pagination to fetch all sold auctions
-  3. Add warning flag to returned stats when results are partial
-  4. Update UI to display warning if `partialResults=true`
-- **Verification**: Admin stats show accurate totals regardless of auction count
+  1. Replace hard caps (e.g., `.take(200)`) with paginated aggregation or `sumQuery`
+  2. Add `partialResults: boolean` flag to stats functions if aggregation is incomplete
+  3. Ensure all admin stats use indexed queries where possible
+  4. Update `getFinancialStats` to use `sumQuery` for global aggregates (Completed in PR #159)
+- **Verification**: Admin dashboard shows accurate totals; no memory issues with large datasets
 - **Dependencies**: None
 
 ### P2-2: Split auctions/queries.ts (729 Lines)
@@ -268,22 +268,12 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Verification**: Build passes, all mutations work
 - **Dependencies**: P2-2 (complete after queries split)
 
-### P2-4: Implement Pagination for Queries
+### P2-4: Implement Pagination for Queries (COMPLETED in PR #159)
 - **Issue**: #82
 - **Priority**: MEDIUM
-- **Description**: All list-based queries need pagination support
-- **Steps**:
-  1. Identify all list queries (after P2-2/P2-3 split):
-     - `getActiveAuctions`
-     - `getUserAuctions`
-     - `getUserBids`
-     - `getWatchlist`
-  2. Add cursor-based pagination to each:
-     - Accept `cursor` and `numItems` parameters
-     - Return `{ items: [], nextCursor }` structure
-  3. Update frontend components to handle pagination
-- **Verification**: Large lists load in chunks, no performance issues
-- **Dependencies**: P2-2, P2-3 (queries/mutations split complete)
+- **Description**: cursor-based pagination implemented for all primary list queries
+- **Status**: Completed in PR #159
+- **Notes**: `getActiveAuctions`, `getSellerListings`, `getMyBids`, `getMyListings`, `getAuctionBids`, `getEquipmentMetadata`, and `getAuditLogs` now support cursor-based pagination and return `totalCount`.
 
 ---
 
@@ -332,22 +322,12 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Priority**: MEDIUM
 - **Description**: Admin can update footer business info (address, phone, etc.)
 - **Steps**:
-  1. Create new table in `app/convex/schema.ts` for business info:
-     ```typescript
-     businessInfo: defineTable({
-       name: string,
-       address: string,
-       phone: string,
-       email: string,
-       description: string,
-       updatedAt: number,
-     })
-     ```
-  2. Create Convex query: `getBusinessInfo`
-  3. Create Convex mutation: `updateBusinessInfo`
+  1. Create new table `businessInfo` in `app/convex/schema.ts` for structured data
+  2. Create Convex query: `getBusinessInfo` (with admin-only checks)
+  3. Create Convex mutation: `updateBusinessInfo` (with admin-only checks)
   4. Create admin page at `app/src/pages/admin/business-info/`
   5. Update footer component to fetch from Convex
-- **Verification**: Admin can edit; footer displays updated info
+- **Verification**: Admin can edit; footer displays updated info; restricted to admin role
 - **Dependencies**: P2-2 (queries split complete)
 
 ### P3-4: Configure Platform Fees
@@ -355,19 +335,12 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Priority**: MEDIUM
 - **Description**: Admin can configure platform fees on admin dashboard
 - **Steps**:
-  1. Add platform settings table in schema or extend businessInfo:
-     ```typescript
-     platformFees: {
-       buyerPremium: number,      // e.g., 10%
-       sellerCommission: number,  // e.g., 5%
-       minimumFee: number,        // e.g., 100
-     }
-     ```
-  2. Create query: `getPlatformFees`
-  3. Create mutation: `updatePlatformFees`
+  1. Create new table `platformFees` in `app/convex/schema.ts`
+  2. Create query: `getPlatformFees` (with admin-only checks)
+  3. Create mutation: `updatePlatformFees` (with admin-only checks)
   4. Add UI to admin dashboard settings
   5. Use fees in auction calculations (settlement, commission)
-- **Verification**: Admin can set fees; auctions calculate correctly
+- **Verification**: Admin can set fees; auctions calculate correctly; restricted to admin role
 - **Dependencies**: P3-3 (business info table exists)
 
 ### P3-5: Manage Equipment Metadata
@@ -376,14 +349,10 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Description**: Admin can manage equipment metadata on admin page
 - **Steps**:
   1. Review existing `equipmentMetadata` table in schema
-  2. Create admin UI to CRUD metadata:
-     - Categories (tractors, combines, sprayers, etc.)
-     - Manufacturers
-     - Models
-     - Condition types
-  3. Create mutations: `createMetadata`, `updateMetadata`, `deleteMetadata`
+  2. Create admin UI to CRUD metadata (Categories, Manufacturers, Models, Condition types)
+  3. Create mutations: `createMetadata`, `updateMetadata`, `deleteMetadata` (admin-only)
   4. Add to admin dashboard
-- **Verification**: Admin can manage all equipment metadata
+- **Verification**: Admin can manage all equipment metadata; referential integrity maintained
 - **Dependencies**: P3-3 (admin infrastructure ready)
 
 ### P3-6: Remember User Settings
@@ -416,30 +385,22 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
      - Auction state transitions
      - Authentication flow
      - Admin functions
-  3. Write tests following best practices:
-     - Test real-world use cases
-     - No unnecessary tests
-     - Focus on business logic
+  3. Write tests following best practices (real-world use cases, business logic focus)
   4. Configure CI to block merge on test failure
 - **Verification**: Coverage > 80%, all tests pass before merge
 - **Dependencies**: P1-2, P1-3, P2-2, P2-3 (coverage configured, refactoring done)
 
-### P4-2: SEO Optimization
+### P4-2: SEO Implementation
 - **Issue**: #133
 - **Priority**: MEDIUM
-- **Description**: Implement SEO strategy for auction platform
+- **Description**: Implement SEO strategy using Vite-compatible solutions
 - **Steps**:
-  1. Audit current SEO:
-     - Meta tags on all pages
-     - Open Graph tags
-     - Structured data (JSON-LD)
-     - Sitemap.xml
-     - robots.txt
+  1. Audit current SEO (meta tags, OG tags, JSON-LD, Sitemap, robots.txt)
   2. Implement improvements:
-     - Add react-helmet or next-seo
+     - Add `react-helmet-async` for head management
      - Dynamic meta tags for auction pages
      - Add structured data for products
-     - Create sitemap generation
+     - Create sitemap generation strategy
   3. Verify with Lighthouse
 - **Verification**: Lighthouse SEO score > 90
 - **Dependencies**: None
@@ -472,16 +433,30 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Description**: Add AI chatbot for user support
 - **Steps**:
   1. Research chatbot options (OpenAI, Anthropic, etc.)
-  2. Design conversation flows for:
-     - Finding equipment
-     - Listing questions
-     - Bidding help
-     - Account support
+  2. Design conversation flows for equipment search, listing help, bidding, and account support
   3. Implement chatbot UI
   4. Connect to AI backend
   5. Set up content moderation
 - **Verification**: Chatbot responds to user queries
 - **Dependencies**: None
+
+---
+
+## PR #159 Remediation
+
+Concise tasks to resolve critical/major items from PR review.
+
+- [x] **PR-1: Fix Search Status Scope (CRITICAL)**: Update `getActiveAuctions` to use `search_title_simple` for multi-status queries.
+- [x] **PR-2: Restore Grouping in getMyBids (MAJOR)**: Refactor `getMyBids` to group by unique auctions and provide aggregated metrics.
+- [x] **PR-3: Accurate Admin Statistics (MAJOR)**: Replace result truncation with `sumQuery` or paginated aggregation.
+- [x] **PR-4: Resolve Chained Query Error**: Refactor `getActiveAuctions` to avoid reusing builder objects.
+- [x] **PR-5: Fix getSellerInfo Resolved ID Usage**: Use `linkId` for Cross-account statistics.
+- [x] **PR-6: Robust Admin Error Handling**: Update `closeAuctionEarly` to properly capture specific admin auth errors.
+- [x] **PR-7: Explicit Return Contracts**: Add `return null;` to all mutations with `v.null()` validator.
+- [x] **PR-8: Verify UI Count Labels**: Fix "Showing X of Y" flashing and accuracy in `BidHistory` and `MyListings`.
+- [x] **PR-9: Type-Safe getSystemConfig**: Ensure settings are type-validated with schema checks.
+- [x] **PR-10: Robust totalCount Fallback**: Ensure profile list counters use dataset-wide database scans.
+- [x] **PR-11: Best-effort Audit Counters**: Prevent `logAudit` failures from rolling back main mutations.
 
 ---
 
@@ -504,10 +479,10 @@ Phase 1: Infrastructure (Sequential)
 └── P1-7: README
 
 Phase 2: Backend Refactoring (Sequential)
-├── P2-1: admin.ts 200 limit bug (HIGH)
+├── P2-1: admin stats scalability (HIGH)
 ├── P2-2: Split queries.ts
 ├── P2-3: Split mutations.ts
-└── P2-4: Pagination
+└── P2-4: Pagination (DONE)
 
 Phase 3: Features (Can partially parallel)
 ├── P3-1: Loading states (HIGH)
@@ -519,7 +494,7 @@ Phase 3: Features (Can partially parallel)
 
 Phase 4: Major Features
 ├── P4-1: Unit tests (HIGH)
-├── P4-2: SEO
+├── P4-2: SEO Implementation
 ├── P4-3: Brief.md alignment
 ├── P4-4: HTTP/2+
 └── P4-5: AI chatbot

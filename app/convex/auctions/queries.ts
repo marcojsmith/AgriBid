@@ -1,3 +1,22 @@
+export interface AuctionBidStats {
+  lastBidTimestamp: number;
+  highestBid: number;
+  bidCount: number;
+}
+
+export interface GlobalUserBidStats {
+  totalActive: number;
+  winningCount: number;
+  outbidCount: number;
+  totalExposure: number;
+}
+
+export interface CalculateUserBidStatsResult {
+  globalStats: GlobalUserBidStats;
+  auctionStatsMap: Map<string, AuctionBidStats>;
+  auctionsMap: Map<string, Doc<"auctions"> | null>;
+}
+
 /**
  * Computes bid statistics for a given user.
  *
@@ -1094,22 +1113,3 @@ export const getAllPendingFlags = query({
     }));
   },
 });
-
-export interface CalculateUserBidStatsResult {
-  globalStats: GlobalUserBidStats;
-  auctionStatsMap: Map<string, AuctionBidStats>;
-  auctionsMap: Map<string, Doc<"auctions"> | null>;
-}
-
-export interface AuctionBidStats {
-  lastBidTimestamp: number;
-  highestBid: number;
-  bidCount: number;
-}
-
-export interface GlobalUserBidStats {
-  totalActive: number;
-  winningCount: number;
-  outbidCount: number;
-  totalExposure: number;
-}
