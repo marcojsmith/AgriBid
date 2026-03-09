@@ -251,7 +251,11 @@ export async function logAudit(
     timestamp: Date.now(),
   });
 
-  await updateCounter(ctx, "auditLogs", "total", 1);
+  try {
+    await updateCounter(ctx, "auditLogs", "total", 1);
+  } catch (err) {
+    console.warn("Failed to update auditLogs counter:", err);
+  }
 }
 
 // Re-export encryption functions from lib/encryption for backward compatibility

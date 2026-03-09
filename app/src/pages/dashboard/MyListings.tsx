@@ -101,7 +101,7 @@ export default function MyListings() {
     { initialNumItems: 50 }
   );
 
-  const totalListings = useQuery(api.auctions.getMyListingsCount);
+  const listingStats = useQuery(api.auctions.getMyListingsStats);
   const submitForReview = useMutation(api.auctions.submitForReview);
   const deleteDraft = useMutation(api.auctions.deleteDraft);
 
@@ -172,24 +172,10 @@ export default function MyListings() {
     navigate(`/sell?edit=${auction._id}`);
   };
 
-  const counts = useMemo(() => {
-    const acc: Record<StatusFilter, number> = {
-      all: listings.length,
-      draft: 0,
-      pending_review: 0,
-      active: 0,
-      sold: 0,
-      unsold: 0,
-    };
-    for (const listing of listings) {
-      if (listing.status in acc) {
-        acc[listing.status as keyof typeof acc]++;
-      }
-    }
-    return acc;
-  }, [listings]);
-
-  const getStatusCount = (status: StatusFilter) => counts[status];
+  const getStatusCount = (status: StatusFilter) => {
+    if (!listingStats) return 0;
+    return listingStats[status] ?? 0;
+  };
 
   if (status === "LoadingFirstPage") {
     return (
@@ -412,7 +398,9 @@ export default function MyListings() {
           <div className="flex flex-col items-center gap-4 pt-8">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
               Showing {filteredListings.length}
-              {totalListings !== undefined ? ` of ${totalListings}` : ""}{" "}
+              {getStatusCount(statusFilter) > 0
+                ? ` of ${getStatusCount(statusFilter)}`
+                : ""}{" "}
               Listings
             </p>
             {status === "CanLoadMore" ? (

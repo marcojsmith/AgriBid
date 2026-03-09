@@ -166,13 +166,14 @@ export const getActiveAuctions = query({
       const auctionsQuery = ctx.db.query("auctions");
 
       if (args.search) {
-        return auctionsQuery.withSearchIndex("search_title", (q) => {
-          const sq = q.search("title", args.search!);
-          if (statuses.length === 1) {
-            return sq.eq("status", statuses[0]);
-          }
-          return sq;
-        });
+        if (statuses.length === 1) {
+          return auctionsQuery.withSearchIndex("search_title", (q) =>
+            q.search("title", args.search!).eq("status", statuses[0])
+          );
+        }
+        return auctionsQuery.withSearchIndex("search_title_simple", (q) =>
+          q.search("title", args.search!)
+        );
       }
 
       if (args.make) {
@@ -815,30 +816,112 @@ export const getMyListings = query({
 });
 
 /**
- * Get the total number of listings for the authenticated user.
+ * Get the total number of listings for the authenticated user, optionally filtered by status.
  *
- * @returns The total number of listings
+ * @param args.status - Optional status to filter by
+ * @returns The total number of matching listings
  */
 export const getMyListingsCount = query({
-  args: {},
+  args: { status: v.optional(v.string()) },
   returns: v.number(),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     try {
       const authUser = await authComponent.getAuthUser(ctx);
       if (!authUser) return 0;
       const userId = resolveUserId(authUser);
       if (!userId) return 0;
 
-      return await countQuery(
-        ctx.db
-          .query("auctions")
-          .withIndex("by_seller", (q) => q.eq("sellerId", userId))
-      );
+      let baseQuery = ctx.db
+        .query("auctions")
+        .withIndex("by_seller", (q) => q.eq("sellerId", userId));
+
+      if (args.status && args.status !== "all") {
+        baseQuery = baseQuery.filter((q) =>
+          q.eq(q.field("status"), args.status)
+        );
+      }
+
+      return await countQuery(baseQuery);
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getMyListingsCount failure:", err);
       }
       return 0;
+    }
+  },
+});
+
+/**
+ * Get listing counts for the authenticated user, grouped by status.
+ *
+ * @returns Object mapping status types to their respective counts
+ */
+export const getMyListingsStats = query({
+  args: {},
+  returns: v.object({
+    all: v.number(),
+    draft: v.number(),
+    pending_review: v.number(),
+    active: v.number(),
+    sold: v.number(),
+    unsold: v.number(),
+  }),
+  handler: async (ctx) => {
+    try {
+      const authUser = await authComponent.getAuthUser(ctx);
+      if (!authUser)
+        return {
+          all: 0,
+          draft: 0,
+          pending_review: 0,
+          active: 0,
+          sold: 0,
+          unsold: 0,
+        };
+      const userId = resolveUserId(authUser);
+      if (!userId)
+        return {
+          all: 0,
+          draft: 0,
+          pending_review: 0,
+          active: 0,
+          sold: 0,
+          unsold: 0,
+        };
+
+      const listings = await ctx.db
+        .query("auctions")
+        .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+        .collect();
+
+      const stats = {
+        all: listings.length,
+        draft: 0,
+        pending_review: 0,
+        active: 0,
+        sold: 0,
+        unsold: 0,
+      };
+
+      for (const listing of listings) {
+        if (listing.status in stats) {
+          stats[listing.status as keyof typeof stats]++;
+        }
+      }
+
+      return stats;
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getMyListingsStats failure:", err);
+      }
+      return {
+        all: 0,
+        draft: 0,
+        pending_review: 0,
+        active: 0,
+        sold: 0,
+        unsold: 0,
+      };
     }
   },
 });
@@ -869,6 +952,12 @@ export const getMyBidsCount = query({
   },
 });
 
+/**
+ * Retrieve high-level bidding statistics for the authenticated user.
+ *
+ * Includes counts for active, winning, and outbid auctions, as well as total exposure.
+ * @returns An object containing aggregated bidding metrics
+ */
 export const getMyBidsStats = query({
   args: {},
   returns: v.object({

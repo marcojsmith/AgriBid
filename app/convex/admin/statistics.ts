@@ -73,41 +73,18 @@ export const getFinancialStats = query({
 
       let totalSalesVolume = counter?.salesVolume ?? 0;
       let auctionCount = counter?.soldCount ?? 0;
-      let truncated = false;
+      const truncated = false;
 
       // Fallback: If counters are missing or look wrong, we can still do a scan
-      // For now, we trust the counter if it exists.
       if (!counter || counter.soldCount === undefined) {
-        // Scan all sold auctions to compute global aggregates
-        // SAFETY: We add a circuit breaker to avoid long-running queries
-        totalSalesVolume = 0;
-        auctionCount = 0;
-        let cursor: string | null = null;
-        let isDone = false;
-        let iterations = 0;
-        const MAX_ITERATIONS = 20; // Limit to 10,000 auctions total for now
-
-        while (!isDone && iterations < MAX_ITERATIONS) {
-          const page = await ctx.db
+        const soldStats = await sumQuery(
+          ctx.db
             .query("auctions")
-            .withIndex("by_status", (q) => q.eq("status", "sold"))
-            .paginate({ numItems: 500, cursor });
-
-          for (const a of page.page) {
-            totalSalesVolume += a.currentPrice;
-            auctionCount++;
-          }
-          cursor = page.continueCursor;
-          isDone = page.isDone;
-          iterations++;
-        }
-
-        if (iterations >= MAX_ITERATIONS) {
-          console.warn(
-            "getFinancialStats reached iteration limit during fallback scan. Totals are truncated."
-          );
-          truncated = true;
-        }
+            .withIndex("by_status", (q) => q.eq("status", "sold")),
+          "currentPrice"
+        );
+        totalSalesVolume = soldStats.sum;
+        auctionCount = soldStats.count;
       }
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;

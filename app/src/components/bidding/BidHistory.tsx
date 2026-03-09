@@ -142,10 +142,11 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
               })}
 
               <div className="pt-2 flex flex-col items-center gap-2">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                  Showing {bids.length}
-                  {totalBids !== undefined ? ` of ${totalBids}` : ""} Bids
-                </p>
+                {totalBids !== undefined && totalBids > 0 && (
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                    Showing {bids.length} of {totalBids} Bids
+                  </p>
+                )}
 
                 {status === "CanLoadMore" && (
                   <Button

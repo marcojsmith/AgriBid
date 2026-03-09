@@ -120,12 +120,11 @@ export const getRecentBids = query({
         err instanceof UnauthorizedError ||
         (err instanceof Error &&
           (err.name === "UnauthorizedError" ||
-            /(unauthor|not authoriz)/i.test(err.message)))
+            /(unauthor|not authoriz|authenticat)/i.test(err.message)))
       ) {
         throw err;
       }
       console.error("Critical error in getRecentBids:", err);
-      // Re-throw to allow frontend to catch and show error state
       throw err;
     }
   },

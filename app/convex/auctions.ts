@@ -28,6 +28,7 @@ export {
   getMyBidsCount,
   getMyListings,
   getMyListingsCount,
+  getMyListingsStats,
   getAuctionFlags,
   getAllPendingFlags,
 } from "./auctions/queries";
