@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 /**
  * Root component for composing a Select; renders a select container with a data-slot attribute for styling hooks.
  *
+ * @param props - Component props.
  * @returns A React element representing the Select root.
  */
 function Select({
@@ -30,6 +31,7 @@ function SelectGroup({
 /**
  * Renders the Select's displayed value using the Radix Select value primitive.
  *
+ * @param props - Component props.
  * @returns The rendered SelectPrimitive.Value element with forwarded props and a `data-slot="select-value"` attribute
  */
 function SelectValue({
@@ -41,8 +43,10 @@ function SelectValue({
 /**
  * Render a styled select trigger that displays the provided children and a chevron-down icon.
  *
- * @param size - Controls vertical sizing: `"sm"` for a smaller trigger, `"default"` for the regular height.
- * @param className - Additional CSS class names appended to the trigger's base classes.
+ * @param props - Component props.
+ * @param props.size - Controls vertical sizing: `"sm"` for a smaller trigger, `"default"` for the regular height.
+ * @param props.className - Additional CSS class names appended to the trigger's base classes.
+ * @param props.children - Content displayed inside the trigger.
  * @returns A JSX element that serves as the interactive trigger for the Select component.
  */
 function SelectTrigger({
@@ -74,10 +78,11 @@ function SelectTrigger({
 /**
  * Renders the select's floating content inside a portal with built-in scroll controls and sizing adjustments.
  *
- * @param className - Optional additional class names applied to the content container
- * @param children - Content to render inside the select viewport (typically SelectItem elements)
- * @param position - Layout positioning mode; "item-aligned" (default) uses Radix's item alignment, "popper" enables popper-style sizing and offset tweaks
- * @param align - Horizontal alignment of the content relative to the trigger; defaults to "center"
+ * @param props - Component props.
+ * @param props.className - Optional additional class names applied to the content container
+ * @param props.children - Content to render inside the select viewport (typically SelectItem elements)
+ * @param props.position - Layout positioning mode; "item-aligned" (default) uses Radix's item alignment, "popper" enables popper-style sizing and offset tweaks
+ * @param props.align - Horizontal alignment of the content relative to the trigger; defaults to "center"
  * @returns The portalled Select content element containing a viewport and scroll up/down buttons
  */
 function SelectContent({
@@ -120,7 +125,8 @@ function SelectContent({
 /**
  * Label component for Select that applies base styles and a `data-slot="select-label"` attribute.
  *
- * @param className - Optional additional CSS classes to merge with the component's base styles
+ * @param props - Component props.
+ * @param props.className - Optional additional CSS classes to merge with the component's base styles
  * @returns The rendered Select label element
  */
 function SelectLabel({
@@ -141,6 +147,9 @@ function SelectLabel({
  *
  * The element forwards all native Radix Select item props and merges provided className with the component's base styles.
  *
+ * @param props - Component props.
+ * @param props.className
+ * @param props.children
  * @returns A Radix Select item element containing the provided children and a right-aligned check indicator when selected.
  */
 function SelectItem({
@@ -173,7 +182,8 @@ function SelectItem({
 /**
  * Renders a horizontal separator for the select dropdown.
  *
- * @param className - Additional CSS class names to apply to the separator
+ * @param props - Component props.
+ * @param props.className - Additional CSS class names to apply to the separator
  * @returns The separator element with default styling and a `data-slot="select-separator"` attribute
  */
 function SelectSeparator({
@@ -192,7 +202,8 @@ function SelectSeparator({
 /**
  * Renders a styled scroll-up control used inside the Select content.
  *
- * @param className - Additional CSS class names appended to the button's default classes
+ * @param props - Component props.
+ * @param props.className - Additional CSS class names appended to the button's default classes
  * @returns The ScrollUpButton element containing an up chevron icon
  */
 function SelectScrollUpButton({
@@ -216,6 +227,8 @@ function SelectScrollUpButton({
 /**
  * Renders the scroll-down control used inside the Select content.
  *
+ * @param props - Component props.
+ * @param props.className
  * @returns The Select scroll-down button element containing a `ChevronDownIcon`.
  */
 function SelectScrollDownButton({

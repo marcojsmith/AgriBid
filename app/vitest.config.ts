@@ -1,7 +1,8 @@
 // app/vitest.config.ts
+import path from "path";
+
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import path from "path";
 
 export default defineConfig({
   plugins: [react()],
@@ -13,6 +14,16 @@ export default defineConfig({
       ALLOW_PII_DEV_FALLBACK: "true",
       CONVEX_SITE_URL: "http://localhost:3000",
       PII_ENCRYPTION_KEY: "12345678901234567890123456789012",
+    },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      thresholds: {
+        statements: 35,
+        branches: 29,
+        functions: 41,
+        lines: 36,
+      },
     },
   },
   resolve: {

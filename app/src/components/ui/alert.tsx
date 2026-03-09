@@ -25,8 +25,9 @@ const alertVariants = cva(
  * The element is rendered as a div with role="alert" for accessibility and merges
  * variant-driven classes with any custom `className`.
  *
- * @param className - Additional CSS classes to apply to the alert container.
- * @param variant - Visual variant to apply (e.g., "default", "destructive"); controls composed styling.
+ * @param props - Component props.
+ * @param props.className - Additional CSS classes to apply to the alert container.
+ * @param props.variant - Visual variant to apply (e.g., "default", "destructive"); controls composed styling.
  * @returns A div element with role "alert" and composed classes based on the chosen variant and `className`.
  */
 function Alert({
@@ -47,8 +48,8 @@ function Alert({
 /**
  * Renders the alert's title area with preset layout and typography classes.
  *
- * @param className - Additional CSS classes to append to the default class list
- * @param props - Other attributes and event handlers forwarded to the underlying `div`
+ * @param props - Component props.
+ * @param props.className - Additional CSS classes to append to the default class list
  * @returns A `div` element used as the alert title container
  */
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
@@ -69,6 +70,8 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
  *
  * Merges any provided `className` with the component's default classes and spreads remaining div props onto the element.
  *
+ * @param props - Component props.
+ * @param props.className - Additional CSS classes to apply to the alert description.
  * @returns The div element used as the alert description slot.
  */
 function AlertDescription({

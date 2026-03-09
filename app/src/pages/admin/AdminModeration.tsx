@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Check, AlertTriangle, Flag, ExternalLink, X } from "lucide-react";
-import { ModerationCard } from "@/components/admin";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import type { Id } from "convex/_generated/dataModel";
+
+import { ModerationCard } from "@/components/admin";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Id } from "convex/_generated/dataModel";
 
 interface PendingFlag {
   _id: Id<"auctionFlags">;
@@ -45,6 +46,10 @@ interface PendingFlag {
 
 /**
  * Creates a handler for auction actions with consistent error handling.
+ * @param mutation - The mutation function to call
+ * @param successMessage - Message to show on success
+ * @param errorMessage - Message to show on error
+ * @returns A function that takes an auction ID and performs the action
  */
 function createAuctionActionHandler(
   mutation: (args: { auctionId: Id<"auctions"> }) => Promise<unknown>,

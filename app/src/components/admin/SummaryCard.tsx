@@ -1,7 +1,8 @@
 import React from "react";
-import { Card } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface SummaryCardProps {
@@ -17,6 +18,18 @@ interface SummaryCardProps {
   className?: string;
 }
 
+/**
+ * A card component that displays a summary of statistics and a link to more details.
+ *
+ * @param props - Component props
+ * @param props.title - The title of the summary card
+ * @param props.icon - An icon to display next to the title
+ * @param props.stats - An array of statistics objects to display
+ * @param props.link - The URL to link to for more details
+ * @param props.linkLabel - The text label for the link
+ * @param props.className - Additional CSS classes
+ * @returns A summary card component
+ */
 export function SummaryCard({
   title,
   icon,

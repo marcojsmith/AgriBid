@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+
 import type { AdminProfile } from "../hooks/useUserManagement";
 
 /**
@@ -19,11 +20,12 @@ import type { AdminProfile } from "../hooks/useUserManagement";
  * Promote action is disabled and displays a loading indicator while `isProcessing` is true.
  * Closing the dialog invokes `onClose`.
  *
- * @param isOpen - Whether the dialog is visible
- * @param onClose - Called when the dialog is dismissed
- * @param onConfirm - Called when the Promote action is confirmed
- * @param isProcessing - When true, disables actions and shows a loading indicator
- * @param targetUser - The user to be promoted; used to display the user's name or email (may be `null`)
+ * @param props - Component props.
+ * @param props.isOpen - Whether the dialog is visible
+ * @param props.onClose - Called when the dialog is dismissed
+ * @param props.onConfirm - Called when the Promote action is confirmed
+ * @param props.isProcessing - When true, disables actions and shows a loading indicator
+ * @param props.targetUser - The user to be promoted; used to display the user's name or email (may be `null`)
  * @returns The AlertDialog React element
  */
 export function PromoteAdminDialog({

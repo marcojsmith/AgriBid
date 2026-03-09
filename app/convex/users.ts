@@ -1,5 +1,6 @@
 import { v, ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+
 import {
   mutation,
   query,
@@ -83,6 +84,9 @@ export const KYCDetailsValidator = v.object({
 
 /**
  * Helper to find a user by ID, checking both internal _id and shared userId.
+ * @param ctx
+ * @param id
+ * @returns The user document or null if not found.
  */
 export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
   if (!id) return null;

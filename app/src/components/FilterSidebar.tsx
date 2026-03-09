@@ -1,15 +1,29 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
 import { X, Filter, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+
+/**
+ * Props for the FilterSidebar component.
+ */
 interface FilterSidebarProps {
+  /**
+   * Callback invoked when the sidebar should close (used in mobile overlay).
+   */
   onClose?: () => void;
 }
 
+/**
+ * Sidebar component for filtering auctions.
+ *
+ * @param props - Component props.
+ * @param props.onClose - Callback when the sidebar is closed.
+ * @returns The rendered filter sidebar.
+ */
 export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMakes = useQuery(api.auctions.getActiveMakes) || [];

@@ -1,9 +1,32 @@
+import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
+import { query } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
+import { findUserById } from "../users";
+import { authComponent } from "../auth";
+import { requireAdmin, resolveUserId } from "../lib/auth";
+import type { Doc, Id } from "../_generated/dataModel";
+import {
+  AuctionSummaryValidator,
+  toAuctionSummary,
+  AuctionDetailValidator,
+  toAuctionDetail,
+  BidValidator,
+} from "./helpers";
+import { countQuery } from "../admin_utils";
+
+/**
+ * Statistics for bids within a specific auction.
+ */
 export interface AuctionBidStats {
   lastBidTimestamp: number;
   highestBid: number;
   bidCount: number;
 }
 
+/**
+ * Aggregated bidding statistics for a user across all active auctions.
+ */
 export interface GlobalUserBidStats {
   totalActive: number;
   winningCount: number;
@@ -11,6 +34,9 @@ export interface GlobalUserBidStats {
   totalExposure: number;
 }
 
+/**
+ * Result of the internal bid statistics calculation.
+ */
 export interface CalculateUserBidStatsResult {
   globalStats: GlobalUserBidStats;
   auctionStatsMap: Map<string, AuctionBidStats>;
@@ -18,7 +44,20 @@ export interface CalculateUserBidStatsResult {
 }
 
 /**
+ * Zeroed-out initial state for auction statistics.
+ */
+const ZERO_AUCTION_STATS = {
+  totalActive: 0,
+  winningCount: 0,
+  outbidCount: 0,
+  totalExposure: 0,
+};
+
+/**
  * Computes bid statistics for a given user.
+ *
+ * Scans all non-voided bids by the user to determine their highest bid and activity status
+ * across all participating auctions.
  *
  * @param ctx - The query context used to execute database operations.
  * @param userId - The ID of the user to analyze.
@@ -87,30 +126,6 @@ async function calculateUserBidStats(
   return { globalStats, auctionStatsMap, auctionsMap };
 }
 
-const ZERO_AUCTION_STATS = {
-  totalActive: 0,
-  winningCount: 0,
-  outbidCount: 0,
-  totalExposure: 0,
-};
-
-import { v } from "convex/values";
-import { query } from "../_generated/server";
-import type { QueryCtx } from "../_generated/server";
-import { paginationOptsValidator } from "convex/server";
-import { findUserById } from "../users";
-import { authComponent } from "../auth";
-import { requireAdmin, resolveUserId } from "../lib/auth";
-import type { Doc, Id } from "../_generated/dataModel";
-import {
-  AuctionSummaryValidator,
-  toAuctionSummary,
-  AuctionDetailValidator,
-  toAuctionDetail,
-  BidValidator,
-} from "./helpers";
-import { countQuery } from "../admin_utils";
-
 /**
  * Represents the possible status values for an auction.
  */
@@ -135,6 +150,11 @@ const statusesForFilter = (filter: StatusFilter): AuctionStatus[] => {
   return ["active", "sold", "unsold"];
 };
 
+/**
+ * Retrieve a list of auctions currently pending admin review.
+ *
+ * Only accessible to admin users.
+ */
 export const getPendingAuctions = query({
   args: {},
   returns: v.array(AuctionSummaryValidator),
@@ -152,6 +172,11 @@ export const getPendingAuctions = query({
   },
 });
 
+/**
+ * Advanced search and filter for auctions with pagination support.
+ *
+ * Supports filtering by text search, make, year range, price range, operating hours, and status.
+ */
 export const getActiveAuctions = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -334,6 +359,9 @@ export const getActiveAuctions = query({
   },
 });
 
+/**
+ * Returns a unique list of all makes currently registered in equipment metadata.
+ */
 export const getActiveMakes = query({
   args: {},
   returns: v.array(v.string()),
@@ -343,6 +371,9 @@ export const getActiveMakes = query({
   },
 });
 
+/**
+ * Fetch full details for a single auction by ID.
+ */
 export const getAuctionById = query({
   args: { auctionId: v.id("auctions") },
   returns: v.union(v.null(), AuctionDetailValidator),
@@ -354,6 +385,11 @@ export const getAuctionById = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of bids for a specific auction.
+ *
+ * Enriches each bid with the bidder's display name.
+ */
 export const getAuctionBids = query({
   args: {
     auctionId: v.id("auctions"),
@@ -447,6 +483,9 @@ export const getAuctionBidCount = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of equipment metadata for administration.
+ */
 export const getEquipmentMetadata = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -478,6 +517,9 @@ export const getEquipmentMetadata = query({
   },
 });
 
+/**
+ * Retrieve public profile information and sales statistics for a seller.
+ */
 export const getSellerInfo = query({
   args: { sellerId: v.string() },
   returns: v.union(
@@ -529,6 +571,9 @@ export const getSellerInfo = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of active or sold listings for a specific seller.
+ */
 export const getSellerListings = query({
   args: { userId: v.string(), paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -576,6 +621,11 @@ export const getSellerListings = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of all auctions (all statuses) for admin oversight.
+ *
+ * Only accessible to admin users.
+ */
 export const getAllAuctions = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -610,6 +660,11 @@ export const getAllAuctions = query({
   },
 });
 
+/**
+ * Retrieve auctions the authenticated user has bid on, enriched with participation stats.
+ *
+ * Groups multiple bids on the same auction and provides status information (winning, outbid, won).
+ */
 export const getMyBids = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -752,6 +807,9 @@ export const getMyBids = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of all listings owned by the authenticated user.
+ */
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -789,7 +847,7 @@ export const getMyListings = query({
         .query("auctions")
         .withIndex("by_seller", (q) => q.eq("sellerId", linkId));
 
-      const [listingsResult, totalCount] = await Promise.all([
+      const [results, totalCount] = await Promise.all([
         listingsQuery.paginate(args.paginationOpts),
         countQuery(
           ctx.db
@@ -799,14 +857,14 @@ export const getMyListings = query({
       ]);
 
       const page = await Promise.all(
-        listingsResult.page.map(
+        results.page.map(
           async (auction: Doc<"auctions">) =>
             await toAuctionSummary(ctx, auction)
         )
       );
 
       return {
-        ...listingsResult,
+        ...results,
         page,
         totalCount,
       };
@@ -829,6 +887,8 @@ export const getMyListings = query({
 /**
  * Get the total number of listings for the authenticated user, optionally filtered by status.
  *
+ * @param ctx
+ * @param args
  * @param args.status - Optional status to filter by
  * @returns The total number of matching listings
  */
@@ -865,6 +925,7 @@ export const getMyListingsCount = query({
 /**
  * Get listing counts for the authenticated user, grouped by status.
  *
+ * @param ctx
  * @returns Object mapping status types to their respective counts
  */
 export const getMyListingsStats = query({
@@ -940,6 +1001,7 @@ export const getMyListingsStats = query({
 /**
  * Get the total number of non-voided bids placed by the authenticated user.
  *
+ * @param ctx
  * @returns The total number of non-voided bids
  */
 export const getMyBidsCount = query({
@@ -967,6 +1029,7 @@ export const getMyBidsCount = query({
  * Retrieve high-level bidding statistics for the authenticated user.
  *
  * Includes counts for active, winning, and outbid auctions, as well as total exposure.
+ * @param ctx
  * @returns An object containing aggregated bidding metrics
  */
 export const getMyBidsStats = query({
@@ -994,6 +1057,11 @@ export const getMyBidsStats = query({
   },
 });
 
+/**
+ * Retrieve all flags (reports) associated with a specific auction.
+ *
+ * Enriches each flag with the reporter's name. Only accessible to admin users.
+ */
 export const getAuctionFlags = query({
   args: { auctionId: v.id("auctions") },
   returns: v.array(
@@ -1046,6 +1114,11 @@ export const getAuctionFlags = query({
   },
 });
 
+/**
+ * Retrieve all auctions flagged by users that are currently pending review.
+ *
+ * Only accessible to admin users.
+ */
 export const getAllPendingFlags = query({
   args: {},
   returns: v.array(

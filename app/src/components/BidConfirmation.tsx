@@ -1,5 +1,7 @@
 // app/src/components/BidConfirmation.tsx
 import { useRef } from "react";
+import { Gavel } from "lucide-react";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +12,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Gavel } from "lucide-react";
 
 interface BidConfirmationProps {
   isOpen: boolean;
@@ -20,6 +21,17 @@ interface BidConfirmationProps {
   onCancel: () => void;
 }
 
+/**
+ * Component for a bid confirmation dialog.
+ *
+ * @param props - Component props.
+ * @param props.isOpen - Whether the dialog is open.
+ * @param props.amount - The bid amount to confirm.
+ * @param props.maxAmount - The maximum bid amount for proxy bidding.
+ * @param props.onConfirm - Callback when the bid is confirmed.
+ * @param props.onCancel - Callback when the bid is cancelled.
+ * @returns The rendered bid confirmation dialog.
+ */
 export const BidConfirmation = ({
   isOpen,
   amount,

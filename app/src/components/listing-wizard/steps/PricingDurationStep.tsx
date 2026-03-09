@@ -1,10 +1,17 @@
+import { TrendingUp, Info } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TrendingUp, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useListingWizard } from "../hooks/useListingWizard";
 import { cn } from "@/lib/utils";
 
+import { useListingWizard } from "../hooks/useListingWizard";
+
+/**
+ * Step 3 of the listing wizard: Pricing and Duration.
+ *
+ * @returns The rendered pricing and duration step.
+ */
 export const PricingDurationStep = () => {
   const { formData, updateField } = useListingWizard();
 

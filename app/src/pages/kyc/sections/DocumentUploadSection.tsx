@@ -1,10 +1,11 @@
 // app/src/pages/kyc/sections/DocumentUploadSection.tsx
+import { Upload, ShieldCheck, FileText } from "lucide-react";
+
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Upload, ShieldCheck, FileText } from "lucide-react";
 
 interface DocumentUploadSectionProps {
   files: File[];
@@ -17,11 +18,12 @@ interface DocumentUploadSectionProps {
 /**
  * Render a document upload section with an upload area, badges for existing and newly selected files, and optional delete controls.
  *
- * @param files - Newly selected File objects to display as upload previews.
- * @param existingDocuments - IDs of documents already stored; each is shown as an existing-document badge.
- * @param isEditMode - When true, shows a delete control for each existing document.
- * @param onFileChange - Handler invoked when the hidden file input changes (user selects files).
- * @param onDeleteDocument - Callback invoked with a document ID to remove that existing document.
+ * @param props - Component props.
+ * @param props.files - Newly selected File objects to display as upload previews.
+ * @param props.existingDocuments - IDs of documents already stored; each is shown as an existing-document badge.
+ * @param props.isEditMode - When true, shows a delete control for each existing document.
+ * @param props.onFileChange - Handler invoked when the hidden file input changes (user selects files).
+ * @param props.onDeleteDocument - Callback invoked with a document ID to remove that existing document.
  * @returns The rendered JSX element for the supporting documents upload section.
  */
 export function DocumentUploadSection({

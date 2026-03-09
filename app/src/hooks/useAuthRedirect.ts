@@ -1,10 +1,12 @@
-import { useSession } from "@/lib/auth-client";
-import { isValidCallbackUrl } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { useSession } from "@/lib/auth-client";
+import { isValidCallbackUrl } from "@/lib/utils";
+
 /**
  * Custom hook that provides utility functions for handling authentication redirects.
+ * @returns Object containing ensureAuthenticated function, session, and isPending status
  */
 export function useAuthRedirect() {
   const { data: session, isPending } = useSession();

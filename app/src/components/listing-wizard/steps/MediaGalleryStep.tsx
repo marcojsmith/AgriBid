@@ -1,5 +1,4 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
 import {
   Camera,
   X,
@@ -9,11 +8,19 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
 import { useListingWizard } from "../hooks/useListingWizard";
 import { useListingMedia } from "../hooks/useListingMedia";
 import { PHOTO_SLOTS } from "../constants";
 
+/**
+ * Step 2 of the listing wizard: Media Gallery.
+ *
+ * @returns The rendered media gallery step.
+ */
 export const MediaGalleryStep = () => {
   const { formData, previews, isSubmitting } = useListingWizard();
   const { handleUpload, handleAdditionalUpload, handleRemove } =

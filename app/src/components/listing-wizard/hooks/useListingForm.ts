@@ -63,6 +63,7 @@ export function useListingForm() {
 
   /**
    * Checks if current step is valid.
+   * @returns True if current step is valid, false otherwise.
    */
   const isCurrentStepValid = () => {
     return getStepError(currentStep) === null;
@@ -70,6 +71,7 @@ export function useListingForm() {
 
   /**
    * Navigates to the next step if current step is valid.
+   * @returns Error message if navigation failed, null otherwise.
    */
   const next = () => {
     const error = getStepError(currentStep);
@@ -81,6 +83,7 @@ export function useListingForm() {
 
   /**
    * Navigates to the previous step.
+   * @returns void
    */
   const prev = () => setCurrentStep(Math.max(currentStep - 1, 0));
 

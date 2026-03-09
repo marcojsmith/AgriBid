@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { Ban, Gavel } from "lucide-react";
+import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -11,10 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Ban, Gavel } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { toast } from "sonner";
-import type { Id } from "convex/_generated/dataModel";
 import {
   AlertDialog,
   AlertDialogCancel,

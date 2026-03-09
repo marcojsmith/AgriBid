@@ -18,6 +18,7 @@ import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 /**
  * Renders the Admin Dashboard overview with summary cards for all management areas.
+ * @returns The admin dashboard page component
  */
 export default function AdminDashboard() {
   return (

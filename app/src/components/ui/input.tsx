@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 /**
  * Renders a styled input element with merged classes and forwarded props.
  *
+ * @param root0
+ * @param root0.className
+ * @param root0.type
  * @returns A JSX input element with computed classes, a `data-slot="input"` attribute, and all provided props forwarded.
  */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {

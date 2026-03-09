@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
+import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
+
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -10,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 

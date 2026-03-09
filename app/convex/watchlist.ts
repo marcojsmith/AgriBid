@@ -10,7 +10,9 @@ import type { Id } from "./_generated/dataModel";
  * Toggle an auction in the user's watchlist.
  * If already watched, remove it. If not, add it.
  *
- * @param auctionId - The ID of the auction to toggle
+ * @param ctx
+ * @param args
+ * @param args.auctionId - The ID of the auction to toggle
  * @returns boolean - true if now watched, false if removed
  */
 export const toggleWatchlist = mutation({
@@ -43,6 +45,11 @@ export const toggleWatchlist = mutation({
 
 /**
  * Check if a specific auction is in the current user's watchlist.
+ *
+ * @param ctx
+ * @param args
+ * @param args.auctionId - The ID of the auction to check
+ * @returns boolean - true if watched, false otherwise
  */
 export const isWatched = query({
   args: { auctionId: v.id("auctions") },
@@ -73,6 +80,11 @@ export const isWatched = query({
 
 /**
  * Retrieve all auctions in the current user's watchlist.
+ *
+ * @param ctx
+ * @param args
+ * @param args.paginationOpts - Pagination options
+ * @returns A paginated list of watched auctions
  */
 export const getWatchedAuctions = query({
   args: { paginationOpts: paginationOptsValidator },
@@ -141,6 +153,7 @@ export const getWatchedAuctions = query({
  * Optimized for efficiently determining which auctions in a list are watched
  * without making per-auction queries.
  *
+ * @param ctx
  * @returns An array of auction IDs that the user has watched
  */
 export const getWatchedAuctionIds = query({
