@@ -702,6 +702,17 @@ export const getAllAuctions = query({
 });
 
 /**
+ * Helper to get the authenticated user's ID.
+ *
+ * @param ctx - Convex Query context
+ * @returns The user's ID, or null if unauthenticated
+ */
+async function getAuthenticatedUserId(ctx: QueryCtx): Promise<string | null> {
+  const authUser = await authComponent.getAuthUser(ctx);
+  return resolveUserId(authUser);
+}
+
+/**
  * Retrieve auctions the authenticated user has bid on, enriched with participation stats.
  *
  * Groups multiple bids on the same auction and provides status information (winning, outbid, won).
@@ -734,18 +745,8 @@ export const getMyBids = query({
   }),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser)
-        return {
-          page: [],
-          isDone: true,
-          continueCursor: "",
-          totalCount: 0,
-          pageStatus: null,
-          splitCursor: null,
-        };
-      const linkId = resolveUserId(authUser);
-      if (!linkId)
+      const userId = await getAuthenticatedUserId(ctx);
+      if (!userId)
         return {
           page: [],
           isDone: true,
@@ -758,7 +759,7 @@ export const getMyBids = query({
       // 1. Get all bid stats for the user (handles grouping and basic metrics)
       const { auctionStatsMap, auctionsMap } = await calculateUserBidStats(
         ctx,
-        linkId
+        userId
       );
 
       // 2. Transform into the required return format
@@ -772,13 +773,13 @@ export const getMyBids = query({
             const isWinning =
               auction.status === "active" &&
               stats.highestBid === auction.currentPrice &&
-              auction.winnerId === linkId;
+              auction.winnerId === userId;
 
             return {
               ...summary,
               myHighestBid: stats.highestBid,
               isWinning,
-              isWon: auction.status === "sold" && auction.winnerId === linkId,
+              isWon: auction.status === "sold" && auction.winnerId === userId,
               isOutbid: auction.status === "active" && !isWinning,
               isCancelled: auction.status === "rejected",
               bidAmount: stats.highestBid,
@@ -863,18 +864,8 @@ export const getMyListings = query({
   }),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser)
-        return {
-          page: [],
-          isDone: true,
-          continueCursor: "",
-          totalCount: 0,
-          pageStatus: null,
-          splitCursor: null,
-        };
-      const linkId = resolveUserId(authUser);
-      if (!linkId)
+      const userId = await getAuthenticatedUserId(ctx);
+      if (!userId)
         return {
           page: [],
           isDone: true,
@@ -886,14 +877,14 @@ export const getMyListings = query({
 
       const listingsQuery = ctx.db
         .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", linkId));
+        .withIndex("by_seller", (q) => q.eq("sellerId", userId));
 
       const [results, totalCount] = await Promise.all([
         listingsQuery.paginate(args.paginationOpts),
         countQuery(
           ctx.db
             .query("auctions")
-            .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
+            .withIndex("by_seller", (q) => q.eq("sellerId", userId))
         ),
       ]);
 
@@ -939,9 +930,7 @@ export const getMyListingsCount = query({
   returns: v.number(),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return 0;
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId) return 0;
 
       let baseQuery = ctx.db
@@ -965,10 +954,20 @@ export const getMyListingsCount = query({
   },
 });
 
+const COUNTABLE_STATUSES = [
+  "draft",
+  "pending_review",
+  "active",
+  "sold",
+  "unsold",
+  "rejected",
+] as const;
+type CountableStatus = (typeof COUNTABLE_STATUSES)[number];
+
 /**
  * Get listing counts for the authenticated user, grouped by status.
  *
- * @param ctx
+ * @param ctx - Convex Query context
  * @returns Object mapping status types to their respective counts
  */
 export const getMyListingsStats = query({
@@ -984,18 +983,7 @@ export const getMyListingsStats = query({
   }),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser)
-        return {
-          all: 0,
-          draft: 0,
-          pending_review: 0,
-          active: 0,
-          sold: 0,
-          unsold: 0,
-          rejected: 0,
-        };
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId)
         return {
           all: 0,
@@ -1023,8 +1011,8 @@ export const getMyListingsStats = query({
       };
 
       for (const listing of listings) {
-        if (listing.status in stats) {
-          stats[listing.status as keyof typeof stats]++;
+        if (COUNTABLE_STATUSES.includes(listing.status as CountableStatus)) {
+          stats[listing.status as CountableStatus]++;
         }
       }
 
@@ -1058,9 +1046,7 @@ export const getMyBidsCount = query({
   returns: v.number(),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return 0;
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId) return 0;
 
       const { auctionStatsMap } = await calculateUserBidStats(ctx, userId);
@@ -1092,20 +1078,17 @@ export const getMyBidsStats = query({
   }),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return ZERO_AUCTION_STATS;
-
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId) return ZERO_AUCTION_STATS;
 
       const { globalStats } = await calculateUserBidStats(ctx, userId);
       return globalStats;
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyBidsStats failure:", err);
-        throw err;
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return ZERO_AUCTION_STATS;
       }
-      return ZERO_AUCTION_STATS;
+      console.error("getMyBidsStats failure:", err);
+      throw err;
     }
   },
 });

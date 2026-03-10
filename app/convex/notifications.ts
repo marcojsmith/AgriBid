@@ -43,6 +43,13 @@ async function getAnnouncementsWithReadStatus(
   }));
 }
 
+const notificationType = v.union(
+  v.literal("info"),
+  v.literal("success"),
+  v.literal("warning"),
+  v.literal("error")
+);
+
 export const getMyNotifications = query({
   args: {},
   returns: v.array(
@@ -50,12 +57,7 @@ export const getMyNotifications = query({
       _id: v.id("notifications"),
       _creationTime: v.number(),
       recipientId: v.string(),
-      type: v.union(
-        v.literal("info"),
-        v.literal("success"),
-        v.literal("warning"),
-        v.literal("error")
-      ),
+      type: notificationType,
       title: v.string(),
       message: v.string(),
       isRead: v.boolean(),
@@ -109,12 +111,7 @@ export const getNotificationArchive = query({
       _id: v.id("notifications"),
       _creationTime: v.number(),
       recipientId: v.string(),
-      type: v.union(
-        v.literal("info"),
-        v.literal("success"),
-        v.literal("warning"),
-        v.literal("error")
-      ),
+      type: notificationType,
       title: v.string(),
       message: v.string(),
       isRead: v.boolean(),

@@ -35,7 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { normalizeListingImages } from "@/lib/normalize-images";
-import type { AuctionImages } from "@/types/auction";
+import type { ListingFormData } from "@/components/listing-wizard/types";
 
 type StatusFilter =
   | "all"
@@ -44,44 +44,6 @@ type StatusFilter =
   | "active"
   | "sold"
   | "unsold"; // "unsold" is intentionally not selectable via tabs, but shown in "all" view
-
-/**
- * Draft structure for editing an auction listing.
- */
-export interface AuctionEditDraft {
-  /** Unique identifier for the auction. */
-  auctionId: Id<"auctions">;
-  /** Year of manufacture. */
-  year: number;
-  /** Manufacturer/Make. */
-  make: string;
-  /** Equipment model. */
-  model: string;
-  /** Physical location of the equipment. */
-  location: string;
-  /** Detailed description of the equipment. */
-  description: string;
-  /** Number of operating hours. */
-  operatingHours: number;
-  /** Display title for the listing. */
-  title: string;
-  /** Verification status of core equipment components. */
-  conditionChecklist: {
-    engine: boolean | null;
-    hydraulics: boolean | null;
-    tires: boolean | null;
-    serviceHistory: boolean | null;
-    notes: string;
-  };
-  /** Collection of equipment images. */
-  images: AuctionImages;
-  /** Minimum price to start bidding. */
-  startingPrice: number;
-  /** Minimum price at which the item will be sold. */
-  reservePrice: number;
-  /** Duration of the auction in days. */
-  durationDays: number;
-}
 
 /**
  * Renders the current user's auction listings dashboard.
@@ -147,7 +109,7 @@ export default function MyListings() {
 
   const handleEdit = (auction: (typeof listings)[0]) => {
     // Save to local storage and redirect to /sell?edit=ID
-    const draftData: AuctionEditDraft = {
+    const draftData: ListingFormData = {
       auctionId: auction._id,
       year: auction.year,
       make: auction.make,
