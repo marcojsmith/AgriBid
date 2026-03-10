@@ -92,8 +92,9 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
       <div className="grid grid-cols-2 gap-3">
         <Button
           variant="outline"
+          disabled
           className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
-          aria-label={`Message ${seller.name}`}
+          aria-label={`Message ${seller.name} (Not implemented)`}
         >
           <Mail className="h-4 w-4" />
           Message

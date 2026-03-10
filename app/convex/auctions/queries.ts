@@ -1,10 +1,15 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+
 import { query } from "../_generated/server";
 import type { QueryCtx } from "../_generated/server";
 import { findUserById } from "../users";
 import { authComponent } from "../auth";
-import { requireAdmin, resolveUserId } from "../lib/auth";
+import {
+  requireAdmin,
+  resolveUserId,
+  getAuthenticatedProfile,
+} from "../lib/auth";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   AuctionSummaryValidator,
@@ -381,6 +386,18 @@ export const getAuctionById = query({
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) return null;
 
+    // Enforce visibility: Drafts and non-public auctions only for owner/admin
+    const PUBLIC_STATUSES = ["active", "sold", "unsold"];
+    if (!PUBLIC_STATUSES.includes(auction.status)) {
+      const auth = await getAuthenticatedProfile(ctx);
+      if (!auth) return null;
+
+      const isAdmin = auth.profile.role === "admin";
+      const isOwner = auction.sellerId === auth.userId;
+
+      if (!isAdmin && !isOwner) return null;
+    }
+
     return await toAuctionDetail(ctx, auction);
   },
 });
@@ -431,6 +448,11 @@ export const getAuctionBids = query({
     );
     const bidderNames = new Map<string, string>();
 
+    const auction = await ctx.db.get(args.auctionId);
+    const auth = await getAuthenticatedProfile(ctx);
+    const isAdmin = auth?.profile.role === "admin";
+    const isSeller = auction?.sellerId === auth?.userId;
+
     await Promise.all(
       uniqueBidderIds.map(async (bidderId) => {
         const mapKey = (bidderId as string) || ANONYMOUS_KEY;
@@ -442,6 +464,13 @@ export const getAuctionBids = query({
           bidderNames.set(mapKey as string, "Anonymous");
           return;
         }
+
+        // Only reveal bidder names to admin or the seller of this auction
+        if (!isAdmin && !isSeller) {
+          bidderNames.set(mapKey as string, "Bidder");
+          return;
+        }
+
         const user = await findUserById(ctx, bidderId as string);
 
         if (user) {
@@ -869,17 +898,18 @@ export const getMyListings = query({
         totalCount,
       };
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyListings failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
+        };
       }
-      return {
-        page: [],
-        isDone: true,
-        continueCursor: "",
-        totalCount: 0,
-        pageStatus: null,
-        splitCursor: null,
-      };
+      console.error("getMyListings failure:", err);
+      throw err;
     }
   },
 });
@@ -914,10 +944,11 @@ export const getMyListingsCount = query({
 
       return await countQuery(baseQuery);
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyListingsCount failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return 0;
       }
-      return 0;
+      console.error("getMyListingsCount failure:", err);
+      throw err;
     }
   },
 });
@@ -937,6 +968,7 @@ export const getMyListingsStats = query({
     active: v.number(),
     sold: v.number(),
     unsold: v.number(),
+    rejected: v.number(),
   }),
   handler: async (ctx) => {
     try {
@@ -949,6 +981,7 @@ export const getMyListingsStats = query({
           active: 0,
           sold: 0,
           unsold: 0,
+          rejected: 0,
         };
       const userId = resolveUserId(authUser);
       if (!userId)
@@ -959,6 +992,7 @@ export const getMyListingsStats = query({
           active: 0,
           sold: 0,
           unsold: 0,
+          rejected: 0,
         };
 
       const listings = await ctx.db
@@ -973,6 +1007,7 @@ export const getMyListingsStats = query({
         active: 0,
         sold: 0,
         unsold: 0,
+        rejected: 0,
       };
 
       for (const listing of listings) {
@@ -983,17 +1018,19 @@ export const getMyListingsStats = query({
 
       return stats;
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyListingsStats failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return {
+          all: 0,
+          draft: 0,
+          pending_review: 0,
+          active: 0,
+          sold: 0,
+          unsold: 0,
+          rejected: 0,
+        };
       }
-      return {
-        all: 0,
-        draft: 0,
-        pending_review: 0,
-        active: 0,
-        sold: 0,
-        unsold: 0,
-      };
+      console.error("getMyListingsStats failure:", err);
+      throw err;
     }
   },
 });
@@ -1017,10 +1054,11 @@ export const getMyBidsCount = query({
       const { auctionStatsMap } = await calculateUserBidStats(ctx, userId);
       return auctionStatsMap.size;
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyBidsCount failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return 0;
       }
-      return 0;
+      console.error("getMyBidsCount failure:", err);
+      throw err;
     }
   },
 });

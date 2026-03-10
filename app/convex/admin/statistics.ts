@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+
 import { mutation, query, type MutationCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
@@ -13,6 +14,9 @@ import { countOnlineUsers } from "../presence";
 
 /**
  * Internal helper to upsert a counter document with multiple fields.
+ * @param ctx
+ * @param name
+ * @param payload
  */
 async function upsertCounter(
   ctx: MutationCtx,

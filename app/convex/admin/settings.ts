@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+
 import { mutation, query } from "../_generated/server";
 import type { QueryCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
@@ -18,6 +19,10 @@ type SettingsKey = keyof SettingsSchema;
  * Fetch a specific system setting by key.
  *
  * Falls back to hardcoded constants if the setting is not found in the database.
+ * @param ctx
+ * @param key
+ * @param defaultValue
+ * @returns The value of the setting or the default value.
  */
 export async function getSetting<K extends SettingsKey>(
   ctx: QueryCtx,

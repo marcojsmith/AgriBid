@@ -13,6 +13,10 @@ import type { AuthUser } from "../auth";
  * Custom error class for unauthorized access attempts.
  */
 export class UnauthorizedError extends Error {
+  /**
+   *
+   * @param message
+   */
   constructor(message = "Unauthorized") {
     super(message);
     this.name = "UnauthorizedError";

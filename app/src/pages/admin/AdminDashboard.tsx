@@ -10,6 +10,7 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
+
 import { AdminLayout, AdminConnectionError } from "@/components/admin";
 import { SummaryCard } from "@/components/admin/SummaryCard";
 import { LoadingIndicator } from "@/components/LoadingIndicator";

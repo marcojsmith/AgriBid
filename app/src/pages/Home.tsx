@@ -1,20 +1,24 @@
 // app/src/pages/Home.tsx
 import { useState, useEffect } from "react";
 import { useQuery, usePaginatedQuery } from "convex/react";
+import { api } from "convex/_generated/api";
+import { Link, useSearchParams } from "react-router-dom";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
+
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { api } from "convex/_generated/api";
 import { AuctionCard } from "@/components/auction";
 import { AuctionCardSkeleton } from "@/components/AuctionCardSkeleton";
 import { FilterSidebar } from "@/components/FilterSidebar";
-import { Link, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.
+ *
  * Initialises synchronously to avoid layout jumps.
+ * @param query - The media query to match
+ * @returns Whether the media query matches
  */
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => {

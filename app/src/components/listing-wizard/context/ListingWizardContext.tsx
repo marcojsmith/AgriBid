@@ -128,7 +128,9 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         ...initialData,
         images: normalizedImages,
       });
-      setCurrentStep(initialStep ?? 0);
+
+      const clampedStep = Math.max(0, Math.min(initialStep ?? 0, 5));
+      setCurrentStep(clampedStep);
       setIsSuccess(false);
       setIsSubmitting(false);
       setDraftSaved(true);

@@ -1,4 +1,5 @@
 import { AlertCircle, RefreshCw } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,14 @@ interface AdminConnectionErrorProps {
 
 /**
  * Standardized error UI for admin dashboard connection timeouts or query failures.
+ *
+ * @param props - Component props
+ * @param props.title - Error title
+ * @param props.description - Detailed error message
+ * @param props.onRetry - Optional callback for retry action
+ * @param props.className - Optional CSS class
+ * @param props.iconSize - Size of the error icon
+ * @returns The rendered error component
  */
 export function AdminConnectionError({
   title = "Connection Timeout",

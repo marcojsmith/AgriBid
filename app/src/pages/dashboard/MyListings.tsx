@@ -44,15 +44,27 @@ type StatusFilter =
   | "sold"
   | "unsold";
 
+/**
+ * Payload structure for editing an auction listing.
+ */
 export interface AuctionEditPayload {
+  /** Unique identifier for the auction. */
   _id: Id<"auctions">;
+  /** Year of manufacture. */
   year: number;
+  /** Manufacturer/Make. */
   make: string;
+  /** Equipment model. */
   model: string;
+  /** Physical location of the equipment. */
   location: string;
+  /** Detailed description of the equipment. */
   description?: string;
+  /** Number of operating hours. */
   operatingHours: number;
+  /** Display title for the listing. */
   title: string;
+  /** Verification status of core equipment components. */
   conditionChecklist?: {
     engine: boolean | null;
     hydraulics: boolean | null;
@@ -60,6 +72,7 @@ export interface AuctionEditPayload {
     serviceHistory: boolean | null;
     notes?: string;
   };
+  /** Collection of equipment images. */
   images:
     | {
         front?: string;
@@ -69,11 +82,17 @@ export interface AuctionEditPayload {
         additional?: string[];
       }
     | string[];
+  /** Minimum price to start bidding. */
   startingPrice: number;
+  /** Minimum price at which the item will be sold. */
   reservePrice: number;
+  /** Duration of the auction in days. */
   durationDays?: number;
+  /** Current lifecycle status of the auction. */
   status: string;
+  /** Current highest bid or starting price. */
   currentPrice: number;
+  /** Timestamp when the auction ends. */
   endTime?: number;
 }
 

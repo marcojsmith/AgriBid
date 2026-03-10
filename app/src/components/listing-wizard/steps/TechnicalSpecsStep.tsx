@@ -1,8 +1,10 @@
-import { Button } from "@/components/ui/button";
 import { Check, Search, ChevronDown } from "lucide-react";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
+
+import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { Button } from "@/components/ui/button";
+
 import { useListingWizard } from "../hooks/useListingWizard";
 import { EQUIPMENT_METADATA_LIMIT } from "../../../../convex/constants";
 

@@ -142,6 +142,10 @@ export function useListingMedia() {
    * @param index - The zero-based index of the image in the additional images array (only used when targetId is "additional")
    */
   const handleRemove = (targetId: string, index?: number) => {
+    if (targetId === "additional" && index === undefined) {
+      return;
+    }
+
     let previewKey = targetId;
 
     if (targetId === "additional" && index !== undefined) {

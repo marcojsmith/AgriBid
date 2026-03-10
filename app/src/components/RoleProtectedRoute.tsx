@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { useSession } from "@/lib/auth-client";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Button } from "./ui/button";
+
+import { useSession } from "@/lib/auth-client";
 import { isValidCallbackUrl } from "@/lib/utils";
 import { LoadingPage } from "@/components/LoadingIndicator";
+
+import { Button } from "./ui/button";
 import { AdminConnectionError } from "./admin/AdminConnectionError";
 
 interface RoleProtectedRouteProps {
@@ -19,6 +21,14 @@ interface RoleProtectedRouteProps {
  */
 const PROFILE_LOAD_TIMEOUT = 15000; // 15 seconds
 
+/**
+ * Component for protecting routes based on user role.
+ *
+ * @param props - Component props
+ * @param props.children - Child components to render if authorized
+ * @param props.allowedRole - Role required to access the route
+ * @returns The rendered children if authorized, or a loading/unauthorized message.
+ */
 export const RoleProtectedRoute = ({
   children,
   allowedRole,

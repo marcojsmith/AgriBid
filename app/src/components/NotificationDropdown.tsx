@@ -42,7 +42,6 @@ interface NotificationItem {
  */
 export function NotificationDropdown() {
   const navigate = useNavigate();
-  // @ts-expect-error - Convex type instantiation complexity
   const notifications = useQuery(api.notifications.getMyNotifications);
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
@@ -71,10 +70,14 @@ export function NotificationDropdown() {
           variant="ghost"
           size="icon"
           className="relative h-10 w-10 rounded-full border-2 hover:bg-muted transition-all"
+          aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-black text-primary-foreground flex items-center justify-center border-2 border-background animate-in zoom-in">
+            <span
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-black text-primary-foreground flex items-center justify-center border-2 border-background animate-in zoom-in"
+              aria-hidden="true"
+            >
               {unreadCount}
             </span>
           )}

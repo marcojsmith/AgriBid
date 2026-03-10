@@ -1,20 +1,29 @@
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
+import { useMutation } from "convex/react";
+import { api } from "convex/_generated/api";
+import { useLocation } from "react-router-dom";
+
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import { useSession } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+
 import { Header } from "./header";
 import { Footer } from "./Footer";
 import { NotificationListener } from "./NotificationListener";
 import { PresenceListener } from "./PresenceListener";
-import { UserProfileProvider } from "@/contexts/UserProfileContext";
-import { useSession } from "@/lib/auth-client";
-import { useMutation } from "convex/react";
-import { api } from "convex/_generated/api";
-import { useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
+/**
+ * Main application layout component.
+ *
+ * @param props - Component props
+ * @param props.children - Child components to render in the layout
+ * @returns The rendered application layout
+ */
 export const Layout = ({ children }: LayoutProps) => {
   const { data: session } = useSession();
   const syncUser = useMutation(api.users.syncUser);

@@ -9,11 +9,12 @@ export { UserProfileContext };
 /**
  * Supply the current user's profile to descendant components through UserProfileContext.
  *
- * @param children.children
- * @param children - React nodes to render inside the provider
- * @returns A React element that renders `children` inside a `UserProfileContext.Provider` whose value is the current user's profile
+ * @param props - Component props
+ * @param props.children - React nodes to render inside the provider
+ * @returns A React element that renders `children` inside a `UserProfileContext.Provider`.
  */
 export function UserProfileProvider({ children }: { children: ReactNode }) {
+  // @ts-expect-error - Convex type instantiation complexity
   const userProfile = useQuery(api.users.getMyProfile);
 
   return (

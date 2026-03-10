@@ -29,7 +29,13 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
     };
 
     calculateTime();
-    const interval = setInterval(calculateTime, 1000);
+    const interval = setInterval(() => {
+      const nextRemaining = endTime - Date.now();
+      setRemainingMs(nextRemaining);
+      if (nextRemaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [endTime]);

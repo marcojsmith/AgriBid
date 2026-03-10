@@ -41,8 +41,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   // Sync local state when URL params change (e.g. back button)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalFilters({
+    const params = {
       status: searchParams.get("status") || "active",
       make: searchParams.get("make") || "",
       minYear: searchParams.get("minYear") || "",
@@ -50,33 +49,19 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       minPrice: searchParams.get("minPrice") || "",
       maxPrice: searchParams.get("maxPrice") || "",
       maxHours: searchParams.get("maxHours") || "",
-    });
+    };
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalFilters(params);
   }, [searchParams]);
 
   const updateParam = (key: string, value: string) => {
     setLocalFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleStatusChange = (value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value === "active") {
-      newParams.delete("status");
-    } else {
-      newParams.set("status", value);
-    }
-    setSearchParams(newParams);
-  };
-
   const applyFilters = () => {
     const newParams = new URLSearchParams(searchParams);
-    const { status, ...otherFilters } = localFilters;
-    if (status === "active") {
-      newParams.delete("status");
-    } else {
-      newParams.set("status", status);
-    }
-    Object.entries(otherFilters).forEach(([key, value]) => {
-      if (value) {
+    Object.entries(localFilters).forEach(([key, value]) => {
+      if (value && !(key === "status" && value === "active")) {
         newParams.set(key, value);
       } else {
         newParams.delete(key);
@@ -113,6 +98,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             size="icon"
             onClick={onClose}
             className="h-8 w-8 rounded-full"
+            aria-label="Close filters"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -245,7 +231,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           <select
             id="filter-status"
             value={localFilters.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
+            onChange={(e) => updateParam("status", e.target.value)}
             className="w-full h-12 rounded-xl border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="active">Active Auctions</option>

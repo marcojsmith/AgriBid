@@ -12,10 +12,14 @@ interface AuctionCardPriceProps {
 /**
  * Display the current bid and auction countdown, or render nothing in compact mode.
  *
+ * @param currentPrice.currentPrice
  * @param currentPrice - The current bid amount in rand
  * @param endTime - Optional auction end timestamp in milliseconds used to initialise the countdown
  * @param isCompact - If `true`, nothing is rendered
  * @param isClosed - If `true`, the countdown is hidden (auction is sold or unsold)
+ * @param currentPrice.endTime
+ * @param currentPrice.isCompact
+ * @param currentPrice.isClosed
  * @returns The rendered price-and-countdown markup, or `null` when `isCompact` is `true`.
  */
 export function AuctionCardPrice({

@@ -4,6 +4,17 @@ import { mutation, query } from "./_generated/server";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import { updateCounter } from "./admin_utils";
 
+/**
+ * Create a new support ticket.
+ *
+ * @param ctx - Context object
+ * @param args - Mutation arguments
+ * @param args.subject - Ticket subject
+ * @param args.message - Detailed problem description
+ * @param args.priority - Urgency level (low, medium, high)
+ * @param args.auctionId - Optional ID of related auction
+ * @returns The ID of the newly created ticket
+ */
 export const createTicket = mutation({
   args: {
     subject: v.string(),
@@ -45,6 +56,14 @@ export const createTicket = mutation({
   },
 });
 
+/**
+ * Retrieve a paginated list of support tickets for the authenticated user.
+ *
+ * @param ctx - Context object
+ * @param args - Query arguments
+ * @param args.limit - Maximum number of tickets to return (clamped between 1 and 100)
+ * @returns Array of support ticket documents
+ */
 export const getMyTickets = query({
   args: { limit: v.optional(v.number()) },
   returns: v.array(

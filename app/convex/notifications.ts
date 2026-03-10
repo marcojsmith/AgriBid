@@ -138,7 +138,9 @@ export const getNotificationArchive = query({
 
       const merged = [...personal, ...enrichedAnnouncements];
 
-      return merged.sort((a, b) => b.createdAt - a.createdAt);
+      return merged
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, args.limit || 50);
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getNotificationArchive failure:", err);
