@@ -2,12 +2,13 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Button } from "@/components/ui/button";
-import { getErrorMessage } from "@/lib/utils";
-import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ShieldCheck, AlertCircle } from "lucide-react";
 import type { Id } from "convex/_generated/dataModel";
+
+import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,12 +20,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoadingIndicator, LoadingPage } from "@/components/LoadingIndicator";
+import { ListItem } from "@/components/kyc/ListItem";
+
 import { useKYCForm } from "./kyc/hooks/useKYCForm";
 import { useKYCFileUpload } from "./kyc/hooks/useKYCFileUpload";
 import { VerificationStatusSection } from "./kyc/sections/VerificationStatusSection";
 import { PersonalInfoSection } from "./kyc/sections/PersonalInfoSection";
 import { DocumentUploadSection } from "./kyc/sections/DocumentUploadSection";
-import { ListItem } from "@/components/kyc/ListItem";
 
 /**
  * Renders the Seller Verification (KYC) page and orchestrates the KYC user flow.

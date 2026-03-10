@@ -1,5 +1,7 @@
 // app/src/components/ImageGallery.tsx
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -7,7 +9,6 @@ import {
   DialogTrigger,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ImageGalleryProps {
@@ -15,6 +16,14 @@ interface ImageGalleryProps {
   title: string;
 }
 
+/**
+ * Component for an image gallery with a lightbox.
+ *
+ * @param props - Component props.
+ * @param props.images - An array of image URLs.
+ * @param props.title - The title of the equipment for alt text.
+ * @returns The rendered image gallery.
+ */
 export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -42,6 +51,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
       <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
         <DialogTrigger asChild>
           <button
+            type="button"
             className="w-full aspect-[16/10] bg-muted rounded-2xl flex items-center justify-center border-2 overflow-hidden group relative cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Open full-screen gallery"
           >
@@ -72,6 +82,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
             {images.length > 1 && (
               <>
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
                   className="absolute left-4 text-white hover:bg-white/10 h-12 w-12 rounded-full"
@@ -84,6 +95,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                   <ChevronLeft className="h-8 w-8" />
                 </Button>
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
                   className="absolute right-4 text-white hover:bg-white/10 h-12 w-12 rounded-full"
@@ -119,6 +131,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
           {images.map((image, index) => (
             <button
               key={index}
+              type="button"
               onClick={() => setActiveIndex(index)}
               className={cn(
                 "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",

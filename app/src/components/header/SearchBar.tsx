@@ -1,8 +1,9 @@
 // app/src/components/header/SearchBar.tsx
 import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface SearchBarProps {
@@ -12,15 +13,16 @@ interface SearchBarProps {
 }
 
 /**
- * Render a search form with an input and leading search icon that navigates to the root path
- * including the entered query as the `q` query parameter when submitted.
+ * Render a search form with an input and leading search icon.
  *
- * When a non-empty query is submitted the input is cleared and the optional `onSearch` callback
- * is invoked.
+ * Navigates to the root path including the entered query as the `q` query parameter when submitted.
+ * When a non-empty query is submitted the input is cleared and the optional `onSearch` callback is invoked.
  *
- * @param onSearch - Optional callback invoked after a successful search submission
- * @param className - Optional additional CSS classes applied to the root form element
- * @param id - Optional id for the input element (default: `"search"`)
+ * @param props - Component props
+ * @param props.onSearch - Optional callback invoked after a successful search submission
+ * @param props.className - Optional additional CSS classes
+ * @param props.id - Optional id for the input element
+ * @returns The rendered search bar
  */
 export function SearchBar({
   onSearch,

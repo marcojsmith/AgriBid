@@ -1,21 +1,48 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
 import { X, Filter, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+
+/**
+ * Props for the FilterSidebar component.
+ */
 interface FilterSidebarProps {
+  /**
+   * Callback invoked when the sidebar should close (used in mobile overlay).
+   */
   onClose?: () => void;
 }
 
+/**
+ * Local state for sidebar filters.
+ */
+interface LocalFilters {
+  status: string;
+  make: string;
+  minYear: string;
+  maxYear: string;
+  minPrice: string;
+  maxPrice: string;
+  maxHours: string;
+}
+
+/**
+ * Sidebar component for filtering auctions.
+ *
+ * @param props - Component props.
+ * @param props.onClose - Callback when the sidebar is closed.
+ * @returns The rendered filter sidebar.
+ */
 export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMakes = useQuery(api.auctions.getActiveMakes) || [];
 
   // Local state for debounced inputs
-  const [localFilters, setLocalFilters] = useState({
+  const [localFilters, setLocalFilters] = useState<LocalFilters>(() => ({
     status: searchParams.get("status") || "active",
     make: searchParams.get("make") || "",
     minYear: searchParams.get("minYear") || "",
@@ -23,46 +50,16 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     minPrice: searchParams.get("minPrice") || "",
     maxPrice: searchParams.get("maxPrice") || "",
     maxHours: searchParams.get("maxHours") || "",
-  });
+  }));
 
-  // Sync local state when URL params change (e.g. back button)
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalFilters({
-      status: searchParams.get("status") || "active",
-      make: searchParams.get("make") || "",
-      minYear: searchParams.get("minYear") || "",
-      maxYear: searchParams.get("maxYear") || "",
-      minPrice: searchParams.get("minPrice") || "",
-      maxPrice: searchParams.get("maxPrice") || "",
-      maxHours: searchParams.get("maxHours") || "",
-    });
-  }, [searchParams]);
-
-  const updateParam = (key: string, value: string) => {
+  const updateParam = (key: keyof LocalFilters, value: string) => {
     setLocalFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleStatusChange = (value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value === "active") {
-      newParams.delete("status");
-    } else {
-      newParams.set("status", value);
-    }
-    setSearchParams(newParams);
   };
 
   const applyFilters = () => {
     const newParams = new URLSearchParams(searchParams);
-    const { status, ...otherFilters } = localFilters;
-    if (status === "active") {
-      newParams.delete("status");
-    } else {
-      newParams.set("status", status);
-    }
-    Object.entries(otherFilters).forEach(([key, value]) => {
-      if (value) {
+    Object.entries(localFilters).forEach(([key, value]) => {
+      if (value && !(key === "status" && value === "active")) {
         newParams.set(key, value);
       } else {
         newParams.delete(key);
@@ -99,6 +96,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             size="icon"
             onClick={onClose}
             className="h-8 w-8 rounded-full"
+            aria-label="Close filters"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -231,7 +229,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           <select
             id="filter-status"
             value={localFilters.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
+            onChange={(e) => updateParam("status", e.target.value)}
             className="w-full h-12 rounded-xl border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="active">Active Auctions</option>

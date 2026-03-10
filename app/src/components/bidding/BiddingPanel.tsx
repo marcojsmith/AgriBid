@@ -2,19 +2,21 @@
 import React, { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "@/lib/auth-client";
-import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { CountdownTimer } from "@/components/CountdownTimer";
 import type { Doc } from "convex/_generated/dataModel";
-import { Badge } from "@/components/ui/badge";
 import { Gavel, Info, ShieldAlert } from "lucide-react";
-import { BidForm } from "./BidForm";
-import { BidConfirmation } from "@/components/BidConfirmation";
 import { toast } from "sonner";
+
+import { BidConfirmation } from "@/components/BidConfirmation";
+import { Badge } from "@/components/ui/badge";
+import { CountdownTimer } from "@/components/CountdownTimer";
+import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
+import { useSession } from "@/lib/auth-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
+
+import { BidForm } from "./BidForm";
 
 interface BiddingPanelProps {
   auction: Doc<"auctions">;

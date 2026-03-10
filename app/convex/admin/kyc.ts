@@ -5,8 +5,9 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
+
+import { mutation, query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
 
@@ -61,9 +62,11 @@ export const getPendingKYC = query({
 /**
  * Review and approve or reject a KYC submission.
  *
- * @param userId - The user ID to review
- * @param decision - "approve" or "reject"
- * @param reason - Optional rejection reason (required if rejecting)
+ * @param ctx
+ * @param args
+ * @param args.userId - The user ID to review
+ * @param args.decision - "approve" or "reject"
+ * @param args.reason - Optional rejection reason (required if rejecting)
  *
  * On approval:
  * - Sets isVerified to true and kycStatus to "verified"

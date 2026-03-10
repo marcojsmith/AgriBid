@@ -1,4 +1,5 @@
 import { v, ConvexError } from "convex/values";
+
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { getAuthUser, requireAuth, resolveUserId } from "./lib/auth";
 import type { Doc } from "./_generated/dataModel";
@@ -6,6 +7,7 @@ import type { Doc } from "./_generated/dataModel";
 /**
  * Augments a list of announcement notifications with a per-user `isRead` flag.
  *
+ * @param ctx - Convex Query context used to access the database for read receipts
  * @param userId - ID of the user whose read status will be applied
  * @param announcements - Announcement notification documents to enrich
  * @returns The provided announcements where each item includes `isRead`: `true` if the user has a read receipt for that notification, `false` otherwise
@@ -41,6 +43,13 @@ async function getAnnouncementsWithReadStatus(
   }));
 }
 
+const notificationType = v.union(
+  v.literal("info"),
+  v.literal("success"),
+  v.literal("warning"),
+  v.literal("error")
+);
+
 export const getMyNotifications = query({
   args: {},
   returns: v.array(
@@ -48,7 +57,7 @@ export const getMyNotifications = query({
       _id: v.id("notifications"),
       _creationTime: v.number(),
       recipientId: v.string(),
-      type: v.string(),
+      type: notificationType,
       title: v.string(),
       message: v.string(),
       isRead: v.boolean(),
@@ -102,7 +111,7 @@ export const getNotificationArchive = query({
       _id: v.id("notifications"),
       _creationTime: v.number(),
       recipientId: v.string(),
-      type: v.string(),
+      type: notificationType,
       title: v.string(),
       message: v.string(),
       isRead: v.boolean(),
@@ -116,17 +125,21 @@ export const getNotificationArchive = query({
       if (!authUser) return [];
       const userId = authUser.userId ?? authUser._id;
 
+      // Normalize and cap limit: default to 50, max 100
+      const MAX_LIMIT = 100;
+      const cappedLimit = Math.min(MAX_LIMIT, Math.max(0, args.limit ?? 50));
+
       const personal = await ctx.db
         .query("notifications")
         .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
         .order("desc")
-        .take(args.limit || 100);
+        .take(cappedLimit);
 
       const announcements = await ctx.db
         .query("notifications")
         .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
         .order("desc")
-        .take(args.limit || 50);
+        .take(cappedLimit);
 
       const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
         ctx,
@@ -136,7 +149,9 @@ export const getNotificationArchive = query({
 
       const merged = [...personal, ...enrichedAnnouncements];
 
-      return merged.sort((a, b) => b.createdAt - a.createdAt);
+      return merged
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, cappedLimit);
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getNotificationArchive failure:", err);

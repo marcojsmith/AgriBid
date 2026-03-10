@@ -1,8 +1,9 @@
 // app/src/components/__tests__/ListingWizard.test.tsx
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ListingWizard } from "@/components/listing-wizard/ListingWizard";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
+
+import { ListingWizard } from "@/components/listing-wizard/ListingWizard";
 
 // Mock Convex hooks
 vi.mock("convex/react", () => ({

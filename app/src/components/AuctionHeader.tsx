@@ -1,27 +1,38 @@
 // app/src/components/AuctionHeader.tsx
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 import { MapPin, Calendar, HardDrive, Heart, Gavel } from "lucide-react";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "@/lib/auth-client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
-import { Button } from "./ui/button";
+
+import { useSession } from "@/lib/auth-client";
+import { Badge } from "@/components/ui/badge";
 import { cn, isValidCallbackUrl } from "@/lib/utils";
+
+import { Button } from "./ui/button";
 
 interface AuctionHeaderProps {
   auction: Doc<"auctions">;
 }
 
+/**
+ * Component for rendering the header of an auction listing.
+ *
+ * @param props - Component props
+ * @param props.auction - The auction document
+ * @returns The rendered auction header
+ */
 export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionIsPending } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   const isWatched = useQuery(api.watchlist.isWatched, {
     auctionId: auction._id,
   });
   const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
+  const [isToggling, setIsToggling] = useState(false);
 
   const isWinner =
     !!session?.user?.id &&
@@ -30,9 +41,11 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   const isSeller = !!session?.user?.id && session.user.id === auction.sellerId;
 
   const handleWatchlistToggle = async () => {
+    if (sessionIsPending || isWatched === undefined || isToggling) return;
+
     if (!session) {
       toast.info("Please sign in to watch an auction");
-      const rawUrl = location.pathname;
+      const rawUrl = `${location.pathname}${location.search}${location.hash}`;
       const callbackUrl = isValidCallbackUrl(rawUrl)
         ? encodeURIComponent(rawUrl)
         : "/";
@@ -40,6 +53,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       return;
     }
 
+    setIsToggling(true);
     try {
       const nowWatched = await toggleWatchlist({ auctionId: auction._id });
       toast.success(
@@ -47,6 +61,8 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       );
     } catch {
       toast.error("Failed to update watchlist");
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -92,6 +108,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
                 : "text-zinc-500 hover:border-primary hover:text-primary"
             )}
             onClick={handleWatchlistToggle}
+            disabled={sessionIsPending || isWatched === undefined || isToggling}
           >
             <Heart className={cn("h-4 w-4", isWatched && "fill-current")} />
             {isWatched ? "Watching" : "Watch"}

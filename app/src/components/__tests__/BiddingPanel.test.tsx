@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { BiddingPanel } from "@/components/bidding/BiddingPanel";
 import { describe, it, expect, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import type { Doc, Id } from "convex/_generated/dataModel";
 import * as convexReact from "convex/react";
+
+import { BiddingPanel } from "@/components/bidding/BiddingPanel";
 
 // Mock the CountdownTimer since it has its own tests
 vi.mock("../CountdownTimer", () => ({

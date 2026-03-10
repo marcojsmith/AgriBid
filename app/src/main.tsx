@@ -2,8 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
-import { authClient } from "./lib/auth-client";
 import { Toaster } from "sonner";
+
+import { authClient } from "./lib/auth-client";
 import "./index.css";
 import App from "./App.tsx";
 

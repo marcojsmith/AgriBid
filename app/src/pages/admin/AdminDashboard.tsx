@@ -10,6 +10,7 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
+
 import { AdminLayout, AdminConnectionError } from "@/components/admin";
 import { SummaryCard } from "@/components/admin/SummaryCard";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
@@ -18,6 +19,7 @@ import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 /**
  * Renders the Admin Dashboard overview with summary cards for all management areas.
+ * @returns The admin dashboard page component
  */
 export default function AdminDashboard() {
   return (

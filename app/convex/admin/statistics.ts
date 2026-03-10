@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+
 import { mutation, query, type MutationCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
@@ -13,6 +14,14 @@ import { countOnlineUsers } from "../presence";
 
 /**
  * Internal helper to upsert a counter document with multiple fields.
+ *
+ * This function overwrites existing counter fields with the provided values in the `payload` object.
+ * It does not increment or accumulate existing values; it uses `ctx.db.patch` for existing documents
+ * and `ctx.db.insert` for new ones, writing the `payload` values as-is.
+ *
+ * @param ctx - Convex mutation context used for DB operations
+ * @param name - The identifier for the counter document (e.g., "auctions", "profiles")
+ * @param payload - Object mapping counter fields to their new values to be written/overwritten
  */
 async function upsertCounter(
   ctx: MutationCtx,

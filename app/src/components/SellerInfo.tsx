@@ -1,7 +1,6 @@
 // app/src/components/SellerInfo.tsx
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Badge } from "@/components/ui/badge";
 import {
   UserCheck,
   ShieldCheck,
@@ -9,13 +8,22 @@ import {
   Calendar,
   TrendingUp,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface SellerInfoProps {
   sellerId: string;
 }
 
+/**
+ * Component for a seller info card.
+ *
+ * @param props - Component props.
+ * @param props.sellerId - The ID of the seller to display information for.
+ * @returns The rendered seller info card.
+ */
 export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
   const seller = useQuery(api.auctions.getSellerInfo, { sellerId });
 
@@ -84,8 +92,9 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
       <div className="grid grid-cols-2 gap-3">
         <Button
           variant="outline"
+          disabled
           className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
-          aria-label={`Message ${seller.name}`}
+          aria-label={`Message ${seller.name} (Not implemented)`}
         >
           <Mail className="h-4 w-4" />
           Message

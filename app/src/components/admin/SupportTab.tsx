@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import { Check, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -12,10 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, MessageSquare } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { toast } from "sonner";
-import type { Id } from "convex/_generated/dataModel";
 import {
   Dialog,
   DialogContent,

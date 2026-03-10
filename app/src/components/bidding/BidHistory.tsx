@@ -2,13 +2,14 @@
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
+import { History, User, ChevronDown } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { History, User, ChevronDown } from "lucide-react";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 
@@ -32,6 +33,7 @@ const PAGE_SIZE = 20;
  *
  * @param props - The component props
  * @param props.auctionId - The unique identifier of the auction
+ * @returns The rendered bid history component
  */
 export const BidHistory = ({ auctionId }: BidHistoryProps) => {
   const auction = useQuery(api.auctions.getAuctionById, { auctionId });

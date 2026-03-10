@@ -1,9 +1,37 @@
+import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
+
+import { query } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
+import { findUserById } from "../users";
+import { authComponent } from "../auth";
+import {
+  requireAdmin,
+  resolveUserId,
+  getAuthenticatedProfile,
+} from "../lib/auth";
+import type { Doc, Id } from "../_generated/dataModel";
+import {
+  AuctionSummaryValidator,
+  toAuctionSummary,
+  AuctionDetailValidator,
+  toAuctionDetail,
+  BidValidator,
+} from "./helpers";
+import { countQuery } from "../admin_utils";
+
+/**
+ * Statistics for bids within a specific auction.
+ */
 export interface AuctionBidStats {
   lastBidTimestamp: number;
   highestBid: number;
   bidCount: number;
 }
 
+/**
+ * Aggregated bidding statistics for a user across all active auctions.
+ */
 export interface GlobalUserBidStats {
   totalActive: number;
   winningCount: number;
@@ -11,6 +39,9 @@ export interface GlobalUserBidStats {
   totalExposure: number;
 }
 
+/**
+ * Result of the internal bid statistics calculation.
+ */
 export interface CalculateUserBidStatsResult {
   globalStats: GlobalUserBidStats;
   auctionStatsMap: Map<string, AuctionBidStats>;
@@ -18,7 +49,20 @@ export interface CalculateUserBidStatsResult {
 }
 
 /**
+ * Zeroed-out initial state for auction statistics.
+ */
+const ZERO_AUCTION_STATS = {
+  totalActive: 0,
+  winningCount: 0,
+  outbidCount: 0,
+  totalExposure: 0,
+};
+
+/**
  * Computes bid statistics for a given user.
+ *
+ * Scans all non-voided bids by the user to determine their highest bid and activity status
+ * across all participating auctions.
  *
  * @param ctx - The query context used to execute database operations.
  * @param userId - The ID of the user to analyze.
@@ -59,9 +103,16 @@ async function calculateUserBidStats(
     totalExposure: 0,
   };
   const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
-  const fullAuctions = await Promise.all(
-    auctionIds.map((id) => ctx.db.get(id))
-  );
+
+  // Fetch auctions in batches to avoid large Promise.all spikes
+  const CHUNK_SIZE = 100;
+  const fullAuctions: (Doc<"auctions"> | null)[] = [];
+
+  for (let i = 0; i < auctionIds.length; i += CHUNK_SIZE) {
+    const chunk = auctionIds.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(chunk.map((id) => ctx.db.get(id)));
+    fullAuctions.push(...chunkResults);
+  }
 
   const auctionsMap = new Map<string, Doc<"auctions"> | null>();
 
@@ -87,30 +138,6 @@ async function calculateUserBidStats(
   return { globalStats, auctionStatsMap, auctionsMap };
 }
 
-const ZERO_AUCTION_STATS = {
-  totalActive: 0,
-  winningCount: 0,
-  outbidCount: 0,
-  totalExposure: 0,
-};
-
-import { v } from "convex/values";
-import { query } from "../_generated/server";
-import type { QueryCtx } from "../_generated/server";
-import { paginationOptsValidator } from "convex/server";
-import { findUserById } from "../users";
-import { authComponent } from "../auth";
-import { requireAdmin, resolveUserId } from "../lib/auth";
-import type { Doc, Id } from "../_generated/dataModel";
-import {
-  AuctionSummaryValidator,
-  toAuctionSummary,
-  AuctionDetailValidator,
-  toAuctionDetail,
-  BidValidator,
-} from "./helpers";
-import { countQuery } from "../admin_utils";
-
 /**
  * Represents the possible status values for an auction.
  */
@@ -135,6 +162,11 @@ const statusesForFilter = (filter: StatusFilter): AuctionStatus[] => {
   return ["active", "sold", "unsold"];
 };
 
+/**
+ * Retrieve a list of auctions currently pending admin review.
+ *
+ * Only accessible to admin users.
+ */
 export const getPendingAuctions = query({
   args: {},
   returns: v.array(AuctionSummaryValidator),
@@ -152,6 +184,11 @@ export const getPendingAuctions = query({
   },
 });
 
+/**
+ * Advanced search and filter for auctions with pagination support.
+ *
+ * Supports filtering by text search, make, year range, price range, operating hours, and status.
+ */
 export const getActiveAuctions = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -172,11 +209,30 @@ export const getActiveAuctions = query({
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
     splitCursor: v.optional(v.union(v.string(), v.null())),
-    totalCount: v.number(),
+    totalCount: v.union(v.number(), v.string()),
   }),
   handler: async (ctx, args) => {
     const statusFilter: StatusFilter = args.statusFilter ?? "active";
     const statuses = statusesForFilter(statusFilter);
+
+    /**
+     * Predicate to check if an auction matches the filter arguments.
+     * @param a - Auction document to check
+     * @returns True if the auction matches all filters
+     */
+    const matchesAuctionFilter = (a: Doc<"auctions">) => {
+      if (!statuses.includes(a.status as AuctionStatus)) return false;
+      if (args.make && a.make !== args.make) return false;
+      if (args.minYear !== undefined && a.year < args.minYear) return false;
+      if (args.maxYear !== undefined && a.year > args.maxYear) return false;
+      if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
+        return false;
+      if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
+        return false;
+      if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
+        return false;
+      return true;
+    };
 
     // Helper to construct the base query with index selection
     const getBaseQuery = () => {
@@ -275,40 +331,26 @@ export const getActiveAuctions = query({
       const results = await getFilteredQuery().paginate(args.paginationOpts);
 
       // Manual filtering for search results (may result in smaller pages)
-      const filteredPage = results.page.filter((a) => {
-        if (!statuses.includes(a.status as AuctionStatus)) return false;
-        if (args.make && a.make !== args.make) return false;
-        if (args.minYear !== undefined && a.year < args.minYear) return false;
-        if (args.maxYear !== undefined && a.year > args.maxYear) return false;
-        if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
-          return false;
-        if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
-          return false;
-        if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
-          return false;
-        return true;
-      });
+      const filteredPage = results.page.filter(matchesAuctionFilter);
 
       const page = await Promise.all(
         filteredPage.map((auction) => toAuctionSummary(ctx, auction))
       );
 
-      // Total count for search results is expensive, but for consistency we provide it
-      // Note: This collects all search results which could impact performance if many matches
-      const allSearchResults = await getFilteredQuery().collect();
-      const totalCount = allSearchResults.filter((a) => {
-        if (!statuses.includes(a.status as AuctionStatus)) return false;
-        if (args.make && a.make !== args.make) return false;
-        if (args.minYear !== undefined && a.year < args.minYear) return false;
-        if (args.maxYear !== undefined && a.year > args.maxYear) return false;
-        if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
-          return false;
-        if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
-          return false;
-        if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
-          return false;
-        return true;
-      }).length;
+      // Total count for search results can be expensive
+      // We implement a capped count to avoid OOM for very large result sets
+      const SEARCH_COUNT_CAP = 1000;
+      const allSearchResults = await getFilteredQuery().take(
+        SEARCH_COUNT_CAP + 1
+      );
+
+      const filteredCount =
+        allSearchResults.filter(matchesAuctionFilter).length;
+
+      const totalCount =
+        filteredCount > SEARCH_COUNT_CAP
+          ? `${SEARCH_COUNT_CAP}+`
+          : filteredCount;
 
       return {
         ...results,
@@ -334,6 +376,9 @@ export const getActiveAuctions = query({
   },
 });
 
+/**
+ * Returns a unique list of all makes currently registered in equipment metadata.
+ */
 export const getActiveMakes = query({
   args: {},
   returns: v.array(v.string()),
@@ -343,6 +388,9 @@ export const getActiveMakes = query({
   },
 });
 
+/**
+ * Fetch full details for a single auction by ID.
+ */
 export const getAuctionById = query({
   args: { auctionId: v.id("auctions") },
   returns: v.union(v.null(), AuctionDetailValidator),
@@ -350,10 +398,27 @@ export const getAuctionById = query({
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) return null;
 
+    // Enforce visibility: Drafts and non-public auctions only for owner/admin
+    const PUBLIC_STATUSES = ["active", "sold", "unsold"];
+    if (!PUBLIC_STATUSES.includes(auction.status)) {
+      const auth = await getAuthenticatedProfile(ctx);
+      if (!auth) return null;
+
+      const isAdmin = auth.profile.role === "admin";
+      const isOwner = auction.sellerId === auth.userId;
+
+      if (!isAdmin && !isOwner) return null;
+    }
+
     return await toAuctionDetail(ctx, auction);
   },
 });
 
+/**
+ * Retrieve a paginated list of bids for a specific auction.
+ *
+ * Enriches each bid with the bidder's display name.
+ */
 export const getAuctionBids = query({
   args: {
     auctionId: v.id("auctions"),
@@ -395,6 +460,11 @@ export const getAuctionBids = query({
     );
     const bidderNames = new Map<string, string>();
 
+    const auction = await ctx.db.get(args.auctionId);
+    const auth = await getAuthenticatedProfile(ctx);
+    const isAdmin = auth?.profile.role === "admin";
+    const isSeller = auction?.sellerId === auth?.userId;
+
     await Promise.all(
       uniqueBidderIds.map(async (bidderId) => {
         const mapKey = (bidderId as string) || ANONYMOUS_KEY;
@@ -406,6 +476,13 @@ export const getAuctionBids = query({
           bidderNames.set(mapKey as string, "Anonymous");
           return;
         }
+
+        // Only reveal bidder names to admin or the seller of this auction
+        if (!isAdmin && !isSeller) {
+          bidderNames.set(mapKey as string, "Bidder");
+          return;
+        }
+
         const user = await findUserById(ctx, bidderId as string);
 
         if (user) {
@@ -447,6 +524,9 @@ export const getAuctionBidCount = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of equipment metadata for administration.
+ */
 export const getEquipmentMetadata = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -478,6 +558,9 @@ export const getEquipmentMetadata = query({
   },
 });
 
+/**
+ * Retrieve public profile information and sales statistics for a seller.
+ */
 export const getSellerInfo = query({
   args: { sellerId: v.string() },
   returns: v.union(
@@ -529,6 +612,9 @@ export const getSellerInfo = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of active or sold listings for a specific seller.
+ */
 export const getSellerListings = query({
   args: { userId: v.string(), paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -576,6 +662,11 @@ export const getSellerListings = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of all auctions (all statuses) for admin oversight.
+ *
+ * Only accessible to admin users.
+ */
 export const getAllAuctions = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -610,6 +701,22 @@ export const getAllAuctions = query({
   },
 });
 
+/**
+ * Helper to get the authenticated user's ID.
+ *
+ * @param ctx - Convex Query context
+ * @returns The user's ID, or null if unauthenticated
+ */
+async function getAuthenticatedUserId(ctx: QueryCtx): Promise<string | null> {
+  const authUser = await authComponent.getAuthUser(ctx);
+  return resolveUserId(authUser);
+}
+
+/**
+ * Retrieve auctions the authenticated user has bid on, enriched with participation stats.
+ *
+ * Groups multiple bids on the same auction and provides status information (winning, outbid, won).
+ */
 export const getMyBids = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -638,18 +745,8 @@ export const getMyBids = query({
   }),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser)
-        return {
-          page: [],
-          isDone: true,
-          continueCursor: "",
-          totalCount: 0,
-          pageStatus: null,
-          splitCursor: null,
-        };
-      const linkId = resolveUserId(authUser);
-      if (!linkId)
+      const userId = await getAuthenticatedUserId(ctx);
+      if (!userId)
         return {
           page: [],
           isDone: true,
@@ -662,7 +759,7 @@ export const getMyBids = query({
       // 1. Get all bid stats for the user (handles grouping and basic metrics)
       const { auctionStatsMap, auctionsMap } = await calculateUserBidStats(
         ctx,
-        linkId
+        userId
       );
 
       // 2. Transform into the required return format
@@ -676,13 +773,13 @@ export const getMyBids = query({
             const isWinning =
               auction.status === "active" &&
               stats.highestBid === auction.currentPrice &&
-              auction.winnerId === linkId;
+              auction.winnerId === userId;
 
             return {
               ...summary,
               myHighestBid: stats.highestBid,
               isWinning,
-              isWon: auction.status === "sold" && auction.winnerId === linkId,
+              isWon: auction.status === "sold" && auction.winnerId === userId,
               isOutbid: auction.status === "active" && !isWinning,
               isCancelled: auction.status === "rejected",
               bidAmount: stats.highestBid,
@@ -752,6 +849,9 @@ export const getMyBids = query({
   },
 });
 
+/**
+ * Retrieve a paginated list of all listings owned by the authenticated user.
+ */
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
@@ -764,18 +864,8 @@ export const getMyListings = query({
   }),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser)
-        return {
-          page: [],
-          isDone: true,
-          continueCursor: "",
-          totalCount: 0,
-          pageStatus: null,
-          splitCursor: null,
-        };
-      const linkId = resolveUserId(authUser);
-      if (!linkId)
+      const userId = await getAuthenticatedUserId(ctx);
+      if (!userId)
         return {
           page: [],
           isDone: true,
@@ -787,41 +877,42 @@ export const getMyListings = query({
 
       const listingsQuery = ctx.db
         .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", linkId));
+        .withIndex("by_seller", (q) => q.eq("sellerId", userId));
 
-      const [listingsResult, totalCount] = await Promise.all([
+      const [results, totalCount] = await Promise.all([
         listingsQuery.paginate(args.paginationOpts),
         countQuery(
           ctx.db
             .query("auctions")
-            .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
+            .withIndex("by_seller", (q) => q.eq("sellerId", userId))
         ),
       ]);
 
       const page = await Promise.all(
-        listingsResult.page.map(
+        results.page.map(
           async (auction: Doc<"auctions">) =>
             await toAuctionSummary(ctx, auction)
         )
       );
 
       return {
-        ...listingsResult,
+        ...results,
         page,
         totalCount,
       };
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyListings failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
+        };
       }
-      return {
-        page: [],
-        isDone: true,
-        continueCursor: "",
-        totalCount: 0,
-        pageStatus: null,
-        splitCursor: null,
-      };
+      console.error("getMyListings failure:", err);
+      throw err;
     }
   },
 });
@@ -829,7 +920,9 @@ export const getMyListings = query({
 /**
  * Get the total number of listings for the authenticated user, optionally filtered by status.
  *
- * @param args.status - Optional status to filter by
+ * @param ctx - Convex Query context containing authentication info
+ * @param args - Filtering arguments
+ * @param args.status - Optional status to filter listings by (e.g., 'active', 'sold')
  * @returns The total number of matching listings
  */
 export const getMyListingsCount = query({
@@ -837,9 +930,7 @@ export const getMyListingsCount = query({
   returns: v.number(),
   handler: async (ctx, args) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return 0;
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId) return 0;
 
       let baseQuery = ctx.db
@@ -854,17 +945,29 @@ export const getMyListingsCount = query({
 
       return await countQuery(baseQuery);
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyListingsCount failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return 0;
       }
-      return 0;
+      console.error("getMyListingsCount failure:", err);
+      throw err;
     }
   },
 });
 
+const COUNTABLE_STATUSES = [
+  "draft",
+  "pending_review",
+  "active",
+  "sold",
+  "unsold",
+  "rejected",
+] as const;
+type CountableStatus = (typeof COUNTABLE_STATUSES)[number];
+
 /**
  * Get listing counts for the authenticated user, grouped by status.
  *
+ * @param ctx - Convex Query context
  * @returns Object mapping status types to their respective counts
  */
 export const getMyListingsStats = query({
@@ -876,20 +979,11 @@ export const getMyListingsStats = query({
     active: v.number(),
     sold: v.number(),
     unsold: v.number(),
+    rejected: v.number(),
   }),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser)
-        return {
-          all: 0,
-          draft: 0,
-          pending_review: 0,
-          active: 0,
-          sold: 0,
-          unsold: 0,
-        };
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId)
         return {
           all: 0,
@@ -898,6 +992,7 @@ export const getMyListingsStats = query({
           active: 0,
           sold: 0,
           unsold: 0,
+          rejected: 0,
         };
 
       const listings = await ctx.db
@@ -912,27 +1007,30 @@ export const getMyListingsStats = query({
         active: 0,
         sold: 0,
         unsold: 0,
+        rejected: 0,
       };
 
       for (const listing of listings) {
-        if (listing.status in stats) {
-          stats[listing.status as keyof typeof stats]++;
+        if (COUNTABLE_STATUSES.includes(listing.status as CountableStatus)) {
+          stats[listing.status as CountableStatus]++;
         }
       }
 
       return stats;
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyListingsStats failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return {
+          all: 0,
+          draft: 0,
+          pending_review: 0,
+          active: 0,
+          sold: 0,
+          unsold: 0,
+          rejected: 0,
+        };
       }
-      return {
-        all: 0,
-        draft: 0,
-        pending_review: 0,
-        active: 0,
-        sold: 0,
-        unsold: 0,
-      };
+      console.error("getMyListingsStats failure:", err);
+      throw err;
     }
   },
 });
@@ -940,6 +1038,7 @@ export const getMyListingsStats = query({
 /**
  * Get the total number of non-voided bids placed by the authenticated user.
  *
+ * @param ctx
  * @returns The total number of non-voided bids
  */
 export const getMyBidsCount = query({
@@ -947,18 +1046,17 @@ export const getMyBidsCount = query({
   returns: v.number(),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return 0;
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId) return 0;
 
       const { auctionStatsMap } = await calculateUserBidStats(ctx, userId);
       return auctionStatsMap.size;
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getMyBidsCount failure:", err);
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return 0;
       }
-      return 0;
+      console.error("getMyBidsCount failure:", err);
+      throw err;
     }
   },
 });
@@ -967,6 +1065,7 @@ export const getMyBidsCount = query({
  * Retrieve high-level bidding statistics for the authenticated user.
  *
  * Includes counts for active, winning, and outbid auctions, as well as total exposure.
+ * @param ctx
  * @returns An object containing aggregated bidding metrics
  */
 export const getMyBidsStats = query({
@@ -979,21 +1078,26 @@ export const getMyBidsStats = query({
   }),
   handler: async (ctx) => {
     try {
-      const authUser = await authComponent.getAuthUser(ctx);
-      if (!authUser) return ZERO_AUCTION_STATS;
-
-      const userId = resolveUserId(authUser);
+      const userId = await getAuthenticatedUserId(ctx);
       if (!userId) return ZERO_AUCTION_STATS;
 
       const { globalStats } = await calculateUserBidStats(ctx, userId);
       return globalStats;
     } catch (err) {
+      if (err instanceof Error && err.message.includes("Unauthenticated")) {
+        return ZERO_AUCTION_STATS;
+      }
       console.error("getMyBidsStats failure:", err);
-      return ZERO_AUCTION_STATS;
+      throw err;
     }
   },
 });
 
+/**
+ * Retrieve all flags (reports) associated with a specific auction.
+ *
+ * Enriches each flag with the reporter's name. Only accessible to admin users.
+ */
 export const getAuctionFlags = query({
   args: { auctionId: v.id("auctions") },
   returns: v.array(
@@ -1046,6 +1150,11 @@ export const getAuctionFlags = query({
   },
 });
 
+/**
+ * Retrieve all auctions flagged by users that are currently pending review.
+ *
+ * Only accessible to admin users.
+ */
 export const getAllPendingFlags = query({
   args: {},
   returns: v.array(

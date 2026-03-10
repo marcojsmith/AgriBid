@@ -1,20 +1,24 @@
 // app/src/pages/Home.tsx
 import { useState, useEffect } from "react";
 import { useQuery, usePaginatedQuery } from "convex/react";
+import { api } from "convex/_generated/api";
+import { Link, useSearchParams } from "react-router-dom";
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
+
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { api } from "convex/_generated/api";
 import { AuctionCard } from "@/components/auction";
 import { AuctionCardSkeleton } from "@/components/AuctionCardSkeleton";
 import { FilterSidebar } from "@/components/FilterSidebar";
-import { Link, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
  * Custom hook to detect media query matches.
+ *
  * Initialises synchronously to avoid layout jumps.
+ * @param query - The media query to match
+ * @returns Whether the media query matches
  */
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => {
@@ -138,7 +142,7 @@ export default function Home() {
       {/* Desktop Sidebar */}
       {isDesktopSidebarOpen && (
         <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
-          <FilterSidebar />
+          <FilterSidebar key={searchParams.toString()} />
         </aside>
       )}
 
@@ -153,7 +157,10 @@ export default function Home() {
           />
           {/* Sidebar Container */}
           <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80 z-20">
-            <FilterSidebar onClose={() => setIsMobileFilterOpen(false)} />
+            <FilterSidebar
+              key={searchParams.toString()}
+              onClose={() => setIsMobileFilterOpen(false)}
+            />
           </div>
         </div>
       )}

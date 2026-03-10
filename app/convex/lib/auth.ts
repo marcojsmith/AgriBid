@@ -10,9 +10,19 @@ import { authComponent } from "../auth";
 import type { AuthUser } from "../auth";
 
 /**
+ * Error message for non-verified users attempting restricted actions.
+ */
+export const VERIFIED_REQUIRED_MESSAGE =
+  "Account verification required. Please complete KYC verification.";
+
+/**
  * Custom error class for unauthorized access attempts.
  */
 export class UnauthorizedError extends Error {
+  /**
+   * Constructs an UnauthorizedError.
+   * @param message - The plaintext message to be signed/verified
+   */
   constructor(message = "Unauthorized") {
     super(message);
     this.name = "UnauthorizedError";
@@ -46,6 +56,9 @@ export async function getAuthUser(ctx: QueryCtx | MutationCtx): Promise<{
 /**
  * Internal helper to get caller role from an already fetched AuthUser.
  * Avoids duplicate auth lookups when AuthUser is already available.
+ * @param ctx
+ * @param authUser
+ * @returns The user's role or null if not found.
  */
 async function _getCallerRoleFromAuthUser(
   ctx: QueryCtx | MutationCtx,
@@ -78,6 +91,7 @@ export function resolveUserId(authUser: AuthUser): string | null {
 /**
  * Ensure the caller is authenticated and return the authenticated user.
  *
+ * @param ctx
  * @returns The authenticated user
  * @throws Error("Not authenticated") if no authenticated user is found
  */
@@ -97,6 +111,7 @@ export async function requireAuth(ctx: QueryCtx | MutationCtx) {
  *   2. Checking if authenticated
  *   3. Resolving the user ID
  *
+ * @param ctx
  * @returns The resolved user ID string
  * @throws Error("Not authenticated") if no user is authenticated
  * @throws Error("Unable to determine user ID") if user ID cannot be resolved
@@ -129,6 +144,7 @@ export async function getCallerRole(
 /**
  * Ensure the current caller is authenticated and has an admin role.
  *
+ * @param ctx
  * @returns The authenticated user object
  * @throws Error("Not authenticated") if no authenticated user is present
  * @throws Error("Not authorized: Admin privileges required") if the authenticated user is not an admin
@@ -147,6 +163,7 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 /**
  * Get the authenticated user together with their profile and resolved userId when available.
  *
+ * @param ctx
  * @returns `{ authUser, profile, userId }` containing the authenticated user, their profile and the resolved userId, or `null` if the caller is not authenticated, the userId cannot be determined, the profile is not found, or an error occurs
  */
 export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
@@ -177,6 +194,7 @@ export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
 /**
  * Ensure the current user is authenticated and return their auth user, profile and resolved userId.
  *
+ * @param ctx
  * @returns An object containing `authUser`, `profile` and `userId`
  * @throws Error When the user is not authenticated
  * @throws Error When the user identity cannot be determined ("Unable to determine user identity")
@@ -209,17 +227,15 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 /**
  * Ensure the caller has an authenticated profile and that the profile is verified.
  *
- * `@param` ctx - The query or mutation context containing authentication and database access
- * `@returns` An object containing `profile`, `authUser`, and `userId` for the verified user
- * `@throws` Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
+ * @param ctx - The query or mutation context containing authentication and database access
+ * @returns An object containing `profile`, `authUser`, and `userId` for the verified user
+ * @throws Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
  */
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   const { profile, ...rest } = await requireProfile(ctx);
 
   if (!profile.isVerified) {
-    throw new Error(
-      "Account verification required. Please complete KYC verification."
-    );
+    throw new Error(VERIFIED_REQUIRED_MESSAGE);
   }
 
   return { profile, ...rest };

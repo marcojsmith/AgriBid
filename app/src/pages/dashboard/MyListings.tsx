@@ -3,9 +3,6 @@ import { useState, useMemo } from "react";
 import { usePaginatedQuery, useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LayoutDashboard,
   Plus,
@@ -15,8 +12,13 @@ import {
   Loader2,
   Eye,
 } from "lucide-react";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { toast } from "sonner";
+import type { Id } from "convex/_generated/dataModel";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 import {
   AUCTION_STATUS_BADGE_VARIANTS,
   getAuctionStatusLabel,
@@ -32,9 +34,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { Id } from "convex/_generated/dataModel";
-
 import { normalizeListingImages } from "@/lib/normalize-images";
+import type { ListingFormData } from "@/components/listing-wizard/types";
 
 type StatusFilter =
   | "all"
@@ -42,40 +43,7 @@ type StatusFilter =
   | "pending_review"
   | "active"
   | "sold"
-  | "unsold";
-
-export interface AuctionEditPayload {
-  _id: Id<"auctions">;
-  year: number;
-  make: string;
-  model: string;
-  location: string;
-  description?: string;
-  operatingHours: number;
-  title: string;
-  conditionChecklist?: {
-    engine: boolean | null;
-    hydraulics: boolean | null;
-    tires: boolean | null;
-    serviceHistory: boolean | null;
-    notes?: string;
-  };
-  images:
-    | {
-        front?: string;
-        engine?: string;
-        cabin?: string;
-        rear?: string;
-        additional?: string[];
-      }
-    | string[];
-  startingPrice: number;
-  reservePrice: number;
-  durationDays?: number;
-  status: string;
-  currentPrice: number;
-  endTime?: number;
-}
+  | "unsold"; // "unsold" is intentionally not selectable via tabs, but shown in "all" view
 
 /**
  * Renders the current user's auction listings dashboard.
@@ -141,7 +109,7 @@ export default function MyListings() {
 
   const handleEdit = (auction: (typeof listings)[0]) => {
     // Save to local storage and redirect to /sell?edit=ID
-    const draftData = {
+    const draftData: ListingFormData = {
       auctionId: auction._id,
       year: auction.year,
       make: auction.make,
@@ -168,6 +136,9 @@ export default function MyListings() {
       localStorage.setItem("agribid_listing_step", "0");
     } catch (e) {
       console.warn("Failed to save draft to localStorage:", e);
+      toast.error(
+        "Could not save draft data. You may need to re-enter some fields."
+      );
     }
     navigate(`/sell?edit=${auction._id}`);
   };

@@ -1,4 +1,5 @@
 import { useContext } from "react";
+
 import { UserProfileContext, NO_PROVIDER } from "./user-profile-types";
 
 /**

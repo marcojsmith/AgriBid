@@ -1,18 +1,20 @@
 // app/src/components/auction/AuctionCard.tsx
 import React, { useRef, useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useSession } from "@/lib/auth-client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Clock, MapPin, Gavel } from "lucide-react";
 import { Link } from "react-router-dom";
+
+import { useSession } from "@/lib/auth-client";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BidConfirmation } from "@/components/BidConfirmation";
 import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
+
 import { AuctionCardThumbnail } from "./AuctionCardThumbnail";
 import { AuctionCardPrice } from "./AuctionCardPrice";
 
@@ -22,6 +24,15 @@ interface AuctionCardProps {
   isWatched?: boolean;
 }
 
+/**
+ * Component for rendering a single auction listing card.
+ *
+ * @param props - Component props
+ * @param props.auction - The auction document
+ * @param props.viewMode - Visual mode (compact or detailed)
+ * @param props.isWatched - Whether the auction is on the user's watchlist
+ * @returns The rendered auction card
+ */
 export const AuctionCard = ({
   auction,
   viewMode = "detailed",

@@ -2,6 +2,8 @@
 
 /**
  * Utility to get an environment variable in the Convex runtime.
+ * @param key
+ * @returns The value of the environment variable or undefined if not set.
  */
 export function getEnv(key: string): string | undefined {
   const env = (
@@ -14,6 +16,8 @@ export function getEnv(key: string): string | undefined {
 
 /**
  * Utility to get an environment variable or throw if it's missing.
+ * @param key
+ * @returns The value of the environment variable.
  */
 export function requireEnv(key: string): string {
   const value = getEnv(key);

@@ -1,8 +1,10 @@
 // app/src/pages/kyc/sections/PersonalInfoSection.tsx
+import { User, Fingerprint, Phone, Mail } from "lucide-react";
+
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { User, Fingerprint, Phone, Mail } from "lucide-react";
+
 import type { KYCFormData } from "../hooks/useKYCForm";
 
 interface PersonalInfoSectionProps {
@@ -15,8 +17,9 @@ interface PersonalInfoSectionProps {
  *
  * The inputs are bound to `formData` and invoke `updateField` with the corresponding field key and the new string value when changed.
  *
- * @param formData - Current KYC form values for the fields displayed in this section
- * @param updateField - Callback to update a specific `KYCFormData` field: called with the field key and the new string value
+ * @param props - Component props.
+ * @param props.formData - Current KYC form values for the fields displayed in this section
+ * @param props.updateField - Callback to update a specific `KYCFormData` field: called with the field key and the new string value
  * @returns The JSX element for the personal information form section
  */
 export function PersonalInfoSection({

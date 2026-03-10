@@ -1,6 +1,7 @@
 // app/src/App.tsx
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 import { LoadingIndicator } from "./components/LoadingIndicator";
@@ -32,6 +33,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 
 /**
  * Global loading fallback for lazy-loaded routes.
+ * @returns A loading spinner centered in the viewport
  */
 const PageLoader = () => (
   <div className="flex h-[60vh] items-center justify-center bg-background">

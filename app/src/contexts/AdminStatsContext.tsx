@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 
+import { api } from "../../convex/_generated/api";
 import { AdminStatsContext } from "./admin-stats-types";
 
 export { AdminStatsContext };
@@ -9,6 +9,7 @@ export { AdminStatsContext };
 /**
  * Provide admin statistics to descendant components via AdminStatsContext.
  *
+ * @param children.children
  * @param children - React nodes rendered inside the provider
  * @returns A React element that supplies the fetched admin statistics as the context value
  */

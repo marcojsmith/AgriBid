@@ -1,8 +1,9 @@
 // app/src/components/__tests__/BidForm.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { BidForm } from "@/components/bidding/BidForm";
 import { describe, it, expect, vi } from "vitest";
 import type { Doc, Id } from "convex/_generated/dataModel";
+
+import { BidForm } from "@/components/bidding/BidForm";
 
 describe("BidForm", () => {
   const mockAuction = {

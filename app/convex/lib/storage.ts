@@ -7,6 +7,13 @@ import type { Doc, Id } from "../_generated/dataModel";
 
 /**
  * Normalizes images object to ensure additional array exists.
+ * @param images
+ * @param images.front
+ * @param images.engine
+ * @param images.cabin
+ * @param images.rear
+ * @param images.additional
+ * @returns The normalized images object.
  */
 export function normalizeImages(images: {
   front?: string;

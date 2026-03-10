@@ -1,9 +1,11 @@
 import { useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useListingWizard } from "../context/useListingWizard";
 import { toast } from "sonner";
+
 import { getErrorMessage } from "@/lib/utils";
+
+import { useListingWizard } from "../context/useListingWizard";
 import type { ListingFormData } from "../types";
 
 /**
@@ -137,8 +139,13 @@ export function useListingMedia() {
    * Removes an image from a specific slot.
    *
    * @param targetId - The slot ID or storage ID to remove
+   * @param index - The zero-based index of the image in the additional images array (only used when targetId is "additional")
    */
   const handleRemove = (targetId: string, index?: number) => {
+    if (targetId === "additional" && index === undefined) {
+      return;
+    }
+
     let previewKey = targetId;
 
     if (targetId === "additional" && index !== undefined) {

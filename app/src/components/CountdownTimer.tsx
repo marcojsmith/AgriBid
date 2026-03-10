@@ -6,6 +6,14 @@ interface CountdownTimerProps {
   className?: string;
 }
 
+/**
+ * Component for a countdown timer.
+ *
+ * @param props - Component props.
+ * @param props.endTime - The end time of the countdown.
+ * @param props.className - The CSS class name for the component.
+ * @returns The rendered countdown timer.
+ */
 export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
   const [remainingMs, setRemainingMs] = useState<number>(
     () => (endTime ?? 0) - Date.now()
@@ -21,7 +29,13 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
     };
 
     calculateTime();
-    const interval = setInterval(calculateTime, 1000);
+    const interval = setInterval(() => {
+      const nextRemaining = endTime - Date.now();
+      setRemainingMs(nextRemaining);
+      if (nextRemaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [endTime]);

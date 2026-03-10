@@ -3,8 +3,6 @@ import { useState, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Gavel,
   Loader2,
@@ -15,6 +13,9 @@ import {
   XCircle,
   ArrowUpDown,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";
@@ -67,6 +68,8 @@ interface Auction {
   model: string;
   /** The current highest bid or starting price if no bids. */
   currentPrice: number;
+  /** The minimum increment required for the next bid. */
+  minIncrement: number;
   /** The highest bid amount placed by the current user. */
   myHighestBid: number;
   /** The total number of bids placed by the current user on this auction. */
@@ -94,6 +97,8 @@ interface Auction {
 
 /**
  * Determine the user-facing badge label, visual variant, icon, and color for an auction's bid status.
+ * @param auction - The auction data to analyze
+ * @returns A StatusDisplay object containing label, variant, icon, and color
  */
 function getStatusDisplay(auction: Auction): StatusDisplay {
   if (auction.isWon) {
@@ -145,6 +150,10 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
   };
 }
 
+/**
+ * Renders the user's personal bidding dashboard.
+ * @returns The MyBids page component
+ */
 export default function MyBids() {
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("ending");
@@ -170,7 +179,7 @@ export default function MyBids() {
 
   // Apply filtering and sorting
   const filteredAndSortedAuctions = useMemo(() => {
-    let result = [...rawAuctions];
+    let result = [...(rawAuctions as unknown as Auction[])];
 
     // Filter
     if (filter === "winning") {
@@ -348,6 +357,7 @@ export default function MyBids() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filteredAndSortedAuctions.map((auction) => {
               const { label, icon, colorClass } = getStatusDisplay(auction);
+              const nextMinBid = auction.currentPrice + auction.minIncrement;
 
               return (
                 <div
@@ -430,27 +440,31 @@ export default function MyBids() {
                         <p className="font-black text-sm tracking-tight tabular-nums">
                           {formatCurrency(auction.myHighestBid)}
                         </p>
-                        <p className="text-xs text-muted-foreground font-bold">
+                        <p className="text-[10px] text-muted-foreground font-bold">
                           {auction.bidCount}{" "}
                           {auction.bidCount === 1 ? "bid" : "bids"}
                         </p>
                       </div>
                       <div className="space-y-0.5 text-right border-l border-border/10 pl-3">
                         <p className="text-xs text-muted-foreground uppercase font-black tracking-tighter">
-                          Current
+                          {auction.status === "active" ? "Next Min" : "Final"}
                         </p>
                         <p
                           className={cn(
                             "font-black text-sm tracking-tight tabular-nums",
-                            auction.isWinning
-                              ? "text-green-600"
-                              : "text-primary"
+                            auction.status === "active"
+                              ? "text-primary"
+                              : auction.isWon
+                                ? "text-green-600"
+                                : "text-foreground"
                           )}
                         >
-                          {formatCurrency(auction.currentPrice)}
+                          {auction.status === "active"
+                            ? formatCurrency(nextMinBid)
+                            : formatCurrency(auction.currentPrice)}
                         </p>
                         {auction.isOutbid && (
-                          <p className="text-xs text-red-600 font-black animate-pulse uppercase">
+                          <p className="text-[10px] text-red-600 font-black animate-pulse uppercase">
                             Outbid!
                           </p>
                         )}

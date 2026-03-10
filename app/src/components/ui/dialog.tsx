@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 /**
  * Renders the root Dialog element with a `data-slot="dialog"` attribute and forwards all received props.
  *
+ * @param props - Component props
  * @returns A dialog root element with `data-slot="dialog"` and the provided props applied.
  */
 function Dialog({
@@ -21,6 +22,7 @@ function Dialog({
  *
  * Renders a Radix Dialog Trigger element with data-slot="dialog-trigger" and forwards received props.
  *
+ * @param props - Component props
  * @returns A React element that acts as the dialog trigger
  */
 function DialogTrigger({
@@ -34,6 +36,7 @@ function DialogTrigger({
  *
  * Note: The `data-slot` attribute will be ignored as Radix's Portal doesn't render a wrapper element.
  *
+ * @param props - Component props
  * @returns The portal element used to mount dialog content, forwarding all received props to the underlying Radix primitive.
  */
 function DialogPortal({
@@ -59,6 +62,8 @@ function DialogClose({
  *
  * The returned element is the Radix Dialog overlay with data-slot="dialog-overlay" and combined classes for positioning, z-index, a semi-opaque black backdrop, and state-based animations.
  *
+ * @param props - Component props
+ * @param props.className - Additional CSS classes
  * @returns The overlay element used as the dialog backdrop.
  */
 function DialogOverlay({
@@ -80,7 +85,10 @@ function DialogOverlay({
 /**
  * Renders the dialog's content inside a portal with an overlay and an optional close control.
  *
- * @param showCloseIcon - When `true`, includes a close control (an X button) in the top-right of the content; when `false`, omits the close control.
+ * @param props - Component props
+ * @param props.className - Additional CSS classes
+ * @param props.children - Dialog content
+ * @param props.showCloseIcon - Whether to show the close icon
  * @returns The dialog content element including its portal and overlay, with children rendered inside and the close control included conditionally.
  */
 function DialogContent({
@@ -122,7 +130,8 @@ function DialogContent({
  *
  * Renders a div with consistent header layout classes and a `data-slot="dialog-header"` attribute; forwards remaining div props.
  *
- * @param className - Additional CSS classes to merge with the component's default header classes
+ * @param props - Component props
+ * @param props.className - Additional CSS classes
  * @returns The header container element for dialog content
  */
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
@@ -138,8 +147,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 /**
  * Layout container for dialog footer actions that can optionally render a close button.
  *
- * @param showFooterClose - When `true`, renders a "Close" button that triggers the dialog to close.
- * @param children - Elements to display inside the footer (e.g., action buttons).
+ * @param props - Component props
+ * @param props.className - Additional CSS classes
+ * @param props.showFooterClose - Whether to show the footer close button
+ * @param props.children - Action buttons
  * @returns The rendered footer element containing `children` and, if enabled, a close control.
  */
 function DialogFooter({
@@ -162,7 +173,9 @@ function DialogFooter({
       {children}
       {showFooterClose && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button type="button" variant="outline">
+            Close
+          </Button>
         </DialogPrimitive.Close>
       )}
     </div>
@@ -174,6 +187,8 @@ function DialogFooter({
  *
  * Renders a Radix Dialog Title with consistent typography classes and a `data-slot="dialog-title"` attribute.
  *
+ * @param props - Component props
+ * @param props.className - Additional CSS classes
  * @returns The rendered dialog title element with applied classes and attributes.
  */
 function DialogTitle({
@@ -192,6 +207,8 @@ function DialogTitle({
 /**
  * Dialog description element used to display descriptive text within a dialog.
  *
+ * @param props - Component props
+ * @param props.className - Additional CSS classes
  * @returns A React element that displays descriptive text styled for dialogs, with a `data-slot="dialog-description"` attribute.
  */
 function DialogDescription({
