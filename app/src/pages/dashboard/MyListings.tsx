@@ -43,7 +43,7 @@ type StatusFilter =
   | "pending_review"
   | "active"
   | "sold"
-  | "unsold";
+  | "unsold"; // "unsold" is intentionally not selectable via tabs, but shown in "all" view
 
 /**
  * Draft structure for editing an auction listing.
@@ -174,6 +174,9 @@ export default function MyListings() {
       localStorage.setItem("agribid_listing_step", "0");
     } catch (e) {
       console.warn("Failed to save draft to localStorage:", e);
+      toast.error(
+        "Could not save draft data. You may need to re-enter some fields."
+      );
     }
     navigate(`/sell?edit=${auction._id}`);
   };

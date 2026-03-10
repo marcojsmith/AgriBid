@@ -1,4 +1,5 @@
 // app/src/components/AuctionHeader.tsx
+import { useState } from "react";
 import { MapPin, Calendar, HardDrive, Heart, Gavel } from "lucide-react";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
@@ -31,6 +32,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
     auctionId: auction._id,
   });
   const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
+  const [isToggling, setIsToggling] = useState(false);
 
   const isWinner =
     !!session?.user?.id &&
@@ -39,11 +41,11 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   const isSeller = !!session?.user?.id && session.user.id === auction.sellerId;
 
   const handleWatchlistToggle = async () => {
-    if (sessionIsPending || isWatched === undefined) return;
+    if (sessionIsPending || isWatched === undefined || isToggling) return;
 
     if (!session) {
       toast.info("Please sign in to watch an auction");
-      const rawUrl = location.pathname;
+      const rawUrl = `${location.pathname}${location.search}${location.hash}`;
       const callbackUrl = isValidCallbackUrl(rawUrl)
         ? encodeURIComponent(rawUrl)
         : "/";
@@ -51,6 +53,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       return;
     }
 
+    setIsToggling(true);
     try {
       const nowWatched = await toggleWatchlist({ auctionId: auction._id });
       toast.success(
@@ -58,6 +61,8 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       );
     } catch {
       toast.error("Failed to update watchlist");
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -103,7 +108,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
                 : "text-zinc-500 hover:border-primary hover:text-primary"
             )}
             onClick={handleWatchlistToggle}
-            disabled={sessionIsPending || isWatched === undefined}
+            disabled={sessionIsPending || isWatched === undefined || isToggling}
           >
             <Heart className={cn("h-4 w-4", isWatched && "fill-current")} />
             {isWatched ? "Watching" : "Watch"}

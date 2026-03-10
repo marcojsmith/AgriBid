@@ -103,9 +103,16 @@ async function calculateUserBidStats(
     totalExposure: 0,
   };
   const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
-  const fullAuctions = await Promise.all(
-    auctionIds.map((id) => ctx.db.get(id))
-  );
+
+  // Fetch auctions in batches to avoid large Promise.all spikes
+  const CHUNK_SIZE = 100;
+  const fullAuctions: (Doc<"auctions"> | null)[] = [];
+
+  for (let i = 0; i < auctionIds.length; i += CHUNK_SIZE) {
+    const chunk = auctionIds.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(chunk.map((id) => ctx.db.get(id)));
+    fullAuctions.push(...chunkResults);
+  }
 
   const auctionsMap = new Map<string, Doc<"auctions"> | null>();
 
@@ -208,6 +215,25 @@ export const getActiveAuctions = query({
     const statusFilter: StatusFilter = args.statusFilter ?? "active";
     const statuses = statusesForFilter(statusFilter);
 
+    /**
+     * Predicate to check if an auction matches the filter arguments.
+     * @param a - Auction document to check
+     * @returns True if the auction matches all filters
+     */
+    const matchesAuctionFilter = (a: Doc<"auctions">) => {
+      if (!statuses.includes(a.status as AuctionStatus)) return false;
+      if (args.make && a.make !== args.make) return false;
+      if (args.minYear !== undefined && a.year < args.minYear) return false;
+      if (args.maxYear !== undefined && a.year > args.maxYear) return false;
+      if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
+        return false;
+      if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
+        return false;
+      if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
+        return false;
+      return true;
+    };
+
     // Helper to construct the base query with index selection
     const getBaseQuery = () => {
       const auctionsQuery = ctx.db.query("auctions");
@@ -305,19 +331,7 @@ export const getActiveAuctions = query({
       const results = await getFilteredQuery().paginate(args.paginationOpts);
 
       // Manual filtering for search results (may result in smaller pages)
-      const filteredPage = results.page.filter((a) => {
-        if (!statuses.includes(a.status as AuctionStatus)) return false;
-        if (args.make && a.make !== args.make) return false;
-        if (args.minYear !== undefined && a.year < args.minYear) return false;
-        if (args.maxYear !== undefined && a.year > args.maxYear) return false;
-        if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
-          return false;
-        if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
-          return false;
-        if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
-          return false;
-        return true;
-      });
+      const filteredPage = results.page.filter(matchesAuctionFilter);
 
       const page = await Promise.all(
         filteredPage.map((auction) => toAuctionSummary(ctx, auction))
@@ -330,19 +344,8 @@ export const getActiveAuctions = query({
         SEARCH_COUNT_CAP + 1
       );
 
-      const filteredCount = allSearchResults.filter((a) => {
-        if (!statuses.includes(a.status as AuctionStatus)) return false;
-        if (args.make && a.make !== args.make) return false;
-        if (args.minYear !== undefined && a.year < args.minYear) return false;
-        if (args.maxYear !== undefined && a.year > args.maxYear) return false;
-        if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
-          return false;
-        if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
-          return false;
-        if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
-          return false;
-        return true;
-      }).length;
+      const filteredCount =
+        allSearchResults.filter(matchesAuctionFilter).length;
 
       const totalCount =
         filteredCount > SEARCH_COUNT_CAP
@@ -926,9 +929,9 @@ export const getMyListings = query({
 /**
  * Get the total number of listings for the authenticated user, optionally filtered by status.
  *
- * @param ctx
- * @param args
- * @param args.status - Optional status to filter by
+ * @param ctx - Convex Query context containing authentication info
+ * @param args - Filtering arguments
+ * @param args.status - Optional status to filter listings by (e.g., 'active', 'sold')
  * @returns The total number of matching listings
  */
 export const getMyListingsCount = query({
@@ -1098,7 +1101,10 @@ export const getMyBidsStats = query({
       const { globalStats } = await calculateUserBidStats(ctx, userId);
       return globalStats;
     } catch (err) {
-      console.error("getMyBidsStats failure:", err);
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getMyBidsStats failure:", err);
+        throw err;
+      }
       return ZERO_AUCTION_STATS;
     }
   },

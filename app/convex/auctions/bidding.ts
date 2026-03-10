@@ -4,6 +4,25 @@ import { mutation } from "../_generated/server";
 import { requireVerified } from "../lib/auth";
 import { handleNewBid } from "./proxy_bidding";
 
+/**
+ * Mutation to place a bid on an auction.
+ *
+ * Validates that the user is verified, the auction exists and is active,
+ * the user is not the seller, and the auction hasn't ended.
+ * Delegates the core bidding and proxy logic to `handleNewBid`.
+ *
+ * @param ctx - Convex Mutation context
+ * @param args - Mutation arguments
+ * @param args.auctionId - ID of the auction to bid on
+ * @param args.amount - Bid amount
+ * @param args.maxBid - Optional maximum bid for proxy bidding
+ * @returns Object containing:
+ *  - `success`: Whether the bid was accepted
+ *  - `nextBidAmount`: Suggested next bid amount
+ *  - `isProxyBid`: Whether this was a proxy bid
+ *  - `proxyBidActive`: Whether the user's proxy bid is currently winning
+ *  - `confirmedMaxBid`: The max bid stored on the server
+ */
 export const placeBid = mutation({
   args: {
     auctionId: v.id("auctions"),

@@ -24,7 +24,7 @@ import {
 
 interface NotificationItem {
   _id: Id<"notifications">;
-  type: "info" | "success" | "warning" | "error";
+  type: "info" | "success" | "warning" | "error" | string;
   title: string;
   message: string;
   createdAt: number;
@@ -133,7 +133,7 @@ export function NotificationDropdown() {
                 "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
                 !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
               )}
-              onClick={async () => {
+              onSelect={async () => {
                 try {
                   await handleNotificationClick(
                     n._id,

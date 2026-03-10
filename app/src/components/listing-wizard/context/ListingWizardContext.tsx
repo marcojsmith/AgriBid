@@ -122,14 +122,8 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   ) => {
     if (initialData) {
       // Hydration path: normalize and set state, but don't clear storage
-      const normalizedImages = normalizeListingImages(
-        initialData.images || DEFAULT_FORM_DATA.images
-      );
-      setFormData({
-        ...DEFAULT_FORM_DATA,
-        ...initialData,
-        images: normalizedImages,
-      });
+      const normalized = validateAndNormalizeDraft(initialData);
+      setFormData(normalized);
 
       const clampedStep = Math.max(
         0,
