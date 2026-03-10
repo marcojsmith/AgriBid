@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { normalizeListingImages } from "@/lib/normalize-images";
 
 import type { ListingFormData, ConditionChecklist } from "../types";
-import { DEFAULT_FORM_DATA } from "../constants";
+import { DEFAULT_FORM_DATA, STEPS } from "../constants";
 import { ListingWizardContext } from "./ListingWizardContextDef";
 
 /**
@@ -44,32 +44,34 @@ const validateAndNormalizeDraft = (saved: unknown): ListingFormData => {
 export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [formData, setFormData] = useState<ListingFormData>(DEFAULT_FORM_DATA);
-  const [currentStep, setCurrentStep] = useState<number>(0);
-
   // Initialize from localStorage on client side only to avoid SSR mismatch
-  useEffect(() => {
+  const [formData, setFormData] = useState<ListingFormData>(() => {
     if (typeof window !== "undefined") {
       const savedDraft = localStorage.getItem("agribid_listing_draft");
       if (savedDraft) {
         try {
           const parsed = JSON.parse(savedDraft);
-          const normalized = validateAndNormalizeDraft(parsed);
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setFormData(() => normalized);
+          return validateAndNormalizeDraft(parsed);
         } catch {
-          // silently fallback to DEFAULT_FORM_DATA
-        }
-      }
-      const savedStep = localStorage.getItem("agribid_listing_step");
-      if (savedStep) {
-        const step = parseInt(savedStep, 10);
-        if (Number.isInteger(step) && step >= 0 && step <= 5) {
-          setCurrentStep(() => step);
+          // fallback to DEFAULT_FORM_DATA below
         }
       }
     }
-  }, []);
+    return DEFAULT_FORM_DATA;
+  });
+
+  const [currentStep, setCurrentStep] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const savedStep = localStorage.getItem("agribid_listing_step");
+      if (savedStep) {
+        const step = parseInt(savedStep, 10);
+        if (Number.isInteger(step) && step >= 0 && step <= STEPS.length - 1) {
+          return step;
+        }
+      }
+    }
+    return 0;
+  });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -112,7 +114,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
    * If no initialData is provided, it resets to defaults and clears storage (reset path).
    *
    * @param initialData - Optional partial data to hydrate the form with
-   * @param initialStep
+   * @param initialStep - Optional number indicating which wizard step to start on; defaults to 0.
    */
   const resetForm = (
     initialData?: Partial<ListingFormData>,
@@ -129,7 +131,10 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
         images: normalizedImages,
       });
 
-      const clampedStep = Math.max(0, Math.min(initialStep ?? 0, 5));
+      const clampedStep = Math.max(
+        0,
+        Math.min(initialStep ?? 0, STEPS.length - 1)
+      );
       setCurrentStep(clampedStep);
       setIsSuccess(false);
       setIsSubmitting(false);

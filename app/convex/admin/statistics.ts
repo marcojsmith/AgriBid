@@ -14,9 +14,9 @@ import { countOnlineUsers } from "../presence";
 
 /**
  * Internal helper to upsert a counter document with multiple fields.
- * @param ctx
- * @param name
- * @param payload
+ * @param ctx - Convex mutation context used for DB operations
+ * @param name - The identifier for the counter document
+ * @param payload - Object mapping counter fields to their new or incremented values
  */
 async function upsertCounter(
   ctx: MutationCtx,

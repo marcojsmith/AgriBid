@@ -133,10 +133,12 @@ describe("cleanupDrafts mutation", () => {
       images: { front: "storage_front" },
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mockUser: any = {
+    const mockUser = {
       userId: "admin_user_id",
       email: "admin@example.com",
+      _id: "admin_user_id",
+      name: "Admin User",
+      image: null,
     };
 
     vi.mocked(auth.getAuthUser).mockResolvedValue(mockUser);

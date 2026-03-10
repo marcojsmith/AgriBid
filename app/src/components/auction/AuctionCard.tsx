@@ -1,5 +1,5 @@
 // app/src/components/auction/AuctionCard.tsx
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import type { Doc } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -48,11 +48,6 @@ export const AuctionCard = ({
   const [pendingBid, setPendingBid] = useState<number | null>(null);
   // Track local state for watchlist to provide immediate feedback
   const [isWatched, setIsWatched] = useState(initialIsWatched);
-
-  // Synchronize local state with prop changes from parent (server updates)
-  useEffect(() => {
-    setIsWatched(initialIsWatched);
-  }, [initialIsWatched]);
 
   const handleWatchlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();

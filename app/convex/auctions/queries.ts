@@ -202,7 +202,7 @@ export const getActiveAuctions = query({
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
     splitCursor: v.optional(v.union(v.string(), v.null())),
-    totalCount: v.number(),
+    totalCount: v.union(v.number(), v.string()),
   }),
   handler: async (ctx, args) => {
     const statusFilter: StatusFilter = args.statusFilter ?? "active";
@@ -323,10 +323,14 @@ export const getActiveAuctions = query({
         filteredPage.map((auction) => toAuctionSummary(ctx, auction))
       );
 
-      // Total count for search results is expensive, but for consistency we provide it
-      // Note: This collects all search results which could impact performance if many matches
-      const allSearchResults = await getFilteredQuery().collect();
-      const totalCount = allSearchResults.filter((a) => {
+      // Total count for search results can be expensive
+      // We implement a capped count to avoid OOM for very large result sets
+      const SEARCH_COUNT_CAP = 1000;
+      const allSearchResults = await getFilteredQuery().take(
+        SEARCH_COUNT_CAP + 1
+      );
+
+      const filteredCount = allSearchResults.filter((a) => {
         if (!statuses.includes(a.status as AuctionStatus)) return false;
         if (args.make && a.make !== args.make) return false;
         if (args.minYear !== undefined && a.year < args.minYear) return false;
@@ -339,6 +343,11 @@ export const getActiveAuctions = query({
           return false;
         return true;
       }).length;
+
+      const totalCount =
+        filteredCount > SEARCH_COUNT_CAP
+          ? `${SEARCH_COUNT_CAP}+`
+          : filteredCount;
 
       return {
         ...results,

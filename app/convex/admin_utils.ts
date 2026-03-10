@@ -90,10 +90,10 @@ export async function sumQuery<T extends Record<string, unknown>>(
  *
  * @param ctx - Query or Mutation context
  * @param options - Filtering options
- * @param options.isVerified
- * @param options.kycStatus
- * @param options.role
- * @param options.useCounter
+ * @param options.isVerified - Optional boolean to filter by verification status
+ * @param options.kycStatus - Optional status to filter by KYC state
+ * @param options.role - Optional role to filter by user role
+ * @param options.useCounter - Optional flag to use pre-computed counters instead of scans
  * @returns Total number of matching users
  */
 export async function countUsers(

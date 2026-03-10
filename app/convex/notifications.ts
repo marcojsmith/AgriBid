@@ -118,17 +118,20 @@ export const getNotificationArchive = query({
       if (!authUser) return [];
       const userId = authUser.userId ?? authUser._id;
 
+      // Normalize limit: default to 50, ensure non-negative
+      const limit = Math.max(0, args.limit ?? 50);
+
       const personal = await ctx.db
         .query("notifications")
         .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
         .order("desc")
-        .take(args.limit || 100);
+        .take(limit);
 
       const announcements = await ctx.db
         .query("notifications")
         .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
         .order("desc")
-        .take(args.limit || 50);
+        .take(limit);
 
       const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
         ctx,
@@ -138,9 +141,7 @@ export const getNotificationArchive = query({
 
       const merged = [...personal, ...enrichedAnnouncements];
 
-      return merged
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, args.limit || 50);
+      return merged.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
     } catch (err) {
       if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
         console.error("getNotificationArchive failure:", err);

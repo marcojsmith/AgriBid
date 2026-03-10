@@ -26,7 +26,7 @@ const PROFILE_LOAD_TIMEOUT = 15000; // 15 seconds
  *
  * @param props - Component props
  * @param props.children - Child components to render if authorized
- * @param props.allowedRole - Role required to access the route
+ * @param props.allowedRole - Role required to access the route; use "any" to allow all authenticated users
  * @returns The rendered children if authorized, or a loading/unauthorized message.
  */
 export const RoleProtectedRoute = ({

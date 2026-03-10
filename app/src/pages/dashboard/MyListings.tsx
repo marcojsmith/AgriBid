@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { normalizeListingImages } from "@/lib/normalize-images";
+import type { AuctionImages } from "@/types/auction";
 
 type StatusFilter =
   | "all"
@@ -45,11 +46,11 @@ type StatusFilter =
   | "unsold";
 
 /**
- * Payload structure for editing an auction listing.
+ * Draft structure for editing an auction listing.
  */
-export interface AuctionEditPayload {
+export interface AuctionEditDraft {
   /** Unique identifier for the auction. */
-  _id: Id<"auctions">;
+  auctionId: Id<"auctions">;
   /** Year of manufacture. */
   year: number;
   /** Manufacturer/Make. */
@@ -59,41 +60,27 @@ export interface AuctionEditPayload {
   /** Physical location of the equipment. */
   location: string;
   /** Detailed description of the equipment. */
-  description?: string;
+  description: string;
   /** Number of operating hours. */
   operatingHours: number;
   /** Display title for the listing. */
   title: string;
   /** Verification status of core equipment components. */
-  conditionChecklist?: {
+  conditionChecklist: {
     engine: boolean | null;
     hydraulics: boolean | null;
     tires: boolean | null;
     serviceHistory: boolean | null;
-    notes?: string;
+    notes: string;
   };
   /** Collection of equipment images. */
-  images:
-    | {
-        front?: string;
-        engine?: string;
-        cabin?: string;
-        rear?: string;
-        additional?: string[];
-      }
-    | string[];
+  images: AuctionImages;
   /** Minimum price to start bidding. */
   startingPrice: number;
   /** Minimum price at which the item will be sold. */
   reservePrice: number;
   /** Duration of the auction in days. */
-  durationDays?: number;
-  /** Current lifecycle status of the auction. */
-  status: string;
-  /** Current highest bid or starting price. */
-  currentPrice: number;
-  /** Timestamp when the auction ends. */
-  endTime?: number;
+  durationDays: number;
 }
 
 /**
@@ -160,7 +147,7 @@ export default function MyListings() {
 
   const handleEdit = (auction: (typeof listings)[0]) => {
     // Save to local storage and redirect to /sell?edit=ID
-    const draftData = {
+    const draftData: AuctionEditDraft = {
       auctionId: auction._id,
       year: auction.year,
       make: auction.make,

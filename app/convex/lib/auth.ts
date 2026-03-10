@@ -10,12 +10,18 @@ import { authComponent } from "../auth";
 import type { AuthUser } from "../auth";
 
 /**
+ * Error message for non-verified users attempting restricted actions.
+ */
+export const VERIFIED_REQUIRED_MESSAGE =
+  "Account verification required. Please complete KYC verification.";
+
+/**
  * Custom error class for unauthorized access attempts.
  */
 export class UnauthorizedError extends Error {
   /**
-   *
-   * @param message
+   * Constructs an UnauthorizedError.
+   * @param message - The plaintext message to be signed/verified
    */
   constructor(message = "Unauthorized") {
     super(message);
@@ -229,9 +235,7 @@ export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   const { profile, ...rest } = await requireProfile(ctx);
 
   if (!profile.isVerified) {
-    throw new Error(
-      "Account verification required. Please complete KYC verification."
-    );
+    throw new Error(VERIFIED_REQUIRED_MESSAGE);
   }
 
   return { profile, ...rest };

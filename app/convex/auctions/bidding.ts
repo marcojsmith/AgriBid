@@ -1,7 +1,7 @@
 import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../_generated/server";
-import { requireAuth } from "../lib/auth";
+import { requireVerified } from "../lib/auth";
 import { handleNewBid } from "./proxy_bidding";
 
 export const placeBid = mutation({
@@ -18,21 +18,8 @@ export const placeBid = mutation({
     confirmedMaxBid: v.optional(v.number()), // The maximum bid amount confirmed by the server
   }),
   handler: async (ctx, args) => {
-    const authUser = await requireAuth(ctx);
-
-    const userId = authUser.userId ?? authUser._id;
-
-    // Check Verification Status
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile?.isVerified) {
-      throw new ConvexError(
-        "Account verification required to place bids. Please complete KYC."
-      );
-    }
+    // This also returns userId
+    const { userId } = await requireVerified(ctx);
 
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new ConvexError("Auction not found");

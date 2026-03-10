@@ -24,7 +24,7 @@ interface AuctionHeaderProps {
  * @returns The rendered auction header
  */
 export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionIsPending } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
   const isWatched = useQuery(api.watchlist.isWatched, {
@@ -39,6 +39,8 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   const isSeller = !!session?.user?.id && session.user.id === auction.sellerId;
 
   const handleWatchlistToggle = async () => {
+    if (sessionIsPending || isWatched === undefined) return;
+
     if (!session) {
       toast.info("Please sign in to watch an auction");
       const rawUrl = location.pathname;
@@ -101,6 +103,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
                 : "text-zinc-500 hover:border-primary hover:text-primary"
             )}
             onClick={handleWatchlistToggle}
+            disabled={sessionIsPending || isWatched === undefined}
           >
             <Heart className={cn("h-4 w-4", isWatched && "fill-current")} />
             {isWatched ? "Watching" : "Watch"}

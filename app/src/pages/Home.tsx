@@ -142,7 +142,7 @@ export default function Home() {
       {/* Desktop Sidebar */}
       {isDesktopSidebarOpen && (
         <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
-          <FilterSidebar />
+          <FilterSidebar key={searchParams.toString()} />
         </aside>
       )}
 
@@ -157,7 +157,10 @@ export default function Home() {
           />
           {/* Sidebar Container */}
           <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80 z-20">
-            <FilterSidebar onClose={() => setIsMobileFilterOpen(false)} />
+            <FilterSidebar
+              key={searchParams.toString()}
+              onClose={() => setIsMobileFilterOpen(false)}
+            />
           </div>
         </div>
       )}

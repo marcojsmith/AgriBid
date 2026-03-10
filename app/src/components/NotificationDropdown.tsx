@@ -50,6 +50,8 @@ export function NotificationDropdown() {
   const unreadCount =
     notifications?.filter((n: NotificationItem) => !n.isRead).length || 0;
 
+  const typedNotifications = (notifications || []) as NotificationItem[];
+
   const handleMarkAllRead = async () => {
     setIsMarkingAllRead(true);
     try {
@@ -70,7 +72,7 @@ export function NotificationDropdown() {
           variant="ghost"
           size="icon"
           className="relative h-10 w-10 rounded-full border-2 hover:bg-muted transition-all"
-          aria-label="Notifications"
+          aria-label={`Notifications, ${unreadCount} unread`}
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
@@ -115,7 +117,7 @@ export function NotificationDropdown() {
                 Syncing...
               </p>
             </div>
-          ) : (notifications as NotificationItem[]).length === 0 ? (
+          ) : typedNotifications.length === 0 ? (
             <div className="py-8 text-center space-y-2">
               <Clock className="h-8 w-8 text-muted-foreground/20 mx-auto" />
               <p className="text-[10px] font-black uppercase text-muted-foreground">
@@ -123,46 +125,44 @@ export function NotificationDropdown() {
               </p>
             </div>
           ) : null}
-          {(notifications as NotificationItem[] | undefined)?.map(
-            (n: NotificationItem) => (
-              <DropdownMenuItem
-                key={n._id}
-                className={cn(
-                  "flex flex-col items-start gap-1 p-3 rounded-xl cursor-pointer transition-all border-2 border-transparent",
-                  "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
-                  !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
-                )}
-                onClick={async () => {
-                  try {
-                    await handleNotificationClick(
-                      n._id,
-                      n.link,
-                      navigate,
-                      markAsRead
-                    );
-                  } catch (e) {
-                    console.error("Notification action failed:", e);
-                    toast.error("Failed to process notification");
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2 w-full">
-                  {getNotificationIcon(n.type)}
-                  <span className="font-black uppercase text-[10px] tracking-tight flex-1 truncate">
-                    {n.title}
-                  </span>
-                  <span className="text-[8px] font-bold text-muted-foreground">
-                    {new Date(n.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-                  {n.message}
-                </p>
-              </DropdownMenuItem>
-            )
-          )}
+          {typedNotifications.map((n: NotificationItem) => (
+            <DropdownMenuItem
+              key={n._id}
+              className={cn(
+                "flex flex-col items-start gap-1 p-3 rounded-xl cursor-pointer transition-all border-2 border-transparent",
+                "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
+                !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
+              )}
+              onClick={async () => {
+                try {
+                  await handleNotificationClick(
+                    n._id,
+                    n.link,
+                    navigate,
+                    markAsRead
+                  );
+                } catch (e) {
+                  console.error("Notification action failed:", e);
+                  toast.error("Failed to process notification");
+                }
+              }}
+            >
+              <div className="flex items-center gap-2 w-full">
+                {getNotificationIcon(n.type)}
+                <span className="font-black uppercase text-[10px] tracking-tight flex-1 truncate">
+                  {n.title}
+                </span>
+                <span className="text-[8px] font-bold text-muted-foreground">
+                  {new Date(n.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="text-xs font-medium leading-relaxed text-muted-foreground">
+                {n.message}
+              </p>
+            </DropdownMenuItem>
+          ))}
         </div>
-        {notifications && (notifications as NotificationItem[]).length > 0 && (
+        {notifications && typedNotifications.length > 0 && (
           <>
             <DropdownMenuSeparator />
             <div className="p-1">

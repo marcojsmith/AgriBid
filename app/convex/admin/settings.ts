@@ -19,10 +19,10 @@ type SettingsKey = keyof SettingsSchema;
  * Fetch a specific system setting by key.
  *
  * Falls back to hardcoded constants if the setting is not found in the database.
- * @param ctx
- * @param key
- * @param defaultValue
- * @returns The value of the setting or the default value.
+ * @param ctx - Convex Query context
+ * @param key - The unique identifier/key of the setting to retrieve
+ * @param defaultValue - Fallback value to return if the setting is missing or invalid
+ * @returns The resolved setting value or the provided default.
  */
 export async function getSetting<K extends SettingsKey>(
   ctx: QueryCtx,

@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { X, Filter, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -18,6 +18,19 @@ interface FilterSidebarProps {
 }
 
 /**
+ * Local state for sidebar filters.
+ */
+interface LocalFilters {
+  status: string;
+  make: string;
+  minYear: string;
+  maxYear: string;
+  minPrice: string;
+  maxPrice: string;
+  maxHours: string;
+}
+
+/**
  * Sidebar component for filtering auctions.
  *
  * @param props - Component props.
@@ -29,7 +42,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const activeMakes = useQuery(api.auctions.getActiveMakes) || [];
 
   // Local state for debounced inputs
-  const [localFilters, setLocalFilters] = useState({
+  const [localFilters, setLocalFilters] = useState<LocalFilters>(() => ({
     status: searchParams.get("status") || "active",
     make: searchParams.get("make") || "",
     minYear: searchParams.get("minYear") || "",
@@ -37,24 +50,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     minPrice: searchParams.get("minPrice") || "",
     maxPrice: searchParams.get("maxPrice") || "",
     maxHours: searchParams.get("maxHours") || "",
-  });
+  }));
 
-  // Sync local state when URL params change (e.g. back button)
-  useEffect(() => {
-    const params = {
-      status: searchParams.get("status") || "active",
-      make: searchParams.get("make") || "",
-      minYear: searchParams.get("minYear") || "",
-      maxYear: searchParams.get("maxYear") || "",
-      minPrice: searchParams.get("minPrice") || "",
-      maxPrice: searchParams.get("maxPrice") || "",
-      maxHours: searchParams.get("maxHours") || "",
-    };
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalFilters(params);
-  }, [searchParams]);
-
-  const updateParam = (key: string, value: string) => {
+  const updateParam = (key: keyof LocalFilters, value: string) => {
     setLocalFilters((prev) => ({ ...prev, [key]: value }));
   };
 
