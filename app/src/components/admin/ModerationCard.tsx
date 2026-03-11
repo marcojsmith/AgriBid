@@ -1,6 +1,5 @@
 // app/src/components/admin/ModerationCard.tsx
 import { Check, X, Clock } from "lucide-react";
-import type { Doc } from "convex/_generated/dataModel";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import {
   type AuctionImages,
 } from "@/lib/auction-utils";
 import { formatCurrency } from "@/lib/currency";
+import type { AuctionWithCategory } from "@/types/auction";
 
 import { ConditionItem } from "./ConditionItem";
 
@@ -32,7 +32,7 @@ export function ModerationCard({
   onReject,
   onView,
 }: {
-  auction: Doc<"auctions">;
+  auction: AuctionWithCategory;
   onApprove: () => void;
   onReject: () => void;
   onView: () => void;
@@ -67,6 +67,12 @@ export function ModerationCard({
                 {auction.title}
               </h3>
               <div className="flex gap-2 mt-1">
+                <Badge
+                  variant="outline"
+                  className="font-bold border-primary/20 bg-primary/5 text-primary py-0 h-6 uppercase text-[9px]"
+                >
+                  {auction.categoryName || "Unknown"}
+                </Badge>
                 <Badge
                   variant="outline"
                   className="font-bold border-2 py-0 h-6"

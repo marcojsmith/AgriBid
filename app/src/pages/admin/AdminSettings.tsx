@@ -12,7 +12,7 @@ import { SettingsCard } from "@/components/admin";
  * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees and security logs.
  *
  * Displays a centred loading indicator while admin statistics are being fetched. Once loaded, presents three settings cards:
- * - Equipment Metadata: opens the related GitHub issue and shows an info toast.
+ * - Equipment Metadata: navigates to the internal equipment catalog management view.
  * - Platform Fees: opens the related GitHub issue and shows an info toast.
  * - Security Logs: navigates to the internal audit view.
  *
@@ -46,14 +46,7 @@ export default function AdminSettings() {
             title="Equipment Metadata"
             description="Manage makes, models, and categories."
             icon={<Hammer />}
-            action={() => {
-              window.open(
-                "https://github.com/marcojsmith/AgriBid/issues/55",
-                "_blank",
-                "noopener,noreferrer"
-              );
-              toast.info("Opening Equipment Metadata issue #55");
-            }}
+            action={() => navigate("/admin/equipment-catalog")}
           />
           <SettingsCard
             title="Platform Fees"

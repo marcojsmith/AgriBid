@@ -21,6 +21,9 @@ const AdminAnnouncements = lazy(
 );
 const AdminSupport = lazy(() => import("./pages/admin/AdminSupport"));
 const AdminAudit = lazy(() => import("./pages/admin/AdminAudit"));
+const AdminEquipmentCatalog = lazy(
+  () => import("./pages/admin/AdminEquipmentCatalog")
+);
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
@@ -176,6 +179,14 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAudit />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/equipment-catalog"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminEquipmentCatalog />
                 </RoleProtectedRoute>
               }
             />

@@ -112,8 +112,10 @@ export default function MyListings() {
     const draftData: ListingFormData = {
       auctionId: auction._id,
       year: auction.year,
-      make: auction.make,
-      model: auction.model,
+      categoryId: auction.categoryId || "",
+      // If we don't have a categoryId, we can't trust the make/model hierarchy
+      make: auction.categoryId ? auction.make : "",
+      model: auction.categoryId ? auction.model : "",
       location: auction.location,
       description: auction.description ?? "",
       operatingHours: auction.operatingHours,
