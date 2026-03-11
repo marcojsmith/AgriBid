@@ -64,12 +64,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
 
     if (finalStatus === "sold") {
       await updateCounter(ctx, "auctions", "soldCount", 1);
-      await updateCounter(
-        ctx,
-        "auctions",
-        "salesVolume",
-        auction.currentPrice
-      );
+      await updateCounter(ctx, "auctions", "salesVolume", auction.currentPrice);
     }
 
     console.log(
@@ -88,7 +83,6 @@ export const settleExpiredAuctions = internalMutation({
   returns: v.null(),
   handler: settleExpiredAuctionsHandler,
 });
-
 
 /**
  * Handler for cleaning up abandoned drafts.

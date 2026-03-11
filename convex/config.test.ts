@@ -23,7 +23,9 @@ describe("Config Utilities", () => {
 
     it("should throw if not set", async () => {
       const { requireEnv } = await import("./config");
-      expect(() => requireEnv("MISSING_VAR")).toThrow("Missing MISSING_VAR environment variable.");
+      expect(() => requireEnv("MISSING_VAR")).toThrow(
+        "Missing MISSING_VAR environment variable."
+      );
     });
   });
 
@@ -35,7 +37,10 @@ describe("Config Utilities", () => {
     });
 
     it("should match exact origins", async () => {
-      vi.stubEnv("ALLOWED_ORIGINS", "http://localhost:5173,https://agribid.com");
+      vi.stubEnv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,https://agribid.com"
+      );
       const { isOriginAllowed } = await import("./config");
       expect(isOriginAllowed("http://localhost:5173")).toBe(true);
       expect(isOriginAllowed("https://agribid.com")).toBe(true);

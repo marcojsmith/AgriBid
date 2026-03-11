@@ -38,9 +38,14 @@ vi.mock("convex/react", () => ({
 
 // Mock Radix Alert Dialog
 vi.mock("@/components/ui/alert-dialog", () => ({
-  AlertDialog: ({ children, open }: any) => (open ? <div data-testid="alert-dialog">{children}</div> : null),
-  AlertDialogAction: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
-  AlertDialogCancel: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
+  AlertDialog: ({ children, open }: any) =>
+    open ? <div data-testid="alert-dialog">{children}</div> : null,
+  AlertDialogAction: ({ children, onClick }: any) => (
+    <button onClick={onClick}>{children}</button>
+  ),
+  AlertDialogCancel: ({ children, onClick }: any) => (
+    <button onClick={onClick}>{children}</button>
+  ),
   AlertDialogContent: ({ children }: any) => <div>{children}</div>,
   AlertDialogDescription: ({ children }: any) => <div>{children}</div>,
   AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
@@ -73,7 +78,8 @@ describe("BiddingPanel", () => {
 
   it("renders current price and minimum bid correctly", () => {
     vi.mocked(convexReact.useQuery).mockImplementation((apiPath: any) => {
-      if (apiPath?.name === "getMyProfile") return { profile: { isVerified: true, kycStatus: "verified" } };
+      if (apiPath?.name === "getMyProfile")
+        return { profile: { isVerified: true, kycStatus: "verified" } };
       return null;
     });
 
@@ -110,14 +116,16 @@ describe("BiddingPanel", () => {
       </BrowserRouter>
     );
 
-    expect(screen.getAllByText(/Verification Required/i).length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Verification Required/i).length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("shows congratulations message when user is the winner", () => {
-    const wonAuction = { 
-      ...mockAuction, 
-      status: "sold", 
-      winnerId: "test-user-id" 
+    const wonAuction = {
+      ...mockAuction,
+      status: "sold",
+      winnerId: "test-user-id",
     } as Doc<"auctions">;
 
     render(
@@ -126,13 +134,17 @@ describe("BiddingPanel", () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/Congratulations, you are the buyer!/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Congratulations, you are the buyer!/i)
+    ).toBeInTheDocument();
   });
 
   it("handles bid confirmation successfully", async () => {
     const mockPlaceBid = vi.fn().mockResolvedValue({ success: true });
     vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
-    vi.mocked(convexReact.useQuery).mockReturnValue({ profile: { isVerified: true, kycStatus: "verified" } });
+    vi.mocked(convexReact.useQuery).mockReturnValue({
+      profile: { isVerified: true, kycStatus: "verified" },
+    });
 
     render(
       <BrowserRouter>
@@ -150,14 +162,13 @@ describe("BiddingPanel", () => {
     const bidButton = screen.getByRole("button", { name: /Place Bid/i });
     fireEvent.click(bidButton);
 
-
     // Check if dialog is open
     await waitFor(() => {
       expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
     });
-    
+
     expect(screen.getByText(/Confirm your bid/i)).toBeInTheDocument();
-    
+
     const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
     fireEvent.click(confirmButton);
 
@@ -181,7 +192,9 @@ describe("BiddingPanel", () => {
 
     const bidButton = screen.getByRole("button", { name: /Place Bid/i });
     fireEvent.click(bidButton);
-    
-    expect(toast.info).toHaveBeenCalledWith(expect.stringContaining("Please sign in"));
+
+    expect(toast.info).toHaveBeenCalledWith(
+      expect.stringContaining("Please sign in")
+    );
   });
 });

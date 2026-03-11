@@ -218,7 +218,8 @@ export const getActiveAuctionsHandler = async (
     statusFilter?: "active" | "closed" | "all";
   }
 ) => {
-  const statusFilter: StatusFilter = (args.statusFilter as StatusFilter) ?? "active";
+  const statusFilter: StatusFilter =
+    (args.statusFilter as StatusFilter) ?? "active";
   const statuses = statusesForFilter(statusFilter);
 
   /**
@@ -333,52 +334,49 @@ export const getActiveAuctionsHandler = async (
     });
   };
 
-    if (args.search) {
-      const results = await getFilteredQuery().paginate(args.paginationOpts);
+  if (args.search) {
+    const results = await getFilteredQuery().paginate(args.paginationOpts);
 
-      // Manual filtering for search results (may result in smaller pages)
-      const filteredPage = results.page.filter(matchesAuctionFilter);
-
-      const page = await Promise.all(
-        filteredPage.map((auction) => toAuctionSummary(ctx, auction))
-      );
-
-      // Total count for search results can be expensive
-      // We implement a capped count to avoid OOM for very large result sets
-      const SEARCH_COUNT_CAP = 1000;
-      const allSearchResults = await getFilteredQuery().take(
-        SEARCH_COUNT_CAP + 1
-      );
-
-      const filteredCount =
-        allSearchResults.filter(matchesAuctionFilter).length;
-
-      const totalCount =
-        filteredCount > SEARCH_COUNT_CAP
-          ? `${SEARCH_COUNT_CAP}+`
-          : filteredCount;
-
-      return {
-        ...results,
-        page,
-        totalCount,
-      };
-    }
-
-    const [results, totalCount] = await Promise.all([
-      getFilteredQuery().paginate(args.paginationOpts),
-      countQuery(getFilteredQuery()),
-    ]);
+    // Manual filtering for search results (may result in smaller pages)
+    const filteredPage = results.page.filter(matchesAuctionFilter);
 
     const page = await Promise.all(
-      results.page.map((auction) => toAuctionSummary(ctx, auction))
+      filteredPage.map((auction) => toAuctionSummary(ctx, auction))
     );
+
+    // Total count for search results can be expensive
+    // We implement a capped count to avoid OOM for very large result sets
+    const SEARCH_COUNT_CAP = 1000;
+    const allSearchResults = await getFilteredQuery().take(
+      SEARCH_COUNT_CAP + 1
+    );
+
+    const filteredCount = allSearchResults.filter(matchesAuctionFilter).length;
+
+    const totalCount =
+      filteredCount > SEARCH_COUNT_CAP ? `${SEARCH_COUNT_CAP}+` : filteredCount;
 
     return {
       ...results,
       page,
       totalCount,
     };
+  }
+
+  const [results, totalCount] = await Promise.all([
+    getFilteredQuery().paginate(args.paginationOpts),
+    countQuery(getFilteredQuery()),
+  ]);
+
+  const page = await Promise.all(
+    results.page.map((auction) => toAuctionSummary(ctx, auction))
+  );
+
+  return {
+    ...results,
+    page,
+    totalCount,
+  };
 };
 
 /**
@@ -836,8 +834,7 @@ export const getAllAuctionsHandler = async (
     totalCount,
     page: await Promise.all(
       auctionsResult.page.map(
-        async (auction: Doc<"auctions">) =>
-          await toAuctionSummary(ctx, auction)
+        async (auction: Doc<"auctions">) => await toAuctionSummary(ctx, auction)
       )
     ),
   };
@@ -908,31 +905,29 @@ export const getMyBidsHandler = async (
 
     // 2. Transform into the required return format
     const allAuctionSummaries = await Promise.all(
-      Array.from(auctionStatsMap.entries()).map(
-        async ([auctionId, stats]) => {
-          const auction = auctionsMap.get(auctionId);
-          if (!auction) return null;
+      Array.from(auctionStatsMap.entries()).map(async ([auctionId, stats]) => {
+        const auction = auctionsMap.get(auctionId);
+        if (!auction) return null;
 
-          const summary = await toAuctionSummary(ctx, auction);
-          const isWinning =
-            auction.status === "active" &&
-            stats.highestBid === auction.currentPrice &&
-            auction.winnerId === userId;
+        const summary = await toAuctionSummary(ctx, auction);
+        const isWinning =
+          auction.status === "active" &&
+          stats.highestBid === auction.currentPrice &&
+          auction.winnerId === userId;
 
-          return {
-            ...summary,
-            myHighestBid: stats.highestBid,
-            isWinning,
-            isWon: auction.status === "sold" && auction.winnerId === userId,
-            isOutbid: auction.status === "active" && !isWinning,
-            isCancelled: auction.status === "rejected",
-            bidAmount: stats.highestBid,
-            bidTimestamp: stats.lastBidTimestamp,
-            lastBidTimestamp: stats.lastBidTimestamp,
-            bidCount: stats.bidCount,
-          };
-        }
-      )
+        return {
+          ...summary,
+          myHighestBid: stats.highestBid,
+          isWinning,
+          isWon: auction.status === "sold" && auction.winnerId === userId,
+          isOutbid: auction.status === "active" && !isWinning,
+          isCancelled: auction.status === "rejected",
+          bidAmount: stats.highestBid,
+          bidTimestamp: stats.lastBidTimestamp,
+          lastBidTimestamp: stats.lastBidTimestamp,
+          bidCount: stats.bidCount,
+        };
+      })
     );
 
     // Filter out invalid items

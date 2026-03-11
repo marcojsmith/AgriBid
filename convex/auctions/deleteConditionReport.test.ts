@@ -72,8 +72,9 @@ describe("deleteConditionReport mutation", () => {
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(reporterId);
 
-    await expect(deleteConditionReportHandler(mockCtx, { auctionId }))
-      .rejects.toThrow("You can only modify your own auctions");
+    await expect(
+      deleteConditionReportHandler(mockCtx, { auctionId })
+    ).rejects.toThrow("You can only modify your own auctions");
   });
 
   it("should fail if auction not found", async () => {
@@ -81,7 +82,8 @@ describe("deleteConditionReport mutation", () => {
     mockCtx.db.get.mockResolvedValue(null);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user1");
 
-    await expect(deleteConditionReportHandler(mockCtx, { auctionId: "a1" as any }))
-      .rejects.toThrow(ConvexError);
+    await expect(
+      deleteConditionReportHandler(mockCtx, { auctionId: "a1" as any })
+    ).rejects.toThrow(ConvexError);
   });
 });

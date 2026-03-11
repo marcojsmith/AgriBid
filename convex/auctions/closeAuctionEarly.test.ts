@@ -49,9 +49,7 @@ describe("closeAuctionEarly mutation", () => {
       reservePrice: 1000,
       title: "Test Auction",
     };
-    const bids = [
-      { bidderId, amount: 1100, timestamp: 100, status: "placed" }
-    ];
+    const bids = [{ bidderId, amount: 1100, timestamp: 100, status: "placed" }];
 
     const mockQuery = {
       withIndex: vi.fn().mockReturnThis(),
@@ -74,7 +72,12 @@ describe("closeAuctionEarly mutation", () => {
       status: "sold",
       winnerId: bidderId,
     });
-    expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "active", -1);
+    expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+      mockCtx,
+      "auctions",
+      "active",
+      -1
+    );
   });
 
   it("should mark auction as unsold if reserve is not met", async () => {
@@ -86,7 +89,7 @@ describe("closeAuctionEarly mutation", () => {
       title: "Test Auction",
     };
     const bids = [
-      { bidderId: "bidder123", amount: 1500, timestamp: 100, status: "placed" }
+      { bidderId: "bidder123", amount: 1500, timestamp: 100, status: "placed" },
     ];
 
     const mockQuery = {
@@ -110,9 +113,13 @@ describe("closeAuctionEarly mutation", () => {
 
   it("should return error if not authorized", async () => {
     mockCtx = setupMockCtx();
-    vi.mocked(auth.requireAdmin).mockRejectedValue(new (auth as any).UnauthorizedError("Not authorized"));
+    vi.mocked(auth.requireAdmin).mockRejectedValue(
+      new (auth as any).UnauthorizedError("Not authorized")
+    );
 
-    const result = await closeAuctionEarlyHandler(mockCtx, { auctionId: "a1" as any });
+    const result = await closeAuctionEarlyHandler(mockCtx, {
+      auctionId: "a1" as any,
+    });
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/authorized/i);
   });
@@ -122,7 +129,9 @@ describe("closeAuctionEarly mutation", () => {
     mockCtx.db.get.mockResolvedValue(null);
     vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
 
-    const result = await closeAuctionEarlyHandler(mockCtx, { auctionId: "a1" as any });
+    const result = await closeAuctionEarlyHandler(mockCtx, {
+      auctionId: "a1" as any,
+    });
     expect(result.success).toBe(false);
     expect(result.error).toBe("Auction not found");
   });

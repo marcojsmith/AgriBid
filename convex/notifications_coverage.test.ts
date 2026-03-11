@@ -1,11 +1,10 @@
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { 
-  getMyNotificationsHandler, 
+import {
+  getMyNotificationsHandler,
   getNotificationArchiveHandler,
   markAsReadHandler,
-  markAllReadHandler
+  markAllReadHandler,
 } from "./notifications";
 import * as auth from "./lib/auth";
 import type { Id } from "./_generated/dataModel";
@@ -46,7 +45,7 @@ describe("Notifications Coverage", () => {
 
     it("should handle authenticated user and merge notifications", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({ userId: "u1" } as any);
-      
+
       mockCtx.db.query = vi.fn().mockImplementation((table) => {
         if (table === "notifications") {
           return {
@@ -55,16 +54,21 @@ describe("Notifications Coverage", () => {
               const filterValue = qFn(q).eq.mock.calls[0][1];
               return {
                 order: vi.fn().mockReturnThis(),
-                take: vi.fn().mockResolvedValue(
-                  filterValue === "u1" 
-                    ? [{ _id: "n1", createdAt: 100, recipientId: "u1" }] 
-                    : [{ _id: "a1", createdAt: 150, recipientId: "all" }]
-                ),
+                take: vi
+                  .fn()
+                  .mockResolvedValue(
+                    filterValue === "u1"
+                      ? [{ _id: "n1", createdAt: 100, recipientId: "u1" }]
+                      : [{ _id: "a1", createdAt: 150, recipientId: "all" }]
+                  ),
               };
             }),
           };
         }
-        return { withIndex: vi.fn().mockReturnThis(), unique: vi.fn().mockResolvedValue(null) };
+        return {
+          withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(null),
+        };
       });
 
       const result = await getMyNotificationsHandler(mockCtx);
@@ -75,7 +79,7 @@ describe("Notifications Coverage", () => {
     it("should handle error gracefully", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Critical"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-      
+
       const result = await getMyNotificationsHandler(mockCtx);
       expect(result).toHaveLength(0);
       expect(spy).toHaveBeenCalled();
@@ -92,14 +96,12 @@ describe("Notifications Coverage", () => {
 
     it("should cap limit and return sorted notifications", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({ userId: "u1" } as any);
-      
+
       const personal = [
         { _id: "n2", createdAt: 200, recipientId: "u1" },
         { _id: "n1", createdAt: 100, recipientId: "u1" },
       ];
-      const announcements = [
-        { _id: "a1", createdAt: 150, recipientId: "all" },
-      ];
+      const announcements = [{ _id: "a1", createdAt: 150, recipientId: "all" }];
 
       mockCtx.db.query = vi.fn().mockImplementation((table) => {
         if (table === "notifications") {
@@ -109,12 +111,19 @@ describe("Notifications Coverage", () => {
               const filterValue = qFn(q).eq.mock.calls[0][1];
               return {
                 order: vi.fn().mockReturnThis(),
-                take: vi.fn().mockResolvedValue(filterValue === "u1" ? personal : announcements),
+                take: vi
+                  .fn()
+                  .mockResolvedValue(
+                    filterValue === "u1" ? personal : announcements
+                  ),
               };
             }),
           };
         }
-        return { withIndex: vi.fn().mockReturnThis(), unique: vi.fn().mockResolvedValue(null) };
+        return {
+          withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(null),
+        };
       });
 
       const result = await getNotificationArchiveHandler(mockCtx, { limit: 2 });
@@ -130,8 +139,11 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       mockCtx.db.get.mockResolvedValue(null);
 
-      await expect(markAsReadHandler(mockCtx, { notificationId: "n1" as Id<"notifications"> }))
-        .rejects.toThrow("Notification not found");
+      await expect(
+        markAsReadHandler(mockCtx, {
+          notificationId: "n1" as Id<"notifications">,
+        })
+      ).rejects.toThrow("Notification not found");
     });
 
     it("should insert read receipt for broadcast", async () => {
@@ -139,11 +151,16 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "n1", recipientId: "all" });
 
-      await markAsReadHandler(mockCtx, { notificationId: "n1" as Id<"notifications"> });
-      expect(mockCtx.db.insert).toHaveBeenCalledWith("readReceipts", expect.objectContaining({
-        userId: "u1",
-        notificationId: "n1",
-      }));
+      await markAsReadHandler(mockCtx, {
+        notificationId: "n1" as Id<"notifications">,
+      });
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "readReceipts",
+        expect.objectContaining({
+          userId: "u1",
+          notificationId: "n1",
+        })
+      );
     });
 
     it("should patch personal notification", async () => {
@@ -151,7 +168,9 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "n1", recipientId: "u1" });
 
-      await markAsReadHandler(mockCtx, { notificationId: "n1" as Id<"notifications"> });
+      await markAsReadHandler(mockCtx, {
+        notificationId: "n1" as Id<"notifications">,
+      });
       expect(mockCtx.db.patch).toHaveBeenCalledWith("n1", { isRead: true });
     });
 
@@ -160,8 +179,11 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "n1", recipientId: "u2" });
 
-      await expect(markAsReadHandler(mockCtx, { notificationId: "n1" as Id<"notifications"> }))
-        .rejects.toThrow("Unauthorized");
+      await expect(
+        markAsReadHandler(mockCtx, {
+          notificationId: "n1" as Id<"notifications">,
+        })
+      ).rejects.toThrow("Unauthorized");
     });
   });
 
@@ -169,9 +191,15 @@ describe("Notifications Coverage", () => {
     it("should mark all personal and broadcast as read with chunking", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({ userId: "u1" } as any);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      
-      const manyPersonal = Array.from({ length: 60 }, (_, i) => ({ _id: `p${i}`, recipientId: "u1" }));
-      const manyAnnouncements = Array.from({ length: 20 }, (_, i) => ({ _id: `a${i}`, recipientId: "all" }));
+
+      const manyPersonal = Array.from({ length: 60 }, (_, i) => ({
+        _id: `p${i}`,
+        recipientId: "u1",
+      }));
+      const manyAnnouncements = Array.from({ length: 20 }, (_, i) => ({
+        _id: `a${i}`,
+        recipientId: "all",
+      }));
 
       mockCtx.db.query = vi.fn().mockImplementation((table) => {
         if (table === "notifications") {
@@ -182,7 +210,11 @@ describe("Notifications Coverage", () => {
               const filterValue = qResult.eq.mock.calls[0][1];
               return {
                 order: vi.fn().mockReturnThis(),
-                take: vi.fn().mockResolvedValue(filterValue === "u1" ? manyPersonal : manyAnnouncements),
+                take: vi
+                  .fn()
+                  .mockResolvedValue(
+                    filterValue === "u1" ? manyPersonal : manyAnnouncements
+                  ),
               };
             }),
           };

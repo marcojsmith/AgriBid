@@ -363,7 +363,9 @@ export const getProfileForKYCHandler = async (
     phoneNumber: decPhone,
     kycEmail: decEmail,
     idNumber: decIdNumber,
-    kycDocumentUrls: kycDocUrls.filter((url: any): url is string => url !== null),
+    kycDocumentUrls: kycDocUrls.filter(
+      (url: any): url is string => url !== null
+    ),
   };
 };
 
@@ -616,9 +618,7 @@ export const getMyKYCDetailsHandler = async (ctx: QueryCtx) => {
       phoneNumber: decPhone,
       kycEmail: decEmail,
       kycDocumentIds: profile.kycDocuments,
-      kycDocumentUrls: kycDocUrls.filter(
-        (url): url is string => url !== null
-      ),
+      kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
     };
   } catch (err) {
     if (err instanceof Error && !err.message.includes("Unauthenticated")) {

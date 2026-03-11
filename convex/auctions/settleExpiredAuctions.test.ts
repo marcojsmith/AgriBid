@@ -21,7 +21,9 @@ describe("settleExpiredAuctions mutation", () => {
       query: vi.fn((table: string) => ({
         withIndex: vi.fn().mockReturnThis(),
         filter: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(table === "auctions" ? expiredAuctions : bids),
+        collect: vi
+          .fn()
+          .mockResolvedValue(table === "auctions" ? expiredAuctions : bids),
       })),
       patch: vi.fn(),
     };
@@ -34,24 +36,28 @@ describe("settleExpiredAuctions mutation", () => {
     const now = Date.now();
     const auctionId = "a1" as Id<"auctions">;
     const bidderId = "b1" as any;
-    
-    const expiredAuctions = [{
-      _id: auctionId,
-      title: "Test Auction",
-      status: "active",
-      endTime: now - 1000,
-      currentPrice: 1500,
-      reservePrice: 1000,
-    }];
 
-    const bids = [{
-      _id: "bid1",
-      auctionId,
-      bidderId,
-      amount: 1500,
-      timestamp: now - 500,
-      status: "placed",
-    }];
+    const expiredAuctions = [
+      {
+        _id: auctionId,
+        title: "Test Auction",
+        status: "active",
+        endTime: now - 1000,
+        currentPrice: 1500,
+        reservePrice: 1000,
+      },
+    ];
+
+    const bids = [
+      {
+        _id: "bid1",
+        auctionId,
+        bidderId,
+        amount: 1500,
+        timestamp: now - 500,
+        status: "placed",
+      },
+    ];
 
     mockCtx = setupMockCtx(expiredAuctions, bids);
 
@@ -66,24 +72,28 @@ describe("settleExpiredAuctions mutation", () => {
   it("should settle an auction as unsold if reserve is not met", async () => {
     const now = Date.now();
     const auctionId = "a2" as Id<"auctions">;
-    
-    const expiredAuctions = [{
-      _id: auctionId,
-      title: "Test Auction",
-      status: "active",
-      endTime: now - 1000,
-      currentPrice: 500,
-      reservePrice: 1000,
-    }];
 
-    const bids = [{
-      _id: "bid2",
-      auctionId,
-      bidderId: "b2" as any,
-      amount: 500,
-      timestamp: now - 500,
-      status: "placed",
-    }];
+    const expiredAuctions = [
+      {
+        _id: auctionId,
+        title: "Test Auction",
+        status: "active",
+        endTime: now - 1000,
+        currentPrice: 500,
+        reservePrice: 1000,
+      },
+    ];
+
+    const bids = [
+      {
+        _id: "bid2",
+        auctionId,
+        bidderId: "b2" as any,
+        amount: 500,
+        timestamp: now - 500,
+        status: "placed",
+      },
+    ];
 
     mockCtx = setupMockCtx(expiredAuctions, bids);
 
@@ -98,15 +108,17 @@ describe("settleExpiredAuctions mutation", () => {
   it("should settle an auction as unsold if there are no bids", async () => {
     const now = Date.now();
     const auctionId = "a3" as Id<"auctions">;
-    
-    const expiredAuctions = [{
-      _id: auctionId,
-      title: "Test Auction",
-      status: "active",
-      endTime: now - 1000,
-      currentPrice: 100,
-      reservePrice: 0, // Reserve is 0 but no bids
-    }];
+
+    const expiredAuctions = [
+      {
+        _id: auctionId,
+        title: "Test Auction",
+        status: "active",
+        endTime: now - 1000,
+        currentPrice: 100,
+        reservePrice: 0, // Reserve is 0 but no bids
+      },
+    ];
 
     mockCtx = setupMockCtx(expiredAuctions, []);
 
@@ -121,15 +133,17 @@ describe("settleExpiredAuctions mutation", () => {
   it("should pick the correct winner if there are multiple bids with the same amount", async () => {
     const now = Date.now();
     const auctionId = "a4" as Id<"auctions">;
-    
-    const expiredAuctions = [{
-      _id: auctionId,
-      title: "Test Auction",
-      status: "active",
-      endTime: now - 1000,
-      currentPrice: 1000,
-      reservePrice: 1000,
-    }];
+
+    const expiredAuctions = [
+      {
+        _id: auctionId,
+        title: "Test Auction",
+        status: "active",
+        endTime: now - 1000,
+        currentPrice: 1000,
+        reservePrice: 1000,
+      },
+    ];
 
     const bids = [
       {
@@ -147,7 +161,7 @@ describe("settleExpiredAuctions mutation", () => {
         amount: 1000,
         timestamp: now - 700,
         status: "placed",
-      }
+      },
     ];
 
     mockCtx = setupMockCtx(expiredAuctions, bids);

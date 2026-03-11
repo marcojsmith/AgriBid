@@ -7,6 +7,7 @@
 - **Target**: 95% across all metrics (Project Threshold)
 
 ### Key File Coverage (Statements)
+
 - `convex/config.ts`: 97.22%
 - `convex/support.ts`: 93.54%
 - `convex/lib/encryption.ts`: 93.44%
@@ -24,6 +25,7 @@
 ## Coverage Gap Analysis
 
 Phase 8 has been completed, pushing global coverage to ~82%. The remaining gap is concentrated in:
+
 - `convex/auctions/queries.ts` (~67%)
 - `convex/auth.ts` (~19%)
 - `convex/users.ts` (~11%)
@@ -41,11 +43,11 @@ The strategy of extracting logic into named handlers has proven successful for t
 - [x] **Phase 4: Hook Logic Tests**
 - [x] **Phase 5: Page Integration Tests**
 - [x] **Phase 6: Mutations, Auth (lib), and Admin Utils**
-    - `convex/auctions/mutations.ts`, `convex/lib/auth.ts`, `convex/admin_utils.ts`, `convex/config.ts`, `convex/lib/encryption.ts`.
+  - `convex/auctions/mutations.ts`, `convex/lib/auth.ts`, `convex/admin_utils.ts`, `convex/config.ts`, `convex/lib/encryption.ts`.
 - [x] **Phase 7: Bidding and Queries (Initial)**
-    - `convex/auctions/bidding.ts`, `convex/auctions/proxy_bidding.ts`, `convex/auctions/queries.ts` (partial).
+  - `convex/auctions/bidding.ts`, `convex/auctions/proxy_bidding.ts`, `convex/auctions/queries.ts` (partial).
 - [x] **Phase 8: Notifications, Support, and Watchlist**
-    - `convex/notifications.ts`, `convex/support.ts`, `convex/watchlist.ts`.
+  - `convex/notifications.ts`, `convex/support.ts`, `convex/watchlist.ts`.
 
 ---
 

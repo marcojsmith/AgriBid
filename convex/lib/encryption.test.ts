@@ -5,7 +5,7 @@ import { encryptPII, decryptPII } from "./encryption";
 describe("Encryption Utilities", () => {
   beforeAll(() => {
     // Ensure environment variables are set for the module load
-    // Note: encryption.ts loads these at the top level, so they might 
+    // Note: encryption.ts loads these at the top level, so they might
     // already be fixed if the module was already imported.
     // In Vitest, we might need to use vi.stubEnv or similar if we want to test different envs.
   });
@@ -13,7 +13,7 @@ describe("Encryption Utilities", () => {
   it("should encrypt and decrypt a string successfully", async () => {
     const plaintext = "Sensitive PII Data";
     const encrypted = await encryptPII(plaintext);
-    
+
     expect(encrypted).toBeDefined();
     expect(encrypted).toContain(".");
     expect(encrypted).not.toBe(plaintext);
@@ -59,7 +59,7 @@ describe("Encryption Utilities", () => {
     const invalidIv = btoa("short-iv"); // 8 bytes
     const dummyData = btoa("some-data");
     const invalidEncrypted = `${invalidIv}.${dummyData}`;
-    
+
     // decryptPII returns the input if IV length is not 12
     const result = await decryptPII(invalidEncrypted);
     expect(result).toBe(invalidEncrypted);
@@ -69,7 +69,7 @@ describe("Encryption Utilities", () => {
     const plaintext = "Secret Message";
     const encrypted = await encryptPII(plaintext);
     const [iv, data] = encrypted!.split(".");
-    
+
     // Tamper with the encrypted data (change one character to another valid base64 char)
     const charToReplace = data[0];
     const replacement = charToReplace === "A" ? "B" : "A";
@@ -77,9 +77,12 @@ describe("Encryption Utilities", () => {
     const tamperedEncrypted = `${iv}.${tamperedData}`;
 
     // Ensure it's still valid base64 so it doesn't return the input string
-    const base64Regex = /^(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+    const base64Regex =
+      /^(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
     expect(base64Regex.test(tamperedData)).toBe(true);
 
-    await expect(decryptPII(tamperedEncrypted)).rejects.toThrow("Decryption failed");
+    await expect(decryptPII(tamperedEncrypted)).rejects.toThrow(
+      "Decryption failed"
+    );
   });
 });

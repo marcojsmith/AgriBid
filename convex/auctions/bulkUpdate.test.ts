@@ -36,7 +36,7 @@ describe("bulkUpdateAuctions mutation", () => {
   it("should update multiple auctions successfully", async () => {
     const id1 = "a1" as Id<"auctions">;
     const id2 = "a2" as Id<"auctions">;
-    
+
     const auction1 = { _id: id1, status: "pending_review" };
     const auction2 = { _id: id2, status: "pending_review" };
 
@@ -51,18 +51,34 @@ describe("bulkUpdateAuctions mutation", () => {
 
     const result = await bulkUpdateAuctionsHandler(mockCtx, {
       auctionIds: [id1, id2],
-      updates: { status: "active", endTime: Date.now() + 10000 }
+      updates: { status: "active", endTime: Date.now() + 10000 },
     });
 
     expect(result.success).toBe(true);
     expect(result.updated).toContain(id1);
     expect(result.updated).toContain(id2);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(id1, expect.objectContaining({ status: "active" }));
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(id2, expect.objectContaining({ status: "active" }));
-    
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      id1,
+      expect.objectContaining({ status: "active" })
+    );
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      id2,
+      expect.objectContaining({ status: "active" })
+    );
+
     // Status counters should be adjusted for both
-    expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "pending", -1);
-    expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "active", 1);
+    expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+      mockCtx,
+      "auctions",
+      "pending",
+      -1
+    );
+    expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+      mockCtx,
+      "auctions",
+      "active",
+      1
+    );
     expect(adminUtils.updateCounter).toHaveBeenCalledTimes(4); // 2 per auction
   });
 
@@ -70,10 +86,12 @@ describe("bulkUpdateAuctions mutation", () => {
     mockCtx = setupMockCtx();
     vi.mocked(auth.requireAdmin).mockRejectedValue(new Error("Unauthorized"));
 
-    await expect(bulkUpdateAuctionsHandler(mockCtx, {
-      auctionIds: ["a1" as any],
-      updates: { status: "active" }
-    })).rejects.toThrow("Unauthorized");
+    await expect(
+      bulkUpdateAuctionsHandler(mockCtx, {
+        auctionIds: ["a1" as any],
+        updates: { status: "active" },
+      })
+    ).rejects.toThrow("Unauthorized");
   });
 
   it("should throw error if bulk update size limit exceeded", async () => {
@@ -82,9 +100,11 @@ describe("bulkUpdateAuctions mutation", () => {
 
     const manyIds = Array(51).fill("a1");
 
-    await expect(bulkUpdateAuctionsHandler(mockCtx, {
-      auctionIds: manyIds,
-      updates: { status: "active" }
-    })).rejects.toThrow(/exceeds limit/);
+    await expect(
+      bulkUpdateAuctionsHandler(mockCtx, {
+        auctionIds: manyIds,
+        updates: { status: "active" },
+      })
+    ).rejects.toThrow(/exceeds limit/);
   });
 });

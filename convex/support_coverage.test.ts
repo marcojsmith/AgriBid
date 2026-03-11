@@ -1,4 +1,3 @@
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { createTicketHandler, getMyTicketsHandler } from "./support";
@@ -26,7 +25,7 @@ type MockCtxType = {
 
 describe("Support Coverage", () => {
   let mockCtx: MockCtxType;
-  
+
   const mockUser: NonNullable<Awaited<ReturnType<typeof auth.getAuthUser>>> = {
     _id: "u1",
     userId: "u1",
@@ -51,67 +50,83 @@ describe("Support Coverage", () => {
       vi.mocked(auth.requireAuth).mockResolvedValue(mockUser);
       vi.mocked(auth.resolveUserId).mockReturnValue(undefined as any);
 
-      await expect(createTicketHandler(mockCtx as unknown as MutationCtx, {
-        subject: "Help",
-        message: "I need help",
-        priority: "medium"
-      })).rejects.toThrow("Unable to determine user ID");
+      await expect(
+        createTicketHandler(mockCtx as unknown as MutationCtx, {
+          subject: "Help",
+          message: "I need help",
+          priority: "medium",
+        })
+      ).rejects.toThrow("Unable to determine user ID");
     });
 
     it("should validate subject length", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue(mockUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
-      await expect(createTicketHandler(mockCtx as unknown as MutationCtx, {
-        subject: "",
-        message: "I need help",
-        priority: "medium"
-      })).rejects.toThrow("Subject must be between 1 and 100 characters");
+      await expect(
+        createTicketHandler(mockCtx as unknown as MutationCtx, {
+          subject: "",
+          message: "I need help",
+          priority: "medium",
+        })
+      ).rejects.toThrow("Subject must be between 1 and 100 characters");
 
-      await expect(createTicketHandler(mockCtx as unknown as MutationCtx, {
-        subject: "a".repeat(101),
-        message: "I need help",
-        priority: "medium"
-      })).rejects.toThrow("Subject must be between 1 and 100 characters");
+      await expect(
+        createTicketHandler(mockCtx as unknown as MutationCtx, {
+          subject: "a".repeat(101),
+          message: "I need help",
+          priority: "medium",
+        })
+      ).rejects.toThrow("Subject must be between 1 and 100 characters");
     });
 
     it("should validate message length", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue(mockUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
-      await expect(createTicketHandler(mockCtx as unknown as MutationCtx, {
-        subject: "Help",
-        message: "",
-        priority: "medium"
-      })).rejects.toThrow("Message must be between 1 and 2000 characters");
+      await expect(
+        createTicketHandler(mockCtx as unknown as MutationCtx, {
+          subject: "Help",
+          message: "",
+          priority: "medium",
+        })
+      ).rejects.toThrow("Message must be between 1 and 2000 characters");
 
-      await expect(createTicketHandler(mockCtx as unknown as MutationCtx, {
-        subject: "Help",
-        message: "a".repeat(2001),
-        priority: "medium"
-      })).rejects.toThrow("Message must be between 1 and 2000 characters");
+      await expect(
+        createTicketHandler(mockCtx as unknown as MutationCtx, {
+          subject: "Help",
+          message: "a".repeat(2001),
+          priority: "medium",
+        })
+      ).rejects.toThrow("Message must be between 1 and 2000 characters");
     });
 
     it("should create ticket and update counters", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue(mockUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
-      const result = await createTicketHandler(mockCtx as unknown as MutationCtx, {
-        subject: " Help ",
-        message: " I need help ",
-        priority: "high",
-        auctionId: "auction1" as Id<"auctions">
-      });
+      const result = await createTicketHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          subject: " Help ",
+          message: " I need help ",
+          priority: "high",
+          auctionId: "auction1" as Id<"auctions">,
+        }
+      );
 
       expect(result).toBe("ticket1");
-      expect(mockCtx.db.insert).toHaveBeenCalledWith("supportTickets", expect.objectContaining({
-        userId: "u1",
-        subject: "Help",
-        message: "I need help",
-        priority: "high",
-        auctionId: "auction1",
-        status: "open"
-      }));
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "supportTickets",
+        expect.objectContaining({
+          userId: "u1",
+          subject: "Help",
+          message: "I need help",
+          priority: "high",
+          auctionId: "auction1",
+          status: "open",
+        })
+      );
       expect(adminUtils.updateCounter).toHaveBeenCalledTimes(2);
     });
   });
@@ -119,22 +134,27 @@ describe("Support Coverage", () => {
   describe("getMyTicketsHandler", () => {
     it("should return empty if unauthenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
-      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {});
+      const result = await getMyTicketsHandler(
+        mockCtx as unknown as QueryCtx,
+        {}
+      );
       expect(result).toHaveLength(0);
     });
 
     it("should return tickets for authenticated user", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(mockUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      
+
       const mockTickets = [{ _id: "t1", subject: "S1" }];
       mockCtx.db.query = vi.fn().mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
-        take: vi.fn().mockResolvedValue(mockTickets)
+        take: vi.fn().mockResolvedValue(mockTickets),
       });
 
-      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, { limit: 10 });
+      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
+        limit: 10,
+      });
       expect(result).toEqual(mockTickets);
       expect(mockCtx.db.query).toHaveBeenCalledWith("supportTickets");
     });
@@ -142,10 +162,15 @@ describe("Support Coverage", () => {
     it("should handle query errors gracefully", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(mockUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      mockCtx.db.query = vi.fn().mockImplementation(() => { throw new Error("DB Error"); });
-      
+      mockCtx.db.query = vi.fn().mockImplementation(() => {
+        throw new Error("DB Error");
+      });
+
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {});
+      const result = await getMyTicketsHandler(
+        mockCtx as unknown as QueryCtx,
+        {}
+      );
       expect(result).toHaveLength(0);
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();

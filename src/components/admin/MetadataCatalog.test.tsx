@@ -118,9 +118,13 @@ describe("MetadataCatalog", () => {
 
     fireEvent.click(screen.getByText("Add Make"));
 
-    fireEvent.change(screen.getByLabelText(/Manufacturer Name/i), { target: { value: "New Make" } });
-    fireEvent.change(screen.getByLabelText(/Initial Model/i), { target: { value: "Model X" } });
-    
+    fireEvent.change(screen.getByLabelText(/Manufacturer Name/i), {
+      target: { value: "New Make" },
+    });
+    fireEvent.change(screen.getByLabelText(/Initial Model/i), {
+      target: { value: "Model X" },
+    });
+
     // Select is harder to test without mocks, but let's see if it works with fireEvent.change or similar
     // For now, I'll just check if it fails if I don't select a category
     const addButton = screen.getByRole("button", { name: "Add Make" });
@@ -177,16 +181,20 @@ describe("MetadataCatalog", () => {
     fireEvent.click(screen.getByText("John Deere"));
 
     // Find the trash button for "8R 410"
-    const removeButton = screen.getByLabelText(/Remove model 8R 410 from John Deere/i);
+    const removeButton = screen.getByLabelText(
+      /Remove model 8R 410 from John Deere/i
+    );
     fireEvent.click(removeButton);
 
     await waitFor(() => {
-      expect(mockRemoveModel).toHaveBeenCalledWith({ id: "m1", model: "8R 410" });
+      expect(mockRemoveModel).toHaveBeenCalledWith({
+        id: "m1",
+        model: "8R 410",
+      });
     });
   });
 
   it("should open edit make dialog", () => {
-
     render(
       <MetadataCatalog
         metadata={mockMetadata as any}
@@ -228,9 +236,11 @@ describe("MetadataCatalog", () => {
     fireEvent.click(screen.getByText("Save Changes"));
 
     await waitFor(() => {
-      expect(mockUpdateMake).toHaveBeenCalledWith(expect.objectContaining({
-        make: "Updated Make",
-      }));
+      expect(mockUpdateMake).toHaveBeenCalledWith(
+        expect.objectContaining({
+          make: "Updated Make",
+        })
+      );
     });
   });
 
@@ -258,8 +268,10 @@ describe("MetadataCatalog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add Model" }));
 
     await waitFor(() => {
-      expect(mockAddModel).toHaveBeenCalledWith({ id: "m1", model: "New Model" });
+      expect(mockAddModel).toHaveBeenCalledWith({
+        id: "m1",
+        model: "New Model",
+      });
     });
   });
 });
-

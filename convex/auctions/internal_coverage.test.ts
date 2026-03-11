@@ -1,4 +1,3 @@
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { cleanupDraftsHandler } from "./internal";
@@ -60,14 +59,19 @@ describe("Internal Logic Coverage", () => {
         withIndex: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue([mockDraft]),
       });
-      mockCtx.storage.delete.mockRejectedValue(new Error("Storage delete failed"));
+      mockCtx.storage.delete.mockRejectedValue(
+        new Error("Storage delete failed")
+      );
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
 
-      expect(spy).toHaveBeenCalledWith(expect.stringContaining("Failed to delete condition report"), expect.anything());
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to delete condition report"),
+        expect.anything()
+      );
       expect(mockCtx.db.delete).toHaveBeenCalledWith("d1");
-      
+
       spy.mockRestore();
     });
 
@@ -84,13 +88,17 @@ describe("Internal Logic Coverage", () => {
       mockCtx.db.delete.mockRejectedValue(new Error("DB delete failed"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const result = await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
+      const result = await cleanupDraftsHandler(
+        mockCtx as unknown as MutationCtx
+      );
 
       expect(result.errors).toBe(1);
-      expect(spy).toHaveBeenCalledWith(expect.stringContaining("Failed to delete draft auction"), expect.anything());
-      
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to delete draft auction"),
+        expect.anything()
+      );
+
       spy.mockRestore();
     });
   });
-
 });

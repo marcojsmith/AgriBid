@@ -75,13 +75,16 @@ describe("flagAuction mutation", () => {
 
     expect(result.success).toBe(true);
     expect(result.hideTriggered).toBe(false);
-    expect(mockCtx.db.insert).toHaveBeenCalledWith("auctionFlags", expect.objectContaining({
-      auctionId,
-      reporterId,
-      reason: "suspicious",
-      details: "Looks fake",
-      status: "pending",
-    }));
+    expect(mockCtx.db.insert).toHaveBeenCalledWith(
+      "auctionFlags",
+      expect.objectContaining({
+        auctionId,
+        reporterId,
+        reason: "suspicious",
+        details: "Looks fake",
+        status: "pending",
+      })
+    );
   });
 
   it("should trigger auto-hide when threshold is reached", async () => {
@@ -121,11 +124,24 @@ describe("flagAuction mutation", () => {
       status: "pending_review",
       hiddenByFlags: true,
     });
-    expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx as unknown as MutationCtx, "auctions", "active", -1);
-    expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx as unknown as MutationCtx, "auctions", "pending", 1);
-    expect(adminUtils.logAudit).toHaveBeenCalledWith(mockCtx as unknown as MutationCtx, expect.objectContaining({
-      action: "AUTO_HIDE_AUCTION_FLAGS",
-    }));
+    expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+      mockCtx as unknown as MutationCtx,
+      "auctions",
+      "active",
+      -1
+    );
+    expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+      mockCtx as unknown as MutationCtx,
+      "auctions",
+      "pending",
+      1
+    );
+    expect(adminUtils.logAudit).toHaveBeenCalledWith(
+      mockCtx as unknown as MutationCtx,
+      expect.objectContaining({
+        action: "AUTO_HIDE_AUCTION_FLAGS",
+      })
+    );
   });
 
   it("should throw error if auction not found", async () => {
@@ -134,10 +150,12 @@ describe("flagAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(null);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
 
-    await expect(flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-      auctionId,
-      reason: "other",
-    })).rejects.toThrow(ConvexError);
+    await expect(
+      flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+        auctionId,
+        reason: "other",
+      })
+    ).rejects.toThrow(ConvexError);
   });
 
   it("should fail if user flags their own auction", async () => {
@@ -154,10 +172,12 @@ describe("flagAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
-    await expect(flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-      auctionId,
-      reason: "other",
-    })).rejects.toThrow("You cannot flag your own auction");
+    await expect(
+      flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+        auctionId,
+        reason: "other",
+      })
+    ).rejects.toThrow("You cannot flag your own auction");
   });
 
   it("should fail if user already flagged the auction", async () => {
@@ -169,9 +189,7 @@ describe("flagAuction mutation", () => {
       sellerId: "other_user",
     };
 
-    const existingFlags = [
-      { reporterId: userId, status: "pending" },
-    ];
+    const existingFlags = [{ reporterId: userId, status: "pending" }];
 
     const mockQuery = {
       withIndex: vi.fn().mockReturnThis(),
@@ -182,9 +200,11 @@ describe("flagAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
-    await expect(flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-      auctionId,
-      reason: "other",
-    })).rejects.toThrow("You have already flagged this auction");
+    await expect(
+      flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+        auctionId,
+        reason: "other",
+      })
+    ).rejects.toThrow("You have already flagged this auction");
   });
 });

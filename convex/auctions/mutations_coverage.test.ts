@@ -1,4 +1,3 @@
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
@@ -32,9 +31,9 @@ vi.mock("./helpers", () => ({
   deleteAuctionImages: vi.fn(),
 }));
 
-import { 
-  updateAuctionHandler, 
-  publishAuctionHandler, 
+import {
+  updateAuctionHandler,
+  publishAuctionHandler,
   deleteDraftHandler,
   flagAuctionHandler,
   dismissFlagHandler,
@@ -45,7 +44,7 @@ import {
   generateUploadUrlHandler,
   deleteUploadHandler,
   createAuctionHandler,
-  saveDraftHandler
+  saveDraftHandler,
 } from "./mutations";
 
 describe("Mutations Coverage", () => {
@@ -87,20 +86,26 @@ describe("Mutations Coverage", () => {
         auctionId: "a1" as Id<"auctions">,
         updates: { startingPrice: 5000 },
       });
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        currentPrice: 5000,
-        minIncrement: 100,
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          currentPrice: 5000,
+          minIncrement: 100,
+        })
+      );
 
       // Case 2: startingPrice >= 10000
       await updateAuctionHandler(mockCtx, {
         auctionId: "a1" as Id<"auctions">,
         updates: { startingPrice: 15000 },
       });
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        currentPrice: 15000,
-        minIncrement: 500,
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          currentPrice: 15000,
+          minIncrement: 500,
+        })
+      );
     });
 
     it("should throw error for invalid durationDays", async () => {
@@ -111,15 +116,19 @@ describe("Mutations Coverage", () => {
         status: "draft",
       });
 
-      await expect(updateAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-        updates: { durationDays: 0 },
-      })).rejects.toThrow("Invalid duration: must be between 1 and 365 days");
+      await expect(
+        updateAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          updates: { durationDays: 0 },
+        })
+      ).rejects.toThrow("Invalid duration: must be between 1 and 365 days");
 
-      await expect(updateAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-        updates: { durationDays: 400 },
-      })).rejects.toThrow("Invalid duration: must be between 1 and 365 days");
+      await expect(
+        updateAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          updates: { durationDays: 400 },
+        })
+      ).rejects.toThrow("Invalid duration: must be between 1 and 365 days");
     });
 
     it("should merge images correctly (existing as array)", async () => {
@@ -136,13 +145,16 @@ describe("Mutations Coverage", () => {
         updates: { images: { cabin: "img3" } },
       });
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        images: expect.objectContaining({
-          front: "img1",
-          additional: ["img2"],
-          cabin: "img3",
-        }),
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          images: expect.objectContaining({
+            front: "img1",
+            additional: ["img2"],
+            cabin: "img3",
+          }),
+        })
+      );
     });
 
     it("should merge images correctly (existing as object)", async () => {
@@ -159,9 +171,12 @@ describe("Mutations Coverage", () => {
         updates: { images: { engine: "img2" } },
       });
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        images: { front: "img1", engine: "img2" },
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          images: { front: "img1", engine: "img2" },
+        })
+      );
     });
 
     it("should throw error if additional images limit exceeded", async () => {
@@ -172,10 +187,14 @@ describe("Mutations Coverage", () => {
         status: "draft",
       });
 
-      await expect(updateAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-        updates: { images: { additional: ["1", "2", "3", "4", "5", "6", "7"] } },
-      })).rejects.toThrow("Additional images limit exceeded (max 6)");
+      await expect(
+        updateAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          updates: {
+            images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
+          },
+        })
+      ).rejects.toThrow("Additional images limit exceeded (max 6)");
     });
 
     it("should validate auction if status is pending_review", async () => {
@@ -196,9 +215,12 @@ describe("Mutations Coverage", () => {
         updates: { title: "Updated" },
       });
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        title: "Updated",
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          title: "Updated",
+        })
+      );
     });
   });
 
@@ -211,9 +233,11 @@ describe("Mutations Coverage", () => {
         status: "active",
       });
 
-      await expect(publishAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-      })).rejects.toThrow("Only draft auctions can be published");
+      await expect(
+        publishAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Only draft auctions can be published");
     });
   });
 
@@ -261,9 +285,11 @@ describe("Mutations Coverage", () => {
         status: "pending_review",
       });
 
-      await expect(deleteDraftHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-      })).rejects.toThrow("Only draft auctions can be deleted");
+      await expect(
+        deleteDraftHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Only draft auctions can be deleted");
     });
   });
 
@@ -275,10 +301,12 @@ describe("Mutations Coverage", () => {
         sellerId: "user123",
       });
 
-      await expect(flagAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-        reason: "other",
-      })).rejects.toThrow("You cannot flag your own auction");
+      await expect(
+        flagAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          reason: "other",
+        })
+      ).rejects.toThrow("You cannot flag your own auction");
     });
 
     it("should throw error if user already flagged", async () => {
@@ -287,14 +315,18 @@ describe("Mutations Coverage", () => {
         _id: "a1",
         sellerId: "user123",
       });
-      mockCtx.db.query().collect.mockResolvedValue([
-        { reporterId: "user456", status: "pending" }
-      ]);
+      mockCtx.db
+        .query()
+        .collect.mockResolvedValue([
+          { reporterId: "user456", status: "pending" },
+        ]);
 
-      await expect(flagAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-        reason: "other",
-      })).rejects.toThrow("You have already flagged this auction");
+      await expect(
+        flagAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          reason: "other",
+        })
+      ).rejects.toThrow("You have already flagged this auction");
     });
 
     it("should auto-hide auction when flag threshold is reached", async () => {
@@ -315,10 +347,13 @@ describe("Mutations Coverage", () => {
       });
 
       expect(result.hideTriggered).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        status: "pending_review",
-        hiddenByFlags: true,
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "pending_review",
+          hiddenByFlags: true,
+        })
+      );
     });
   });
 
@@ -326,37 +361,50 @@ describe("Mutations Coverage", () => {
     it("should throw error if not authorized", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
-      await expect(dismissFlagHandler(mockCtx, {
-        flagId: "f1" as Id<"auctionFlags">,
-      })).rejects.toThrow("Not authorized");
+      await expect(
+        dismissFlagHandler(mockCtx, {
+          flagId: "f1" as Id<"auctionFlags">,
+        })
+      ).rejects.toThrow("Not authorized");
     });
 
     it("should throw error if flag not found", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       mockCtx.db.get.mockResolvedValue(null);
 
-      await expect(dismissFlagHandler(mockCtx, {
-        flagId: "f1" as Id<"auctionFlags">,
-      })).rejects.toThrow("Flag not found");
+      await expect(
+        dismissFlagHandler(mockCtx, {
+          flagId: "f1" as Id<"auctionFlags">,
+        })
+      ).rejects.toThrow("Flag not found");
     });
 
     it("should throw error if flag already reviewed", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       mockCtx.db.get.mockResolvedValue({ status: "dismissed" });
 
-      await expect(dismissFlagHandler(mockCtx, {
-        flagId: "f1" as Id<"auctionFlags">,
-      })).rejects.toThrow("Flag has already been reviewed");
+      await expect(
+        dismissFlagHandler(mockCtx, {
+          flagId: "f1" as Id<"auctionFlags">,
+        })
+      ).rejects.toThrow("Flag has already been reviewed");
     });
 
     it("should restore auction if flags fall below threshold", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       mockCtx.db.get.mockImplementation((id: string) => {
-        if (id === "f1") return { _id: "f1", auctionId: "a1", status: "pending", reason: "test" };
-        if (id === "a1") return { _id: "a1", status: "pending_review", hiddenByFlags: true };
+        if (id === "f1")
+          return {
+            _id: "f1",
+            auctionId: "a1",
+            status: "pending",
+            reason: "test",
+          };
+        if (id === "a1")
+          return { _id: "a1", status: "pending_review", hiddenByFlags: true };
         return null;
       });
-      
+
       // Remaining flags: 2 (below threshold 3)
       mockCtx.db.query().collect.mockResolvedValue([
         { reporterId: "u1", status: "pending" },
@@ -368,10 +416,13 @@ describe("Mutations Coverage", () => {
       });
 
       expect(result.auctionRestored).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        status: "active",
-        hiddenByFlags: false,
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "active",
+          hiddenByFlags: false,
+        })
+      );
     });
   });
 
@@ -380,19 +431,23 @@ describe("Mutations Coverage", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
       mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
 
-      await expect(approveAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-        durationDays: 0,
-      })).rejects.toThrow("Invalid duration");
+      await expect(
+        approveAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          durationDays: 0,
+        })
+      ).rejects.toThrow("Invalid duration");
     });
 
     it("should throw error if status is not pending_review", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
       mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "draft" });
 
-      await expect(approveAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-      })).rejects.toThrow("Only auctions in pending_review can be approved");
+      await expect(
+        approveAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Only auctions in pending_review can be approved");
     });
   });
 
@@ -401,9 +456,11 @@ describe("Mutations Coverage", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
       mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "active" });
 
-      await expect(rejectAuctionHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
-      })).rejects.toThrow("Only auctions in pending_review can be rejected");
+      await expect(
+        rejectAuctionHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Only auctions in pending_review can be rejected");
     });
   });
 
@@ -422,36 +479,47 @@ describe("Mutations Coverage", () => {
 
     it("should clear hiddenByFlags if transitioning from pending_review", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review", hiddenByFlags: true });
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        hiddenByFlags: true,
+      });
 
       await adminUpdateAuctionHandler(mockCtx, {
         auctionId: "a1" as Id<"auctions">,
         updates: { status: "active", endTime: Date.now() + 10000 },
       });
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        hiddenByFlags: false,
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          hiddenByFlags: false,
+        })
+      );
     });
   });
 
   describe("bulkUpdateAuctionsHandler", () => {
     it("should throw error if limit exceeded", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
-      
+
       const ids = Array(101).fill("a1");
-      await expect(bulkUpdateAuctionsHandler(mockCtx, {
-        auctionIds: ids,
-        updates: { status: "sold" },
-      })).rejects.toThrow("Bulk update exceeds limit");
+      await expect(
+        bulkUpdateAuctionsHandler(mockCtx, {
+          auctionIds: ids,
+          updates: { status: "sold" },
+        })
+      ).rejects.toThrow("Bulk update exceeds limit");
     });
 
     it("should handle skipped auctions if validation fails", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
       mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "draft" });
-      vi.mocked(internalHelpers.validateAuctionStatus).mockImplementation(() => {
-        throw new Error("Invalid");
-      });
+      vi.mocked(internalHelpers.validateAuctionStatus).mockImplementation(
+        () => {
+          throw new Error("Invalid");
+        }
+      );
 
       const result = await bulkUpdateAuctionsHandler(mockCtx, {
         auctionIds: ["a1" as Id<"auctions">],
@@ -475,7 +543,7 @@ describe("Mutations Coverage", () => {
     it("should delete upload", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
       mockCtx.storage.getUrl.mockResolvedValue("url");
-      
+
       await deleteUploadHandler(mockCtx, { storageId: "s1" as Id<"_storage"> });
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("s1");
     });
@@ -518,10 +586,18 @@ describe("Mutations Coverage", () => {
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
       mockCtx.db.insert.mockResolvedValue("new_a1");
 
-      const result = await createAuctionHandler(mockCtx, { ...validArgs, isDraft: true });
+      const result = await createAuctionHandler(mockCtx, {
+        ...validArgs,
+        isDraft: true,
+      });
 
       expect(result).toBe("new_a1");
-      expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "draft", 1);
+      expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+        mockCtx,
+        "auctions",
+        "draft",
+        1
+      );
     });
 
     it("should create a pending_review auction successfully", async () => {
@@ -529,23 +605,33 @@ describe("Mutations Coverage", () => {
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
       mockCtx.db.insert.mockResolvedValue("new_a2");
 
-      const result = await createAuctionHandler(mockCtx, { ...validArgs, isDraft: false });
+      const result = await createAuctionHandler(mockCtx, {
+        ...validArgs,
+        isDraft: false,
+      });
 
       expect(result).toBe("new_a2");
-      expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "pending", 1);
+      expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+        mockCtx,
+        "auctions",
+        "pending",
+        1
+      );
     });
 
     it("should throw error for invalid duration in createAuction", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      await expect(createAuctionHandler(mockCtx, { ...validArgs, durationDays: 0 }))
-        .rejects.toThrow("Invalid duration");
+      await expect(
+        createAuctionHandler(mockCtx, { ...validArgs, durationDays: 0 })
+      ).rejects.toThrow("Invalid duration");
     });
 
     it("should throw error for invalid categoryId in createAuction", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue(null);
-      await expect(createAuctionHandler(mockCtx, validArgs))
-        .rejects.toThrow("Invalid categoryId");
+      await expect(createAuctionHandler(mockCtx, validArgs)).rejects.toThrow(
+        "Invalid categoryId"
+      );
     });
   });
 
@@ -572,7 +658,9 @@ describe("Mutations Coverage", () => {
     };
 
     it("should save a new draft", async () => {
-      vi.mocked(auth.requireVerified).mockResolvedValue({ userId: "u1" } as any);
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        userId: "u1",
+      } as any);
       mockCtx.db.insert.mockResolvedValue("new_a1");
 
       const result = await saveDraftHandler(mockCtx, validArgs);
@@ -581,21 +669,33 @@ describe("Mutations Coverage", () => {
     });
 
     it("should update an existing draft", async () => {
-      vi.mocked(auth.requireVerified).mockResolvedValue({ userId: "u1" } as any);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", sellerId: "u1", status: "draft" });
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        userId: "u1",
+      } as any);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u1",
+        status: "draft",
+      });
 
-      const result = await saveDraftHandler(mockCtx, { ...validArgs, auctionId: "a1" });
+      const result = await saveDraftHandler(mockCtx, {
+        ...validArgs,
+        auctionId: "a1",
+      });
 
       expect(result).toBe("a1");
       expect(mockCtx.db.patch).toHaveBeenCalled();
     });
 
     it("should throw error if auction not found in saveDraft", async () => {
-      vi.mocked(auth.requireVerified).mockResolvedValue({ userId: "u1" } as any);
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        userId: "u1",
+      } as any);
       mockCtx.db.get.mockResolvedValue(null);
 
-      await expect(saveDraftHandler(mockCtx, { ...validArgs, auctionId: "a1" }))
-        .rejects.toThrow("Auction not found");
+      await expect(
+        saveDraftHandler(mockCtx, { ...validArgs, auctionId: "a1" })
+      ).rejects.toThrow("Auction not found");
     });
   });
 });

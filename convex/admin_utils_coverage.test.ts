@@ -1,4 +1,3 @@
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { countUsers, logAudit, updateCounter } from "./admin_utils";
@@ -34,7 +33,10 @@ describe("Admin Utils Coverage", () => {
         unique: vi.fn().mockResolvedValue({ total: 100, verified: 40 }),
       });
 
-      const result = await countUsers(mockCtx, { isVerified: false, useCounter: true });
+      const result = await countUsers(mockCtx, {
+        isVerified: false,
+        useCounter: true,
+      });
       expect(result).toBe(60);
     });
 
@@ -50,10 +52,16 @@ describe("Admin Utils Coverage", () => {
             ]),
           };
         }
-        return { withIndex: vi.fn().mockReturnThis(), unique: vi.fn().mockResolvedValue(null) };
+        return {
+          withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(null),
+        };
       });
 
-      const result = await countUsers(mockCtx, { kycStatus: "pending", isVerified: false });
+      const result = await countUsers(mockCtx, {
+        kycStatus: "pending",
+        isVerified: false,
+      });
       expect(result).toBe(1);
     });
 
@@ -63,13 +71,15 @@ describe("Admin Utils Coverage", () => {
         if (table === "profiles") {
           return {
             withIndex: vi.fn().mockReturnThis(),
-            collect: vi.fn().mockResolvedValue([
-              { isVerified: true },
-              { isVerified: false },
-            ]),
+            collect: vi
+              .fn()
+              .mockResolvedValue([{ isVerified: true }, { isVerified: false }]),
           };
         }
-        return { withIndex: vi.fn().mockReturnThis(), unique: vi.fn().mockResolvedValue(null) };
+        return {
+          withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(null),
+        };
       });
 
       // To trigger the else branch in complex case, we need NO role and NO kycStatus
@@ -82,13 +92,18 @@ describe("Admin Utils Coverage", () => {
 
   describe("logAudit extra paths", () => {
     it("should use _id if userId is missing", async () => {
-      vi.mocked(auth.getAuthUser).mockResolvedValue({ _id: "auth123" } as Awaited<ReturnType<typeof auth.getAuthUser>>);
-      
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "auth123",
+      } as Awaited<ReturnType<typeof auth.getAuthUser>>);
+
       await logAudit(mockCtx, { action: "TEST" });
-      
-      expect(mockCtx.db.insert).toHaveBeenCalledWith("auditLogs", expect.objectContaining({
-        adminId: "auth123"
-      }));
+
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auditLogs",
+        expect.objectContaining({
+          adminId: "auth123",
+        })
+      );
     });
 
     it("should warn if updateCounter fails in logAudit", async () => {
@@ -103,27 +118,43 @@ describe("Admin Utils Coverage", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       await logAudit(mockCtx, { action: "TEST" });
-      
-      expect(spy).toHaveBeenCalledWith(expect.stringContaining("Failed to update auditLogs counter"), expect.anything());
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to update auditLogs counter"),
+        expect.anything()
+      );
       spy.mockRestore();
     });
   });
 
   describe("updateCounter initialization", () => {
     it("should initialize all fields when creating new counter", async () => {
-      const fields = ["total", "active", "pending", "verified", "open", "resolved", "draft", "salesVolume", "soldCount"] as const;
-      
+      const fields = [
+        "total",
+        "active",
+        "pending",
+        "verified",
+        "open",
+        "resolved",
+        "draft",
+        "salesVolume",
+        "soldCount",
+      ] as const;
+
       for (const field of fields) {
         mockCtx.db.query = vi.fn().mockReturnValue({
           withIndex: vi.fn().mockReturnThis(),
           unique: vi.fn().mockResolvedValue(null),
         });
-        
+
         await updateCounter(mockCtx, "test", field, 10);
-        
-        expect(mockCtx.db.insert).toHaveBeenCalledWith("counters", expect.objectContaining({
-          [field]: 10
-        }));
+
+        expect(mockCtx.db.insert).toHaveBeenCalledWith(
+          "counters",
+          expect.objectContaining({
+            [field]: 10,
+          })
+        );
       }
     });
 
@@ -135,11 +166,16 @@ describe("Admin Utils Coverage", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       await updateCounter(mockCtx, "test", "total", -10);
-      
-      expect(spy).toHaveBeenCalledWith(expect.stringContaining("Counter underflow"));
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("c1", expect.objectContaining({
-        total: 0
-      }));
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Counter underflow")
+      );
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "c1",
+        expect.objectContaining({
+          total: 0,
+        })
+      );
       spy.mockRestore();
     });
   });

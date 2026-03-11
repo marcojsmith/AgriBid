@@ -7,8 +7,12 @@ import { MobileMenu } from "./MobileMenu";
 
 // Mock convex/react
 vi.mock("convex/react", () => ({
-  Authenticated: ({ children }: React.PropsWithChildren) => <div data-testid="authenticated">{children}</div>,
-  Unauthenticated: ({ children }: React.PropsWithChildren) => <div data-testid="unauthenticated">{children}</div>,
+  Authenticated: ({ children }: React.PropsWithChildren) => (
+    <div data-testid="authenticated">{children}</div>
+  ),
+  Unauthenticated: ({ children }: React.PropsWithChildren) => (
+    <div data-testid="unauthenticated">{children}</div>
+  ),
 }));
 
 describe("MobileMenu", () => {
@@ -23,8 +27,8 @@ describe("MobileMenu", () => {
         { name: "Home", href: "/" },
         { name: "Auctions", href: "/auctions" },
       ],
-      userData: { 
-        name: "Test User", 
+      userData: {
+        name: "Test User",
         email: "test@example.com",
         _id: "user123",
         userId: "user123",
@@ -94,7 +98,11 @@ describe("MobileMenu", () => {
   it("should show verification CTA for unverified users", () => {
     render(
       <MemoryRouter>
-        <MobileMenu {...defaultProps} isVerified={false} kycStatus="not_started" />
+        <MobileMenu
+          {...defaultProps}
+          isVerified={false}
+          kycStatus="not_started"
+        />
       </MemoryRouter>
     );
 

@@ -53,14 +53,27 @@ describe("auction approval mutations", () => {
       });
 
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, expect.objectContaining({
-        status: "active",
-        startTime: expect.any(Number),
-        endTime: expect.any(Number),
-        hiddenByFlags: false,
-      }));
-      expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "pending", -1);
-      expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "active", 1);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        auctionId,
+        expect.objectContaining({
+          status: "active",
+          startTime: expect.any(Number),
+          endTime: expect.any(Number),
+          hiddenByFlags: false,
+        })
+      );
+      expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+        mockCtx,
+        "auctions",
+        "pending",
+        -1
+      );
+      expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+        mockCtx,
+        "auctions",
+        "active",
+        1
+      );
     });
 
     it("should throw error if auction not found", async () => {
@@ -68,8 +81,9 @@ describe("auction approval mutations", () => {
       mockCtx.db.get.mockResolvedValue(null);
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
 
-      await expect(approveAuctionHandler(mockCtx, { auctionId: "a1" as any }))
-        .rejects.toThrow(ConvexError);
+      await expect(
+        approveAuctionHandler(mockCtx, { auctionId: "a1" as any })
+      ).rejects.toThrow(ConvexError);
     });
 
     it("should throw error if auction not in pending_review", async () => {
@@ -77,8 +91,9 @@ describe("auction approval mutations", () => {
       mockCtx.db.get.mockResolvedValue({ status: "active" });
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
 
-      await expect(approveAuctionHandler(mockCtx, { auctionId: "a1" as any }))
-        .rejects.toThrow("Only auctions in pending_review can be approved");
+      await expect(
+        approveAuctionHandler(mockCtx, { auctionId: "a1" as any })
+      ).rejects.toThrow("Only auctions in pending_review can be approved");
     });
   });
 
@@ -97,11 +112,19 @@ describe("auction approval mutations", () => {
       const result = await rejectAuctionHandler(mockCtx, { auctionId });
 
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, expect.objectContaining({
-        status: "rejected",
-        hiddenByFlags: false,
-      }));
-      expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "pending", -1);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        auctionId,
+        expect.objectContaining({
+          status: "rejected",
+          hiddenByFlags: false,
+        })
+      );
+      expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+        mockCtx,
+        "auctions",
+        "pending",
+        -1
+      );
     });
   });
 });

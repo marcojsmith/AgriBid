@@ -41,7 +41,7 @@ describe("dismissFlag mutation", () => {
   it("should allow an admin to dismiss a flag and restore the auction", async () => {
     const flagId = "flag123" as Id<"auctionFlags">;
     const auctionId = "auction123" as Id<"auctions">;
-    
+
     const flagDoc = {
       _id: flagId,
       auctionId,
@@ -68,7 +68,9 @@ describe("dismissFlag mutation", () => {
     });
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
-    vi.mocked(auth.getAuthUser).mockResolvedValue({ userId: "admin123" } as any);
+    vi.mocked(auth.getAuthUser).mockResolvedValue({
+      userId: "admin123",
+    } as any);
     vi.mocked(auth.resolveUserId).mockReturnValue("admin123");
 
     const result = await dismissFlagHandler(mockCtx, {
@@ -78,24 +80,40 @@ describe("dismissFlag mutation", () => {
 
     expect(result.success).toBe(true);
     expect(result.auctionRestored).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(flagId, { status: "dismissed" });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(flagId, {
+      status: "dismissed",
+    });
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "active",
       hiddenByFlags: false,
     });
-    expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "pending", -1);
-    expect(adminUtils.updateCounter).toHaveBeenCalledWith(mockCtx, "auctions", "active", 1);
-    expect(adminUtils.logAudit).toHaveBeenCalledWith(mockCtx, expect.objectContaining({
-      action: "DISMISS_FLAG",
-    }));
+    expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+      mockCtx,
+      "auctions",
+      "pending",
+      -1
+    );
+    expect(adminUtils.updateCounter).toHaveBeenCalledWith(
+      mockCtx,
+      "auctions",
+      "active",
+      1
+    );
+    expect(adminUtils.logAudit).toHaveBeenCalledWith(
+      mockCtx,
+      expect.objectContaining({
+        action: "DISMISS_FLAG",
+      })
+    );
   });
 
   it("should fail if not an admin", async () => {
     mockCtx = setupMockCtx();
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
-    await expect(dismissFlagHandler(mockCtx, { flagId: "f1" as any }))
-      .rejects.toThrow("Not authorized: Admin privileges required");
+    await expect(
+      dismissFlagHandler(mockCtx, { flagId: "f1" as any })
+    ).rejects.toThrow("Not authorized: Admin privileges required");
   });
 
   it("should throw error if flag not found", async () => {
@@ -104,8 +122,9 @@ describe("dismissFlag mutation", () => {
     mockCtx.db.get.mockResolvedValue(null);
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    await expect(dismissFlagHandler(mockCtx, { flagId }))
-      .rejects.toThrow(ConvexError);
+    await expect(dismissFlagHandler(mockCtx, { flagId })).rejects.toThrow(
+      ConvexError
+    );
   });
 
   it("should fail if flag is already reviewed", async () => {
@@ -119,7 +138,8 @@ describe("dismissFlag mutation", () => {
     mockCtx.db.get.mockResolvedValue(flagDoc);
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    await expect(dismissFlagHandler(mockCtx, { flagId }))
-      .rejects.toThrow("Flag has already been reviewed");
+    await expect(dismissFlagHandler(mockCtx, { flagId })).rejects.toThrow(
+      "Flag has already been reviewed"
+    );
   });
 });

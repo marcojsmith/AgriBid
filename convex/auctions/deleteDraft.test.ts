@@ -13,7 +13,6 @@ vi.mock("../lib/auth", () => ({
   resolveUserId: vi.fn((user) => user.id),
 }));
 
-
 describe("deleteDraft mutation", () => {
   let mockCtx: any;
 
@@ -30,8 +29,12 @@ describe("deleteDraft mutation", () => {
       query: vi.fn(() => ({
         withIndex: vi.fn().mockReturnThis(),
         filter: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
-        unique: vi.fn().mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
+        first: vi
+          .fn()
+          .mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
+        unique: vi
+          .fn()
+          .mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
       })),
     };
 
@@ -62,14 +65,20 @@ describe("deleteDraft mutation", () => {
 
     expect(result.success).toBe(true);
     expect(mockCtx.db.delete).toHaveBeenCalledWith(auctionId);
-    
+
     // Check that counters were updated
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("counter_id", expect.objectContaining({
-      draft: 0
-    }));
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("counter_id", expect.objectContaining({
-      total: 0
-    }));
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "counter_id",
+      expect.objectContaining({
+        draft: 0,
+      })
+    );
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "counter_id",
+      expect.objectContaining({
+        total: 0,
+      })
+    );
     // Should delete images
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("img1");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("img2");
@@ -80,8 +89,9 @@ describe("deleteDraft mutation", () => {
     mockCtx = setupMockCtx(null);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123" as any);
 
-    await expect(deleteDraftHandler(mockCtx, { auctionId: "nonexistent" as any }))
-      .rejects.toThrow("Auction not found");
+    await expect(
+      deleteDraftHandler(mockCtx, { auctionId: "nonexistent" as any })
+    ).rejects.toThrow("Auction not found");
   });
 
   it("should fail if not in draft status", async () => {
@@ -94,7 +104,8 @@ describe("deleteDraft mutation", () => {
     mockCtx = setupMockCtx(mockAuction);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1" as any);
 
-    await expect(deleteDraftHandler(mockCtx, { auctionId: "a1" as any }))
-      .rejects.toThrow("Only draft auctions can be deleted");
+    await expect(
+      deleteDraftHandler(mockCtx, { auctionId: "a1" as any })
+    ).rejects.toThrow("Only draft auctions can be deleted");
   });
 });

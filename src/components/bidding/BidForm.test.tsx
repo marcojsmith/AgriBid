@@ -86,7 +86,9 @@ describe("BidForm", () => {
 
   it("should handle proxy bid submission", () => {
     const mockOnBid = vi.fn();
-    render(<BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />);
+    render(
+      <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
+    );
 
     // Enable proxy bidding
     const proxyCheckbox = screen.getByLabelText(/Enable Auto-bid/i);
@@ -114,8 +116,10 @@ describe("BidForm", () => {
     const maxBidInput = screen.getByPlaceholderText(/Enter max amount/i);
     fireEvent.change(maxBidInput, { target: { value: "50400" } });
 
-    expect(screen.getByText(/Max bid must be at least R50,500/i)).toBeInTheDocument();
-    
+    expect(
+      screen.getByText(/Max bid must be at least R50,500/i)
+    ).toBeInTheDocument();
+
     const bidButton = screen.getByRole("button", { name: /Place Bid/i });
     expect(bidButton).toBeDisabled();
   });
@@ -132,11 +136,11 @@ describe("BidForm", () => {
     const maxBidInput = screen.getByPlaceholderText(/Enter max amount/i);
     fireEvent.change(maxBidInput, { target: { value: "51500" } });
 
-    const quickBids = screen.getAllByRole("button").filter(btn => btn.textContent?.includes("Quick Bid"));
+    const quickBids = screen
+      .getAllByRole("button")
+      .filter((btn) => btn.textContent?.includes("Quick Bid"));
     expect(quickBids[0]).not.toBeDisabled(); // 50500
     expect(quickBids[1]).not.toBeDisabled(); // 51000
     expect(quickBids.length).toBe(2); // 53000 should be filtered out
   });
 });
-
-

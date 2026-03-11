@@ -33,7 +33,7 @@ describe("PresenceListener", () => {
     vi.useFakeTimers();
     vi.mocked(useSession).mockReturnValue({ data: mockSession } as any);
     vi.mocked(useMutation).mockReturnValue(mockHeartbeat);
-    
+
     // Default visibilityState to visible
     Object.defineProperty(document, "visibilityState", {
       configurable: true,

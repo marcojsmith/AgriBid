@@ -44,25 +44,33 @@ describe("adminUpdateAuction mutation", () => {
 
     const result = await adminUpdateAuctionHandler(mockCtx, {
       auctionId,
-      updates: { title: "New Title", status: "active", endTime: Date.now() + 10000 }
+      updates: {
+        title: "New Title",
+        status: "active",
+        endTime: Date.now() + 10000,
+      },
     });
 
-
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, expect.objectContaining({
-      title: "New Title",
-      status: "active",
-      hiddenByFlags: false,
-    }));
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      auctionId,
+      expect.objectContaining({
+        title: "New Title",
+        status: "active",
+        hiddenByFlags: false,
+      })
+    );
   });
 
   it("should fail if auction not found", async () => {
     mockCtx.db.get.mockResolvedValue(null);
     vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "admin" } as any);
 
-    await expect(adminUpdateAuctionHandler(mockCtx, {
-      auctionId: "none" as any,
-      updates: { title: "New" }
-    })).rejects.toThrow("Auction not found");
+    await expect(
+      adminUpdateAuctionHandler(mockCtx, {
+        auctionId: "none" as any,
+        updates: { title: "New" },
+      })
+    ).rejects.toThrow("Auction not found");
   });
 });

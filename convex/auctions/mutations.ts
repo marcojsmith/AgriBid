@@ -782,7 +782,6 @@ export const deleteDraft = mutation({
   handler: deleteDraftHandler,
 });
 
-
 /**
  * Handler for updating an auction's condition report.
  *
@@ -1268,7 +1267,6 @@ export const adminUpdateAuction = mutation({
   handler: adminUpdateAuctionHandler,
 });
 
-
 /**
  *
  * @param ctx
@@ -1442,15 +1440,13 @@ export const closeAuctionEarlyHandler = async (
 
   let highestBid: Doc<"bids"> | undefined;
   if (hasBids) {
-    highestBid = validBids.reduce(
-      (prev: Doc<"bids">, current: Doc<"bids">) => {
-        if (current.amount > prev.amount) return current;
-        if (current.amount === prev.amount) {
-          return current.timestamp < prev.timestamp ? current : prev;
-        }
-        return prev;
+    highestBid = validBids.reduce((prev: Doc<"bids">, current: Doc<"bids">) => {
+      if (current.amount > prev.amount) return current;
+      if (current.amount === prev.amount) {
+        return current.timestamp < prev.timestamp ? current : prev;
       }
-    );
+      return prev;
+    });
   }
 
   const reserveMet =
@@ -1510,4 +1506,3 @@ export const closeAuctionEarly = mutation({
   }),
   handler: closeAuctionEarlyHandler,
 });
-

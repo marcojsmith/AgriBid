@@ -1,19 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
-import { 
-  getAuthUser, 
-  requireAuth, 
-  getAuthenticatedUserId, 
-  getCallerRole, 
-  requireAdmin, 
+import {
+  getAuthUser,
+  requireAuth,
+  getAuthenticatedUserId,
+  getCallerRole,
+  requireAdmin,
   getAuthWithProfile,
   requireProfile,
   requireVerified,
   requireVerifiedSeller,
   resolveUserId,
   UnauthorizedError,
-  VERIFIED_REQUIRED_MESSAGE
+  VERIFIED_REQUIRED_MESSAGE,
 } from "./auth";
 import { authComponent } from "../auth";
 
@@ -44,7 +44,6 @@ describe("Auth Utilities", () => {
     (mockCtx as any).queryMock = queryMock;
   });
 
-
   describe("getAuthUser", () => {
     it("should return null if no identity", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue(null);
@@ -62,24 +61,32 @@ describe("Auth Utilities", () => {
       const mockUser = { _id: "u1", email: "test@example.com" };
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
       vi.mocked(authComponent.getAuthUser).mockResolvedValue(mockUser as any);
-      
+
       const user = await getAuthUser(mockCtx);
       expect(user).toEqual(mockUser);
     });
 
     it("should fallback to manual lookup if authComponent fails with ArgumentValidationError", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(new Error("ArgumentValidationError: ..."));
-      
-      const mockUserRecord = { _id: "u1", userId: "user_1", email: "test@example.com" };
+      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
+        new Error("ArgumentValidationError: ...")
+      );
+
+      const mockUserRecord = {
+        _id: "u1",
+        userId: "user_1",
+        email: "test@example.com",
+      };
       mockCtx.db.get.mockResolvedValue(mockUserRecord);
 
       const user = await getAuthUser(mockCtx);
-      expect(user).toEqual(expect.objectContaining({
-        _id: "u1",
-        userId: "user_1",
-        email: "test@example.com"
-      }));
+      expect(user).toEqual(
+        expect.objectContaining({
+          _id: "u1",
+          userId: "user_1",
+          email: "test@example.com",
+        })
+      );
     });
   });
 
@@ -102,9 +109,14 @@ describe("Auth Utilities", () => {
   describe("getCallerRole", () => {
     it("should return role from profile", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", role: "seller" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        role: "seller",
+      });
 
       const role = await getCallerRole(mockCtx);
       expect(role).toBe("seller");
@@ -120,8 +132,13 @@ describe("Auth Utilities", () => {
   describe("requireAdmin", () => {
     it("should succeed if user is admin", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", role: "admin" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        role: "admin",
+      });
 
       const user = await requireAdmin(mockCtx);
       expect(user).toBeDefined();
@@ -129,8 +146,13 @@ describe("Auth Utilities", () => {
 
     it("should throw if user is not admin", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", role: "buyer" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        role: "buyer",
+      });
 
       await expect(requireAdmin(mockCtx)).rejects.toThrow(UnauthorizedError);
     });
@@ -139,8 +161,13 @@ describe("Auth Utilities", () => {
   describe("requireVerified", () => {
     it("should succeed if user is verified", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", isVerified: true });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        isVerified: true,
+      });
 
       const result = await requireVerified(mockCtx);
       expect(result.profile.isVerified).toBe(true);
@@ -148,18 +175,31 @@ describe("Auth Utilities", () => {
 
     it("should throw if user is not verified", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", isVerified: false });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        isVerified: false,
+      });
 
-      await expect(requireVerified(mockCtx)).rejects.toThrow(VERIFIED_REQUIRED_MESSAGE);
+      await expect(requireVerified(mockCtx)).rejects.toThrow(
+        VERIFIED_REQUIRED_MESSAGE
+      );
     });
   });
 
   describe("requireVerifiedSeller", () => {
     it("should succeed if verified seller", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", isVerified: true, role: "seller" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        isVerified: true,
+        role: "seller",
+      });
 
       const result = await requireVerifiedSeller(mockCtx);
       expect(result.profile.role).toBe("seller");
@@ -167,8 +207,14 @@ describe("Auth Utilities", () => {
 
     it("should succeed if verified admin", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", isVerified: true, role: "admin" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        isVerified: true,
+        role: "admin",
+      });
 
       const result = await requireVerifiedSeller(mockCtx);
       expect(result.profile.role).toBe("admin");
@@ -176,10 +222,18 @@ describe("Auth Utilities", () => {
 
     it("should throw if buyer", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u1" } as any);
-      mockCtx.queryMock.unique.mockResolvedValue({ userId: "u1", isVerified: true, role: "buyer" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      mockCtx.queryMock.unique.mockResolvedValue({
+        userId: "u1",
+        isVerified: true,
+        role: "buyer",
+      });
 
-      await expect(requireVerifiedSeller(mockCtx)).rejects.toThrow("Seller account required");
+      await expect(requireVerifiedSeller(mockCtx)).rejects.toThrow(
+        "Seller account required"
+      );
     });
   });
 });
