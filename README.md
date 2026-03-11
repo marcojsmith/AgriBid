@@ -10,7 +10,7 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 - **Auction Lifecycle Management**:
   - **Soft Close (Anti-Sniping)**: Automatically extends auctions by 2 minutes if a bid is placed in the final 2 minutes.
   - **Automated Settlement**: Integrated cron jobs to finalize auctions as "Sold" (if reserve is met) or "Unsold".
-- **Advanced Listing Wizard**: Multi-step flow for equipment details, condition reports, image slot management (Front, Engine, Cabin, Rear), and pricing.
+- **Advanced Listing Wizard**: Multi-step flow with hierarchical equipment selection (Category → Make → Model), condition reports, image slot management (Front, Engine, Cabin, Rear), and pricing.
 - **User Dashboards**:
   - **Buyer Dashboard**: Track active bids, winning items, and lost auctions.
   - **Seller Dashboard**: Manage equipment inventory, track listing status, and view sales.
@@ -18,6 +18,9 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 - **Live Notifications**: Instant toast notifications for outbids, auction extensions, and final settlement results.
 - **Admin Moderation & Management**:
   - Dedicated dashboard for reviewing and approving/rejecting equipment listings.
+  - **Equipment Catalog**: Comprehensive management system for equipment metadata:
+    - **Category Manager**: CRUD operations for top-level equipment categories with soft-delete support.
+    - **Metadata Catalog**: Hierarchical management of manufacturers (makes) and models with category assignment via accordion-based UI.
   - **KYC Workflows**: Review and approve/reject seller verification submissions with detailed document review.
   - **Bulk Operations**: Process multiple auctions simultaneously with status updates and audit trails.
   - **Real-Time Statistics**: Financial metrics, user counts, auction states, and support ticket tracking.
@@ -52,13 +55,14 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 AgriBid/
 ├── app/                     # Main application code
 │   ├── convex/              # Backend (modular architecture)
-│   │   ├── admin/           # Admin operations (KYC, statistics, moderation)
+│   │   ├── admin/           # Admin operations (KYC, statistics, moderation, equipment metadata)
 │   │   ├── auctions/        # Auction logic (queries, mutations, bidding, settlement)
 │   │   ├── lib/             # Shared utilities (auth, encryption)
 │   │   ├── schema.ts        # Database schema definitions
 │   │   └── crons.ts        # Scheduled tasks (auction settlement)
 │   └── src/                 # React frontend
 │       ├── components/      # Reusable UI & business logic components
+│       │   └── admin/       # Admin UI components (CategoryManager, MetadataCatalog, etc.)
 │       ├── contexts/        # React contexts (admin stats, user profiles)
 │       ├── lib/             # Utilities and Auth client
 │       └── pages/           # Page components
@@ -138,10 +142,16 @@ For consistency, this project follows these naming rules:
 
 ### Seeding Data
 
-To populate your local environment with mock equipment and auctions:
+To populate your local environment with equipment metadata (categories, manufacturers, models), mock auctions, and recalculated system metrics:
 ```bash
 bunx convex run seed
 ```
+
+This will seed:
+- Equipment categories (e.g., Tractors, Harvesters, Implements)
+- Extensive list of manufacturers and models focused on the Southern African market
+- Sample auctions with category linkage
+- System metrics (auction counts, bid counts, user counts, etc.)
 
 ## 🏗 Development Workflow
 
