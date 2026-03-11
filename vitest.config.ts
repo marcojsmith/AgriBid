@@ -18,12 +18,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      exclude: ["src/test/**", "src/components/ui/**"],
+      exclude: ["src/test/**", "src/components/ui/**", "node_modules/**", "**/*.test.ts", "**/*.spec.ts", "**/*.d.ts"],
       thresholds: {
-        statements: 60,
-        branches: 59,
-        functions: 62,
-        lines: 61,
+        statements: 76,
+        branches: 69,
+        functions: 68,
+        lines: 77,
       },
     },
   },

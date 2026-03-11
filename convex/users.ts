@@ -114,87 +114,169 @@ export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
 }
 
 /**
+ * Handler for synchronizing user with profile.
+ * @param ctx
+ */
+export const syncUserHandler = async (ctx: MutationCtx) => {
+  try {
+    const authUser = await requireAuth(ctx);
+
+    // Use userId if set (mocks), otherwise fall back to primary id
+    const linkId = resolveUserId(authUser);
+    if (!linkId) return null;
+
+    const existingProfile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", linkId))
+      .unique();
+
+    if (!existingProfile) {
+      const now = Date.now();
+      await ctx.db.insert("profiles", {
+        userId: linkId,
+        role: "buyer", // Default role
+        isVerified: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await updateCounter(ctx, "profiles", "total", 1);
+    }
+
+    return { success: true };
+  } catch (err) {
+    // Log errors that aren't just unauthenticated states
+    if (err instanceof Error && !err.message.includes("Unauthenticated")) {
+      console.error("Error in syncUser:", err);
+    }
+    return null;
+  }
+};
+
+/**
  * Synchronise the authenticated user with their application profile.
- * Creates a default 'buyer' profile if one doesn't exist.
  */
 export const syncUser = mutation({
   args: {},
   returns: v.union(v.null(), v.object({ success: v.boolean() })),
-  handler: async (ctx) => {
-    try {
-      const authUser = await requireAuth(ctx);
-
-      // Use userId if set (mocks), otherwise fall back to primary id
-      const linkId = resolveUserId(authUser);
-      if (!linkId) return null;
-
-      const existingProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", linkId))
-        .unique();
-
-      if (!existingProfile) {
-        const now = Date.now();
-        await ctx.db.insert("profiles", {
-          userId: linkId,
-          role: "buyer", // Default role
-          isVerified: false,
-          createdAt: now,
-          updatedAt: now,
-        });
-        await updateCounter(ctx, "profiles", "total", 1);
-      }
-
-      return { success: true };
-    } catch (err) {
-      // Log errors that aren't just unauthenticated states
-      if (err instanceof Error && !err.message.includes("Unauthenticated")) {
-        console.error("Error in syncUser:", err);
-      }
-      return null;
-    }
-  },
+  handler: syncUserHandler,
 });
 
 /**
- * Fetch the full profile for the authenticated user,
- * merging core identity and application metadata.
+ * Handler for getting current user's profile.
+ * @param ctx
+ */
+export const getMyProfileHandler = async (ctx: QueryCtx) => {
+  try {
+    const authUser = await getAuthUser(ctx);
+    if (!authUser) return null;
+
+    const linkId = resolveUserId(authUser);
+    if (!linkId) return null;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", linkId))
+      .unique();
+
+    return {
+      _id: authUser._id,
+      userId: authUser.userId ?? undefined,
+      name: authUser.name ?? undefined,
+      email: authUser.email ?? undefined,
+      profile: profile ?? null,
+    };
+  } catch (err) {
+    if (err instanceof Error && !err.message.includes("Unauthenticated")) {
+      console.error("Error in getMyProfile:", err);
+    }
+    return null;
+  }
+};
+
+/**
+ * Fetch the full profile for the authenticated user.
  */
 export const getMyProfile = query({
   args: {},
   returns: v.union(v.null(), UserProfileValidator),
-  handler: async (ctx) => {
-    try {
-      const authUser = await getAuthUser(ctx);
-      if (!authUser) return null;
-
-      const linkId = resolveUserId(authUser);
-      if (!linkId) return null;
-
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", linkId))
-        .unique();
-
-      return {
-        _id: authUser._id,
-        userId: authUser.userId ?? undefined,
-        name: authUser.name ?? undefined,
-        email: authUser.email ?? undefined,
-        profile: profile ?? null,
-      };
-    } catch (err) {
-      if (err instanceof Error && !err.message.includes("Unauthenticated")) {
-        console.error("Error in getMyProfile:", err);
-      }
-      return null;
-    }
-  },
+  handler: getMyProfileHandler,
 });
 
 /**
+ * Handler for listing all profiles (admin).
+ * @param ctx
+ * @param args
+ * @param args.paginationOpts
+ */
+export const listAllProfilesHandler = async (
+  ctx: QueryCtx,
+  args: { paginationOpts: any }
+) => {
+  await requireAdmin(ctx);
+
+  const profilesQuery = ctx.db.query("profiles");
+  const [profiles, counter] = await Promise.all([
+    profilesQuery.order("desc").paginate(args.paginationOpts),
+    ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "profiles"))
+      .unique(),
+  ]);
+  const totalCount =
+    counter?.total ?? (await countQuery(ctx.db.query("profiles")));
+
+  const now = Date.now();
+
+  // Batch presence lookups for the entire page, deduplicating IDs first
+  const userIds = Array.from(new Set(profiles.page.map((p) => p.userId)));
+  const presences = await Promise.all(
+    userIds.map((uid) =>
+      ctx.db
+        .query("presence")
+        .withIndex("by_userId", (q) => q.eq("userId", uid))
+        .unique()
+    )
+  );
+  const presenceMap = new Map(
+    presences
+      .filter((presence): presence is Doc<"presence"> => presence !== null)
+      .map((presence) => [presence.userId, presence])
+  );
+
+  // Parallelize user lookups and map presence from the pre-fetched map
+  const page = await Promise.all(
+    profiles.page.map(async (p: Doc<"profiles">) => {
+      const user = await findUserById(ctx, p.userId);
+      const presence = presenceMap.get(p.userId);
+
+      const isOnline = presence
+        ? now - presence.updatedAt < PRESENCE_HEARTBEAT_THRESHOLD
+        : false;
+
+      return {
+        _id: p._id,
+        _creationTime: p._creationTime,
+        userId: p.userId,
+        role: p.role,
+        isVerified: p.isVerified,
+        kycStatus: p.kycStatus,
+        name: user?.name,
+        email: user?.email,
+        createdAt: p.createdAt,
+        isOnline,
+      };
+    })
+  );
+
+  return {
+    ...profiles,
+    page,
+    totalCount,
+  };
+};
+
+/**
  * Admin: List all profiles for moderation and management.
- * Restricted to callers with `admin` role.
  */
 export const listAllProfiles = query({
   args: {
@@ -221,70 +303,69 @@ export const listAllProfiles = query({
     pageStatus: v.optional(v.union(v.string(), v.null())),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-
-    const profilesQuery = ctx.db.query("profiles");
-    const [profiles, counter] = await Promise.all([
-      profilesQuery.order("desc").paginate(args.paginationOpts),
-      ctx.db
-        .query("counters")
-        .withIndex("by_name", (q) => q.eq("name", "profiles"))
-        .unique(),
-    ]);
-    const totalCount =
-      counter?.total ?? (await countQuery(ctx.db.query("profiles")));
-
-    const now = Date.now();
-
-    // Batch presence lookups for the entire page, deduplicating IDs first
-    const userIds = Array.from(new Set(profiles.page.map((p) => p.userId)));
-    const presences = await Promise.all(
-      userIds.map((uid) =>
-        ctx.db
-          .query("presence")
-          .withIndex("by_userId", (q) => q.eq("userId", uid))
-          .unique()
-      )
-    );
-    const presenceMap = new Map(
-      presences
-        .filter((presence): presence is Doc<"presence"> => presence !== null)
-        .map((presence) => [presence.userId, presence])
-    );
-
-    // Parallelize user lookups and map presence from the pre-fetched map
-    const page = await Promise.all(
-      profiles.page.map(async (p: Doc<"profiles">) => {
-        const user = await findUserById(ctx, p.userId);
-        const presence = presenceMap.get(p.userId);
-
-        const isOnline = presence
-          ? now - presence.updatedAt < PRESENCE_HEARTBEAT_THRESHOLD
-          : false;
-
-        return {
-          _id: p._id,
-          _creationTime: p._creationTime,
-          userId: p.userId,
-          role: p.role,
-          isVerified: p.isVerified,
-          kycStatus: p.kycStatus,
-          name: user?.name,
-          email: user?.email,
-          createdAt: p.createdAt,
-          isOnline,
-        };
-      })
-    );
-
-    return {
-      ...profiles,
-      page,
-      totalCount,
-    };
-  },
+  handler: listAllProfilesHandler,
 });
+
+/**
+ * Handler for fetching profile for KYC (admin).
+ * @param ctx
+ * @param root0
+ * @param root0.userId
+ */
+export const getProfileForKYCHandler = async (
+  ctx: any,
+  { userId }: { userId: string }
+) => {
+  await requireAdmin(ctx);
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q: any) => q.eq("userId", userId))
+    .unique();
+
+  if (!profile) return null;
+
+  const user = await findUserById(ctx, userId);
+
+  const [
+    decIdNumber,
+    decFirstName,
+    decLastName,
+    decPhone,
+    decEmail,
+    kycDocUrls,
+  ] = await Promise.all([
+    decryptPII(profile.idNumber),
+    decryptPII(profile.firstName),
+    decryptPII(profile.lastName),
+    decryptPII(profile.phoneNumber),
+    decryptPII(profile.kycEmail),
+    Promise.all(
+      (profile.kycDocuments || []).map(async (id: any) => {
+        const url = await ctx.storage.getUrl(id);
+        return url;
+      })
+    ),
+  ]);
+
+  await logAudit(ctx, {
+    action: "VIEW_KYC_DETAILS",
+    targetId: userId,
+    targetType: "user",
+  });
+
+  return {
+    ...profile,
+    name: user?.name,
+    email: user?.email,
+    firstName: decFirstName,
+    lastName: decLastName,
+    phoneNumber: decPhone,
+    kycEmail: decEmail,
+    idNumber: decIdNumber,
+    kycDocumentUrls: kycDocUrls.filter((url: any): url is string => url !== null),
+  };
+};
 
 /**
  * Admin: Fetch a full profile with decrypted PII for KYC review.
@@ -292,58 +373,57 @@ export const listAllProfiles = query({
 export const getProfileForKYC = mutation({
   args: { userId: v.string() },
   returns: v.union(v.null(), ProfileForKYCValidator),
-  handler: async (ctx, { userId }) => {
-    await requireAdmin(ctx);
+  handler: getProfileForKYCHandler,
+});
 
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
+/**
+ * Handler for verifying user (admin).
+ * @param ctx
+ * @param root0
+ * @param root0.userId
+ */
+export const verifyUserHandler = async (
+  ctx: MutationCtx,
+  { userId }: { userId: string }
+) => {
+  await requireAdmin(ctx);
 
-    if (!profile) return null;
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
 
-    const user = await findUserById(ctx, userId);
+  if (!profile) throw new Error("Profile not found");
 
-    const [
-      decIdNumber,
-      decFirstName,
-      decLastName,
-      decPhone,
-      decEmail,
-      kycDocUrls,
-    ] = await Promise.all([
-      decryptPII(profile.idNumber),
-      decryptPII(profile.firstName),
-      decryptPII(profile.lastName),
-      decryptPII(profile.phoneNumber),
-      decryptPII(profile.kycEmail),
-      Promise.all(
-        (profile.kycDocuments || []).map(async (id) => {
-          const url = await ctx.storage.getUrl(id);
-          return url;
-        })
-      ),
-    ]);
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) throw new Error("Not authenticated");
+  const adminId = authUser.userId ?? authUser._id;
 
-    await logAudit(ctx, {
-      action: "VIEW_KYC_DETAILS",
-      targetId: userId,
-      targetType: "user",
+  // Enforce KYC flow unless overridden (Admin override should be rare)
+  if (profile.kycStatus !== "verified") {
+    console.warn(
+      `Admin ${adminId} is manually verifying user ${userId} without completed KYC review.`
+    );
+  }
+
+  const now = Date.now();
+  if (!profile.isVerified) {
+    await ctx.db.patch(profile._id, {
+      isVerified: true,
+      updatedAt: now,
     });
 
-    return {
-      ...profile,
-      name: user?.name,
-      email: user?.email,
-      firstName: decFirstName,
-      lastName: decLastName,
-      phoneNumber: decPhone,
-      kycEmail: decEmail,
-      idNumber: decIdNumber,
-      kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
-    };
-  },
-});
+    await updateCounter(ctx, "profiles", "verified", 1);
+  }
+
+  await logAudit(ctx, {
+    action: "VERIFY_USER",
+    targetId: userId,
+    targetType: "user",
+  });
+
+  return { success: true };
+};
 
 /**
  * Admin: Mark a profile as verified.
@@ -351,46 +431,48 @@ export const getProfileForKYC = mutation({
 export const verifyUser = mutation({
   args: { userId: v.string() },
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, { userId }) => {
-    await requireAdmin(ctx);
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile) throw new Error("Profile not found");
-
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) throw new Error("Not authenticated");
-    const adminId = authUser.userId ?? authUser._id;
-
-    // Enforce KYC flow unless overridden (Admin override should be rare)
-    if (profile.kycStatus !== "verified") {
-      console.warn(
-        `Admin ${adminId} is manually verifying user ${userId} without completed KYC review.`
-      );
-    }
-
-    const now = Date.now();
-    if (!profile.isVerified) {
-      await ctx.db.patch(profile._id, {
-        isVerified: true,
-        updatedAt: now,
-      });
-
-      await updateCounter(ctx, "profiles", "verified", 1);
-    }
-
-    await logAudit(ctx, {
-      action: "VERIFY_USER",
-      targetId: userId,
-      targetType: "user",
-    });
-
-    return { success: true };
-  },
+  handler: verifyUserHandler,
 });
+
+/**
+ * Handler for promoting user to admin (admin).
+ * @param ctx
+ * @param root0
+ * @param root0.userId
+ */
+export const promoteToAdminHandler = async (
+  ctx: MutationCtx,
+  { userId }: { userId: string }
+) => {
+  await requireAdmin(ctx);
+
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity?.subject === userId) {
+    throw new ConvexError("Cannot change own role");
+  }
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+
+  if (!profile) throw new Error("Profile not found");
+  if (profile.role === "admin") return { success: true }; // No-op
+
+  const now = Date.now();
+  await ctx.db.patch(profile._id, {
+    role: "admin",
+    updatedAt: now,
+  });
+
+  await logAudit(ctx, {
+    action: "PROMOTE_ADMIN",
+    targetId: userId,
+    targetType: "user",
+  });
+
+  return { success: true };
+};
 
 /**
  * Admin: Promote a user to admin role.
@@ -398,37 +480,78 @@ export const verifyUser = mutation({
 export const promoteToAdmin = mutation({
   args: { userId: v.string() },
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, { userId }) => {
-    await requireAdmin(ctx);
-
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity?.subject === userId) {
-      throw new ConvexError("Cannot change own role");
-    }
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile) throw new Error("Profile not found");
-    if (profile.role === "admin") return { success: true }; // No-op
-
-    const now = Date.now();
-    await ctx.db.patch(profile._id, {
-      role: "admin",
-      updatedAt: now,
-    });
-
-    await logAudit(ctx, {
-      action: "PROMOTE_ADMIN",
-      targetId: userId,
-      targetType: "user",
-    });
-
-    return { success: true };
-  },
+  handler: promoteToAdminHandler,
 });
+
+/**
+ * Handler for submitting KYC documents.
+ * @param ctx
+ * @param args
+ * @param args.documents
+ * @param args.firstName
+ * @param args.lastName
+ * @param args.phoneNumber
+ * @param args.idNumber
+ * @param args.email
+ */
+export const submitKYCHandler = async (
+  ctx: MutationCtx,
+  args: {
+    documents: Id<"_storage">[];
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+    idNumber: string;
+    email: string;
+  }
+) => {
+  const authUser = await requireAuth(ctx);
+  const userId = resolveUserId(authUser);
+  if (!userId) throw new Error("Unable to determine user ID");
+
+  // Validate documents are actual storage IDs
+  for (const id of args.documents) {
+    const url = await ctx.storage.getUrl(id);
+    if (!url) {
+      throw new Error(`Invalid storage ID provided: ${id}`);
+    }
+  }
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+
+  if (!profile) throw new Error("Profile not found");
+
+  const [encFirstName, encLastName, encPhone, encIdNumber, encEmail] =
+    await Promise.all([
+      encryptPII(args.firstName),
+      encryptPII(args.lastName),
+      encryptPII(args.phoneNumber),
+      encryptPII(args.idNumber),
+      encryptPII(args.email),
+    ]);
+
+  const wasPending = profile.kycStatus === "pending";
+
+  await ctx.db.patch(profile._id, {
+    kycStatus: "pending",
+    kycDocuments: args.documents,
+    firstName: encFirstName,
+    lastName: encLastName,
+    phoneNumber: encPhone,
+    idNumber: encIdNumber,
+    kycEmail: encEmail,
+    updatedAt: Date.now(),
+  });
+
+  if (!wasPending) {
+    await updateCounter(ctx, "profiles", "pending", 1);
+  }
+
+  return { success: true };
+};
 
 /**
  * User: Submit KYC documents for verification.
@@ -443,117 +566,127 @@ export const submitKYC = mutation({
     email: v.string(),
   },
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    const authUser = await requireAuth(ctx);
-    const userId = resolveUserId(authUser);
-    if (!userId) throw new Error("Unable to determine user ID");
-
-    // Validate documents are actual storage IDs
-    for (const id of args.documents) {
-      const url = await ctx.storage.getUrl(id);
-      if (!url) {
-        throw new Error(`Invalid storage ID provided: ${id}`);
-      }
-    }
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile) throw new Error("Profile not found");
-
-    const [encFirstName, encLastName, encPhone, encIdNumber, encEmail] =
-      await Promise.all([
-        encryptPII(args.firstName),
-        encryptPII(args.lastName),
-        encryptPII(args.phoneNumber),
-        encryptPII(args.idNumber),
-        encryptPII(args.email),
-      ]);
-
-    const wasPending = profile.kycStatus === "pending";
-
-    await ctx.db.patch(profile._id, {
-      kycStatus: "pending",
-      kycDocuments: args.documents,
-      firstName: encFirstName,
-      lastName: encLastName,
-      phoneNumber: encPhone,
-      idNumber: encIdNumber,
-      kycEmail: encEmail,
-      updatedAt: Date.now(),
-    });
-
-    if (!wasPending) {
-      await updateCounter(ctx, "profiles", "pending", 1);
-    }
-
-    return { success: true };
-  },
+  handler: submitKYCHandler,
 });
 
 /**
- * User: Fetch their own decrypted KYC details for viewing and editing.
+ * Handler for getting user's own KYC details.
+ * @param ctx
+ */
+export const getMyKYCDetailsHandler = async (ctx: QueryCtx) => {
+  try {
+    const authUser = await getAuthUser(ctx);
+    if (!authUser) return null;
+
+    const linkId = resolveUserId(authUser);
+    if (!linkId) return null;
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", linkId))
+      .unique();
+
+    if (!profile) return null;
+
+    const [
+      decFirstName,
+      decLastName,
+      decIdNumber,
+      decPhone,
+      decEmail,
+      kycDocUrls,
+    ] = await Promise.all([
+      decryptPII(profile.firstName),
+      decryptPII(profile.lastName),
+      decryptPII(profile.idNumber),
+      decryptPII(profile.phoneNumber),
+      decryptPII(profile.kycEmail),
+      Promise.all(
+        (profile.kycDocuments || []).map(async (id) => {
+          const url = await ctx.storage.getUrl(id);
+          return url;
+        })
+      ),
+    ]);
+
+    return {
+      firstName: decFirstName,
+      lastName: decLastName,
+      idNumber: decIdNumber,
+      phoneNumber: decPhone,
+      kycEmail: decEmail,
+      kycDocumentIds: profile.kycDocuments,
+      kycDocumentUrls: kycDocUrls.filter(
+        (url): url is string => url !== null
+      ),
+    };
+  } catch (err) {
+    if (err instanceof Error && !err.message.includes("Unauthenticated")) {
+      console.error("Error in getMyKYCDetails:", err);
+    }
+    return null;
+  }
+};
+
+/**
+ * User: Fetch their own decrypted KYC details.
  */
 export const getMyKYCDetails = query({
   args: {},
   returns: v.union(v.null(), KYCDetailsValidator),
-  handler: async (ctx) => {
-    try {
-      const authUser = await getAuthUser(ctx);
-      if (!authUser) return null;
-
-      const linkId = resolveUserId(authUser);
-      if (!linkId) return null;
-
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", linkId))
-        .unique();
-
-      if (!profile) return null;
-
-      const [
-        decFirstName,
-        decLastName,
-        decIdNumber,
-        decPhone,
-        decEmail,
-        kycDocUrls,
-      ] = await Promise.all([
-        decryptPII(profile.firstName),
-        decryptPII(profile.lastName),
-        decryptPII(profile.idNumber),
-        decryptPII(profile.phoneNumber),
-        decryptPII(profile.kycEmail),
-        Promise.all(
-          (profile.kycDocuments || []).map(async (id) => {
-            const url = await ctx.storage.getUrl(id);
-            return url;
-          })
-        ),
-      ]);
-
-      return {
-        firstName: decFirstName,
-        lastName: decLastName,
-        idNumber: decIdNumber,
-        phoneNumber: decPhone,
-        kycEmail: decEmail,
-        kycDocumentIds: profile.kycDocuments,
-        kycDocumentUrls: kycDocUrls.filter(
-          (url): url is string => url !== null
-        ),
-      };
-    } catch (err) {
-      if (err instanceof Error && !err.message.includes("Unauthenticated")) {
-        console.error("Error in getMyKYCDetails:", err);
-      }
-      return null;
-    }
-  },
+  handler: getMyKYCDetailsHandler,
 });
+
+/**
+ * Handler for deleting a KYC document.
+ * @param ctx
+ * @param root0
+ * @param root0.storageId
+ */
+export const deleteMyKYCDocumentHandler = async (
+  ctx: MutationCtx,
+  { storageId }: { storageId: Id<"_storage"> }
+) => {
+  const authUser = await requireAuth(ctx);
+  const userId = resolveUserId(authUser);
+  if (!userId) throw new Error("Unable to determine user ID");
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+
+  if (!profile) throw new ConvexError("Profile not found");
+
+  if (profile.kycStatus === "pending") {
+    throw new ConvexError("Cannot delete document while KYC is pending");
+  }
+
+  const kycDocuments = profile.kycDocuments || [];
+  if (!kycDocuments.includes(storageId)) {
+    throw new ConvexError("Document not found in your profile");
+  }
+
+  // Remove from profile
+  const updatedDocs = kycDocuments.filter((id) => id !== storageId);
+  await ctx.db.patch(profile._id, {
+    kycDocuments: updatedDocs,
+    updatedAt: Date.now(),
+  });
+
+  // Delete from storage
+  try {
+    await ctx.storage.delete(storageId);
+  } catch (err) {
+    console.error(
+      `Failed to delete storage ${storageId}, may be orphaned:`,
+      err
+    );
+    // Profile update succeeded; storage deletion failure is non-critical
+  }
+
+  return { success: true };
+};
 
 /**
  * User: Delete one of their own KYC documents.
@@ -561,45 +694,5 @@ export const getMyKYCDetails = query({
 export const deleteMyKYCDocument = mutation({
   args: { storageId: v.id("_storage") },
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, { storageId }) => {
-    const authUser = await requireAuth(ctx);
-    const userId = resolveUserId(authUser);
-    if (!userId) throw new Error("Unable to determine user ID");
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (!profile) throw new ConvexError("Profile not found");
-
-    if (profile.kycStatus === "pending") {
-      throw new ConvexError("Cannot delete document while KYC is pending");
-    }
-
-    const kycDocuments = profile.kycDocuments || [];
-    if (!kycDocuments.includes(storageId)) {
-      throw new ConvexError("Document not found in your profile");
-    }
-
-    // Remove from profile
-    const updatedDocs = kycDocuments.filter((id) => id !== storageId);
-    await ctx.db.patch(profile._id, {
-      kycDocuments: updatedDocs,
-      updatedAt: Date.now(),
-    });
-
-    // Delete from storage
-    try {
-      await ctx.storage.delete(storageId);
-    } catch (err) {
-      console.error(
-        `Failed to delete storage ${storageId}, may be orphaned:`,
-        err
-      );
-      // Profile update succeeded; storage deletion failure is non-critical
-    }
-
-    return { success: true };
-  },
+  handler: deleteMyKYCDocumentHandler,
 });
