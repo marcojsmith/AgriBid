@@ -5,10 +5,10 @@ import { ConvexError } from "convex/values";
 import {
   addEquipmentMakeHandler,
   addModelToMakeHandler,
-  updateEquipmentMake,
-  deleteEquipmentMake,
-  removeModelFromMake,
-  getAllEquipmentMetadata,
+  updateEquipmentMakeHandler,
+  deleteEquipmentMakeHandler,
+  removeModelFromMakeHandler,
+  getAllEquipmentMetadataHandler,
 } from "./equipmentMetadata";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
@@ -292,7 +292,7 @@ describe("updateEquipmentMake", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    await updateEquipmentMake.handler(mockCtx, {
+    await updateEquipmentMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,
       make: "John Deere Updated",
       models: ["8R", "7R"],
@@ -320,7 +320,7 @@ describe("updateEquipmentMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateEquipmentMake.handler(mockCtx, {
+      updateEquipmentMakeHandler(mockCtx, {
         id: "make_nonexistent" as Id<"equipmentMetadata">,
         make: "John Deere",
         models: ["8R"],
@@ -347,7 +347,7 @@ describe("updateEquipmentMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateEquipmentMake.handler(mockCtx, {
+      updateEquipmentMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
         make: "   ",
         models: ["8R"],
@@ -374,7 +374,7 @@ describe("updateEquipmentMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateEquipmentMake.handler(mockCtx, {
+      updateEquipmentMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
         make: "John Deere",
         models: ["   "],
@@ -405,7 +405,7 @@ describe("updateEquipmentMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateEquipmentMake.handler(mockCtx, {
+      updateEquipmentMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
         make: "Case IH",
         models: ["8R"],
@@ -425,7 +425,7 @@ describe("updateEquipmentMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
     await expect(
-      updateEquipmentMake.handler(mockCtx, {
+      updateEquipmentMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
         make: "John Deere",
         models: ["8R"],
@@ -464,7 +464,7 @@ describe("deleteEquipmentMake", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    await deleteEquipmentMake.handler(mockCtx, {
+    await deleteEquipmentMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,
     });
 
@@ -482,7 +482,7 @@ describe("deleteEquipmentMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      deleteEquipmentMake.handler(mockCtx, {
+      deleteEquipmentMakeHandler(mockCtx, {
         id: "make_nonexistent" as Id<"equipmentMetadata">,
       })
     ).rejects.toThrow(ConvexError);
@@ -494,7 +494,7 @@ describe("deleteEquipmentMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
     await expect(
-      deleteEquipmentMake.handler(mockCtx, {
+      deleteEquipmentMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
       })
     ).rejects.toThrow(/Unauthorized: Admin access required/);
@@ -530,7 +530,7 @@ describe("removeModelFromMake", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    await removeModelFromMake.handler(mockCtx, {
+    await removeModelFromMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,
       model: "7R",
     });
@@ -549,7 +549,7 @@ describe("removeModelFromMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      removeModelFromMake.handler(mockCtx, {
+      removeModelFromMakeHandler(mockCtx, {
         id: "make_nonexistent" as Id<"equipmentMetadata">,
         model: "8R",
       })
@@ -569,7 +569,7 @@ describe("removeModelFromMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      removeModelFromMake.handler(mockCtx, {
+      removeModelFromMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
         model: "6R",
       })
@@ -589,7 +589,7 @@ describe("removeModelFromMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      removeModelFromMake.handler(mockCtx, {
+      removeModelFromMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
         model: "8R",
       })
@@ -602,7 +602,7 @@ describe("removeModelFromMake", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
     await expect(
-      removeModelFromMake.handler(mockCtx, {
+      removeModelFromMakeHandler(mockCtx, {
         id: "make_123" as Id<"equipmentMetadata">,
         model: "8R",
       })
@@ -655,7 +655,7 @@ describe("getAllEquipmentMetadata", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    const result = await getAllEquipmentMetadata.handler(mockCtx, {});
+    const result = await getAllEquipmentMetadataHandler(mockCtx, {});
 
     expect(result).toHaveLength(2);
     expect(result[0].categoryName).toBe("Tractors");
@@ -683,7 +683,7 @@ describe("getAllEquipmentMetadata", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    const result = await getAllEquipmentMetadata.handler(mockCtx, {
+    const result = await getAllEquipmentMetadataHandler(mockCtx, {
       includeInactive: true,
     });
 
@@ -704,7 +704,7 @@ describe("getAllEquipmentMetadata", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    const result = await getAllEquipmentMetadata.handler(mockCtx, {});
+    const result = await getAllEquipmentMetadataHandler(mockCtx, {});
 
     expect(result).toHaveLength(1);
     expect(result[0].categoryName).toBe("Unknown");
@@ -715,8 +715,8 @@ describe("getAllEquipmentMetadata", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
-    await expect(
-      getAllEquipmentMetadata.handler(mockCtx, {})
-    ).rejects.toThrow(/Unauthorized: Admin access required/);
+    await expect(getAllEquipmentMetadataHandler(mockCtx, {})).rejects.toThrow(
+      /Unauthorized: Admin access required/
+    );
   });
 });

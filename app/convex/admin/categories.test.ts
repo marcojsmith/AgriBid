@@ -4,9 +4,9 @@ import { ConvexError } from "convex/values";
 
 import {
   addCategoryHandler,
-  updateCategory,
-  deleteCategory,
-  fixMetadata,
+  updateCategoryHandler,
+  deleteCategoryHandler,
+  fixMetadataHandler,
 } from "./categories";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
@@ -162,7 +162,7 @@ describe("updateCategory", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    await updateCategory.handler(mockCtx, {
+    await updateCategoryHandler(mockCtx, {
       id: "cat_123" as Id<"equipmentCategories">,
       name: "New Name",
     });
@@ -182,7 +182,7 @@ describe("updateCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateCategory.handler(mockCtx, {
+      updateCategoryHandler(mockCtx, {
         id: "cat_nonexistent" as Id<"equipmentCategories">,
         name: "New Name",
       })
@@ -204,7 +204,7 @@ describe("updateCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateCategory.handler(mockCtx, {
+      updateCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
         name: "   ",
       })
@@ -230,7 +230,7 @@ describe("updateCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateCategory.handler(mockCtx, {
+      updateCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
         name: "Duplicate",
       })
@@ -256,7 +256,7 @@ describe("updateCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      updateCategory.handler(mockCtx, {
+      updateCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
         name: "Duplicate",
       })
@@ -273,7 +273,7 @@ describe("updateCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
     await expect(
-      updateCategory.handler(mockCtx, {
+      updateCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
         name: "New Name",
       })
@@ -326,7 +326,7 @@ describe("deleteCategory", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    await deleteCategory.handler(mockCtx, {
+    await deleteCategoryHandler(mockCtx, {
       id: "cat_123" as Id<"equipmentCategories">,
     });
 
@@ -350,7 +350,7 @@ describe("deleteCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      deleteCategory.handler(mockCtx, {
+      deleteCategoryHandler(mockCtx, {
         id: "cat_nonexistent" as Id<"equipmentCategories">,
       })
     ).rejects.toThrow(ConvexError);
@@ -376,7 +376,7 @@ describe("deleteCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      deleteCategory.handler(mockCtx, {
+      deleteCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
       })
     ).rejects.toThrow(/currently in use by equipment catalog items/);
@@ -402,7 +402,7 @@ describe("deleteCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(
-      deleteCategory.handler(mockCtx, {
+      deleteCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
       })
     ).rejects.toThrow(/currently linked to auction listings/);
@@ -423,7 +423,7 @@ describe("deleteCategory", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
     await expect(
-      deleteCategory.handler(mockCtx, {
+      deleteCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
       })
     ).rejects.toThrow(/Unauthorized: Admin access required/);
@@ -497,7 +497,7 @@ describe("fixMetadata", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    const result = await fixMetadata.handler(mockCtx, {});
+    const result = await fixMetadataHandler(mockCtx);
 
     expect(result.categoriesCount).toBe(2);
     expect(result.metadataFixed).toBe(2);
@@ -510,7 +510,7 @@ describe("fixMetadata", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
-    await expect(fixMetadata.handler(mockCtx, {})).rejects.toThrow(
+    await expect(fixMetadataHandler(mockCtx)).rejects.toThrow(
       /Unauthorized: Admin access required/
     );
   });
@@ -550,7 +550,7 @@ describe("fixMetadata", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-    const result = await fixMetadata.handler(mockCtx, {});
+    const result = await fixMetadataHandler(mockCtx);
 
     expect(result.metadataFixed).toBe(1);
     expect(mockCtx.db.patch).toHaveBeenCalled();

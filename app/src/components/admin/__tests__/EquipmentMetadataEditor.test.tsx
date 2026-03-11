@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { useQuery } from "convex/react";
 
 import { EquipmentMetadataEditor } from "../EquipmentMetadataEditor";
 
@@ -39,7 +40,7 @@ vi.mock("convex/_generated/api", () => ({
 
 // Mock Convex hooks
 vi.mock("convex/react", () => ({
-  useQuery: (apiFunc: { _path?: string } | null | undefined) => {
+  useQuery: vi.fn((apiFunc: { _path?: string } | null | undefined) => {
     const path = apiFunc?._path || "";
     if (path === "admin:categories:getCategories") {
       return [
@@ -80,7 +81,7 @@ vi.mock("convex/react", () => ({
       ];
     }
     return undefined;
-  },
+  }),
   useMutation: vi.fn(() => vi.fn().mockResolvedValue({})),
 }));
 
@@ -95,7 +96,6 @@ describe("EquipmentMetadataEditor", () => {
   });
 
   it("should render loading state initially", () => {
-    const { useQuery } = require("convex/react");
     vi.mocked(useQuery).mockReturnValue(undefined);
 
     render(<EquipmentMetadataEditor />);

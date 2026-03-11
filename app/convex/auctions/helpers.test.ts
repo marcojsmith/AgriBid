@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import {
-  resolveImageUrls,
-  toAuctionSummary,
-  toAuctionDetail,
-} from "./helpers";
+import { resolveImageUrls, toAuctionSummary, toAuctionDetail } from "./helpers";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 
 // Mock the image_cache module
 vi.mock("../image_cache", () => ({
-  resolveUrlCached: vi.fn((storage: any, id?: string) => {
+  resolveUrlCached: vi.fn((_storage: any, id?: string) => {
     if (!id) return Promise.resolve(undefined);
     return Promise.resolve(`https://example.com/images/${id}`);
   }),
@@ -19,7 +15,7 @@ vi.mock("../image_cache", () => ({
 
 // Mock the users module
 vi.mock("../users", () => ({
-  findUserById: vi.fn((ctx: any, userId: string) => {
+  findUserById: vi.fn((_ctx: any, userId: string) => {
     if (userId === "seller_123") {
       return Promise.resolve({
         _id: "seller_123",
@@ -124,10 +120,12 @@ describe("resolveImageUrls", () => {
 
   it("should filter out undefined URLs from resolved images", async () => {
     const { resolveUrlCached } = await import("../image_cache");
-    vi.mocked(resolveUrlCached).mockImplementation((storage: any, id?: string) => {
-      if (id === "valid") return Promise.resolve("https://example.com/valid");
-      return Promise.resolve(undefined);
-    });
+    vi.mocked(resolveUrlCached).mockImplementation(
+      (_storage: any, id?: string) => {
+        if (id === "valid") return Promise.resolve("https://example.com/valid");
+        return Promise.resolve(undefined);
+      }
+    );
 
     const images = {
       additional: ["valid", "invalid"],
@@ -267,9 +265,7 @@ describe("toAuctionDetail", () => {
       auth: {
         getUserIdentity: vi
           .fn()
-          .mockResolvedValue(
-            isAuthenticated ? { userId: "user_123" } : null
-          ),
+          .mockResolvedValue(isAuthenticated ? { userId: "user_123" } : null),
       },
       storage: {},
     } as unknown as QueryCtx;
