@@ -270,26 +270,28 @@ export async function logAudit(
 export { encryptPII, decryptPII, resolveUserId };
 
 /**
- * Increment or decrement a named counter's numeric field and persist the change.
+ * Adjusts a named counter's numeric field and persists the change.
  *
- * Updates the existing counter document's specified field by `delta` (clamped to a minimum of 0) and sets `updatedAt` to the current time. If no counter exists for `name` a new document is created with the targeted field initialised to `max(0, delta)` and common fields (`total`, `active`, `pending`, `verified`, `open`, `resolved`) populated (other fields set to 0). A warning is emitted to the console if the computed value would underflow below zero.
+ * When the counter exists, updates the specified field by adding `delta` or, if `absolute` is true, sets it to `delta`. If the resulting value is less than zero it is clamped to 0 and a warning is logged. When the counter does not exist, creates a new counter document with the specified field initialised to `delta` (clamped to 0) and all other known fields set to 0.
  *
- * @param ctx
- * @param name - The identifier of the counter (for example `auctions`, `profiles`, `support`, `announcements`)
- * @param field - The counter field to adjust (for example `total`, `active`, `pending`, `verified`, `open`, `resolved`)
- * @param delta - The amount to change the field by; may be negative, but the stored value will never be less than 0
+ * @param ctx - Mutation context
+ * @param name - Identifier of the counter (e.g. `auctions`, `profiles`, `support`, `announcements`)
+ * @param field - The counter field to adjust (e.g. `total`, `active`, `pending`, `verified`, `open`, `resolved`, `draft`, `salesVolume`, `soldCount`)
+ * @param delta - Amount to change the field by, or the exact value to set when `absolute` is true
+ * @param absolute - If true, set the field to `delta`; otherwise add `delta` to the current value
  */
 export async function updateCounter(
   ctx: MutationCtx,
   name: string,
   field: CounterField,
-  delta: number
+  delta: number,
+  absolute?: boolean
 ) {
   const counter = await getCounter(ctx, name);
 
   if (counter) {
     const currentValue = (counter[field] as number | undefined) ?? 0;
-    const newValue = currentValue + delta;
+    const newValue = absolute ? delta : currentValue + delta;
 
     if (newValue < 0) {
       console.warn(

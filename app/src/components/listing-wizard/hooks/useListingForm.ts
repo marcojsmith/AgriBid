@@ -2,9 +2,17 @@ import { useListingWizard } from "../context/useListingWizard";
 import { STEPS } from "../constants";
 
 /**
- * Custom hook for managing listing wizard form navigation and step validation.
+ * Manage navigation and validation for the multi-step listing wizard.
  *
- * @returns Object with step navigation and validation functions
+ * Provides helpers to advance or rewind the wizard, validate individual steps, and inspect step state.
+ *
+ * @returns An object containing:
+ *  - `next` — advance to the next step if the current step is valid, returns an error message string when validation fails or `null` when navigation succeeds.
+ *  - `prev` — go back to the previous step.
+ *  - `getStepError` — return a validation error message for a given step index, or `null` if the step is valid.
+ *  - `isCurrentStepValid` — boolean indicating whether the current step has no validation errors.
+ *  - `isFirstStep` — boolean indicating whether the current step is the first step.
+ *  - `isLastStep` — boolean indicating whether the current step is the last step.
  */
 export function useListingForm() {
   const { formData, currentStep, setCurrentStep } = useListingWizard();
@@ -29,8 +37,34 @@ export function useListingForm() {
           return "Operating hours are required";
         return null;
       case 1: // Technical Specs
-        if (!formData.make?.trim()) return "Make is required";
-        if (!formData.model?.trim()) return "Model is required";
+        if (!formData.categoryId) return "Please select a category.";
+        if (!formData.make) return "Please select a manufacturer.";
+        if (!formData.model) return "Please select a model.";
+        return null;
+      case 2: // Condition Checklist
+        if (!formData.conditionChecklist) {
+          return "Please complete the condition checklist.";
+        }
+        if (
+          formData.conditionChecklist.engine === null ||
+          formData.conditionChecklist.engine === undefined
+        )
+          return "Please specify the engine condition.";
+        if (
+          formData.conditionChecklist.hydraulics === null ||
+          formData.conditionChecklist.hydraulics === undefined
+        )
+          return "Please specify the hydraulics condition.";
+        if (
+          formData.conditionChecklist.tires === null ||
+          formData.conditionChecklist.tires === undefined
+        )
+          return "Please specify the tires condition.";
+        if (
+          formData.conditionChecklist.serviceHistory === null ||
+          formData.conditionChecklist.serviceHistory === undefined
+        )
+          return "Please specify the service history.";
         return null;
       case 3: {
         // Media Gallery

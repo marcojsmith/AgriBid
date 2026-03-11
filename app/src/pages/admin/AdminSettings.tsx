@@ -9,14 +9,14 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { SettingsCard } from "@/components/admin";
 
 /**
- * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees and security logs.
+ * Render the System Settings admin page with administrative statistics and quick-access setting cards.
  *
- * Displays a centred loading indicator while admin statistics are being fetched. Once loaded, presents three settings cards:
- * - Equipment Metadata: opens the related GitHub issue and shows an info toast.
- * - Platform Fees: opens the related GitHub issue and shows an info toast.
- * - Security Logs: navigates to the internal audit view.
+ * Displays a centred loading indicator while admin statistics are being fetched. When loaded, presents three settings cards:
+ * - Equipment Metadata: navigates to the equipment catalogue at `/admin/equipment-catalog`.
+ * - Platform Fees: opens the Platform Fees GitHub issue and shows an informational toast.
+ * - Security Logs: navigates to the internal audit view at `/admin/audit`.
  *
- * @returns The AdminSettings page component as a React element.
+ * @returns The AdminSettings page as a React element
  */
 export default function AdminSettings() {
   const adminStats = useQuery(api.admin.getAdminStats);
@@ -46,14 +46,7 @@ export default function AdminSettings() {
             title="Equipment Metadata"
             description="Manage makes, models, and categories."
             icon={<Hammer />}
-            action={() => {
-              window.open(
-                "https://github.com/marcojsmith/AgriBid/issues/55",
-                "_blank",
-                "noopener,noreferrer"
-              );
-              toast.info("Opening Equipment Metadata issue #55");
-            }}
+            action={() => navigate("/admin/equipment-catalog")}
           />
           <SettingsCard
             title="Platform Fees"

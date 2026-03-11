@@ -21,6 +21,9 @@ const AdminAnnouncements = lazy(
 );
 const AdminSupport = lazy(() => import("./pages/admin/AdminSupport"));
 const AdminAudit = lazy(() => import("./pages/admin/AdminAudit"));
+const AdminEquipmentCatalog = lazy(
+  () => import("./pages/admin/AdminEquipmentCatalog")
+);
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
@@ -42,7 +45,7 @@ const PageLoader = () => (
 );
 
 /**
- * Mounts the client-side router and declares application routes within the main layout.
+ * Mounts the client-side router and declares the application's routes within the main layout.
  *
  * Declared routes:
  * - "/" → Home
@@ -57,12 +60,12 @@ const PageLoader = () => (
  *   - /admin, /admin/dashboard, /admin/moderation
  *   - /admin/marketplace, /admin/auctions, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
- *   - /admin/audit, /admin/settings
+ *   - /admin/audit, /admin/equipment-catalog, /admin/settings
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")
  *
- * @returns The root JSX element containing the BrowserRouter, layout and route definitions
+ * @returns The root JSX element containing the BrowserRouter, Layout and route definitions
  */
 function App() {
   return (
@@ -176,6 +179,14 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAudit />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/equipment-catalog"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminEquipmentCatalog />
                 </RoleProtectedRoute>
               }
             />

@@ -122,6 +122,8 @@ export const AuctionSummaryValidator = v.object({
   year: v.number(),
   operatingHours: v.number(),
   location: v.string(),
+  categoryId: v.optional(v.id("equipmentCategories")),
+  categoryName: v.string(),
   reservePrice: v.number(),
   startingPrice: v.number(),
   currentPrice: v.number(),
@@ -174,6 +176,10 @@ export async function toAuctionSummary(
   ctx: QueryCtx,
   auction: Doc<"auctions">
 ) {
+  const category = auction.categoryId
+    ? await ctx.db.get(auction.categoryId)
+    : null;
+
   return {
     _id: auction._id,
     _creationTime: auction._creationTime,
@@ -192,6 +198,8 @@ export async function toAuctionSummary(
     reservePrice: auction.reservePrice,
     operatingHours: auction.operatingHours,
     location: auction.location,
+    categoryId: auction.categoryId,
+    categoryName: category?.name || "Unknown",
     sellerId: auction.sellerId,
     winnerId: auction.winnerId,
     conditionReportUrl: auction.conditionReportUrl,
@@ -214,6 +222,8 @@ export const AuctionDetailValidator = v.object({
   year: v.number(),
   operatingHours: v.number(),
   location: v.string(),
+  categoryId: v.optional(v.id("equipmentCategories")),
+  categoryName: v.string(),
   description: v.optional(v.string()),
   startingPrice: v.number(),
   reservePrice: v.number(),
@@ -240,18 +250,22 @@ export const AuctionDetailValidator = v.object({
 });
 
 /**
- * Create a full auction object with image references resolved to accessible URLs.
- * The returned object includes a sellerEmail string (resolved from the seller lookup)
- * in addition to the described images transformation.
+ * Build a detailed auction object with image references resolved to accessible URLs and seller contact when permitted.
  *
- * @param ctx - Query context providing storage used to resolve image references
- * @param auction - Auction document to convert
- * @returns The same auction object with resolved images and seller details.
- * sellerEmail may be undefined if no seller is found.
+ * The result includes categoryId and categoryName (falls back to "Unknown") and exposes `sellerEmail` only when the requesting user is authenticated and the seller exists.
+ *
+ * @param auction - The auction document to convert into a detailed representation
+ * @returns A detailed auction object containing the auction's original fields plus:
+ * - `categoryId` and `categoryName` (string)
+ * - `images` with `front`, `engine`, `cabin`, `rear` (URLs or undefined) and `additional` (array of URLs)
+ * - `sellerEmail` (string) when available for the requester, otherwise `undefined`
  */
 export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
-  const seller = await findUserById(ctx, auction.sellerId);
-  const identity = await ctx.auth.getUserIdentity();
+  const [seller, category, identity] = await Promise.all([
+    findUserById(ctx, auction.sellerId),
+    auction.categoryId ? ctx.db.get(auction.categoryId) : null,
+    ctx.auth.getUserIdentity(),
+  ]);
   const isAuthenticated = identity !== null;
 
   return {
@@ -264,6 +278,8 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     year: auction.year,
     operatingHours: auction.operatingHours,
     location: auction.location,
+    categoryId: auction.categoryId,
+    categoryName: category?.name || "Unknown",
     startingPrice: auction.startingPrice,
     reservePrice: auction.reservePrice,
     durationDays: auction.durationDays,
