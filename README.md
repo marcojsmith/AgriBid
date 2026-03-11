@@ -53,32 +53,31 @@ AgriBid is a real-time auction platform purpose-built for the agricultural machi
 
 ```text
 AgriBid/
-├── app/                     # Main application code
-│   ├── convex/              # Backend (modular architecture)
-│   │   ├── admin/           # Admin operations (KYC, statistics, moderation, equipment metadata)
-│   │   ├── auctions/        # Auction logic (queries, mutations, bidding, settlement)
-│   │   ├── lib/             # Shared utilities (auth, encryption)
-│   │   ├── schema.ts        # Database schema definitions
-│   │   └── crons.ts        # Scheduled tasks (auction settlement)
-│   └── src/                 # React frontend
-│       ├── components/      # Reusable UI & business logic components
-│       │   └── admin/       # Admin UI components (CategoryManager, MetadataCatalog, etc.)
-│       ├── contexts/        # React contexts (admin stats, user profiles)
-│       ├── lib/             # Utilities and Auth client
-│       └── pages/           # Page components
-│           └── admin/       # Admin-specific UI
-│               ├── dialogs/ # Modals for KYC review, bulk actions, promotions
-│               └── hooks/   # Custom hooks for admin state management
-├── conductor/               # Spec-driven development tracks and project docs
-├── docs/                    # Project documentation
-│   ├── database/            # Database schema and relationships
-│   ├── ui-design/           # Design system and page layouts
-│   ├── data-flow/           # Authentication, bidding, and listing flows
-│   ├── security/           # Security policies and implementations
-│   └── features/           # Feature overview, completed, and roadmap
-├── Brief.md                 # Project specification
-├── Checklist.md             # Feature implementation tracker
-└── README.md               # Project overview
+├── convex/                  # Backend (modular architecture)
+│   ├── admin/              # Admin operations (KYC, statistics, moderation, equipment metadata)
+│   ├── auctions/           # Auction logic (queries, mutations, bidding, settlement)
+│   ├── lib/                # Shared utilities (auth, encryption)
+│   ├── schema.ts           # Database schema definitions
+│   └── crons.ts           # Scheduled tasks (auction settlement)
+├── src/                    # React frontend
+│   ├── components/         # Reusable UI & business logic components
+│   │   └── admin/         # Admin UI components (CategoryManager, MetadataCatalog, etc.)
+│   ├── contexts/          # React contexts (admin stats, user profiles)
+│   ├── lib/               # Utilities and Auth client
+│   └── pages/             # Page components
+│       └── admin/         # Admin-specific UI
+│           ├── dialogs/   # Modals for KYC review, bulk actions, promotions
+│           └── hooks/     # Custom hooks for admin state management
+├── conductor/              # Spec-driven development tracks and project docs
+├── docs/                   # Project documentation
+│   ├── database/           # Database schema and relationships
+│   ├── ui-design/         # Design system and page layouts
+│   ├── data-flow/         # Authentication, bidding, and listing flows
+│   ├── security/          # Security policies and implementations
+│   └── features/         # Feature overview, completed, and roadmap
+├── Brief.md                # Project specification
+├── Checklist.md            # Feature implementation tracker
+└── README.md              # Project overview
 ```
 
 ## 📚 Documentation
@@ -96,6 +95,7 @@ Detailed project documentation is available in the `docs/` folder:
 ### Naming Conventions
 
 For consistency, this project follows these naming rules:
+
 - **Folders**: hyphen-case (e.g., `user-profile`)
 - **React component files**: PascalCase (e.g., `UserProfile.tsx`)
 - **Utility/module files**: camelCase or kebab-case (e.g., `queries.ts`, `authConfig.ts`)
@@ -112,24 +112,26 @@ For consistency, this project follows these naming rules:
 ### Installation
 
 1.  **Clone the repository**:
+
     ```bash
     git clone https://github.com/marcojsmith/AgriBid.git
     cd AgriBid
     ```
 
 2.  **Install dependencies**:
+
     ```bash
-    cd app
     bun install
     ```
 
 3.  **Configure Environment Variables**:
-    Create a `.env.local` file in the `app/` directory (see `.env.example` for required keys):
+    Create a `.env.local` file in the project root (see `.env.example` for required keys):
     - `VITE_CONVEX_URL`
     - `BETTER_AUTH_SECRET`
     - (Other Auth provider keys as needed)
 
 4.  **Launch Backend (Convex)**:
+
     ```bash
     bunx convex dev
     ```
@@ -143,11 +145,13 @@ For consistency, this project follows these naming rules:
 ### Seeding Data
 
 To populate your local environment with equipment metadata (categories, manufacturers, models), mock auctions, and recalculated system metrics:
+
 ```bash
 bunx convex run seed
 ```
 
 This will seed:
+
 - Equipment categories (e.g., Tractors, Harvesters, Implements)
 - Extensive list of manufacturers and models focused on the Southern African market
 - Sample auctions with category linkage
@@ -160,6 +164,7 @@ This project follows a **Spec-Driven Development** (Conductor) approach. Major f
 ### Testing
 
 Run the test suite using Vitest:
+
 ```bash
 bun run test
 ```
@@ -167,10 +172,10 @@ bun run test
 ## 🌐 Deployment
 
 The project is optimized for deployment on Vercel:
+
 1.  Connect your repository to Vercel.
-2.  Set the Root Directory to `app/`.
-3.  Add your environment variables to the Vercel dashboard.
-4.  Vercel will automatically handle the Convex deployment and frontend build.
+2.  Add your environment variables to the Vercel dashboard.
+3.  Vercel will automatically handle the Convex deployment and frontend build.
 
 ---
 

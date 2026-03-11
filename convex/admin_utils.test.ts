@@ -85,11 +85,9 @@ describe("countQuery", () => {
 describe("sumQuery", () => {
   it("should sum numeric field values", async () => {
     const mockQuery = {
-      collect: vi.fn().mockResolvedValue([
-        { amount: 100 },
-        { amount: 200 },
-        { amount: 300 },
-      ]),
+      collect: vi
+        .fn()
+        .mockResolvedValue([{ amount: 100 }, { amount: 200 }, { amount: 300 }]),
     };
 
     const result = await sumQuery(mockQuery, "amount");
@@ -100,11 +98,13 @@ describe("sumQuery", () => {
 
   it("should skip non-numeric values", async () => {
     const mockQuery = {
-      collect: vi.fn().mockResolvedValue([
-        { amount: 100 },
-        { amount: "invalid" },
-        { amount: 300 },
-      ]),
+      collect: vi
+        .fn()
+        .mockResolvedValue([
+          { amount: 100 },
+          { amount: "invalid" },
+          { amount: 300 },
+        ]),
     };
 
     const result = await sumQuery(mockQuery, "amount");

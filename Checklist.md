@@ -3,6 +3,7 @@
 ## Project Setup & Infrastructure
 
 ### Initial Setup
+
 - [x] Create `app/` directory for monorepo-style structure
 - [x] Initialise Vite + React + TypeScript project in `app/`
 - [x] Configure Tailwind CSS with custom theme (Earth tones)
@@ -12,9 +13,10 @@
 - [x] Create `.env.example` with required variables
 - [x] Set up Git repository with `.gitignore`
 - [x] Create initial folder structure (`src/components`, `src/pages`, `src/lib`, etc.)
-- [ ] Move `app/` and `convex/` to project root for cleaner structure (#60)
+- [x] Move `app/` and `convex/` to project root for cleaner structure (#60)
 
 ### Convex Configuration
+
 - [x] Install Convex CLI (`bun add convex`)
 - [x] Run `bunx convex dev` to initialise project in `app/`
 - [x] Configure `convex.json` with deployment settings
@@ -24,6 +26,7 @@
 - [x] Test database connection with sample query
 
 ### Better Auth Integration
+
 - [x] Install `@better-auth/cli` and dependencies
 - [x] Generate Better Auth component (`bunx @better-auth/cli init`)
 - [x] Configure auth providers (email/password, Google OAuth)
@@ -37,6 +40,7 @@
 ## Database Schema & Backend Logic
 
 ### Schema Definition
+
 - [x] Define `equipmentMetadata` table (static lookup)
 - [x] Define `users` table with indexes
 - [x] Define `auctions` table with indexes
@@ -45,6 +49,7 @@
 - [x] Define `auditLogs` table (for admin)
 
 ### Convex Queries
+
 - [x] `getActiveAuctions` - fetch all active auctions
 - [x] `getAuctionById` - fetch single auction with full details
 - [x] `getUserAuctions` - fetch auctions by seller (with status filter) -> `getMyListings`
@@ -56,6 +61,7 @@
 - [x] Optimize `readReceipts` with batching to avoid N+1 patterns (#66)
 
 ### Convex Mutations
+
 - [x] `createAuction` - create new auction
 - [x] `updateAuction` - edit draft auction
 - [x] `publishAuction` - change status from "draft" to "active"
@@ -68,10 +74,12 @@
 - [x] `flagAuction` - report suspicious listing (buyer/admin)
 
 ### Scheduled Functions (Cron)
+
 - [x] `settleExpiredAuctions` - run every 1 minute
 - [x] `cleanupDrafts` - run daily to delete old drafts (>30 days)
 
 ### Convex Actions (External API Calls)
+
 - [ ] `sendEmailNotification` - trigger email via Resend/SendGrid
 - [ ] Capture errors to GitHub issues on production instance (#59)
 
@@ -80,6 +88,7 @@
 ## Authentication & User Management
 
 ### Registration & Login
+
 - [x] Create registration page (`/register`) -> Implemented in `App.tsx` auth mode
 - [x] Create login page (`/login`) -> Implemented in `App.tsx` auth mode
 - [ ] Create password reset flow
@@ -88,11 +97,13 @@
 - [ ] Add "Remember Me" / persistence for user settings (#118)
 
 ### User Profile
+
 - [x] Create profile page (`/profile`)
 - [x] Create seller verification flow
 - [x] Enhance profile page with more user details and stats (#131)
 
 ### Role-Based Access
+
 - [x] Buyer role: can bid, watchlist, view auctions, create listings
 - [x] Seller role: can create listings, view analytics
 - [x] Admin role: can approve sellers, flag listings, view audit logs
@@ -103,6 +114,7 @@
 ## Frontend Pages & Components
 
 ### Global Components
+
 - [x] **Header** (`src/components/header/Header.tsx`)
 - [x] **Footer** (`src/components/Footer.tsx`)
 - [x] **Notifications** (Archive and Toast)
@@ -111,6 +123,7 @@
 - [x] **Toast** notifications (Shadcn Toast/Sonner)
 
 ### Home Page (`/`)
+
 - [x] **Hero Section**
 - [x] **Filter Sidebar**
   - [ ] Convert filters to drop-down menus for better UX (#112)
@@ -121,6 +134,7 @@
 - [ ] Pagination or infinite scroll
 
 ### Auction Detail Page (`/auction/:id`)
+
 - [x] **ImageGallery** component
 - [x] **Equipment Specs Table** (Included in Description section)
 - [x] **Bidding Panel**
@@ -128,18 +142,21 @@
 - [x] **Countdown Timer**
 
 ### Seller Dashboard (`/dashboard/seller`)
+
 - [x] **My Listings Tabs** -> `/dashboard/listings`
 - [x] **Analytics Panel**
 - [ ] **Create Listing Button**
 - [x] **Create Listing Form** (Multi-Step Wizard)
 
 ### Buyer Dashboard (`/dashboard/buyer`)
+
 - [x] **Active Bids Tab** -> `/dashboard/bids`
   - [x] Group bids by auction card instead of individual entries (#144)
 - [x] **Watchlist Tab** -> `/watchlist`
 - [x] **Won Auctions Tab** -> Integrated into `/dashboard/bids`
 
 ### Admin Dashboard (`/admin`)
+
 - [x] **Pending Verifications** (Listing Moderation)
 - [x] **Seller KYC Approval**
 - [x] **Audit Logs**
@@ -160,6 +177,7 @@
 ## Core Features Implementation
 
 ### Real-Time Bidding
+
 - [ ] Implement optimistic updates for bid submission
 - [x] Handle race conditions (multiple simultaneous bids)
 - [x] Display error if bid fails (network issue)
@@ -167,27 +185,33 @@
 - [ ] Implement retry logic (exponential backoff)
 
 ### Soft Close Logic
+
 - [x] Detect if bid placed in final 2 minutes
 - [x] Extend `endTime` by 2 minutes
 - [x] Notify all watchers of extension (Reactive UI updates)
 - [x] Update countdown timer for all connected clients
 
 ### Proxy Bidding
+
 - [x] Allow user to set max bid amount
 - [x] Store max bid in database
 - [x] Auto-increment bid by minimum increment when outbid
 
 ### Watchlist
+
 - [x] Add/remove auctions from watchlist (mutation)
 
 ### Image Upload & Storage
+
 - [x] Integrate Convex File Storage API
 
 ### Search & Filters
+
 - [x] Implement text search on title, make, model
 - [ ] SEO strategy implementation (#133)
 
 ### Countdown Timer
+
 - [x] Create reusable `CountdownTimer` component
 - [x] Calculate time remaining: `endTime - Date.now()`
 - [x] Update every second using `setInterval`
@@ -195,6 +219,7 @@
 - [x] Change colour to red when < 1 hour remaining
 
 ### AI Chatbot
+
 - [ ] Add AI chatbot support for user inquiries (#129)
 
 ---
@@ -202,6 +227,7 @@
 ## Testing & Quality Assurance
 
 ### Unit Tests (Vitest)
+
 - [x] Test Convex queries
 - [x] Test Convex mutations
 - [x] Test utility functions
@@ -209,11 +235,13 @@
 - [x] Create comprehensive unit tests for entire codebase (#84)
 
 ### Integration Tests
+
 - [ ] Test full bidding flow
 - [ ] Test auction creation flow
 - [ ] Test authentication flow
 
 ### UI/UX Polish
+
 - [x] Fix missing `id` or `name` attributes on form fields (#140)
 
 ---
@@ -221,14 +249,17 @@
 ## Deployment & DevOps
 
 ### Environment Configuration
+
 - [x] Create `.env.local` for development
 - [ ] Create `.env.production` for production
 - [x] Document all required environment variables in README/codebase_notes
 
 ### Convex Deployment
+
 - [x] Deploy to Convex Cloud (`bunx convex deploy`)
 
 ### Vercel Deployment
+
 - [x] Connect GitHub repository to Vercel
 - [x] Configure build settings (build command: `bun run build`, output directory: `dist/`)
 - [x] Set environment variables in Vercel dashboard
@@ -240,6 +271,7 @@
 ## Documentation
 
 ### Code Documentation
+
 - [x] Add JSDoc comments to all functions
 - [x] Document Convex schema fields
 - [ ] Create `CONTRIBUTING.md`
@@ -247,6 +279,7 @@
 - [x] Align notification scope conflict in Listing Storage spec (#148)
 
 ### User Documentation
+
 - [ ] Create FAQ page
 - [ ] Write "How to Sell" guide
 - [ ] Write "How to Buy" guide
@@ -254,6 +287,7 @@
 - [x] Complete general project documentation (#40)
 
 ### README.md
+
 - [x] Project overview and features
 - [x] Tech stack
 - [x] Setup instructions
@@ -266,6 +300,7 @@
 ## Dependencies
 
 ### bunx Packages
+
 - [x] `react`, `react-dom`
 - [x] `react-router-dom`
 - [x] `convex`

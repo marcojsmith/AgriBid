@@ -4,17 +4,17 @@
 | -------------- | -------------------- |
 | `bun run test` | `bun run test --run` |
 
-| Command                                            | Description                        |
-| -------------------------------------------------- | ---------------------------------- |
-| `cd app && bun run dev`                            | Start development server           |
-| `cd app && bun run lint`                           | Check code for errors              |
-| `cd app && bun run test:coverage`                  | Run tests with coverage            |
-| `cd app && bun run build`                          | Production build                   |
-| `cd app && bun run format`                         | Format code with Prettier          |
-| `bunx vercel`                                      | Deploy to staging                  |
-| `bunx vercel --prod`                               | Deploy to production               |
-| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)    |
-| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)     |
+| Command                                            | Description                     |
+| -------------------------------------------------- | ------------------------------- |
+| `bun run dev`                                      | Start development server        |
+| `bun run lint`                                     | Check code for errors           |
+| `bun run test:coverage`                            | Run tests with coverage         |
+| `bun run build`                                    | Production build                |
+| `bun run format`                                   | Format code with Prettier       |
+| `bunx vercel`                                      | Deploy to staging               |
+| `bunx vercel --prod`                               | Deploy to production            |
+| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted) |
+| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)  |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
 
@@ -33,19 +33,18 @@ Assume the dev and Convex servers are already running.
 # 2. Project Structure
 
 ```text
-app/
-  convex/          # Backend: schema, mutations, queries, auth, config
-  src/
-    assets/        # Static assets
-    components/    # Reusable UI (shadcn/ui)
-    contexts/      # React context providers
-    hooks/         # Custom hooks
-    lib/           # Utilities and shared logic
-    pages/         # Views and routing
-    test/          # Tests (Vitest, MCP)
-    types/         # TypeScript type definitions
-conductor/         # Product docs, guidelines, feature tracks, style guides
-.gemini/           # Gemini CLI config and Convex-specific rules
+convex/          # Backend: schema, mutations, queries, auth, config
+src/
+  assets/        # Static assets
+  components/    # Reusable UI (shadcn/ui)
+  contexts/       # React context providers
+  hooks/          # Custom hooks
+  lib/            # Utilities and shared logic
+  pages/          # Views and routing
+  test/           # Tests (Vitest, MCP)
+  types/          # TypeScript type definitions
+conductor/       # Product docs, guidelines, feature tracks, style guides
+.gemini/         # Gemini CLI config and Convex-specific rules
 ```
 
 ---
@@ -54,21 +53,21 @@ conductor/         # Product docs, guidelines, feature tracks, style guides
 
 Consult these regularly. Keep them accurate when making changes.
 
-| File / Folder                          | Purpose                                      |
-| -------------------------------------- | -------------------------------------------- |
-| `Brief.md`                             | Application purpose, audience, key features  |
-| `Checklist.md`                         | Implementation progress and commit format    |
-| `codebase_notes.md`                    | Architectural decisions, ideas, scratchpad   |
-| `conductor/product.md`                 | Product vision and goals                     |
-| `conductor/product-guidelines.md`      | Design and development guidelines            |
-| `conductor/workflow.md`                | Development workflow                         |
-| `conductor/tech-stack.md`              | Technology stack details                     |
-| `conductor/tracks.md`                  | Feature tracks                               |
-| `conductor/code_styleguides/*.md`      | TypeScript, JavaScript, HTML/CSS conventions |
-| `.gemini/convex_rules.md`              | Convex backend rules and best practices      |
-| `app/convex/schema.ts`                 | Database schema                              |
-| `app/convex/auctions/*`               | Auction logic (queries, mutations, bidding)  |
-| `app/convex/auth.ts`, `auth.config.ts` | BetterAuth integration (server-side)        |
+| File / Folder                      | Purpose                                      |
+| ---------------------------------- | -------------------------------------------- |
+| `Brief.md`                         | Application purpose, audience, key features  |
+| `Checklist.md`                     | Implementation progress and commit format    |
+| `codebase_notes.md`                | Architectural decisions, ideas, scratchpad   |
+| `conductor/product.md`             | Product vision and goals                     |
+| `conductor/product-guidelines.md`  | Design and development guidelines            |
+| `conductor/workflow.md`            | Development workflow                         |
+| `conductor/tech-stack.md`          | Technology stack details                     |
+| `conductor/tracks.md`              | Feature tracks                               |
+| `conductor/code_styleguides/*.md`  | TypeScript, JavaScript, HTML/CSS conventions |
+| `.gemini/convex_rules.md`          | Convex backend rules and best practices      |
+| `convex/schema.ts`                 | Database schema                              |
+| `convex/auctions/*`                | Auction logic (queries, mutations, bidding)  |
+| `convex/auth.ts`, `auth.config.ts` | BetterAuth integration (server-side)         |
 
 ---
 
@@ -96,13 +95,13 @@ Consult these regularly. Keep them accurate when making changes.
 
 ## Naming Conventions (strictly enforced via linting)
 
-| Element              | Convention   | Example                    |
-| -------------------- | ------------ | -------------------------- |
-| Folders              | hyphen-case  | `user-profile/`            |
-| React component files | PascalCase   | `UserProfile.tsx`          |
-| Utility/module files | camelCase    | `helpers.ts`, `bidding.ts` |
-| Variables/functions  | camelCase    | `getUserProfile`           |
-| React components     | PascalCase   | `<UserProfile />`          |
+| Element               | Convention  | Example                    |
+| --------------------- | ----------- | -------------------------- |
+| Folders               | hyphen-case | `user-profile/`            |
+| React component files | PascalCase  | `UserProfile.tsx`          |
+| Utility/module files  | camelCase   | `helpers.ts`, `bidding.ts` |
+| Variables/functions   | camelCase   | `getUserProfile`           |
+| React components      | PascalCase  | `<UserProfile />`          |
 
 ## Code Style
 
@@ -144,13 +143,13 @@ Consult these regularly. Keep them accurate when making changes.
 
 ## Semantic Versioning
 
-Update `app/package.json` version in the **same commit/PR** as the changes.
+Update `package.json` version in the **same commit/PR** as the changes.
 
-| Change Type              | Bump    | Example        |
-| ------------------------ | ------- | -------------- |
-| Bug fixes, UI tweaks     | Patch   | 0.1.0 → 0.1.1 |
+| Change Type                 | Bump  | Example       |
+| --------------------------- | ----- | ------------- |
+| Bug fixes, UI tweaks        | Patch | 0.1.0 → 0.1.1 |
 | New features (non-breaking) | Minor | 0.1.0 → 0.2.0 |
-| Breaking / major refactors | Major | 0.1.0 → 1.0.0 |
+| Breaking / major refactors  | Major | 0.1.0 → 1.0.0 |
 
 The version flows from `package.json` → Vite build → AdminDashboard display.
 
@@ -204,7 +203,7 @@ For automated UI testing, accessibility audits, and debugging.
 
 - Run `bunx vercel` from the **project root**.
 - Confirm deployments with `bunx vercel list`.
-- Dashboard settings: Root = `.`, Build = `cd app && bunx convex deploy --cmd 'bun run build'`, Install = `cd app && bun install` (override ON), Output = `app/dist`.
+- Dashboard settings: Root = `.`, Build = `bunx convex deploy --cmd 'bun run build'`, Install = `bun install` (override ON), Output = `dist`.
 
 ## GitHub CLI
 
@@ -221,15 +220,15 @@ When a task benefits from a specialist LLM (brainstorming, image generation, com
 3. Ask the user to submit the prompt and return the output.
 4. Review, refine, and integrate the result.
 
-| Model            | Best for                              |
-| ---------------- | ------------------------------------- |
-| Convex AI        | Convex docs, schema design            |
-| Gemini 3 Pro     | Complex reasoning                     |
-| Gemini 3 Flash   | Simpler/faster tasks                  |
-| Claude           | Coding and development                |
-| GPT-5            | General-purpose                       |
-| Kimi K2          | Coding, maths, tool orchestration     |
-| Nano Banana Pro  | Image generation                      |
+| Model           | Best for                          |
+| --------------- | --------------------------------- |
+| Convex AI       | Convex docs, schema design        |
+| Gemini 3 Pro    | Complex reasoning                 |
+| Gemini 3 Flash  | Simpler/faster tasks              |
+| Claude          | Coding and development            |
+| GPT-5           | General-purpose                   |
+| Kimi K2         | Coding, maths, tool orchestration |
+| Nano Banana Pro | Image generation                  |
 
 ---
 
@@ -266,21 +265,23 @@ AgriBid-82/
 
 ## Commands
 
-| Command | Description |
-| ------- | ------------- |
-| `git worktree add worktrees/<branch-name> -b <branch>` | Create worktree with new branch |
-| `git worktree add worktrees/<branch-name> <branch>` | Create worktree from existing branch |
-| `git worktree list` | List all worktrees |
-| `git worktree remove worktrees/<branch-name>` | Remove worktree |
-| `git branch -d <branch>` | Delete local branch (after merge) |
+| Command                                                | Description                          |
+| ------------------------------------------------------ | ------------------------------------ |
+| `git worktree add worktrees/<branch-name> -b <branch>` | Create worktree with new branch      |
+| `git worktree add worktrees/<branch-name> <branch>`    | Create worktree from existing branch |
+| `git worktree list`                                    | List all worktrees                   |
+| `git worktree remove worktrees/<branch-name>`          | Remove worktree                      |
+| `git branch -d <branch>`                               | Delete local branch (after merge)    |
 
 ## Creating Worktrees
 
 **User provides:**
+
 - List of branch names
 - Issue descriptions
 
 **Agent creates:**
+
 1. Each worktree under `worktrees/<branch-name>/`
 2. `prompt.md` in each worktree with detailed instructions
 
@@ -290,30 +291,37 @@ AgriBid-82/
 # Issue: <issue-number> - <title>
 
 ## Context
+
 <Description of what this issue is about>
 
 ## Goals
+
 - <Goal 1>
 - <Goal 2>
 
 ## Success Criteria
+
 - <Criteria 1>
 - <Criteria 2>
 
 ## Testing
+
 - How to verify the fix works
 - Any existing tests to run
 
 ## Notes
+
 - <Any relevant context or constraints>
 ```
 
 ## Example Start Prompts
 
 **Worktree: worktrees/feature-issue-123/**
+
 > Resolve the issue described in prompt.md in this directory. Run `bun run lint` → `bun run test --run` → `bun run build` must all pass before completing.
 
 **Worktree: worktrees/bugfix-issue-456/**
+
 > Fix the bug described in prompt.md. Ensure all tests pass and verify the fix manually using Chrome DevTools MCP.
 
 ## Cleanup After Merge
@@ -330,9 +338,9 @@ git branch -d <branch>
 
 ## Notes
 
-- Each worktree has independent `app/` state — changes don't affect other worktrees
+- Each worktree has independent state — changes don't affect other worktrees
 - Worktrees share the same `.git` database (no separate clone)
-- Run dev servers on different ports: `cd app && bun run dev --port 5174`
+- Run dev servers on different ports: `bun run dev --port 5174`
 - Use absolute paths when working in worktrees: `~/repo/worktrees/<branch-name>/`
 
 ---
