@@ -383,8 +383,12 @@ export const getActiveMakes = query({
   args: {},
   returns: v.array(v.string()),
   handler: async (ctx) => {
-    const metadata = await ctx.db.query("equipmentMetadata").collect();
-    return Array.from(new Set(metadata.map((m) => m.make))).sort();
+    const metadata = await ctx.db
+      .query("equipmentMetadata")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+    const makes = Array.from(new Set(metadata.map((m) => m.make))).sort();
+    return makes;
   },
 });
 
@@ -536,7 +540,10 @@ export const getEquipmentMetadata = query({
         _creationTime: v.number(),
         make: v.string(),
         models: v.array(v.string()),
-        category: v.string(),
+        categoryId: v.optional(v.id("equipmentCategories")),
+        category: v.optional(v.string()),
+        isActive: v.optional(v.boolean()),
+        updatedAt: v.optional(v.number()),
       })
     ),
     isDone: v.boolean(),
@@ -555,6 +562,29 @@ export const getEquipmentMetadata = query({
       ...results,
       totalCount,
     };
+  },
+});
+
+/**
+ * Fetch all active equipment categories.
+ *
+ * @returns An array of equipment categories with _id, _creationTime, name, and isActive.
+ */
+export const getCategories = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("equipmentCategories"),
+      _creationTime: v.number(),
+      name: v.string(),
+      isActive: v.boolean(),
+    })
+  ),
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("equipmentCategories")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
   },
 });
 

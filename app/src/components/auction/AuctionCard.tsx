@@ -18,8 +18,12 @@ import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
 import { AuctionCardThumbnail } from "./AuctionCardThumbnail";
 import { AuctionCardPrice } from "./AuctionCardPrice";
 
+interface AuctionWithCategory extends Doc<"auctions"> {
+  categoryName?: string;
+}
+
 interface AuctionCardProps {
-  auction: Doc<"auctions">;
+  auction: AuctionWithCategory;
   viewMode?: "compact" | "detailed";
   isWatched?: boolean;
 }
@@ -204,6 +208,14 @@ export const AuctionCard = ({
             <CardHeader
               className={cn(isCompact ? "p-3 pb-1" : "p-4 md:p-5 pb-0 md:pb-0")}
             >
+              <div className="flex flex-wrap gap-1 mb-1">
+                <Badge
+                  variant="outline"
+                  className="text-[8px] h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5 uppercase font-bold"
+                >
+                  {auction.categoryName || "Equipment"}
+                </Badge>
+              </div>
               <div className="flex justify-between items-start gap-2">
                 <CardTitle
                   className={cn(

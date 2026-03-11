@@ -14,7 +14,7 @@ import { cn, isValidCallbackUrl } from "@/lib/utils";
 import { Button } from "./ui/button";
 
 interface AuctionHeaderProps {
-  auction: Doc<"auctions">;
+  auction: Doc<"auctions"> & { categoryName?: string };
 }
 
 /**
@@ -69,6 +69,12 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 items-center">
+        <Badge
+          variant="outline"
+          className="font-bold bg-primary/5 text-primary border-primary/20 uppercase tracking-wide text-[10px]"
+        >
+          {auction.categoryName || "Equipment"}
+        </Badge>
         <Badge variant="secondary" className="font-bold">
           {auction.year} {auction.make}
         </Badge>

@@ -58,6 +58,7 @@ export const PHOTO_SLOTS: PhotoSlot[] = [
  */
 export const DEFAULT_FORM_DATA: ListingFormData = {
   year: new Date().getFullYear(),
+  categoryId: "",
   make: "",
   model: "",
   location: "",

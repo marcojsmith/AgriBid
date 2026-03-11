@@ -13,6 +13,10 @@ import { formatCurrency } from "@/lib/currency";
 
 import { ConditionItem } from "./ConditionItem";
 
+interface AuctionWithCategory extends Doc<"auctions"> {
+  categoryName?: string;
+}
+
 /**
  * Renders a moderation card for a single auction with actions to approve, reject, or view details.
  *
@@ -32,7 +36,7 @@ export function ModerationCard({
   onReject,
   onView,
 }: {
-  auction: Doc<"auctions">;
+  auction: AuctionWithCategory;
   onApprove: () => void;
   onReject: () => void;
   onView: () => void;
@@ -67,6 +71,12 @@ export function ModerationCard({
                 {auction.title}
               </h3>
               <div className="flex gap-2 mt-1">
+                <Badge
+                  variant="outline"
+                  className="font-bold border-primary/20 bg-primary/5 text-primary py-0 h-6 uppercase text-[9px]"
+                >
+                  {auction.categoryName || "Unknown"}
+                </Badge>
                 <Badge
                   variant="outline"
                   className="font-bold border-2 py-0 h-6"

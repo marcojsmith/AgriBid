@@ -92,8 +92,12 @@ const ListingWizardContent = () => {
       const images = normalizeListingImages(formData.images);
 
       const id = await saveDraft({
-        auctionId: editingAuctionId || formData.auctionId || undefined,
+        auctionId:
+          editingAuctionId ||
+          (formData.auctionId as Id<"auctions">) ||
+          undefined,
         title: formData.title,
+        categoryId: formData.categoryId as Id<"equipmentCategories">,
         make: formData.make,
         model: formData.model,
         year: formData.year,
@@ -168,6 +172,7 @@ const ListingWizardContent = () => {
 
       const auctionData = {
         title: formData.title,
+        categoryId: formData.categoryId as Id<"equipmentCategories">,
         make: formData.make,
         model: formData.model,
         year: formData.year,

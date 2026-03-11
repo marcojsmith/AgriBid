@@ -204,6 +204,7 @@ export const deleteUpload = mutation({
 export const createAuction = mutation({
   args: {
     title: v.string(),
+    categoryId: v.id("equipmentCategories"),
     make: v.string(),
     model: v.string(),
     year: v.number(),
@@ -287,6 +288,7 @@ export const saveDraft = mutation({
   args: {
     auctionId: v.optional(v.string()),
     title: v.string(),
+    categoryId: v.id("equipmentCategories"),
     make: v.string(),
     model: v.string(),
     year: v.number(),
@@ -481,6 +483,7 @@ export const updateAuction = mutation({
     auctionId: v.id("auctions"),
     updates: v.object({
       title: v.optional(v.string()),
+      categoryId: v.optional(v.id("equipmentCategories")),
       make: v.optional(v.string()),
       model: v.optional(v.string()),
       year: v.optional(v.number()),
@@ -929,6 +932,7 @@ export const adminUpdateAuction = mutation({
     auctionId: v.id("auctions"),
     updates: v.object({
       title: v.optional(v.string()),
+      categoryId: v.optional(v.id("equipmentCategories")),
       make: v.optional(v.string()),
       model: v.optional(v.string()),
       year: v.optional(v.number()),

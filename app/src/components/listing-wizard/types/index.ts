@@ -41,6 +41,8 @@ export interface ListingFormData {
   auctionId?: string;
   /** Manufacturing year of the equipment */
   year: number;
+  /** Equipment category ID */
+  categoryId: string;
   /** Equipment manufacturer/make */
   make: string;
   /** Equipment model name */

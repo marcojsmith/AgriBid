@@ -11,3 +11,6 @@ export * from "./FinanceTab";
 export * from "./SupportTab";
 export * from "./EmptyState";
 export * from "./ConditionItem";
+export * from "./EquipmentMetadataEditor";
+export * from "./CategoryManager";
+export * from "./MetadataCatalog";

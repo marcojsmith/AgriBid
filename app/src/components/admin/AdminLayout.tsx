@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   LayoutDashboard,
   Hammer,
+  LayoutGrid,
   DollarSign,
   MessageSquare,
   FileText,
@@ -41,6 +42,7 @@ const SIDEBAR_ITEMS = [
   { label: "Finance", icon: DollarSign, path: "/admin/finance" },
   { label: "Announcements", icon: Megaphone, path: "/admin/announcements" },
   { label: "Support", icon: MessageSquare, path: "/admin/support" },
+  { label: "Equipment", icon: LayoutGrid, path: "/admin/equipment-catalog" },
   { label: "Audit", icon: FileText, path: "/admin/audit" },
   { label: "System", icon: Settings, path: "/admin/settings" },
 ];

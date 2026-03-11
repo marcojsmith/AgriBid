@@ -112,6 +112,7 @@ export default function MyListings() {
     const draftData: ListingFormData = {
       auctionId: auction._id,
       year: auction.year,
+      categoryId: auction.categoryId || "",
       make: auction.make,
       model: auction.model,
       location: auction.location,

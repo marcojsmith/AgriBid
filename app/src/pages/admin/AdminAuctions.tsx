@@ -43,6 +43,10 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { BulkActionDialog } from "./dialogs";
 import { useBulkOperations } from "./hooks";
 
+interface AuctionWithCategory extends Doc<"auctions"> {
+  categoryName?: string;
+}
+
 /**
  * Format time remaining until a given timestamp.
  * @param endTime - The timestamp when the auction ends
@@ -164,11 +168,12 @@ export default function AdminAuctions() {
 
   const filteredAuctions = useMemo(() => {
     if (!allAuctions) return [];
-    return (allAuctions as Doc<"auctions">[]).filter(
+    return (allAuctions as AuctionWithCategory[]).filter(
       (a) =>
         a.title.toLowerCase().includes(auctionSearch.toLowerCase()) ||
         a.make.toLowerCase().includes(auctionSearch.toLowerCase()) ||
-        a.model.toLowerCase().includes(auctionSearch.toLowerCase())
+        a.model.toLowerCase().includes(auctionSearch.toLowerCase()) ||
+        a.categoryName?.toLowerCase().includes(auctionSearch.toLowerCase())
     );
   }, [allAuctions, auctionSearch]);
 
@@ -351,7 +356,13 @@ export default function AdminAuctions() {
                         <p className="font-bold text-sm leading-tight group-hover:text-primary transition-colors">
                           {a.title}
                         </p>
-                        <div className="text-[10px] font-medium text-muted-foreground uppercase flex gap-1">
+                        <div className="text-[10px] font-medium text-muted-foreground uppercase flex gap-1 items-center">
+                          <Badge
+                            variant="outline"
+                            className="text-[8px] h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5"
+                          >
+                            {a.categoryName || "Uncategorized"}
+                          </Badge>
                           <span>{a.make}</span>
                           <span>{a.model}</span>
                           <span>•</span>

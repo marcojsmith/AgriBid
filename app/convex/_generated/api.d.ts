@@ -9,6 +9,8 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as admin_categories from "../admin/categories.js";
+import type * as admin_equipmentMetadata from "../admin/equipmentMetadata.js";
 import type * as admin_index from "../admin/index.js";
 import type * as admin_kyc from "../admin/kyc.js";
 import type * as admin_settings from "../admin/settings.js";
@@ -47,6 +49,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  "admin/categories": typeof admin_categories;
+  "admin/equipmentMetadata": typeof admin_equipmentMetadata;
   "admin/index": typeof admin_index;
   "admin/kyc": typeof admin_kyc;
   "admin/settings": typeof admin_settings;

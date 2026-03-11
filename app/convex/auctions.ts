@@ -21,6 +21,7 @@ export {
   getAuctionBids,
   getAuctionBidCount,
   getEquipmentMetadata,
+  getCategories,
   getSellerInfo,
   getSellerListings,
   getAllAuctions,

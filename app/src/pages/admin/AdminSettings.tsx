@@ -46,14 +46,7 @@ export default function AdminSettings() {
             title="Equipment Metadata"
             description="Manage makes, models, and categories."
             icon={<Hammer />}
-            action={() => {
-              window.open(
-                "https://github.com/marcojsmith/AgriBid/issues/55",
-                "_blank",
-                "noopener,noreferrer"
-              );
-              toast.info("Opening Equipment Metadata issue #55");
-            }}
+            action={() => navigate("/admin/equipment-catalog")}
           />
           <SettingsCard
             title="Platform Fees"
