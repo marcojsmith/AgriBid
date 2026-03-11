@@ -49,7 +49,7 @@ AgriBid bridges the trust gap through:
 
 **Use Cases:**
 1. Upload 50+ high-resolution photos via drag-and-drop
-2. Auto-populate equipment specifications using make/model lookup
+2. [x] Auto-populate equipment specifications using make/model lookup
 3. Set reserve price with guidance from comparable sales data
 4. Monitor bid activity via real-time dashboard
 

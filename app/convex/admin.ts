@@ -8,7 +8,13 @@
  * - index.ts: Core admin operations (bid mgmt, support, audit logs, announcements)
  * - kyc.ts: KYC verification and review
  * - statistics.ts: Dashboard metrics and financial reporting
+ * - categories.ts: Equipment category management
+ * - equipmentMetadata.ts: Machinery make and model catalog
  */
+
+// Re-export specialized modules for hierarchical access
+export * as categories from "./admin/categories";
+export * as equipmentMetadata from "./admin/equipmentMetadata";
 
 // Re-export all functions from admin submodules
 export {

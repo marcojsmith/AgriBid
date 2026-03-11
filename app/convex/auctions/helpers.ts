@@ -122,6 +122,8 @@ export const AuctionSummaryValidator = v.object({
   year: v.number(),
   operatingHours: v.number(),
   location: v.string(),
+  categoryId: v.optional(v.id("equipmentCategories")),
+  categoryName: v.string(),
   reservePrice: v.number(),
   startingPrice: v.number(),
   currentPrice: v.number(),
@@ -174,6 +176,10 @@ export async function toAuctionSummary(
   ctx: QueryCtx,
   auction: Doc<"auctions">
 ) {
+  const category = auction.categoryId
+    ? await ctx.db.get(auction.categoryId)
+    : null;
+
   return {
     _id: auction._id,
     _creationTime: auction._creationTime,
@@ -192,6 +198,8 @@ export async function toAuctionSummary(
     reservePrice: auction.reservePrice,
     operatingHours: auction.operatingHours,
     location: auction.location,
+    categoryId: auction.categoryId,
+    categoryName: category?.name || "Unknown",
     sellerId: auction.sellerId,
     winnerId: auction.winnerId,
     conditionReportUrl: auction.conditionReportUrl,
@@ -214,6 +222,8 @@ export const AuctionDetailValidator = v.object({
   year: v.number(),
   operatingHours: v.number(),
   location: v.string(),
+  categoryId: v.optional(v.id("equipmentCategories")),
+  categoryName: v.string(),
   description: v.optional(v.string()),
   startingPrice: v.number(),
   reservePrice: v.number(),
@@ -250,8 +260,11 @@ export const AuctionDetailValidator = v.object({
  * sellerEmail may be undefined if no seller is found.
  */
 export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
-  const seller = await findUserById(ctx, auction.sellerId);
-  const identity = await ctx.auth.getUserIdentity();
+  const [seller, category, identity] = await Promise.all([
+    findUserById(ctx, auction.sellerId),
+    auction.categoryId ? ctx.db.get(auction.categoryId) : null,
+    ctx.auth.getUserIdentity(),
+  ]);
   const isAuthenticated = identity !== null;
 
   return {
@@ -264,6 +277,8 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     year: auction.year,
     operatingHours: auction.operatingHours,
     location: auction.location,
+    categoryId: auction.categoryId,
+    categoryName: category?.name || "Unknown",
     startingPrice: auction.startingPrice,
     reservePrice: auction.reservePrice,
     durationDays: auction.durationDays,

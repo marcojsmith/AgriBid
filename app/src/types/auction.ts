@@ -1,4 +1,11 @@
-import type { Id } from "../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
+
+/**
+ * Auction document with optional denormalized category name for display.
+ */
+export type AuctionWithCategory = Doc<"auctions"> & {
+  categoryName?: string;
+};
 
 /**
  * Represents the images associated with an auction.

@@ -5,23 +5,68 @@ import { MemoryRouter } from "react-router-dom";
 
 import { ListingWizard } from "@/components/listing-wizard/ListingWizard";
 
+// Mock Convex API
+vi.mock("convex/_generated/api", () => ({
+  api: {
+    auctions: {
+      getCategories: { _path: "auctions:getCategories" },
+      getEquipmentMetadata: { _path: "auctions:getEquipmentMetadata" },
+    },
+    admin: {
+      categories: {
+        addCategory: { _path: "admin:categories:addCategory" },
+        updateCategory: { _path: "admin:categories:updateCategory" },
+        deleteCategory: { _path: "admin:categories:deleteCategory" },
+      },
+      equipmentMetadata: {
+        addEquipmentMake: { _path: "admin:equipmentMetadata:addEquipmentMake" },
+        updateEquipmentMake: {
+          _path: "admin:equipmentMetadata:updateEquipmentMake",
+        },
+      },
+    },
+  },
+}));
+
 // Mock Convex hooks
 vi.mock("convex/react", () => ({
-  useQuery: () => [
-    { make: "John Deere", models: ["6155R", "8R 410"], category: "Tractor" },
-    { make: "Case IH", models: ["Magnum 340"], category: "Tractor" },
-  ],
-  usePaginatedQuery: () => ({
-    results: [
-      { make: "John Deere", models: ["6155R", "8R 410"], category: "Tractor" },
-      { make: "Case IH", models: ["Magnum 340"], category: "Tractor" },
-    ],
-    status: "Exhausted",
-    loadMore: vi.fn(),
-  }),
-  useMutation: (apiFunc: unknown) => {
-    const func = apiFunc as { _path?: string } | string;
-    const path = typeof func === "string" ? func : func?._path || "";
+  useQuery: (apiFunc: { _path?: string } | null | undefined) => {
+    const path = apiFunc?._path || "";
+    if (path === "auctions:getCategories") {
+      return [
+        { _id: "cat1", name: "Tractor", isActive: true },
+        { _id: "cat2", name: "Harvester", isActive: true },
+      ];
+    }
+    return [];
+  },
+  usePaginatedQuery: (apiFunc: { _path?: string } | null | undefined) => {
+    const path = apiFunc?._path || "";
+    if (path === "auctions:getEquipmentMetadata") {
+      return {
+        results: [
+          {
+            _id: "m1",
+            make: "John Deere",
+            models: ["6155R", "8R 410"],
+            categoryId: "cat1",
+          },
+          {
+            _id: "m2",
+            make: "Case IH",
+            models: ["Magnum 340"],
+            categoryId: "cat1",
+          },
+        ],
+        status: "Exhausted",
+        loadMore: vi.fn(),
+      };
+    }
+    return { results: [], status: "Exhausted", loadMore: vi.fn() };
+  },
+  useMutation: (apiFunc: { _path?: string } | string | null | undefined) => {
+    const path =
+      typeof apiFunc === "object" && apiFunc !== null ? apiFunc._path : apiFunc;
     const isUpload =
       typeof path === "string" && path.includes("generateUploadUrl");
 
@@ -86,6 +131,9 @@ describe("ListingWizard", () => {
     fillStep1();
     fireEvent.click(screen.getByText(/Next Step/i));
 
+    // Select category first
+    fireEvent.click(screen.getByText("Tractor"));
+
     fireEvent.click(screen.getByText("John Deere"));
     fireEvent.click(screen.getByText("6155R"));
     fireEvent.click(screen.getByText(/Next Step/i));
@@ -123,6 +171,9 @@ describe("ListingWizard", () => {
     // Fill Step 1
     fillStep1();
     fireEvent.click(screen.getByText(/Next Step/i));
+
+    // Select category
+    fireEvent.click(screen.getByText("Tractor"));
 
     // Fill Step 2 (Manufacturer/Model)
     fireEvent.click(screen.getByText("John Deere"));

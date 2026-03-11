@@ -38,6 +38,7 @@ interface CloseAuctionEarlyResult {
  */
 interface AuctionUpdates {
   title?: string;
+  categoryId?: Id<"equipmentCategories">;
   make?: string;
   model?: string;
   year?: number;
@@ -204,6 +205,7 @@ export const deleteUpload = mutation({
 export const createAuction = mutation({
   args: {
     title: v.string(),
+    categoryId: v.id("equipmentCategories"),
     make: v.string(),
     model: v.string(),
     year: v.number(),
@@ -241,6 +243,12 @@ export const createAuction = mutation({
 
     if (restArgs.images.additional && restArgs.images.additional.length > 6) {
       throw new ConvexError("Additional images limit exceeded (max 6)");
+    }
+
+    // Validate categoryId exists
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) {
+      throw new ConvexError("Invalid categoryId: Category not found");
     }
 
     const images = normalizeImages(restArgs.images);
@@ -287,6 +295,7 @@ export const saveDraft = mutation({
   args: {
     auctionId: v.optional(v.string()),
     title: v.string(),
+    categoryId: v.id("equipmentCategories"),
     make: v.string(),
     model: v.string(),
     year: v.number(),
@@ -481,6 +490,7 @@ export const updateAuction = mutation({
     auctionId: v.id("auctions"),
     updates: v.object({
       title: v.optional(v.string()),
+      categoryId: v.optional(v.id("equipmentCategories")),
       make: v.optional(v.string()),
       model: v.optional(v.string()),
       year: v.optional(v.number()),
@@ -929,6 +939,7 @@ export const adminUpdateAuction = mutation({
     auctionId: v.id("auctions"),
     updates: v.object({
       title: v.optional(v.string()),
+      categoryId: v.optional(v.id("equipmentCategories")),
       make: v.optional(v.string()),
       model: v.optional(v.string()),
       year: v.optional(v.number()),

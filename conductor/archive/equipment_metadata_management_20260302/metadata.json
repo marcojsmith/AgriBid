@@ -1,0 +1,7 @@
+{
+  "track_id": "equipment_metadata_management_20260302",
+  "type": "feature",
+  "status": "completed",
+  "updated_at": "2026-03-11T00:00:00Z",
+  "description": "Equipment Metadata Management on Admin Page: Implement functionality for admins to manage equipment makes, models, and categories, including backend queries/mutations and a frontend editor."
+}

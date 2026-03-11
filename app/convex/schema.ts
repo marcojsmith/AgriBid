@@ -4,11 +4,21 @@ import { v } from "convex/values";
 
 export default defineSchema({
   // AgriBid Tables
+  equipmentCategories: defineTable({
+    name: v.string(),
+    isActive: v.boolean(),
+  }).index("by_name", ["name"]),
+
   equipmentMetadata: defineTable({
     make: v.string(),
     models: v.array(v.string()),
-    category: v.string(),
-  }).index("by_make", ["make"]),
+    categoryId: v.optional(v.id("equipmentCategories")),
+    category: v.optional(v.string()), // legacy field
+    isActive: v.optional(v.boolean()),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_make", ["make"])
+    .index("by_category", ["categoryId"]),
 
   auctions: defineTable({
     title: v.string(),
@@ -17,6 +27,7 @@ export default defineSchema({
     year: v.number(),
     operatingHours: v.number(),
     location: v.string(),
+    categoryId: v.optional(v.id("equipmentCategories")),
     reservePrice: v.number(),
     startingPrice: v.number(),
     currentPrice: v.number(),
@@ -62,6 +73,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])
     .index("by_seller_status", ["sellerId", "status"])
+    .index("by_category", ["categoryId"])
     .index("by_end_time", ["endTime"])
     .index("by_seedId", ["seedId"])
     .index("by_status_make", ["status", "make"])
@@ -239,8 +251,8 @@ export default defineSchema({
     open: v.optional(v.number()),
     resolved: v.optional(v.number()),
     draft: v.optional(v.number()), // Support for draft counter
-    salesVolume: v.optional(v.number()),
     soldCount: v.optional(v.number()),
+    salesVolume: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 

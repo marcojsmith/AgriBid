@@ -5,6 +5,8 @@
  * consistent error handling across the application.
  */
 
+import { ConvexError } from "convex/values";
+
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { authComponent } from "../auth";
 import type { AuthUser } from "../auth";
@@ -44,11 +46,91 @@ export async function getAuthUser(ctx: QueryCtx | MutationCtx): Promise<{
   _creationTime?: number;
 } | null> {
   try {
-    return await authComponent.getAuthUser(ctx);
-  } catch (err) {
-    if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-      console.error("getAuthUser failed:", err);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
     }
+
+    // Better Auth's Convex plugin uses the subject to link accounts.
+    // If subject is missing, we can't resolve the user via the component.
+    if (!identity.subject) {
+      return null;
+    }
+
+    // Attempt to get user via the component first
+    try {
+      const user = await authComponent.getAuthUser(ctx);
+      if (user) return user;
+    } catch (err) {
+      // If the component fails with a validation error (likely due to internal query building),
+      // we try a manual fallback lookup using the subject.
+      if (
+        err instanceof Error &&
+        err.message.includes("ArgumentValidationError")
+      ) {
+        // Try to find the user in the 'user' table using the subject as _id
+        // The component uses the subject as the primary key if it's a valid ID.
+        try {
+          // 1. Try direct db.get (only works if subject is a valid Convex ID for some table)
+          let userRecord: Record<string, unknown> | null = null;
+          try {
+            // We use a safe cast for db.get parameter
+            const doc = await ctx.db.get(identity.subject as never);
+            if (doc) {
+              userRecord = doc as Record<string, unknown>;
+            }
+          } catch {
+            // Not a valid ID format for db.get
+          }
+
+          // 2. Try adapter lookup by _id if db.get didn't work or return a record
+          if (!userRecord) {
+            // Accessing internal adapter properties for emergency fallback
+            // Using unknown cast to bypass lint while maintaining some structural safety
+            const adapterObj = authComponent as unknown as {
+              adapter: { findOne: string };
+            };
+            const contextObj = ctx as unknown as {
+              runQuery: (
+                fn: string,
+                args: Record<string, unknown>
+              ) => Promise<Record<string, unknown> | null>;
+            };
+
+            userRecord = await contextObj.runQuery(adapterObj.adapter.findOne, {
+              model: "user",
+              where: [
+                { field: "_id", operator: "eq", value: identity.subject },
+              ],
+            });
+          }
+
+          if (userRecord) {
+            return {
+              _id: (userRecord._id as string) ?? identity.subject,
+              userId:
+                (userRecord.userId as string | undefined) ??
+                (userRecord._id as string) ??
+                identity.subject,
+              email: userRecord.email as string | undefined,
+              name: userRecord.name as string | undefined,
+              image: userRecord.image as string | undefined,
+              _creationTime: userRecord._creationTime as number | undefined,
+            };
+          }
+        } catch {
+          // Fallback failed, continue to standard error handling
+        }
+      }
+
+      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
+        console.error("getAuthUser fallback lookup failed:", err);
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error("Critical error in getAuthUser wrapper:", err);
     return null;
   }
 }
@@ -161,61 +243,33 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Get the authenticated user together with their profile and resolved userId when available.
- *
+ * Alias for getAuthWithProfile.
  * @param ctx
- * @returns `{ authUser, profile, userId }` containing the authenticated user, their profile and the resolved userId, or `null` if the caller is not authenticated, the userId cannot be determined, the profile is not found, or an error occurs
+ * @returns Object containing user identity, profile, and resolved linkId
  */
 export async function getAuthenticatedProfile(ctx: QueryCtx | MutationCtx) {
-  try {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) return null;
-
-    const linkId = resolveUserId(authUser);
-    if (!linkId) return null;
-
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", linkId))
-      .unique();
-
-    if (!profile) return null;
-
-    return {
-      authUser,
-      profile,
-      userId: linkId,
-    };
-  } catch {
-    return null;
-  }
+  return await getAuthWithProfile(ctx);
 }
 
 /**
- * Ensure the current user is authenticated and return their auth user, profile and resolved userId.
+ * Get the authenticated user together with their profile and resolved userId when available.
+ *
+ * Centralized helper to avoid repeated profile lookups.
  *
  * @param ctx
- * @returns An object containing `authUser`, `profile` and `userId`
- * @throws Error When the user is not authenticated
- * @throws Error When the user identity cannot be determined ("Unable to determine user identity")
- * @throws Error When the user profile is not found ("User profile not found")
+ * @returns Object containing user identity, profile, and resolved linkId
  */
-export async function requireProfile(ctx: QueryCtx | MutationCtx) {
-  const authUser = await requireAuth(ctx);
+export async function getAuthWithProfile(ctx: QueryCtx | MutationCtx) {
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) return null;
 
   const linkId = resolveUserId(authUser);
-  if (!linkId) {
-    throw new Error("Unable to determine user identity");
-  }
+  if (!linkId) return null;
 
   const profile = await ctx.db
     .query("profiles")
     .withIndex("by_userId", (q) => q.eq("userId", linkId))
     .unique();
-
-  if (!profile) {
-    throw new Error("User profile not found");
-  }
 
   return {
     authUser,
@@ -225,18 +279,47 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * Ensure the caller has an authenticated profile and that the profile is verified.
+ * Ensure the user is authenticated and has a profile.
  *
- * @param ctx - The query or mutation context containing authentication and database access
- * @returns An object containing `profile`, `authUser`, and `userId` for the verified user
- * @throws Error if the user is not authenticated, the profile cannot be found, or the profile is not verified
+ * @param ctx
+ * @returns Profile and userId
+ * @throws Error if not authenticated or profile missing
+ */
+export async function requireProfile(ctx: QueryCtx | MutationCtx) {
+  const result = await getAuthWithProfile(ctx);
+  if (!result || !result.profile) {
+    throw new ConvexError("Authenticated profile not found");
+  }
+  return { profile: result.profile, userId: result.userId };
+}
+
+/**
+ * Ensure user is authenticated and KYC verified.
+ *
+ * @param ctx
+ * @returns Profile and userId
  */
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
-  const { profile, ...rest } = await requireProfile(ctx);
-
+  const { profile, userId } = await requireProfile(ctx);
   if (!profile.isVerified) {
-    throw new Error(VERIFIED_REQUIRED_MESSAGE);
+    throw new UnauthorizedError(VERIFIED_REQUIRED_MESSAGE);
+  }
+  return { profile, userId };
+}
+
+/**
+ * Ensure the current caller is a verified seller.
+ *
+ * @param ctx
+ * @returns Object containing profile and userId
+ * @throws UnauthorizedError if the user is not a verified seller
+ */
+export async function requireVerifiedSeller(ctx: QueryCtx | MutationCtx) {
+  const { profile, userId } = await requireVerified(ctx);
+
+  if (profile.role !== "seller" && profile.role !== "admin") {
+    throw new UnauthorizedError("Seller account required");
   }
 
-  return { profile, ...rest };
+  return { profile, userId };
 }

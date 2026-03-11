@@ -1,4 +1,6 @@
-import { Info, Camera, CheckCircle2 } from "lucide-react";
+import { Info, Camera, CheckCircle2, LayoutGrid } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "convex/_generated/api";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -6,12 +8,21 @@ import { useListingWizard } from "../hooks/useListingWizard";
 import { PHOTO_SLOTS } from "../constants";
 
 /**
- * Step 5 of the listing wizard: Review and Submit.
+ * Review and submit step component for the listing wizard.
  *
- * @returns The rendered review and submit step.
+ * Displays a comprehensive summary of all entered information, including
+ * technical specifications, category, pricing, duration, and media gallery.
+ * This is the final step before the user submits the listing for review.
+ *
+ * @returns A JSX.Element rendering the summary review interface
  */
 export const ReviewSubmitStep = () => {
   const { formData, previews } = useListingWizard();
+  const categories = useQuery(api.auctions.getCategories);
+
+  const categoryName =
+    categories?.find((c) => c._id === formData.categoryId)?.name ||
+    "Not selected";
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -35,11 +46,12 @@ export const ReviewSubmitStep = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase text-muted-foreground">
-                  Make/Model
+                  Category
                 </p>
-                <p className="font-bold">
-                  {formData.make} {formData.model}
-                </p>
+                <div className="flex items-center gap-1.5 font-bold">
+                  <LayoutGrid className="h-3 w-3 text-primary" />
+                  {categoryName}
+                </div>
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase text-muted-foreground">
@@ -51,16 +63,24 @@ export const ReviewSubmitStep = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase text-muted-foreground">
+                  Make/Model
+                </p>
+                <p className="font-bold">
+                  {formData.make} {formData.model}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground">
                   Hours
                 </p>
                 <p className="font-bold">{formData.operatingHours} hrs</p>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground">
-                  Location
-                </p>
-                <p className="font-bold">{formData.location}</p>
-              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-muted-foreground">
+                Location
+              </p>
+              <p className="font-bold">{formData.location}</p>
             </div>
             <div>
               <p className="text-[10px] font-black uppercase text-muted-foreground">

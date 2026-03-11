@@ -29,8 +29,34 @@ export function useListingForm() {
           return "Operating hours are required";
         return null;
       case 1: // Technical Specs
-        if (!formData.make?.trim()) return "Make is required";
-        if (!formData.model?.trim()) return "Model is required";
+        if (!formData.categoryId) return "Please select a category.";
+        if (!formData.make) return "Please select a manufacturer.";
+        if (!formData.model) return "Please select a model.";
+        return null;
+      case 2: // Condition Checklist
+        if (!formData.conditionChecklist) {
+          return "Please complete the condition checklist.";
+        }
+        if (
+          formData.conditionChecklist.engine === null ||
+          formData.conditionChecklist.engine === undefined
+        )
+          return "Please specify the engine condition.";
+        if (
+          formData.conditionChecklist.hydraulics === null ||
+          formData.conditionChecklist.hydraulics === undefined
+        )
+          return "Please specify the hydraulics condition.";
+        if (
+          formData.conditionChecklist.tires === null ||
+          formData.conditionChecklist.tires === undefined
+        )
+          return "Please specify the tires condition.";
+        if (
+          formData.conditionChecklist.serviceHistory === null ||
+          formData.conditionChecklist.serviceHistory === undefined
+        )
+          return "Please specify the service history.";
         return null;
       case 3: {
         // Media Gallery

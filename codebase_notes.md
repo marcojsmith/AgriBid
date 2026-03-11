@@ -127,3 +127,12 @@ The Admin Dashboard has been refactored from a monolithic context-based design t
 - **Dashboard Stats**: Overall stats (Winning, Outbid, Exposure) are calculated on the server via `getMyBidsStats` to ensure accuracy regardless of frontend pagination state.
 - **Pagination Strategy**: Currently uses an `indexOf(cursor) + 1` approach on an in-memory sorted array of auction IDs. While functional for current scale, this should be refactored to a more robust cursor-based query if the number of bid-on auctions per user exceeds 1,000.
 
+## Equipment Metadata Management (March 2026)
+
+- **Hierarchical Structure**: Transitioned from static strings to a dynamic `equipmentCategories` -> `equipmentMetadata` (Make) -> `models` hierarchy.
+- **Admin UI**: Implemented `AdminEquipmentCatalog.tsx` providing a specialized interface for CRUD operations on categories, manufacturers, and models.
+- **Data Integrity**: Enforced hierarchical selection in the `ListingWizard`. Added soft-delete support via `isActive` flags.
+- **Migration**: Implemented `fixMetadata` to map legacy auction data to the new hierarchical structure.
+- **Seeding**: Expanded `runSeed` with a comprehensive catalog of Southern African agricultural machinery.
+
+
