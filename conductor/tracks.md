@@ -12,11 +12,14 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## Active Tracks
 
-- [~] **Track: Admin Dashboard - Inconsistent User Count Data**
-*Link: [./tracks/admin_dashboard_user_count_20260302/](./tracks/admin_dashboard_user_count_20260302/)*
+*(None currently active)*
+
 ---
 
 ## Archive
+
+- [x] **Track: Admin Dashboard - Inconsistent User Count Data**
+*Link: [./archive/admin_dashboard_user_count_20260302/](./archive/admin_dashboard_user_count_20260302/)*
 
 - [x] **Track: Equipment Metadata Management on Admin Page**
 *Link: [./archive/equipment_metadata_management_20260302/](./archive/equipment_metadata_management_20260302/)*
