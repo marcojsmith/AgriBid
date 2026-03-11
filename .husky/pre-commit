@@ -1,1 +1,1 @@
-cd app && bunx lint-staged && bun run build
+bunx lint-staged && bun run build

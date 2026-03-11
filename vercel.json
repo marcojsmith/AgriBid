@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd app && if [ \"$VERCEL_ENV\" = \"production\" ]; then bunx convex deploy --cmd 'bun run build'; else bun run build; fi",
-  "installCommand": "cd app && bun install",
-  "outputDirectory": "app/dist",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then bunx convex deploy --cmd 'bun run build'; else bun run build; fi",
+  "installCommand": "bun install",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",

@@ -9,7 +9,6 @@ coverage/
 # Production
 dist/
 build/
-app/dist/
 dist-ssr/
 
 # Misc
@@ -28,7 +27,6 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
-app/.env.local
 
 # Editor
 .vscode/
