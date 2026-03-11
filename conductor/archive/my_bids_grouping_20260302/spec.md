@@ -1,9 +1,11 @@
 # Specification: My Bids Page - Group Bids by Auction
 
 ## Overview
+
 The "My Bids" page currently displays each bid as an individual card, which results in duplicate auction listings for users who have bid multiple times on the same item. This track aims to refactor both the backend query and frontend display to group bids by auction, showing the user's highest bid per auction and clear status indicators (Winning, Outbid, Won, Lost, Cancelled).
 
 ## User Stories
+
 - As a **Buyer**, I want to see a single card for each auction I've bid on, so I can easily track my status without clutter.
 - As a **Buyer**, I want to see my highest bid and the total number of times I've bid on an item.
 - As a **Buyer**, I want to quickly see if I am currently winning or if I've been outbid, with a clear action to raise my bid if needed.
@@ -11,6 +13,7 @@ The "My Bids" page currently displays each bid as an individual card, which resu
 ## Functional Requirements
 
 ### Backend (Convex)
+
 - Modify `getMyBids` query in `app/convex/auctions/queries.ts`.
 - Group bids by `auctionId` for the current user.
 - For each auction, return:
@@ -23,6 +26,7 @@ The "My Bids" page currently displays each bid as an individual card, which resu
   - `isCancelled`: Boolean (True if auction status is 'rejected' or 'unsold').
 
 ### Frontend (React)
+
 - Update `app/src/pages/dashboard/MyBids.tsx` to handle the new grouped data structure.
 - **Dashboard Summary**: Add a top section showing:
   - Total active bids.
@@ -43,11 +47,13 @@ The "My Bids" page currently displays each bid as an individual card, which resu
   - Filter by status (All, Winning, Outbid, Ended).
 
 ## Non-Functional Requirements
+
 - **Performance**: Optimized grouping query using indexes to minimize latency.
 - **Consistency**: Status colors should match the existing platform theme.
 - **Responsiveness**: Ensure the "My Bids" grid and dashboard summary are mobile-friendly.
 
 ## Acceptance Criteria
+
 - "My Bids" page shows exactly one card per auction.
 - `OUTBID` status is clearly visible on relevant cards.
 - "Raise Bid" button triggers an inline bidding interface.
@@ -55,5 +61,6 @@ The "My Bids" page currently displays each bid as an individual card, which resu
 - Filtering by status works as expected.
 
 ## Out of Scope
+
 - Detailed bid history for each auction (available on the auction detail page).
 - Notification settings for outbid events (handled by a separate track).

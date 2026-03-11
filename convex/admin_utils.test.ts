@@ -9,7 +9,12 @@ import {
   logAudit,
   updateCounter,
 } from "./admin_utils";
+import * as auth from "./lib/auth";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+
+vi.mock("./lib/auth", () => ({
+  getAuthUser: vi.fn(),
+}));
 
 describe("getCounter", () => {
   let mockCtx: any;
@@ -245,9 +250,10 @@ describe("logAudit", () => {
   });
 
   const setupMockCtx = (authUser: any = null) => {
+    const identity = authUser ? { subject: authUser.userId } : null;
     return {
       auth: {
-        getUserIdentity: vi.fn().mockResolvedValue(authUser),
+        getUserIdentity: vi.fn().mockResolvedValue(identity),
       },
       db: {
         insert: vi.fn().mockResolvedValue("audit_log_123"),
@@ -261,6 +267,11 @@ describe("logAudit", () => {
 
   it("should create audit log with authenticated user", async () => {
     mockCtx = setupMockCtx({ userId: "user_123", _id: "auth_123" });
+
+    vi.mocked(auth.getAuthUser).mockResolvedValue({
+      userId: "user_123",
+      _id: "auth_123",
+    });
 
     await logAudit(mockCtx, {
       action: "UPDATE_AUCTION",
@@ -316,6 +327,11 @@ describe("logAudit", () => {
 
   it("should include targetCount when provided", async () => {
     mockCtx = setupMockCtx({ userId: "admin_123", _id: "auth_123" });
+
+    vi.mocked(auth.getAuthUser).mockResolvedValue({
+      userId: "admin_123",
+      _id: "auth_123",
+    });
 
     await logAudit(mockCtx, {
       action: "BULK_DELETE",

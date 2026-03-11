@@ -1,9 +1,11 @@
 # Specification: Auction Detail Page and Bid Submission Flow
 
 ## Overview
+
 This track focuses on implementing the core "active" experience of the AgriBid platform: the Auction Detail Page. This page is the primary destination for buyers to inspect equipment, monitor live prices, and place bids in real-time.
 
 ## Functional Requirements
+
 - **Navigation**:
   - Direct navigation from Home Page auction cards to the detail page.
   - Implement a dedicated route (e.g., `/auction/:id`).
@@ -21,11 +23,13 @@ This track focuses on implementing the core "active" experience of the AgriBid p
   - **Seller Info**: Display of seller name and verification status.
 
 ## Non-Functional Requirements
+
 - **Latency**: Bid placement and price updates must reflect across all clients in < 200ms using Convex's reactive queries.
 - **Responsiveness**: The layout must adapt seamlessly from desktop (sidebar bidding) to mobile (stacked view).
 - **Accessibility**: Bidding buttons and inputs must be keyboard-navigable and screen-reader friendly.
 
 ## Acceptance Criteria
+
 - [ ] Users can navigate to any active auction from the grid.
 - [ ] The image gallery correctly cycles through thumbnails and opens a lightbox.
 - [ ] The bidding panel updates current price and timers in real-time without page refresh.
@@ -33,6 +37,7 @@ This track focuses on implementing the core "active" experience of the AgriBid p
 - [ ] Bid history reactively updates when any user places a bid.
 
 ## Out of Scope
+
 - Seller dashboard analytics for the auction.
 - In-app notifications for auction events (Phase 3).
 - User watchlist management (separate track).

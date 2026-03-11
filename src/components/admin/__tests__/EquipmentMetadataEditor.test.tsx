@@ -80,7 +80,7 @@ vi.mock("convex/react", () => ({
         },
       ];
     }
-    return undefined;
+    return null;
   }),
   useMutation: vi.fn(() => vi.fn().mockResolvedValue({})),
 }));
@@ -91,12 +91,58 @@ vi.mock("@/components/LoadingIndicator", () => ({
 }));
 
 describe("EquipmentMetadataEditor", () => {
+  const getDefaultMockData = (
+    apiFunc: { _path?: string } | null | undefined
+  ) => {
+    const path = apiFunc?._path || "";
+    if (path === "admin:categories:getCategories") {
+      return [
+        {
+          _id: "cat1",
+          _creationTime: Date.now(),
+          name: "Tractors",
+          isActive: true,
+        },
+        {
+          _id: "cat2",
+          _creationTime: Date.now(),
+          name: "Harvesters",
+          isActive: true,
+        },
+      ];
+    }
+    if (path === "admin:equipmentMetadata:getAllEquipmentMetadata") {
+      return [
+        {
+          _id: "meta1",
+          _creationTime: Date.now(),
+          make: "John Deere",
+          models: ["8R", "7R"],
+          categoryId: "cat1",
+          categoryName: "Tractors",
+          isActive: true,
+        },
+        {
+          _id: "meta2",
+          _creationTime: Date.now(),
+          make: "Case IH",
+          models: ["Magnum"],
+          categoryId: "cat2",
+          categoryName: "Harvesters",
+          isActive: true,
+        },
+      ];
+    }
+    return null;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useQuery).mockImplementation(getDefaultMockData as never);
   });
 
   it("should render loading state initially", () => {
-    vi.mocked(useQuery).mockReturnValue(undefined);
+    vi.mocked(useQuery).mockReturnValue(undefined as never);
 
     render(<EquipmentMetadataEditor />);
 

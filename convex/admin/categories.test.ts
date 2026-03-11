@@ -438,6 +438,39 @@ describe("fixMetadata", () => {
   });
 
   const setupMockCtx = () => {
+    // Shared mutable state to simulate database changes
+    const equipmentMetadata = [
+      {
+        _id: "meta_1",
+        make: "John Deere",
+        models: ["8R"],
+        category: "Tractors",
+        categoryId: undefined,
+      },
+      {
+        _id: "meta_2",
+        make: "Case IH",
+        models: ["Magnum"],
+        category: "Harvesters",
+        categoryId: undefined,
+      },
+    ];
+
+    const auctions = [
+      {
+        _id: "auction_1",
+        make: "John Deere",
+        model: "8R",
+        categoryId: undefined,
+      },
+      {
+        _id: "auction_2",
+        make: "Case IH",
+        model: "Magnum",
+        categoryId: undefined,
+      },
+    ];
+
     const mockDb = {
       query: vi.fn((table: string) => {
         const baseQuery = {
@@ -450,42 +483,28 @@ describe("fixMetadata", () => {
             { _id: "cat_2", name: "Harvesters" },
           ]);
         } else if (table === "equipmentMetadata") {
-          baseQuery.collect.mockResolvedValue([
-            {
-              _id: "meta_1",
-              make: "John Deere",
-              models: ["8R"],
-              category: "Tractors",
-              categoryId: undefined,
-            },
-            {
-              _id: "meta_2",
-              make: "Case IH",
-              models: ["Magnum"],
-              category: "Harvesters",
-              categoryId: undefined,
-            },
-          ]);
+          baseQuery.collect.mockResolvedValue(equipmentMetadata);
         } else if (table === "auctions") {
-          baseQuery.collect.mockResolvedValue([
-            {
-              _id: "auction_1",
-              make: "John Deere",
-              model: "8R",
-              categoryId: undefined,
-            },
-            {
-              _id: "auction_2",
-              make: "Case IH",
-              model: "Magnum",
-              categoryId: undefined,
-            },
-          ]);
+          baseQuery.collect.mockResolvedValue(auctions);
         }
 
         return baseQuery;
       }),
-      patch: vi.fn(),
+      patch: vi.fn((id, updates) => {
+        // Simulate the patch by updating the shared objects
+        if (id === "meta_1" && updates.categoryId) {
+          equipmentMetadata[0].categoryId = updates.categoryId;
+        }
+        if (id === "meta_2" && updates.categoryId) {
+          equipmentMetadata[1].categoryId = updates.categoryId;
+        }
+        if (id === "auction_1" && updates.categoryId) {
+          auctions[0].categoryId = updates.categoryId;
+        }
+        if (id === "auction_2" && updates.categoryId) {
+          auctions[1].categoryId = updates.categoryId;
+        }
+      }),
     };
     return {
       db: mockDb as any,

@@ -1,9 +1,11 @@
 # Track Specification: Pagination Refactor for Queries
 
 ## Overview
+
 Currently, several Convex queries use hardcoded `.take()` limits (e.g., 50, 100, 1000). This silently truncates data and provides a poor user experience as the database grows. This track implements cursor-based pagination using Convex's native `.paginate()` method and updates the UI to support loading more data.
 
 ## Functional Requirements
+
 - **Cursor-based Pagination:** Replace hardcoded `.take()` limits with Convex `.paginate()` in:
   - `getAuctionBids` (Bidding history)
   - `getEquipmentMetadata` (Admin equipment list)
@@ -17,11 +19,13 @@ Currently, several Convex queries use hardcoded `.take()` limits (e.g., 50, 100,
   - Show "Showing X of Y" or truncation indicators when results are limited.
 
 ## Non-Functional Requirements
+
 - **Performance:** Ensure pagination is efficient and doesn't introduce large scans.
 - **Type Safety:** Use `paginationOptsValidator` for all paginated query arguments.
 - **UI Consistency:** Follow existing design patterns for loading states and buttons.
 
 ## Acceptance Criteria
+
 - [ ] Queries successfully return paginated results with `nextPageCursor` and `hasMore`.
 - [ ] Frontend components display data in batches and allow users to load more.
 - [ ] `MAX_RESULTS` is centralized in `app/convex/constants.ts`.
@@ -29,5 +33,6 @@ Currently, several Convex queries use hardcoded `.take()` limits (e.g., 50, 100,
 - [ ] No data loss at pagination boundaries.
 
 ## Out of Scope
+
 - Migrating non-query logic to pagination (e.g., bulk exports).
 - Changing the underlying database schema.

@@ -1,61 +1,100 @@
-// app/src/components/__tests__/BidHistory.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { useQuery, usePaginatedQuery } from "convex/react";
 import type { Id } from "convex/_generated/dataModel";
 
-import { BidHistory } from "@/components/bidding/BidHistory";
+import { BidHistory } from "../bidding/BidHistory";
 
-// Mock Convex hooks
 vi.mock("convex/react", () => ({
-  useQuery: () => [
-    {
-      _id: "bid1",
-      amount: 50000,
-      bidderName: "John Doe",
-      timestamp: Date.now() - 10000,
+  useQuery: vi.fn(),
+  usePaginatedQuery: vi.fn(),
+}));
+
+vi.mock("convex/_generated/api", () => ({
+  api: {
+    auctions: {
+      getAuctionById: { _path: "auctions:getAuctionById" },
+      getAuctionBidCount: { _path: "auctions:getAuctionBidCount" },
+      getAuctionBids: { _path: "auctions:getAuctionBids" },
     },
-    {
-      _id: "bid2",
-      amount: 51000,
-      bidderName: "Jane Smith",
-      timestamp: Date.now() - 5000,
-    },
-  ],
-  usePaginatedQuery: () => ({
-    results: [
-      {
-        _id: "bid1",
-        amount: 50000,
-        bidderName: "John Doe",
-        timestamp: Date.now() - 10000,
-      },
-      {
-        _id: "bid2",
-        amount: 51000,
-        bidderName: "Jane Smith",
-        timestamp: Date.now() - 5000,
-      },
-    ],
-    status: "Exhausted",
-    loadMore: vi.fn(),
-  }),
+  },
 }));
 
 describe("BidHistory", () => {
-  it("renders correctly and toggles expansion", () => {
-    render(<BidHistory auctionId={"auction123" as Id<"auctions">} />);
+  const mockAuctionId = "auction123" as Id<"auctions">;
+  const mockBids = [
+    {
+      _id: "bid1",
+      amount: 2000,
+      bidderName: "John Doe",
+      timestamp: Date.now(),
+    },
+    {
+      _id: "bid2",
+      amount: 1000,
+      bidderName: "Jane Smith",
+      timestamp: Date.now() - 10000,
+    },
+  ];
 
-    // Header should be visible
-    expect(screen.getByText(/Bid History/i)).toBeInTheDocument();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useQuery as Mock).mockImplementation((apiRef: { _path: string }) => {
+      if (apiRef._path === "auctions:getAuctionById")
+        return { currentPrice: 2000 };
+      if (apiRef._path === "auctions:getAuctionBidCount") return 2;
+      return null;
+    });
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockBids,
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+  });
 
-    // Initially content should be hidden (using accordion/collapsible logic)
-    // We'll check if the bids are visible after clicking the trigger
-    const trigger = screen.getByRole("button", { name: /Bid History/i });
-    fireEvent.click(trigger);
+  it("renders empty state", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
 
-    // Check for anonymized names (e.g. J*** D**)
-    expect(screen.getByText(/J\*\*\* D\*\*/)).toBeInTheDocument();
-    // Check for R and the price digits, explicitly matching thousands separators and escaping dot
-    expect(screen.getByText(/R\s+51\s+000/)).toBeInTheDocument();
+    render(<BidHistory auctionId={mockAuctionId} />);
+    // Open accordion
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(
+      screen.getByText(/No bids have been placed yet/i)
+    ).toBeInTheDocument();
+  });
+
+  it("renders bid list", () => {
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.getByText("J*** D**")).toBeInTheDocument();
+    expect(screen.getByText("J*** S***")).toBeInTheDocument();
+    expect(screen.getByText(/Highest/i)).toBeInTheDocument();
+    expect(screen.getByText(/R 2\s*000/)).toBeInTheDocument();
+  });
+
+  it("anonymizes names correctly", () => {
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.getByText("J*** D**")).toBeInTheDocument();
+  });
+
+  it("shows load more button when more bids are available", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockBids,
+      status: "CanLoadMore",
+      loadMore: vi.fn(),
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.getByText(/Load More Bids/i)).toBeInTheDocument();
   });
 });

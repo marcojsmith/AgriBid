@@ -118,7 +118,7 @@ describe("CategoryManager", () => {
     const input = screen.getByLabelText(/Category Name/i);
     fireEvent.change(input, { target: { value: "New Category" } });
 
-    const addButton = screen.getByRole("button", { name: /^Add$/i });
+    const addButton = screen.getByRole("button", { name: /Add Category/i });
     fireEvent.click(addButton);
 
     await waitFor(() => {
@@ -143,7 +143,7 @@ describe("CategoryManager", () => {
     const input = screen.getByLabelText(/Category Name/i);
     fireEvent.change(input, { target: { value: "  Trimmed Category  " } });
 
-    const addButton = screen.getByRole("button", { name: /^Add$/i });
+    const addButton = screen.getByRole("button", { name: /Add Category/i });
     fireEvent.click(addButton);
 
     await waitFor(() => {
@@ -170,7 +170,7 @@ describe("CategoryManager", () => {
     const input = screen.getByLabelText(/Category Name/i);
     fireEvent.change(input, { target: { value: "   " } });
 
-    const addButton = screen.getByRole("button", { name: /^Add$/i });
+    const addButton = screen.getByRole("button", { name: /Add Category/i });
     fireEvent.click(addButton);
 
     await waitFor(() => {
@@ -197,7 +197,7 @@ describe("CategoryManager", () => {
     const input = screen.getByLabelText(/Category Name/i);
     fireEvent.change(input, { target: { value: "Duplicate" } });
 
-    const addButton = screen.getByRole("button", { name: /^Add$/i });
+    const addButton = screen.getByRole("button", { name: /Add Category/i });
     fireEvent.click(addButton);
 
     await waitFor(() => {
@@ -215,7 +215,9 @@ describe("CategoryManager", () => {
       />
     );
 
-    const editButtons = screen.getAllByRole("button", { name: "" });
+    const editButtons = screen.getAllByRole("button", {
+      name: /edit category/i,
+    });
     const firstEditButton = editButtons.find(
       (btn) => btn.querySelector(".lucide-pencil") !== null
     );
@@ -238,7 +240,9 @@ describe("CategoryManager", () => {
       />
     );
 
-    const editButtons = screen.getAllByRole("button", { name: "" });
+    const editButtons = screen.getAllByRole("button", {
+      name: /edit category/i,
+    });
     const firstEditButton = editButtons.find(
       (btn) => btn.querySelector(".lucide-pencil") !== null
     );
@@ -263,6 +267,7 @@ describe("CategoryManager", () => {
 
   it("should delete a category successfully", async () => {
     mockDeleteCategory.mockResolvedValue({ success: true });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(
       <CategoryManager
@@ -273,7 +278,9 @@ describe("CategoryManager", () => {
       />
     );
 
-    const deleteButtons = screen.getAllByRole("button", { name: "" });
+    const deleteButtons = screen.getAllByRole("button", {
+      name: /deactivate category|reactivate category/i,
+    });
     const firstDeleteButton = deleteButtons.find(
       (btn) => btn.querySelector(".lucide-trash-2") !== null
     );
@@ -318,7 +325,7 @@ describe("CategoryManager", () => {
     const input = screen.getByLabelText(/Category Name/i);
     fireEvent.change(input, { target: { value: "New Category" } });
 
-    const addButton = screen.getByRole("button", { name: /^Add$/i });
+    const addButton = screen.getByRole("button", { name: /Add Category/i });
     fireEvent.click(addButton);
 
     await waitFor(() => {
