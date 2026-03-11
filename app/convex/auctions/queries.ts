@@ -411,7 +411,7 @@ export const getAuctionById = query({
     const PUBLIC_STATUSES = ["active", "sold", "unsold"];
     if (!PUBLIC_STATUSES.includes(auction.status)) {
       const auth = await getAuthenticatedProfile(ctx);
-      if (!auth) return null;
+      if (!auth || !auth.profile) return null;
 
       const isAdmin = auth.profile.role === "admin";
       const isOwner = auction.sellerId === auth.userId;
@@ -471,7 +471,7 @@ export const getAuctionBids = query({
 
     const auction = await ctx.db.get(args.auctionId);
     const auth = await getAuthenticatedProfile(ctx);
-    const isAdmin = auth?.profile.role === "admin";
+    const isAdmin = auth?.profile?.role === "admin";
     const isSeller = auction?.sellerId === auth?.userId;
 
     await Promise.all(
