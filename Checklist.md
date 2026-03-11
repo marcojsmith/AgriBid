@@ -152,7 +152,7 @@
 - [x] Integrate KYC pending count into User Base summary (#71)
 - [x] Fix 200 auction limit in admin stats for accurate analytics review (#81)
 - [ ] Implement platform fee configuration page (out-of-scope — payment removal) (#106)
-- [ ] Implement equipment metadata management page (#105)
+- [x] Implement equipment metadata management page (#105)
 - [ ] Implement business info management page (#132)
 
 ---
