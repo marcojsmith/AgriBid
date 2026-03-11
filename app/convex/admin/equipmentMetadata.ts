@@ -1,6 +1,8 @@
 import { v, ConvexError } from "convex/values";
 
 import { mutation, query } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { getCallerRole } from "../lib/auth";
 
 /**
@@ -42,59 +44,75 @@ export const getAllEquipmentMetadata = query({
 
 /**
  * Admin: Add a new equipment make.
+ *
+ * @param ctx - Mutation context
+ * @param args - Make data including models and category linkage
+ * @param args.make
+ * @param args.models
+ * @param args.categoryId
+ * @returns The created or reactivated make ID
  */
+export const addEquipmentMakeHandler = async (
+  ctx: MutationCtx,
+  args: {
+    make: string;
+    models: string[];
+    categoryId: Id<"equipmentCategories">;
+  }
+) => {
+  const role = await getCallerRole(ctx);
+  if (role !== "admin") {
+    throw new ConvexError("Unauthorized: Admin access required");
+  }
+
+  const trimmedMake = args.make.trim();
+  if (!trimmedMake) {
+    throw new ConvexError("Manufacturer name is required");
+  }
+
+  const trimmedModels = args.models
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0);
+
+  if (trimmedModels.length === 0) {
+    throw new ConvexError("At least one valid model is required");
+  }
+
+  // Check for duplicates
+  const existing = await ctx.db
+    .query("equipmentMetadata")
+    .withIndex("by_make", (q) => q.eq("make", trimmedMake))
+    .filter((q) => q.eq(q.field("categoryId"), args.categoryId))
+    .first();
+
+  if (existing) {
+    if (!existing.isActive) {
+      await ctx.db.patch(existing._id, {
+        isActive: true,
+        models: Array.from(new Set([...existing.models, ...trimmedModels])),
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+    throw new ConvexError("Equipment make already exists for this category");
+  }
+
+  return await ctx.db.insert("equipmentMetadata", {
+    make: trimmedMake,
+    models: trimmedModels,
+    categoryId: args.categoryId,
+    isActive: true,
+    updatedAt: Date.now(),
+  });
+};
+
 export const addEquipmentMake = mutation({
   args: {
     make: v.string(),
     models: v.array(v.string()),
     categoryId: v.id("equipmentCategories"),
   },
-  handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new ConvexError("Unauthorized: Admin access required");
-    }
-
-    const trimmedMake = args.make.trim();
-    if (!trimmedMake) {
-      throw new ConvexError("Manufacturer name is required");
-    }
-
-    const trimmedModels = args.models
-      .map((m) => m.trim())
-      .filter((m) => m.length > 0);
-
-    if (trimmedModels.length === 0) {
-      throw new ConvexError("At least one valid model is required");
-    }
-
-    // Check for duplicates
-    const existing = await ctx.db
-      .query("equipmentMetadata")
-      .withIndex("by_make", (q) => q.eq("make", trimmedMake))
-      .filter((q) => q.eq(q.field("categoryId"), args.categoryId))
-      .first();
-
-    if (existing) {
-      if (!existing.isActive) {
-        await ctx.db.patch(existing._id, {
-          isActive: true,
-          models: Array.from(new Set([...existing.models, ...trimmedModels])),
-          updatedAt: Date.now(),
-        });
-        return existing._id;
-      }
-      throw new ConvexError("Equipment make already exists for this category");
-    }
-
-    return await ctx.db.insert("equipmentMetadata", {
-      make: trimmedMake,
-      models: trimmedModels,
-      categoryId: args.categoryId,
-      isActive: true,
-      updatedAt: Date.now(),
-    });
-  },
+  handler: addEquipmentMakeHandler,
 });
 
 /**
@@ -184,34 +202,45 @@ export const deleteEquipmentMake = mutation({
 
 /**
  * Admin: Add a model to an existing make.
+ *
+ * @param ctx - Mutation context
+ * @param args - The make ID and the new model name
+ * @param args.id
+ * @param args.model
+ * @returns A promise that resolves when the model is added
  */
+export const addModelToMakeHandler = async (
+  ctx: MutationCtx,
+  args: { id: Id<"equipmentMetadata">; model: string }
+) => {
+  const role = await getCallerRole(ctx);
+  if (role !== "admin") {
+    throw new ConvexError("Unauthorized: Admin access required");
+  }
+
+  const trimmedModel = args.model.trim();
+  if (!trimmedModel) {
+    throw new ConvexError("Model name is required");
+  }
+
+  const existing = await ctx.db.get(args.id);
+  if (!existing) {
+    throw new ConvexError("Equipment metadata not found");
+  }
+
+  if (existing.models.includes(trimmedModel)) {
+    throw new ConvexError("Model already exists for this make");
+  }
+
+  await ctx.db.patch(args.id, {
+    models: [...existing.models, trimmedModel],
+    updatedAt: Date.now(),
+  });
+};
+
 export const addModelToMake = mutation({
   args: { id: v.id("equipmentMetadata"), model: v.string() },
-  handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new ConvexError("Unauthorized: Admin access required");
-    }
-
-    const trimmedModel = args.model.trim();
-    if (!trimmedModel) {
-      throw new ConvexError("Model name is required");
-    }
-
-    const existing = await ctx.db.get(args.id);
-    if (!existing) {
-      throw new ConvexError("Equipment metadata not found");
-    }
-
-    if (existing.models.includes(trimmedModel)) {
-      throw new ConvexError("Model already exists for this make");
-    }
-
-    await ctx.db.patch(args.id, {
-      models: [...existing.models, trimmedModel],
-      updatedAt: Date.now(),
-    });
-  },
+  handler: addModelToMakeHandler,
 });
 
 /**

@@ -385,7 +385,12 @@ export const getActiveMakes = query({
   handler: async (ctx) => {
     const metadata = await ctx.db
       .query("equipmentMetadata")
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("isActive"), true),
+          q.eq(q.field("isActive"), undefined)
+        )
+      )
       .collect();
     const makes = Array.from(new Set(metadata.map((m) => m.make))).sort();
     return makes;

@@ -1,6 +1,5 @@
 // app/src/components/auction/AuctionCard.tsx
 import React, { useRef, useState, useEffect } from "react";
-import type { Doc } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useNavigate } from "react-router-dom";
@@ -14,13 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BidConfirmation } from "@/components/BidConfirmation";
 import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
+import type { AuctionWithCategory } from "@/types/auction";
 
 import { AuctionCardThumbnail } from "./AuctionCardThumbnail";
 import { AuctionCardPrice } from "./AuctionCardPrice";
-
-interface AuctionWithCategory extends Doc<"auctions"> {
-  categoryName?: string;
-}
 
 interface AuctionCardProps {
   auction: AuctionWithCategory;

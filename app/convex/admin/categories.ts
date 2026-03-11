@@ -1,6 +1,7 @@
 import { v, ConvexError } from "convex/values";
 
 import { mutation, query } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import { getCallerRole } from "../lib/auth";
 
 /**
@@ -29,35 +30,45 @@ export const getCategories = query({
 
 /**
  * Admin: Add a new equipment category.
+ *
+ * @param ctx - Mutation context
+ * @param args - Category data
+ * @param args.name
+ * @returns The created or reactivated category ID
  */
+export const addCategoryHandler = async (
+  ctx: MutationCtx,
+  args: { name: string }
+) => {
+  const role = await getCallerRole(ctx);
+  if (role !== "admin") {
+    throw new ConvexError("Unauthorized: Admin access required");
+  }
+
+  // Check for duplicates
+  const existing = await ctx.db
+    .query("equipmentCategories")
+    .withIndex("by_name", (q) => q.eq("name", args.name))
+    .first();
+
+  if (existing) {
+    if (!existing.isActive) {
+      // Reactivate instead of creating new
+      await ctx.db.patch(existing._id, { isActive: true });
+      return existing._id;
+    }
+    throw new ConvexError("Category already exists");
+  }
+
+  return await ctx.db.insert("equipmentCategories", {
+    name: args.name,
+    isActive: true,
+  });
+};
+
 export const addCategory = mutation({
   args: { name: v.string() },
-  handler: async (ctx, args) => {
-    const role = await getCallerRole(ctx);
-    if (role !== "admin") {
-      throw new ConvexError("Unauthorized: Admin access required");
-    }
-
-    // Check for duplicates
-    const existing = await ctx.db
-      .query("equipmentCategories")
-      .withIndex("by_name", (q) => q.eq("name", args.name))
-      .first();
-
-    if (existing) {
-      if (!existing.isActive) {
-        // Reactivate instead of creating new
-        await ctx.db.patch(existing._id, { isActive: true });
-        return existing._id;
-      }
-      throw new ConvexError("Category already exists");
-    }
-
-    return await ctx.db.insert("equipmentCategories", {
-      name: args.name,
-      isActive: true,
-    });
-  },
+  handler: addCategoryHandler,
 });
 
 /**
@@ -90,9 +101,8 @@ export const updateCategory = mutation({
 
       if (duplicate) {
         if (!duplicate.isActive) {
-          await ctx.db.patch(duplicate._id, { isActive: true });
           throw new ConvexError(
-            `A category named "${trimmedName}" already exists but was inactive. It has been reactivated.`
+            `A category named "${trimmedName}" already exists but is currently inactive. Please reactivate it instead of renaming this one.`
           );
         }
         throw new ConvexError("Category with this name already exists");

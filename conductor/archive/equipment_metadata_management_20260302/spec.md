@@ -6,7 +6,7 @@ Admins need the ability to manage equipment metadata (makes, models, categories)
 ## Functional Requirements
 - **Backend (Convex):**
     - `getAllEquipmentMetadata()`: List all makes with their models and categories.
-    - `getEquipmentCategories()`: List all equipment categories.
+    - `getCategories()`: List all equipment categories.
     - `addEquipmentMake(make, models[], categoryId)`: Create a new make with initial models and link to a category.
     - `updateEquipmentMake(id, make, models[], categoryId)`: Update make name, models, and category association.
     - `deleteEquipmentMake(id)`: Soft delete a make and its models using an `isActive` flag.
@@ -14,7 +14,7 @@ Admins need the ability to manage equipment metadata (makes, models, categories)
     - `removeModelFromMake(makeId, model)`: Soft delete a model from a make.
     - CRUD for Categories: `addCategory`, `updateCategory`, `deleteCategory` (soft delete).
 - **Frontend (React/Admin):**
-    - New "Equipment Catalog" tab/section in `AdminSettings.tsx`.
+    - New "Equipment Catalog" tab/section in `AdminEquipmentCatalog.tsx`.
     - `EquipmentMetadataEditor.tsx`: Accordion-style list of makes with inline model editing and category badges.
     - Search/filter functionality for makes and categories.
     - Validation:

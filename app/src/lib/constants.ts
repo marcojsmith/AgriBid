@@ -55,3 +55,8 @@ export const KYC_STATUS = {
  * Type representing valid KYC statuses.
  */
 export type KYCStatus = (typeof KYC_STATUS)[keyof typeof KYC_STATUS];
+
+/**
+ * Default label for uncategorized equipment.
+ */
+export const UNCATEGORIZED_LABEL = "Uncategorized";

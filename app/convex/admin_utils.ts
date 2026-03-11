@@ -293,7 +293,9 @@ export async function updateCounter(
 
     if (newValue < 0) {
       console.warn(
-        `Counter underflow: name=${name}, field=${field}, current=${currentValue}, delta=${delta}. Clamping to 0.`
+        `Counter underflow: name=${name}, field=${field}, current=${currentValue}, ${
+          absolute ? "attemptedValue" : "delta"
+        }=${delta}. Clamping to 0.`
       );
     }
 

@@ -38,6 +38,7 @@ interface CloseAuctionEarlyResult {
  */
 interface AuctionUpdates {
   title?: string;
+  categoryId?: Id<"equipmentCategories">;
   make?: string;
   model?: string;
   year?: number;
@@ -242,6 +243,12 @@ export const createAuction = mutation({
 
     if (restArgs.images.additional && restArgs.images.additional.length > 6) {
       throw new ConvexError("Additional images limit exceeded (max 6)");
+    }
+
+    // Validate categoryId exists
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) {
+      throw new ConvexError("Invalid categoryId: Category not found");
     }
 
     const images = normalizeImages(restArgs.images);

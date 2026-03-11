@@ -113,8 +113,9 @@ export default function MyListings() {
       auctionId: auction._id,
       year: auction.year,
       categoryId: auction.categoryId || "",
-      make: auction.make,
-      model: auction.model,
+      // If we don't have a categoryId, we can't trust the make/model hierarchy
+      make: auction.categoryId ? auction.make : "",
+      model: auction.categoryId ? auction.model : "",
       location: auction.location,
       description: auction.description ?? "",
       operatingHours: auction.operatingHours,

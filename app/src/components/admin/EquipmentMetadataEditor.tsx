@@ -28,13 +28,13 @@ export function EquipmentMetadataEditor() {
 
   const categories = useQuery(api.admin.categories.getCategories, {
     includeInactive: true,
-  }) as Category[] | undefined;
+  });
   const metadata = useQuery(
     api.admin.equipmentMetadata.getAllEquipmentMetadata,
     {
       includeInactive: true,
     }
-  ) as EquipmentMetadata[] | undefined;
+  );
 
   const addCategory = useMutation(api.admin.categories.addCategory);
   const updateCategory = useMutation(api.admin.categories.updateCategory);
@@ -104,6 +104,7 @@ export function EquipmentMetadataEditor() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
+            aria-label="Search equipment"
           />
         </div>
       </div>

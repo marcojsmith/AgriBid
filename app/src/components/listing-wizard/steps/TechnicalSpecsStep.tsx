@@ -84,30 +84,6 @@ export const TechnicalSpecsStep = () => {
             </Button>
           ))}
         </div>
-
-        {(status === "CanLoadMore" || status === "LoadingMore") && (
-          <div className="flex justify-center pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => loadMore(EQUIPMENT_METADATA_LIMIT)}
-              disabled={status === "LoadingMore"}
-              className="text-[10px] font-black uppercase tracking-widest"
-            >
-              {status === "LoadingMore" ? (
-                <>
-                  <LoadingIndicator size="sm" />
-                  <span className="ml-2">Loading...</span>
-                </>
-              ) : (
-                <>
-                  Load More Manufacturers
-                  <ChevronDown className="ml-1 h-3 w-3" />
-                </>
-              )}
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Make Selection */}
@@ -138,6 +114,30 @@ export const TechnicalSpecsStep = () => {
               <p className="text-muted-foreground font-medium">
                 No manufacturers found for this category
               </p>
+            </div>
+          )}
+
+          {(status === "CanLoadMore" || status === "LoadingMore") && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => loadMore(EQUIPMENT_METADATA_LIMIT)}
+                disabled={status === "LoadingMore"}
+                className="text-[10px] font-black uppercase tracking-widest"
+              >
+                {status === "LoadingMore" ? (
+                  <>
+                    <LoadingIndicator size="sm" />
+                    <span className="ml-2">Loading...</span>
+                  </>
+                ) : (
+                  <>
+                    Load More Manufacturers
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </>
+                )}
+              </Button>
             </div>
           )}
         </div>

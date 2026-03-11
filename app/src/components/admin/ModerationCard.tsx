@@ -1,6 +1,5 @@
 // app/src/components/admin/ModerationCard.tsx
 import { Check, X, Clock } from "lucide-react";
-import type { Doc } from "convex/_generated/dataModel";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,12 +9,9 @@ import {
   type AuctionImages,
 } from "@/lib/auction-utils";
 import { formatCurrency } from "@/lib/currency";
+import type { AuctionWithCategory } from "@/types/auction";
 
 import { ConditionItem } from "./ConditionItem";
-
-interface AuctionWithCategory extends Doc<"auctions"> {
-  categoryName?: string;
-}
 
 /**
  * Renders a moderation card for a single auction with actions to approve, reject, or view details.

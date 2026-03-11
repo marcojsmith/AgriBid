@@ -39,13 +39,10 @@ import {
 import { formatCurrency } from "@/lib/currency";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import type { AuctionWithCategory } from "@/types/auction";
 
 import { BulkActionDialog } from "./dialogs";
 import { useBulkOperations } from "./hooks";
-
-interface AuctionWithCategory extends Doc<"auctions"> {
-  categoryName?: string;
-}
 
 /**
  * Format time remaining until a given timestamp.

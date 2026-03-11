@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { useSession } from "@/lib/auth-client";
 import { Badge } from "@/components/ui/badge";
+import { UNCATEGORIZED_LABEL } from "@/lib/constants";
 import { cn, isValidCallbackUrl } from "@/lib/utils";
 
 import { Button } from "./ui/button";
@@ -73,7 +74,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
           variant="outline"
           className="font-bold bg-primary/5 text-primary border-primary/20 uppercase tracking-wide text-[10px]"
         >
-          {auction.categoryName || "Equipment"}
+          {auction.categoryName || UNCATEGORIZED_LABEL}
         </Badge>
         <Badge variant="secondary" className="font-bold">
           {auction.year} {auction.make}

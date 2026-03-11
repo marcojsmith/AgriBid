@@ -157,6 +157,7 @@ export function CategoryManager({
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive"
+                        aria-label={`Deactivate category ${cat.name}`}
                         onClick={() => {
                           if (confirm(`Deactivate category "${cat.name}"?`)) {
                             deleteCategory({ id: cat._id }).catch((err) =>
@@ -176,6 +177,7 @@ export function CategoryManager({
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-primary"
+                        aria-label={`Reactivate category ${cat.name}`}
                         onClick={async () => {
                           try {
                             await addCategory({ name: cat.name }); // addCategory handles reactivation
@@ -238,7 +240,12 @@ function EditCategoryDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          aria-label="Edit category"
+        >
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>

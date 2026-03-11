@@ -632,8 +632,8 @@ export const runSeed = mutation({
       .reduce((sum, a) => sum + (a.currentPrice || 0), 0);
     const soldCount = allAuctions.filter((a) => a.status === "sold").length;
 
-    await updateCounter(ctx, "bids", "salesVolume", salesVolume, true);
-    await updateCounter(ctx, "bids", "soldCount", soldCount, true);
+    await updateCounter(ctx, "auctions", "salesVolume", salesVolume, true);
+    await updateCounter(ctx, "auctions", "soldCount", soldCount, true);
 
     // Profiles
     const allProfiles = await ctx.db.query("profiles").collect();

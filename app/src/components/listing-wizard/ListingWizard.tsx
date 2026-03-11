@@ -91,31 +91,39 @@ const ListingWizardContent = () => {
     try {
       const images = normalizeListingImages(formData.images);
 
-      const id = await saveDraft({
-        auctionId:
-          editingAuctionId ||
-          (formData.auctionId as Id<"auctions">) ||
-          undefined,
-        title: formData.title,
-        categoryId: formData.categoryId as Id<"equipmentCategories">,
-        make: formData.make,
-        model: formData.model,
-        year: formData.year,
-        operatingHours: formData.operatingHours,
-        location: formData.location,
-        description: formData.description,
-        startingPrice: formData.startingPrice,
-        reservePrice: formData.reservePrice,
-        images,
-        durationDays: formData.durationDays,
-        conditionChecklist: {
-          engine: formData.conditionChecklist.engine ?? false,
-          hydraulics: formData.conditionChecklist.hydraulics ?? false,
-          tires: formData.conditionChecklist.tires ?? false,
-          serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
-          notes: formData.conditionChecklist.notes,
-        },
-      });
+      let id: string | undefined = undefined;
+
+      // Only sync with server if we have a categoryId, otherwise just keep it local
+      if (formData.categoryId) {
+        id = await saveDraft({
+          auctionId:
+            editingAuctionId ||
+            (formData.auctionId as Id<"auctions">) ||
+            undefined,
+          title: formData.title,
+          categoryId: formData.categoryId as Id<"equipmentCategories">,
+          make: formData.make,
+          model: formData.model,
+          year: formData.year,
+          operatingHours: formData.operatingHours,
+          location: formData.location,
+          description: formData.description,
+          startingPrice: formData.startingPrice,
+          reservePrice: formData.reservePrice,
+          images,
+          durationDays: formData.durationDays,
+          conditionChecklist: {
+            engine: formData.conditionChecklist.engine ?? false,
+            hydraulics: formData.conditionChecklist.hydraulics ?? false,
+            tires: formData.conditionChecklist.tires ?? false,
+            serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
+            notes: formData.conditionChecklist.notes,
+          },
+        });
+      } else {
+        // Just log that we're keeping it local for now
+        console.log("Draft saved locally (missing categoryId for server sync)");
+      }
 
       setDraftSaved(true);
       toast.success("Draft saved successfully!");
