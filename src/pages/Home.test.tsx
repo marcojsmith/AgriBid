@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, useSearchParams } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
 
 import { useSession } from "@/lib/auth-client";
@@ -16,23 +16,53 @@ vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(),
 }));
 
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useSearchParams: vi.fn(() => [new URLSearchParams(), vi.fn()]),
+  };
+});
+
 // Mock FilterSidebar to keep it simple
 vi.mock("@/components/FilterSidebar", () => ({
-  FilterSidebar: () => <div data-testid="filter-sidebar">Filter Sidebar</div>,
-}));
-
-interface AuctionCardProps {
-  auction: { title: string };
-}
-
-// Mock AuctionCard to keep it simple
-vi.mock("@/components/auction", () => ({
-  AuctionCard: ({ auction }: AuctionCardProps) => (
-    <div data-testid="auction-card">{auction.title}</div>
+  FilterSidebar: ({ onClose }: { onClose?: () => void }) => (
+    <div data-testid="filter-sidebar">
+      Filter Sidebar
+      {onClose && <button onClick={onClose}>Close Sidebar</button>}
+    </div>
   ),
 }));
 
-describe("Home Page", () => {
+// Mock AuctionCard to keep it simple
+vi.mock("@/components/auction", () => ({
+  AuctionCard: ({
+    auction,
+    viewMode,
+  }: {
+    auction: { title: string };
+    viewMode: string;
+  }) => (
+    <div data-testid="auction-card">
+      {auction.title} ({viewMode})
+    </div>
+  ),
+}));
+
+// Mock AuctionCardSkeleton
+vi.mock("@/components/AuctionCardSkeleton", () => ({
+  AuctionCardSkeleton: () => (
+    <div data-testid="auction-skeleton">Loading...</div>
+  ),
+}));
+
+// Mock LoadingIndicator
+vi.mock("@/components/LoadingIndicator", () => ({
+  LoadingPage: ({ message }: { message: string }) => <div>{message}</div>,
+  LoadingIndicator: () => <div data-testid="loading-indicator">Spinner</div>,
+}));
+
+describe("Home Page Full Coverage", () => {
   const mockAuctions = [
     { _id: "1", title: "Auction 1" },
     { _id: "2", title: "Auction 2" },
@@ -47,6 +77,17 @@ describe("Home Page", () => {
       status: "Exhausted",
       loadMore: vi.fn(),
     });
+
+    // Default desktop matchMedia
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
   });
 
   const renderHome = () => {
@@ -61,8 +102,7 @@ describe("Home Page", () => {
     renderHome();
     expect(screen.getByText(/Active Auctions/i)).toBeInTheDocument();
     expect(screen.getAllByTestId("auction-card")).toHaveLength(2);
-    expect(screen.getByText("Auction 1")).toBeInTheDocument();
-    expect(screen.getByText("Auction 2")).toBeInTheDocument();
+    expect(screen.getByText(/Auction 1 \(detailed\)/i)).toBeInTheDocument();
   });
 
   it("renders loading state", () => {
@@ -82,16 +122,15 @@ describe("Home Page", () => {
     expect(screen.getByText(/No auctions found/i)).toBeInTheDocument();
   });
 
-  it("toggles view mode", () => {
+  it("toggles view mode manually", () => {
     renderHome();
     const compactBtn = screen.getByText(/Compact/i);
-    const detailedBtn = screen.getByText(/Detailed/i);
-
     fireEvent.click(compactBtn);
-    expect(compactBtn).toHaveAttribute("data-variant", "default");
+    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
 
+    const detailedBtn = screen.getByText(/Detailed/i);
     fireEvent.click(detailedBtn);
-    expect(detailedBtn).toHaveAttribute("data-variant", "default");
+    expect(screen.getByText(/Auction 1 \(detailed\)/i)).toBeInTheDocument();
   });
 
   it("toggles desktop sidebar", () => {
@@ -103,5 +142,149 @@ describe("Home Page", () => {
 
     expect(screen.getByTestId("filter-sidebar")).toBeInTheDocument();
     expect(screen.getByText(/Hide Filters/i)).toBeInTheDocument();
+  });
+
+  it("renders search results header and clear link", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("q=tractor"),
+      vi.fn(),
+    ]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [{ _id: "3", title: "Tractor X" }],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderHome();
+    expect(screen.getByText(/Results for "tractor"/i)).toBeInTheDocument();
+    expect(screen.getByText(/Clear search results/i)).toBeInTheDocument();
+  });
+
+  it("renders different status filters", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=closed"),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(screen.getByText(/Closed Auctions/i)).toBeInTheDocument();
+
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=all"),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(screen.getByText(/All Auctions/i)).toBeInTheDocument();
+  });
+
+  it("renders filters applied indicator", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("make=John+Deere"),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(screen.getByText(/Filters Applied/i)).toBeInTheDocument();
+  });
+
+  it("initializes in mobile view (compact) when viewport is small", () => {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === "(max-width: 768px)",
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    renderHome();
+
+    // Mobile view defaults to compact
+    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
+  });
+
+  it("shows mobile filter overlay", () => {
+    // Mock mobile viewport
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === "(max-width: 768px)",
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    renderHome();
+    const filterBtn = screen.getByLabelText(/Filters/i);
+    fireEvent.click(filterBtn);
+
+    expect(screen.getByTestId("filter-sidebar")).toBeInTheDocument();
+
+    // Click backdrop to close
+    const backdrop = screen.getByLabelText(/Close filters/i);
+    fireEvent.click(backdrop);
+    expect(screen.queryByTestId("filter-sidebar")).not.toBeInTheDocument();
+  });
+
+  it("closes mobile filters via onClose prop", () => {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === "(max-width: 768px)",
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    renderHome();
+    fireEvent.click(screen.getByLabelText(/Filters/i));
+
+    const closeBtn = screen.getByText(/Close Sidebar/i);
+    fireEvent.click(closeBtn);
+    expect(screen.queryByTestId("filter-sidebar")).not.toBeInTheDocument();
+  });
+
+  it("renders load more button and status", () => {
+    const mockLoadMore = vi.fn();
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockAuctions,
+      status: "CanLoadMore",
+      loadMore: mockLoadMore,
+    });
+
+    renderHome();
+    const loadMoreBtn = screen.getByText(/Load More Auctions/i);
+    fireEvent.click(loadMoreBtn);
+    expect(mockLoadMore).toHaveBeenCalledWith(12);
+  });
+
+  it("renders loading more state", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockAuctions,
+      status: "LoadingMore",
+      loadMore: vi.fn(),
+    });
+
+    renderHome();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
+  it("renders skeleton during first page load", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "LoadingFirstPage",
+      loadMore: vi.fn(),
+    });
+
+    renderHome();
+    expect(screen.getAllByTestId("auction-skeleton")).toHaveLength(3);
+  });
+
+  it("parses finite integer filters correctly", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("minPrice=1000&maxPrice=invalid"),
+      vi.fn(),
+    ]);
+    renderHome();
+
+    // Verify query was called with parsed minPrice and undefined maxPrice
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ minPrice: 1000, maxPrice: undefined }),
+      expect.anything()
+    );
   });
 });
