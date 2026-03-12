@@ -27,10 +27,51 @@ export default defineConfig({
         "**/*.d.ts",
       ],
       thresholds: {
+        // Global Baseline
         statements: 89,
         branches: 81,
         functions: 82,
         lines: 90,
+
+        // Security-critical: RoleProtectedRoute
+        "src/components/RoleProtectedRoute.tsx": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+
+        // Security-critical: Authentication Client
+        "src/lib/auth-client.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+
+        // Data-critical: Bidding Panel Logic
+        "src/components/bidding/BiddingPanel.tsx": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+
+        // Backend-critical: Core Bidding Logic
+        "convex/auctions/bidding.ts": {
+          statements: 95,
+          branches: 95,
+          functions: 100,
+          lines: 95,
+        },
+
+        // Data-critical: File Storage Handling
+        "src/hooks/useFileUpload.ts": {
+          statements: 95,
+          branches: 90,
+          functions: 100,
+          lines: 95,
+        },
       },
     },
   },

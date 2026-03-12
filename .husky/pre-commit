@@ -1,1 +1,1 @@
-bunx lint-staged && bun run build && bun run test:coverage 
+bunx lint-staged && bun run build && bun run test --run 

@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter, useParams } from "react-router-dom";
@@ -31,6 +32,70 @@ vi.mock("sonner", () => ({
     error: vi.fn(),
     success: vi.fn(),
   },
+}));
+
+// Mock Dialog component
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (o: boolean) => void;
+  }) => (
+    <div data-testid="dialog-root">
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(
+            child as React.ReactElement<{
+              open?: boolean;
+              onOpenChange?: (o: boolean) => void;
+            }>,
+            {
+              open,
+              onOpenChange,
+            }
+          );
+        }
+        return child;
+      })}
+    </div>
+  ),
+  DialogTrigger: ({
+    children,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    onOpenChange?: (o: boolean) => void;
+  }) => (
+    <div
+      onClick={() => onOpenChange && onOpenChange(true)}
+      data-testid="dialog-trigger"
+    >
+      {children}
+    </div>
+  ),
+  DialogContent: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+  }) => (open ? <div data-testid="dialog-content">{children}</div> : null),
+  DialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <h2>{children}</h2>
+  ),
+  DialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <p>{children}</p>
+  ),
+  DialogFooter: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 // Mock Select to be a simple native select for easier testing
@@ -244,7 +309,7 @@ describe("AuctionDetail Page", () => {
 
     expect(
       screen.getByText("Condition Report", {
-        selector: '[data-slot="dialog-title"]',
+        selector: "h2",
       })
     ).toBeInTheDocument();
 
