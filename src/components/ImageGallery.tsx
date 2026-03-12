@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTrigger,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -68,9 +69,9 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
 
         <DialogContent className="max-w-[95vw] h-[90vh] p-0 bg-black/95 border-none flex flex-col items-center justify-center">
           <DialogTitle className="sr-only">{title} - Full Gallery</DialogTitle>
-          <div className="sr-only">
+          <DialogDescription className="sr-only">
             Full-screen high-resolution image gallery for {title}
-          </div>
+          </DialogDescription>
           <div className="relative w-full h-full flex items-center justify-center">
             <img
               src={images[activeIndex]}

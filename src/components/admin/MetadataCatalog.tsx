@@ -431,6 +431,9 @@ function EditMakeDialog({ item, categories, updateMake }: EditMakeDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Manufacturer</DialogTitle>
+          <DialogDescription>
+            Update the manufacturer name or category linkage.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -525,6 +528,9 @@ function AddModelDialog({ makeId, addModel }: AddModelDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Model</DialogTitle>
+          <DialogDescription>
+            Enter the name for the new model for this manufacturer.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
