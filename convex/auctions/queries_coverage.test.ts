@@ -11,6 +11,9 @@ import {
   getActiveAuctions,
   getAuctionFlagsHandler,
   getMyListingsStatsHandler,
+  getSellerInfoHandler,
+  getAllPendingFlagsHandler,
+  getAuctionByIdHandler,
 } from "./queries";
 import { authComponent } from "../auth";
 import type { QueryCtx } from "../_generated/server";
@@ -253,8 +256,8 @@ describe("Queries Advanced Coverage", () => {
     });
   });
 
-  describe("getAuctionFlagsHandler", () => {
-    it("should resolve reporter names", async () => {
+  describe("Flag Handlers Advanced", () => {
+    it("getAuctionFlagsHandler should resolve reporter names", async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
       queryMock.collect.mockResolvedValue([
@@ -266,6 +269,30 @@ describe("Queries Advanced Coverage", () => {
 
       const result = await getAuctionFlagsHandler(mockCtx as unknown as QueryCtx, { auctionId: "a1" as Id<"auctions"> });
       expect(result[0].reporterName).toBe("Reporter X");
+    });
+
+    it("getAuctionFlagsHandler should handle unknown reporter", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
+      queryMock.collect.mockResolvedValue([{ _id: "f1", reporterId: "unknown", auctionId: "a1" }]);
+      const { findUserById } = await import("../users");
+      vi.mocked(findUserById).mockResolvedValue(null);
+
+      const result = await getAuctionFlagsHandler(mockCtx as unknown as QueryCtx, { auctionId: "a1" as Id<"auctions"> });
+      expect(result[0].reporterName).toBe("Unknown User");
+    });
+
+    it("getAllPendingFlagsHandler should handle unknown auction and reporter", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
+      queryMock.collect.mockResolvedValue([{ _id: "f1", reporterId: "r1", auctionId: "a1" }]);
+      mockCtx.db.get.mockResolvedValue(null); // Auction missing
+      const { findUserById } = await import("../users");
+      vi.mocked(findUserById).mockResolvedValue(null); // User missing
+
+      const result = await getAllPendingFlagsHandler(mockCtx as unknown as QueryCtx);
+      expect(result[0].auctionTitle).toBe("Unknown Auction");
+      expect(result[0].reporterName).toBe("Unknown User");
     });
   });
 
@@ -307,6 +334,51 @@ describe("Queries Advanced Coverage", () => {
         paginationOpts: { numItems: 10, cursor: null }
       });
       expect(result.page).toHaveLength(0);
+    });
+
+    it("getSellerInfoHandler should return seller profile and memberSince date", async () => {
+      const { findUserById } = await import("../users");
+      const { resolveUserId } = await import("../lib/auth");
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(findUserById).mockResolvedValue({ _id: "u1", createdAt: 1000, name: "Seller" } as any);
+      vi.mocked(resolveUserId).mockReturnValue("u1");
+      
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        unique: vi.fn().mockResolvedValue({ isVerified: true, role: "Pro" } as any),
+      });
+
+      const result = await getSellerInfoHandler(mockCtx as any, { sellerId: "u1" });
+      expect(result?.createdAt).toBe(1000);
+      expect(result?.name).toBe("Seller");
+    });
+
+    it("getSellerInfoHandler should return null if user missing", async () => {
+      const { findUserById } = await import("../users");
+      vi.mocked(findUserById).mockResolvedValue(null);
+      
+      const result = await getSellerInfoHandler(mockCtx as any, { sellerId: "none" });
+      expect(result).toBeNull();
+    });
+
+    it("getAuctionByIdHandler should handle visibility guards", async () => {
+      // Unauthenticated, non-public auction
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue(null as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockCtx.db.get.mockResolvedValue({ _id: "a1", isPublic: false, status: "draft" } as any);
+      const result = await getAuctionByIdHandler(mockCtx as any, { auctionId: "a1" as Id<"auctions"> });
+      expect(result).toBeNull();
+
+      // Authenticated, non-owner, non-admin, non-public
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({ _id: "u2" } as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({ userId: "u2", profile: { role: "buyer" } as any, authUser: {} as any });
+      const res2 = await getAuctionByIdHandler(mockCtx as any, { auctionId: "a1" as Id<"auctions"> });
+      expect(res2).toBeNull();
     });
   });
 });
