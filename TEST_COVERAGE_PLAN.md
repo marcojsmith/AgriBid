@@ -2,15 +2,15 @@
 
 ## Current State
 
-- **Current Coverage**: 84.82% statements, 77.65% branches, 75.38% functions, 86.15% lines (Project-wide)
-- **Tests Passing**: 725 tests
-- **Target**: 95% across all metrics (Project Thresholds updated to 84/77/75/86)
+- **Current Coverage**: 85.63% statements, 78.33% branches, 76.08% functions, 87.01% lines (Project-wide)
+- **Tests Passing**: 737 tests
+- **Target**: 95% across all metrics (Project Thresholds updated to 85/78/76/87)
 
 ## Critical Areas (Low Coverage)
 
 1.  `convex/auctions/queries.ts`: 71.31% (Statements)
-2.  `src/components/header/Header.tsx`: 65.21%
-3.  `src/components/header/MobileMenu.tsx`: 55.81%
+2.  `src/lib/notifications.tsx`: 25% (Needs dedicated integration test)
+3.  `src/components/admin/MetadataCatalog.tsx`: 61.33%
 
 ## Implementation Plan
 
@@ -29,19 +29,18 @@
 - [x] **Listing Wizard**: Increased to 90.8%. Full integration for multi-step flow and draft auto-saving.
 - [x] **useListingMedia Hook**: Increased to 91.04%. Tested reordering, batch deletions, and upload failure recovery.
 
-### Phase 4: Final Pass - Queries & Navigation [PARTIAL]
+### Phase 4: Final Pass - Queries & Navigation [DONE]
 - [x] **Advanced Query Pass**: Added `queries_coverage.test.ts` to hit complex internal branches (71.31% reached).
-- [ ] **Navigation Components**: Reach >90% on `Header.tsx` and `MobileMenu.tsx`.
+- [x] **Navigation Components**: Reached >97% on `Header.tsx` and `MobileMenu.tsx`.
 
-### Phase 5: Final Audit & Threshold Lock-in
-- [x] **Threshold Update**: Updated `vitest.config.ts` to 84/77/75/86.
+### Phase 5: Final Audit & Threshold Lock-in [IN PROGRESS]
+- [x] **Threshold Update**: Updated `vitest.config.ts` to 85/78/76/87.
 - [ ] **Final Sweep**: Remove remaining `as any` and ensure 100% type safety in tests.
 - [ ] **Target Reached**: Reach 95% project-wide.
 
 ## Progress Log
 
-- **2026-03-12 (Update 3)**:
-    - Reached 84.82% project-wide.
-    - `queries.ts` increased to 71.31% via `queries_coverage.test.ts`.
-    - Resolved more TS/Lint issues in test files.
-    - Updated thresholds in `vitest.config.ts`.
+- **2026-03-12 (Update 4)**:
+    - Reached 85.63% project-wide.
+    - `Header.tsx` (>99%), `MobileMenu.tsx` (>97%).
+    - Locked new thresholds in `vitest.config.ts`.
