@@ -182,4 +182,132 @@ describe("useFileUpload", () => {
     expect(customCleanup).toHaveBeenCalledWith(["id1", "id2"]);
     expect(mockDeleteUpload).not.toHaveBeenCalled();
   });
+
+  it("should handle custom cleanupHandler failure gracefully", async () => {
+    const customCleanup = vi
+      .fn()
+      .mockRejectedValue(new Error("Custom cleanup failed"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(() =>
+      useFileUpload({ cleanupHandler: customCleanup })
+    );
+
+    await act(async () => {
+      await result.current.cleanupUploads(["id1"]);
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Injected cleanupHandler failed:",
+      expect.any(Error)
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it("should log warning on authorization failure during default cleanup", async () => {
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockDeleteUpload.mockRejectedValue(new Error("unauthorized action"));
+
+    const { result } = renderHook(() => useFileUpload());
+
+    await act(async () => {
+      await result.current.cleanupUploads(["id1"]);
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Authorization failure while deleting orphaned upload id1"
+      )
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it("should log error on generic failure during default cleanup", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const genericError = new Error("Generic network error");
+    mockDeleteUpload.mockRejectedValue(genericError);
+
+    const { result } = renderHook(() => useFileUpload());
+
+    await act(async () => {
+      await result.current.cleanupUploads(["id1"]);
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Failed to delete orphaned upload id1:",
+      genericError
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it("should do nothing if storageIds array is empty during cleanup", async () => {
+    const { result } = renderHook(() => useFileUpload());
+
+    await act(async () => {
+      await result.current.cleanupUploads([]);
+    });
+
+    expect(mockDeleteUpload).not.toHaveBeenCalled();
+  });
+
+  it("should catch and log unexpected errors during entire upload process", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Provide default mocks to prevent unhandled rejections from the background mapping
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    // Mock Promise.allSettled to simulate a catastrophic failure that bypasses partial failure logic
+    const originalAllSettled = Promise.allSettled;
+    Promise.allSettled = vi.fn().mockRejectedValue(new Error("Fatal error"));
+
+    const { result } = renderHook(() => useFileUpload());
+    const file = new File(["a"], "1.jpg", { type: "image/jpeg" });
+
+    let storageIds: string[] | null = ["initial"];
+    await act(async () => {
+      storageIds = await result.current.uploadFiles([file]);
+    });
+
+    expect(storageIds).toBeNull();
+    expect(toast.error).toHaveBeenCalledWith(
+      "An unexpected error occurred during upload"
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Upload Process Error:",
+      expect.any(Error)
+    );
+
+    // Restore
+    Promise.allSettled = originalAllSettled;
+    consoleSpy.mockRestore();
+  });
+
+  it("should autoClear files if upload is fully successful and autoClear is true", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    const file = new File(["a"], "1.jpg", { type: "image/jpeg" });
+
+    act(() => {
+      result.current.handleFileChange({
+        target: { files: [file], value: "" },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    expect(result.current.files).toHaveLength(1);
+
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    await act(async () => {
+      await result.current.uploadFiles(result.current.files, true);
+    });
+
+    expect(result.current.files).toHaveLength(0);
+  });
 });
