@@ -1,5 +1,11 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -12,6 +18,16 @@ vi.mock("convex/react", () => ({
   ),
   Unauthenticated: ({ children }: React.PropsWithChildren) => (
     <div data-testid="unauthenticated">{children}</div>
+  ),
+}));
+
+// Mock SearchBar to simplify
+vi.mock("./SearchBar", () => ({
+  SearchBar: ({ id, onSearch }: { id: string; onSearch?: () => void }) => (
+    <div data-testid={`search-${id}`}>
+      <input aria-label={`Search input ${id}`} />
+      <button onClick={onSearch}>Search Action</button>
+    </div>
   ),
 }));
 
@@ -41,12 +57,13 @@ describe("MobileMenu", () => {
           isVerified: true,
           onboardingStep: "completed",
         },
-      } as unknown as React.ComponentProps<typeof MobileMenu>["userData"],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
       isVerified: true,
       kycStatus: "approved",
       role: "buyer",
       profileId: "profile123",
-      onSignOut: vi.fn(),
+      onSignOut: vi.fn().mockResolvedValue(undefined),
     };
   });
 
@@ -117,9 +134,12 @@ describe("MobileMenu", () => {
     );
 
     const signOutButton = screen.getByText("Sign Out");
-    fireEvent.click(signOutButton);
+    await act(async () => {
+      fireEvent.click(signOutButton);
+    });
 
     expect(defaultProps.onSignOut).toHaveBeenCalled();
+    expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
   it("should call onClose when a link is clicked", () => {
@@ -142,5 +162,104 @@ describe("MobileMenu", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it("should trap focus and wrap around on Tab", () => {
+    // Mock offsetParent for visibility check in focus trap
+    Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+      get() {
+        return this.parentNode;
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    const firstElement = screen.getByLabelText("Search input search-mobile");
+    const lastElement = screen.getByText("Login / Register");
+
+    firstElement.focus();
+    expect(document.activeElement).toBe(firstElement);
+
+    // Tab back from first should go to last
+    fireEvent.keyDown(firstElement, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(lastElement);
+
+    // Tab forward from last should go to first
+    fireEvent.keyDown(lastElement, { key: "Tab", shiftKey: false });
+    expect(document.activeElement).toBe(firstElement);
+  });
+
+  it("should restore focus when closed", () => {
+    const button = document.createElement("button");
+    document.body.appendChild(button);
+    button.focus();
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    expect(document.activeElement).not.toBe(button);
+
+    rerender(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} isOpen={false} />
+      </MemoryRouter>
+    );
+
+    expect(document.activeElement).toBe(button);
+    document.body.removeChild(button);
+  });
+
+  it("should show syncing profile state when profileId is missing", () => {
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} profileId={undefined} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Profile (Syncing...)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Profile syncing")).toBeDisabled();
+  });
+
+  it("should handle onSignOut failure", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failOnSignOut = vi
+      .fn()
+      .mockRejectedValue(new Error("Sign out failed"));
+
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} onSignOut={failOnSignOut} />
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Sign Out"));
+    });
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Sign out failed in MobileMenu:",
+        expect.any(Error)
+      );
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it("should show loading state for userData", () => {
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} userData={undefined} />
+      </MemoryRouter>
+    );
+
+    // Pulse divs are rendered when userData is missing
+    expect(screen.queryByText("Test User")).not.toBeInTheDocument();
   });
 });

@@ -55,8 +55,10 @@ vi.mock("./helpers", () => {
       endTime: v.optional(v.number()),
       status: v.string(),
     }),
-    AuctionDetailValidator: v.any(),
-    BidValidator: v.any(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    AuctionDetailValidator: v.any() as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    BidValidator: v.any() as any,
   };
 });
 
@@ -98,13 +100,15 @@ describe("Queries Advanced Coverage", () => {
     mockCtx = {
       db: {
         get: vi.fn().mockResolvedValue(null),
-        query: vi.fn(() => queryMock),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        query: vi.fn(() => queryMock as any),
       },
     };
   });
 
   describe("calculateUserBidStats Internal Scenarios (via getMyBidsHandler)", () => {
     it("should handle winning, outbid, and deleted auctions in stats", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(authComponent.getAuthUser).mockResolvedValue({
         _id: "u1" as Id<"profiles">,
         userId: "u1",
@@ -194,6 +198,7 @@ describe("Queries Advanced Coverage", () => {
   describe("getAuctionBidsHandler Reveal Logic", () => {
     it("should reveal names to admins", async () => {
       queryMock.paginate.mockResolvedValue({ page: [{ _id: "b1", bidderId: "user_valid_id", auctionId: "a1" }], isDone: true, continueCursor: "" });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
         userId: "admin",
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,17 +234,22 @@ describe("Queries Advanced Coverage", () => {
 
   describe("Exported Query Wrappers (Validators)", () => {
     it("getActiveAuctions should be defined with args and handler", () => {
-      expect(getActiveAuctions.args).toBeDefined();
-      expect(getActiveAuctions.handler).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((getActiveAuctions as any).args).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((getActiveAuctions as any).handler).toBeDefined();
     });
 
     it("getAuctionById should have validator for auctionId", () => {
-      expect(getAuctionById.args.auctionId).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((getAuctionById as any).args.auctionId).toBeDefined();
     });
 
     it("getMyBids should have pagination and sort validators", () => {
-      expect(getMyBids.args.paginationOpts).toBeDefined();
-      expect(getMyBids.args.sort).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((getMyBids as any).args.paginationOpts).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((getMyBids as any).args.sort).toBeDefined();
     });
   });
 
@@ -284,13 +294,15 @@ describe("Queries Advanced Coverage", () => {
     });
 
     it("getMyListingsStatsHandler should return zeroed stats if unauthenticated", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue(null as any);
       const result = await getMyListingsStatsHandler(mockCtx as unknown as QueryCtx);
       expect(result.all).toBe(0);
     });
 
     it("getMyBidsHandler should return empty if unauthenticated", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue(null as any);
       const result = await getMyBidsHandler(mockCtx as unknown as QueryCtx, {
         paginationOpts: { numItems: 10, cursor: null }
       });
