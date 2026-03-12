@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useQuery } from "convex/react";
@@ -39,7 +38,9 @@ describe("NotificationListener", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useSession).mockReturnValue({ data: mockSession } as any);
+    vi.mocked(useSession).mockReturnValue({
+      data: mockSession,
+    } as unknown as ReturnType<typeof useSession>);
   });
 
   it("should not trigger toasts if data is loading", () => {
@@ -57,7 +58,8 @@ describe("NotificationListener", () => {
       currentPrice: 50000,
     };
 
-    vi.mocked(useQuery).mockImplementation((apiPath: any) => {
+    vi.mocked(useQuery).mockImplementation((...args: unknown[]) => {
+      const apiPath = args[0];
       if (apiPath === "getMyBids") return { page: [auction] };
       return { page: [] };
     });
@@ -80,7 +82,8 @@ describe("NotificationListener", () => {
       currentPrice: 10000,
     };
 
-    vi.mocked(useQuery).mockImplementation((apiPath: any) => {
+    vi.mocked(useQuery).mockImplementation((...args: unknown[]) => {
+      const apiPath = args[0];
       if (apiPath === "getMyBids") return { page: [auction] };
       return { page: [] };
     });
@@ -101,7 +104,8 @@ describe("NotificationListener", () => {
       sellerId: mockUserId,
     };
 
-    vi.mocked(useQuery).mockImplementation((apiPath: any) => {
+    vi.mocked(useQuery).mockImplementation((...args: unknown[]) => {
+      const apiPath = args[0];
       if (apiPath === "getMyBids") return { page: [auction] };
       return { page: [] };
     });
@@ -123,7 +127,8 @@ describe("NotificationListener", () => {
       currentPrice: 50000,
     };
 
-    vi.mocked(useQuery).mockImplementation((apiPath: any) => {
+    vi.mocked(useQuery).mockImplementation((...args: unknown[]) => {
+      const apiPath = args[0];
       if (apiPath === "getMyBids") return { page: [auction] };
       return { page: [] };
     });

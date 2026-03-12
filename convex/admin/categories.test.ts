@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
@@ -18,21 +17,23 @@ vi.mock("../lib/auth", () => ({
 }));
 
 describe("Categories Backend", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: any) => {
+  const setupMockCtx = (mockQuery: unknown) => {
     const mockDb = {
       get: vi.fn(),
       patch: vi.fn(),
       insert: vi.fn(),
-      query: vi.fn(() => mockQuery),
+      query: vi.fn(
+        () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+      ),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -44,7 +45,9 @@ describe("Categories Backend", () => {
     mockCtx = setupMockCtx(mockQuery);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
-    mockCtx.db.insert.mockResolvedValue("cat_123");
+    vi.mocked(mockCtx.db.insert).mockResolvedValue(
+      "cat_123" as Id<"equipmentCategories">
+    );
 
     const result = await addCategoryHandler(mockCtx, {
       name: "Tractors",
@@ -131,20 +134,22 @@ describe("Categories Backend", () => {
 });
 
 describe("updateCategory", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: any, getResponse?: any) => {
+  const setupMockCtx = (mockQuery: unknown, getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
-      query: vi.fn(() => mockQuery),
+      query: vi.fn(
+        () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+      ),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -282,28 +287,36 @@ describe("updateCategory", () => {
 });
 
 describe("deleteCategory", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   const setupMockCtx = (
-    equipmentQuery: any,
-    auctionQuery: any,
-    getResponse?: any
+    equipmentQuery: unknown,
+    auctionQuery: unknown,
+    getResponse?: unknown
   ) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
       query: vi.fn((table: string) => {
-        if (table === "equipmentMetadata") return equipmentQuery;
-        if (table === "auctions") return auctionQuery;
-        return equipmentQuery;
+        if (table === "equipmentMetadata")
+          return equipmentQuery as unknown as ReturnType<
+            MutationCtx["db"]["query"]
+          >;
+        if (table === "auctions")
+          return auctionQuery as unknown as ReturnType<
+            MutationCtx["db"]["query"]
+          >;
+        return equipmentQuery as unknown as ReturnType<
+          MutationCtx["db"]["query"]
+        >;
       }),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -431,7 +444,7 @@ describe("deleteCategory", () => {
 });
 
 describe("fixMetadata", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -481,14 +494,20 @@ describe("fixMetadata", () => {
           baseQuery.collect.mockResolvedValue([
             { _id: "cat_1", name: "Tractors" },
             { _id: "cat_2", name: "Harvesters" },
-          ]);
+          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
         } else if (table === "equipmentMetadata") {
-          baseQuery.collect.mockResolvedValue(equipmentMetadata);
+          baseQuery.collect.mockResolvedValue(
+            equipmentMetadata as unknown as ReturnType<
+              MutationCtx["db"]["query"]
+            >
+          );
         } else if (table === "auctions") {
-          baseQuery.collect.mockResolvedValue(auctions);
+          baseQuery.collect.mockResolvedValue(
+            auctions as unknown as ReturnType<MutationCtx["db"]["query"]>
+          );
         }
 
-        return baseQuery;
+        return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
       }),
       patch: vi.fn((id, updates) => {
         // Simulate the patch by updating the shared objects
@@ -507,7 +526,7 @@ describe("fixMetadata", () => {
       }),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -554,17 +573,19 @@ describe("fixMetadata", () => {
               category: "NonExistent",
               categoryId: undefined,
             },
-          ]);
+          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
         } else if (table === "auctions") {
-          baseQuery.collect.mockResolvedValue([]);
+          baseQuery.collect.mockResolvedValue(
+            [] as unknown as ReturnType<MutationCtx["db"]["query"]>
+          );
         }
 
-        return baseQuery;
+        return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
       }),
       patch: vi.fn(),
     };
     mockCtx = {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");

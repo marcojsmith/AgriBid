@@ -1,10 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ConvexError } from "convex/values";
 
 import { deleteDraftHandler } from "./mutations";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+
+type MockCtxType = {
+  db: {
+    get: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    patch: ReturnType<typeof vi.fn>;
+    insert: ReturnType<typeof vi.fn>;
+    replace: ReturnType<typeof vi.fn>;
+    query: ReturnType<typeof vi.fn>;
+    system: unknown;
+    normalizeId: ReturnType<typeof vi.fn>;
+  };
+  storage: {
+    delete: ReturnType<typeof vi.fn>;
+    getUrl: ReturnType<typeof vi.fn>;
+    generateUploadUrl: ReturnType<typeof vi.fn>;
+  };
+  auth: unknown;
+  scheduler: unknown;
+  runMutation: unknown;
+  runQuery: unknown;
+  runAction: unknown;
+};
 
 vi.mock("../lib/auth", () => ({
   getAuthenticatedUserId: vi.fn(),
@@ -14,41 +36,49 @@ vi.mock("../lib/auth", () => ({
 }));
 
 describe("deleteDraft mutation", () => {
-  let mockCtx: any;
+  let mockCtx: MockCtxType;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (auction: any) => {
-    const mockDb = {
-      get: vi.fn().mockResolvedValue(auction),
-      delete: vi.fn(),
-      patch: vi.fn(),
-      insert: vi.fn(),
-      query: vi.fn(() => ({
-        withIndex: vi.fn().mockReturnThis(),
-        filter: vi.fn().mockReturnThis(),
-        first: vi
-          .fn()
-          .mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
-        unique: vi
-          .fn()
-          .mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
-      })),
-    };
-
+  const setupMockCtx = (auction: { [key: string]: unknown } | null) => {
     return {
-      db: mockDb as any,
+      db: {
+        get: vi.fn().mockResolvedValue(auction),
+        delete: vi.fn(),
+        patch: vi.fn(),
+        insert: vi.fn(),
+        replace: vi.fn(),
+        query: vi.fn(() => ({
+          withIndex: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
+          first: vi
+            .fn()
+            .mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
+          unique: vi
+            .fn()
+            .mockResolvedValue({ _id: "counter_id", total: 1, draft: 1 }),
+        })),
+        system: {},
+        normalizeId: vi.fn((_table: string, id: string) => id),
+      },
       storage: {
         delete: vi.fn(),
+        getUrl: vi.fn(),
+        generateUploadUrl: vi.fn(),
       },
-    } as unknown as MutationCtx;
+      auth: {},
+      scheduler: {},
+      runMutation: {},
+      runQuery: {},
+      runAction: {},
+    } as unknown as MockCtxType;
   };
 
   it("should delete a draft auction successfully", async () => {
-    const userId = "user123" as any;
-    const auctionId = "auction123" as Id<"auctions">;
+    const userId = "user123";
+    const auctionId = "auction123" as unknown as Id<"auctions">;
     const mockAuction = {
       _id: auctionId,
       sellerId: userId,
@@ -61,7 +91,9 @@ describe("deleteDraft mutation", () => {
     mockCtx = setupMockCtx(mockAuction);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
-    const result = await deleteDraftHandler(mockCtx, { auctionId });
+    const result = await deleteDraftHandler(mockCtx as unknown as MutationCtx, {
+      auctionId,
+    });
 
     expect(result.success).toBe(true);
     expect(mockCtx.db.delete).toHaveBeenCalledWith(auctionId);
@@ -87,10 +119,12 @@ describe("deleteDraft mutation", () => {
 
   it("should fail if auction not found", async () => {
     mockCtx = setupMockCtx(null);
-    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123" as any);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
 
     await expect(
-      deleteDraftHandler(mockCtx, { auctionId: "nonexistent" as any })
+      deleteDraftHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "nonexistent" as unknown as Id<"auctions">,
+      })
     ).rejects.toThrow("Auction not found");
   });
 
@@ -102,10 +136,12 @@ describe("deleteDraft mutation", () => {
     };
 
     mockCtx = setupMockCtx(mockAuction);
-    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1" as any);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
 
     await expect(
-      deleteDraftHandler(mockCtx, { auctionId: "a1" as any })
+      deleteDraftHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as unknown as Id<"auctions">,
+      })
     ).rejects.toThrow("Only draft auctions can be deleted");
   });
 });

@@ -1,8 +1,13 @@
 import { v, ConvexError } from "convex/values";
 
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type QueryCtx,
+  type MutationCtx,
+} from "./_generated/server";
 import { getAuthUser, requireAuth, resolveUserId } from "./lib/auth";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 
 /**
  * Augments a list of announcement notifications with a per-user `isRead` flag.
@@ -53,6 +58,7 @@ const notificationType = v.union(
 /**
  * Handler for getting the current user's notifications.
  * @param ctx
+ * @returns Promise<Notification[]>
  */
 export const getMyNotificationsHandler = async (ctx: QueryCtx) => {
   try {
@@ -115,6 +121,7 @@ export const getMyNotifications = query({
  * @param ctx
  * @param args
  * @param args.limit
+ * @returns Promise<Notification[]>
  */
 export const getNotificationArchiveHandler = async (
   ctx: QueryCtx,
@@ -183,9 +190,10 @@ export const getNotificationArchive = query({
  * @param ctx
  * @param args
  * @param args.notificationId
+ * @returns Promise<null>
  */
 export const markAsReadHandler = async (
-  ctx: any,
+  ctx: MutationCtx,
   args: { notificationId: Id<"notifications"> }
 ) => {
   const authUser = await requireAuth(ctx);
@@ -232,8 +240,9 @@ export const markAsRead = mutation({
 /**
  * Handler for marking all notifications as read.
  * @param ctx
+ * @returns Promise<null>
  */
-export const markAllReadHandler = async (ctx: any) => {
+export const markAllReadHandler = async (ctx: MutationCtx) => {
   const authUser = await requireAuth(ctx);
   const userId = resolveUserId(authUser);
   if (!userId) throw new Error("Unable to determine user ID");
@@ -260,7 +269,7 @@ export const markAllReadHandler = async (ctx: any) => {
   const personalChunks = chunk(unreadPersonal, BATCH_SIZE);
   for (const batch of personalChunks) {
     await Promise.all(
-      batch.map((notification: any) =>
+      batch.map((notification: Doc<"notifications">) =>
         ctx.db.patch(notification._id, { isRead: true })
       )
     );
@@ -276,10 +285,10 @@ export const markAllReadHandler = async (ctx: any) => {
   if (announcements.length > 0) {
     // Fetch read receipts only for these specific announcements
     const existingReceipts = await Promise.all(
-      announcements.map((a: any) =>
+      announcements.map((a: Doc<"notifications">) =>
         ctx.db
           .query("readReceipts")
-          .withIndex("by_user_notification", (q: any) =>
+          .withIndex("by_user_notification", (q) =>
             q.eq("userId", userId).eq("notificationId", a._id)
           )
           .unique()
@@ -294,13 +303,14 @@ export const markAllReadHandler = async (ctx: any) => {
     const now = Date.now();
 
     const newReceipts = announcements.filter(
-      (announcement: any) => !existingNotificationIds.has(announcement._id)
+      (announcement: Doc<"notifications">) =>
+        !existingNotificationIds.has(announcement._id)
     );
 
     const receiptChunks = chunk(newReceipts, BATCH_SIZE);
     for (const batch of receiptChunks) {
       await Promise.all(
-        batch.map((announcement: any) =>
+        batch.map((announcement: Doc<"notifications">) =>
           ctx.db.insert("readReceipts", {
             userId,
             notificationId: announcement._id,

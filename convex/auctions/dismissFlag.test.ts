@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
@@ -20,21 +19,23 @@ vi.mock("../admin_utils", () => ({
 }));
 
 describe("dismissFlag mutation", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: any = {}) => {
+  const setupMockCtx = (mockQuery: unknown = {}) => {
     const mockDb = {
       get: vi.fn(),
       patch: vi.fn(),
       insert: vi.fn(),
-      query: vi.fn(() => mockQuery),
+      query: vi.fn(
+        () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+      ),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -44,6 +45,7 @@ describe("dismissFlag mutation", () => {
 
     const flagDoc = {
       _id: flagId,
+      _creationTime: Date.now(),
       auctionId,
       status: "pending",
       reason: "other",
@@ -51,6 +53,7 @@ describe("dismissFlag mutation", () => {
 
     const auctionDoc = {
       _id: auctionId,
+      _creationTime: Date.now(),
       status: "pending_review",
       hiddenByFlags: true,
     };
@@ -61,16 +64,21 @@ describe("dismissFlag mutation", () => {
     };
 
     mockCtx = setupMockCtx(mockQuery);
-    mockCtx.db.get.mockImplementation(async (id: any) => {
-      if (id === flagId) return flagDoc;
-      if (id === auctionId) return auctionDoc;
+    vi.mocked(mockCtx.db.get).mockImplementation(async (id: unknown) => {
+      if (id === flagId)
+        return flagDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>;
+      if (id === auctionId)
+        return auctionDoc as unknown as Awaited<
+          ReturnType<typeof mockCtx.db.get>
+        >;
       return null;
     });
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       userId: "admin123",
-    } as any);
+      _id: "admin123",
+    });
     vi.mocked(auth.resolveUserId).mockReturnValue("admin123");
 
     const result = await dismissFlagHandler(mockCtx, {
@@ -112,14 +120,14 @@ describe("dismissFlag mutation", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
     await expect(
-      dismissFlagHandler(mockCtx, { flagId: "f1" as any })
+      dismissFlagHandler(mockCtx, { flagId: "f1" as Id<"auctionFlags"> })
     ).rejects.toThrow("Not authorized: Admin privileges required");
   });
 
   it("should throw error if flag not found", async () => {
     const flagId = "flag123" as Id<"auctionFlags">;
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockResolvedValue(null);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(null);
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(dismissFlagHandler(mockCtx, { flagId })).rejects.toThrow(
@@ -135,7 +143,9 @@ describe("dismissFlag mutation", () => {
     };
 
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockResolvedValue(flagDoc);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(
+      flagDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+    );
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
     await expect(dismissFlagHandler(mockCtx, { flagId })).rejects.toThrow(

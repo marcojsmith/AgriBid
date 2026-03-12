@@ -15,6 +15,7 @@ const CLEANUP_BATCH_SIZE = 100;
  * Transitions status to 'sold' if reserve is met, or 'unsold' otherwise.
  *
  * @param ctx
+ * @returns Promise<void>
  */
 export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
   const now = Date.now();

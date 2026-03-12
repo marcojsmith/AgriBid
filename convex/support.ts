@@ -1,8 +1,14 @@
 import { v, ConvexError } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import { updateCounter } from "./admin_utils";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * Handler for creating a support ticket.
@@ -12,9 +18,10 @@ import { updateCounter } from "./admin_utils";
  * @param args.message
  * @param args.priority
  * @param args.auctionId
+ * @returns Promise<Id<"supportTickets">>
  */
 export const createTicketHandler = async (
-  ctx: any,
+  ctx: MutationCtx,
   args: {
     subject: string;
     message: string;
@@ -72,9 +79,10 @@ export const createTicket = mutation({
  * @param ctx
  * @param args
  * @param args.limit
+ * @returns Promise<PaginatedTickets>
  */
 export const getMyTicketsHandler = async (
-  ctx: any,
+  ctx: QueryCtx,
   args: { limit?: number }
 ) => {
   try {
@@ -87,7 +95,7 @@ export const getMyTicketsHandler = async (
 
     return await ctx.db
       .query("supportTickets")
-      .withIndex("by_user_updatedAt", (q: any) => q.eq("userId", userId))
+      .withIndex("by_user_updatedAt", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
   } catch (err) {

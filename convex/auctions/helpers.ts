@@ -297,3 +297,21 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     images: await resolveImageUrls(ctx.storage, auction.images),
   };
 }
+
+/**
+ * Validate that an auction record contains required fields for a target status.
+ * @param auction
+ * @param auction.status
+ * @param auction.endTime
+ * @param newStatus
+ */
+export function validateAuctionStatus(
+  auction: { status: string; endTime?: number | null },
+  newStatus: string
+): void {
+  if (newStatus === "active" && !auction.endTime) {
+    throw new Error(
+      "Cannot set status to 'active' without endTime. Use approveAuction or provide endTime in the update."
+    );
+  }
+}

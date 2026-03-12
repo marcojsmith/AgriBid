@@ -1,6 +1,8 @@
 import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { requireVerified } from "../lib/auth";
 import { handleNewBid } from "./proxy_bidding";
 
@@ -11,6 +13,7 @@ import { handleNewBid } from "./proxy_bidding";
  * @param args.auctionId
  * @param args.amount
  * @param args.maxBid
+ * @returns The result of the bid placement
  */
 export const placeBidHandler = async (
   ctx: MutationCtx,

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
@@ -12,7 +11,7 @@ vi.mock("../lib/auth", () => ({
 }));
 
 describe("deleteConditionReport mutation", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -27,8 +26,8 @@ describe("deleteConditionReport mutation", () => {
       delete: vi.fn(),
     };
     return {
-      db: mockDb as any,
-      storage: mockStorage as any,
+      db: mockDb as unknown as MutationCtx["db"],
+      storage: mockStorage as unknown as MutationCtx["storage"],
     } as unknown as MutationCtx;
   };
 
@@ -45,7 +44,9 @@ describe("deleteConditionReport mutation", () => {
     };
 
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    (mockCtx.db.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      auctionDoc
+    );
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
     const result = await deleteConditionReportHandler(mockCtx, { auctionId });
@@ -69,7 +70,9 @@ describe("deleteConditionReport mutation", () => {
     };
 
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    (mockCtx.db.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      auctionDoc
+    );
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(reporterId);
 
     await expect(
@@ -79,11 +82,15 @@ describe("deleteConditionReport mutation", () => {
 
   it("should fail if auction not found", async () => {
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockResolvedValue(null);
+    (mockCtx.db.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      null
+    );
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user1");
 
     await expect(
-      deleteConditionReportHandler(mockCtx, { auctionId: "a1" as any })
+      deleteConditionReportHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      })
     ).rejects.toThrow(ConvexError);
   });
 });

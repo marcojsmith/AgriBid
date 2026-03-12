@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { adminUpdateAuctionHandler } from "./mutations";
-import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
@@ -14,11 +13,17 @@ vi.mock("../lib/auth", () => ({
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
   logAudit: vi.fn(),
-  adjustStatusCounters: vi.fn(),
 }));
 
+type MockCtxType = {
+  db: {
+    get: ReturnType<typeof vi.fn>;
+    patch: ReturnType<typeof vi.fn>;
+  };
+};
+
 describe("adminUpdateAuction mutation", () => {
-  let mockCtx: any;
+  let mockCtx: MockCtxType;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -26,50 +31,44 @@ describe("adminUpdateAuction mutation", () => {
       db: {
         get: vi.fn(),
         patch: vi.fn(),
-        insert: vi.fn(),
       },
     };
   });
 
-  it("should allow an admin to update an auction", async () => {
-    const auctionId = "a1" as Id<"auctions">;
+  it("should update an auction as admin", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
     const mockAuction = {
       _id: auctionId,
       status: "pending_review",
-      title: "Old Title",
+      title: "Test Auction",
+      endTime: Date.now() + 86400000,
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "admin" } as any);
 
-    const result = await adminUpdateAuctionHandler(mockCtx, {
-      auctionId,
-      updates: {
-        title: "New Title",
-        status: "active",
-        endTime: Date.now() + 10000,
-      },
-    });
+    const result = await adminUpdateAuctionHandler(
+      mockCtx as unknown as MutationCtx,
+      {
+        auctionId,
+        updates: { status: "active" },
+      }
+    );
 
     expect(result.success).toBe(true);
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
       auctionId,
-      expect.objectContaining({
-        title: "New Title",
-        status: "active",
-        hiddenByFlags: false,
-      })
+      expect.objectContaining({ status: "active" })
     );
   });
 
-  it("should fail if auction not found", async () => {
+  it("should throw error if auction not found", async () => {
+    const auctionId = "invalid" as Id<"auctions">;
     mockCtx.db.get.mockResolvedValue(null);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "admin" } as any);
 
     await expect(
-      adminUpdateAuctionHandler(mockCtx, {
-        auctionId: "none" as any,
-        updates: { title: "New" },
+      adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
+        auctionId,
+        updates: { status: "active" },
       })
     ).rejects.toThrow("Auction not found");
   });

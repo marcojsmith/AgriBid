@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Doc, Id } from "convex/_generated/dataModel";
 
 import { MetadataCatalog } from "./MetadataCatalog";
 
@@ -13,25 +13,37 @@ vi.mock("sonner", () => ({
 }));
 
 describe("MetadataCatalog", () => {
-  const mockCategories = [
-    { _id: "cat1", name: "Tractors", isActive: true },
-    { _id: "cat2", name: "Harvesters", isActive: true },
+  const mockCategories: Doc<"equipmentCategories">[] = [
+    {
+      _id: "cat1" as Id<"equipmentCategories">,
+      _creationTime: Date.now(),
+      name: "Tractors",
+      isActive: true,
+    },
+    {
+      _id: "cat2" as Id<"equipmentCategories">,
+      _creationTime: Date.now(),
+      name: "Harvesters",
+      isActive: true,
+    },
   ];
 
   const mockMetadata = [
     {
-      _id: "m1" as any,
+      _id: "m1" as Id<"equipmentMetadata">,
+      _creationTime: Date.now(),
       make: "John Deere",
-      categoryId: "cat1" as any,
+      categoryId: "cat1" as Id<"equipmentCategories">,
       categoryName: "Tractors",
       models: ["8R 410", "7R 330"],
       isActive: true,
       updatedAt: Date.now(),
     },
     {
-      _id: "m2" as any,
+      _id: "m2" as Id<"equipmentMetadata">,
+      _creationTime: Date.now(),
       make: "Case IH",
-      categoryId: "cat1" as any,
+      categoryId: "cat1" as Id<"equipmentCategories">,
       categoryName: "Tractors",
       models: ["Magnum 340"],
       isActive: false,
@@ -52,8 +64,8 @@ describe("MetadataCatalog", () => {
   it("should render the list of makes", () => {
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -72,7 +84,7 @@ describe("MetadataCatalog", () => {
     render(
       <MetadataCatalog
         metadata={[]}
-        categories={mockCategories as any}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -87,8 +99,8 @@ describe("MetadataCatalog", () => {
   it("should open add make dialog", () => {
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -106,8 +118,8 @@ describe("MetadataCatalog", () => {
 
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -140,8 +152,8 @@ describe("MetadataCatalog", () => {
 
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -167,8 +179,8 @@ describe("MetadataCatalog", () => {
 
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -197,8 +209,8 @@ describe("MetadataCatalog", () => {
   it("should open edit make dialog", () => {
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -217,8 +229,8 @@ describe("MetadataCatalog", () => {
 
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}
@@ -249,8 +261,8 @@ describe("MetadataCatalog", () => {
 
     render(
       <MetadataCatalog
-        metadata={mockMetadata as any}
-        categories={mockCategories as any}
+        metadata={mockMetadata}
+        categories={mockCategories}
         addMake={mockAddMake}
         updateMake={mockUpdateMake}
         deleteMake={mockDeleteMake}

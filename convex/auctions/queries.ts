@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, type PaginationOptions } from "convex/server";
 
 import { query } from "../_generated/server";
 import type { QueryCtx } from "../_generated/server";
@@ -165,6 +165,7 @@ const statusesForFilter = (filter: StatusFilter): AuctionStatus[] => {
 /**
  * Handler for retrieving pending auctions.
  * @param ctx
+ * @returns Promise<AuctionSummary[]>
  */
 export const getPendingAuctionsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
@@ -203,11 +204,12 @@ export const getPendingAuctions = query({
  * @param args.maxPrice
  * @param args.maxHours
  * @param args.statusFilter
+ * @returns Promise<PaginatedAuctions>
  */
 export const getActiveAuctionsHandler = async (
   ctx: QueryCtx,
   args: {
-    paginationOpts: any;
+    paginationOpts: PaginationOptions;
     search?: string;
     make?: string;
     minYear?: number;
@@ -410,6 +412,7 @@ export const getActiveAuctions = query({
 /**
  * Handler for returning a unique list of all makes currently registered in equipment metadata.
  * @param ctx
+ * @returns Promise<string[]>
  */
 export const getActiveMakesHandler = async (ctx: QueryCtx) => {
   const metadata = await ctx.db
@@ -439,6 +442,7 @@ export const getActiveMakes = query({
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<AuctionDetail | null>
  */
 export const getAuctionByIdHandler = async (
   ctx: QueryCtx,
@@ -477,12 +481,13 @@ export const getAuctionById = query({
  * @param args
  * @param args.auctionId
  * @param args.paginationOpts
+ * @returns Promise<PaginatedBids>
  */
 export const getAuctionBidsHandler = async (
   ctx: QueryCtx,
   args: {
     auctionId: Id<"auctions">;
-    paginationOpts: any;
+    paginationOpts: PaginationOptions;
   }
 ) => {
   const bidsQuery = ctx.db
@@ -583,6 +588,7 @@ export const getAuctionBids = query({
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<number>
  */
 export const getAuctionBidCountHandler = async (
   ctx: QueryCtx,
@@ -612,10 +618,11 @@ export const getAuctionBidCount = query({
  * @param ctx
  * @param args
  * @param args.paginationOpts
+ * @returns Promise<PaginatedMetadata>
  */
 export const getEquipmentMetadataHandler = async (
   ctx: QueryCtx,
-  args: { paginationOpts: any }
+  args: { paginationOpts: PaginationOptions }
 ) => {
   const metadataQuery = ctx.db.query("equipmentMetadata");
   const [results, totalCount] = await Promise.all([
@@ -658,6 +665,7 @@ export const getEquipmentMetadata = query({
 /**
  * Handler for fetching all active equipment categories.
  * @param ctx
+ * @returns Promise<EquipmentCategory[]>
  */
 export const getCategoriesHandler = async (ctx: QueryCtx) => {
   return await ctx.db
@@ -689,6 +697,7 @@ export const getCategories = query({
  * @param ctx
  * @param args
  * @param args.sellerId
+ * @returns Promise<SellerInfo | null>
  */
 export const getSellerInfoHandler = async (
   ctx: QueryCtx,
@@ -755,10 +764,11 @@ export const getSellerInfo = query({
  * @param args
  * @param args.userId
  * @param args.paginationOpts
+ * @returns Promise<PaginatedAuctions>
  */
 export const getSellerListingsHandler = async (
   ctx: QueryCtx,
-  args: { userId: string; paginationOpts: any }
+  args: { userId: string; paginationOpts: PaginationOptions }
 ) => {
   const listingsQuery = ctx.db
     .query("auctions")
@@ -816,10 +826,11 @@ export const getSellerListings = query({
  * @param ctx
  * @param args
  * @param args.paginationOpts
+ * @returns Promise<PaginatedAuctions>
  */
 export const getAllAuctionsHandler = async (
   ctx: QueryCtx,
-  args: { paginationOpts: any }
+  args: { paginationOpts: PaginationOptions }
 ) => {
   await requireAdmin(ctx);
 
@@ -877,11 +888,12 @@ async function getAuthenticatedUserId(ctx: QueryCtx): Promise<string | null> {
  * @param args
  * @param args.paginationOpts
  * @param args.sort
+ * @returns Promise<PaginatedBids>
  */
 export const getMyBidsHandler = async (
   ctx: QueryCtx,
   args: {
-    paginationOpts: any;
+    paginationOpts: PaginationOptions;
     sort?: string;
   }
 ) => {
@@ -1024,10 +1036,11 @@ export const getMyBids = query({
  * @param ctx
  * @param args
  * @param args.paginationOpts
+ * @returns Promise<PaginatedAuctions>
  */
 export const getMyListingsHandler = async (
   ctx: QueryCtx,
-  args: { paginationOpts: any }
+  args: { paginationOpts: PaginationOptions }
 ) => {
   try {
     const userId = await getAuthenticatedUserId(ctx);
@@ -1102,6 +1115,7 @@ export const getMyListings = query({
  * @param ctx
  * @param args
  * @param args.status
+ * @returns Promise<number>
  */
 export const getMyListingsCountHandler = async (
   ctx: QueryCtx,
@@ -1156,6 +1170,7 @@ type CountableStatus = (typeof COUNTABLE_STATUSES)[number];
 /**
  * Handler for getting listing counts for the authenticated user, grouped by status.
  * @param ctx
+ * @returns Promise<ListingStats>
  */
 export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
   try {
@@ -1233,6 +1248,7 @@ export const getMyListingsStats = query({
 /**
  * Handler for getting the total number of non-voided bids placed by the authenticated user.
  * @param ctx
+ * @returns Promise<number>
  */
 export const getMyBidsCountHandler = async (ctx: QueryCtx) => {
   try {
@@ -1265,6 +1281,7 @@ export const getMyBidsCount = query({
 /**
  * Handler for retrieving high-level bidding statistics for the authenticated user.
  * @param ctx
+ * @returns Promise<BidStats>
  */
 export const getMyBidsStatsHandler = async (ctx: QueryCtx) => {
   try {
@@ -1305,6 +1322,7 @@ export const getMyBidsStats = query({
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<AuctionFlag[]>
  */
 export const getAuctionFlagsHandler = async (
   ctx: QueryCtx,
@@ -1369,6 +1387,7 @@ export const getAuctionFlags = query({
 /**
  * Handler for retrieving all auctions flagged by users that are currently pending review.
  * @param ctx
+ * @returns Promise<PendingFlag[]>
  */
 export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);

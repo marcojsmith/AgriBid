@@ -88,7 +88,7 @@ Consult these regularly. Keep them accurate when making changes.
 
 ## TypeScript
 
-- **No `any`.** Use specific types, interfaces, type guards, and assertions.
+- **No `any`.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
 - **No `eslint-disable`.** Refactor to comply instead. Remove stale/unused directives.
 - **JSDoc** all exported functions, components, and types.
 - All frontend and backend code uses `.ts` / `.tsx` extensions.
@@ -287,7 +287,7 @@ AgriBid-82/
 
 ## prompt.md Template
 
-```markdown
+````markdown
 # Issue: <issue-number> - <title>
 
 ## Context
@@ -312,7 +312,6 @@ AgriBid-82/
 ## Notes
 
 - <Any relevant context or constraints>
-```
 
 ## Example Start Prompts
 
@@ -335,6 +334,7 @@ git worktree remove worktrees/<branch-name>
 # Delete local branch (after confirming merged)
 git branch -d <branch>
 ```
+````
 
 ## Notes
 

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
@@ -14,24 +13,47 @@ vi.mock("../lib/auth", () => ({
 
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
-  logAudit: vi.fn(),
 }));
 
+type MockCtx = {
+  db: {
+    get: ReturnType<typeof vi.fn>;
+    patch: ReturnType<typeof vi.fn>;
+    insert: ReturnType<typeof vi.fn>;
+    replace: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    query: ReturnType<typeof vi.fn>;
+    system: unknown;
+    normalizeId: ReturnType<typeof vi.fn>;
+  };
+  storage: unknown;
+  auth: unknown;
+  scheduler: unknown;
+  runMutation: unknown;
+  runQuery: unknown;
+  runAction: unknown;
+};
+
 describe("auction approval mutations", () => {
-  let mockCtx: any;
+  let mockCtx: MockCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   const setupMockCtx = () => {
-    const mockDb = {
-      get: vi.fn(),
-      patch: vi.fn(),
-    };
     return {
-      db: mockDb as any,
-    } as unknown as MutationCtx;
+      db: {
+        get: vi.fn(),
+        patch: vi.fn(),
+        insert: vi.fn(),
+        replace: vi.fn(),
+        delete: vi.fn(),
+        query: vi.fn(),
+        system: {},
+        normalizeId: vi.fn((_table: string, id: string) => id),
+      },
+    } as unknown as MockCtx;
   };
 
   describe("approveAuction", () => {
@@ -45,12 +67,18 @@ describe("auction approval mutations", () => {
 
       mockCtx = setupMockCtx();
       mockCtx.db.get.mockResolvedValue(auctionDoc);
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
-
-      const result = await approveAuctionHandler(mockCtx, {
-        auctionId,
-        durationDays: 10,
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "admin",
+        userId: "admin",
       });
+
+      const result = await approveAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId,
+          durationDays: 10,
+        }
+      );
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
@@ -63,13 +91,13 @@ describe("auction approval mutations", () => {
         })
       );
       expect(adminUtils.updateCounter).toHaveBeenCalledWith(
-        mockCtx,
+        mockCtx as unknown as MutationCtx,
         "auctions",
         "pending",
         -1
       );
       expect(adminUtils.updateCounter).toHaveBeenCalledWith(
-        mockCtx,
+        mockCtx as unknown as MutationCtx,
         "auctions",
         "active",
         1
@@ -79,20 +107,30 @@ describe("auction approval mutations", () => {
     it("should throw error if auction not found", async () => {
       mockCtx = setupMockCtx();
       mockCtx.db.get.mockResolvedValue(null);
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "admin",
+        userId: "admin",
+      });
 
       await expect(
-        approveAuctionHandler(mockCtx, { auctionId: "a1" as any })
+        approveAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
       ).rejects.toThrow(ConvexError);
     });
 
     it("should throw error if auction not in pending_review", async () => {
       mockCtx = setupMockCtx();
       mockCtx.db.get.mockResolvedValue({ status: "active" });
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "admin",
+        userId: "admin",
+      });
 
       await expect(
-        approveAuctionHandler(mockCtx, { auctionId: "a1" as any })
+        approveAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
       ).rejects.toThrow("Only auctions in pending_review can be approved");
     });
   });
@@ -107,9 +145,15 @@ describe("auction approval mutations", () => {
 
       mockCtx = setupMockCtx();
       mockCtx.db.get.mockResolvedValue(auctionDoc);
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "admin",
+        userId: "admin",
+      });
 
-      const result = await rejectAuctionHandler(mockCtx, { auctionId });
+      const result = await rejectAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId }
+      );
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
@@ -120,7 +164,7 @@ describe("auction approval mutations", () => {
         })
       );
       expect(adminUtils.updateCounter).toHaveBeenCalledWith(
-        mockCtx,
+        mockCtx as unknown as MutationCtx,
         "auctions",
         "pending",
         -1

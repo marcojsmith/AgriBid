@@ -1,5 +1,5 @@
 import { v, ConvexError } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, type PaginationOptions } from "convex/server";
 
 import {
   mutation,
@@ -13,6 +13,7 @@ import {
   resolveUserId,
   requireAdmin,
 } from "./lib/auth";
+import { type Id } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import {
   logAudit,
@@ -116,6 +117,7 @@ export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
 /**
  * Handler for synchronizing user with profile.
  * @param ctx
+ * @returns Promise<null | { success: boolean }>
  */
 export const syncUserHandler = async (ctx: MutationCtx) => {
   try {
@@ -164,6 +166,7 @@ export const syncUser = mutation({
 /**
  * Handler for getting current user's profile.
  * @param ctx
+ * @returns Promise<null | UserProfile>
  */
 export const getMyProfileHandler = async (ctx: QueryCtx) => {
   try {
@@ -207,10 +210,11 @@ export const getMyProfile = query({
  * @param ctx
  * @param args
  * @param args.paginationOpts
+ * @returns Promise<PaginatedUserProfiles>
  */
 export const listAllProfilesHandler = async (
   ctx: QueryCtx,
-  args: { paginationOpts: any }
+  args: { paginationOpts: PaginationOptions }
 ) => {
   await requireAdmin(ctx);
 
@@ -311,16 +315,17 @@ export const listAllProfiles = query({
  * @param ctx
  * @param root0
  * @param root0.userId
+ * @returns Promise<null | ProfileForKYC>
  */
 export const getProfileForKYCHandler = async (
-  ctx: any,
+  ctx: MutationCtx,
   { userId }: { userId: string }
 ) => {
   await requireAdmin(ctx);
 
   const profile = await ctx.db
     .query("profiles")
-    .withIndex("by_userId", (q: any) => q.eq("userId", userId))
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
     .unique();
 
   if (!profile) return null;
@@ -341,7 +346,7 @@ export const getProfileForKYCHandler = async (
     decryptPII(profile.phoneNumber),
     decryptPII(profile.kycEmail),
     Promise.all(
-      (profile.kycDocuments || []).map(async (id: any) => {
+      (profile.kycDocuments || []).map(async (id: Id<"_storage">) => {
         const url = await ctx.storage.getUrl(id);
         return url;
       })
@@ -363,9 +368,7 @@ export const getProfileForKYCHandler = async (
     phoneNumber: decPhone,
     kycEmail: decEmail,
     idNumber: decIdNumber,
-    kycDocumentUrls: kycDocUrls.filter(
-      (url: any): url is string => url !== null
-    ),
+    kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
   };
 };
 
@@ -383,6 +386,7 @@ export const getProfileForKYC = mutation({
  * @param ctx
  * @param root0
  * @param root0.userId
+ * @returns Promise<{ success: boolean }>
  */
 export const verifyUserHandler = async (
   ctx: MutationCtx,
@@ -441,6 +445,7 @@ export const verifyUser = mutation({
  * @param ctx
  * @param root0
  * @param root0.userId
+ * @returns Promise<{ success: boolean }>
  */
 export const promoteToAdminHandler = async (
   ctx: MutationCtx,
@@ -495,6 +500,7 @@ export const promoteToAdmin = mutation({
  * @param args.phoneNumber
  * @param args.idNumber
  * @param args.email
+ * @returns Promise<{ success: boolean }>
  */
 export const submitKYCHandler = async (
   ctx: MutationCtx,
@@ -574,6 +580,7 @@ export const submitKYC = mutation({
 /**
  * Handler for getting user's own KYC details.
  * @param ctx
+ * @returns Promise<null | KYCDetails>
  */
 export const getMyKYCDetailsHandler = async (ctx: QueryCtx) => {
   try {
@@ -642,6 +649,7 @@ export const getMyKYCDetails = query({
  * @param ctx
  * @param root0
  * @param root0.storageId
+ * @returns Promise<{ success: boolean }>
  */
 export const deleteMyKYCDocumentHandler = async (
   ctx: MutationCtx,

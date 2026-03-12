@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
@@ -20,21 +19,23 @@ vi.mock("../lib/auth", () => ({
 }));
 
 describe("Equipment Metadata Backend", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: any) => {
+  const setupMockCtx = (mockQuery: unknown) => {
     const mockDb = {
       get: vi.fn(),
       patch: vi.fn(),
       insert: vi.fn(),
-      query: vi.fn(() => mockQuery),
+      query: vi.fn(
+        () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+      ),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -47,7 +48,9 @@ describe("Equipment Metadata Backend", () => {
     mockCtx = setupMockCtx(mockQuery);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
-    mockCtx.db.insert.mockResolvedValue("make_123");
+    vi.mocked(mockCtx.db.insert).mockResolvedValue(
+      "make_123" as Id<"equipmentMetadata">
+    );
 
     const result = await addEquipmentMakeHandler(mockCtx, {
       make: "John Deere",
@@ -77,13 +80,16 @@ describe("Equipment Metadata Backend", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
     const existingMake = {
-      _id: "make_123",
+      _id: "make_123" as Id<"equipmentMetadata">,
+      _creationTime: Date.now(),
       make: "John Deere",
       models: ["8R"],
-      categoryId: "cat_123",
+      categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    mockCtx.db.get.mockResolvedValue(existingMake);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(
+      existingMake as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+    );
 
     await addModelToMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,
@@ -206,7 +212,9 @@ describe("Equipment Metadata Backend", () => {
       categoryId: "cat_123",
       isActive: true,
     };
-    mockCtx.db.get.mockResolvedValue(existingMake);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(
+      existingMake as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+    );
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -244,7 +252,7 @@ describe("Equipment Metadata Backend", () => {
     };
     mockCtx = setupMockCtx(mockQuery);
 
-    mockCtx.db.get.mockResolvedValue(null);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(null);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -258,20 +266,22 @@ describe("Equipment Metadata Backend", () => {
 });
 
 describe("updateEquipmentMake", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: any, getResponse?: any) => {
+  const setupMockCtx = (mockQuery: unknown, getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
-      query: vi.fn(() => mockQuery),
+      query: vi.fn(
+        () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+      ),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -436,19 +446,19 @@ describe("updateEquipmentMake", () => {
 });
 
 describe("deleteEquipmentMake", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (getResponse?: any) => {
+  const setupMockCtx = (getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -502,19 +512,19 @@ describe("deleteEquipmentMake", () => {
 });
 
 describe("removeModelFromMake", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (getResponse?: any) => {
+  const setupMockCtx = (getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -611,13 +621,13 @@ describe("removeModelFromMake", () => {
 });
 
 describe("getAllEquipmentMetadata", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (metadataItems: any[]) => {
+  const setupMockCtx = (metadataItems: unknown[]) => {
     const mockDb = {
       get: vi.fn((id: string) => {
         if (id === "cat_1") return Promise.resolve({ name: "Tractors" });
@@ -626,11 +636,15 @@ describe("getAllEquipmentMetadata", () => {
       }),
       query: vi.fn(() => ({
         filter: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(metadataItems),
+        collect: vi
+          .fn()
+          .mockResolvedValue(
+            metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
+          ),
       })),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 

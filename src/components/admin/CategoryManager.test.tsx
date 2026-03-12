@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Doc, Id } from "convex/_generated/dataModel";
 
 import { CategoryManager } from "./CategoryManager";
-
-import type { Doc } from "@/../convex/_generated/dataModel";
 
 // Mock toast
 vi.mock("sonner", () => ({
@@ -17,19 +15,19 @@ vi.mock("sonner", () => ({
 describe("CategoryManager", () => {
   const mockCategories: Doc<"equipmentCategories">[] = [
     {
-      _id: "cat_1" as any,
+      _id: "cat_1" as Id<"equipmentCategories">,
       _creationTime: Date.now(),
       name: "Tractors",
       isActive: true,
     },
     {
-      _id: "cat_2" as any,
+      _id: "cat_2" as Id<"equipmentCategories">,
       _creationTime: Date.now(),
       name: "Harvesters",
       isActive: true,
     },
     {
-      _id: "cat_3" as any,
+      _id: "cat_3" as Id<"equipmentCategories">,
       _creationTime: Date.now(),
       name: "Inactive Category",
       isActive: false,

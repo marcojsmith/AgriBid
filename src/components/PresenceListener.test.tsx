@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useMutation } from "convex/react";
@@ -8,9 +7,15 @@ import { useSession } from "@/lib/auth-client";
 import { PresenceListener } from "./PresenceListener";
 
 // Mock dependencies
-vi.mock("convex/react", () => ({
-  useMutation: vi.fn(),
-}));
+vi.mock("convex/react", () => {
+  const mockMutation = Object.assign(vi.fn(), {
+    withOptimisticUpdate: vi.fn(),
+  });
+  mockMutation.withOptimisticUpdate.mockReturnValue(mockMutation);
+  return {
+    useMutation: vi.fn(() => mockMutation),
+  };
+});
 
 vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(),
@@ -26,13 +31,22 @@ vi.mock("convex/_generated/api", () => ({
 describe("PresenceListener", () => {
   const mockUserId = "user123";
   const mockSession = { user: { id: mockUserId } };
-  const mockHeartbeat = vi.fn().mockResolvedValue(undefined);
+  const mockHeartbeat = Object.assign(vi.fn().mockResolvedValue(undefined), {
+    withOptimisticUpdate: vi.fn(),
+  });
+  mockHeartbeat.withOptimisticUpdate.mockReturnValue(mockHeartbeat);
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
-    vi.mocked(useSession).mockReturnValue({ data: mockSession } as any);
-    vi.mocked(useMutation).mockReturnValue(mockHeartbeat);
+    vi.mocked(useSession).mockReturnValue({
+      data: mockSession,
+    } as unknown as ReturnType<typeof useSession>);
+
+    // Simpler: just override what useMutation returns.
+    vi.mocked(useMutation).mockReturnValue(
+      mockHeartbeat as unknown as ReturnType<typeof useMutation>
+    );
 
     // Default visibilityState to visible
     Object.defineProperty(document, "visibilityState", {
@@ -52,7 +66,9 @@ describe("PresenceListener", () => {
   });
 
   it("should not send heartbeat if no session", () => {
-    vi.mocked(useSession).mockReturnValue({ data: null } as any);
+    vi.mocked(useSession).mockReturnValue({
+      data: null,
+    } as unknown as ReturnType<typeof useSession>);
     render(<PresenceListener />);
     expect(mockHeartbeat).not.toHaveBeenCalled();
   });

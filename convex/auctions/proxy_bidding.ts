@@ -32,6 +32,7 @@ export type HandleNewBidResult = {
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<Doc<"proxy_bids"> | null>
  */
 export const getMyProxyBidHandler = async (
   ctx: QueryCtx,

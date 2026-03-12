@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import {
-  getAuthUser,
-  resolveUserId,
-  getAuthenticatedUserId,
-  getAuthenticatedProfile,
-} from "./auth";
+import { getAuthUser, resolveUserId, getAuthenticatedProfile } from "./auth";
 import { authComponent } from "../auth";
+import type { QueryCtx } from "../_generated/server";
 
 vi.mock("../auth", () => ({
   authComponent: {
@@ -18,7 +14,25 @@ vi.mock("../auth", () => ({
 }));
 
 describe("Auth Utilities Coverage", () => {
-  let mockCtx: any;
+  interface MockCtx {
+    auth: { getUserIdentity: ReturnType<typeof vi.fn> };
+    db: {
+      get: ReturnType<typeof vi.fn>;
+      query: ReturnType<typeof vi.fn>;
+      system: unknown;
+      normalizeId: ReturnType<typeof vi.fn>;
+    };
+    storage: unknown;
+    scheduler: unknown;
+    runMutation: unknown;
+    runQuery: ReturnType<typeof vi.fn>;
+    runAction: unknown;
+    queryMock: {
+      withIndex: ReturnType<typeof vi.fn>;
+      unique: ReturnType<typeof vi.fn>;
+    };
+  }
+  let mockCtx: MockCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -33,10 +47,16 @@ describe("Auth Utilities Coverage", () => {
       db: {
         get: vi.fn(),
         query: vi.fn(() => queryMock),
+        system: {},
+        normalizeId: vi.fn((_table: string, id: string) => id),
       },
+      storage: {},
+      scheduler: {},
+      runMutation: {},
       runQuery: vi.fn(),
+      runAction: {},
+      queryMock,
     };
-    (mockCtx as any).queryMock = queryMock;
   });
 
   describe("getAuthUser fallback", () => {
@@ -50,9 +70,14 @@ describe("Auth Utilities Coverage", () => {
         _id: "u1",
         userId: "user_from_adapter",
         email: "adapter@example.com",
+        _creationTime: Date.now(),
+        name: "Adapter User",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        emailVerified: true,
       });
 
-      const user = await getAuthUser(mockCtx);
+      const user = await getAuthUser(mockCtx as unknown as QueryCtx);
       expect(user?.userId).toBe("user_from_adapter");
       expect(mockCtx.runQuery).toHaveBeenCalledWith(
         "adapterFindOne",
@@ -64,7 +89,7 @@ describe("Auth Utilities Coverage", () => {
       mockCtx.auth.getUserIdentity.mockRejectedValue(new Error("Critical"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const user = await getAuthUser(mockCtx);
+      const user = await getAuthUser(mockCtx as unknown as QueryCtx);
       expect(user).toBeNull();
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
@@ -73,7 +98,7 @@ describe("Auth Utilities Coverage", () => {
 
   describe("resolveUserId", () => {
     it("should return _id if userId is missing", () => {
-      const result = resolveUserId({ _id: "u1" } as any);
+      const result = resolveUserId({ _id: "u1" });
       expect(result).toBe("u1");
     });
   });
@@ -84,9 +109,9 @@ describe("Auth Utilities Coverage", () => {
       // Mocking getAuthUser indirectly via requireAuth
       // If we mock resolveUserId to return null
       vi.mocked(authComponent.getAuthUser).mockResolvedValue({
-        _id: undefined,
+        _id: "invalid",
         userId: undefined,
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
 
       // Since resolveUserId is exported, we might need to mock it if we wanted to test this branch,
       // but AuthUser type usually has _id.
@@ -99,14 +124,20 @@ describe("Auth Utilities Coverage", () => {
   describe("getAuthenticatedProfile", () => {
     it("should return null if not authenticated", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue(null);
-      const result = await getAuthenticatedProfile(mockCtx);
+      const result = await getAuthenticatedProfile(
+        mockCtx as unknown as QueryCtx
+      );
       expect(result).toBeNull();
     });
 
     it("should return null if userId cannot be resolved", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "u1" });
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue(null as any);
-      const result = await getAuthenticatedProfile(mockCtx);
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue(
+        null as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>
+      );
+      const result = await getAuthenticatedProfile(
+        mockCtx as unknown as QueryCtx
+      );
       expect(result).toBeNull();
     });
   });

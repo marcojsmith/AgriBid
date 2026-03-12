@@ -13,6 +13,7 @@ import {
 } from "../lib/auth";
 import { normalizeImages, deleteAuctionImages } from "../lib/storage";
 import { logAudit, updateCounter } from "../admin_utils";
+import { validateAuctionStatus } from "./helpers";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
@@ -91,24 +92,6 @@ function assertOwnership(auction: Doc<"auctions">, userId: string): void {
 }
 
 /**
- * Validate that an auction record contains required fields for a target status.
- * @param auction
- * @param auction.status
- * @param auction.endTime
- * @param newStatus
- */
-function validateAuctionStatus(
-  auction: { status: string; endTime?: number | null },
-  newStatus: string
-): void {
-  if (newStatus === "active" && !auction.endTime) {
-    throw new Error(
-      "Cannot set status to 'active' without endTime. Use approveAuction or provide endTime in the update."
-    );
-  }
-}
-
-/**
  * Validates that an auction has all required fields before it can be published.
  *
  * @param auction - The auction document to validate
@@ -173,6 +156,7 @@ async function adjustStatusCounters(
 /**
  * Handler for generating a storage upload URL.
  * @param ctx
+ * @returns Promise<string>
  */
 export const generateUploadUrlHandler = async (ctx: MutationCtx) => {
   await requireAuth(ctx);
@@ -190,6 +174,7 @@ export const generateUploadUrl = mutation({
  * @param ctx
  * @param args
  * @param args.storageId
+ * @returns Promise<null>
  */
 export const deleteUploadHandler = async (
   ctx: MutationCtx,
@@ -243,6 +228,7 @@ export const deleteUpload = mutation({
  * @param args.conditionChecklist.serviceHistory
  * @param args.conditionChecklist.notes
  * @param args.isDraft
+ * @returns Promise<Id<"auctions">>
  */
 export const createAuctionHandler = async (
   ctx: MutationCtx,
@@ -393,6 +379,7 @@ export const createAuction = mutation({
  * @param args.conditionChecklist.tires
  * @param args.conditionChecklist.serviceHistory
  * @param args.conditionChecklist.notes
+ * @returns Promise<Id<"auctions">>
  */
 export const saveDraftHandler = async (
   ctx: MutationCtx,
@@ -837,6 +824,7 @@ export const uploadConditionReport = mutation({
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<{ success: boolean }>
  */
 export const deleteConditionReportHandler = async (
   ctx: MutationCtx,
@@ -883,6 +871,7 @@ const FLAG_THRESHOLD = 3;
  * @param args.auctionId
  * @param args.reason
  * @param args.details
+ * @returns Promise<{ success: boolean; hideTriggered: boolean }>
  */
 export const flagAuctionHandler = async (
   ctx: MutationCtx,
@@ -978,6 +967,7 @@ export const flagAuction = mutation({
  * @param args
  * @param args.flagId
  * @param args.dismissalReason
+ * @returns Promise<{ success: boolean; auctionRestored: boolean }>
  */
 export const dismissFlagHandler = async (
   ctx: MutationCtx,
@@ -1066,6 +1056,7 @@ export const dismissFlag = mutation({
  * @param args
  * @param args.auctionId
  * @param args.durationDays
+ * @returns Promise<{ success: boolean }>
  */
 export const approveAuctionHandler = async (
   ctx: MutationCtx,
@@ -1112,6 +1103,7 @@ export const approveAuction = mutation({
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<{ success: boolean }>
  */
 export const rejectAuctionHandler = async (
   ctx: MutationCtx,
@@ -1204,7 +1196,7 @@ export const adminUpdateAuctionHandler = async (
 
   if (newStatus === "active") {
     const patched = { ...auction, ...args.updates };
-    validateAuctionStatus(patched as any, newStatus);
+    validateAuctionStatus(patched, newStatus);
   }
 
   const patchData: typeof args.updates & { hiddenByFlags?: boolean } = {
@@ -1277,6 +1269,7 @@ export const adminUpdateAuction = mutation({
  * @param args.updates.startTime
  * @param args.updates.endTime
  * @param args.updates.startingPrice
+ * @returns Promise<{ success: boolean; updated: Id<"auctions">[]; skipped: Id<"auctions">[] }>
  */
 export const bulkUpdateAuctionsHandler = async (
   ctx: MutationCtx,
@@ -1382,6 +1375,7 @@ export const bulkUpdateAuctions = mutation({
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<CloseAuctionEarlyResult>
  */
 export const closeAuctionEarlyHandler = async (
   ctx: MutationCtx,

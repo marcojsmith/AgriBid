@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import {
@@ -17,7 +16,7 @@ vi.mock("./lib/auth", () => ({
 }));
 
 describe("getCounter", () => {
-  let mockCtx: any;
+  let mockCtx: QueryCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -33,10 +32,13 @@ describe("getCounter", () => {
 
     mockCtx = {
       db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(mockCounter),
-        })),
+        query: vi.fn(
+          () =>
+            ({
+              withIndex: vi.fn().mockReturnThis(),
+              unique: vi.fn().mockResolvedValue(mockCounter),
+            }) as unknown as ReturnType<QueryCtx["db"]["query"]>
+        ),
       },
     } as unknown as QueryCtx;
 
@@ -48,10 +50,13 @@ describe("getCounter", () => {
   it("should return null if counter not found", async () => {
     mockCtx = {
       db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(null),
-        })),
+        query: vi.fn(
+          () =>
+            ({
+              withIndex: vi.fn().mockReturnThis(),
+              unique: vi.fn().mockResolvedValue(null),
+            }) as unknown as ReturnType<QueryCtx["db"]["query"]>
+        ),
       },
     } as unknown as QueryCtx;
 
@@ -68,7 +73,9 @@ describe("countQuery", () => {
       collect: vi.fn(),
     };
 
-    const result = await countQuery(mockQuery);
+    const result = await countQuery(
+      mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+    );
 
     expect(result).toBe(42);
     expect(mockQuery.count).toHaveBeenCalled();
@@ -80,7 +87,9 @@ describe("countQuery", () => {
       collect: vi.fn().mockResolvedValue([1, 2, 3, 4, 5]),
     };
 
-    const result = await countQuery(mockQuery);
+    const result = await countQuery(
+      mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+    );
 
     expect(result).toBe(5);
     expect(mockQuery.collect).toHaveBeenCalled();
@@ -95,7 +104,10 @@ describe("sumQuery", () => {
         .mockResolvedValue([{ amount: 100 }, { amount: 200 }, { amount: 300 }]),
     };
 
-    const result = await sumQuery(mockQuery, "amount");
+    const result = await sumQuery(
+      mockQuery as unknown as Parameters<typeof sumQuery>[0],
+      "amount"
+    );
 
     expect(result.sum).toBe(600);
     expect(result.count).toBe(3);
@@ -112,7 +124,10 @@ describe("sumQuery", () => {
         ]),
     };
 
-    const result = await sumQuery(mockQuery, "amount");
+    const result = await sumQuery(
+      mockQuery as unknown as Parameters<typeof sumQuery>[0],
+      "amount"
+    );
 
     expect(result.sum).toBe(400);
     expect(result.count).toBe(2);
@@ -123,7 +138,10 @@ describe("sumQuery", () => {
       collect: vi.fn().mockResolvedValue([]),
     };
 
-    const result = await sumQuery(mockQuery, "amount");
+    const result = await sumQuery(
+      mockQuery as unknown as Parameters<typeof sumQuery>[0],
+      "amount"
+    );
 
     expect(result.sum).toBe(0);
     expect(result.count).toBe(0);
@@ -131,13 +149,13 @@ describe("sumQuery", () => {
 });
 
 describe("countUsers", () => {
-  let mockCtx: any;
+  let mockCtx: QueryCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (counterValue?: any, profiles: any[] = []) => {
+  const setupMockCtx = (counterValue?: unknown, profiles: unknown[] = []) => {
     return {
       db: {
         query: vi.fn((table: string) => {
@@ -159,7 +177,7 @@ describe("countUsers", () => {
             withIndex: vi.fn().mockReturnThis(),
             collect: vi.fn().mockResolvedValue([]),
           };
-        }),
+        }) as unknown as QueryCtx["db"]["query"],
       },
     } as unknown as QueryCtx;
   };
@@ -243,13 +261,15 @@ describe("countUsers", () => {
 });
 
 describe("logAudit", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (authUser: any = null) => {
+  const setupMockCtx = (
+    authUser: { userId: string; _id: string } | null = null
+  ) => {
     const identity = authUser ? { subject: authUser.userId } : null;
     return {
       auth: {
@@ -257,10 +277,13 @@ describe("logAudit", () => {
       },
       db: {
         insert: vi.fn().mockResolvedValue("audit_log_123"),
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(null),
-        })),
+        query: vi.fn(
+          () =>
+            ({
+              withIndex: vi.fn().mockReturnThis(),
+              unique: vi.fn().mockResolvedValue(null),
+            }) as unknown as ReturnType<MutationCtx["db"]["query"]>
+        ),
       },
     } as unknown as MutationCtx;
   };
@@ -349,7 +372,7 @@ describe("logAudit", () => {
 });
 
 describe("updateCounter", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -374,10 +397,13 @@ describe("updateCounter", () => {
 
     return {
       db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(mockCounter),
-        })),
+        query: vi.fn(
+          () =>
+            ({
+              withIndex: vi.fn().mockReturnThis(),
+              unique: vi.fn().mockResolvedValue(mockCounter),
+            }) as unknown as ReturnType<MutationCtx["db"]["query"]>
+        ),
         patch: vi.fn(),
         insert: vi.fn().mockResolvedValue("counter_new"),
       },
@@ -472,10 +498,13 @@ describe("updateCounter", () => {
 
     mockCtx = {
       db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(mockCounter),
-        })),
+        query: vi.fn(
+          () =>
+            ({
+              withIndex: vi.fn().mockReturnThis(),
+              unique: vi.fn().mockResolvedValue(mockCounter),
+            }) as unknown as ReturnType<MutationCtx["db"]["query"]>
+        ),
         patch: vi.fn(),
       },
     } as unknown as MutationCtx;

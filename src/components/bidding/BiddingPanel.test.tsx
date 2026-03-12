@@ -31,26 +31,66 @@ vi.mock("sonner", () => ({
 }));
 
 // Mock Convex hooks
-vi.mock("convex/react", () => ({
-  useMutation: vi.fn(),
-  useQuery: vi.fn(),
-}));
+vi.mock("convex/react", () => {
+  const mockMutation = Object.assign(vi.fn(), {
+    withOptimisticUpdate: vi.fn(),
+  });
+  mockMutation.withOptimisticUpdate.mockReturnValue(mockMutation);
+  return {
+    useMutation: vi.fn(() => mockMutation),
+    useQuery: vi.fn(),
+  };
+});
 
 // Mock Radix Alert Dialog
+interface AlertDialogProps {
+  children: React.ReactNode;
+  open?: boolean;
+}
+interface AlertDialogActionProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+}
+interface AlertDialogContentProps {
+  children: React.ReactNode;
+}
+interface AlertDialogDescriptionProps {
+  children: React.ReactNode;
+}
+interface AlertDialogFooterProps {
+  children: React.ReactNode;
+}
+interface AlertDialogHeaderProps {
+  children: React.ReactNode;
+}
+interface AlertDialogTitleProps {
+  children: React.ReactNode;
+}
+
 vi.mock("@/components/ui/alert-dialog", () => ({
-  AlertDialog: ({ children, open }: any) =>
+  AlertDialog: ({ children, open }: AlertDialogProps) =>
     open ? <div data-testid="alert-dialog">{children}</div> : null,
-  AlertDialogAction: ({ children, onClick }: any) => (
+  AlertDialogAction: ({ children, onClick }: AlertDialogActionProps) => (
     <button onClick={onClick}>{children}</button>
   ),
-  AlertDialogCancel: ({ children, onClick }: any) => (
+  AlertDialogCancel: ({ children, onClick }: AlertDialogActionProps) => (
     <button onClick={onClick}>{children}</button>
   ),
-  AlertDialogContent: ({ children }: any) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: any) => <div>{children}</div>,
-  AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
-  AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: any) => <div>{children}</div>,
+  AlertDialogContent: ({ children }: AlertDialogContentProps) => (
+    <div>{children}</div>
+  ),
+  AlertDialogDescription: ({ children }: AlertDialogDescriptionProps) => (
+    <div>{children}</div>
+  ),
+  AlertDialogFooter: ({ children }: AlertDialogFooterProps) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: AlertDialogHeaderProps) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: AlertDialogTitleProps) => (
+    <div>{children}</div>
+  ),
 }));
 
 describe("BiddingPanel", () => {
@@ -67,17 +107,21 @@ describe("BiddingPanel", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(convexReact.useMutation).mockReturnValue(vi.fn());
-    vi.mocked(useSession).mockReturnValue({
-      data: mockSession,
-      isPending: false,
-    } as any);
+    const mockMut = Object.assign(vi.fn(), {
+      withOptimisticUpdate: vi.fn().mockReturnThis(),
+    });
+    vi.mocked(convexReact.useMutation).mockReturnValue(mockMut);
+    const sessionData = { data: mockSession, isPending: false };
+    vi.mocked(useSession).mockReturnValue(
+      sessionData as unknown as ReturnType<typeof useSession>
+    );
     // Default mock for queries
     vi.mocked(convexReact.useQuery).mockReturnValue(null);
   });
 
   it("renders current price and minimum bid correctly", () => {
-    vi.mocked(convexReact.useQuery).mockImplementation((apiPath: any) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
+      const apiPath = args[0] as { name?: string };
       if (apiPath?.name === "getMyProfile")
         return { profile: { isVerified: true, kycStatus: "verified" } };
       return null;
@@ -105,7 +149,7 @@ describe("BiddingPanel", () => {
   });
 
   it("gates bidding UI when user is unverified", () => {
-    vi.mocked(convexReact.useQuery).mockImplementation((apiPath: any) => {
+    vi.mocked(convexReact.useQuery).mockImplementation(() => {
       // Handle both string and property access if necessary
       return { profile: { isVerified: false, kycStatus: "none" } };
     });
@@ -140,8 +184,15 @@ describe("BiddingPanel", () => {
   });
 
   it("handles bid confirmation successfully", async () => {
-    const mockPlaceBid = vi.fn().mockResolvedValue({ success: true });
-    vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
+    const mockPlaceBid = Object.assign(
+      vi.fn().mockResolvedValue({ success: true }),
+      {
+        withOptimisticUpdate: vi.fn().mockReturnThis(),
+      }
+    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(
+      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
+    );
     vi.mocked(convexReact.useQuery).mockReturnValue({
       profile: { isVerified: true, kycStatus: "verified" },
     });
@@ -178,10 +229,10 @@ describe("BiddingPanel", () => {
   });
 
   it("prompts for sign in when unauthenticated", async () => {
-    vi.mocked(useSession).mockReturnValue({
-      data: null,
-      isPending: false,
-    } as any);
+    const sessionData = { data: null, isPending: false };
+    vi.mocked(useSession).mockReturnValue(
+      sessionData as unknown as ReturnType<typeof useSession>
+    );
     vi.mocked(convexReact.useQuery).mockReturnValue(null); // No profile
 
     render(

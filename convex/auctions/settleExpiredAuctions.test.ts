@@ -4,38 +4,71 @@ import { settleExpiredAuctionsHandler } from "./internal";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
+type MockCtxType = {
+  db: {
+    query: ReturnType<typeof vi.fn>;
+    patch: ReturnType<typeof vi.fn>;
+    get: ReturnType<typeof vi.fn>;
+    insert: ReturnType<typeof vi.fn>;
+    replace: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    system: unknown;
+    normalizeId: ReturnType<typeof vi.fn>;
+  };
+  auth: unknown;
+  storage: unknown;
+  scheduler: unknown;
+  runMutation: unknown;
+  runQuery: unknown;
+  runAction: unknown;
+};
+
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
   logAudit: vi.fn(),
 }));
 
 describe("settleExpiredAuctions mutation", () => {
-  let mockCtx: any;
+  let mockCtx: MockCtxType;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (expiredAuctions: any[], bids: any[]) => {
-    const mockDb = {
-      query: vi.fn((table: string) => ({
-        withIndex: vi.fn().mockReturnThis(),
-        filter: vi.fn().mockReturnThis(),
-        collect: vi
-          .fn()
-          .mockResolvedValue(table === "auctions" ? expiredAuctions : bids),
-      })),
-      patch: vi.fn(),
-    };
+  const setupMockCtx = (
+    expiredAuctions: { [key: string]: unknown }[],
+    bids: { [key: string]: unknown }[]
+  ) => {
     return {
-      db: mockDb as any,
-    } as unknown as MutationCtx;
+      db: {
+        query: vi.fn((table: string) => ({
+          withIndex: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
+          collect: vi
+            .fn()
+            .mockResolvedValue(table === "auctions" ? expiredAuctions : bids),
+        })),
+        patch: vi.fn(),
+        get: vi.fn(),
+        insert: vi.fn(),
+        replace: vi.fn(),
+        delete: vi.fn(),
+        system: {},
+        normalizeId: vi.fn((_table: string, id: string) => id),
+      },
+      auth: {},
+      storage: {},
+      scheduler: {},
+      runMutation: {},
+      runQuery: {},
+      runAction: {},
+    } as unknown as MockCtxType;
   };
 
   it("should settle an auction as sold if reserve is met", async () => {
     const now = Date.now();
-    const auctionId = "a1" as Id<"auctions">;
-    const bidderId = "b1" as any;
+    const auctionId = "a1" as unknown as Id<"auctions">;
+    const bidderId = "b1";
 
     const expiredAuctions = [
       {
@@ -61,7 +94,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(expiredAuctions, bids);
 
-    await settleExpiredAuctionsHandler(mockCtx);
+    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "sold",
@@ -71,7 +104,7 @@ describe("settleExpiredAuctions mutation", () => {
 
   it("should settle an auction as unsold if reserve is not met", async () => {
     const now = Date.now();
-    const auctionId = "a2" as Id<"auctions">;
+    const auctionId = "a2" as unknown as Id<"auctions">;
 
     const expiredAuctions = [
       {
@@ -88,7 +121,7 @@ describe("settleExpiredAuctions mutation", () => {
       {
         _id: "bid2",
         auctionId,
-        bidderId: "b2" as any,
+        bidderId: "b2",
         amount: 500,
         timestamp: now - 500,
         status: "placed",
@@ -97,7 +130,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(expiredAuctions, bids);
 
-    await settleExpiredAuctionsHandler(mockCtx);
+    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "unsold",
@@ -107,7 +140,7 @@ describe("settleExpiredAuctions mutation", () => {
 
   it("should settle an auction as unsold if there are no bids", async () => {
     const now = Date.now();
-    const auctionId = "a3" as Id<"auctions">;
+    const auctionId = "a3" as unknown as Id<"auctions">;
 
     const expiredAuctions = [
       {
@@ -122,7 +155,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(expiredAuctions, []);
 
-    await settleExpiredAuctionsHandler(mockCtx);
+    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "unsold",
@@ -132,7 +165,7 @@ describe("settleExpiredAuctions mutation", () => {
 
   it("should pick the correct winner if there are multiple bids with the same amount", async () => {
     const now = Date.now();
-    const auctionId = "a4" as Id<"auctions">;
+    const auctionId = "a4" as unknown as Id<"auctions">;
 
     const expiredAuctions = [
       {
@@ -149,7 +182,7 @@ describe("settleExpiredAuctions mutation", () => {
       {
         _id: "bid4a",
         auctionId,
-        bidderId: "winner" as any,
+        bidderId: "winner",
         amount: 1000,
         timestamp: now - 800, // Earlier bid wins
         status: "placed",
@@ -157,7 +190,7 @@ describe("settleExpiredAuctions mutation", () => {
       {
         _id: "bid4b",
         auctionId,
-        bidderId: "loser" as any,
+        bidderId: "loser",
         amount: 1000,
         timestamp: now - 700,
         status: "placed",
@@ -166,7 +199,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(expiredAuctions, bids);
 
-    await settleExpiredAuctionsHandler(mockCtx);
+    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "sold",

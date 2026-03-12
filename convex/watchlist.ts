@@ -1,20 +1,27 @@
 // app/convex/watchlist.ts
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import type { PaginationOptions } from "convex/server";
 
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { AuctionSummaryValidator, toAuctionSummary } from "./auctions";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
-import type { Id } from "./_generated/dataModel";
+import type { Id, Doc } from "./_generated/dataModel";
 
 /**
  * Handler for toggling an auction in the user's watchlist.
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<boolean>
  */
 export const toggleWatchlistHandler = async (
-  ctx: any,
+  ctx: MutationCtx,
   args: { auctionId: Id<"auctions"> }
 ) => {
   const authUser = await requireAuth(ctx);
@@ -23,7 +30,7 @@ export const toggleWatchlistHandler = async (
 
   const existing = await ctx.db
     .query("watchlist")
-    .withIndex("by_user_auction", (q: any) =>
+    .withIndex("by_user_auction", (q) =>
       q.eq("userId", userId).eq("auctionId", args.auctionId)
     )
     .first();
@@ -54,9 +61,10 @@ export const toggleWatchlist = mutation({
  * @param ctx
  * @param args
  * @param args.auctionId
+ * @returns Promise<boolean>
  */
 export const isWatchedHandler = async (
-  ctx: any,
+  ctx: QueryCtx,
   args: { auctionId: Id<"auctions"> }
 ) => {
   try {
@@ -67,7 +75,7 @@ export const isWatchedHandler = async (
 
     const existing = await ctx.db
       .query("watchlist")
-      .withIndex("by_user_auction", (q: any) =>
+      .withIndex("by_user_auction", (q) =>
         q.eq("userId", userId).eq("auctionId", args.auctionId)
       )
       .first();
@@ -95,10 +103,11 @@ export const isWatched = query({
  * @param ctx
  * @param args
  * @param args.paginationOpts
+ * @returns Promise<PaginatedAuctions>
  */
 export const getWatchedAuctionsHandler = async (
-  ctx: any,
-  args: { paginationOpts: any }
+  ctx: QueryCtx,
+  args: { paginationOpts: PaginationOptions }
 ) => {
   try {
     const authUser = await getAuthUser(ctx);
@@ -122,11 +131,11 @@ export const getWatchedAuctionsHandler = async (
 
     const watchlist = await ctx.db
       .query("watchlist")
-      .withIndex("by_user", (q: any) => q.eq("userId", userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .paginate(args.paginationOpts);
 
     const page = await Promise.all(
-      watchlist.page.map(async (item: any) => {
+      watchlist.page.map(async (item: Doc<"watchlist">) => {
         const auction = await ctx.db.get(item.auctionId);
         if (!auction) return null;
         return await toAuctionSummary(ctx, auction);
@@ -169,8 +178,9 @@ export const getWatchedAuctions = query({
 /**
  * Handler for getting watched auction IDs.
  * @param ctx
+ * @returns Promise<Id<"auctions">[]>
  */
-export const getWatchedAuctionIdsHandler = async (ctx: any) => {
+export const getWatchedAuctionIdsHandler = async (ctx: QueryCtx) => {
   try {
     const authUser = await getAuthUser(ctx);
     if (!authUser) return [];
@@ -184,12 +194,14 @@ export const getWatchedAuctionIdsHandler = async (ctx: any) => {
     const MAX_PAGES = 10;
 
     while (!isDone && pageCount < MAX_PAGES) {
-      const page: any = await ctx.db
+      const page = await ctx.db
         .query("watchlist")
-        .withIndex("by_user", (q: any) => q.eq("userId", userId))
+        .withIndex("by_user", (q) => q.eq("userId", userId))
         .paginate({ numItems: 100, cursor });
 
-      results.push(...page.page.map((item: any) => item.auctionId));
+      results.push(
+        ...page.page.map((item: Doc<"watchlist">) => item.auctionId)
+      );
       cursor = page.continueCursor;
       isDone = page.isDone;
       pageCount++;
