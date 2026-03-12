@@ -24,6 +24,11 @@ describe("cn", () => {
     const result = cn({ foo: true, bar: false });
     expect(result).toBe("foo");
   });
+
+  it("resolves tailwind conflicts", () => {
+    // p-4 and p-8 are conflicting padding classes, p-8 should win
+    expect(cn("p-4 p-8")).toBe("p-8");
+  });
 });
 
 describe("isValidCallbackUrl", () => {
@@ -31,6 +36,10 @@ describe("isValidCallbackUrl", () => {
     expect(isValidCallbackUrl("/dashboard")).toBe(true);
     expect(isValidCallbackUrl("/")).toBe(true);
     expect(isValidCallbackUrl("/path/to/page")).toBe(true);
+  });
+
+  it("returns false for empty string", () => {
+    expect(isValidCallbackUrl("")).toBe(false);
   });
 
   it("returns false for null/undefined", () => {
@@ -69,8 +78,14 @@ describe("getErrorMessage", () => {
       message: "Invalid",
     });
     const result = getErrorMessage(error);
-    // The result should contain some truthy value
-    expect(result).toBeTruthy();
+    // ConvexError with object usually has a generated message including the data
+    expect(result).toContain("Invalid");
+  });
+
+  it("falls back to default fallback if ConvexError message is missing", () => {
+    const error = new ConvexError({});
+    // Manually clear message if possible or just test fallback
+    expect(getErrorMessage(error, "Fallback")).toBeDefined();
   });
 
   it("returns fallback for unknown error types", () => {

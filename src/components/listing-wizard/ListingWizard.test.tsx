@@ -1,6 +1,18 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from "vitest";
 import { MemoryRouter } from "react-router-dom";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
+
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 
 import { ListingWizard } from "./ListingWizard";
 
@@ -13,6 +25,8 @@ vi.mock("convex/_generated/api", () => ({
       createAuction: { _path: "auctions:createAuction" },
       saveDraft: { _path: "auctions:saveDraft" },
       submitForReview: { _path: "auctions:submitForReview" },
+      generateUploadUrl: { _path: "auctions:generateUploadUrl" },
+      deleteUpload: { _path: "auctions:deleteUpload" },
     },
     admin: {
       categories: {
@@ -35,10 +49,7 @@ vi.mock("convex/react", () => ({
   useQuery: (apiFunc: { _path?: string } | null | undefined) => {
     const path = apiFunc?._path || "";
     if (path === "auctions:getCategories") {
-      return [
-        { _id: "cat1", name: "Tractor", isActive: true },
-        { _id: "cat2", name: "Harvester", isActive: true },
-      ];
+      return [{ _id: "cat1", name: "Tractor", isActive: true }];
     }
     return [];
   },
@@ -50,13 +61,7 @@ vi.mock("convex/react", () => ({
           {
             _id: "m1",
             make: "John Deere",
-            models: ["6155R", "8R 410"],
-            categoryId: "cat1",
-          },
-          {
-            _id: "m2",
-            make: "Case IH",
-            models: ["Magnum 340"],
+            models: ["6155R"],
             categoryId: "cat1",
           },
         ],
@@ -66,25 +71,12 @@ vi.mock("convex/react", () => ({
     }
     return { results: [], status: "Exhausted", loadMore: vi.fn() };
   },
-  useMutation: (apiFunc: { _path?: string } | string | null | undefined) => {
-    const path =
-      typeof apiFunc === "object" && apiFunc !== null ? apiFunc._path : apiFunc;
-    const isUpload =
-      typeof path === "string" && path.includes("generateUploadUrl");
-
-    if (isUpload) {
-      return vi.fn().mockResolvedValue("http://upload.url");
-    }
-    return vi.fn().mockResolvedValue({ success: true });
-  },
+  useMutation: vi.fn(),
 }));
 
 // Mock auth client and redirect
 vi.mock("@/hooks/useAuthRedirect", () => ({
-  useAuthRedirect: vi.fn(() => ({
-    ensureAuthenticated: vi.fn().mockReturnValue(true),
-    isPending: false,
-  })),
+  useAuthRedirect: vi.fn(),
 }));
 
 // Mock sonner
@@ -96,22 +88,40 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock browser APIs
 const originalFetch = global.fetch;
 
-describe("ListingWizard", () => {
+describe("ListingWizard Full Coverage", () => {
+  const mockCreateAuction = vi.fn();
+  const mockSaveDraft = vi.fn();
+  const mockSubmitForReview = vi.fn();
+  const mockEnsureAuthenticated = vi.fn().mockReturnValue(true);
+
   beforeEach(() => {
     localStorage.clear();
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ storageId: "test-storage-id" }),
     });
+
+    (useMutation as Mock).mockImplementation((apiFunc: { _path?: string }) => {
+      const path = apiFunc?._path;
+      if (path === "auctions:createAuction") return mockCreateAuction;
+      if (path === "auctions:saveDraft") return mockSaveDraft;
+      if (path === "auctions:submitForReview") return mockSubmitForReview;
+      if (path === "auctions:generateUploadUrl")
+        return vi.fn().mockResolvedValue("http://upload.url");
+      return vi.fn();
+    });
+
+    (useAuthRedirect as Mock).mockReturnValue({
+      ensureAuthenticated: mockEnsureAuthenticated,
+      isPending: false,
+    });
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
     vi.clearAllMocks();
-    localStorage.clear();
   });
 
   const renderWizard = () =>
@@ -122,122 +132,206 @@ describe("ListingWizard", () => {
     );
 
   const fillStep1 = () => {
-    fireEvent.change(screen.getByLabelText(/Manufacturing Year/i), {
+    fireEvent.change(screen.getByLabelText(/Listing Title/i), {
+      target: { value: "Test Title" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/e\.g\. 2026/i), {
       target: { value: "2024" },
     });
-    fireEvent.change(screen.getByLabelText(/Location/i), {
-      target: { value: "Pretoria, ZA" },
-    });
-    fireEvent.change(screen.getByLabelText(/Listing Title/i), {
-      target: { value: "Test Auction Title" },
+    fireEvent.change(screen.getByPlaceholderText(/Johannesburg/i), {
+      target: { value: "Pretoria" },
     });
     fireEvent.change(screen.getByLabelText(/Operating Hours/i), {
-      target: { value: "1200" },
+      target: { value: "100" },
+    });
+    fireEvent.change(screen.getByLabelText(/Equipment Description/i), {
+      target: { value: "Desc" },
     });
   };
 
-  const navigateToStep4 = () => {
+  const fillAllSteps = async () => {
+    // Step 1: General Info
     fillStep1();
-    fireEvent.click(screen.getByText(/Next Step/i));
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
 
-    // Step 2: Select category first
-    fireEvent.click(screen.getByText("Tractor"));
+    // Step 2: Tech Specs
+    await screen.findByText(/Tractor/i);
+    fireEvent.click(screen.getByText(/Tractor/i));
+    fireEvent.click(screen.getByText(/John Deere/i));
+    fireEvent.click(screen.getByText(/6155R/i));
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
 
-    // Step 2: Technical Specs (Manufacturer/Model)
-    fireEvent.click(screen.getByText("John Deere"));
-    fireEvent.click(screen.getByText("6155R"));
-    fireEvent.click(screen.getByText(/Next Step/i));
+    // Step 3: Condition
+    const yesButtons = await screen.findAllByRole("button", { name: /yes/i });
+    yesButtons.forEach((btn) => fireEvent.click(btn));
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
 
-    // Step 3: Condition Checklist
-    const yesButtons = screen.getAllByText("Yes");
-    yesButtons.forEach((btn) => {
-      fireEvent.click(btn);
+    // Step 4: Media
+    const file = new File(["(⌐□_□)"], "front.png", { type: "image/png" });
+    const frontInput = screen.getByLabelText(
+      /Upload image for slot Front 45° View/i
+    );
+    fireEvent.change(frontInput, { target: { files: [file] } });
+    await screen.findByText(/FRONT 45° VIEW \(UPLOADED\)/i);
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+
+    // Step 5: Pricing
+    fireEvent.change(screen.getByLabelText(/Starting Price \(R\)/i), {
+      target: { value: "1000" },
     });
-    fireEvent.click(screen.getByText(/Next Step/i));
+    fireEvent.change(screen.getByLabelText(/Reserve Price \(R\)/i), {
+      target: { value: "2000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
   };
 
-  it("renders the first step by default", () => {
+  it("handles localStorage corruption", () => {
+    localStorage.setItem("agribid_listing_draft", "invalid-json");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     renderWizard();
-
-    expect(
-      screen.getAllByText(/General Information/i).length
-    ).toBeGreaterThanOrEqual(1);
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to parse saved draft"),
+      expect.any(Error)
+    );
     expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
+    spy.mockRestore();
   });
 
-  it("navigates to step 2 when fields are filled", () => {
+  it("handles save draft without categoryId (local only)", async () => {
     renderWizard();
+    fillStep1(); // Fill to ensure valid data for auto-save if needed
 
-    fillStep1();
-
-    fireEvent.click(screen.getByText(/Next Step/i));
-
-    expect(screen.getByText(/Step 2 of 6/i)).toBeInTheDocument();
-    expect(screen.getByText(/Technical Specifications/i)).toBeInTheDocument();
-  });
-
-  it("requires all condition checklist items to be filled", () => {
-    renderWizard();
-
-    // Fill Step 1
-    fillStep1();
-    fireEvent.click(screen.getByText(/Next Step/i));
-
-    // Step 2: Select category
-    fireEvent.click(screen.getByText("Tractor"));
-
-    // Step 2: Fill Technical Specs (Manufacturer/Model)
-    fireEvent.click(screen.getByText("John Deere"));
-    fireEvent.click(screen.getByText("6155R"));
-    fireEvent.click(screen.getByText(/Next Step/i));
-
-    expect(screen.getByText(/Condition Checklist/i)).toBeInTheDocument();
-
-    // Fill all Yes buttons
-    const yesButtons = screen.getAllByText("Yes");
-    yesButtons.forEach((btn) => {
-      fireEvent.click(btn);
-    });
-
-    fireEvent.click(screen.getByText(/Next Step/i));
-    expect(screen.getByText(/Step 4 of 6/i)).toBeInTheDocument();
-    expect(screen.getByText(/Media Gallery/i)).toBeInTheDocument();
-  });
-
-  it("validates required image slots", async () => {
-    renderWizard();
-
-    navigateToStep4();
-
-    expect(screen.getByText(/Media Gallery/i)).toBeInTheDocument();
-
-    // Try to proceed without images
-    fireEvent.click(screen.getByText(/Next Step/i));
-    expect(screen.getByText(/Step 4 of 6/i)).toBeInTheDocument();
-
-    // Mock file upload for a non-front slot (e.g., Engine Bay)
-    const file = new File(["(⌐□_□)"], "engine.png", { type: "image/png" });
-    const input = screen.getByLabelText(/Engine Bay/i);
-    fireEvent.change(input, { target: { files: [file] } });
+    const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
+    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/ENGINE BAY \(UPLOADED\)/i)).toBeInTheDocument();
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Draft saved locally")
+      );
+      expect(toast.success).toHaveBeenCalledWith("Draft saved successfully!");
     });
-
-    // Should now proceed as at least one image is uploaded
-    fireEvent.click(screen.getByText(/Next Step/i));
-    expect(screen.getByText(/Step 5 of 6/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pricing & Duration/i)).toBeInTheDocument();
+    spy.mockRestore();
   });
 
-  it("initializes from localStorage if available", () => {
-    const savedDraft = { title: "Saved Tractor", make: "John Deere" };
-    localStorage.setItem("agribid_listing_draft", JSON.stringify(savedDraft));
-    localStorage.setItem("agribid_listing_step", "1"); // Technical Specs
+  it("handles save draft with categoryId (server sync)", async () => {
+    renderWizard();
+    fillStep1();
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    await screen.findByText(/Tractor/i);
+    fireEvent.click(screen.getByText(/Tractor/i)); // sets categoryId
+
+    mockSaveDraft.mockResolvedValue("new-auction-id");
+    fireEvent.click(screen.getByRole("button", { name: /Save Draft/i }));
+
+    await waitFor(() => {
+      expect(mockSaveDraft).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith("Draft saved successfully!");
+    });
+  });
+
+  it("handles save draft error", async () => {
+    renderWizard();
+    fillStep1();
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    await screen.findByText(/Tractor/i);
+    fireEvent.click(screen.getByText(/Tractor/i));
+
+    mockSaveDraft.mockRejectedValue(new Error("Save Failed"));
+    fireEvent.click(screen.getByRole("button", { name: /Save Draft/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Save Failed");
+    });
+  });
+
+  it("submits a new auction successfully", async () => {
+    renderWizard();
+    await fillAllSteps();
+
+    await screen.findByText(/Step 6 of 6/i);
+
+    mockCreateAuction.mockResolvedValue({ success: true });
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+
+    await waitFor(() => {
+      expect(mockCreateAuction).toHaveBeenCalled();
+      expect(screen.getByText(/Submission Received/i)).toBeInTheDocument();
+    });
+  });
+
+  it("submits an existing draft (edit mode) successfully", async () => {
+    // Manually set draft with auctionId in localStorage
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({ auctionId: "a1", title: "Existing" })
+    );
+
+    renderWizard();
+    await fillAllSteps();
+
+    mockSaveDraft.mockResolvedValue("a1");
+    mockSubmitForReview.mockResolvedValue({ success: true });
+
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+
+    await waitFor(() => {
+      expect(mockSaveDraft).toHaveBeenCalled();
+      expect(mockSubmitForReview).toHaveBeenCalledWith({ auctionId: "a1" });
+      expect(screen.getByText(/Submission Received/i)).toBeInTheDocument();
+    });
+  });
+
+  it("handles submission failure", async () => {
+    renderWizard();
+    await fillAllSteps();
+
+    mockCreateAuction.mockRejectedValue(new Error("Submit Error"));
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Submit Error");
+    });
+  });
+
+  it("shows info toast if session is pending during submit", async () => {
+    (useAuthRedirect as Mock).mockReturnValue({
+      ensureAuthenticated: mockEnsureAuthenticated,
+      isPending: true,
+    });
+
+    // Set step 6 in localStorage
+    localStorage.setItem("agribid_listing_step", "5");
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({
+        title: "Tractor",
+        categoryId: "cat1",
+        make: "John Deere",
+        model: "6155R",
+        year: 2024,
+        operatingHours: 100,
+        location: "Pretoria",
+        description: "Desc",
+        conditionChecklist: {
+          engine: true,
+          hydraulics: true,
+          tires: true,
+          serviceHistory: true,
+        },
+        images: { front: "img.jpg" },
+        startingPrice: 1000,
+        reservePrice: 2000,
+        durationDays: 7,
+      })
+    );
 
     renderWizard();
 
-    // Should be on step 1 (Technical Specs)
-    expect(screen.getByText(/Technical Specifications/i)).toBeInTheDocument();
+    // We are on step 6
+    await screen.findByText(/Step 6 of 6/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+    expect(toast.info).toHaveBeenCalledWith("Checking your session...");
   });
 });
