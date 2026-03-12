@@ -2,15 +2,15 @@
 
 ## Current State
 
-- **Current Coverage**: 88.23% statements, 80.53% branches, 80.83% functions, 89.68% lines (Project-wide)
-- **Tests Passing**: 763 tests
+- **Current Coverage**: 89.09% statements, 81.27% branches, 82.51% functions, 90.60% lines (Project-wide)
+- **Tests Passing**: 816 tests (+53)
 - **Target**: 95% across all metrics (Project Thresholds updated to 88/80/80/89)
 
 ## Critical Areas (Low Coverage)
 
 1.  `convex/auctions/queries.ts`: 91.84% (Statements)
-2.  `src/pages/admin/AdminDashboard.tsx`: 100% (already reached)
-3.  `src/lib/utils.test.ts`: 100% (already reached)
+2.  `src/pages/AuctionDetail.tsx`: 89.47% (target 95%+)
+3.  `src/pages/KYC.tsx`: 93.75% (target 98%+)
 
 ## Implementation Plan
 
@@ -43,7 +43,16 @@
 - [x] **notifications.tsx lib Audit**: Reached 100%. Added dedicated unit tests for icons and click handling.
 - [x] **Threshold Update**: Updated `vitest.config.ts` to 88/80/80/89.
 - [x] **Final Sweep**: Remove remaining `as any` and ensure 100% type safety in tests.
-- [x] **Target Reached**: Reach 90%+ project-wide for Lines. (Reached 89.68% project-wide, 94.05% on `queries.ts`)
+- [x] **Target Reached**: Reach 90%+ project-wide for Lines. (Reached 90.60% project-wide)
+
+### Phase 6: Pushing to 95% (In Progress)
+
+- [x] **BiddingPanel.tsx**: Increased to 98.36% Statements, 100% Lines (was 75%).
+- [x] **CategoryManager.tsx**: Increased to 97.50% Statements, 97.50% Lines (was 72%).
+- [x] **MyListings.tsx**: Increased to 92.72% Statements, 96.07% Lines (was 85%).
+- [ ] **AuctionDetail.tsx**: Target 95%+.
+- [ ] **Home.tsx**: Target 98%+.
+- [ ] **KYC.tsx**: Target 98%+.
 
 ## Progress Log
 
@@ -53,3 +62,8 @@
   - `queries.ts` reached 94.05% Lines.
   - Cleaned up `as any` across major test files.
   - Locked new thresholds (88/80/80/89).
+
+- **2026-03-12 (Update 7)**:
+  - Successfully targeted low spots: `BiddingPanel.tsx` (now 100% Lines), `CategoryManager.tsx` (now 97.5% Lines), and `MyListings.tsx` (now 96% Lines).
+  - Project-wide coverage pushed to 89.09% Statements and 90.60% Lines.
+  - Verified 816 tests passing.

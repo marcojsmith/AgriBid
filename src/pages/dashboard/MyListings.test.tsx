@@ -389,4 +389,156 @@ describe("MyListings Page", () => {
     );
     expect(mockNavigate).toHaveBeenCalledWith("/sell");
   });
+
+  it("handles delete draft error", async () => {
+    mockDeleteDraft.mockRejectedValueOnce(new Error("Delete failed"));
+    renderMyListings();
+
+    const draftCard = screen
+      .getByText("Draft Tractor")
+      .closest("div[class*='group']");
+    const trigger = within(draftCard as HTMLElement).getByTestId(
+      "alert-dialog-trigger"
+    );
+    const deleteBtn = within(trigger).getByRole("button", { name: /delete/i });
+
+    fireEvent.click(deleteBtn);
+
+    const content = screen.getByTestId("alert-dialog-content");
+    const confirmDeleteBtn = within(content).getByRole("button", {
+      name: "Delete",
+    });
+
+    await act(async () => {
+      fireEvent.click(confirmDeleteBtn);
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Delete failed");
+    });
+  });
+
+  it("handles localStorage error when editing", async () => {
+    vi.spyOn(window.localStorage, "setItem").mockImplementationOnce(() => {
+      throw new Error("Storage full");
+    });
+    renderMyListings();
+
+    const draftCard = screen
+      .getByText("Draft Tractor")
+      .closest("div[class*='group']");
+    const editBtn = within(draftCard as HTMLElement).getByRole("button", {
+      name: /edit/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(editBtn);
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("Could not save draft data")
+      );
+    });
+    expect(mockNavigate).toHaveBeenCalledWith("/sell?edit=listing1");
+  });
+
+  it("handles missing categoryId when editing", async () => {
+    const listingNoCategory = { ...mockListings[0], categoryId: undefined };
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [listingNoCategory],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyListings();
+
+    const editBtn = screen.getByRole("button", { name: /edit/i });
+    await act(async () => {
+      fireEvent.click(editBtn);
+    });
+
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      "agribid_listing_draft",
+      expect.stringContaining('"make":""')
+    );
+  });
+
+  it("handles image normalization for various image formats", () => {
+    const listingWithNoImages = {
+      ...mockListings[0],
+      images: {},
+      title: "No Image Tractor",
+    };
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [listingWithNoImages],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyListings();
+    expect(screen.getByText("No Image Tractor")).toBeInTheDocument();
+  });
+
+  it("handles pagination: loading more", async () => {
+    const loadMore = vi.fn();
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockListings,
+      status: "CanLoadMore",
+      loadMore,
+    });
+
+    renderMyListings();
+
+    const loadMoreBtn = screen.getByText(/Load More Listings/i);
+    fireEvent.click(loadMoreBtn);
+
+    expect(loadMore).toHaveBeenCalledWith(10);
+  });
+
+  it("shows loading more state", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockListings,
+      status: "LoadingMore",
+      loadMore: vi.fn(),
+    });
+
+    renderMyListings();
+    expect(screen.getByText(/Loading.../i)).toBeInTheDocument();
+  });
+
+  it("shows empty state message for specific status filter", async () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyListings();
+
+    // Change to "Sold" tab
+    await act(async () => {
+      fireEvent.click(screen.getByText(/Sold/i, { selector: "button" }));
+    });
+
+    expect(
+      screen.getByText(/No listings with status: sold/i)
+    ).toBeInTheDocument();
+  });
+
+  it("handles unknown auction status badge fallback", () => {
+    const listingUnknownStatus = {
+      ...mockListings[0],
+      status: "unknown" as "active",
+    };
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [listingUnknownStatus],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyListings();
+    // Badge should still render with default variant
+    expect(screen.getByText(/unknown/i)).toBeInTheDocument();
+  });
 });

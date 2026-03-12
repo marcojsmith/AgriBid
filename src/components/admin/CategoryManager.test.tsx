@@ -331,4 +331,189 @@ describe("CategoryManager", () => {
       expect(mockAddCategory).toHaveBeenCalled();
     });
   });
+
+  it("should add a new category on Enter key", async () => {
+    mockAddCategory.mockResolvedValue({ success: true });
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Add Category"));
+
+    const input = screen.getByLabelText(/Category Name/i);
+    fireEvent.change(input, { target: { value: "Enter Category" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    await waitFor(() => {
+      expect(mockAddCategory).toHaveBeenCalledWith({ name: "Enter Category" });
+    });
+  });
+
+  it("should handle delete category error", async () => {
+    const { toast } = await import("sonner");
+    mockDeleteCategory.mockRejectedValue(new Error("Deletion failed"));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalled();
+    });
+  });
+
+  it("should not delete a category if confirm is cancelled", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+    fireEvent.click(deleteButtons[0]);
+
+    expect(mockDeleteCategory).not.toHaveBeenCalled();
+  });
+
+  it("should reactivate a category successfully", async () => {
+    mockAddCategory.mockResolvedValue({ success: true });
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const reactivateButton = screen.getByLabelText(
+      "Reactivate category Inactive Category"
+    );
+    fireEvent.click(reactivateButton);
+
+    await waitFor(() => {
+      expect(mockAddCategory).toHaveBeenCalledWith({
+        name: "Inactive Category",
+      });
+    });
+  });
+
+  it("should handle reactivation error", async () => {
+    const { toast } = await import("sonner");
+    mockAddCategory.mockRejectedValue(new Error("Reactivation failed"));
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const reactivateButton = screen.getByLabelText(
+      "Reactivate category Inactive Category"
+    );
+    fireEvent.click(reactivateButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Reactivation failed");
+    });
+  });
+
+  it("should not update a category with empty name", async () => {
+    const { toast } = await import("sonner");
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const editButtons = screen.getAllByLabelText("Edit category");
+    fireEvent.click(editButtons[0]);
+
+    const input = screen.getByDisplayValue("Tractors");
+    fireEvent.change(input, { target: { value: "   " } });
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Category name is required");
+      expect(mockUpdateCategory).not.toHaveBeenCalled();
+    });
+  });
+
+  it("should handle update category error", async () => {
+    const { toast } = await import("sonner");
+    mockUpdateCategory.mockRejectedValue(new Error("Update failed"));
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const editButtons = screen.getAllByLabelText("Edit category");
+    fireEvent.click(editButtons[0]);
+
+    const input = screen.getByDisplayValue("Tractors");
+    fireEvent.change(input, { target: { value: "New Name" } });
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Update failed");
+    });
+  });
+
+  it("should close add dialog when cancel is clicked", async () => {
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Add Category"));
+    expect(screen.getByText("Add New Category")).toBeInTheDocument();
+
+    const cancelButton = screen.getByRole("button", { name: /Cancel/i });
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Add New Category")).not.toBeInTheDocument();
+    });
+  });
 });

@@ -1,4 +1,11 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import type { Doc, Id } from "convex/_generated/dataModel";
@@ -9,11 +16,23 @@ import { useSession } from "@/lib/auth-client";
 
 import { BiddingPanel } from "./BiddingPanel";
 
-// Mock the CountdownTimer since it has its own tests
+// Mock the CountdownTimer
 vi.mock("../CountdownTimer", () => ({
   CountdownTimer: ({ endTime }: { endTime: number }) => (
     <div data-testid="mock-timer">{endTime}</div>
   ),
+}));
+
+// Mock BidConfirmation directly to avoid Radix issues in tests
+vi.mock("@/components/BidConfirmation", () => ({
+  BidConfirmation: ({ isOpen, onConfirm, onCancel, amount }: any) =>
+    isOpen ? (
+      <div data-testid="alert-dialog">
+        <p>Confirm Bid {amount}</p>
+        <button onClick={onConfirm}>Confirm Bid</button>
+        <button onClick={onCancel}>Cancel</button>
+      </div>
+    ) : null,
 }));
 
 // Mock auth client
@@ -30,6 +49,16 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// Mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 // Mock Convex hooks
 vi.mock("convex/react", () => {
   const mockMutation = Object.assign(vi.fn(), {
@@ -42,71 +71,20 @@ vi.mock("convex/react", () => {
   };
 });
 
-// Mock Radix Alert Dialog
-interface AlertDialogProps {
-  children: React.ReactNode;
-  open?: boolean;
-}
-interface AlertDialogActionProps {
-  children: React.ReactNode;
-  onClick?: () => void;
-}
-interface AlertDialogContentProps {
-  children: React.ReactNode;
-}
-interface AlertDialogDescriptionProps {
-  children: React.ReactNode;
-}
-interface AlertDialogFooterProps {
-  children: React.ReactNode;
-}
-interface AlertDialogHeaderProps {
-  children: React.ReactNode;
-}
-interface AlertDialogTitleProps {
-  children: React.ReactNode;
-}
-
-vi.mock("@/components/ui/alert-dialog", () => ({
-  AlertDialog: ({ children, open }: AlertDialogProps) =>
-    open ? <div data-testid="alert-dialog">{children}</div> : null,
-  AlertDialogAction: ({ children, onClick }: AlertDialogActionProps) => (
-    <button onClick={onClick}>{children}</button>
-  ),
-  AlertDialogCancel: ({ children, onClick }: AlertDialogActionProps) => (
-    <button onClick={onClick}>{children}</button>
-  ),
-  AlertDialogContent: ({ children }: AlertDialogContentProps) => (
-    <div>{children}</div>
-  ),
-  AlertDialogDescription: ({ children }: AlertDialogDescriptionProps) => (
-    <div>{children}</div>
-  ),
-  AlertDialogFooter: ({ children }: AlertDialogFooterProps) => (
-    <div>{children}</div>
-  ),
-  AlertDialogHeader: ({ children }: AlertDialogHeaderProps) => (
-    <div>{children}</div>
-  ),
-  AlertDialogTitle: ({ children }: AlertDialogTitleProps) => (
-    <div>{children}</div>
-  ),
-}));
-
 describe("BiddingPanel", () => {
-  const mockAuction = {
+  const mockAuctionBase = {
     _id: "auction123" as Id<"auctions">,
     currentPrice: 50000,
     minIncrement: 500,
     startingPrice: 50000,
-    endTime: Date.now() + 100000,
     status: "active",
-  } as Doc<"auctions">;
+  };
 
   const mockSession = { user: { id: "test-user-id", name: "Test User" } };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     const mockMut = Object.assign(vi.fn(), {
       withOptimisticUpdate: vi.fn().mockReturnThis(),
     });
@@ -115,21 +93,29 @@ describe("BiddingPanel", () => {
     vi.mocked(useSession).mockReturnValue(
       sessionData as unknown as ReturnType<typeof useSession>
     );
-    // Default mock for queries
-    vi.mocked(convexReact.useQuery).mockReturnValue(null);
-  });
 
-  it("renders current price and minimum bid correctly", () => {
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
-      const apiPath = args[0] as { name?: string };
-      if (apiPath?.name === "getMyProfile")
+    // Default mock for queries: getMyProfile has no args
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+      const queryArgs = args[1];
+      if (queryArgs === undefined) {
         return { profile: { isVerified: true, kycStatus: "verified" } };
+      }
       return null;
     });
+  });
 
+  const getActiveAuction = () =>
+    ({
+      ...mockAuctionBase,
+      endTime: Date.now() + 100000,
+      status: "active",
+    }) as unknown as Doc<"auctions">;
+
+  it("renders current price and minimum bid correctly", () => {
+    const auction = getActiveAuction();
     render(
       <BrowserRouter>
-        <BiddingPanel auction={mockAuction} />
+        <BiddingPanel auction={auction} />
       </BrowserRouter>
     );
 
@@ -138,7 +124,11 @@ describe("BiddingPanel", () => {
   });
 
   it("shows ended state when auction is not active", () => {
-    const endedAuction = { ...mockAuction, status: "sold" } as Doc<"auctions">;
+    const endedAuction = {
+      ...mockAuctionBase,
+      status: "sold",
+      endTime: Date.now() - 1000,
+    } as unknown as Doc<"auctions">;
     render(
       <BrowserRouter>
         <BiddingPanel auction={endedAuction} />
@@ -148,29 +138,34 @@ describe("BiddingPanel", () => {
     expect(screen.getByText(/Auction SOLD/i)).toBeInTheDocument();
   });
 
-  it("gates bidding UI when user is unverified", () => {
-    vi.mocked(convexReact.useQuery).mockImplementation(() => {
-      // Handle both string and property access if necessary
-      return { profile: { isVerified: false, kycStatus: "none" } };
+  it("gates bidding UI when user is unverified", async () => {
+    const auction = getActiveAuction();
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+      const queryArgs = args[1];
+      if (queryArgs === undefined) {
+        return { profile: { isVerified: false, kycStatus: "none" } };
+      }
+      return null;
     });
 
     render(
       <BrowserRouter>
-        <BiddingPanel auction={mockAuction} />
+        <BiddingPanel auction={auction} />
       </BrowserRouter>
     );
 
-    expect(
-      screen.getAllByText(/Verification Required/i).length
-    ).toBeGreaterThanOrEqual(1);
+    await waitFor(() => {
+      expect(screen.getByText(/Verification Required/i)).toBeInTheDocument();
+    });
   });
 
   it("shows congratulations message when user is the winner", () => {
     const wonAuction = {
-      ...mockAuction,
+      ...mockAuctionBase,
       status: "sold",
       winnerId: "test-user-id",
-    } as Doc<"auctions">;
+      endTime: Date.now() - 1000,
+    } as unknown as Doc<"auctions">;
 
     render(
       <BrowserRouter>
@@ -184,6 +179,7 @@ describe("BiddingPanel", () => {
   });
 
   it("handles bid confirmation successfully", async () => {
+    const auction = getActiveAuction();
     const mockPlaceBid = Object.assign(
       vi.fn().mockResolvedValue({ success: true }),
       {
@@ -193,32 +189,19 @@ describe("BiddingPanel", () => {
     vi.mocked(convexReact.useMutation).mockReturnValue(
       mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
     );
-    vi.mocked(convexReact.useQuery).mockReturnValue({
-      profile: { isVerified: true, kycStatus: "verified" },
-    });
 
     render(
       <BrowserRouter>
-        <BiddingPanel auction={mockAuction} />
+        <BiddingPanel auction={auction} />
       </BrowserRouter>
     );
-
-    // Place a bid
-    // If proxy is enabled by default in the mock, we need to provide a max bid
-    const maxBidInput = screen.queryByPlaceholderText(/Enter max amount/i);
-    if (maxBidInput) {
-      fireEvent.change(maxBidInput, { target: { value: "60000" } });
-    }
 
     const bidButton = screen.getByRole("button", { name: /Place Bid/i });
     fireEvent.click(bidButton);
 
-    // Check if dialog is open
     await waitFor(() => {
       expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
     });
-
-    expect(screen.getByText(/Confirm your bid/i)).toBeInTheDocument();
 
     const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
     fireEvent.click(confirmButton);
@@ -228,16 +211,272 @@ describe("BiddingPanel", () => {
     });
   });
 
+  it("handles bid failure correctly", async () => {
+    const auction = getActiveAuction();
+    const mockPlaceBid = Object.assign(
+      vi.fn().mockRejectedValue(new Error("Insufficient funds")),
+      {
+        withOptimisticUpdate: vi.fn().mockReturnThis(),
+      }
+    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(
+      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
+    );
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Insufficient funds");
+    });
+  });
+
+  it("shows proxy bid active message on success", async () => {
+    const auction = getActiveAuction();
+    const mockPlaceBid = Object.assign(
+      vi.fn().mockResolvedValue({
+        success: true,
+        proxyBidActive: true,
+        confirmedMaxBid: 70000,
+      }),
+      {
+        withOptimisticUpdate: vi.fn().mockReturnThis(),
+      }
+    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(
+      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
+    );
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith(
+        expect.stringContaining("Your proxy bid is active")
+      );
+    });
+  });
+
+  it("prevents bidding when session is pending", () => {
+    const auction = getActiveAuction();
+    const sessionData = { data: null, isPending: true };
+    vi.mocked(useSession).mockReturnValue(
+      sessionData as unknown as ReturnType<typeof useSession>
+    );
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    expect(toast.info).toHaveBeenCalledWith("Checking sign-in status...");
+  });
+
+  it("prevents bidding when profile is loading", async () => {
+    const auction = getActiveAuction();
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+      const queryArgs = args[1];
+      if (queryArgs === undefined) {
+        return undefined; // Loading
+      }
+      return null;
+    });
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith("Verifying account status...");
+    });
+  });
+
+  it("redirects to kyc if not verified", async () => {
+    const auction = getActiveAuction();
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+      const queryArgs = args[1];
+      if (queryArgs === undefined) {
+        return { profile: { isVerified: false, kycStatus: "none" } };
+      }
+      return null;
+    });
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Account verification required to place bids"
+      );
+      expect(mockNavigate).toHaveBeenCalledWith("/kyc");
+    });
+  });
+
+  it("prevents bidding if auction ends during confirmation", async () => {
+    const now = 1000000000000;
+    vi.spyOn(Date, "now").mockReturnValue(now);
+
+    const auction = {
+      ...mockAuctionBase,
+      endTime: now + 5000,
+      status: "active",
+    } as unknown as Doc<"auctions">;
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
+    });
+
+    // Fast forward time
+    vi.spyOn(Date, "now").mockReturnValue(now + 10000);
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("This auction has ended");
+    });
+  });
+
+  it("shows soft close extended alert", () => {
+    const auction = getActiveAuction();
+    const extendedAuction = {
+      ...auction,
+      isExtended: true,
+    } as unknown as Doc<"auctions">;
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={extendedAuction} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Soft Close Extended/i)).toBeInTheDocument();
+  });
+
+  it("shows reserve not met message when ended and no bids met reserve", () => {
+    const endedAuction = {
+      ...mockAuctionBase,
+      status: "passed",
+      startingPrice: 50000,
+      currentPrice: 60000,
+      reservePrice: 100000,
+      endTime: Date.now() - 1000,
+    } as unknown as Doc<"auctions">;
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={endedAuction} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Reserve price was not met/i)).toBeInTheDocument();
+  });
+
+  it("shows no bids message when ended and price is starting price", () => {
+    const endedAuction = {
+      ...mockAuctionBase,
+      status: "passed",
+      startingPrice: 50000,
+      currentPrice: 50000,
+      endTime: Date.now() - 1000,
+    } as unknown as Doc<"auctions">;
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={endedAuction} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/No bids were placed/i)).toBeInTheDocument();
+  });
+
+  it("handles bid cancellation", async () => {
+    const auction = getActiveAuction();
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByRole("button", { name: "Cancel" });
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("alert-dialog")).not.toBeInTheDocument();
+    });
+  });
+
   it("prompts for sign in when unauthenticated", async () => {
+    const auction = getActiveAuction();
     const sessionData = { data: null, isPending: false };
     vi.mocked(useSession).mockReturnValue(
       sessionData as unknown as ReturnType<typeof useSession>
     );
-    vi.mocked(convexReact.useQuery).mockReturnValue(null); // No profile
+    vi.mocked(convexReact.useQuery).mockImplementation(() => null);
 
     render(
       <BrowserRouter>
-        <BiddingPanel auction={mockAuction} />
+        <BiddingPanel auction={auction} />
       </BrowserRouter>
     );
 
