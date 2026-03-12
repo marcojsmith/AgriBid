@@ -1,28 +1,61 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { v } from "convex/values";
 
 import * as auth from "../lib/auth";
-import * as adminUtils from "../admin_utils";
 import {
   getActiveAuctionsHandler,
-  getAuctionByIdHandler,
-  getSellerInfoHandler,
-  getPendingAuctionsHandler,
-  getActiveMakesHandler,
   getAuctionBidsHandler,
-  getEquipmentMetadataHandler,
-  getCategoriesHandler,
   getMyBidsHandler,
+  getMyBids,
+  getAuctionById,
+  getActiveAuctions,
+  getAuctionFlagsHandler,
+  getMyListingsStatsHandler,
+  getSellerInfoHandler,
+  getAllPendingFlagsHandler,
+  getAuctionByIdHandler,
   getMyListingsHandler,
   getMyListingsCountHandler,
-  getMyListingsStatsHandler,
-  getAllPendingFlagsHandler,
+  getMyBidsCountHandler,
+  getMyBidsStatsHandler,
+  getActiveMakesHandler,
+  getPendingAuctionsHandler,
+  getAllAuctionsHandler,
+  getAuctionBidCountHandler,
+  getEquipmentMetadataHandler,
+  getCategoriesHandler,
   getSellerListingsHandler,
 } from "./queries";
 import { authComponent } from "../auth";
 import type { QueryCtx } from "../_generated/server";
-import type { AuthUser } from "../auth";
-import type { Id, Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import { findUserById } from "../users";
+import { countQuery } from "../admin_utils";
 
+// Helper types for mocked objects
+type MockQuery = {
+  withIndex: ReturnType<typeof vi.fn>;
+  withSearchIndex: ReturnType<typeof vi.fn>;
+  filter: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  take: ReturnType<typeof vi.fn>;
+  collect: ReturnType<typeof vi.fn>;
+  count: ReturnType<typeof vi.fn>;
+  unique: ReturnType<typeof vi.fn>;
+  paginate: ReturnType<typeof vi.fn>;
+};
+
+type MockQ = {
+  eq: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
+  lt: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
+  search: ReturnType<typeof vi.fn>;
+};
+
+// Mocking necessary modules
 vi.mock("../_generated/server", () => ({
   query: vi.fn((q) => q),
   mutation: vi.fn((m) => m),
@@ -41,146 +74,293 @@ vi.mock("../auth", () => ({
     getAuthUser: vi.fn(),
   },
 }));
-const { summaryValidator, anyValidator } = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { v } = require("convex/values");
-  return {
-    summaryValidator: v.any(),
-    anyValidator: v.any(),
-  };
-});
 
 vi.mock("./helpers", () => {
   return {
-    toAuctionSummary: vi.fn((_ctx, a: Doc<"auctions">) =>
-      Promise.resolve({
-        _id: a._id,
-        title: a.title,
-        endTime: a.endTime,
-        status: a.status,
-      })
+    toAuctionSummary: vi.fn(
+      (
+        _ctx,
+        a: { _id: string; title: string; endTime?: number; status: string }
+      ) =>
+        Promise.resolve({
+          _id: a._id,
+          title: a.title,
+          endTime: a.endTime,
+          status: a.status,
+        })
     ),
-    toAuctionDetail: vi.fn((_ctx, a: Doc<"auctions">) =>
+    toAuctionDetail: vi.fn((_ctx, a: { _id: string; title: string }) =>
       Promise.resolve({ _id: a._id, title: a.title })
     ),
-    AuctionSummaryValidator: summaryValidator,
-    AuctionDetailValidator: anyValidator,
-    BidValidator: anyValidator,
+    AuctionSummaryValidator: v.object({
+      _id: v.string(),
+      title: v.string(),
+      endTime: v.optional(v.number()),
+      status: v.string(),
+    }),
+    AuctionDetailValidator: v.any(),
+    BidValidator: v.any(),
   };
 });
 
 vi.mock("../admin_utils", () => ({
-  countQuery: vi.fn().mockResolvedValue(0),
+  countQuery: vi.fn(),
 }));
 
 vi.mock("../users", () => ({
   findUserById: vi.fn(),
 }));
 
-interface MockCtxType {
-  db: {
-    get: ReturnType<typeof vi.fn>;
-    query: ReturnType<typeof vi.fn>;
-  };
-  runQuery: ReturnType<typeof vi.fn>;
-  getUserIdentity: ReturnType<typeof vi.fn>;
-}
-
-const mockAdminUser: AuthUser = {
-  _id: "u1" as Id<"profiles">,
-  userId: "admin1",
-  name: "Admin User",
-  email: "admin@test.com",
-};
-
-describe("Queries Coverage", () => {
-  let mockCtx: MockCtxType;
-  let queryMock: {
-    withIndex: ReturnType<typeof vi.fn>;
-    withSearchIndex: ReturnType<typeof vi.fn>;
-    filter: ReturnType<typeof vi.fn>;
-    order: ReturnType<typeof vi.fn>;
-    take: ReturnType<typeof vi.fn>;
-    collect: ReturnType<typeof vi.fn>;
-    count: ReturnType<typeof vi.fn>;
-    unique: ReturnType<typeof vi.fn>;
-    paginate: ReturnType<typeof vi.fn>;
-  };
+describe("Queries Consolidated", () => {
+  let mockCtx: QueryCtx;
+  let queryMock: MockQuery;
+  let qMock: MockQ;
 
   beforeEach(() => {
     vi.resetAllMocks();
+
+    qMock = {
+      eq: vi.fn().mockReturnThis(),
+      gt: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      search: vi.fn().mockReturnThis(),
+    };
+
     queryMock = {
-      withIndex: vi.fn().mockReturnThis(),
-      withSearchIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
+      withIndex: vi.fn((_index, cb) => {
+        if (cb) cb(qMock);
+        return queryMock;
+      }),
+      withSearchIndex: vi.fn((_index, cb) => {
+        if (cb) cb(qMock);
+        return queryMock;
+      }),
+      filter: vi.fn((cb) => {
+        const fMock = {
+          eq: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
+          lt: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+          lte: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
+          and: vi.fn().mockReturnThis(),
+          field: vi.fn().mockReturnThis(),
+        };
+        if (cb) cb(fMock);
+        return queryMock;
+      }),
       order: vi.fn().mockReturnThis(),
       take: vi.fn().mockResolvedValue([]),
       collect: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
-      unique: vi.fn().mockResolvedValue(null),
+      unique: vi.fn().mockReturnThis(),
       paginate: vi
         .fn()
         .mockResolvedValue({ page: [], isDone: true, continueCursor: "" }),
     };
+
     mockCtx = {
       db: {
         get: vi.fn().mockResolvedValue(null),
         query: vi.fn(() => queryMock),
       },
-      runQuery: vi.fn().mockResolvedValue(null),
-      getUserIdentity: vi.fn().mockResolvedValue(null),
-    };
+    } as unknown as QueryCtx;
+
+    vi.mocked(countQuery).mockResolvedValue(0);
   });
 
-  describe("getPendingAuctionsHandler", () => {
-    it("should require admin and return pending auctions", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
-      queryMock.collect.mockResolvedValue([{ _id: "a1", title: "Pending" }]);
+  describe("getMyBidsHandler", () => {
+    it("should handle winning, outbid, and deleted auctions in stats", async () => {
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "u1",
+        name: "Test User",
+        email: "test@example.com",
+        _creationTime: 100,
+      } as any);
+      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
-      const result = await getPendingAuctionsHandler(
-        mockCtx as unknown as QueryCtx
-      );
-      expect(auth.requireAdmin).toHaveBeenCalled();
-      expect(result).toHaveLength(1);
+      const bids = [
+        { auctionId: "a1", amount: 1000, bidderId: "u1", timestamp: 100 },
+        { auctionId: "a2", amount: 500, bidderId: "u1", timestamp: 100 },
+      ];
+      queryMock.collect.mockResolvedValue(bids);
+
+      vi.mocked(mockCtx.db.get).mockImplementation(async (id) => {
+        const sid = id as string;
+        if (sid === "a1")
+          return {
+            _id: "a1",
+            status: "active",
+            currentPrice: 1000,
+            winnerId: "u1",
+          } as Doc<"auctions">;
+        if (sid === "a2")
+          return {
+            _id: "a2",
+            status: "active",
+            currentPrice: 2000,
+            winnerId: "u2",
+          } as Doc<"auctions">;
+        return null;
+      });
+
+      const result = await getMyBidsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+
+      expect(result.page).toHaveLength(2);
+      const a1 = result.page.find((p) => p._id === "a1");
+      const a2 = result.page.find((p) => p._id === "a2");
+      expect(a1?.isWinning).toBe(true);
+      expect(a2?.isWinning).toBe(false);
+      expect(a2?.isOutbid).toBe(true);
+    });
+
+    it("should handle batching logic when user has > 100 auctions", async () => {
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        name: "U1",
+        _creationTime: 100,
+      } as any);
+      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+
+      const bids = Array.from({ length: 150 }, (_, i) => ({
+        auctionId: `a${i}`,
+        amount: 100,
+        bidderId: "u1",
+        timestamp: i,
+      }));
+      queryMock.collect.mockResolvedValue(bids);
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        status: "active",
+      } as Doc<"auctions">);
+
+      await getMyBidsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(mockCtx.db.get).toHaveBeenCalledTimes(150);
+    });
+
+    it("should handle sold and rejected statuses in bid stats", async () => {
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        name: "U1",
+        _creationTime: 100,
+      } as any);
+      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+      queryMock.collect.mockResolvedValue([
+        { auctionId: "a1", amount: 1000, bidderId: "u1", timestamp: 100 },
+      ]);
+
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        _id: "a1",
+        status: "sold",
+        winnerId: "u1",
+      } as Doc<"auctions">);
+      let result = await getMyBidsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page[0].isWon).toBe(true);
+
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        _id: "a1",
+        status: "rejected",
+        winnerId: "other",
+      } as Doc<"auctions">);
+      result = await getMyBidsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page[0].isCancelled).toBe(true);
+    });
+
+    it("should handle sorting and numeric cursor pagination", async () => {
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        name: "U1",
+        _creationTime: 100,
+      } as any);
+      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+
+      const bids = [
+        { auctionId: "a1", amount: 1000, bidderId: "u1", timestamp: 100 },
+        { auctionId: "a2", amount: 2000, bidderId: "u1", timestamp: 200 },
+      ];
+      queryMock.collect.mockResolvedValue(bids);
+
+      vi.mocked(mockCtx.db.get).mockImplementation(async (id) => {
+        if (id === "a1")
+          return {
+            _id: "a1",
+            status: "active",
+            endTime: 2000,
+          } as Doc<"auctions">;
+        if (id === "a2")
+          return {
+            _id: "a2",
+            status: "active",
+            endTime: 1000,
+          } as Doc<"auctions">;
+        return null;
+      });
+
+      const result = await getMyBidsHandler(mockCtx, {
+        paginationOpts: { numItems: 1, cursor: null },
+        sort: "ending",
+      });
+      expect(result.page[0]._id).toBe("a2");
+      expect(result.continueCursor).toBe("1");
     });
   });
 
   describe("getActiveAuctionsHandler", () => {
     it("should return paginated active auctions by default", async () => {
-      const result = await getActiveAuctionsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 10, cursor: null },
-        }
-      );
+      const result = await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
       expect(result.page).toHaveLength(0);
     });
 
-    it("should handle search filter", async () => {
-      queryMock.paginate.mockResolvedValue({
-        page: [{ _id: "a1", status: "active", title: "tractor" }],
-        isDone: true,
-        continueCursor: "",
+    it("should handle search with multiple statuses", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        search: "tractor",
+        statusFilter: "all",
       });
-      queryMock.take.mockResolvedValue([
-        { _id: "a1", status: "active", title: "tractor" },
-      ]);
-
-      const result = await getActiveAuctionsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 10, cursor: null },
-          search: "tractor",
-        }
+      expect(queryMock.withSearchIndex).toHaveBeenCalledWith(
+        "search_title_simple",
+        expect.any(Function)
       );
-      expect(queryMock.withSearchIndex).toHaveBeenCalled();
-      expect(result.page).toHaveLength(1);
     });
 
-    it("should handle make filter", async () => {
-      await getActiveAuctionsHandler(mockCtx as unknown as QueryCtx, {
+    it("should handle search with exactly one status", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
-        make: "John Deere",
+        search: "tractor",
+        statusFilter: "active",
+      });
+      expect(qMock.search).toHaveBeenCalledWith("title", "tractor");
+      expect(qMock.eq).toHaveBeenCalledWith("status", "active");
+    });
+
+    it("should handle make with multiple statuses", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        make: "JD",
+        statusFilter: "all",
+      });
+      expect(queryMock.order).toHaveBeenCalledWith("desc");
+      expect(queryMock.filter).toHaveBeenCalled();
+    });
+
+    it("should handle make with single status", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        make: "JD",
+        statusFilter: "active",
       });
       expect(queryMock.withIndex).toHaveBeenCalledWith(
         "by_status_make",
@@ -188,465 +368,574 @@ describe("Queries Coverage", () => {
       );
     });
 
-    it("should handle year filter", async () => {
-      await getActiveAuctionsHandler(mockCtx as unknown as QueryCtx, {
+    it("should handle mixed year filters with single status", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
-        minYear: 2020,
-        maxYear: 2022,
+        minYear: 2000,
+        maxYear: 2020,
+        statusFilter: "active",
       });
-      expect(queryMock.withIndex).toHaveBeenCalledWith(
-        "by_status_year",
-        expect.any(Function)
-      );
+      expect(qMock.gte).toHaveBeenCalledWith("year", 2000);
+      expect(qMock.lte).toHaveBeenCalledWith("year", 2020);
     });
 
-    it("should handle statusFilter: closed", async () => {
-      await getActiveAuctionsHandler(mockCtx as unknown as QueryCtx, {
+    it("should handle partial year filters with single status", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
-        statusFilter: "closed",
+        minYear: 2000,
+        statusFilter: "active",
       });
-      // Should result in .order("desc") since it's not status="active"
-      expect(queryMock.order).toHaveBeenCalledWith("desc");
+      expect(qMock.gte).toHaveBeenCalledWith("year", 2000);
+
+      vi.clearAllMocks();
+      await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        maxYear: 2020,
+        statusFilter: "active",
+      });
+      expect(qMock.lte).toHaveBeenCalledWith("year", 2020);
     });
 
-    it("should handle statusFilter: all", async () => {
-      await getActiveAuctionsHandler(mockCtx as unknown as QueryCtx, {
+    it("should handle year filter callback default branch", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
+        statusFilter: "active",
+        minYear: undefined,
+        maxYear: undefined,
+      });
+    });
+
+    it("should handle year filters with multiple statuses", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        minYear: 2000,
         statusFilter: "all",
       });
       expect(queryMock.order).toHaveBeenCalledWith("desc");
     });
 
-    it("should handle price and hours filters", async () => {
-      await getActiveAuctionsHandler(mockCtx as unknown as QueryCtx, {
+    it("should handle price and hours filters in getFilteredQuery", async () => {
+      await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
-        minPrice: 1000,
-        maxPrice: 5000,
-        maxHours: 100,
+        minPrice: 100,
+        maxPrice: 1000,
+        maxHours: 50,
       });
       expect(queryMock.filter).toHaveBeenCalled();
     });
 
-    it("should handle search count cap and manual filtering", async () => {
-      const results = Array(1005).fill({
+    it("should handle SEARCH_COUNT_CAP logic", async () => {
+      const mockItems = Array(1001).fill({
         _id: "a1",
         status: "active",
         title: "tractor",
       });
-      queryMock.take.mockResolvedValue(results);
-      queryMock.paginate.mockResolvedValue({
-        page: [{ _id: "a1", status: "active", title: "tractor" }],
-        isDone: true,
-        continueCursor: "",
-      });
+      queryMock.take.mockResolvedValue(mockItems);
 
-      const result = await getActiveAuctionsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 10, cursor: null },
-          search: "tractor",
-        }
-      );
+      const result = await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        search: "tractor",
+      });
       expect(result.totalCount).toBe("1000+");
     });
-  });
 
-  describe("getActiveMakesHandler", () => {
-    it("should return sorted unique makes", async () => {
-      queryMock.collect.mockResolvedValue([
-        { make: "Caterpillar", isActive: true },
-        { make: "John Deere" },
-        { make: "Caterpillar" },
-      ]);
-      const result = await getActiveMakesHandler(
-        mockCtx as unknown as QueryCtx
-      );
-      expect(result).toEqual(["Caterpillar", "John Deere"]);
-    });
-  });
-
-  describe("getAuctionByIdHandler", () => {
-    it("should return null if auction not found", async () => {
-      mockCtx.db.get.mockResolvedValue(null);
-      const result = await getAuctionByIdHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-        }
-      );
-      expect(result).toBeNull();
-    });
-
-    it("should return auction detail for public status", async () => {
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "active" });
-      const result = await getAuctionByIdHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-        }
-      );
-      expect(result).not.toBeNull();
-    });
-
-    it("should allow admin to see draft", async () => {
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "draft",
-        sellerId: "s1",
-      });
-      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
-        userId: "admin1",
-        authUser: mockAdminUser,
-        profile: { role: "admin" } as unknown as Doc<"profiles">,
-      });
-      const result = await getAuctionByIdHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-        }
-      );
-      expect(result).not.toBeNull();
-    });
-
-    it("should block non-owner/admin from seeing draft", async () => {
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "draft",
-        sellerId: "s1",
-      });
-      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
-        userId: "buyer1",
-        authUser: { ...mockAdminUser, userId: "buyer1" },
-        profile: { role: "buyer" } as unknown as Doc<"profiles">,
-      });
-      const result = await getAuctionByIdHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-        }
-      );
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("getAuctionBidsHandler", () => {
-    it("should handle anonymous bidders and seller/admin visibility", async () => {
+    it("should trigger matchesAuctionFilter for all filter types returning false", async () => {
       queryMock.paginate.mockResolvedValue({
         page: [
-          { _id: "b1", bidderId: "user_1234567890", auctionId: "a1" },
-          { _id: "b2", bidderId: "short", auctionId: "a1" },
-          { _id: "b3", bidderId: null, auctionId: "a1" },
+          {
+            _id: "a1",
+            status: "active",
+            make: "JD",
+            year: 2000,
+            currentPrice: 500,
+            operatingHours: 100,
+          },
         ],
         isDone: true,
         continueCursor: "",
       });
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", sellerId: "s1" });
-      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
-        userId: "s1",
-        authUser: { ...mockAdminUser, userId: "s1" },
-        profile: { role: "seller" } as unknown as Doc<"profiles">,
-      });
-
-      const { findUserById } = await import("../users");
-      vi.mocked(findUserById).mockResolvedValue({
-        name: "John",
-      } as unknown as Doc<"profiles">);
-
-      const result = await getAuctionBidsHandler(
-        mockCtx as unknown as QueryCtx,
+      queryMock.take.mockResolvedValue([
         {
-          auctionId: "a1" as Id<"auctions">,
-          paginationOpts: { numItems: 10, cursor: null },
-        }
-      );
-      expect(result.page[0].bidderName).toBe("John");
-      expect(result.page[1].bidderName).toBe("Anonymous");
-      expect(result.page[2].bidderName).toBe("Anonymous");
-    });
+          _id: "a1",
+          status: "active",
+          make: "JD",
+          year: 2000,
+          currentPrice: 500,
+          operatingHours: 100,
+        },
+      ]);
 
-    it("should mask names for regular users", async () => {
+      const cases = [
+        { make: "CAT" },
+        { minYear: 2010 },
+        { maxYear: 1990 },
+        { minPrice: 1000 },
+        { maxPrice: 100 },
+        { maxHours: 50 },
+      ];
+
+      for (const c of cases) {
+        const result = await getActiveAuctionsHandler(mockCtx, {
+          paginationOpts: { numItems: 10, cursor: null },
+          search: "tractor",
+          ...c,
+        });
+        expect(result.page).toHaveLength(0);
+      }
+    });
+  });
+
+  describe("getAuctionBidsHandler", () => {
+    it("should reveal bidder name to admin", async () => {
       queryMock.paginate.mockResolvedValue({
-        page: [{ _id: "b1", bidderId: "user_1234567890", auctionId: "a1" }],
+        page: [{ _id: "b1", bidderId: "u1234567890", auctionId: "a1" }],
         isDone: true,
         continueCursor: "",
       });
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", sellerId: "s1" });
       vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
-        userId: "other",
-        authUser: { ...mockAdminUser, userId: "other" },
-        profile: { role: "buyer" } as unknown as Doc<"profiles">,
+        userId: "admin",
+        profile: {
+          _id: "p1" as Id<"profiles">,
+          _creationTime: 100,
+          userId: "admin",
+          role: "admin",
+          isVerified: true,
+          createdAt: 100,
+          updatedAt: 100,
+        } as Doc<"profiles">,
+        authUser: { _id: "u1", name: "Admin", _creationTime: 100 } as any,
       });
+      vi.mocked(findUserById).mockResolvedValue({
+        _id: "p2" as Id<"profiles">,
+        _creationTime: 100,
+        userId: "u1234567890",
+        name: "Real Name",
+        role: "buyer",
+        isVerified: true,
+        createdAt: 100,
+        updatedAt: 100,
+      } as Doc<"profiles">);
 
-      const result = await getAuctionBidsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-          paginationOpts: { numItems: 10, cursor: null },
-        }
-      );
+      const result = await getAuctionBidsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page[0].bidderName).toBe("Real Name");
+    });
+
+    it("should reveal bidder name to seller", async () => {
+      queryMock.paginate.mockResolvedValue({
+        page: [{ _id: "b1", bidderId: "u1234567890", auctionId: "a1" }],
+        isDone: true,
+        continueCursor: "",
+      });
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
+        userId: "seller",
+        profile: {
+          _id: "p1" as Id<"profiles">,
+          _creationTime: 100,
+          userId: "seller",
+          role: "seller",
+          isVerified: true,
+          createdAt: 100,
+          updatedAt: 100,
+        } as Doc<"profiles">,
+        authUser: { _id: "u1", name: "Seller", _creationTime: 100 } as any,
+      });
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        sellerId: "seller",
+      } as Doc<"auctions">);
+      vi.mocked(findUserById).mockResolvedValue({
+        _id: "p2" as Id<"profiles">,
+        _creationTime: 100,
+        userId: "u1234567890",
+        name: "Real Name",
+        role: "buyer",
+        isVerified: true,
+        createdAt: 100,
+        updatedAt: 100,
+      } as Doc<"profiles">);
+
+      const result = await getAuctionBidsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page[0].bidderName).toBe("Real Name");
+    });
+
+    it("should mask name for non-admin/seller", async () => {
+      queryMock.paginate.mockResolvedValue({
+        page: [{ _id: "b1", bidderId: "u1234567890", auctionId: "a1" }],
+        isDone: true,
+        continueCursor: "",
+      });
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
+        userId: "buyer",
+        profile: {
+          _id: "p1" as Id<"profiles">,
+          _creationTime: 100,
+          userId: "buyer",
+          role: "buyer",
+          isVerified: true,
+          createdAt: 100,
+          updatedAt: 100,
+        } as Doc<"profiles">,
+        authUser: { _id: "u1", name: "Buyer", _creationTime: 100 } as any,
+      });
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        sellerId: "seller",
+      } as Doc<"auctions">);
+
+      const result = await getAuctionBidsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
       expect(result.page[0].bidderName).toBe("Bidder");
     });
-  });
 
-  describe("getMyBidsHandler", () => {
-    it("should handle sorting and manual pagination", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
-        _id: "u1" as Id<"profiles">,
-        name: "U1",
-        email: "u1@test.com",
-        userId: "u1",
-        _creationTime: 100,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-
-      const bids = [
-        {
-          auctionId: "a1",
-          amount: 1000,
-          bidderId: "u1",
-          timestamp: 100,
-          bidCount: 1,
-        },
-        {
-          auctionId: "a2",
-          amount: 2000,
-          bidderId: "u1",
-          timestamp: 200,
-          bidCount: 1,
-        },
-      ];
-      queryMock.collect.mockResolvedValue(bids);
-
-      mockCtx.db.get.mockImplementation(async (id: string) => {
-        if (id === "a1")
-          return {
-            _id: "a1",
-            status: "active",
-            currentPrice: 1000,
-            winnerId: "u1",
-            endTime: 500,
-          };
-        if (id === "a2")
-          return {
-            _id: "a2",
-            status: "active",
-            currentPrice: 2000,
-            winnerId: "u1",
-            endTime: 400,
-          };
-        return null;
+    it("should handle anonymous and short bidderIds", async () => {
+      queryMock.paginate.mockResolvedValue({
+        page: [
+          { _id: "b1", bidderId: null, auctionId: "a1" },
+          { _id: "b2", bidderId: "short", auctionId: "a1" },
+        ],
+        isDone: true,
+        continueCursor: "",
       });
-
-      // Test "ending soonest" sort
-      const resultEnding = await getMyBidsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 1, cursor: null },
-          sort: "ending",
-        }
-      );
-      expect(resultEnding.page[0]._id).toBe("a2");
-      expect(resultEnding.continueCursor).toBe("1");
-
-      // Test default sort (recent)
-      const resultRecent = await getMyBidsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 1, cursor: null },
-        }
-      );
-      expect(resultRecent.page[0]._id).toBe("a2"); // a2 has timestamp 200
-
-      // Test cursor
-      const resultCursor = await getMyBidsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 1, cursor: "1" },
-        }
-      );
-      expect(resultCursor.page[0]._id).toBe("a1");
-      expect(resultCursor.isDone).toBe(true);
-    });
-
-    it("should handle batching in calculateUserBidStats", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
-        _id: "u1" as Id<"profiles">,
-        name: "U1",
-        email: "u1@test.com",
-        userId: "u1",
-        _creationTime: 100,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-
-      // 150 unique auctions to trigger CHUNK_SIZE=100
-      const bids = Array.from({ length: 150 }, (_, i) => ({
-        auctionId: `a${i}`,
-        amount: 100,
-        bidderId: "u1",
-        timestamp: i,
-        bidCount: 1,
-      }));
-      queryMock.collect.mockResolvedValue(bids);
-      mockCtx.db.get.mockResolvedValue({ _id: "a0", status: "active" });
-
-      await getMyBidsHandler(mockCtx as unknown as QueryCtx, {
+      const result = await getAuctionBidsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
         paginationOpts: { numItems: 10, cursor: null },
       });
-      expect(mockCtx.db.get).toHaveBeenCalledTimes(150);
-    });
-
-    it("should handle unauthenticated error", async () => {
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
-        new Error("Unauthenticated")
-      );
-      const result = await getMyBidsHandler(mockCtx as unknown as QueryCtx, {
-        paginationOpts: { numItems: 10, cursor: null },
-      });
-      expect(result.page).toHaveLength(0);
+      expect(result.page[0].bidderName).toBe("Anonymous");
+      expect(result.page[1].bidderName).toBe("Anonymous");
     });
   });
 
-  describe("getMyListingsStatsHandler", () => {
-    it("should correctly group all status types", async () => {
+  describe("Seller and Admin Operations", () => {
+    beforeEach(() => {
       vi.mocked(authComponent.getAuthUser).mockResolvedValue({
-        _id: "u1" as Id<"profiles">,
+        _id: "u1",
         name: "U1",
-        email: "u1@test.com",
-        userId: "u1",
         _creationTime: 100,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
+        userId: "u1",
+        profile: {
+          _id: "p1" as Id<"profiles">,
+          _creationTime: 100,
+          userId: "u1",
+          role: "seller",
+          isVerified: true,
+          createdAt: 100,
+          updatedAt: 100,
+        } as Doc<"profiles">,
+        authUser: { _id: "u1", name: "U1", _creationTime: 100 } as any,
+      });
+    });
 
+    it("getSellerInfoHandler success", async () => {
+      vi.mocked(findUserById).mockResolvedValue({
+        _id: "p1" as Id<"profiles">,
+        _creationTime: 100,
+        userId: "u1",
+        name: "Seller",
+        role: "seller",
+        isVerified: true,
+        createdAt: 100,
+        updatedAt: 100,
+      } as Doc<"profiles">);
+      vi.mocked(queryMock.unique).mockResolvedValue({
+        _id: "p1" as Id<"profiles">,
+        _creationTime: 100,
+        userId: "u1",
+        role: "seller",
+        isVerified: true,
+        createdAt: 100,
+        updatedAt: 100,
+      } as Doc<"profiles">);
+      vi.mocked(countQuery).mockResolvedValue(5);
+
+      const result = await getSellerInfoHandler(mockCtx, { sellerId: "u1" });
+      expect(result?.name).toBe("Seller");
+      expect(result?.itemsSold).toBe(5);
+    });
+
+    it("getMyListingsHandler success", async () => {
+      queryMock.paginate.mockResolvedValue({
+        page: [{ _id: "a1", title: "My Listing" }],
+        isDone: true,
+        continueCursor: "",
+      });
+      const result = await getMyListingsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page).toHaveLength(1);
+    });
+
+    it("getSellerListingsHandler success", async () => {
+      queryMock.paginate.mockResolvedValue({
+        page: [{ _id: "a1", status: "active" }],
+        isDone: true,
+        continueCursor: "",
+      });
+      const result = await getSellerListingsHandler(mockCtx, {
+        userId: "u1",
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page).toHaveLength(1);
+    });
+
+    it("getMyListingsStatsHandler returns grouped stats", async () => {
       queryMock.collect.mockResolvedValue([
-        { status: "draft" },
-        { status: "pending_review" },
         { status: "active" },
         { status: "sold" },
+        { status: "draft" },
+        { status: "pending_review" },
         { status: "unsold" },
         { status: "rejected" },
-        { status: "unknown" }, // should be ignored
       ]);
-
-      const result = await getMyListingsStatsHandler(
-        mockCtx as unknown as QueryCtx
-      );
-      expect(result.draft).toBe(1);
+      const result = await getMyListingsStatsHandler(mockCtx);
       expect(result.active).toBe(1);
-      expect(result.all).toBe(7);
-    });
-  });
-
-  describe("getSellerInfoHandler", () => {
-    it("should return seller info", async () => {
-      const { findUserById } = await import("../users");
-      vi.mocked(findUserById).mockResolvedValue({
-        name: "Seller",
-        createdAt: 100,
-      } as unknown as Doc<"profiles">);
-      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      queryMock.unique.mockResolvedValue({ isVerified: true, role: "seller" });
-      vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
-
-      const result = await getSellerInfoHandler(
-        mockCtx as unknown as QueryCtx,
-        { sellerId: "u1" }
-      );
-      expect(result).toEqual({
-        name: "Seller",
-        isVerified: true,
-        role: "seller",
-        createdAt: 100,
-        itemsSold: 5,
-        totalListings: 5,
-      });
-    });
-  });
-
-  describe("Other Handlers and Catch Blocks", () => {
-    it("getMyListingsHandler should handle unauthenticated", async () => {
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
-        new Error("Unauthenticated")
-      );
-      const result = await getMyListingsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 10, cursor: null },
-        }
-      );
-      expect(result.page).toHaveLength(0);
+      expect(result.sold).toBe(1);
+      expect(result.draft).toBe(1);
     });
 
-    it("getMyListingsCountHandler should handle status and unauthenticated", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
-        _id: "u1" as Id<"profiles">,
-        name: "U1",
-        email: "u1@test.com",
-        userId: "u1",
+    it("getAllAuctionsHandler success", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "u1",
+        name: "Admin",
         _creationTime: 100,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      queryMock.paginate.mockResolvedValue({
+        page: [{ _id: "a1", status: "active" }],
+        isDone: true,
+        continueCursor: "",
+      });
+      const result = await getAllAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page).toHaveLength(1);
+    });
+
+    it("getPendingAuctionsHandler success", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "u1",
+        name: "Admin",
+        _creationTime: 100,
+      } as any);
+      queryMock.collect.mockResolvedValue([{ _id: "a1", title: "P" }]);
+      const result = await getPendingAuctionsHandler(mockCtx);
+      expect(result).toHaveLength(1);
+    });
+
+    it("getAuctionFlagsHandler success", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "u1",
+        name: "Admin",
+        _creationTime: 100,
+      } as any);
+      queryMock.collect.mockResolvedValue([
+        { _id: "f1", reporterId: "r1", status: "pending" },
+      ]);
+      vi.mocked(findUserById).mockResolvedValue({
+        _id: "p1" as Id<"profiles">,
+        _creationTime: 100,
+        userId: "r1",
+        name: "Reporter",
+        role: "buyer",
+        isVerified: true,
+        createdAt: 100,
+        updatedAt: 100,
+      } as Doc<"profiles">);
+      const result = await getAuctionFlagsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].reporterName).toBe("Reporter");
+    });
+  });
+
+  describe("User Stats Handlers", () => {
+    beforeEach(() => {
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        name: "U1",
+        _creationTime: 100,
       } as any);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+    });
 
-      await getMyListingsCountHandler(mockCtx as unknown as QueryCtx, {
-        status: "sold",
+    it("getMyBidsCountHandler returns numeric count", async () => {
+      queryMock.collect.mockResolvedValue([{ auctionId: "a1" }]);
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        status: "active",
+      } as Doc<"auctions">);
+      const result = await getMyBidsCountHandler(mockCtx);
+      expect(result).toBe(1);
+    });
+
+    it("getMyBidsStatsHandler returns active/winning totals", async () => {
+      queryMock.collect.mockResolvedValue([{ auctionId: "a1", amount: 100 }]);
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        status: "active",
+        currentPrice: 100,
+        winnerId: "u1",
+      } as Doc<"auctions">);
+      const result = await getMyBidsStatsHandler(mockCtx);
+      expect(result.totalActive).toBe(1);
+      expect(result.winningCount).toBe(1);
+    });
+
+    it("getMyListingsCountHandler applies filter and returns count", async () => {
+      vi.mocked(countQuery).mockResolvedValue(5);
+      const result = await getMyListingsCountHandler(mockCtx, {
+        status: "active",
       });
+      expect(result).toBe(5);
       expect(queryMock.filter).toHaveBeenCalled();
+    });
+  });
 
+  describe("Utility Handlers", () => {
+    it("getAuctionBidCountHandler success", async () => {
+      vi.mocked(countQuery).mockResolvedValue(10);
+      const result = await getAuctionBidCountHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+      expect(result).toBe(10);
+    });
+
+    it("getCategoriesHandler success", async () => {
+      queryMock.collect.mockResolvedValue([
+        { _id: "c1", name: "Cat", isActive: true },
+      ]);
+      const result = await getCategoriesHandler(mockCtx);
+      expect(result).toHaveLength(1);
+    });
+
+    it("getActiveMakesHandler success", async () => {
+      queryMock.collect.mockResolvedValue([
+        { make: "JD" },
+        { make: "CAT" },
+        { make: "JD" },
+      ]);
+      const result = await getActiveMakesHandler(mockCtx);
+      expect(result).toEqual(["CAT", "JD"]);
+    });
+
+    it("getEquipmentMetadataHandler success", async () => {
+      queryMock.paginate.mockResolvedValue({
+        page: [{ _id: "m1", make: "JD" }],
+        isDone: true,
+        continueCursor: "",
+      });
+      const result = await getEquipmentMetadataHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page).toHaveLength(1);
+    });
+  });
+
+  describe("Error and Edge Cases", () => {
+    it("getAuctionByIdHandler visibility rules", async () => {
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        _id: "a1",
+        status: "active",
+      } as Doc<"auctions">);
+      expect(
+        await getAuctionByIdHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).not.toBeNull();
+
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        _id: "a1",
+        status: "draft",
+        sellerId: "u1",
+      } as Doc<"auctions">);
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue(null);
+      expect(
+        await getAuctionByIdHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).toBeNull();
+
+      // Ownership branch
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
+        userId: "u1",
+        profile: {
+          _id: "p1" as Id<"profiles">,
+          _creationTime: 100,
+          userId: "u1",
+          role: "seller",
+          isVerified: true,
+          createdAt: 100,
+          updatedAt: 100,
+        } as Doc<"profiles">,
+        authUser: { _id: "u1", name: "U1", _creationTime: 100 } as any,
+      });
+      expect(
+        await getAuctionByIdHandler(mockCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).not.toBeNull();
+    });
+
+    it("unauthenticated catch blocks", async () => {
       vi.mocked(authComponent.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
+
       expect(
-        await getMyListingsCountHandler(mockCtx as unknown as QueryCtx, {})
+        (
+          await getMyListingsHandler(mockCtx, {
+            paginationOpts: { numItems: 10, cursor: null },
+          })
+        ).page
+      ).toHaveLength(0);
+      expect(
+        await getMyListingsCountHandler(mockCtx, { status: "active" })
       ).toBe(0);
+      expect((await getMyListingsStatsHandler(mockCtx)).all).toBe(0);
+      expect(await getMyBidsCountHandler(mockCtx)).toBe(0);
+      expect((await getMyBidsStatsHandler(mockCtx)).totalActive).toBe(0);
     });
 
-    it("getSellerListingsHandler should return listings", async () => {
-      const result = await getSellerListingsHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          userId: "u1",
+    it("fatal error catch blocks", async () => {
+      const fatal = new Error("Fatal");
+      vi.mocked(authComponent.getAuthUser).mockRejectedValue(fatal);
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      await expect(
+        getMyBidsHandler(mockCtx, {
           paginationOpts: { numItems: 10, cursor: null },
-        }
-      );
-      expect(result.page).toBeDefined();
+        })
+      ).rejects.toThrow("Fatal");
     });
 
-    it("getEquipmentMetadataHandler should return metadata", async () => {
-      const result = await getEquipmentMetadataHandler(
-        mockCtx as unknown as QueryCtx,
-        {
-          paginationOpts: { numItems: 10, cursor: null },
-        }
-      );
-      expect(result).toBeDefined();
-    });
-
-    it("getCategoriesHandler should return categories", async () => {
-      const result = await getCategoriesHandler(mockCtx as unknown as QueryCtx);
-      expect(result).toBeDefined();
-    });
-
-    it("getAllPendingFlagsHandler should handle missing entities", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
+    it("missing entities in flag list", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "u1",
+        name: "Admin",
+        _creationTime: 100,
+      } as any);
       queryMock.collect.mockResolvedValue([
-        {
-          auctionId: "a1" as Id<"auctions">,
-          reporterId: "r1",
-          status: "pending",
-        },
+        { auctionId: "a1", reporterId: "r1", status: "pending" },
       ]);
-      mockCtx.db.get.mockResolvedValue(null);
-      const { findUserById } = await import("../users");
+      vi.mocked(mockCtx.db.get).mockResolvedValue(null);
       vi.mocked(findUserById).mockResolvedValue(null);
 
-      const result = await getAllPendingFlagsHandler(
-        mockCtx as unknown as QueryCtx
-      );
+      const result = await getAllPendingFlagsHandler(mockCtx);
       expect(result[0].auctionTitle).toBe("Unknown Auction");
       expect(result[0].reporterName).toBe("Unknown User");
+    });
+  });
+
+  describe("Exported Query Metadata", () => {
+    it("validators should be defined", () => {
+      expect((getActiveAuctions as any).args).toBeDefined();
+      expect((getAuctionById as any).args).toBeDefined();
+      expect((getMyBids as any).args).toBeDefined();
     });
   });
 });

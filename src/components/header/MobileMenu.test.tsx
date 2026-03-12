@@ -9,6 +9,8 @@ import {
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
+import type { UserDataWithProfile } from "@/types/auth";
+
 import { MobileMenu } from "./MobileMenu";
 
 // Mock convex/react
@@ -36,6 +38,23 @@ describe("MobileMenu", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    const mockUserData: UserDataWithProfile = {
+      name: "Test User",
+      email: "test@example.com",
+      _id: "user123",
+      userId: "user123",
+      profile: {
+        _id: "profile123",
+        userId: "user123",
+        role: "buyer",
+        isVerified: true,
+        kycStatus: "verified",
+        createdAt: 123456789,
+        updatedAt: 123456789,
+      },
+    };
+
     defaultProps = {
       isOpen: true,
       onClose: vi.fn(),
@@ -43,24 +62,9 @@ describe("MobileMenu", () => {
         { name: "Home", href: "/" },
         { name: "Auctions", href: "/auctions" },
       ],
-      userData: {
-        name: "Test User",
-        email: "test@example.com",
-        _id: "user123",
-        userId: "user123",
-        _creationTime: 123456789,
-        profile: {
-          _id: "profile123",
-          _creationTime: 123456789,
-          userId: "user123",
-          role: "buyer",
-          isVerified: true,
-          onboardingStep: "completed",
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      userData: mockUserData,
       isVerified: true,
-      kycStatus: "approved",
+      kycStatus: "verified",
       role: "buyer",
       profileId: "profile123",
       onSignOut: vi.fn().mockResolvedValue(undefined),

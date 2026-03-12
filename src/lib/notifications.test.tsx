@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
-import { getNotificationIcon, handleNotificationClick } from "./notifications";
+
 import type { Id } from "../../convex/_generated/dataModel";
+import { getNotificationIcon, handleNotificationClick } from "./notifications";
 
 describe("notifications lib", () => {
   describe("getNotificationIcon", () => {
@@ -46,23 +47,30 @@ describe("notifications lib", () => {
     });
 
     it("should handle error and still navigate if link present", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       markRead.mockRejectedValue(new Error("Fail"));
-      
+
       await handleNotificationClick(id, "/error-nav", navigate, markRead);
-      
-      expect(consoleSpy).toHaveBeenCalledWith("Failed to mark notification as read:", expect.any(Error));
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Failed to mark notification as read:",
+        expect.any(Error)
+      );
       expect(navigate).toHaveBeenCalledWith("/error-nav");
-      
+
       consoleSpy.mockRestore();
     });
 
     it("should handle error and not navigate if link missing", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
       markRead.mockRejectedValue(new Error("Fail"));
-      
+
       await handleNotificationClick(id, undefined, navigate, markRead);
-      
+
       expect(navigate).not.toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
