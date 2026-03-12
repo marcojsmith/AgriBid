@@ -12,6 +12,7 @@ import type { Doc, Id } from "convex/_generated/dataModel";
 import * as convexReact from "convex/react";
 import { toast } from "sonner";
 
+import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 import { useSession } from "@/lib/auth-client";
 
 import { BiddingPanel } from "./BiddingPanel";
@@ -25,14 +26,13 @@ vi.mock("../CountdownTimer", () => ({
 
 // Mock BidConfirmation directly to avoid Radix issues in tests
 vi.mock("@/components/BidConfirmation", () => ({
-  BidConfirmation: ({ isOpen, onConfirm, onCancel, amount }: any) =>
-    isOpen ? (
-      <div data-testid="alert-dialog">
-        <p>Confirm Bid {amount}</p>
-        <button onClick={onConfirm}>Confirm Bid</button>
-        <button onClick={onCancel}>Cancel</button>
-      </div>
-    ) : null,
+  BidConfirmation: ({ isOpen, onConfirm, onCancel, amount }: any) => (
+    <div data-testid={isOpen ? "alert-dialog" : "hidden-dialog"}>
+      <p>Confirm Bid {amount}</p>
+      <button onClick={onConfirm}>Confirm Bid</button>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  ),
 }));
 
 // Mock auth client
@@ -47,6 +47,11 @@ vi.mock("sonner", () => ({
     info: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+// Mock usePriceHighlight
+vi.mock("@/hooks/usePriceHighlight", () => ({
+  usePriceHighlight: vi.fn().mockReturnValue(false),
 }));
 
 // Mock useNavigate
@@ -486,5 +491,139 @@ describe("BiddingPanel", () => {
     expect(toast.info).toHaveBeenCalledWith(
       expect.stringContaining("Please sign in")
     );
+  });
+
+  it("handles missing profile gracefully", async () => {
+    const auction = getActiveAuction();
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+      const queryArgs = args[1];
+      if (queryArgs === undefined) {
+        return { profile: undefined }; // missing isVerified
+      }
+      return null;
+    });
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Verification Required/i)).toBeInTheDocument();
+    });
+  });
+
+  it("handles bid confirmation with zero amount gracefully", async () => {
+    const auction = getActiveAuction();
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    // Click the confirm button while the dialog is technically closed (amount = 0)
+    const hiddenDialog = screen.getByTestId("hidden-dialog");
+    const confirmButton =
+      hiddenDialog.querySelector("button") ||
+      screen.getByRole("button", { name: "Confirm Bid" });
+    fireEvent.click(confirmButton);
+
+    // Should return early, no mutations called
+    expect(convexReact.useMutation).not.toHaveBeenCalledWith("placeBid");
+  });
+
+  it("applies highlight styles when price is highlighted", () => {
+    const auction = getActiveAuction();
+    vi.mocked(usePriceHighlight).mockReturnValue(true);
+
+    const { container } = render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    expect(container.innerHTML).toContain("bg-green-500/10");
+    vi.mocked(usePriceHighlight).mockReturnValue(false); // reset
+  });
+
+  it("shows success without proxy active message if proxyBidActive is false", async () => {
+    const auction = getActiveAuction();
+    const mockPlaceBid = Object.assign(
+      vi.fn().mockResolvedValue({
+        success: true,
+        proxyBidActive: false, // false here
+        confirmedMaxBid: 70000,
+      }),
+      {
+        withOptimisticUpdate: vi.fn().mockReturnThis(),
+      }
+    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(
+      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
+    );
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        expect.stringContaining("placed successfully")
+      );
+    });
+    expect(toast.info).not.toHaveBeenCalledWith(
+      expect.stringContaining("Your proxy bid is active")
+    );
+  });
+
+  it("catches error during placeBid mutation", async () => {
+    const auction = getActiveAuction();
+    const mockPlaceBid = Object.assign(
+      vi.fn().mockImplementation(() => {
+        throw new Error("Mutation failed syntax error");
+      }),
+      {
+        withOptimisticUpdate: vi.fn().mockReturnThis(),
+      }
+    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(
+      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
+    );
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("alert-dialog")).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Mutation failed syntax error");
+    });
   });
 });

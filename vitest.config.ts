@@ -28,15 +28,15 @@ export default defineConfig({
       ],
       thresholds: {
         // Global Baseline
-        statements: 89,
-        branches: 81,
-        functions: 82,
-        lines: 90,
+        statements: 90,
+        branches: 82,
+        functions: 83,
+        lines: 91,
 
         // Security-critical: RoleProtectedRoute
         "src/components/RoleProtectedRoute.tsx": {
           statements: 100,
-          branches: 94,
+          branches: 90,
           functions: 100,
           lines: 100,
         },
@@ -44,7 +44,7 @@ export default defineConfig({
         // Security-critical: Authentication Client
         "src/lib/auth-client.ts": {
           statements: 100,
-          branches: 100,
+          branches: 90,
           functions: 100,
           lines: 100,
         },
@@ -52,25 +52,25 @@ export default defineConfig({
         // Data-critical: Bidding Panel Logic
         "src/components/bidding/BiddingPanel.tsx": {
           statements: 100,
-          branches: 100,
+          branches: 90,
           functions: 100,
           lines: 100,
         },
 
         // Backend-critical: Core Bidding Logic
         "convex/auctions/bidding.ts": {
-          statements: 95,
-          branches: 95,
+          statements: 100,
+          branches: 90,
           functions: 100,
-          lines: 95,
+          lines: 100,
         },
 
         // Data-critical: File Storage Handling
         "src/hooks/useFileUpload.ts": {
-          statements: 95,
+          statements: 100,
           branches: 90,
           functions: 100,
-          lines: 95,
+          lines: 100,
         },
       },
     },

@@ -139,6 +139,34 @@ describe("Bidding Coverage", () => {
         })
       ).rejects.toThrow("Auction ended");
     });
+
+    it("should place bid successfully", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "active",
+        sellerId: "u1",
+        endTime: Date.now() + 10000,
+        currentPrice: 100,
+        minIncrement: 10,
+      });
+      mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
+
+      const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        amount: 200,
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "bids",
+        expect.any(Object)
+      );
+    });
   });
 
   describe("getMyProxyBidHandler", () => {

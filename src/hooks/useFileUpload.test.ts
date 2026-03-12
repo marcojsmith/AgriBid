@@ -286,6 +286,50 @@ describe("useFileUpload", () => {
     consoleSpy.mockRestore();
   });
 
+  it("should handle null e.target.files", () => {
+    const { result } = renderHook(() => useFileUpload());
+    act(() => {
+      result.current.handleFileChange({
+        target: { files: null, value: "" },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+    expect(result.current.files).toHaveLength(0);
+  });
+
+  it("should handle only invalid files without appending", () => {
+    const { result } = renderHook(() => useFileUpload());
+    const invalidFile = new File(["a"], "invalid.txt", { type: "text/plain" });
+    act(() => {
+      result.current.handleFileChange({
+        target: { files: [invalidFile], value: "" },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+    expect(result.current.files).toHaveLength(0);
+  });
+
+  it("should not autoClear files if upload is fully successful and autoClear is false", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    const file = new File(["a"], "1.jpg", { type: "image/jpeg" });
+
+    act(() => {
+      result.current.handleFileChange({
+        target: { files: [file], value: "" },
+      } as unknown as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    await act(async () => {
+      await result.current.uploadFiles(result.current.files, false);
+    });
+
+    expect(result.current.files).toHaveLength(1);
+  });
+
   it("should autoClear files if upload is fully successful and autoClear is true", async () => {
     const { result } = renderHook(() => useFileUpload());
     const file = new File(["a"], "1.jpg", { type: "image/jpeg" });
@@ -309,5 +353,14 @@ describe("useFileUpload", () => {
     });
 
     expect(result.current.files).toHaveLength(0);
+  });
+
+  it("should return empty array if filesToUpload is empty", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    let storageIds: string[] | null = null;
+    await act(async () => {
+      storageIds = await result.current.uploadFiles([]);
+    });
+    expect(storageIds).toEqual([]);
   });
 });
