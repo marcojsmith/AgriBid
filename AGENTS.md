@@ -1,4 +1,14 @@
-# Quick Reference
+You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products.
+
+# 1. Core rules
+
+- Assume the dev and Convex servers are already running.
+- **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
+- Create tests before starting a new feature or fixing a bug.
+
+---
+
+## Quick Reference
 
 | DO NOT RUN     | DO RUN               |
 | -------------- | -------------------- |
@@ -17,18 +27,6 @@
 | `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)  |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
-
----
-
-# 1. Core Identity
-
-You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products.
-
-## Core rules
-
-- Assume the dev and Convex servers are already running.
-- **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
-- Create tests before starting a new feature or fixing a bug.
 
 ---
 

@@ -177,4 +177,53 @@ describe("Profile Page", () => {
 
     expect(loadMore).toHaveBeenCalledWith(6);
   });
+
+  it("renders sold history section when status is LoadingMore", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [], // No sold listings initially
+      status: "LoadingMore",
+      loadMore: vi.fn(),
+    });
+
+    // Mock seller info to have 0 total listings to test the empty string branch
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return { ...mockSellerInfo, totalListings: 0 };
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+    expect(screen.getByText("Sales History")).toBeInTheDocument();
+    // Check pagination shows "Showing 0 Listings" (no "of X" since total is 0)
+    expect(screen.getByText(/Showing 0 Listings/)).toBeInTheDocument();
+  });
+
+  it("handles watchedAuctionIds being undefined", () => {
+    // Mock watchedAuctionIds as undefined
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return undefined;
+      return null;
+    });
+
+    renderProfile();
+    // Should render without error
+    expect(screen.getByText("John Doe")).toBeInTheDocument();
+  });
+
+  it("renders empty active listings state when status is Exhausted", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [{ _id: "a1", title: "Auction 1", status: "sold" }], // Only sold listings
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderProfile();
+    expect(
+      screen.getByText("No active auctions at this time.")
+    ).toBeInTheDocument();
+  });
 });
