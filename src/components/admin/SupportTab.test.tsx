@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Id } from "convex/_generated/dataModel";
 
@@ -105,5 +105,48 @@ describe("SupportTab", () => {
     render(<SupportTab />);
     expect(screen.getAllByText("high").length).toBeGreaterThan(0);
     expect(screen.getAllByText("medium").length).toBeGreaterThan(0);
+  });
+
+  it("resolves a ticket successfully", async () => {
+    mockUseQuery.mockReturnValue(mockTickets);
+    const mockResolveTicket = vi.fn().mockResolvedValue(undefined);
+    mockUseMutation.mockReturnValue(mockResolveTicket);
+
+    render(<SupportTab />);
+    fireEvent.click(screen.getByText("Resolve"));
+
+    const textarea = screen.getByPlaceholderText(/Describe the resolution/i);
+    fireEvent.change(textarea, { target: { value: "Fixed the issue" } });
+
+    fireEvent.click(screen.getByText("Confirm Resolution"));
+
+    await waitFor(() => {
+      expect(mockResolveTicket).toHaveBeenCalledWith({
+        ticketId: "ticket-1",
+        resolution: "Fixed the issue",
+      });
+      expect(mockToastSuccess).toHaveBeenCalledWith("Ticket resolved");
+    });
+  });
+
+  it("handles resolve ticket with error", async () => {
+    mockUseQuery.mockReturnValue(mockTickets);
+    const mockResolveTicket = vi
+      .fn()
+      .mockRejectedValue(new Error("Resolution failed"));
+    mockUseMutation.mockReturnValue(mockResolveTicket);
+
+    render(<SupportTab />);
+    fireEvent.click(screen.getByText("Resolve"));
+
+    const textarea = screen.getByPlaceholderText(/Describe the resolution/i);
+    fireEvent.change(textarea, { target: { value: "Fixed the issue" } });
+
+    fireEvent.click(screen.getByText("Confirm Resolution"));
+
+    await waitFor(() => {
+      expect(mockResolveTicket).toHaveBeenCalled();
+      expect(mockToastError).toHaveBeenCalledWith("Resolution failed");
+    });
   });
 });

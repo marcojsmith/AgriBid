@@ -1,6 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Id } from "convex/_generated/dataModel";
+import { toast } from "sonner";
+
+import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 import { BidMonitor } from "./BidMonitor";
 
@@ -117,5 +120,53 @@ describe("BidMonitor", () => {
     render(<BidMonitor />);
     const amount = screen.getByText("R 150,000");
     expect(amount.closest("span")).toHaveClass("text-green-600");
+  });
+
+  it("renders connection error on timeout", () => {
+    mockUseQuery.mockReturnValue(undefined);
+    vi.mocked(useLoadingTimeout).mockReturnValue(true);
+    render(<BidMonitor />);
+    expect(screen.getByText("Feed Timeout")).toBeInTheDocument();
+  });
+
+  it("handles voiding a bid successfully", async () => {
+    mockUseQuery.mockReturnValue(mockBids);
+    const mockVoidBid = vi.fn().mockResolvedValue(undefined);
+    mockUseMutation.mockReturnValue(mockVoidBid);
+
+    render(<BidMonitor />);
+
+    const voidButtons = screen.getAllByRole("button");
+    fireEvent.click(voidButtons[0]);
+
+    expect(screen.getByText("Void Bid Transaction?")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Confirm Void"));
+
+    await waitFor(() => {
+      expect(mockVoidBid).toHaveBeenCalledWith({
+        bidId: "bid-1",
+        reason: "Admin Action via Monitor",
+      });
+      expect(toast.success).toHaveBeenCalledWith("Bid voided");
+    });
+  });
+
+  it("handles voiding a bid with error", async () => {
+    mockUseQuery.mockReturnValue(mockBids);
+    const mockVoidBid = vi.fn().mockRejectedValue(new Error("Void failed"));
+    mockUseMutation.mockReturnValue(mockVoidBid);
+
+    render(<BidMonitor />);
+
+    const voidButtons = screen.getAllByRole("button");
+    fireEvent.click(voidButtons[0]);
+
+    fireEvent.click(screen.getByText("Confirm Void"));
+
+    await waitFor(() => {
+      expect(mockVoidBid).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith("Void failed");
+    });
   });
 });

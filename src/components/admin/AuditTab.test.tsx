@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { AuditTab } from "./AuditTab";
@@ -117,5 +117,35 @@ describe("AuditTab", () => {
     render(<AuditTab />);
     const cells = screen.getAllByText("—");
     expect(cells.length).toBeGreaterThan(0);
+  });
+
+  it("formats invalid json details directly", () => {
+    const invalidJsonLog = {
+      ...mockLogs[0],
+      details: "Invalid JSON string",
+    };
+    mockUseQuery.mockReturnValue({ logs: [invalidJsonLog], totalCount: 1 });
+    render(<AuditTab />);
+    expect(screen.getByText("Invalid JSON string")).toBeInTheDocument();
+  });
+
+  it("handles pagination clicks", () => {
+    mockUseQuery.mockReturnValue({ logs: mockLogs, totalCount: 100 });
+    render(<AuditTab />);
+
+    const moreButton = screen.getByText("More");
+    fireEvent.click(moreButton);
+
+    // Limit increases to 100
+    expect(mockUseQuery).toHaveBeenCalledWith(expect.anything(), {
+      limit: 100,
+    });
+
+    const lessButton = screen.getByText("Less");
+    expect(lessButton).not.toBeDisabled();
+
+    fireEvent.click(lessButton);
+    // Limit goes back to 50
+    expect(mockUseQuery).toHaveBeenCalledWith(expect.anything(), { limit: 50 });
   });
 });

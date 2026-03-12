@@ -73,4 +73,22 @@ describe("AdminConnectionError", () => {
     const refreshIcon = document.querySelector("svg.lucide-refresh-cw");
     expect(refreshIcon).toBeInTheDocument();
   });
+
+  it("calls default onRetry (window.location.reload) when retry button is clicked", () => {
+    const originalReload = window.location.reload;
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: { ...window.location, reload: vi.fn() },
+    });
+
+    render(<AdminConnectionError />);
+
+    fireEvent.click(screen.getByText("Retry Connection"));
+    expect(window.location.reload).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: { ...window.location, reload: originalReload },
+    });
+  });
 });
