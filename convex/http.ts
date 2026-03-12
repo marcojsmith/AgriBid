@@ -15,8 +15,7 @@ const http = httpRouter();
  * @param request - The incoming HTTP Request; the `Origin` header is inspected to determine whether to include `Access-Control-Allow-Origin`.
  * @returns A record of CORS header names to values. If the request origin is allowed, includes `Access-Control-Allow-Origin` set to that origin; always includes standard CORS headers for methods, headers, credentials and `Vary`.
  */
-
-function getCorsHeaders(request: Request): Record<string, string> {
+export function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("Origin") ?? "";
   const isAllowed = isOriginAllowed(origin);
 
@@ -35,7 +34,14 @@ function getCorsHeaders(request: Request): Record<string, string> {
   return headers;
 }
 
-function addCorsHeaders(response: Response, request: Request): Response {
+/**
+ * Wraps a Response with CORS headers derived from the incoming Request.
+ *
+ * @param response - The original response to be wrapped.
+ * @param request - The incoming request used to determine the CORS headers.
+ * @returns A new Response object containing the original body and status, plus the injected CORS headers.
+ */
+export function addCorsHeaders(response: Response, request: Request): Response {
   const corsHeaders = getCorsHeaders(request);
   const newHeaders = new Headers(response.headers);
 
@@ -54,22 +60,38 @@ function addCorsHeaders(response: Response, request: Request): Response {
 // Preflight handler (OPTIONS) — covers every /api/auth/* route
 // ---------------------------------------------------------------------------
 
+/**
+ * Handles CORS preflight OPTIONS requests for authentication routes.
+ *
+ * @param _ctx - The Convex action context (unused).
+ * @param request - The incoming HTTP OPTIONS request.
+ * @returns A 204 No Content response with appropriate CORS headers.
+ */
+export const optionsHandler = httpAction(async (_ctx, request) => {
+  return new Response(null, {
+    status: 204,
+    headers: new Headers(getCorsHeaders(request)),
+  });
+});
+
 http.route({
   pathPrefix: "/api/auth/",
   method: "OPTIONS",
-  handler: httpAction(async (_ctx, request) => {
-    return new Response(null, {
-      status: 204,
-      headers: new Headers(getCorsHeaders(request)),
-    });
-  }),
+  handler: optionsHandler,
 });
 
 // ---------------------------------------------------------------------------
 // Auth handler wrapper — forwards to Better Auth, then injects CORS headers
 // ---------------------------------------------------------------------------
 
-const authHandler = httpAction(async (ctx, request) => {
+/**
+ * Main authentication handler that forwards requests to Better Auth and adds CORS headers to the response.
+ *
+ * @param ctx - The Convex action context.
+ * @param request - The incoming HTTP request for authentication.
+ * @returns The response from Better Auth with injected CORS headers.
+ */
+export const authHandler = httpAction(async (ctx, request) => {
   const origin = request.headers.get("Origin") ?? "";
   const auth = createAuth(ctx, { origin });
   const response = await auth.handler(request);
@@ -80,7 +102,14 @@ const authHandler = httpAction(async (ctx, request) => {
 // Well-known handler — rewrites /.well-known/* to /api/auth/.well-known/*
 // ---------------------------------------------------------------------------
 
-const wellKnownHandler = httpAction(async (ctx, request) => {
+/**
+ * Handles requests to OIDC discovery endpoints, rewriting paths as needed and forwarding to Better Auth.
+ *
+ * @param ctx - The Convex action context.
+ * @param request - The incoming HTTP request for discovery endpoints.
+ * @returns The response from Better Auth with injected CORS headers.
+ */
+export const wellKnownHandler = httpAction(async (ctx, request) => {
   const origin = request.headers.get("Origin") ?? "";
   const auth = createAuth(ctx, { origin });
   const url = new URL(request.url);

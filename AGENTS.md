@@ -91,7 +91,7 @@ Consult these regularly. Keep them accurate when making changes.
 - **No `any`.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
 - **No `eslint-disable`.** Refactor to comply instead. Remove stale/unused directives.
 - **JSDoc** all exported functions, components, and types.
-- All frontend and backend code uses `.ts` / `.tsx` extensions.
+- **Delegation** you are a master delegator and make use of subagents where possible.
 
 ## Naming Conventions (strictly enforced via linting)
 

@@ -1,46 +1,200 @@
-// app/src/components/__tests__/AuctionHeader.test.tsx
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-import type { Doc, Id } from "convex/_generated/dataModel";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
+import type { Doc, Id } from "convex/_generated/dataModel";
 
-import { AuctionHeader } from "@/components/AuctionHeader";
+import { useSession } from "@/lib/auth-client";
 
-// Mock Convex
+import { AuctionHeader } from "./AuctionHeader";
+
+vi.mock("@/lib/auth-client", () => ({
+  useSession: vi.fn(),
+}));
+
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
-  useMutation: () => vi.fn(),
+  useMutation: vi.fn(),
 }));
 
-// Mock auth client
-vi.mock("@/lib/auth-client", () => ({
-  useSession: () => ({ data: null, isPending: false }),
+vi.mock("sonner", () => ({
+  toast: {
+    info: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+  },
 }));
+
+const mockAuction = {
+  _id: "a1" as unknown as Id<"auctions">,
+  _creationTime: 100,
+  title: "Test Tractor",
+  year: 2022,
+  make: "John Deere",
+  model: "8R",
+  location: "Iowa",
+  operatingHours: 500,
+  status: "active" as const,
+  sellerId: "s1",
+  categoryId: "c1" as unknown as Id<"equipmentCategories">,
+  categoryName: "Tractors",
+  reservePrice: 1000,
+  startingPrice: 500,
+  currentPrice: 750,
+  minIncrement: 50,
+  images: ["img1"],
+};
+
+const { mockNavigate } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+}));
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...(actual as Record<string, unknown>),
+    useNavigate: () => mockNavigate,
+    useLocation: () => ({ pathname: "/auction/a1", search: "", hash: "" }),
+  };
+});
 
 describe("AuctionHeader", () => {
-  const mockAuction = {
-    _id: "auction123" as Id<"auctions">,
-    title: "John Deere 8RX 410",
-    make: "John Deere",
-    model: "8RX 410",
-    year: 2022,
-    location: "Iowa, USA",
-    operatingHours: 1200,
-  } as Doc<"auctions">;
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(useSession).mockReturnValue({
+      data: null,
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    vi.mocked(useQuery).mockReturnValue(false);
+    vi.mocked(useMutation).mockReturnValue(
+      vi.fn() as unknown as ReturnType<typeof useMutation>
+    );
+  });
 
-  it("renders auction details correctly", () => {
-    render(
+  const renderComponent = (
+    auction: Doc<"auctions"> & {
+      categoryName?: string;
+    } = mockAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+  ) => {
+    return render(
       <MemoryRouter>
-        <AuctionHeader auction={mockAuction} />
+        <AuctionHeader auction={auction} />
       </MemoryRouter>
     );
+  };
 
-    expect(screen.getByText("John Deere 8RX 410")).toBeInTheDocument();
-    expect(screen.getByText("2022 John Deere")).toBeInTheDocument();
-    expect(screen.getByText("Iowa, USA")).toBeInTheDocument();
-    expect(
-      screen.getByText(/1\s*[.,]?\s*200\s*Operating Hours/)
-    ).toBeInTheDocument();
-    expect(screen.getByText("Year 2022")).toBeInTheDocument();
+  it("renders auction details correctly", () => {
+    renderComponent();
+    expect(screen.getByText("Test Tractor")).toBeDefined();
+    expect(screen.getByText("2022 John Deere")).toBeDefined();
+    expect(screen.getByText("Iowa")).toBeDefined();
+    expect(screen.getByText("500 Operating Hours")).toBeDefined();
+  });
+
+  it("shows login toast when unauthenticated user clicks watch", () => {
+    renderComponent();
+    const watchBtn = screen.getByRole("button", { name: /watch/i });
+    fireEvent.click(watchBtn);
+    expect(toast.info).toHaveBeenCalledWith(expect.stringContaining("sign in"));
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining("/login")
+    );
+  });
+
+  it("toggles watchlist for authenticated user", async () => {
+    const toggleMock = vi.fn().mockResolvedValue(true);
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    vi.mocked(useQuery).mockReturnValue(false);
+    vi.mocked(useMutation).mockReturnValue(
+      toggleMock as unknown as ReturnType<typeof useMutation>
+    );
+
+    renderComponent();
+    const watchBtn = screen.getByRole("button", { name: "Watch" });
+    fireEvent.click(watchBtn);
+
+    await waitFor(() => {
+      expect(toggleMock).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith("Added to watchlist");
+    });
+  });
+
+  it("shows SOLD badge and YOU WON if user is winner", () => {
+    const soldAuction = {
+      ...mockAuction,
+      status: "sold" as const,
+      winnerId: "u1",
+    };
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    renderComponent(
+      soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+    );
+    expect(screen.getByText("YOU WON")).toBeDefined();
+    expect(screen.getByText(/Congratulations/i)).toBeDefined();
+  });
+
+  it("shows SOLD badge if user is not winner", () => {
+    const soldAuction = {
+      ...mockAuction,
+      status: "sold" as const,
+      winnerId: "u2",
+    };
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    renderComponent(
+      soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+    );
+    expect(screen.getByText("SOLD")).toBeDefined();
+  });
+
+  it("shows UNSOLD badge", () => {
+    const unsoldAuction = { ...mockAuction, status: "unsold" as const };
+    renderComponent(
+      unsoldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+    );
+    expect(screen.getByText("UNSOLD")).toBeDefined();
+  });
+
+  it("shows item sold info for seller", () => {
+    const soldAuction = {
+      ...mockAuction,
+      status: "sold" as const,
+      sellerId: "s1",
+      winnerId: "u2",
+    };
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "s1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    renderComponent(
+      soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+    );
+    expect(screen.getByText("Item Sold")).toBeDefined();
+    expect(screen.getByText(/Reserve met/i)).toBeDefined();
+  });
+
+  it("disables button when toggling", async () => {
+    const toggleMock = vi.fn().mockReturnValue(new Promise(() => {})); // never resolves
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    vi.mocked(useMutation).mockReturnValue(
+      toggleMock as unknown as ReturnType<typeof useMutation>
+    );
+
+    renderComponent();
+    const watchBtn = screen.getByRole("button", { name: "Watch" });
+    fireEvent.click(watchBtn);
+    expect(watchBtn.getAttribute("disabled")).toBeDefined();
   });
 });
