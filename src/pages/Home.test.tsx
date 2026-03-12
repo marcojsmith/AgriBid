@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
@@ -273,17 +273,95 @@ describe("Home Page Full Coverage", () => {
     expect(screen.getAllByTestId("auction-skeleton")).toHaveLength(3);
   });
 
-  it("parses finite integer filters correctly", () => {
+  it("updates view when media query matches change", () => {
+    let changeHandler: () => void = () => {};
+    const mql = {
+      matches: false,
+      media: "(max-width: 768px)",
+      onchange: null,
+      addEventListener: vi.fn((event, handler) => {
+        if (event === "change") changeHandler = handler;
+      }),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    };
+
+    window.matchMedia = vi.fn().mockReturnValue(mql);
+
+    const { rerender } = render(
+      <BrowserRouter>
+        <Home />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Auction 1 \(detailed\)/i)).toBeInTheDocument();
+
+    // Simulate media query change
+    act(() => {
+      mql.matches = true;
+      changeHandler();
+    });
+
+    rerender(
+      <BrowserRouter>
+        <Home />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
+  });
+
+  it("renders clear search results link and clears it", () => {
     (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("minPrice=1000&maxPrice=invalid"),
+      new URLSearchParams("q=tractor"),
       vi.fn(),
     ]);
     renderHome();
 
-    // Verify query was called with parsed minPrice and undefined maxPrice
+    const clearLink = screen.getByText(/Clear search results/i);
+    expect(clearLink).toHaveAttribute("href", "/");
+  });
+
+  it("renders clear all filters link in empty state and clears it", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("make=John+Deere"),
+      vi.fn(),
+    ]);
+
+    renderHome();
+    const clearLink = screen.getByText(/Clear All Filters/i);
+    expect(clearLink).toHaveAttribute("href", "/");
+  });
+
+  it("handles missing search query and filters gracefully", () => {
+    (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
+    renderHome();
+    expect(screen.getByText(/Active Auctions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Filters Applied/i)).not.toBeInTheDocument();
+  });
+
+  it("handles complex search and filter combinations", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams(
+        "q=tractor&make=John+Deere&minYear=2020&status=active"
+      ),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(screen.getByText(/Results for "tractor"/i)).toBeInTheDocument();
     expect(usePaginatedQuery).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ minPrice: 1000, maxPrice: undefined }),
+      expect.objectContaining({
+        search: "tractor",
+        make: "John Deere",
+        minYear: 2020,
+        statusFilter: "active",
+      }),
       expect.anything()
     );
   });

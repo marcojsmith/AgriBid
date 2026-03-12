@@ -256,4 +256,119 @@ describe("AuctionDetail Page", () => {
       mockAuction.conditionReportUrl
     );
   });
+
+  it("handles non-array images object correctly", () => {
+    const auctionWithObjectImages = {
+      ...mockAuction,
+      images: {
+        front: "front.jpg",
+        engine: "engine.jpg",
+        cabin: "cabin.jpg",
+        rear: "rear.jpg",
+        additional: ["extra.jpg"],
+      },
+    };
+    (useQuery as Mock).mockReturnValue(auctionWithObjectImages);
+    renderPage();
+    expect(screen.getByTestId("image-gallery")).toBeInTheDocument();
+  });
+
+  it("submits report without details", async () => {
+    renderPage();
+    const reportButtons = screen.getAllByRole("button", { name: /Report/i });
+    const reportBtn = reportButtons.find((b) =>
+      b.classList.contains("bg-destructive")
+    );
+    fireEvent.click(reportBtn!);
+
+    const select = screen.getByTestId("mock-select");
+    fireEvent.change(select, { target: { value: "inappropriate" } });
+
+    mockFlagAuction.mockResolvedValue({ hideTriggered: false });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Report" }));
+
+    await waitFor(() => {
+      expect(mockFlagAuction).toHaveBeenCalledWith({
+        auctionId: "auction1",
+        reason: "inappropriate",
+        details: undefined,
+      });
+    });
+  });
+
+  it("renders loading state", () => {
+    (useQuery as Mock).mockReturnValue(undefined);
+    renderPage();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
+  it("handles array-based images correctly", () => {
+    const auctionWithArrayImages = {
+      ...mockAuction,
+      images: ["img1.jpg", "img2.jpg", null],
+    };
+    (useQuery as Mock).mockReturnValue(auctionWithArrayImages);
+    renderPage();
+    expect(screen.getByTestId("image-gallery")).toBeInTheDocument();
+  });
+
+  it("handles non-Error flag mutation rejection", async () => {
+    renderPage();
+    const reportButtons = screen.getAllByRole("button", { name: /Report/i });
+    const reportBtn = reportButtons.find((b) =>
+      b.classList.contains("bg-destructive")
+    );
+    fireEvent.click(reportBtn!);
+
+    const select = screen.getByTestId("mock-select");
+    fireEvent.change(select, { target: { value: "other" } });
+
+    mockFlagAuction.mockRejectedValue("String error");
+    fireEvent.click(screen.getByRole("button", { name: "Submit Report" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to flag auction");
+    });
+  });
+
+  it("closes flag dialog when cancel is clicked", async () => {
+    renderPage();
+    const reportButtons = screen.getAllByRole("button", { name: /Report/i });
+    const reportBtn = reportButtons.find((b) =>
+      b.classList.contains("bg-destructive")
+    );
+    fireEvent.click(reportBtn!);
+
+    const cancelBtn = screen.getByRole("button", { name: "Cancel" });
+    fireEvent.click(cancelBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Report this Listing")).not.toBeInTheDocument();
+    });
+  });
+
+  it("handles condition report dialog with missing URL in dialog itself", async () => {
+    const { rerender } = render(
+      <BrowserRouter>
+        <AuctionDetail />
+      </BrowserRouter>
+    );
+
+    const viewBtn = screen.getByRole("button", { name: /View Report/i });
+    fireEvent.click(viewBtn);
+
+    // Force the URL to be missing after opening
+    const auctionNoReport = { ...mockAuction, conditionReportUrl: null };
+    (useQuery as Mock).mockReturnValue(auctionNoReport);
+
+    rerender(
+      <BrowserRouter>
+        <AuctionDetail />
+      </BrowserRouter>
+    );
+
+    expect(
+      screen.getByText("No condition report available")
+    ).toBeInTheDocument();
+  });
 });

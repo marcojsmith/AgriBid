@@ -23,12 +23,8 @@ const { mockApi } = vi.hoisted(() => ({
   mockApi: {
     users: {
       getMyProfile: { _path: "users:getMyProfile" },
-    },
-    admin: {
-      kyc: {
-        getMyKYCDetails: { _path: "admin/kyc:getMyKYCDetails" },
-        submitKYC: { _path: "admin/kyc:submitKYC" },
-      },
+      getMyKYCDetails: { _path: "users:getMyKYCDetails" },
+      submitKYC: { _path: "users:submitKYC" },
     },
   },
 }));
@@ -107,6 +103,15 @@ vi.mock("./kyc/sections/DocumentUploadSection", () => ({
   ),
 }));
 
+vi.mock("@/components/LoadingIndicator", () => ({
+  LoadingIndicator: () => (
+    <div data-testid="loading-indicator" role="status">
+      Loading...
+    </div>
+  ),
+  LoadingPage: () => <div role="status">Loading Page...</div>,
+}));
+
 // Mock hooks
 const { mockKYCForm, mockFileUpload } = vi.hoisted(() => ({
   mockKYCForm: {
@@ -177,7 +182,7 @@ describe("KYC Page Full Coverage", () => {
 
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockProfile;
-      if (apiPath === mockApi.admin.kyc.getMyKYCDetails) return mockKycDetails;
+      if (apiPath === mockApi.users.getMyKYCDetails) return mockKycDetails;
       return null;
     });
     (useMutation as Mock).mockReturnValue(mockSubmitKYC);
@@ -207,7 +212,7 @@ describe("KYC Page Full Coverage", () => {
     };
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return verifiedProfile;
-      if (apiPath === mockApi.admin.kyc.getMyKYCDetails) return mockKycDetails;
+      if (apiPath === mockApi.users.getMyKYCDetails) return mockKycDetails;
       return null;
     });
 
@@ -278,7 +283,7 @@ describe("KYC Page Full Coverage", () => {
     };
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return verifiedProfile;
-      if (apiPath === mockApi.admin.kyc.getMyKYCDetails) return mockKycDetails;
+      if (apiPath === mockApi.users.getMyKYCDetails) return mockKycDetails;
       return null;
     });
 
@@ -301,7 +306,7 @@ describe("KYC Page Full Coverage", () => {
     };
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return verifiedProfile;
-      if (apiPath === mockApi.admin.kyc.getMyKYCDetails) return mockKycDetails;
+      if (apiPath === mockApi.users.getMyKYCDetails) return mockKycDetails;
       return null;
     });
 
@@ -409,6 +414,47 @@ describe("KYC Page Full Coverage", () => {
     expect(screen.getByText("Invalid ID")).toBeInTheDocument();
   });
 
+  it("handles upload failure where no storageIds are returned", async () => {
+    mockFileUpload.files = [new File([""], "test.jpg")];
+    mockFileUpload.uploadFiles.mockResolvedValue(null);
+
+    renderKYC();
+
+    const submitBtn = screen.getByRole("button", {
+      name: /submit application/i,
+    });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(mockFileUpload.uploadFiles).toHaveBeenCalled();
+    expect(mockSubmitKYC).not.toHaveBeenCalled();
+  });
+
+  it("handles non-Error submission failure and cleans up", async () => {
+    mockFileUpload.files = [new File([""], "test.jpg")];
+    mockFileUpload.uploadFiles.mockResolvedValue(["storage-id-fail"]);
+    mockSubmitKYC.mockRejectedValue("String error");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    renderKYC();
+    const submitBtn = screen.getByRole("button", {
+      name: /submit application/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(mockFileUpload.cleanupUploads).toHaveBeenCalledWith([
+        "storage-id-fail",
+      ]);
+      expect(toast.error).toHaveBeenCalledWith("Submission failed");
+    });
+    spy.mockRestore();
+  });
+
   it("resets form initialization when leaving edit mode explicitly", async () => {
     const verifiedProfile = {
       ...mockProfile,
@@ -416,6 +462,7 @@ describe("KYC Page Full Coverage", () => {
     };
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return verifiedProfile;
+      if (apiPath === mockApi.users.getMyKYCDetails) return mockKycDetails;
       return null;
     });
 
@@ -432,7 +479,7 @@ describe("KYC Page Full Coverage", () => {
     // Enter edit mode
     fireEvent.click(screen.getByRole("button", { name: /edit/i }));
 
-    // Rerender to trigger effect if needed (though state change should do it)
+    // Rerender to ensure it works
     rerender(
       <BrowserRouter>
         <KYC />
@@ -447,52 +494,63 @@ describe("KYC Page Full Coverage", () => {
     });
   });
 
-  it("hits the handleUpload guard even if button is disabled (forced)", async () => {
-    // This targets lines 95-96 directly by bypassing the UI disabled state
+  it("handles submission failure with no storageIds to cleanup", async () => {
     mockFileUpload.files = [];
-    mockFileUpload.existingDocuments = [];
-    renderKYC();
-
-    // We can't easily trigger the onClick of a disabled button via fireEvent.click
-    // but we can find the element and call its click handler if we have a ref,
-    // or just trust the 'disabled' check covers the UI, and we already tested the logic
-    // by making a test that calls handleUpload if it was exported.
-    // Since it's internal to the component, the only way is to hit it when NOT disabled.
-
-    // Let's try to make it NOT disabled but still hit the guard.
-    // That's impossible because the guard and disabled check share the same condition.
-
-    // WAIT! If I have 1 document, then I delete it, then I click submit?
-    // If I delete the last document, existingDocuments becomes empty.
-
     mockFileUpload.existingDocuments = ["doc1"];
-    mockFileUpload.executeDeleteDocument.mockResolvedValue(true);
+    mockFileUpload.uploadFiles.mockResolvedValue(null);
+    mockSubmitKYC.mockRejectedValue(new Error("Submit failed"));
 
     renderKYC();
-
-    // Delete the only document
-    fireEvent.click(screen.getByText("Delete doc1"));
-    const confirmBtn = screen.getByRole("button", {
-      name: /delete permanently/i,
+    const submitBtn = screen.getByRole("button", {
+      name: /submit application/i,
     });
-
-    // Mock that after delete, existingDocuments is empty
-    mockFileUpload.existingDocuments = [];
 
     await act(async () => {
-      fireEvent.click(confirmBtn);
+      fireEvent.click(submitBtn);
     });
 
-    // Now the button should be disabled, but if there's a race condition or
-    // we click it VERY fast... not really.
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Submit failed");
+      expect(mockFileUpload.cleanupUploads).not.toHaveBeenCalled();
+    });
+  });
 
-    // Actually, I can just use a test that doesn't use the UI to call handleUpload
-    // but KYC doesn't export it.
+  it("triggers file change handler", () => {
+    renderKYC();
+    const input = screen.getByLabelText(/Upload Document/i);
+    fireEvent.change(input, {
+      target: { files: [new File([""], "test.jpg")] },
+    });
+    expect(mockFileUpload.handleFileChange).toHaveBeenCalled();
+  });
 
-    // I'll just accept 93% for now or try one more thing:
-    // If I select a file, then the button is ENABLED.
-    // Then I "unselect" the file (e.g. if the handler allows it).
+  it("handles uploadFiles returning null without files (existing docs only)", async () => {
+    mockFileUpload.files = [];
+    mockFileUpload.existingDocuments = ["doc1"];
+    mockFileUpload.uploadFiles.mockResolvedValue(null);
+    mockSubmitKYC.mockResolvedValue({});
 
-    // Let's just focus on Home.tsx now as 93% on a page is quite good.
+    renderKYC();
+    const submitBtn = screen.getByRole("button", {
+      name: /submit application/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    // Should NOT return, should proceed to submission because files.length is 0
+    expect(mockSubmitKYC).toHaveBeenCalled();
+  });
+
+  it("disables button when isUploading is true", () => {
+    mockFileUpload.isUploading = true;
+    mockFileUpload.files = [new File([""], "test.jpg")];
+    renderKYC();
+    const submitBtn = screen.getByRole("button", {
+      name: /submit application/i,
+    });
+    expect(submitBtn).toBeDisabled();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 });

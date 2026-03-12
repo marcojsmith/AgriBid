@@ -50,20 +50,21 @@
 - [x] **BiddingPanel.tsx**: Increased to 98.36% Statements, 100% Lines (was 75%).
 - [x] **CategoryManager.tsx**: Increased to 97.50% Statements, 97.50% Lines (was 72%).
 - [x] **MyListings.tsx**: Increased to 92.72% Statements, 96.07% Lines (was 85%).
-- [ ] **AuctionDetail.tsx**: Target 95%+.
-- [ ] **Home.tsx**: Target 98%+.
-- [ ] **KYC.tsx**: Target 98%+.
+- [x] **AuctionDetail.tsx**: Reached 100% Lines (was 89.47%).
+- [x] **Home.tsx**: Reached 98.03% Lines (was 94.73%).
+- [x] **KYC.tsx**: Reached 96.66% Lines (was 93.75%).
 
 ## Progress Log
 
-- **2026-03-12 (Update 6)**:
-  - Completed Phase 5.
-  - Reached 88.23% Statements, 89.68% Lines project-wide.
-  - `queries.ts` reached 94.05% Lines.
-  - Cleaned up `as any` across major test files.
-  - Locked new thresholds (88/80/80/89).
+- **2026-03-12 (Update 8)**:
+  - Pushed `AuctionDetail.test.tsx` to 100% Line coverage.
+  - Reached target 98%+ on `Home.tsx`.
+  - Significant improvement on `KYC.tsx` (96.66%), covering complex file upload and rejection states.
+  - Project-wide coverage: 90.96% Statements, 92.12% Lines. (Target 95% project-wide is the next major goal).
 
 - **2026-03-12 (Update 7)**:
   - Successfully targeted low spots: `BiddingPanel.tsx` (now 100% Lines), `CategoryManager.tsx` (now 97.5% Lines), and `MyListings.tsx` (now 96% Lines).
   - Project-wide coverage pushed to 89.09% Statements and 90.60% Lines.
   - Verified 816 tests passing.
+
+- **2026-03-12 (Update 6)**:
