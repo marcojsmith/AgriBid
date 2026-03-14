@@ -7,6 +7,9 @@ import {
   generateUploadUrlHandler,
   deleteUploadHandler,
   bulkUpdateAuctionsHandler,
+  updateAuctionHandler,
+  publishAuctionHandler,
+  deleteDraftHandler,
 } from "./mutations";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -295,11 +298,11 @@ describe("Mutations Coverage", () => {
     });
 
     it("should handle missing auctions in bulk update", async () => {
+      const adminUserId = "admin";
       vi.mocked(auth.requireAdmin).mockResolvedValue({
-        ...createMockProfile("admin", "admin"),
-        userId: "admin",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
+        ...createMockProfile(adminUserId, "admin"),
+        userId: adminUserId,
+      } as Doc<"profiles"> & { userId: string });
       mockCtx.db.get.mockResolvedValue(null);
       const result = await bulkUpdateAuctionsHandler(
         mockCtx as unknown as MutationCtx,
@@ -309,6 +312,171 @@ describe("Mutations Coverage", () => {
         }
       );
       expect(result.skipped).toContain("a1");
+    });
+
+    it("should skip if validation fails (missing endTime for active)", async () => {
+      const adminUserId = "admin";
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        ...createMockProfile(adminUserId, "admin"),
+        userId: adminUserId,
+      } as Doc<"profiles"> & { userId: string });
+      
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        // missing endTime
+      } as Doc<"auctions">);
+
+      const result = await bulkUpdateAuctionsHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionIds: ["a1" as Id<"auctions">],
+          updates: { status: "active" },
+        }
+      );
+
+      expect(result.skipped).toContain("a1");
+    });
+  });
+
+  describe("updateAuctionHandler", () => {
+    const updateArgs = {
+      auctionId: "a1" as Id<"auctions">,
+      updates: {
+        title: "Updated Title",
+        startingPrice: 5000,
+      },
+    };
+
+    it("should update auction successfully", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: userId,
+        status: "draft",
+        images: { front: "img1" },
+      } as Doc<"auctions">);
+
+      const result = await updateAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        updateArgs
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          title: "Updated Title",
+          currentPrice: 5000,
+        })
+      );
+    });
+
+    it("should throw if auction not found", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue(null);
+      await expect(
+        updateAuctionHandler(mockCtx as unknown as MutationCtx, updateArgs)
+      ).rejects.toThrow("Auction not found");
+    });
+
+    it("should throw if not owner", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "other_user",
+        status: "draft",
+      } as Doc<"auctions">);
+
+      await expect(
+        updateAuctionHandler(mockCtx as unknown as MutationCtx, updateArgs)
+      ).rejects.toThrow("You can only modify your own auctions");
+    });
+
+    it("should throw if not editable", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: userId,
+        status: "active",
+      } as Doc<"auctions">);
+
+      await expect(
+        updateAuctionHandler(mockCtx as unknown as MutationCtx, updateArgs)
+      ).rejects.toThrow("Only draft or pending_review auctions can be edited");
+    });
+
+    it("should throw if too many additional images", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: userId,
+        status: "draft",
+        images: { additional: ["1", "2", "3"] },
+      } as Doc<"auctions">);
+
+      await expect(
+        updateAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          updates: {
+            images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
+          },
+        })
+      ).rejects.toThrow("Additional images limit exceeded");
+    });
+  });
+
+  describe("publishAuctionHandler", () => {
+    it("should publish draft successfully", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: userId,
+        status: "draft",
+        title: "Title",
+        description: "Desc",
+        startingPrice: 100,
+        reservePrice: 200,
+        images: { front: "img1" },
+      } as Doc<"auctions">);
+
+      const result = await publishAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+        status: "pending_review",
+      });
+    });
+  });
+
+  describe("deleteDraftHandler", () => {
+    it("should delete draft successfully", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: userId,
+        status: "draft",
+        images: { front: "img1" },
+      } as Doc<"auctions">);
+
+      const result = await deleteDraftHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"auctions">,
+        }
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("a1");
     });
   });
 });

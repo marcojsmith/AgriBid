@@ -214,4 +214,32 @@ describe("Support Page", () => {
     renderSupport();
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
+
+  it("handles priority change", () => {
+    renderSupport();
+    const select = screen.getByLabelText("Priority");
+    fireEvent.change(select, { target: { value: "high" } });
+    expect(select).toHaveValue("high");
+  });
+
+  it("handles ticket creation failure", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockCreateTicket.mockRejectedValue(new Error("Creation failed"));
+    
+    renderSupport();
+    
+    fireEvent.change(screen.getByLabelText(/subject/i), { target: { value: "Fail" } });
+    fireEvent.change(screen.getByLabelText(/message/i), { target: { value: "Fail" } });
+    
+    const submitBtn = screen.getByRole("button", { name: /submit support ticket/i });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+    
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Creation failed");
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+    consoleSpy.mockRestore();
+  });
 });

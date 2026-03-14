@@ -266,4 +266,29 @@ describe("MobileMenu", () => {
     // Pulse divs are rendered when userData is missing
     expect(screen.queryByText("Test User")).not.toBeInTheDocument();
   });
+
+  it("should handle focus trap with no focusable elements", () => {
+    // We need to render something with no links/buttons except the close button maybe?
+    // But the current implementation always has a close button.
+    // Let's try to mock querySelectorAll to return empty
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} isOpen={true} />
+      </MemoryRouter>
+    );
+    
+    const menuRoot = screen.getByRole("navigation").parentElement?.parentElement;
+    vi.spyOn(menuRoot!, "querySelectorAll").mockReturnValue({
+      length: 0,
+      item: () => null,
+      forEach: () => {},
+      [Symbol.iterator]: function* () { yield* []; }
+    } as unknown as NodeListOf<HTMLElement>);
+    
+    const event = new KeyboardEvent("keydown", { key: "Tab" });
+    menuRoot?.dispatchEvent(event);
+    
+    // Should not throw and just return
+    expect(menuRoot).toBeInTheDocument();
+  });
 });

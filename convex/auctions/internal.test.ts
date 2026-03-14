@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { cleanupDraftsHandler } from "./internal";
+import { cleanupDraftsHandler, settleExpiredAuctionsHandler } from "./internal";
 import type { MutationCtx } from "../_generated/server";
 
 vi.mock("../admin_utils", () => ({
@@ -99,6 +99,108 @@ describe("Internal Logic Coverage", () => {
       );
 
       spy.mockRestore();
+    });
+  });
+
+  describe("settleExpiredAuctionsHandler", () => {
+    it("should settle expired auction as sold if reserve met and has bids", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        reservePrice: 500,
+        status: "active",
+      };
+      const mockBid = {
+        bidderId: "u1",
+        amount: 1000,
+        status: "valid",
+        timestamp: 100,
+      };
+
+      mockCtx.db.query = vi.fn()
+        .mockReturnValueOnce({
+          withIndex: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([mockAuction]),
+        })
+        .mockReturnValueOnce({
+          withIndex: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([mockBid]),
+        });
+
+      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
+        status: "sold",
+        winnerId: "u1",
+      }));
+    });
+
+    it("should settle expired auction as unsold if reserve not met", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 400,
+        reservePrice: 500,
+        status: "active",
+      };
+      const mockBid = {
+        bidderId: "u1",
+        amount: 400,
+        status: "valid",
+        timestamp: 100,
+      };
+
+      mockCtx.db.query = vi.fn()
+        .mockReturnValueOnce({
+          withIndex: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([mockAuction]),
+        })
+        .mockReturnValueOnce({
+          withIndex: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([mockBid]),
+        });
+
+      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
+        status: "unsold",
+      }));
+    });
+
+    it("should skip voided bids when settling", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        reservePrice: 500,
+        status: "active",
+      };
+      const mockBid = {
+        bidderId: "u1",
+        amount: 1000,
+        status: "voided",
+        timestamp: 100,
+      };
+
+      mockCtx.db.query = vi.fn()
+        .mockReturnValueOnce({
+          withIndex: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([mockAuction]),
+        })
+        .mockReturnValueOnce({
+          withIndex: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([mockBid]),
+        });
+
+      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
+        status: "unsold",
+      }));
     });
   });
 });

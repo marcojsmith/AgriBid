@@ -5,6 +5,7 @@ import {
   fireEvent,
   waitFor,
   act,
+  within,
 } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Doc, Id } from "convex/_generated/dataModel";
@@ -368,6 +369,75 @@ describe("MetadataCatalog Full Coverage", () => {
       });
 
       expect(toast.error).toHaveBeenCalledWith("Delete fail");
+    });
+
+    it("should handle add model failure", async () => {
+      mockAddModel.mockRejectedValue(new Error("Add failed"));
+      renderCatalog();
+      fireEvent.click(screen.getAllByText("Add Model")[0]);
+
+      const input = screen.getByLabelText(/Model Name/i);
+      fireEvent.change(input, { target: { value: "NewModel" } });
+
+      await act(async () => {
+        const dialog = screen.getByTestId("dialog-content");
+        const submitBtn = within(dialog).getByRole("button", { name: "Add Model" });
+        fireEvent.click(submitBtn);
+      });
+
+      expect(toast.error).toHaveBeenCalledWith("Add failed");
+    });
+
+    it("should handle model add failure on Enter key", async () => {
+      mockAddModel.mockRejectedValue(new Error("Enter fail"));
+      renderCatalog();
+      fireEvent.click(screen.getAllByText("Add Model")[0]);
+
+      const input = screen.getByLabelText(/Model Name/i);
+      fireEvent.change(input, { target: { value: "NewModel" } });
+
+      await act(async () => {
+        fireEvent.keyDown(input, { key: "Enter" });
+      });
+
+      expect(toast.error).toHaveBeenCalledWith("Enter fail");
+    });
+  });
+
+  describe("Error Paths", () => {
+    it("should handle update make failure", async () => {
+      mockUpdateMake.mockRejectedValue(new Error("Update fail"));
+      renderCatalog();
+
+      fireEvent.click(screen.getAllByText("Edit")[0]);
+      await act(async () => {
+        fireEvent.click(screen.getByText("Save Changes"));
+      });
+
+      expect(toast.error).toHaveBeenCalledWith("Update fail");
+    });
+
+    it("should handle add make failure", async () => {
+      mockAddMake.mockRejectedValue(new Error("Add make fail"));
+      renderCatalog();
+
+      fireEvent.click(screen.getByText("Add Make"));
+      fireEvent.change(screen.getByLabelText(/Manufacturer Name/i), {
+        target: { value: "F" },
+      });
+      fireEvent.change(screen.getByTestId("mock-select"), {
+        target: { value: "cat1" },
+      });
+      fireEvent.change(screen.getByLabelText(/Initial Model/i), {
+        target: { value: "M" },
+      });
+
+      await act(async () => {
+        const submitBtn = screen.getAllByRole("button", { name: "Add Make" }).pop()!;
+        fireEvent.click(submitBtn);
+      });
+
+      expect(toast.error).toHaveBeenCalledWith("Add make fail");
     });
   });
 });

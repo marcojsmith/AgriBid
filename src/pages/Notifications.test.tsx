@@ -191,4 +191,24 @@ describe("Notifications Page", () => {
       expect(toast.error).toHaveBeenCalledWith("Action failed: Failed");
     });
   });
+
+  it("handles individual notification click failure", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(handleNotificationClick).mockRejectedValueOnce(new Error("Click fail"));
+    
+    renderNotifications();
+
+    const notification = screen
+      .getByText("New Bid")
+      .closest("div[class*='group']");
+    await act(async () => {
+      fireEvent.click(notification!);
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Action failed: Click fail");
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+    consoleSpy.mockRestore();
+  });
 });

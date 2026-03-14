@@ -15,6 +15,9 @@ export default defineConfig({
       CONVEX_SITE_URL: "http://localhost:3000",
       PII_ENCRYPTION_KEY: "12345678901234567890123456789012",
     },
+    typecheck: {
+      tsconfig: "./tsconfig.vitest.json",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
@@ -28,10 +31,10 @@ export default defineConfig({
       ],
       thresholds: {
         // Global Baseline
-        statements: 90,
-        branches: 82,
-        functions: 83,
-        lines: 91,
+        statements: 94.5,
+        branches: 88,
+        functions: 91,
+        lines: 95.5,
 
         // Security-critical: RoleProtectedRoute
         "src/components/RoleProtectedRoute.tsx": {

@@ -334,4 +334,31 @@ describe("ListingWizard Full Coverage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
     expect(toast.info).toHaveBeenCalledWith("Checking your session...");
   });
+
+  it("stops submission if authentication check fails", async () => {
+    mockEnsureAuthenticated.mockReturnValue(false);
+
+    // Set step 6 in localStorage
+    localStorage.setItem("agribid_listing_step", "5");
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({ title: "T" })
+    );
+
+    renderWizard();
+    await screen.findByText(/Step 6 of 6/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+    expect(mockCreateAuction).not.toHaveBeenCalled();
+  });
+
+  it("initializes with saved step from localStorage", async () => {
+    localStorage.setItem("agribid_listing_draft", JSON.stringify({ title: "Saved" }));
+    localStorage.setItem("agribid_listing_step", "2");
+
+    renderWizard();
+
+    expect(screen.getByText(/Step 3 of 6/i)).toBeInTheDocument();
+    expect(screen.getByText(/Condition Checklist/i)).toBeInTheDocument();
+  });
 });

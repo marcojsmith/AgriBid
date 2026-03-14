@@ -192,4 +192,93 @@ describe("AuctionCard", () => {
     expect(screen.getByText("SOLD")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Closed" })).toBeDisabled();
   });
+
+  it("renders compact view mode correctly", () => {
+    const compactAuction = {
+      ...mockAuction,
+      description: "Short desc",
+    };
+    renderWithRouter({ auction: compactAuction as unknown as React.ComponentProps<typeof AuctionCard>["auction"], viewMode: "compact" });
+
+    expect(screen.getByText("Short desc")).toBeInTheDocument();
+    // Compact mode doesn't show operating hours/location in details area
+    expect(screen.queryByText(/500 hrs/i)).not.toBeInTheDocument();
+  });
+
+  it("handles watchlist removal", async () => {
+    mockToggleWatchlist.mockResolvedValue(false); // Returning false means removed
+    renderWithRouter({ isWatched: true });
+
+    const watchlistButton = screen.getByRole("button", { name: /watchlist/i });
+    fireEvent.click(watchlistButton);
+
+    await waitFor(() => {
+      expect(mockToggleWatchlist).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith("Removed from watchlist");
+    });
+  });
+
+  it("handles watchlist toggle error", async () => {
+    mockToggleWatchlist.mockRejectedValue(new Error("Fail"));
+    renderWithRouter();
+
+    const watchlistButton = screen.getByRole("button", { name: /watchlist/i });
+    fireEvent.click(watchlistButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to update watchlist");
+    });
+  });
+
+  it("handles price update during bid confirmation", async () => {
+    const { rerender } = renderWithRouter();
+
+    // Open confirmation
+    fireEvent.click(screen.getByRole("button", { name: /Bid R 1/i }));
+
+    // Update auction prop to simulate price increase from server
+    const updatedAuction = {
+      ...mockAuction,
+      currentPrice: 1500, // Price went up
+    };
+
+    rerender(
+      <BrowserRouter>
+        <AuctionCard auction={updatedAuction as unknown as React.ComponentProps<typeof AuctionCard>["auction"]} />
+      </BrowserRouter>
+    );
+
+    // Click confirm - should show error because pendingBid (1100) < new minimum (1600)
+    const confirmButton = screen.getByRole("button", {
+      name: /^Confirm Bid$/i,
+    });
+    fireEvent.click(confirmButton);
+
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Price updated"));
+  });
+
+  it("handles different image structures", () => {
+    const auctionNoImages = {
+      ...mockAuction,
+      images: { additional: ["add1.jpg"] }
+    };
+    renderWithRouter({ auction: auctionNoImages as unknown as React.ComponentProps<typeof AuctionCard>["auction"] });
+    // Should render without crashing, using additional[0]
+    expect(screen.getByText("Test Tractor")).toBeInTheDocument();
+  });
+
+  it("shows fallback category name", () => {
+    const auctionNoCategory = {
+      ...mockAuction,
+      categoryName: undefined
+    };
+    renderWithRouter({ auction: auctionNoCategory as unknown as React.ComponentProps<typeof AuctionCard>["auction"] });
+    expect(screen.getByText("Equipment")).toBeInTheDocument();
+  });
+
+  it("shows UNSOLD badge for unsold auctions", () => {
+    const unsoldAuction = { ...mockAuction, status: "unsold" as const };
+    renderWithRouter({ auction: unsoldAuction as unknown as React.ComponentProps<typeof AuctionCard>["auction"] });
+    expect(screen.getByText("UNSOLD")).toBeInTheDocument();
+  });
 });

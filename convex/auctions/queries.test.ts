@@ -314,6 +314,24 @@ describe("Queries Consolidated", () => {
       expect(result.page[0]._id).toBe("a2");
       expect(result.continueCursor).toBe("1");
     });
+
+    it("should skip null auctions in calculateUserBidStats via getMyBidsHandler", async () => {
+      // Setup mock profile
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        userId: "u1",
+      } as any);
+      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+
+      queryMock.collect.mockResolvedValue([
+        { auctionId: "missing", amount: 1000, bidderId: "u1", timestamp: 100 },
+      ]);
+      vi.mocked(mockCtx.db.get).mockResolvedValue(null);
+
+      const result = await getMyBidsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page).toHaveLength(0);
+    });
   });
 
   describe("getActiveAuctionsHandler", () => {
