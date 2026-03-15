@@ -172,7 +172,5 @@ export const cleanupDrafts = internalMutation({
     deleted: v.number(),
     errors: v.number(),
   }),
-  handler: async (ctx) => {
-    return await cleanupDraftsHandler(ctx);
-  },
+  handler: cleanupDraftsHandler,
 });

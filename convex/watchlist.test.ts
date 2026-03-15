@@ -46,7 +46,18 @@ describe("Watchlist Coverage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn().mockReturnThis(),
+      withIndex: vi.fn((_index, cb) => {
+        if (cb) {
+          cb({
+            eq: vi.fn().mockReturnThis(),
+            lte: vi.fn().mockReturnThis(),
+            gt: vi.fn().mockReturnThis(),
+            lt: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+          });
+        }
+        return queryMock;
+      }),
       first: vi.fn().mockResolvedValue(null),
       paginate: vi.fn().mockResolvedValue({
         page: [],

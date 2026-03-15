@@ -140,6 +140,34 @@ describe("AuctionCard", () => {
     expect(mockNavigate).toHaveBeenCalled();
   });
 
+  it("redirects to login for unauthenticated user trying to watchlist", () => {
+    (useSession as Mock).mockReturnValue({ data: null });
+    renderWithRouter();
+
+    const watchlistButton = screen.getByRole("button", { name: /watchlist/i });
+    fireEvent.click(watchlistButton);
+
+    expect(toast.info).toHaveBeenCalledWith(
+      expect.stringContaining("sign in to watch an auction")
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining("/login?callbackUrl=")
+    );
+  });
+
+  it("cancels bid confirmation", () => {
+    renderWithRouter();
+    fireEvent.click(screen.getByRole("button", { name: /Bid R 1/i }));
+
+    expect(screen.getByText(/Confirm Your Bid/i)).toBeInTheDocument();
+
+    // Close using Cancel button
+    const cancelButton = screen.getByRole("button", { name: /Cancel/i });
+    fireEvent.click(cancelButton);
+
+    expect(screen.queryByText(/Confirm Your Bid/i)).not.toBeInTheDocument();
+  });
+
   it("successfully places a bid", async () => {
     mockPlaceBid.mockResolvedValue({});
     renderWithRouter();
@@ -198,7 +226,12 @@ describe("AuctionCard", () => {
       ...mockAuction,
       description: "Short desc",
     };
-    renderWithRouter({ auction: compactAuction as unknown as React.ComponentProps<typeof AuctionCard>["auction"], viewMode: "compact" });
+    renderWithRouter({
+      auction: compactAuction as unknown as React.ComponentProps<
+        typeof AuctionCard
+      >["auction"],
+      viewMode: "compact",
+    });
 
     expect(screen.getByText("Short desc")).toBeInTheDocument();
     // Compact mode doesn't show operating hours/location in details area
@@ -244,7 +277,13 @@ describe("AuctionCard", () => {
 
     rerender(
       <BrowserRouter>
-        <AuctionCard auction={updatedAuction as unknown as React.ComponentProps<typeof AuctionCard>["auction"]} />
+        <AuctionCard
+          auction={
+            updatedAuction as unknown as React.ComponentProps<
+              typeof AuctionCard
+            >["auction"]
+          }
+        />
       </BrowserRouter>
     );
 
@@ -254,15 +293,21 @@ describe("AuctionCard", () => {
     });
     fireEvent.click(confirmButton);
 
-    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Price updated"));
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("Price updated")
+    );
   });
 
   it("handles different image structures", () => {
     const auctionNoImages = {
       ...mockAuction,
-      images: { additional: ["add1.jpg"] }
+      images: { additional: ["add1.jpg"] },
     };
-    renderWithRouter({ auction: auctionNoImages as unknown as React.ComponentProps<typeof AuctionCard>["auction"] });
+    renderWithRouter({
+      auction: auctionNoImages as unknown as React.ComponentProps<
+        typeof AuctionCard
+      >["auction"],
+    });
     // Should render without crashing, using additional[0]
     expect(screen.getByText("Test Tractor")).toBeInTheDocument();
   });
@@ -270,15 +315,23 @@ describe("AuctionCard", () => {
   it("shows fallback category name", () => {
     const auctionNoCategory = {
       ...mockAuction,
-      categoryName: undefined
+      categoryName: undefined,
     };
-    renderWithRouter({ auction: auctionNoCategory as unknown as React.ComponentProps<typeof AuctionCard>["auction"] });
+    renderWithRouter({
+      auction: auctionNoCategory as unknown as React.ComponentProps<
+        typeof AuctionCard
+      >["auction"],
+    });
     expect(screen.getByText("Equipment")).toBeInTheDocument();
   });
 
   it("shows UNSOLD badge for unsold auctions", () => {
     const unsoldAuction = { ...mockAuction, status: "unsold" as const };
-    renderWithRouter({ auction: unsoldAuction as unknown as React.ComponentProps<typeof AuctionCard>["auction"] });
+    renderWithRouter({
+      auction: unsoldAuction as unknown as React.ComponentProps<
+        typeof AuctionCard
+      >["auction"],
+    });
     expect(screen.getByText("UNSOLD")).toBeInTheDocument();
   });
 });

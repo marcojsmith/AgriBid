@@ -42,7 +42,18 @@ describe("Notifications Coverage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn().mockReturnThis(),
+      withIndex: vi.fn((_index, cb) => {
+        if (cb) {
+          cb({
+            eq: vi.fn().mockReturnThis(),
+            lte: vi.fn().mockReturnThis(),
+            gt: vi.fn().mockReturnThis(),
+            lt: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+          });
+        }
+        return queryMock;
+      }),
       order: vi.fn().mockReturnThis(),
       take: vi.fn().mockResolvedValue([]),
       unique: vi.fn().mockResolvedValue(null),
@@ -88,7 +99,28 @@ describe("Notifications Coverage", () => {
       expect(result).toHaveLength(2);
       expect(result[0]._id).toBe("a1"); // Sorted by createdAt desc
       expect(result[0].isRead).toBe(true);
-      expect(result[1].isRead).toBeUndefined(); // Personal doesn't get isRead augmented in this handler logic
+      expect(result[1].isRead).toBeUndefined();
+    });
+
+    it("should use fallback _id if userId is missing", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as AuthUser);
+      queryMock.take.mockResolvedValue([]);
+      const result = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(result).toHaveLength(0);
+    });
+
+    it("should suppress console.error for unauthenticated errors", async () => {
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
+        new Error("Unauthenticated")
+      );
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await getMyNotificationsHandler(mockCtx as unknown as QueryCtx);
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it("should handle catch block for non-auth errors", async () => {
@@ -100,6 +132,21 @@ describe("Notifications Coverage", () => {
       expect(result).toHaveLength(0);
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
+    });
+
+    it("should handle empty announcements array", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as AuthUser);
+      queryMock.take
+        .mockResolvedValueOnce([{ _id: "n1", createdAt: 100 }])
+        .mockResolvedValueOnce([]);
+
+      const result = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(result).toHaveLength(1);
     });
   });
 
@@ -115,8 +162,33 @@ describe("Notifications Coverage", () => {
         mockCtx as unknown as QueryCtx,
         { limit: 200 }
       );
+      expect(auth.getAuthUser).toHaveBeenCalledWith(mockCtx);
       expect(queryMock.take).toHaveBeenCalledWith(100); // capped
       expect(result).toHaveLength(0);
+    });
+
+    it("should handle userId fallback", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as AuthUser);
+      queryMock.take.mockResolvedValue([]);
+      const result = await getNotificationArchiveHandler(
+        mockCtx as unknown as QueryCtx,
+        {}
+      );
+      expect(auth.getAuthUser).toHaveBeenCalledWith(mockCtx);
+      expect(queryMock.take).toHaveBeenCalled();
+      expect(result).toHaveLength(0);
+    });
+
+    it("should suppress console.error for unauthenticated errors", async () => {
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
+        new Error("Unauthenticated")
+      );
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      await getNotificationArchiveHandler(mockCtx as unknown as QueryCtx, {});
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it("should handle error gracefully", async () => {
@@ -178,6 +250,20 @@ describe("Notifications Coverage", () => {
       );
     });
 
+    it("should do nothing if read receipt already exists", async () => {
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+      } as unknown as AuthUser);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+      mockCtx.db.get.mockResolvedValue({ _id: "a1", recipientId: "all" });
+      queryMock.unique.mockResolvedValue({ _id: "r1" }); // already exists
+
+      await markAsReadHandler(mockCtx as unknown as MutationCtx, {
+        notificationId: "a1" as Id<"notifications">,
+      });
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
     it("should throw if personal notification belongs to someone else", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
@@ -230,6 +316,22 @@ describe("Notifications Coverage", () => {
       await expect(
         markAllReadHandler(mockCtx as unknown as MutationCtx)
       ).rejects.toThrow("Unable to determine user ID");
+    });
+
+    it("should handle large number of notifications via chunking", async () => {
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+      } as unknown as AuthUser);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+
+      // 60 personal notifications (2 batches of 50)
+      const personal = Array.from({ length: 60 }, (_, i) => ({
+        _id: `n${i}`,
+      }));
+      queryMock.take.mockResolvedValueOnce(personal).mockResolvedValueOnce([]); // no announcements
+
+      await markAllReadHandler(mockCtx as unknown as MutationCtx);
+      expect(mockCtx.db.patch).toHaveBeenCalledTimes(60);
     });
   });
 });

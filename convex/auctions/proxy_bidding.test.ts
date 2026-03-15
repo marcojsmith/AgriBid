@@ -24,9 +24,40 @@ type MockCtxType = {
   };
 };
 
-const createMockQuery = (results: Record<string, unknown>[] = []) => {
-  const query = {
-    withIndex: vi.fn().mockReturnThis(),
+interface IndexQuery {
+  eq: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
+  lt: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
+}
+
+interface QueryMock {
+  withIndex: ReturnType<typeof vi.fn>;
+  filter: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  first: ReturnType<typeof vi.fn>;
+  unique: ReturnType<typeof vi.fn>;
+  collect: ReturnType<typeof vi.fn>;
+  paginate: ReturnType<typeof vi.fn>;
+}
+
+const createMockQuery = (
+  results: Record<string, unknown>[] = []
+): QueryMock => {
+  const query: QueryMock = {
+    withIndex: vi.fn((_index: string, cb?: (q: IndexQuery) => void) => {
+      if (cb) {
+        cb({
+          eq: vi.fn().mockReturnThis(),
+          lte: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
+          lt: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+        });
+      }
+      return query;
+    }),
     filter: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     first: vi.fn().mockResolvedValue(results[0] || null),
@@ -214,6 +245,91 @@ describe("Proxy Bidding Coverage", () => {
           500
         )
       ).rejects.toThrow("First bid must be at least R1000");
+    });
+
+    it("should throw if bid is below currentPrice + increment", async () => {
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        status: "active",
+        startingPrice: 1000,
+      } as Doc<"auctions">;
+      const recentBid = { amount: 1000 };
+      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.query.mockImplementation((table) => {
+        if (table === "bids") return createMockQuery([recentBid]);
+        return createMockQuery();
+      });
+
+      await expect(
+        handleNewBid(
+          mockCtx as unknown as MutationCtx,
+          "a1" as Id<"auctions">,
+          "u1",
+          1050
+        )
+      ).rejects.toThrow(/at least R1100/);
+    });
+
+    it("should throw if maxBid is below bidAmount", async () => {
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        status: "active",
+        startingPrice: 1000,
+      } as Doc<"auctions">;
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      await expect(
+        handleNewBid(
+          mockCtx as unknown as MutationCtx,
+          "a1" as Id<"auctions">,
+          "u1",
+          1100,
+          1050
+        )
+      ).rejects.toThrow(
+        "Proxy maximum bid must be at least the current bid amount."
+      );
+    });
+
+    it("should meet minimum increment exactly if maxBidLimit allows", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        status: "active" as const,
+        sellerId: "u2",
+        endTime: now + 1000000,
+      } as Doc<"auctions">;
+
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const proxyQuery = createMockQuery([
+        {
+          _id: "p1" as Id<"proxy_bids">,
+          _creationTime: now - 100,
+          auctionId: "a1" as Id<"auctions">,
+          bidderId: "u3",
+          maxBid: 1100, // Exactly the next required amount
+          updatedAt: now - 100,
+        },
+      ]);
+
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "proxy_bids") return proxyQuery;
+        return createMockQuery([]);
+      });
+
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1000
+      );
+
+      expect(result.bidAmount).toBe(1100);
     });
 
     it("should place bid successfully for first bidder", async () => {

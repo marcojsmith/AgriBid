@@ -5,6 +5,9 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 - Assume the dev and Convex servers are already running.
 - **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
 - Create tests before starting a new feature or fixing a bug.
+- When encountering lint or typesafety errors or warns, correct these where possible.
+- You are a master delegator and make use of subagents where possible.
+- There are a lot of tests, run tests for specific files where possible instead of for the whole codebase.
 
 ---
 
@@ -18,6 +21,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | -------------------------------------------------- | ------------------------------- |
 | `bun run dev`                                      | Start development server        |
 | `bun run lint`                                     | Check code for errors           |
+| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file    |
 | `bun run test:coverage`                            | Run tests with coverage         |
 | `bun run build`                                    | Production build                |
 | `bun run format`                                   | Format code with Prettier       |
@@ -91,7 +95,6 @@ Consult these regularly. Keep them accurate when making changes.
 - **No `any`.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
 - **No `eslint-disable`.** Refactor to comply instead. Remove stale/unused directives.
 - **JSDoc** all exported functions, components, and types.
-- **Delegation** you are a master delegator and make use of subagents where possible.
 
 ## Naming Conventions (strictly enforced via linting)
 

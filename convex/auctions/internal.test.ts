@@ -23,6 +23,44 @@ type MockCtxType = {
   };
 };
 
+interface IndexQuery {
+  eq: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
+  lt: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
+}
+
+interface QueryMock {
+  withIndex: ReturnType<typeof vi.fn>;
+  filter: ReturnType<typeof vi.fn>;
+  collect: ReturnType<typeof vi.fn>;
+  first: ReturnType<typeof vi.fn>;
+  unique: ReturnType<typeof vi.fn>;
+}
+
+const mockQuery = (): QueryMock => {
+  const query: QueryMock = {
+    withIndex: vi.fn((_index: string, cb?: (q: IndexQuery) => void) => {
+      if (cb) {
+        cb({
+          eq: vi.fn().mockReturnThis(),
+          lte: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
+          lt: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+        });
+      }
+      return query;
+    }),
+    filter: vi.fn().mockReturnThis(),
+    collect: vi.fn().mockResolvedValue([]),
+    first: vi.fn().mockResolvedValue(null),
+    unique: vi.fn().mockResolvedValue(null),
+  };
+  return query;
+};
+
 describe("Internal Logic Coverage", () => {
   let mockCtx: MockCtxType;
 
@@ -30,10 +68,7 @@ describe("Internal Logic Coverage", () => {
     vi.resetAllMocks();
     mockCtx = {
       db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue([]),
-        })),
+        query: vi.fn(mockQuery),
         delete: vi.fn(),
         insert: vi.fn(),
         patch: vi.fn(),
@@ -55,10 +90,9 @@ describe("Internal Logic Coverage", () => {
         conditionReportUrl: "s1",
         images: {},
       };
-      mockCtx.db.query = vi.fn().mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([mockDraft]),
-      });
+      const q = mockQuery();
+      q.collect.mockResolvedValue([mockDraft]);
+      mockCtx.db.query = vi.fn().mockReturnValue(q);
       mockCtx.storage.delete.mockRejectedValue(
         new Error("Storage delete failed")
       );
@@ -81,10 +115,9 @@ describe("Internal Logic Coverage", () => {
         status: "draft",
         images: {},
       };
-      mockCtx.db.query = vi.fn().mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([mockDraft]),
-      });
+      const q = mockQuery();
+      q.collect.mockResolvedValue([mockDraft]);
+      mockCtx.db.query = vi.fn().mockReturnValue(q);
       mockCtx.db.delete.mockRejectedValue(new Error("DB delete failed"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -118,23 +151,73 @@ describe("Internal Logic Coverage", () => {
         timestamp: 100,
       };
 
-      mockCtx.db.query = vi.fn()
-        .mockReturnValueOnce({
-          withIndex: vi.fn().mockReturnThis(),
-          filter: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue([mockAuction]),
-        })
-        .mockReturnValueOnce({
-          withIndex: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue([mockBid]),
-        });
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockAuction]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockBid]),
+          })
+        );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        status: "sold",
-        winnerId: "u1",
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "sold",
+          winnerId: "u1",
+        })
+      );
+    });
+
+    it("should handle lower bid in tie-break reduce", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        reservePrice: 500,
+        status: "active",
+      };
+      const highBid = {
+        bidderId: "u1",
+        amount: 1000,
+        status: "valid",
+        timestamp: 100,
+      };
+      const lowBid = {
+        bidderId: "u2",
+        amount: 500,
+        status: "valid",
+        timestamp: 200,
+      };
+
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockAuction]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([highBid, lowBid]),
+          })
+        );
+
+      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "sold",
+          winnerId: "u1",
+        })
+      );
     });
 
     it("should settle expired auction as unsold if reserve not met", async () => {
@@ -152,22 +235,27 @@ describe("Internal Logic Coverage", () => {
         timestamp: 100,
       };
 
-      mockCtx.db.query = vi.fn()
-        .mockReturnValueOnce({
-          withIndex: vi.fn().mockReturnThis(),
-          filter: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue([mockAuction]),
-        })
-        .mockReturnValueOnce({
-          withIndex: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue([mockBid]),
-        });
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockAuction]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockBid]),
+          })
+        );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        status: "unsold",
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "unsold",
+        })
+      );
     });
 
     it("should skip voided bids when settling", async () => {
@@ -185,22 +273,140 @@ describe("Internal Logic Coverage", () => {
         timestamp: 100,
       };
 
-      mockCtx.db.query = vi.fn()
-        .mockReturnValueOnce({
-          withIndex: vi.fn().mockReturnThis(),
-          filter: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue([mockAuction]),
-        })
-        .mockReturnValueOnce({
-          withIndex: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue([mockBid]),
-        });
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockAuction]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockBid]),
+          })
+        );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", expect.objectContaining({
-        status: "unsold",
-      }));
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "unsold",
+        })
+      );
+    });
+
+    it("should settle auction as unsold when no bids exist", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test Auction",
+        currentPrice: 1000,
+        reservePrice: 500,
+        status: "active",
+      };
+
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockAuction]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
+        );
+
+      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "unsold",
+          winnerId: undefined,
+        })
+      );
+    });
+
+    it("should handle tie-break - earlier timestamp wins", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        reservePrice: 500,
+        status: "active",
+      };
+      const earlierBid = {
+        bidderId: "u1",
+        amount: 1000,
+        status: "valid",
+        timestamp: 100,
+      };
+      const laterBid = {
+        bidderId: "u2",
+        amount: 1000,
+        status: "valid",
+        timestamp: 200,
+      };
+
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockAuction]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([laterBid, earlierBid]),
+          })
+        );
+
+      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          status: "sold",
+          winnerId: "u1",
+        })
+      );
+    });
+  });
+
+  describe("cleanupDraftsHandler edge cases", () => {
+    it("should handle no drafts to clean up", async () => {
+      mockCtx.db.query = vi.fn().mockReturnValue(
+        Object.assign(mockQuery(), {
+          collect: vi.fn().mockResolvedValue([]),
+        })
+      );
+
+      const result = await cleanupDraftsHandler(
+        mockCtx as unknown as MutationCtx
+      );
+
+      expect(result.deleted).toBe(0);
+      expect(result.errors).toBe(0);
+    });
+
+    it("should attempt to delete draft images", async () => {
+      const mockDraft = {
+        _id: "d1",
+        status: "draft",
+        images: { main: "img1" },
+        _creationTime: Date.now() - 40 * 24 * 60 * 60 * 1000,
+      };
+      mockCtx.db.query = vi.fn().mockReturnValue(
+        Object.assign(mockQuery(), {
+          collect: vi.fn().mockResolvedValue([mockDraft]),
+        })
+      );
+
+      await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("d1");
     });
   });
 });

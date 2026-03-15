@@ -1,6 +1,9 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
+import { useMutation } from "convex/react";
+
+import { useSession } from "@/lib/auth-client";
 
 import { Layout } from "./Layout";
 
@@ -27,10 +30,19 @@ vi.mock("convex/react", () => ({
 
 // Mock auth client for NotificationListener
 vi.mock("@/lib/auth-client", () => ({
-  useSession: vi.fn(() => ({ data: null, isPending: false })),
+  useSession: vi.fn(),
 }));
 
 describe("Layout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useSession).mockReturnValue({
+      data: null,
+      isPending: false,
+    } as unknown as ReturnType<typeof useSession>);
+    vi.mocked(useMutation).mockReturnValue(vi.fn().mockResolvedValue({}));
+  });
+
   it("renders children and includes Header and Footer", () => {
     render(
       <BrowserRouter>
@@ -43,5 +55,34 @@ describe("Layout", () => {
     expect(screen.getByTestId("mock-header")).toBeInTheDocument();
     expect(screen.getByTestId("mock-footer")).toBeInTheDocument();
     expect(screen.getByTestId("child-content")).toBeInTheDocument();
+  });
+
+  it("handles syncUser failure", async () => {
+    const mockSyncUser = vi.fn().mockRejectedValue(new Error("Sync Fail"));
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "user1" } },
+      isPending: false,
+    } as unknown as ReturnType<typeof useSession>);
+    vi.mocked(useMutation).mockReturnValue(mockSyncUser);
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    render(
+      <BrowserRouter>
+        <Layout>
+          <div>Content</div>
+        </Layout>
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockSyncUser).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Failed to sync user:",
+        expect.any(Error)
+      );
+    });
+
+    consoleSpy.mockRestore();
   });
 });

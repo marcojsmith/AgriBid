@@ -6,9 +6,10 @@ import {
   updateCategoryHandler,
   deleteCategoryHandler,
   fixMetadataHandler,
+  getCategoriesHandler,
 } from "./categories";
 import * as auth from "../lib/auth";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
 vi.mock("../lib/auth", () => ({
@@ -320,16 +321,18 @@ describe("deleteCategory", () => {
     } as unknown as MutationCtx;
   };
 
+  const createChainedQuery = (firstResult: unknown) => {
+    const queryObj = {
+      withIndex: vi.fn(() => queryObj),
+      filter: vi.fn(() => queryObj),
+      first: vi.fn().mockResolvedValue(firstResult),
+    };
+    return queryObj;
+  };
+
   it("should soft delete category successfully", async () => {
-    const equipmentQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
-    const auctionQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const equipmentQuery = createChainedQuery(null);
+    const auctionQuery = createChainedQuery(null);
     const existingCategory = {
       _id: "cat_123" as Id<"equipmentCategories">,
       name: "Tractors",
@@ -349,15 +352,8 @@ describe("deleteCategory", () => {
   });
 
   it("should throw error if category not found", async () => {
-    const equipmentQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
-    const auctionQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const equipmentQuery = createChainedQuery(null);
+    const auctionQuery = createChainedQuery(null);
     mockCtx = setupMockCtx(equipmentQuery, auctionQuery, null);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -370,15 +366,8 @@ describe("deleteCategory", () => {
   });
 
   it("should throw error if category is in use by equipment metadata", async () => {
-    const equipmentQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue({ _id: "meta_123" }),
-    };
-    const auctionQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const equipmentQuery = createChainedQuery({ _id: "meta_123" });
+    const auctionQuery = createChainedQuery(null);
     const existingCategory = {
       _id: "cat_123" as Id<"equipmentCategories">,
       name: "Tractors",
@@ -396,15 +385,8 @@ describe("deleteCategory", () => {
   });
 
   it("should throw error if category is linked to auctions", async () => {
-    const equipmentQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
-    const auctionQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue({ _id: "auction_123" }),
-    };
+    const equipmentQuery = createChainedQuery(null);
+    const auctionQuery = createChainedQuery({ _id: "auction_123" });
     const existingCategory = {
       _id: "cat_123" as Id<"equipmentCategories">,
       name: "Tractors",
@@ -422,15 +404,8 @@ describe("deleteCategory", () => {
   });
 
   it("should reject non-admin users", async () => {
-    const equipmentQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
-    const auctionQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const equipmentQuery = createChainedQuery(null);
+    const auctionQuery = createChainedQuery(null);
     mockCtx = setupMockCtx(equipmentQuery, auctionQuery, {});
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
@@ -509,19 +484,23 @@ describe("fixMetadata", () => {
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
       }),
-      patch: vi.fn((id, updates) => {
+      patch: vi.fn((id: string, updates: Record<string, unknown>) => {
         // Simulate the patch by updating the shared objects
         if (id === "meta_1" && updates.categoryId) {
-          equipmentMetadata[0].categoryId = updates.categoryId;
+          (equipmentMetadata[0] as Record<string, unknown>).categoryId =
+            updates.categoryId;
         }
         if (id === "meta_2" && updates.categoryId) {
-          equipmentMetadata[1].categoryId = updates.categoryId;
+          (equipmentMetadata[1] as Record<string, unknown>).categoryId =
+            updates.categoryId;
         }
         if (id === "auction_1" && updates.categoryId) {
-          auctions[0].categoryId = updates.categoryId;
+          (auctions[0] as Record<string, unknown>).categoryId =
+            updates.categoryId;
         }
         if (id === "auction_2" && updates.categoryId) {
-          auctions[1].categoryId = updates.categoryId;
+          (auctions[1] as Record<string, unknown>).categoryId =
+            updates.categoryId;
         }
       }),
     };
@@ -594,5 +573,285 @@ describe("fixMetadata", () => {
 
     expect(result.metadataFixed).toBe(1);
     expect(mockCtx.db.patch).toHaveBeenCalled();
+  });
+
+  it("should handle auction category inference from metadata", async () => {
+    const metadataItems = [
+      {
+        _id: "meta_1",
+        make: "John Deere",
+        models: ["8R", "9R"],
+        category: "Tractors",
+        categoryId: "cat_1" as Id<"equipmentCategories">,
+      },
+    ];
+
+    const mockDb = {
+      query: vi.fn((table: string) => {
+        const baseQuery = {
+          collect: vi.fn(),
+        };
+
+        if (table === "equipmentCategories") {
+          baseQuery.collect.mockResolvedValue([
+            { _id: "cat_1", name: "Tractors" },
+          ]);
+        } else if (table === "equipmentMetadata") {
+          baseQuery.collect.mockResolvedValue(
+            metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
+          );
+        } else if (table === "auctions") {
+          baseQuery.collect.mockResolvedValue([
+            {
+              _id: "auction_1",
+              make: "John Deere",
+              model: "8R",
+              categoryId: undefined,
+            },
+          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+        }
+
+        return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
+      }),
+      patch: vi.fn(),
+    };
+    mockCtx = {
+      db: mockDb as unknown as MutationCtx["db"],
+    } as unknown as MutationCtx;
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+
+    const result = await fixMetadataHandler(mockCtx);
+
+    expect(result.auctionsFixed).toBe(1);
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_1", {
+      categoryId: "cat_1",
+    });
+  });
+
+  it("should handle auction category inference with multiple metadata matches", async () => {
+    const metadataItems = [
+      {
+        _id: "meta_1",
+        make: "John Deere",
+        models: ["8R"],
+        category: "Tractors",
+        categoryId: "cat_1" as Id<"equipmentCategories">,
+      },
+      {
+        _id: "meta_2",
+        make: "John Deere",
+        models: ["9R"],
+        category: "Tractors",
+        categoryId: "cat_2" as Id<"equipmentCategories">,
+      },
+    ];
+
+    const mockDb = {
+      query: vi.fn((table: string) => {
+        const baseQuery = {
+          collect: vi.fn(),
+        };
+
+        if (table === "equipmentCategories") {
+          baseQuery.collect.mockResolvedValue([
+            { _id: "cat_1", name: "Tractors" },
+            { _id: "cat_2", name: "Tractors" },
+          ]);
+        } else if (table === "equipmentMetadata") {
+          baseQuery.collect.mockResolvedValue(
+            metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
+          );
+        } else if (table === "auctions") {
+          baseQuery.collect.mockResolvedValue([
+            {
+              _id: "auction_1",
+              make: "John Deere",
+              model: "8R",
+              categoryId: undefined,
+            },
+          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+        }
+
+        return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
+      }),
+      patch: vi.fn(),
+    };
+    mockCtx = {
+      db: mockDb as unknown as MutationCtx["db"],
+    } as unknown as MutationCtx;
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+
+    const result = await fixMetadataHandler(mockCtx);
+
+    expect(result.auctionsFixed).toBe(1);
+  });
+
+  it("should skip auctions that already have categoryId", async () => {
+    const mockDb = {
+      query: vi.fn((table: string) => {
+        const baseQuery = {
+          collect: vi.fn(),
+        };
+
+        if (table === "equipmentCategories") {
+          baseQuery.collect.mockResolvedValue([
+            { _id: "cat_1", name: "Tractors" },
+          ]);
+        } else if (table === "equipmentMetadata") {
+          baseQuery.collect.mockResolvedValue([
+            {
+              _id: "meta_1",
+              make: "John Deere",
+              models: ["8R"],
+              category: "Tractors",
+              categoryId: "cat_1" as Id<"equipmentCategories">,
+            },
+          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+        } else if (table === "auctions") {
+          baseQuery.collect.mockResolvedValue([
+            {
+              _id: "auction_1",
+              make: "John Deere",
+              model: "8R",
+              categoryId: "cat_existing" as Id<"equipmentCategories">,
+            },
+          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+        }
+
+        return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
+      }),
+      patch: vi.fn(),
+    };
+    mockCtx = {
+      db: mockDb as unknown as MutationCtx["db"],
+    } as unknown as MutationCtx;
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+
+    const result = await fixMetadataHandler(mockCtx);
+
+    expect(result.auctionsFixed).toBe(0);
+  });
+
+  it("should handle auctions with no matching metadata", async () => {
+    const metadataItems = [
+      {
+        _id: "meta_1",
+        make: "John Deere",
+        models: ["8R"],
+        category: "Tractors",
+        categoryId: "cat_1" as Id<"equipmentCategories">,
+      },
+    ];
+
+    const mockDb = {
+      query: vi.fn((table: string) => {
+        const baseQuery = {
+          collect: vi.fn(),
+        };
+
+        if (table === "equipmentCategories") {
+          baseQuery.collect.mockResolvedValue([
+            { _id: "cat_1", name: "Tractors" },
+          ]);
+        } else if (table === "equipmentMetadata") {
+          baseQuery.collect.mockResolvedValue(
+            metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
+          );
+        } else if (table === "auctions") {
+          baseQuery.collect.mockResolvedValue([
+            {
+              _id: "auction_1",
+              make: "UnknownMake",
+              model: "UnknownModel",
+              categoryId: undefined,
+            },
+          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+        }
+
+        return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
+      }),
+      patch: vi.fn(),
+    };
+    mockCtx = {
+      db: mockDb as unknown as MutationCtx["db"],
+    } as unknown as MutationCtx;
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+
+    const result = await fixMetadataHandler(mockCtx);
+
+    expect(result.auctionsFixed).toBe(0);
+  });
+});
+
+describe("getCategories", () => {
+  let mockCtx: QueryCtx;
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  const setupMockCtx = (mockQuery: unknown) => {
+    const mockDb = {
+      query: vi.fn(
+        () => mockQuery as unknown as ReturnType<QueryCtx["db"]["query"]>
+      ),
+    };
+    return {
+      db: mockDb as unknown as QueryCtx["db"],
+    } as unknown as QueryCtx;
+  };
+
+  it("should return only active categories by default", async () => {
+    const mockQuery = {
+      filter: vi.fn().mockReturnThis(),
+      collect: vi
+        .fn()
+        .mockResolvedValue([
+          { _id: "cat_1", name: "Tractors", isActive: true },
+        ]),
+    };
+    mockCtx = setupMockCtx(mockQuery);
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+
+    const result = await getCategoriesHandler(mockCtx, {});
+
+    expect(result).toHaveLength(1);
+    expect(mockQuery.filter).toHaveBeenCalled();
+  });
+
+  it("should return all categories when includeInactive is true", async () => {
+    const mockQuery = {
+      collect: vi.fn().mockResolvedValue([
+        { _id: "cat_1", name: "Tractors", isActive: true },
+        { _id: "cat_2", name: "Harvesters", isActive: false },
+      ]),
+    };
+    mockCtx = setupMockCtx(mockQuery);
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+
+    const result = await getCategoriesHandler(mockCtx, {
+      includeInactive: true,
+    });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("should reject non-admin users", async () => {
+    const mockQuery = {
+      collect: vi.fn(),
+    };
+    mockCtx = setupMockCtx(mockQuery);
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("user");
+
+    await expect(getCategoriesHandler(mockCtx, {})).rejects.toThrow(
+      /Unauthorized: Admin access required/
+    );
   });
 });
