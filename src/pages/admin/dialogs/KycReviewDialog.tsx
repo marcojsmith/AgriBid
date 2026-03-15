@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -72,6 +73,9 @@ export function KycReviewDialog({
           <DialogTitle className="text-2xl font-black uppercase tracking-tight">
             KYC Verification Review
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Review the submitted KYC documents and details for user verification.
+          </DialogDescription>
         </DialogHeader>
         {user && (
           <div className="space-y-6 py-4">

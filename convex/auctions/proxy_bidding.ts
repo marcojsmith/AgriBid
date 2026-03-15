@@ -28,6 +28,29 @@ export type HandleNewBidResult = {
 };
 
 /**
+ * Handler for getting the current user's proxy bid.
+ * @param ctx
+ * @param args
+ * @param args.auctionId
+ * @returns Promise<Doc<"proxy_bids"> | null>
+ */
+export const getMyProxyBidHandler = async (
+  ctx: QueryCtx,
+  args: { auctionId: Id<"auctions"> }
+): Promise<Doc<"proxy_bids"> | null> => {
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) return null;
+  const userId = authUser.userId ?? authUser._id;
+
+  return await ctx.db
+    .query("proxy_bids")
+    .withIndex("by_bidder_auction", (q) =>
+      q.eq("bidderId", userId).eq("auctionId", args.auctionId)
+    )
+    .unique();
+};
+
+/**
  * Gets the current proxy bid for the authenticated user on an auction.
  */
 export const getMyProxyBid = query({
@@ -43,18 +66,7 @@ export const getMyProxyBid = query({
       updatedAt: v.number(),
     })
   ),
-  handler: async (ctx, args): Promise<Doc<"proxy_bids"> | null> => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser) return null;
-    const userId = authUser.userId ?? authUser._id;
-
-    return await ctx.db
-      .query("proxy_bids")
-      .withIndex("by_bidder_auction", (q) =>
-        q.eq("bidderId", userId).eq("auctionId", args.auctionId)
-      )
-      .unique();
-  },
+  handler: getMyProxyBidHandler,
 });
 
 /**

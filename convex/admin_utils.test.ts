@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import {
@@ -8,469 +7,472 @@ import {
   countUsers,
   logAudit,
   updateCounter,
+  encryptPII,
+  decryptPII,
+  resolveUserId,
 } from "./admin_utils";
+import * as auth from "./lib/auth";
+import * as encryption from "./lib/encryption";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { AuthUser } from "./auth";
 
-describe("getCounter", () => {
-  let mockCtx: any;
+vi.mock("./lib/auth", () => ({
+  getAuthUser: vi.fn(),
+  resolveUserId: vi.fn(),
+}));
+
+vi.mock("./lib/encryption", () => ({
+  encryptPII: vi.fn(),
+  decryptPII: vi.fn(),
+}));
+
+interface MockQuery {
+  withIndex: ReturnType<typeof vi.fn>;
+  unique: ReturnType<typeof vi.fn>;
+  collect: ReturnType<typeof vi.fn>;
+  count?: ReturnType<typeof vi.fn>;
+}
+
+interface MockCtx {
+  db: {
+    query: ReturnType<typeof vi.fn>;
+    insert: ReturnType<typeof vi.fn>;
+    patch: ReturnType<typeof vi.fn>;
+  };
+}
+
+describe("Admin Utils", () => {
+  let mockCtx: MockCtx;
+  let queryMock: MockQuery;
 
   beforeEach(() => {
     vi.resetAllMocks();
-  });
-
-  it("should retrieve a counter by name", async () => {
-    const mockCounter = {
-      _id: "counter_1",
-      name: "auctions",
-      total: 100,
-      active: 50,
-    };
-
-    mockCtx = {
-      db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(mockCounter),
-        })),
-      },
-    } as unknown as QueryCtx;
-
-    const result = await getCounter(mockCtx, "auctions");
-
-    expect(result).toEqual(mockCounter);
-  });
-
-  it("should return null if counter not found", async () => {
-    mockCtx = {
-      db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(null),
-        })),
-      },
-    } as unknown as QueryCtx;
-
-    const result = await getCounter(mockCtx, "nonexistent");
-
-    expect(result).toBeNull();
-  });
-});
-
-describe("countQuery", () => {
-  it("should use .count() if available", async () => {
-    const mockQuery = {
-      count: vi.fn().mockResolvedValue(42),
-      collect: vi.fn(),
-    };
-
-    const result = await countQuery(mockQuery);
-
-    expect(result).toBe(42);
-    expect(mockQuery.count).toHaveBeenCalled();
-    expect(mockQuery.collect).not.toHaveBeenCalled();
-  });
-
-  it("should fall back to .collect() if .count() not available", async () => {
-    const mockQuery = {
-      collect: vi.fn().mockResolvedValue([1, 2, 3, 4, 5]),
-    };
-
-    const result = await countQuery(mockQuery);
-
-    expect(result).toBe(5);
-    expect(mockQuery.collect).toHaveBeenCalled();
-  });
-});
-
-describe("sumQuery", () => {
-  it("should sum numeric field values", async () => {
-    const mockQuery = {
-      collect: vi
-        .fn()
-        .mockResolvedValue([{ amount: 100 }, { amount: 200 }, { amount: 300 }]),
-    };
-
-    const result = await sumQuery(mockQuery, "amount");
-
-    expect(result.sum).toBe(600);
-    expect(result.count).toBe(3);
-  });
-
-  it("should skip non-numeric values", async () => {
-    const mockQuery = {
-      collect: vi
-        .fn()
-        .mockResolvedValue([
-          { amount: 100 },
-          { amount: "invalid" },
-          { amount: 300 },
-        ]),
-    };
-
-    const result = await sumQuery(mockQuery, "amount");
-
-    expect(result.sum).toBe(400);
-    expect(result.count).toBe(2);
-  });
-
-  it("should handle empty results", async () => {
-    const mockQuery = {
+    queryMock = {
+      withIndex: vi.fn().mockReturnThis(),
+      unique: vi.fn().mockResolvedValue(null),
       collect: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
     };
-
-    const result = await sumQuery(mockQuery, "amount");
-
-    expect(result.sum).toBe(0);
-    expect(result.count).toBe(0);
-  });
-});
-
-describe("countUsers", () => {
-  let mockCtx: any;
-
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
-  const setupMockCtx = (counterValue?: any, profiles: any[] = []) => {
-    return {
-      db: {
-        query: vi.fn((table: string) => {
-          if (table === "counters") {
-            return {
-              withIndex: vi.fn().mockReturnThis(),
-              unique: vi.fn().mockResolvedValue(counterValue),
-            };
-          }
-          if (table === "profiles") {
-            return {
-              withIndex: vi.fn().mockReturnThis(),
-              filter: vi.fn().mockReturnThis(),
-              collect: vi.fn().mockResolvedValue(profiles),
-              count: vi.fn().mockResolvedValue(profiles.length),
-            };
-          }
-          return {
-            withIndex: vi.fn().mockReturnThis(),
-            collect: vi.fn().mockResolvedValue([]),
-          };
-        }),
-      },
-    } as unknown as QueryCtx;
-  };
-
-  it("should use counter for total without filters", async () => {
-    mockCtx = setupMockCtx({
-      name: "profiles",
-      total: 100,
-    });
-
-    const result = await countUsers(mockCtx, { useCounter: true });
-
-    expect(result).toBe(100);
-  });
-
-  it("should use counter for verified count", async () => {
-    mockCtx = setupMockCtx({
-      name: "profiles",
-      total: 100,
-      verified: 50,
-    });
-
-    const result = await countUsers(mockCtx, {
-      isVerified: true,
-      useCounter: true,
-    });
-
-    expect(result).toBe(50);
-  });
-
-  it("should use counter for pending KYC count", async () => {
-    mockCtx = setupMockCtx({
-      name: "profiles",
-      total: 100,
-      pending: 20,
-    });
-
-    const result = await countUsers(mockCtx, {
-      kycStatus: "pending",
-      useCounter: true,
-    });
-
-    expect(result).toBe(20);
-  });
-
-  it("should use database query when filtering by role", async () => {
-    const profiles = [
-      { userId: "1", role: "admin", isVerified: true },
-      { userId: "2", role: "admin", isVerified: false },
-    ];
-    mockCtx = setupMockCtx(null, profiles);
-
-    const result = await countUsers(mockCtx, { role: "admin" });
-
-    expect(result).toBe(2);
-  });
-
-  it("should handle multiple filters with in-memory filtering", async () => {
-    const profiles = [
-      { userId: "1", role: "buyer", isVerified: true, kycStatus: "verified" },
-      { userId: "2", role: "buyer", isVerified: false, kycStatus: "pending" },
-      { userId: "3", role: "seller", isVerified: true, kycStatus: "verified" },
-    ];
-    mockCtx = setupMockCtx(null, profiles);
-
-    const result = await countUsers(mockCtx, {
-      role: "buyer",
-      isVerified: true,
-    });
-
-    expect(result).toBe(1);
-  });
-
-  it("should return 0 when no matches found", async () => {
-    mockCtx = setupMockCtx(null, []);
-
-    const result = await countUsers(mockCtx, { role: "admin" });
-
-    expect(result).toBe(0);
-  });
-});
-
-describe("logAudit", () => {
-  let mockCtx: any;
-
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
-  const setupMockCtx = (authUser: any = null) => {
-    return {
-      auth: {
-        getUserIdentity: vi.fn().mockResolvedValue(authUser),
-      },
-      db: {
-        insert: vi.fn().mockResolvedValue("audit_log_123"),
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(null),
-        })),
-      },
-    } as unknown as MutationCtx;
-  };
-
-  it("should create audit log with authenticated user", async () => {
-    mockCtx = setupMockCtx({ userId: "user_123", _id: "auth_123" });
-
-    await logAudit(mockCtx, {
-      action: "UPDATE_AUCTION",
-      targetId: "auction_123",
-      targetType: "auction",
-      details: "Updated auction details",
-    });
-
-    expect(mockCtx.db.insert).toHaveBeenCalledWith(
-      "auditLogs",
-      expect.objectContaining({
-        adminId: "user_123",
-        action: "UPDATE_AUCTION",
-        targetId: "auction_123",
-        targetType: "auction",
-        details: "Updated auction details",
-      })
-    );
-  });
-
-  it("should use SYSTEM for system actions", async () => {
-    mockCtx = setupMockCtx(null);
-
-    await logAudit(mockCtx, {
-      action: "SYSTEM_CLEANUP",
-      system: true,
-    });
-
-    expect(mockCtx.db.insert).toHaveBeenCalledWith(
-      "auditLogs",
-      expect.objectContaining({
-        adminId: "SYSTEM",
-        action: "SYSTEM_CLEANUP",
-      })
-    );
-  });
-
-  it("should use UNAUTHENTICATED when no user and not system", async () => {
-    mockCtx = setupMockCtx(null);
-
-    await logAudit(mockCtx, {
-      action: "ANONYMOUS_ACTION",
-    });
-
-    expect(mockCtx.db.insert).toHaveBeenCalledWith(
-      "auditLogs",
-      expect.objectContaining({
-        adminId: "UNAUTHENTICATED",
-        action: "ANONYMOUS_ACTION",
-      })
-    );
-  });
-
-  it("should include targetCount when provided", async () => {
-    mockCtx = setupMockCtx({ userId: "admin_123", _id: "auth_123" });
-
-    await logAudit(mockCtx, {
-      action: "BULK_DELETE",
-      targetCount: 10,
-    });
-
-    expect(mockCtx.db.insert).toHaveBeenCalledWith(
-      "auditLogs",
-      expect.objectContaining({
-        action: "BULK_DELETE",
-        targetCount: 10,
-      })
-    );
-  });
-});
-
-describe("updateCounter", () => {
-  let mockCtx: any;
-
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
-  const setupMockCtx = (counterExists: boolean = false, currentValue = 10) => {
-    const mockCounter = counterExists
-      ? {
-          _id: "counter_123",
-          name: "auctions",
-          total: currentValue,
-          active: 5,
-          pending: 2,
-          verified: 0,
-          open: 0,
-          resolved: 0,
-          draft: 3,
-          salesVolume: 0,
-          soldCount: 0,
-        }
-      : null;
-
-    return {
-      db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(mockCounter),
-        })),
-        patch: vi.fn(),
-        insert: vi.fn().mockResolvedValue("counter_new"),
-      },
-    } as unknown as MutationCtx;
-  };
-
-  it("should increment existing counter", async () => {
-    mockCtx = setupMockCtx(true, 10);
-
-    await updateCounter(mockCtx, "auctions", "total", 5);
-
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "counter_123",
-      expect.objectContaining({
-        total: 15,
-      })
-    );
-  });
-
-  it("should decrement existing counter", async () => {
-    mockCtx = setupMockCtx(true, 10);
-
-    await updateCounter(mockCtx, "auctions", "total", -3);
-
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "counter_123",
-      expect.objectContaining({
-        total: 7,
-      })
-    );
-  });
-
-  it("should create new counter if not exists", async () => {
-    mockCtx = setupMockCtx(false);
-
-    await updateCounter(mockCtx, "auctions", "total", 5);
-
-    expect(mockCtx.db.insert).toHaveBeenCalledWith(
-      "counters",
-      expect.objectContaining({
-        name: "auctions",
-        total: 5,
-      })
-    );
-  });
-
-  it("should set absolute value when absolute flag is true", async () => {
-    mockCtx = setupMockCtx(true, 10);
-
-    await updateCounter(mockCtx, "auctions", "total", 50, true);
-
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "counter_123",
-      expect.objectContaining({
-        total: 50,
-      })
-    );
-  });
-
-  it("should clamp negative values to 0", async () => {
-    mockCtx = setupMockCtx(true, 5);
-
-    await updateCounter(mockCtx, "auctions", "total", -10);
-
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "counter_123",
-      expect.objectContaining({
-        total: 0,
-      })
-    );
-  });
-
-  it("should handle different counter fields", async () => {
-    mockCtx = setupMockCtx(true, 10);
-
-    await updateCounter(mockCtx, "auctions", "active", 2);
-
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "counter_123",
-      expect.objectContaining({
-        active: 7,
-      })
-    );
-  });
-
-  it("should initialize missing fields to 0", async () => {
-    const mockCounter = {
-      _id: "counter_123",
-      name: "auctions",
-      total: 10,
-    };
-
     mockCtx = {
       db: {
-        query: vi.fn(() => ({
-          withIndex: vi.fn().mockReturnThis(),
-          unique: vi.fn().mockResolvedValue(mockCounter),
-        })),
-        patch: vi.fn(),
+        query: vi.fn(() => queryMock),
+        insert: vi.fn().mockResolvedValue("id123"),
+        patch: vi.fn().mockResolvedValue(undefined),
       },
-    } as unknown as MutationCtx;
+    };
+  });
 
-    await updateCounter(mockCtx, "auctions", "pending", 3);
+  describe("Re-exports", () => {
+    it("should export encryption and auth functions", () => {
+      expect(encryptPII).toBeDefined();
+      expect(decryptPII).toBeDefined();
+      expect(resolveUserId).toBeDefined();
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "counter_123",
-      expect.objectContaining({
-        pending: 3,
-      })
-    );
+      // Call them to ensure they are the ones from the libs
+      encryptPII("test");
+      expect(encryption.encryptPII).toHaveBeenCalledWith("test");
+
+      decryptPII("test");
+      expect(encryption.decryptPII).toHaveBeenCalledWith("test");
+
+      resolveUserId({} as unknown as AuthUser);
+      expect(auth.resolveUserId).toHaveBeenCalled();
+    });
+  });
+
+  describe("getCounter", () => {
+    it("should fetch counter by name", async () => {
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+
+      await getCounter(mockCtx as unknown as QueryCtx, "test");
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) capturedFilter(q);
+      expect(q.eq).toHaveBeenCalledWith("name", "test");
+      expect(queryMock.unique).toHaveBeenCalled();
+    });
+  });
+
+  describe("countQuery", () => {
+    it("should use count() if available", async () => {
+      if (queryMock.count) queryMock.count.mockResolvedValue(10);
+      const result = await countQuery(
+        queryMock as unknown as Parameters<typeof countQuery>[0]
+      );
+      expect(result).toBe(10);
+    });
+
+    it("should fallback to collect()", async () => {
+      const q = { collect: vi.fn().mockResolvedValue([1, 2, 3]) };
+      const result = await countQuery(
+        q as unknown as Parameters<typeof countQuery>[0]
+      );
+      expect(result).toBe(3);
+    });
+  });
+
+  describe("sumQuery", () => {
+    it("should sum numeric fields", async () => {
+      queryMock.collect.mockResolvedValue([
+        { val: 10 },
+        { val: 20 },
+        { val: "not-a-number" },
+        { other: 5 },
+      ]);
+      const result = await sumQuery(
+        queryMock as unknown as Parameters<typeof sumQuery>[0],
+        "val"
+      );
+      expect(result).toEqual({ sum: 30, count: 2 });
+    });
+
+    it("should handle empty results", async () => {
+      queryMock.collect.mockResolvedValue([]);
+      const result = await sumQuery(
+        queryMock as unknown as Parameters<typeof sumQuery>[0],
+        "val"
+      );
+      expect(result).toEqual({ sum: 0, count: 0 });
+    });
+  });
+
+  describe("countUsers", () => {
+    it("should use counter for total if requested", async () => {
+      queryMock.unique.mockResolvedValue({ total: 100 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        useCounter: true,
+      });
+      expect(result).toBe(100);
+    });
+
+    it("should use counter for verified if requested", async () => {
+      queryMock.unique.mockResolvedValue({ total: 100, verified: 80 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        useCounter: true,
+        isVerified: true,
+      });
+      expect(result).toBe(80);
+    });
+
+    it("should return unverified from counter", async () => {
+      queryMock.unique.mockResolvedValue({ total: 100, verified: 80 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        useCounter: true,
+        isVerified: false,
+      });
+      expect(result).toBe(20);
+    });
+
+    it("should handle counter verified being undefined", async () => {
+      queryMock.unique.mockResolvedValue({ total: 100 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        useCounter: true,
+        isVerified: true,
+      });
+      expect(result).toBe(0);
+    });
+
+    it("should use index for single filters without counter", async () => {
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+      queryMock.count?.mockResolvedValue(5);
+
+      await countUsers(mockCtx as unknown as QueryCtx, { role: "admin" });
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) capturedFilter(q);
+      expect(q.eq).toHaveBeenCalledWith("role", "admin");
+    });
+
+    it("should handle kycStatus filter", async () => {
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+      queryMock.count?.mockResolvedValue(3);
+
+      await countUsers(mockCtx as unknown as QueryCtx, {
+        kycStatus: "pending",
+      });
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) capturedFilter(q);
+      expect(q.eq).toHaveBeenCalledWith("kycStatus", "pending");
+    });
+
+    it("should handle isVerified filter", async () => {
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+      queryMock.count?.mockResolvedValue(3);
+
+      await countUsers(mockCtx as unknown as QueryCtx, {
+        isVerified: true,
+      });
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) capturedFilter(q);
+      expect(q.eq).toHaveBeenCalledWith("isVerified", true);
+    });
+
+    it("should handle complex multiple filters via in-memory filtering", async () => {
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+      queryMock.collect.mockResolvedValue([
+        { role: "buyer", isVerified: true, kycStatus: "verified" },
+        { role: "seller", isVerified: true, kycStatus: "verified" },
+        { role: "buyer", isVerified: false, kycStatus: "pending" },
+      ]);
+
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        role: "buyer",
+        isVerified: true,
+      });
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) capturedFilter(q);
+      expect(q.eq).toHaveBeenCalledWith("role", "buyer");
+      expect(result).toBe(1);
+    });
+
+    it("should fallback to full scan if no filters and no counter", async () => {
+      queryMock.collect.mockResolvedValue([1, 2, 3]);
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {});
+      expect(result).toBe(3);
+      expect(mockCtx.db.query).toHaveBeenCalledWith("profiles");
+    });
+
+    it("should handle useCounter true when counter is missing", async () => {
+      queryMock.unique.mockResolvedValue(null);
+      queryMock.collect.mockResolvedValue([1, 2]);
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        useCounter: true,
+      });
+      expect(result).toBe(2);
+    });
+
+    it("should use kycStatus index for complex filters if role is missing", async () => {
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+      queryMock.collect.mockResolvedValue([
+        { kycStatus: "pending", isVerified: false },
+        { kycStatus: "pending", isVerified: true },
+      ]);
+
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        kycStatus: "pending",
+        isVerified: true,
+      });
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) capturedFilter(q);
+      expect(q.eq).toHaveBeenCalledWith("kycStatus", "pending");
+      expect(result).toBe(1);
+    });
+
+    it("should use role index for complex filters if role is present", async () => {
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+      queryMock.collect.mockResolvedValue([
+        { role: "admin", isVerified: true },
+        { role: "admin", isVerified: false },
+      ]);
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        role: "admin",
+        isVerified: true,
+      });
+      const q = { eq: vi.fn() };
+      if (capturedFilter) capturedFilter(q);
+      expect(q.eq).toHaveBeenCalledWith("role", "admin");
+      expect(result).toBe(1);
+    });
+
+    it("should try to hit isVerified branch in complex block by providing only isVerified and skipping optimized", async () => {
+      queryMock.withIndex.mockImplementation(() => {
+        return queryMock;
+      });
+      // This test is just to ensure hasFilters logic is fully exercised
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        isVerified: true,
+        useCounter: false,
+      });
+      expect(result).toBe(0);
+    });
+  });
+
+  describe("logAudit", () => {
+    it("should use authUser ID", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      await logAudit(mockCtx as unknown as MutationCtx, { action: "test" });
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auditLogs",
+        expect.objectContaining({
+          adminId: "user1",
+        })
+      );
+    });
+
+    it("should handle error in logAudit counter update", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+      // Make updateCounter fail by making getCounter (which it calls) fail
+      queryMock.unique.mockRejectedValue(new Error("Database error"));
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await logAudit(mockCtx as unknown as MutationCtx, {
+        action: "test",
+        system: true,
+      });
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to update auditLogs counter"),
+        expect.any(Error)
+      );
+      spy.mockRestore();
+    });
+
+    it("should use SYSTEM for system actions", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+      await logAudit(mockCtx as unknown as MutationCtx, {
+        action: "test",
+        system: true,
+      });
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auditLogs",
+        expect.objectContaining({
+          adminId: "SYSTEM",
+        })
+      );
+    });
+
+    it("should use UNAUTHENTICATED otherwise", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+      await logAudit(mockCtx as unknown as MutationCtx, { action: "test" });
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auditLogs",
+        expect.objectContaining({
+          adminId: "UNAUTHENTICATED",
+        })
+      );
+    });
+  });
+
+  describe("updateCounter", () => {
+    it("should use absolute value if requested", async () => {
+      queryMock.unique.mockResolvedValue({ _id: "c1", total: 10 });
+      await updateCounter(
+        mockCtx as unknown as MutationCtx,
+        "test",
+        "total",
+        50,
+        true
+      );
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "c1",
+        expect.objectContaining({
+          total: 50,
+        })
+      );
+    });
+
+    it("should handle absolute value even if counter doesn't exist", async () => {
+      queryMock.unique.mockResolvedValue(null);
+      await updateCounter(
+        mockCtx as unknown as MutationCtx,
+        "test",
+        "total",
+        50,
+        true
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "counters",
+        expect.objectContaining({
+          total: 50,
+        })
+      );
+    });
+
+    it("should clamp to 0 and warn on underflow", async () => {
+      queryMock.unique.mockResolvedValue({ _id: "c1", total: 10 });
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      await updateCounter(
+        mockCtx as unknown as MutationCtx,
+        "test",
+        "total",
+        -20
+      );
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "c1",
+        expect.objectContaining({
+          total: 0,
+        })
+      );
+      expect(spy).toHaveBeenCalled();
+
+      // Test absolute underflow to hit the other branch in the warning message
+      await updateCounter(
+        mockCtx as unknown as MutationCtx,
+        "test",
+        "total",
+        -5,
+        true
+      );
+      expect(spy).toHaveBeenCalledTimes(2);
+
+      spy.mockRestore();
+    });
+
+    it("should initialize counter if not existing", async () => {
+      queryMock.unique.mockResolvedValue(null);
+      await updateCounter(
+        mockCtx as unknown as MutationCtx,
+        "test",
+        "active",
+        5
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "counters",
+        expect.objectContaining({
+          name: "test",
+          active: 5,
+          total: 0,
+        })
+      );
+    });
   });
 });

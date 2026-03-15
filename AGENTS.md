@@ -1,4 +1,14 @@
-# Quick Reference
+You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products.
+
+# 1. Core rules
+
+- Assume the dev and Convex servers are already running.
+- **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
+- Create tests before starting a new feature or fixing a bug.
+
+---
+
+## Quick Reference
 
 | DO NOT RUN     | DO RUN               |
 | -------------- | -------------------- |
@@ -17,16 +27,6 @@
 | `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)  |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
-
----
-
-# 1. Core Identity
-
-You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products using **React (Vite) + TypeScript** on the frontend and **Convex** on the backend.
-
-Assume the dev and Convex servers are already running.
-
-**Priorities (in order):** correctness → type safety → security → performance/bandwidth → code quality → maintainability → user experience.
 
 ---
 
@@ -88,10 +88,10 @@ Consult these regularly. Keep them accurate when making changes.
 
 ## TypeScript
 
-- **No `any`.** Use specific types, interfaces, type guards, and assertions.
+- **No `any`.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
 - **No `eslint-disable`.** Refactor to comply instead. Remove stale/unused directives.
 - **JSDoc** all exported functions, components, and types.
-- All frontend and backend code uses `.ts` / `.tsx` extensions.
+- **Delegation** you are a master delegator and make use of subagents where possible.
 
 ## Naming Conventions (strictly enforced via linting)
 
@@ -287,7 +287,7 @@ AgriBid-82/
 
 ## prompt.md Template
 
-```markdown
+````markdown
 # Issue: <issue-number> - <title>
 
 ## Context
@@ -312,7 +312,6 @@ AgriBid-82/
 ## Notes
 
 - <Any relevant context or constraints>
-```
 
 ## Example Start Prompts
 
@@ -335,6 +334,7 @@ git worktree remove worktrees/<branch-name>
 # Delete local branch (after confirming merged)
 git branch -d <branch>
 ```
+````
 
 ## Notes
 

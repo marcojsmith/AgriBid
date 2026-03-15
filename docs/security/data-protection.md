@@ -6,12 +6,12 @@ This document describes data protection policies, PII handling, encryption, and 
 
 ### Data Categories
 
-| Category | Examples | Protection Level |
-|----------|----------|------------------|
-| Public | Auction listings, images, descriptions | None required |
-| Private | User profile data, bid history | Authentication required |
-| Sensitive (PII) | ID numbers, phone numbers, addresses | Encryption required |
-| Confidential | Admin actions, audit logs | Access control |
+| Category        | Examples                               | Protection Level        |
+| --------------- | -------------------------------------- | ----------------------- |
+| Public          | Auction listings, images, descriptions | None required           |
+| Private         | User profile data, bid history         | Authentication required |
+| Sensitive (PII) | ID numbers, phone numbers, addresses   | Encryption required     |
+| Confidential    | Admin actions, audit logs              | Access control          |
 
 ---
 
@@ -21,26 +21,26 @@ This document describes data protection policies, PII handling, encryption, and 
 
 The following fields in the `profiles` table are encrypted:
 
-| Field | Description | Encryption |
-|-------|-------------|------------|
-| `firstName` | User's first name | AES-256-GCM |
-| `lastName` | User's last name | AES-256-GCM |
-| `idNumber` | Government ID number | AES-256-GCM |
+| Field         | Description          | Encryption  |
+| ------------- | -------------------- | ----------- |
+| `firstName`   | User's first name    | AES-256-GCM |
+| `lastName`    | User's last name     | AES-256-GCM |
+| `idNumber`    | Government ID number | AES-256-GCM |
 | `phoneNumber` | Contact phone number | AES-256-GCM |
-| `kycEmail` | KYC submission email | AES-256-GCM |
+| `kycEmail`    | KYC submission email | AES-256-GCM |
 
 ### Non-PII Fields (Stored Plaintext)
 
-| Field | Description |
-|-------|-------------|
-| `userId` | Auth user reference |
-| `role` | User role (buyer/seller/admin) |
-| `isVerified` | Verification status |
-| `kycStatus` | KYC status |
-| `bio` | User bio (user-provided) |
-| `companyName` | Business name |
-| `createdAt` | Creation timestamp |
-| `updatedAt` | Last update timestamp |
+| Field         | Description                    |
+| ------------- | ------------------------------ |
+| `userId`      | Auth user reference            |
+| `role`        | User role (buyer/seller/admin) |
+| `isVerified`  | Verification status            |
+| `kycStatus`   | KYC status                     |
+| `bio`         | User bio (user-provided)       |
+| `companyName` | Business name                  |
+| `createdAt`   | Creation timestamp             |
+| `updatedAt`   | Last update timestamp          |
 
 ---
 
@@ -67,11 +67,11 @@ if (IS_PRODUCTION && !ENCRYPTION_KEY_STR) {
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PII_ENCRYPTION_KEY` | Production: Yes | 32-byte encryption key |
-| `APP_ENV` | Production: Yes | Set to "production" |
-| `ALLOW_PII_DEV_FALLBACK` | Development only | Enable dev encryption |
+| Variable                 | Required         | Description            |
+| ------------------------ | ---------------- | ---------------------- |
+| `PII_ENCRYPTION_KEY`     | Production: Yes  | 32-byte encryption key |
+| `APP_ENV`                | Production: Yes  | Set to "production"    |
+| `ALLOW_PII_DEV_FALLBACK` | Development only | Enable dev encryption  |
 
 ### Encryption Flow
 
@@ -127,13 +127,13 @@ Return Plaintext
 
 ### Access Patterns
 
-| Data Type | Who Can Access | Method |
-|-----------|----------------|--------|
-| Own Profile | Self | Authenticated query |
-| Other Profiles | Admins only | Admin queries |
-| Own Bids | Self | Authenticated query |
-| All Bids (auction) | Authenticated users | Public query |
-| PII Fields | Admin/Self | Accessed server-side only |
+| Data Type          | Who Can Access      | Method                    |
+| ------------------ | ------------------- | ------------------------- |
+| Own Profile        | Self                | Authenticated query       |
+| Other Profiles     | Admins only         | Admin queries             |
+| Own Bids           | Self                | Authenticated query       |
+| All Bids (auction) | Authenticated users | Public query              |
+| PII Fields         | Admin/Self          | Accessed server-side only |
 
 ### Server-Side Processing
 
@@ -145,18 +145,18 @@ export const getUserProfile = query({
   args: { userId: v.id("profiles") },
   handler: async (ctx, args) => {
     const profile = await ctx.db.get(args.userId);
-    
+
     // Decrypt PII server-side only
     const decryptedProfile = {
       ...profile,
       firstName: await decryptPII(profile.firstName),
       lastName: await decryptPII(profile.lastName),
       idNumber: await decryptPII(profile.idNumber),
-      phoneNumber: await decryptPII(profile.phoneNumber)
+      phoneNumber: await decryptPII(profile.phoneNumber),
     };
-    
+
     return decryptedProfile;
-  }
+  },
 });
 ```
 
@@ -166,15 +166,15 @@ export const getUserProfile = query({
 
 ### Retention Periods
 
-| Data Type | Retention | Reason |
-|-----------|-----------|--------|
-| Active auctions | Until sold + 30 days | Transaction records |
-| Closed auctions | Indefinite | Historical reference |
-| Bids | Indefinite | Audit trail |
-| Profiles | While active | Service provision |
-| Deleted profiles | 90 days | Grace period for recovery |
-| Audit logs | 2 years | Compliance requirement |
-| Support tickets | Resolution + 1 year | Dispute resolution |
+| Data Type        | Retention            | Reason                    |
+| ---------------- | -------------------- | ------------------------- |
+| Active auctions  | Until sold + 30 days | Transaction records       |
+| Closed auctions  | Indefinite           | Historical reference      |
+| Bids             | Indefinite           | Audit trail               |
+| Profiles         | While active         | Service provision         |
+| Deleted profiles | 90 days              | Grace period for recovery |
+| Audit logs       | 2 years              | Compliance requirement    |
+| Support tickets  | Resolution + 1 year  | Dispute resolution        |
 
 ### Deletion Process
 
@@ -221,12 +221,12 @@ Permanent deletion
 
 ### Data Subject Rights
 
-| Right | Implementation |
-|-------|----------------|
-| Access | Profile viewing in app |
-| Correction | Edit profile functionality |
-| Deletion | Account deletion request |
-| Portability | Data export (future) |
+| Right       | Implementation             |
+| ----------- | -------------------------- |
+| Access      | Profile viewing in app     |
+| Correction  | Edit profile functionality |
+| Deletion    | Account deletion request   |
+| Portability | Data export (future)       |
 
 ---
 
@@ -307,6 +307,7 @@ Permanent deletion
 ### Encryption Key Compromise
 
 If encryption key is compromised:
+
 1. Rotate key immediately
 2. Re-encrypt all PII with new key
 3. Audit access logs
@@ -333,4 +334,4 @@ If encryption key is compromised:
 
 ---
 
-*Last Updated: 2026-03-02*
+_Last Updated: 2026-03-02_

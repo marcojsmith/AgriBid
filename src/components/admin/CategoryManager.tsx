@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -88,6 +89,9 @@ export function CategoryManager({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Category</DialogTitle>
+              <DialogDescription>
+                Create a new equipment category for the marketplace.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -252,6 +256,9 @@ function EditCategoryDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Category</DialogTitle>
+          <DialogDescription>
+            Update the name of the equipment category.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">

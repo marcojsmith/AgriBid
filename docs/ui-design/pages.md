@@ -11,12 +11,14 @@ This document describes all pages in the AgriBid application, their layouts, com
 The main marketplace landing page displaying active auctions.
 
 **Layout:**
+
 - Hero section with search bar and featured auctions
 - Filter sidebar (left, collapsible on mobile)
 - Auction grid (main content area)
 - Footer
 
 **Components:**
+
 - `Header` - Navigation bar with search
 - `SearchBar` - Global search input
 - `FilterSidebar` - Advanced filtering options
@@ -24,12 +26,14 @@ The main marketplace landing page displaying active auctions.
 - `AuctionCardSkeleton` - Loading placeholder
 
 **Features:**
+
 - Dynamic view toggle (Detailed/Compact)
 - Real-time countdown timers
 - Quick watch action
 - Advanced filtering (Make, Year, Price, Hours)
 
 **Responsive:**
+
 - Desktop: Sidebar visible, 3-4 column grid
 - Tablet: Collapsible sidebar, 2-3 column grid
 - Mobile: Hidden sidebar (drawer), 1-2 column grid
@@ -41,16 +45,19 @@ The main marketplace landing page displaying active auctions.
 User authentication page.
 
 **Layout:**
+
 - Centered login form
 - OAuth provider buttons (Google)
 - Email/password form
 - Registration link
 
 **Components:**
+
 - `Login` form component
 - OAuth buttons
 
 **Features:**
+
 - Email/password login
 - Google OAuth integration
 - Registration redirect
@@ -62,11 +69,13 @@ User authentication page.
 Detailed view of a single auction listing.
 
 **Layout:**
+
 - Two-column layout (images left, info right)
 - Bid history section (collapsible)
 - Related auctions footer
 
 **Components:**
+
 - `ImageGallery` - Main image with thumbnails
 - `AuctionHeader` - Title, make, model, year
 - `BiddingPanel` - Current bid, bid form
@@ -75,6 +84,7 @@ Detailed view of a single auction listing.
 - `SellerInfo` - Seller profile summary
 
 **Features:**
+
 - Real-time bid updates via Convex
 - Image lightbox gallery
 - Bid confirmation modal
@@ -90,14 +100,17 @@ Detailed view of a single auction listing.
 User's active and historical bids.
 
 **Layout:**
+
 - Tabs: Active Bids | Winning | Lost
 - Bid cards with auction details
 
 **Components:**
+
 - `MyBids` - Main dashboard component
 - Bid cards showing auction info, bid amount, status
 
 **Features:**
+
 - Filter by status (active, winning, lost)
 - Quick navigation to auction
 - Bid amount display
@@ -109,14 +122,17 @@ User's active and historical bids.
 Seller's auction listings.
 
 **Layout:**
+
 - Tabs: Draft | Active | Ended
 - Listing cards with status
 
 **Components:**
+
 - `MyListings` - Main dashboard component
 - Listing cards with status badges
 
 **Features:**
+
 - Filter by status
 - Edit draft listings
 - View active/ended listings
@@ -129,14 +145,17 @@ Seller's auction listings.
 User's saved auctions.
 
 **Layout:**
+
 - Grid of watched auctions
 - Empty state when no items
 
 **Components:**
+
 - `Watchlist` - Main page component
 - `AuctionCard` - Watched auction cards
 
 **Features:**
+
 - Real-time status updates
 - Quick unwatch action
 - Navigate to auction
@@ -148,15 +167,18 @@ User's saved auctions.
 User profile management.
 
 **Layout:**
+
 - Profile information form
 - Avatar upload
 - Account settings
 
 **Components:**
+
 - `Profile` - Main page component
 - Profile form with fields
 
 **Features:**
+
 - Edit profile information
 - View KYC status
 - Manage account settings
@@ -168,14 +190,17 @@ User profile management.
 User support ticket creation and viewing.
 
 **Layout:**
+
 - Ticket list (existing tickets)
 - New ticket form
 
 **Components:**
+
 - `Support` - Main page component
 - Ticket creation form
 
 **Features:**
+
 - Create new support tickets
 - View ticket history
 - Ticket status tracking
@@ -189,6 +214,7 @@ User support ticket creation and viewing.
 Multi-step listing wizard for creating new auction listings.
 
 **Layout:**
+
 - Step indicator (top)
 - Step content (main area)
 - Navigation buttons (bottom)
@@ -222,6 +248,7 @@ Multi-step listing wizard for creating new auction listings.
    - Review all details
 
 **Components:**
+
 - `WizardNavigation` - Back/Next buttons
 - `StepIndicator` - Visual step progress
 
@@ -234,16 +261,19 @@ Multi-step listing wizard for creating new auction listings.
 Know Your Customer verification flow.
 
 **Layout:**
+
 - Verification status section
 - Document upload section
 - Personal information section
 
 **Sections:**
+
 - `VerificationStatusSection` - Current status display
 - `DocumentUploadSection` - ID document upload
 - `PersonalInfoSection` - Personal details form
 
 **Features:**
+
 - Upload government ID
 - Submit personal information
 - Track verification status
@@ -260,6 +290,7 @@ All admin pages share a common layout component that provides consistent navigat
 **Location:** `components/admin/AdminLayout.tsx`
 
 **Features:**
+
 - **KPI Header**: Persistent header displayed on all `/admin/*` routes showing:
   - Live Auctions
   - Total Users
@@ -269,6 +300,7 @@ All admin pages share a common layout component that provides consistent navigat
 - **Layout**: KPI header above per-page content
 
 **Usage:** All admin route pages wrap their content with `<AdminLayout>` to ensure consistent header and navigation across:
+
 - Admin Dashboard (`/admin`)
 - Admin Marketplace (`/admin/marketplace`)
 - Admin Auctions (`/admin/auctions`)
@@ -281,15 +313,18 @@ All admin pages share a common layout component that provides consistent navigat
 Main admin overview with statistics.
 
 **Layout:**
+
 - Statistics cards (top)
 - Tabs for different admin functions
 
 **Components:**
+
 - `StatCard` - Key metrics display
 - `SummaryCard` - Summary statistics
 - `BidMonitor` - Real-time bid activity
 
 **Metrics:**
+
 - Total auctions
 - Active auctions
 - Total users
@@ -303,6 +338,7 @@ Main admin overview with statistics.
 Marketplace overview and management.
 
 **Layout:**
+
 - Marketplace statistics
 - Recent activity
 
@@ -313,15 +349,18 @@ Marketplace overview and management.
 Auction moderation and management.
 
 **Layout:**
+
 - Auction list with filters
 - Bulk action toolbar
 - Individual auction actions
 
 **Components:**
+
 - `AdminAuctions` - Main page
 - `BulkActionDialog` - Bulk operations
 
 **Features:**
+
 - Filter by status
 - Approve/reject listings
 - View auction details
@@ -334,14 +373,17 @@ Auction moderation and management.
 Content moderation interface.
 
 **Layout:**
+
 - Pending listings queue
 - Moderation actions
 
 **Components:**
+
 - `AdminModeration` - Main page
 - `ModerationCard` - Listing for review
 
 **Features:**
+
 - Review pending listings
 - Approve with conditions
 - Reject with reason
@@ -353,14 +395,17 @@ Content moderation interface.
 User management interface.
 
 **Layout:**
+
 - User list with search
 - User detail view
 
 **Components:**
+
 - `AdminUsers` - Main page
 - User action buttons
 
 **Features:**
+
 - View user profiles
 - Promote to admin
 - View KYC status
@@ -372,16 +417,19 @@ User management interface.
 KYC verification management.
 
 **Layout:**
+
 - Pending applications queue
 - Document review interface
 - Approval/rejection actions
 
 **Components:**
+
 - KYC application list
 - `KycReviewDialog` - Review modal
 - Document viewer
 
 **Features:**
+
 - Review pending applications
 - Approve/reject with reason
 - View submitted documents
@@ -393,14 +441,17 @@ KYC verification management.
 Support ticket management.
 
 **Layout:**
+
 - Ticket list with filters
 - Ticket detail view
 
 **Components:**
+
 - `AdminSupport` - Main page
 - `SupportTab` - Ticket list
 
 **Features:**
+
 - View open tickets
 - Mark as resolved
 - Assign priority
@@ -412,10 +463,12 @@ Support ticket management.
 Financial overview and tracking.
 
 **Layout:**
+
 - Revenue statistics
 - Transaction history
 
 **Components:**
+
 - `FinanceTab` - Financial data
 
 ---
@@ -425,13 +478,16 @@ Financial overview and tracking.
 Audit log viewer.
 
 **Layout:**
+
 - Filterable audit log table
 - Action details
 
 **Components:**
+
 - `AuditTab` - Audit log display
 
 **Features:**
+
 - View all admin actions
 - Filter by admin, action type, date
 
@@ -442,13 +498,16 @@ Audit log viewer.
 Platform announcement management.
 
 **Layout:**
+
 - Announcement list
 - Create announcement form
 
 **Components:**
+
 - `AdminAnnouncements` - Main page
 
 **Features:**
+
 - Create announcements
 - Schedule announcements
 - Target all users or specific users
@@ -460,10 +519,12 @@ Platform announcement management.
 Platform settings management.
 
 **Layout:**
+
 - Settings form
 - Configuration options
 
 **Components:**
+
 - `AdminSettings` - Main page
 
 ---
@@ -473,13 +534,16 @@ Platform settings management.
 User notification center.
 
 **Layout:**
+
 - Notification list
 - Mark all read action
 
 **Components:**
+
 - `Notifications` - Main page component
 
 **Features:**
+
 - View all notifications
 - Mark as read
 - Navigate to related content
@@ -490,13 +554,13 @@ User notification center.
 
 ### Role-Based Access
 
-| Route | Required Role |
-|-------|---------------|
-| `/dashboard/*` | Authenticated user |
-| `/sell` | `seller` or `buyer` |
-| `/kyc` | Authenticated user |
-| `/admin/*` | `admin` |
-| `/watchlist` | Authenticated user |
+| Route          | Required Role       |
+| -------------- | ------------------- |
+| `/dashboard/*` | Authenticated user  |
+| `/sell`        | `seller` or `buyer` |
+| `/kyc`         | Authenticated user  |
+| `/admin/*`     | `admin`             |
+| `/watchlist`   | Authenticated user  |
 
 ### Components
 
@@ -520,4 +584,4 @@ Displayed on server errors.
 
 ---
 
-*Last Updated: 2026-03-02*
+_Last Updated: 2026-03-02_

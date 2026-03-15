@@ -6,6 +6,7 @@ Your purpose is to assist the user in developing a digital prototype for an auct
 The user wants to develop an auction platform that allows users to bid on agricultural products. The platform will have a real-time bidding system, user authentication, and a responsive UI. The project will be built using React for the frontend, Convex for the backend and database.
 
 Additional documentation can be found in the following folders and files:
+
 - Brief.md
 - Checklist.md
 - codebase_notes.md
@@ -24,6 +25,7 @@ Determine the best course of action for the user based on the current state of t
 # Rules & Guidelines
 
 ## Senior Developer Mindset
+
 - Always consider the broader context of the project and how your changes fit into the overall architecture and design of the application.
 - Prioritize code quality, maintainability, and scalability in all your work.
 - Be proactive in identifying potential issues and improvements, and take the initiative to address them.
@@ -34,38 +36,38 @@ Determine the best course of action for the user based on the current state of t
 
 - **Frontend:** React (Vite), TypeScript.
 - **Backend/Database:** Convex (Real-time auction state synchronization).
-    - Important files to consider:
-        - `app/convex/auctions.ts`: Contains the auction logic.
-        - `app/convex/auth.ts`, `app/convex/auth.config.ts`: Handles user authentication and management.
-        - `app/convex/convex.config.ts`, `app/convex/config.ts`: Convex configuration files.
-        - `app/convex/schema.ts`: Defines the database schema for the application.
-        - `app/convex/seed.ts`: Contains seed data for the database.
-        - `app/convex/http.ts`: Handles HTTP requests and API routes.
+  - Important files to consider:
+    - `app/convex/auctions.ts`: Contains the auction logic.
+    - `app/convex/auth.ts`, `app/convex/auth.config.ts`: Handles user authentication and management.
+    - `app/convex/convex.config.ts`, `app/convex/config.ts`: Convex configuration files.
+    - `app/convex/schema.ts`: Defines the database schema for the application.
+    - `app/convex/seed.ts`: Contains seed data for the database.
+    - `app/convex/http.ts`: Handles HTTP requests and API routes.
 - **Authentication:** BetterAuth (for user authentication and management).
-    - Important to note, the BetterAuth logic is implemented in the `app/convex/auth.ts` and `app/convex/auth.config.ts` files, which are part of the Convex backend. This means that user authentication and management are handled on the server side, ensuring secure access to the application.
-    - Also, the BetterAuth component is defined in `app/convex/convex.config.ts`, which is the main configuration file for the Convex backend. This allows for seamless integration of authentication features into the overall application architecture.
+  - Important to note, the BetterAuth logic is implemented in the `app/convex/auth.ts` and `app/convex/auth.config.ts` files, which are part of the Convex backend. This means that user authentication and management are handled on the server side, ensuring secure access to the application.
+  - Also, the BetterAuth component is defined in `app/convex/convex.config.ts`, which is the main configuration file for the Convex backend. This allows for seamless integration of authentication features into the overall application architecture.
 - **Architecture:** `src/core` contains pure business logic, isolated from UI/Backend.
 - **Testing:** Chrome DevTools MCP (E2E/UI), Vitest.
 
 ## Operational Rules
 
 - **Running development server:**
-    - Assume the development and convex servers are already running when making changes.
+  - Assume the development and convex servers are already running when making changes.
 - **Legacy code and data:**
-    - We are developing a new digital prototype, so there is no legacy code or data to consider. All code and data should be treated as new and can be modified freely.
-    - Change code could cause data issues, so be mindful of any data-related changes that need to be made as part of code changes and ensure that they are properly tested.
+  - We are developing a new digital prototype, so there is no legacy code or data to consider. All code and data should be treated as new and can be modified freely.
+  - Change code could cause data issues, so be mindful of any data-related changes that need to be made as part of code changes and ensure that they are properly tested.
 - **commits and branches:**
-    - Follow the commit message format specified in `Checklist.md` for all commits. Ensure the commit message is clear, concise, and accurately describes the changes made in the commit.
-    - Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
-    - When committing changes, group the changes by functionality or related changes, and avoid making large commits that include unrelated changes. This will make it easier to review and understand the changes being made.
+  - Follow the commit message format specified in `Checklist.md` for all commits. Ensure the commit message is clear, concise, and accurately describes the changes made in the commit.
+  - Create branches for each new feature or bug fix, following the naming convention `feature/description` or `bugfix/description`.
+  - When committing changes, group the changes by functionality or related changes, and avoid making large commits that include unrelated changes. This will make it easier to review and understand the changes being made.
 - **Pull Requests:**
-    - Open a pull request for each completed feature or bug fix.
-    - Include a clear description of the changes made and reference any relevant issues or tasks.
-    - Ensure that all automated tests pass before requesting a review.
+  - Open a pull request for each completed feature or bug fix.
+  - Include a clear description of the changes made and reference any relevant issues or tasks.
+  - Ensure that all automated tests pass before requesting a review.
 - **Cohesive Code Changes:**
-    - When making code changes, ensure that they are cohesive and related to a single feature or bug fix. Avoid making unrelated changes in the same commit or pull request, as this can make it difficult to review and understand the changes.
-    - If you need to make multiple unrelated changes, consider breaking them into separate commits or pull requests to maintain clarity and ease of review.
-    - Make sure when adding a feature or fixing a bug, you consider all the necessary changes that need to be made across the codebase, including any related data changes, and ensure that they are all included in the same cohesive set of changes. Consider frontend changes, backend changes, database schema or seed data, security implications, testing changes, documentation updates, and any other relevant changes that are necessary to fully implement the feature or fix the bug in a cohesive manner.
+  - When making code changes, ensure that they are cohesive and related to a single feature or bug fix. Avoid making unrelated changes in the same commit or pull request, as this can make it difficult to review and understand the changes.
+  - If you need to make multiple unrelated changes, consider breaking them into separate commits or pull requests to maintain clarity and ease of review.
+  - Make sure when adding a feature or fixing a bug, you consider all the necessary changes that need to be made across the codebase, including any related data changes, and ensure that they are all included in the same cohesive set of changes. Consider frontend changes, backend changes, database schema or seed data, security implications, testing changes, documentation updates, and any other relevant changes that are necessary to fully implement the feature or fix the bug in a cohesive manner.
 
 ### Code Reviews:
 
@@ -132,72 +134,63 @@ Determine the best course of action for the user based on the current state of t
 ## Coding Rules
 
 - **Types**
-
-    - Use TypeScript for all frontend code.
-    - Use JSDoc comments for all backend code in Convex, which is written in TypeScript. This will help ensure that the backend code is well-documented and maintainable.    - Do not use `any` type in TypeScript. Always strive to use specific types to ensure type safety and improve code readability.
-    - Define interfaces and types for all data structures and function parameters/returns to ensure clarity and maintainability of the codebase.
-    - Use type guards and type assertions where necessary to ensure that the code is type-safe and to prevent potential runtime errors.
-    - Do not use eslint-disable or any other means to bypass type checking. If you encounter a situation where you feel the need to disable type checking, take a step back and consider how you can refactor the code to properly handle the types instead.
-    - When you encounter warnings like "warning  Unused eslint-disable directive (no problems were reported)", this means that there is an eslint-disable comment in the code that is not actually disabling any eslint rules, which can be a sign of leftover or unnecessary code. In this case, you should remove the unused eslint-disable directive to clean up the code and ensure that it is clear and maintainable.
-    - When you encounter code that has "eslint-disable" comments, this means that there are certain eslint rules that have been disabled for that section of code. This can be a sign that there may be issues with the code that are being ignored, which can lead to potential bugs or maintainability issues in the future. In this case, you should review the code carefully and consider whether it is possible to refactor the code to comply with the eslint rules instead of disabling them. If it is necessary to disable certain eslint rules, make sure to document the reasons for doing so and ensure that the code is still well-structured and maintainable.
+  - Use TypeScript for all frontend code.
+  - Use JSDoc comments for all backend code in Convex, which is written in TypeScript. This will help ensure that the backend code is well-documented and maintainable. - Do not use `any` type in TypeScript. Always strive to use specific types to ensure type safety and improve code readability.
+  - Define interfaces and types for all data structures and function parameters/returns to ensure clarity and maintainability of the codebase.
+  - Use type guards and type assertions where necessary to ensure that the code is type-safe and to prevent potential runtime errors.
+  - Do not use eslint-disable or any other means to bypass type checking. If you encounter a situation where you feel the need to disable type checking, take a step back and consider how you can refactor the code to properly handle the types instead.
+  - When you encounter warnings like "warning Unused eslint-disable directive (no problems were reported)", this means that there is an eslint-disable comment in the code that is not actually disabling any eslint rules, which can be a sign of leftover or unnecessary code. In this case, you should remove the unused eslint-disable directive to clean up the code and ensure that it is clear and maintainable.
+  - When you encounter code that has "eslint-disable" comments, this means that there are certain eslint rules that have been disabled for that section of code. This can be a sign that there may be issues with the code that are being ignored, which can lead to potential bugs or maintainability issues in the future. In this case, you should review the code carefully and consider whether it is possible to refactor the code to comply with the eslint rules instead of disabling them. If it is necessary to disable certain eslint rules, make sure to document the reasons for doing so and ensure that the code is still well-structured and maintainable.
 
 - **Code Style:**
-
-    - Follow the code style guidelines specified in `conductor/code_styleguides/typescript.md`, `conductor/code_styleguides/javascript.md`, and `conductor/code_styleguides/html-css.md` for all code written in the respective languages. This will help ensure that the codebase is consistent, readable, and maintainable across the entire project.
-    - Use meaningful variable and function names that accurately describe their purpose and functionality. This will improve code readability and make it easier for other developers to understand the codebase.
-    - Write modular and reusable code by breaking down complex functions into smaller, more focused functions. This will improve code maintainability and make it easier to test and debug the codebase.
-    - Avoid code duplication by creating reusable components and functions. This will help reduce the overall codebase size and improve maintainability.
-    - Ensure that all code is well-documented with clear comments explaining the purpose and functionality of complex code sections. This will help other developers understand the codebase and make it easier to maintain and update the code in the future.
-    - Regularly review and refactor the codebase to improve code quality, readability, and maintainability. This will help ensure that the codebase remains clean and efficient as the project evolves and grows over time.
+  - Follow the code style guidelines specified in `conductor/code_styleguides/typescript.md`, `conductor/code_styleguides/javascript.md`, and `conductor/code_styleguides/html-css.md` for all code written in the respective languages. This will help ensure that the codebase is consistent, readable, and maintainable across the entire project.
+  - Use meaningful variable and function names that accurately describe their purpose and functionality. This will improve code readability and make it easier for other developers to understand the codebase.
+  - Write modular and reusable code by breaking down complex functions into smaller, more focused functions. This will improve code maintainability and make it easier to test and debug the codebase.
+  - Avoid code duplication by creating reusable components and functions. This will help reduce the overall codebase size and improve maintainability.
+  - Ensure that all code is well-documented with clear comments explaining the purpose and functionality of complex code sections. This will help other developers understand the codebase and make it easier to maintain and update the code in the future.
+  - Regularly review and refactor the codebase to improve code quality, readability, and maintainability. This will help ensure that the codebase remains clean and efficient as the project evolves and grows over time.
 
 ## UI Design Rules
 
 - **Clarity:**
-
-    - Ensure all UI elements are clear and intuitive.
-    - For example, using clear labels for buttons and form fields, and providing tooltips or help text where necessary to guide users through the interface.
-    - Make sure that the layout is organized and that important information is prominently displayed, such as the current highest bid in an auction or the time remaining for bidding.
+  - Ensure all UI elements are clear and intuitive.
+  - For example, using clear labels for buttons and form fields, and providing tooltips or help text where necessary to guide users through the interface.
+  - Make sure that the layout is organized and that important information is prominently displayed, such as the current highest bid in an auction or the time remaining for bidding.
 
 - **Consistency:**
-
-    - Maintain a consistent design language throughout the application.
-    - For example, using the same button styles, colors, and typography across all pages and components.
-    - Follow the design guidelines provided in `conductor/product-guidelines.md` to ensure a cohesive and user-friendly interface.
+  - Maintain a consistent design language throughout the application.
+  - For example, using the same button styles, colors, and typography across all pages and components.
+  - Follow the design guidelines provided in `conductor/product-guidelines.md` to ensure a cohesive and user-friendly interface.
 
 - **Accessibility:** Follow best practices for accessibility (e.g., ARIA roles, keyboard navigation).
 
 - **Responsiveness:**
-
-    - Design for the following screen sizes:
-        - Mobile: 375px width, 812px height (e.g., iPhone 14 Pro).
-        - Tablet: 768px width, 1024px height (e.g., iPad).
-        - Desktop: 1440px width, 900px height (e.g., MacBook Pro).
-    - Use responsive design techniques (e.g., media queries, flexible layouts) to ensure the application looks and functions well on all devices.
+  - Design for the following screen sizes:
+    - Mobile: 375px width, 812px height (e.g., iPhone 14 Pro).
+    - Tablet: 768px width, 1024px height (e.g., iPad).
+    - Desktop: 1440px width, 900px height (e.g., MacBook Pro).
+  - Use responsive design techniques (e.g., media queries, flexible layouts) to ensure the application looks and functions well on all devices.
 
 - **Feedback:** Provide users with clear feedback for their actions (e.g., loading indicators, success/error messages).
 
 - **Simplicity:** Avoid clutter and unnecessary elements.
 
 - **Theming:**
-
-    - Use a cohesive color scheme and typography that aligns with the application's brand.
-    - Make use of the defined theme styles, and do not hardcode colors or fonts directly in components.
-    - If a new theme style is needed, define it in the theme configuration.
+  - Use a cohesive color scheme and typography that aligns with the application's brand.
+  - Make use of the defined theme styles, and do not hardcode colors or fonts directly in components.
+  - If a new theme style is needed, define it in the theme configuration.
 
 - **skills:**
-
-    - Use the frontend, react-best-practice, react-composition-patterns, shadcn, and web-design-guidelines skills to inform your UI design decisions and implementation.
+  - Use the frontend, react-best-practice, react-composition-patterns, shadcn, and web-design-guidelines skills to inform your UI design decisions and implementation.
 
 - **Componentization:**
-
-    - Break down the UI into reusable components, following React best practices and composition patterns.
-    - When a component is needed, install it from shadcn if available, and customize it as needed to fit the design and functionality requirements of the application.
-    - Ensure that components are well-documented and maintainable, with clear props definitions and usage examples.
+  - Break down the UI into reusable components, following React best practices and composition patterns.
+  - When a component is needed, install it from shadcn if available, and customize it as needed to fit the design and functionality requirements of the application.
+  - Ensure that components are well-documented and maintainable, with clear props definitions and usage examples.
 
 - **Testing & Verification:**
-
-    - UI and UX is hard, and it's easy to make mistakes or overlook important details. Always test your UI changes thoroughly, and use tools like Chrome DevTools MCP to verify that the UI functions correctly and provides a good user experience across different devices and screen sizes.
-    - Do not assume that your first attempt at implementing a UI change is correct or suitable. Always verify and test your changes, and be open to making adjustments and experimenting with different approaches to achieve the best possible outcome for the user.
+  - UI and UX is hard, and it's easy to make mistakes or overlook important details. Always test your UI changes thoroughly, and use tools like Chrome DevTools MCP to verify that the UI functions correctly and provides a good user experience across different devices and screen sizes.
+  - Do not assume that your first attempt at implementing a UI change is correct or suitable. Always verify and test your changes, and be open to making adjustments and experimenting with different approaches to achieve the best possible outcome for the user.
 
 # Digital Prototype Tech Stack
 
@@ -211,6 +204,7 @@ Determine the best course of action for the user based on the current state of t
 Leverage 3rd party LLMs (Gemini 3.0 Pro, Kimi K2, GPT-5, Claude, Nano Banana Pro) to help brainstorm ideas, generate text/lore, or assist with specific tasks like coding, development, and design.
 
 **Model Selection:**
+
 - Convex AI: specialises in convex documentation and database design. Use for Convex-related queries.
 - Gemini 3.0 Pro: advanced reasoning, suitable for complex tasks.
 - Gemini 3.0 Flash: faster, suitable for simpler tasks.
@@ -232,37 +226,36 @@ Leverage 3rd party LLMs (Gemini 3.0 Pro, Kimi K2, GPT-5, Claude, Nano Banana Pro
 
 - **Usage:** You can ask the user to switch between Gemini 3.0 Pro and Gemini 3.0 Flash based on task complexity.
 - **Key Differences:**
-    - Gemini 3.0 Pro: More advanced reasoning, better for complex tasks.
-    - Gemini 3.0 Flash: Faster, suitable for simpler tasks.
+  - Gemini 3.0 Pro: More advanced reasoning, better for complex tasks.
+  - Gemini 3.0 Flash: Faster, suitable for simpler tasks.
 - **When to Use:**
-    - Utilize Gemini 3.0 Pro for brainstorming, content generation, and complex problem-solving.
-    - Use Gemini 3.0 Flash for quick tasks and simpler queries.
-
+  - Utilize Gemini 3.0 Pro for brainstorming, content generation, and complex problem-solving.
+  - Use Gemini 3.0 Flash for quick tasks and simpler queries.
 
 ## Chrome DevTools MCP
 
 - **Usage:** Integrated for automated UI testing, accessibility audits, and real-time debugging of the digital prototype.
 - **Key Actions:**
-    - `list_pages`: Monitor open tabs and development servers.
-    - `take_snapshot`: Analyze the accessibility tree and DOM structure.
-    - `navigate_page` / `new_page`: Automated navigation.
-    - `click` / `fill`: Interaction simulation.
+  - `list_pages`: Monitor open tabs and development servers.
+  - `take_snapshot`: Analyze the accessibility tree and DOM structure.
+  - `navigate_page` / `new_page`: Automated navigation.
+  - `click` / `fill`: Interaction simulation.
 - **Usage rules:**
-    - Use MCP to verify UI changes before committing code.
-    - Perform one step at a time to maintain context.
-    - The Snapshots become stale as soon as you change something on the page, and a new snapshot is sent back from the tool call as a response.
-    - Therefore perform one action at a time per tool call to maintain context. (e.g., "enter text in a field", etc.)
-    - Then once you have received the new snapshot as a response, proceed with the next action. (e.g., "click submit button", etc.)
+  - Use MCP to verify UI changes before committing code.
+  - Perform one step at a time to maintain context.
+  - The Snapshots become stale as soon as you change something on the page, and a new snapshot is sent back from the tool call as a response.
+  - Therefore perform one action at a time per tool call to maintain context. (e.g., "enter text in a field", etc.)
+  - Then once you have received the new snapshot as a response, proceed with the next action. (e.g., "click submit button", etc.)
 
 ## Vercel CLI
 
 - **Usage:** Run via `bunx vercel` from the **project root** directory.
 - **Project Structure:** Managed from the root to ensure all documentation folders (`1_RuleBook/`, etc.) are uploaded for the `prebuild` rules generation script.
 - **Dashboard Settings (Required):**
-    - **Root Directory:** Empty (or `.`).
-    - **Build Command:** `cd app && bunx convex deploy --cmd 'bun run build'`
-    - **Install Command:** `cd app && bun install` (Override ON).
-    - **Output Directory:** `app/dist`.
+  - **Root Directory:** Empty (or `.`).
+  - **Build Command:** `cd app && bunx convex deploy --cmd 'bun run build'`
+  - **Install Command:** `cd app && bun install` (Override ON).
+  - **Output Directory:** `app/dist`.
 - **Purpose:** Use for manual deployments, inspecting build logs (`bunx vercel logs`), and verifying environment health. Before assuming a deployment is successful, use `bunx vercel list` to confirm status.
 
 # Scratchbook Rules

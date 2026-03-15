@@ -1,11 +1,13 @@
 # Specification: Listing Lifecycle & Management (Drafts & Refinement)
 
 ## Overview
+
 Implement the missing auction lifecycle mutations (update, publish) to allow sellers to manage their listings, enhance the listing creation experience with draft persistence, and improve overall UX. This encompasses both backend Convex mutations and frontend refinements.
 
 ## Functional Requirements
 
 ### Phase 1: Backend Mutations (Convex)
+
 1. **`updateAuction` Mutation**:
    - **Location**: `app/convex/auctions/mutations.ts`
    - **Behavior**: Allows a seller to edit their own `draft` or `pending_review` auctions.
@@ -25,6 +27,7 @@ Implement the missing auction lifecycle mutations (update, publish) to allow sel
    - **Frequency**: Runs daily.
 
 ### Phase 2: Frontend Refinement (React)
+
 1. **Listing Wizard**:
    - Add support for saving, resuming, and editing drafts.
 2. **Seller Dashboard**:
@@ -34,11 +37,13 @@ Implement the missing auction lifecycle mutations (update, publish) to allow sel
    - Display a download link for the condition report (PDF) if available.
 
 ## Non-Functional Requirements
+
 - Ensure highly modular, well-commented code following the `conductor/code_styleguides/` conventions.
 - No `any` types in TypeScript.
 - Write unit tests for all backend mutations and run the test suite to verify permissions before moving to Phase 2.
 
 ## Acceptance Criteria
+
 - [ ] Seller can update all fields of their own `draft` or `pending_review` auctions.
 - [ ] Unauthorized users or non-owners are rejected when attempting to update or publish an auction.
 - [ ] Seller can transition a `draft` to `pending_review` via the `publishAuction` mutation.
@@ -49,4 +54,5 @@ Implement the missing auction lifecycle mutations (update, publish) to allow sel
 - [ ] The Frontend Auction Details view renders the condition report PDF link.
 
 ## Out of Scope
+
 - Changes to live or completed auctions.

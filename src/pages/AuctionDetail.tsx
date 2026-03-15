@@ -296,6 +296,9 @@ export default function AuctionDetail() {
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Condition Report</DialogTitle>
+            <DialogDescription>
+              Detailed condition and inspection report for this equipment.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {auction.conditionReportUrl ? (

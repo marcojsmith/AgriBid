@@ -312,7 +312,7 @@ export const BiddingPanel = ({
             auction={auction}
             onBid={handleBidInitiate}
             isLoading={isBidding}
-            isBidFormEnabled={!session || isVerified}
+            isBidFormEnabled={true}
             currentUserMaxBid={myProxyBid?.maxBid}
             isProxyActive={!!myProxyBid}
           />

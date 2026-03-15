@@ -1,4 +1,5 @@
 # AgriBid - Farming Equipment Auction Platform
+
 ## Project Specification Document
 
 ---
@@ -8,6 +9,7 @@
 **AgriBid** is a real-time, high-integrity auction platform purpose-built for the **farming equipment marketplace**. The platform leverages modern web technologies—**Vite + React**, **TypeScript**, **Convex (real-time backend)**, and **Better Auth**—to deliver a fast, secure, and transparent bidding experience for buyers and sellers of heavy machinery.
 
 ### Key Differentiators:
+
 - **Real-Time Bidding**: Sub-200ms latency using Convex's reactive architecture
 - **Farming-Specific Features**: Equipment condition reports and operating hours tracking
 - **Trust & Transparency**: Detailed inspection galleries, verified seller profiles, and immutable bid histories
@@ -18,19 +20,22 @@
 ## 2. Market Context & Research Findings (2026)
 
 ### Industry Landscape:
+
 - **Inventory Consolidation**: Post-2024 supply chain normalisation has created a secondary market boom for used equipment
 - **Trust Gap**: Buyers of $50k–$500k machinery are hesitant about online-only transactions without inspection transparency
 
 ### Competitive Analysis:
 
-| Platform | Real-Time Bidding | Equipment Focus |
-|----------|-------------------|-----------------|
-| **eBay** | ❌ (polling-based) | General |
-| **TractorHouse** | ✅ (limited) | ✅ Farming |
-| **AgriBid** | ✅ (Convex-powered) | ✅ Farming |
+| Platform         | Real-Time Bidding   | Equipment Focus |
+| ---------------- | ------------------- | --------------- |
+| **eBay**         | ❌ (polling-based)  | General         |
+| **TractorHouse** | ✅ (limited)        | ✅ Farming      |
+| **AgriBid**      | ✅ (Convex-powered) | ✅ Farming      |
 
 ### Solution Strategy:
+
 AgriBid bridges the trust gap through:
+
 1. **Mandatory Inspection Reports**: Multi-photo galleries with machine hour meters and service logs
 2. **Verified Seller Profiles**: Better Auth integration with business verification
 
@@ -39,15 +44,19 @@ AgriBid bridges the trust gap through:
 ## 3. User Personas & Use Cases
 
 ### A. The Seller (Retiring Farmer / Equipment Dealer)
+
 **Goals:**
+
 - Liquidate equipment quickly at fair market value
 - Reach a national buyer base without local auction house fees
 
 **Pain Points:**
+
 - Uncertainty about reserve price strategy
 - Time investment in photography and documentation
 
 **Use Cases:**
+
 1. Upload 50+ high-resolution photos via drag-and-drop
 2. [x] Auto-populate equipment specifications using make/model lookup
 3. Set reserve price with guidance from comparable sales data
@@ -56,14 +65,18 @@ AgriBid bridges the trust gap through:
 ---
 
 ### B. The Buyer (Active Producer / Investment Buyer)
+
 **Goals:**
+
 - Acquire late-model machinery with verifiable low hours
 - Avoid bidding wars through strategic proxy bidding
 
 **Pain Points:**
+
 - Difficulty verifying equipment condition remotely
 
 **Use Cases:**
+
 1. Filter auctions by max operating hours, location radius, and budget
 2. View 360° photo galleries with zoom capability
 3. Set maximum bid and receive push notifications when outbid
@@ -73,11 +86,14 @@ AgriBid bridges the trust gap through:
 ---
 
 ### C. The Platform Administrator
+
 **Goals:**
+
 - Maintain marketplace integrity
 - Resolve disputes efficiently
 
 **Use Cases:**
+
 1. Review flagged listings for compliance
 2. Generate analytics reports (GMV, conversion rates, avg. bid-to-ask ratio)
 3. Moderate user disputes with access to immutable bid logs
@@ -87,7 +103,9 @@ AgriBid bridges the trust gap through:
 ## 4. Feature List (Prioritised by MVP Phases)
 
 ### Phase 1: MVP - Core Auction Engine
+
 **Must-Have:**
+
 1. [x] **User Authentication (Better Auth)**
    - Email/password registration
    - Role-based access (Buyer / Seller / Admin)
@@ -106,12 +124,15 @@ AgriBid bridges the trust gap through:
    - Countdown timers (using `Date.now()` comparisons)
 
 **Nice-to-Have:**
+
 - Basic proxy bidding (users set max bid, system auto-increments)
 
 ---
 
 ### Phase 2: Trust & Transparency
+
 **Must-Have:**
+
 1. [x] **Inspection Gallery**
    - Lightbox view
    - Required photos: Front view (Required), Engine, Cabin, Rear (Recommended)
@@ -124,12 +145,15 @@ AgriBid bridges the trust gap through:
    - Badge system: "Verified User" (Role-based)
 
 **Nice-to-Have:**
+
 - Video upload support (30-second equipment walkarounds)
 
 ---
 
 ### Phase 3: Dispute Resolution & Support
+
 **Must-Have:**
+
 1. [ ] **Dispute Resolution**
    - Admin mediation interface for post-auction disputes
 2. [ ] **Support Ticket System**
@@ -141,6 +165,7 @@ AgriBid bridges the trust gap through:
 ---
 
 ### Phase 4: Advanced Features (Post-Launch)
+
 - **AI-Powered Pricing Suggestions**: Use historical sales data to recommend reserve prices
 - **AI Chatbot Support**: Real-time user assistance for bidding and listing queries
 - **SEO strategy**: Enhanced search engine visibility for auction listings
@@ -150,6 +175,7 @@ AgriBid bridges the trust gap through:
 ---
 
 ## 5. File Structure:
+
 The project is transitioning to a cleaner structure where application code resides at the root.
 
 ```text
@@ -161,45 +187,47 @@ The project is transitioning to a cleaner structure where application code resid
 ├── Checklist.md
 └── README.md
 ```
+
 ---
 
 ## 5. Technical Architecture
 
 ### 5.1 Stack Overview
+
 ┌─────────────────────────────────────────┐
-│         Frontend (Vite + React)         │
-│  • TypeScript                           │
-│  • Tailwind CSS + Shadcn/UI             │
-│  • React Router DOM                     │
+│ Frontend (Vite + React) │
+│ • TypeScript │
+│ • Tailwind CSS + Shadcn/UI │
+│ • React Router DOM │
 └────────────┬────────────────────────────┘
-             │
-             ▼
+│
+▼
 ┌─────────────────────────────────────────┐
-│       Auth Layer (Better Auth)          │
-│  • Convex Component                     │
-│  • Email/Password                       │
+│ Auth Layer (Better Auth) │
+│ • Convex Component │
+│ • Email/Password │
 └────────────┬────────────────────────────┘
-             │
-             ▼
+│
+▼
 ┌─────────────────────────────────────────┐
-│       Backend (Convex)                  │
-│  • Reactive Queries                     │
-│  • ACID Transactions (Mutations)        │
-│  • Scheduled Functions (Cron)           │
-│  • File Storage (Images)                │
+│ Backend (Convex) │
+│ • Reactive Queries │
+│ • ACID Transactions (Mutations) │
+│ • Scheduled Functions (Cron) │
+│ • File Storage (Images) │
 └────────────┬────────────────────────────┘
-             │
-             ▼
+│
+▼
 ┌─────────────────────────────────────────┐
-│       Data Layer (Convex DB)            │
-│  Tables:                                │
-│  • user                                 │
-│  • auctions                             │
-│  • bids                                 │
+│ Data Layer (Convex DB) │
+│ Tables: │
+│ • user │
+│ • auctions │
+│ • bids │
 └─────────────────────────────────────────┘
 
-
 ### 5.2 Starting Convex Schema Design
+
 ```typescript
 // convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
@@ -241,13 +269,15 @@ export default defineSchema({
       rear: v.optional(v.string()),
       additional: v.array(v.string()),
     }),
-    conditionChecklist: v.optional(v.object({
-      engine: v.boolean(),
-      hydraulics: v.boolean(),
-      tires: v.boolean(),
-      serviceHistory: v.boolean(),
-      notes: v.optional(v.string()),
-    })),
+    conditionChecklist: v.optional(
+      v.object({
+        engine: v.boolean(),
+        hydraulics: v.boolean(),
+        tires: v.boolean(),
+        serviceHistory: v.boolean(),
+        notes: v.optional(v.string()),
+      })
+    ),
   })
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])
@@ -266,7 +296,7 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     // Better Auth fields (some are optional/null depending on provider)
-    userId: v.optional(v.union(v.null(), v.string())), 
+    userId: v.optional(v.union(v.null(), v.string())),
     role: v.optional(v.string()),
   }).index("by_userId", ["userId"]), // Note: Index excludes records where userId is null/undefined
 });
@@ -275,6 +305,7 @@ export default defineSchema({
 ### 5.3 Starting Core Convex Functions
 
 #### Mutation: `placeBid`
+
 ```typescript
 // convex/auctions.ts
 import { v } from "convex/values";
@@ -289,7 +320,7 @@ export const placeBid = mutation({
     const auction = await ctx.db.get(args.auctionId);
     if (!auction) throw new Error("Auction not found");
     if (auction.status !== "active") throw new Error("Auction not active");
-    
+
     // Enforce Minimum Bid Increment
     const minimumRequired = auction.currentPrice + auction.minIncrement;
     if (args.amount < minimumRequired) {
@@ -299,9 +330,7 @@ export const placeBid = mutation({
     // Extend auction if bid placed in final 2 minutes
     const timeRemaining = auction.endTime - Date.now();
     const newEndTime =
-      timeRemaining < 120000
-        ? Date.now() + 120000
-        : auction.endTime;
+      timeRemaining < 120000 ? Date.now() + 120000 : auction.endTime;
 
     await ctx.db.patch(args.auctionId, {
       currentPrice: args.amount,
@@ -319,6 +348,7 @@ export const placeBid = mutation({
 ```
 
 #### Query: `getActiveAuctions`
+
 ```typescript
 export const getActiveAuctions = query({
   args: {},
@@ -332,6 +362,7 @@ export const getActiveAuctions = query({
 ```
 
 #### Scheduled Function: `settleAuctions`
+
 ```typescript
 // convex/cron.ts
 import { cronJobs } from "convex/server";
@@ -349,6 +380,7 @@ export default crons;
 ```
 
 > **Migration Checklist:** When moving code to the root structure, ensure you update:
+>
 > - [ ] Frontend imports and asset paths
 > - [ ] Backend Convex functions and schema references
 > - [ ] Database seed data and configuration
@@ -361,6 +393,7 @@ export default crons;
 ## 6. UI/UX Design Principles
 
 ### Design System (Tailwind + Shadcn/UI)
+
 - **Colour Palette**: Earth tones (olive greens, warm browns) to reflect agricultural heritage
 - **Typography**: Inter for UI, Lora for headings (conveys trust)
 - **Component Library**: Shadcn/UI for consistency (buttons, forms, modals)
@@ -368,6 +401,7 @@ export default crons;
 ### Key Pages:
 
 #### 1. Home Page (`/`)
+
 - **Hero Section**: Search bar + featured auctions carousel
 - **Filter Sidebar**: Equipment type, location radius, max hours, price range
 - **Auction Grid**: Card-based layout with:
@@ -378,6 +412,7 @@ export default crons;
   - "Watch" button
 
 #### 2. Auction Detail Page (`/auction/:id`)
+
 - **Left Column**: Image gallery (main image + thumbnails)
 - **Right Column**:
   - Equipment specs table
@@ -386,6 +421,7 @@ export default crons;
   - Equipment location and inspection report availability
 
 #### 3. Seller Dashboard (`/dashboard/seller`)
+
 - **My Listings**: Tabs (Draft / Active / Ended)
 - **Analytics**: Total views, bid count, conversion rate
 - **Create Listing**: Button → multi-step form modal
@@ -445,20 +481,24 @@ export default crons;
 ## 7. Non-Functional Requirements
 
 ### Performance:
+
 - **Page Load Time**: < 2s on 4G connection
 - **Time to Interactive**: < 3s
 - **Bid Submission Latency**: < 200ms (p95)
 
 ### Security:
+
 - **Authentication**: Better Auth with secure password hashing (bcrypt)
 - **HTTPS Only**: Enforce SSL in production
 - **Rate Limiting**: Max 10 bids per user per minute (Convex middleware)
 
 ### Scalability:
+
 - **Concurrent Users**: Support 10,000+ simultaneous bidders
 - **Database**: Convex auto-scales; no manual sharding required
 
 ### Accessibility:
+
 - **WCAG 2.1 AA Compliance**: Keyboard navigation, screen reader support
 - **Colour Contrast**: 4.5:1 minimum ratio
 
@@ -467,38 +507,43 @@ export default crons;
 ## 8. Development Plan & Milestones
 
 ### Sprint 1 (Weeks 1-2): Foundation
+
 - [x] Set up Vite + React + TypeScript project
 - [x] Configure Convex (schema, basic queries)
 - [x] Integrate Better Auth (email/password)
 - [x] Build NavBar + Home page skeleton
 
 ### Sprint 2 (Weeks 3-4): Core Bidding
+
 - [x] Implement `placeBid` mutation
 - [x] Build Auction Detail page
 - [x] Add real-time bid updates (Convex `useQuery`)
 - [x] Create countdown timer component
 
 ### Sprint 3 (Weeks 5-6): Listings & Images
+
 - [x] Build "Create Listing" form (multi-step)
 - [x] Integrate Convex File Storage
 - [x] Implement image gallery component
 - [x] Add seller dashboard
 
 ### Sprint 4 (Weeks 7-8): Trust & Admin Hardening
+
 - [ ] Add condition report uploads
 - [ ] Build seller verification system
 - [ ] Refine Admin Dashboard KPIs and Live Monitor
 - [ ] Implement pagination for all queries
 
 ### Sprint 5 (Weeks 9-10): Support & Polish
+
 - [ ] Implement Support Ticket system
 - [ ] Group bids in Buyer Dashboard
 - [ ] UI/UX Polish: resize animations, dropdown filters, uniform image sizing
 - [ ] Comprehensive unit test coverage
 
 ### Sprint 6 (Weeks 11-12): Production Launch
+
 - [ ] SEO Strategy implementation
 - [ ] AI Chatbot integration (Beta)
 - [ ] Production deployment (Vercel + Convex Cloud)
 - [ ] Final security hardening
-

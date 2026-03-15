@@ -10,6 +10,7 @@ import type { KYCFormData } from "../hooks/useKYCForm";
 interface PersonalInfoSectionProps {
   formData: KYCFormData;
   updateField: (field: keyof KYCFormData, value: string) => void;
+  errors?: Partial<Record<keyof KYCFormData, string>>;
 }
 
 /**
@@ -20,11 +21,13 @@ interface PersonalInfoSectionProps {
  * @param props - Component props.
  * @param props.formData - Current KYC form values for the fields displayed in this section
  * @param props.updateField - Callback to update a specific `KYCFormData` field: called with the field key and the new string value
+ * @param props.errors - Optional error messages for the fields displayed in this section
  * @returns The JSX element for the personal information form section
  */
 export function PersonalInfoSection({
   formData,
   updateField,
+  errors,
 }: PersonalInfoSectionProps) {
   return (
     <Card className="p-6 border-2 space-y-6">
@@ -46,10 +49,20 @@ export function PersonalInfoSection({
           <Input
             id="firstName"
             placeholder="Enter all names as per ID"
-            className="h-12 border-2 rounded-xl"
+            className={`h-12 border-2 rounded-xl ${errors?.firstName ? "border-destructive" : ""}`}
             value={formData.firstName}
             onChange={(e) => updateField("firstName", e.target.value)}
+            aria-invalid={!!errors?.firstName}
+            aria-describedby="firstName-error"
           />
+          {errors?.firstName && (
+            <p
+              id="firstName-error"
+              className="text-[10px] text-destructive font-black uppercase px-1"
+            >
+              {errors.firstName}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label
@@ -61,10 +74,15 @@ export function PersonalInfoSection({
           <Input
             id="lastName"
             placeholder="Surname"
-            className="h-12 border-2 rounded-xl"
+            className={`h-12 border-2 rounded-xl ${errors?.lastName ? "border-destructive" : ""}`}
             value={formData.lastName}
             onChange={(e) => updateField("lastName", e.target.value)}
           />
+          {errors?.lastName && (
+            <p className="text-[10px] text-destructive font-black uppercase px-1">
+              {errors.lastName}
+            </p>
+          )}
         </div>
       </div>
 
@@ -81,11 +99,16 @@ export function PersonalInfoSection({
             <Input
               id="idNumber"
               placeholder="National ID Number"
-              className="h-12 pl-10 border-2 rounded-xl"
+              className={`h-12 pl-10 border-2 rounded-xl ${errors?.idNumber ? "border-destructive" : ""}`}
               value={formData.idNumber}
               onChange={(e) => updateField("idNumber", e.target.value)}
             />
           </div>
+          {errors?.idNumber && (
+            <p className="text-[10px] text-destructive font-black uppercase px-1">
+              {errors.idNumber}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label
@@ -100,11 +123,16 @@ export function PersonalInfoSection({
               id="phoneNumber"
               type="tel"
               placeholder="+27..."
-              className="h-12 pl-10 border-2 rounded-xl"
+              className={`h-12 pl-10 border-2 rounded-xl ${errors?.phoneNumber ? "border-destructive" : ""}`}
               value={formData.phoneNumber}
               onChange={(e) => updateField("phoneNumber", e.target.value)}
             />
           </div>
+          {errors?.phoneNumber && (
+            <p className="text-[10px] text-destructive font-black uppercase px-1">
+              {errors.phoneNumber}
+            </p>
+          )}
         </div>
       </div>
 
@@ -122,11 +150,16 @@ export function PersonalInfoSection({
               id="email"
               type="email"
               placeholder="verify@example.com"
-              className="h-12 pl-10 border-2 rounded-xl"
+              className={`h-12 pl-10 border-2 rounded-xl ${errors?.email ? "border-destructive" : ""}`}
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
             />
           </div>
+          {errors?.email && (
+            <p className="text-[10px] text-destructive font-black uppercase px-1">
+              {errors.email}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label
@@ -141,11 +174,21 @@ export function PersonalInfoSection({
               id="confirmEmail"
               type="email"
               placeholder="Repeat email address"
-              className="h-12 pl-10 border-2 rounded-xl"
+              className={`h-12 pl-10 border-2 rounded-xl ${errors?.confirmEmail ? "border-destructive" : ""}`}
               value={formData.confirmEmail}
               onChange={(e) => updateField("confirmEmail", e.target.value)}
+              aria-invalid={!!errors?.confirmEmail}
+              aria-describedby="confirmEmail-error"
             />
           </div>
+          {errors?.confirmEmail && (
+            <p
+              id="confirmEmail-error"
+              className="text-[10px] text-destructive font-black uppercase px-1"
+            >
+              {errors.confirmEmail}
+            </p>
+          )}
         </div>
       </div>
     </Card>
