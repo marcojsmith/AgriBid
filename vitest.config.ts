@@ -31,10 +31,30 @@ export default defineConfig({
       ],
       thresholds: {
         // Global Baseline - Updated March 2026 after test coverage improvements
-        statements: 91,
-        branches: 86,
-        functions: 85,
-        lines: 92,
+        statements: 93,
+        branches: 87,
+        functions: 90,
+        lines: 95,
+
+        // Phase 3: Improved Backend Files
+        "convex/support.ts": {
+          statements: 95,
+          branches: 95,
+          functions: 65, // Anonymous handlers in mutation/query objects are tricky
+          lines: 95,
+        },
+        "convex/config.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
+        "convex/lib/storage.ts": {
+          statements: 100,
+          branches: 100,
+          functions: 100,
+          lines: 100,
+        },
 
         // Security-critical: RoleProtectedRoute
         "src/components/RoleProtectedRoute.tsx": {

@@ -200,9 +200,24 @@ describe("Auth Utilities Coverage", () => {
           ReturnType<typeof authComponent.getAuthUser>
         >
       );
+
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+
       queryMock.unique.mockResolvedValue({ role: "buyer" } as Doc<"profiles">);
 
       expect(await getCallerRole(mockCtx as unknown as QueryCtx)).toBe("buyer");
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) {
+        capturedFilter(q);
+      }
+      expect(q.eq).toHaveBeenCalledWith("userId", "user1");
     });
 
     it("getCallerRole should return null if no profile or error", async () => {
@@ -325,6 +340,15 @@ describe("Auth Utilities Coverage", () => {
           ReturnType<typeof authComponent.getAuthUser>
         >
       );
+
+      let capturedFilter:
+        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
+        | undefined;
+      queryMock.withIndex.mockImplementation((_index, filter) => {
+        capturedFilter = filter;
+        return queryMock;
+      });
+
       const profile = { role: "buyer", isVerified: true } as Doc<"profiles">;
       queryMock.unique.mockResolvedValue(profile);
 
@@ -333,6 +357,12 @@ describe("Auth Utilities Coverage", () => {
       );
       expect(result?.profile).toEqual(profile);
       expect(result?.userId).toBe("user1");
+
+      const q = { eq: vi.fn() };
+      if (capturedFilter) {
+        capturedFilter(q);
+      }
+      expect(q.eq).toHaveBeenCalledWith("userId", "user1");
     });
 
     it("getAuthWithProfile should return null if resolveUserId fails", async () => {

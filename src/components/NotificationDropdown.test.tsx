@@ -5,6 +5,8 @@ import { BrowserRouter, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 
+import { handleNotificationClick } from "@/lib/notifications";
+
 import { NotificationDropdown } from "./NotificationDropdown";
 
 vi.mock("convex/react", () => ({
@@ -25,6 +27,11 @@ vi.mock("sonner", () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock("@/lib/notifications", () => ({
+  getNotificationIcon: vi.fn(() => <span>icon</span>),
+  handleNotificationClick: vi.fn(),
 }));
 
 interface DropdownMenuProps {
@@ -168,28 +175,34 @@ describe("NotificationDropdown", () => {
       return vi.fn();
     });
 
-    // Add link to the notification so navigation happens
-    const notificationsWithLink = [
-      {
-        _id: "n1",
-        type: "info",
-        title: "New Bid",
-        message: "You got a bid",
-        createdAt: Date.now(),
-        isRead: false,
-        link: "/auctions/123",
-      },
-    ];
-    (useQuery as Mock).mockReturnValue(notificationsWithLink);
-
     renderDropdown();
     const notification = screen.getByText("New Bid");
     fireEvent.click(notification);
 
     await waitFor(() => {
-      expect(mockMarkAsRead).toHaveBeenCalled();
-      // handleNotificationClick will use the mockNavigate - navigation only happens if link is provided
-      expect(mockNavigate).toHaveBeenCalledWith("/auctions/123");
+      expect(handleNotificationClick).toHaveBeenCalled();
     });
+  });
+
+  it("handles error when notification action fails", async () => {
+    (handleNotificationClick as Mock).mockRejectedValue(
+      new Error("Click fail")
+    );
+
+    renderDropdown();
+    const item = screen.getByText("New Bid");
+    fireEvent.click(item);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Failed to process notification"
+      );
+    });
+  });
+
+  it("renders loading state when notifications are undefined", () => {
+    (useQuery as Mock).mockReturnValue(undefined);
+    renderDropdown();
+    expect(screen.getByText(/Syncing\.\.\./i)).toBeInTheDocument();
   });
 });

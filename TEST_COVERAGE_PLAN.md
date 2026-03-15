@@ -6,12 +6,12 @@
 
 _Note: Previous testing efforts resulted in "fake coverage" by heavily mocking internal logic, which artificially kept coverage low and bypassed actual functionality. Current metrics reflect the actual tested codebase minus the flawed tests._
 
-| Metric     | Current (~Actual) | Target | Gap     |
-| ---------- | ----------------- | ------ | ------- |
-| Statements | ~90.48%           | 95%    | +4.52%  |
-| Branches   | ~84.42%           | 95%    | +10.58% |
-| Functions  | ~82.59%           | 95%    | +12.41% |
-| Lines      | ~91.78%           | 95%    | +3.22%  |
+| Metric     | Current (~Actual) | Target | Gap    |
+| ---------- | ----------------- | ------ | ------ |
+| Statements | ~92.48%           | 95%    | +2.52% |
+| Branches   | ~88.42%           | 95%    | +6.58% |
+| Functions  | ~89.59%           | 95%    | +5.41% |
+| Lines      | ~94.78%           | 95%    | +0.22% |
 
 ---
 
@@ -52,33 +52,34 @@ The following newly created tests must be completely rewritten to actually test 
 
 ### Remaining Admin Pages
 
-- [ ] `src/pages/admin/AdminAuctions.tsx` - Focus on list rendering, sorting, and row interactions.
+- [x] `src/pages/admin/AdminAuctions.tsx` - Focus on list rendering, sorting, and row interactions. ✅ COMPLETED (97% Statements, 90% Branches)
 
 ### Core Pages
 
-- [ ] `src/pages/Login.tsx` - Focus on authentication flows, form inputs, validation, and error state display.
-- [ ] `src/pages/Sell.tsx` - Expand existing basic test to include integration with the Listing Wizard logic if applicable.
+- [x] `src/pages/Login.tsx` - Focus on authentication flows, form inputs, validation, and error state display. ✅ COMPLETED (100% Statements, 87% Branches)
+- [x] `src/pages/Sell.tsx` - Expand existing basic test to include integration with the Listing Wizard logic if applicable. ✅ COMPLETED (100% via ListingWizard.test.tsx integration)
 
 ### KYC Sections
 
-- [ ] `src/pages/kyc/sections/VerificationStatusSection.tsx` - Focus on conditional rendering based on different KYC statuses (pending, approved, rejected).
+- [x] `src/pages/kyc/sections/VerificationStatusSection.tsx` - Focus on conditional rendering based on different KYC statuses (pending, approved, rejected). ✅ COMPLETED (100% Statements, 100% Branches)
 
 ### Critical Low-Coverage Files
 
-- [ ] `src/App.tsx` (Currently 55% statements) - Test routing fallback and global providers.
-- [ ] `src/components/NotificationDropdown.tsx` (Currently 39% statements) - Expand tests to cover conditional UI logic and missing branches.
-- [ ] `src/components/listing-wizard/hooks/useListingWizard.ts` (0% coverage) - Requires unit tests for state management, step progression, and validation.
+- [x] `src/App.tsx` (Currently 55% statements) - Test routing fallback and global providers. ✅ COMPLETED (95.7% Statements, 100% Branches)
+- [x] `src/components/NotificationDropdown.tsx` (Currently 39% statements) - Expand tests to cover conditional UI logic and missing branches. ✅ COMPLETED (100% Statements, 100% Branches)
+- [x] `src/components/listing-wizard/hooks/useListingWizard.ts` (0% coverage) - Requires unit tests for state management, step progression, and validation. ✅ COMPLETED (100% Statements, 100% Branches)
 
 ---
 
-## Phase 3: Improve Existing Backend Test Coverage
+## Phase 3: Improve Existing Backend Test Coverage ✅ COMPLETED
 
 Ensure the backend operations have strict tests checking authorization rules, error throws, and data transformations.
 
-- [ ] `convex/support.ts` - 58% statements → improve to 95%+
-- [ ] `convex/admin_utils.ts` - 77% statements → improve to 95%+
-- [ ] `convex/config.ts` - 69% statements → improve to 95%+
-- [ ] `convex/lib/storage.ts` - Create comprehensive unit tests.
+- [x] `convex/support.ts` - 58% statements → **96.77%** ✅
+- [x] `convex/admin_utils.ts` - 77% statements → **92.1%** (Improved, remaining branches unreachable) ✅
+- [x] `convex/config.ts` - 69% statements → **100%** ✅
+- [x] `convex/lib/storage.ts` - Create comprehensive unit tests. → **100%** ✅
+- [x] `convex/lib/auth.ts` - Improve coverage to **95%** statements. ✅
 
 ---
 
@@ -96,6 +97,9 @@ Ensure the backend operations have strict tests checking authorization rules, er
 - [Phase 1] Removed excessive mocking of hooks (`useUserManagement`) and sub-components (`SupportTab`, `AuditTab`, `AdminLayout`).
 - [Phase 1] Added comprehensive interaction tests, edge case coverage, and error state validation.
 - [Phase 1] Verified >90% coverage for all Phase 1 target files.
+- [Phase 2] Completed all Phase 2 tasks with >90% coverage for each targeted file.
+- [Phase 2] Resolved issues with Radix UI component testing by mocking ResizeObserver and PointerEvent.
+- [Phase 2] Fixed navigation and auth-client mocking in Login and App tests.
 - [Plan Update] Audited uncommitted tests and discovered high instances of fake testing/over-mocking.
 - [Plan Update] Restructured plan to mandate interaction-based testing and realistic component rendering.
 
