@@ -49,9 +49,30 @@ describe("FilterSidebar", () => {
 
   it("updates local state on input change", () => {
     renderSidebar();
+
     const minPriceInput = screen.getByPlaceholderText(/Min/i);
     fireEvent.change(minPriceInput, { target: { value: "5000" } });
     expect(minPriceInput).toHaveValue(5000);
+
+    const maxPriceInput = screen.getByPlaceholderText(/Max/i);
+    fireEvent.change(maxPriceInput, { target: { value: "10000" } });
+    expect(maxPriceInput).toHaveValue(10000);
+
+    const fromYearInput = screen.getByPlaceholderText(/From/i);
+    fireEvent.change(fromYearInput, { target: { value: "2015" } });
+    expect(fromYearInput).toHaveValue(2015);
+
+    const toYearInput = screen.getByPlaceholderText(/To/i);
+    fireEvent.change(toYearInput, { target: { value: "2023" } });
+    expect(toYearInput).toHaveValue(2023);
+
+    const maxHoursInput = screen.getByLabelText(/Max Operating Hours/i);
+    fireEvent.change(maxHoursInput, { target: { value: "500" } });
+    expect(maxHoursInput).toHaveValue(500);
+
+    const statusSelect = screen.getByLabelText(/Auction Status/i);
+    fireEvent.change(statusSelect, { target: { value: "closed" } });
+    expect(statusSelect).toHaveValue("closed");
   });
 
   it("applies filters when Apply button is clicked", () => {

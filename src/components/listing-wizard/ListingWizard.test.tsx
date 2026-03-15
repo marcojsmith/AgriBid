@@ -283,15 +283,17 @@ describe("ListingWizard Full Coverage", () => {
   });
 
   it("handles submission failure", async () => {
-    renderWizard();
+    const { unmount } = renderWizard();
     await fillAllSteps();
 
-    mockCreateAuction.mockRejectedValue(new Error("Submit Error"));
+    mockCreateAuction.mockRejectedValueOnce(new Error("Submit Error"));
     fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Submit Error");
     });
+
+    unmount();
   });
 
   it("shows info toast if session is pending during submit", async () => {
@@ -353,7 +355,10 @@ describe("ListingWizard Full Coverage", () => {
   });
 
   it("initializes with saved step from localStorage", async () => {
-    localStorage.setItem("agribid_listing_draft", JSON.stringify({ title: "Saved" }));
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({ title: "Saved" })
+    );
     localStorage.setItem("agribid_listing_step", "2");
 
     renderWizard();

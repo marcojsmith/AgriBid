@@ -137,4 +137,59 @@ describe("NotificationDropdown", () => {
       );
     });
   });
+
+  it("handles error when markAllRead fails", async () => {
+    const mockMarkAllRead = vi.fn().mockRejectedValue(new Error("Fail"));
+    (useMutation as Mock).mockImplementation((apiRef: { _path: string }) => {
+      if (apiRef?._path === "notifications:markAllRead") return mockMarkAllRead;
+      return vi.fn();
+    });
+
+    renderDropdown();
+    const btn = screen.getByText(/Mark all read/i);
+    fireEvent.click(btn);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Action failed");
+    });
+  });
+
+  it("navigates to archive when 'View Archive' is clicked", () => {
+    renderDropdown();
+    const btn = screen.getByText(/View Archive/i);
+    fireEvent.click(btn);
+    expect(mockNavigate).toHaveBeenCalledWith("/notifications");
+  });
+
+  it("marks notification as read and navigates when clicked", async () => {
+    const mockMarkAsRead = vi.fn().mockResolvedValue({});
+    (useMutation as Mock).mockImplementation((apiRef: { _path: string }) => {
+      if (apiRef?._path === "notifications:markAsRead") return mockMarkAsRead;
+      return vi.fn();
+    });
+
+    // Add link to the notification so navigation happens
+    const notificationsWithLink = [
+      {
+        _id: "n1",
+        type: "info",
+        title: "New Bid",
+        message: "You got a bid",
+        createdAt: Date.now(),
+        isRead: false,
+        link: "/auctions/123",
+      },
+    ];
+    (useQuery as Mock).mockReturnValue(notificationsWithLink);
+
+    renderDropdown();
+    const notification = screen.getByText("New Bid");
+    fireEvent.click(notification);
+
+    await waitFor(() => {
+      expect(mockMarkAsRead).toHaveBeenCalled();
+      // handleNotificationClick will use the mockNavigate - navigation only happens if link is provided
+      expect(mockNavigate).toHaveBeenCalledWith("/auctions/123");
+    });
+  });
 });

@@ -74,7 +74,7 @@ vi.mock("@/components/admin/SummaryCard", () => ({
     linkLabel,
   }: {
     title: string;
-    stats: { label: string; value: string | number }[];
+    stats: { label: string; value: string | number; color?: string }[];
     link: string;
     linkLabel: string;
   }) => (
@@ -82,8 +82,11 @@ vi.mock("@/components/admin/SummaryCard", () => ({
       <h4>{title}</h4>
       <ul>
         {stats.map(
-          (stat: { label: string; value: string | number }, i: number) => (
-            <li key={i}>
+          (
+            stat: { label: string; value: string | number; color?: string },
+            i: number
+          ) => (
+            <li key={i} className={stat.color}>
               {stat.label}: {stat.value}
             </li>
           )
@@ -162,6 +165,34 @@ describe("AdminDashboard Page", () => {
     expect(screen.getByText("Moderation")).toBeInTheDocument();
     expect(screen.getByText("Financials")).toBeInTheDocument();
     expect(screen.getByText("Support")).toBeInTheDocument();
+
+    // Verify a color branch (pendingReview > 0)
+    const pendingItem = screen.getByText(/Pending Review: 5/i);
+    expect(pendingItem).toHaveClass("text-yellow-600");
+  });
+
+  it("renders different colors when stats are zero", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.admin.getAdminStats)
+        return { ...mockAdminStats, pendingReview: 0 };
+      if (apiPath === mockApi.admin.getFinancialStats)
+        return mockFinancialStats;
+      if (apiPath === mockApi.admin.getAnnouncementStats)
+        return mockAnnouncementStats;
+      if (apiPath === mockApi.admin.getSupportStats)
+        return { ...mockSupportStats, open: 0 };
+      return null;
+    });
+
+    renderAdminDashboard();
+
+    // pendingReview === 0 branch
+    const pendingItem = screen.getByText(/Pending Review: 0/i);
+    expect(pendingItem).toHaveClass("text-green-600");
+
+    // openTickets === 0 branch
+    const supportItem = screen.getByText(/Open Tickets: 0/i);
+    expect(supportItem).toHaveClass("text-green-600");
   });
 
   it("renders partial data warning", () => {

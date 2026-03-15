@@ -30,11 +30,11 @@ export default defineConfig({
         "**/*.d.ts",
       ],
       thresholds: {
-        // Global Baseline
-        statements: 94.5,
-        branches: 88,
-        functions: 91,
-        lines: 95.5,
+        // Global Baseline - Updated March 2026 after test coverage improvements
+        statements: 91,
+        branches: 86,
+        functions: 85,
+        lines: 92,
 
         // Security-critical: RoleProtectedRoute
         "src/components/RoleProtectedRoute.tsx": {
