@@ -43,6 +43,20 @@ describe("PricingDurationStep", () => {
     expect(mockUpdateField).toHaveBeenCalledWith("startingPrice", 1500);
   });
 
+  it("calls updateField with 0 when starting price is cleared", () => {
+    render(<PricingDurationStep />);
+    const input = screen.getByLabelText(/Starting Price/i);
+    fireEvent.change(input, { target: { value: "" } });
+    expect(mockUpdateField).toHaveBeenCalledWith("startingPrice", 0);
+  });
+
+  it("calls updateField with 0 when reserve price is cleared", () => {
+    render(<PricingDurationStep />);
+    const input = screen.getByLabelText(/Reserve Price/i);
+    fireEvent.change(input, { target: { value: "" } });
+    expect(mockUpdateField).toHaveBeenCalledWith("reservePrice", 0);
+  });
+
   it("calls updateField on duration selection", () => {
     render(<PricingDurationStep />);
     fireEvent.click(screen.getByText("14 DAYS"));

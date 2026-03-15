@@ -194,4 +194,166 @@ describe("closeAuctionEarly mutation", () => {
     expect(result.success).toBe(false);
     expect(result.error).toBe("Auction not found");
   });
+
+  it("should handle tie-break - earlier bid wins when amounts are equal", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const earlierBidderId = "bidder_earlier";
+    const laterBidderId = "bidder_later";
+    const auctionDoc = {
+      _id: auctionId,
+      status: "active",
+      reservePrice: 1000,
+      title: "Test Auction",
+    };
+    const bids = [
+      {
+        bidderId: laterBidderId,
+        amount: 1500,
+        timestamp: 200,
+        status: "placed",
+      },
+      {
+        bidderId: earlierBidderId,
+        amount: 1500,
+        timestamp: 100,
+        status: "placed",
+      },
+    ];
+
+    const mockQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue(bids),
+    };
+
+    mockCtx = setupMockCtx(mockQuery);
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "admin",
+      userId: "admin",
+    });
+    vi.mocked(auth.getAuthUser).mockResolvedValue({
+      userId: "admin1",
+      _id: "admin1",
+    } as MockUser);
+    vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
+
+    const result = await closeAuctionEarlyHandler(
+      mockCtx as unknown as MutationCtx,
+      { auctionId }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.finalStatus).toBe("sold");
+    expect(result.winnerId).toBe(earlierBidderId);
+    expect(result.winningAmount).toBe(1500);
+  });
+
+  it("should handle auction that is already settled", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const auctionDoc = {
+      _id: auctionId,
+      status: "sold",
+      reservePrice: 1000,
+      title: "Test Auction",
+    };
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "admin",
+      userId: "admin",
+    });
+
+    const result = await closeAuctionEarlyHandler(
+      mockCtx as unknown as MutationCtx,
+      { auctionId }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Auction has already been settled");
+  });
+
+  it("should handle auction with no bids", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const auctionDoc = {
+      _id: auctionId,
+      status: "active",
+      reservePrice: 1000,
+      title: "Test Auction",
+    };
+
+    const mockQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([]),
+    };
+
+    mockCtx = setupMockCtx(mockQuery);
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "admin",
+      userId: "admin",
+    });
+
+    const result = await closeAuctionEarlyHandler(
+      mockCtx as unknown as MutationCtx,
+      { auctionId }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.finalStatus).toBe("unsold");
+    expect(result.winnerId).toBeUndefined();
+    expect(result.winningAmount).toBeUndefined();
+  });
+
+  it("should filter out voided bids", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const validBidderId = "valid_bidder";
+    const auctionDoc = {
+      _id: auctionId,
+      status: "active",
+      reservePrice: 1000,
+      title: "Test Auction",
+    };
+    const bids = [
+      {
+        bidderId: "voided_bidder",
+        amount: 2000,
+        timestamp: 100,
+        status: "voided",
+      },
+      {
+        bidderId: validBidderId,
+        amount: 1500,
+        timestamp: 200,
+        status: "placed",
+      },
+    ];
+
+    const mockQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue(bids),
+    };
+
+    mockCtx = setupMockCtx(mockQuery);
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "admin",
+      userId: "admin",
+    });
+    vi.mocked(auth.getAuthUser).mockResolvedValue({
+      userId: "admin1",
+      _id: "admin1",
+    } as MockUser);
+    vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
+
+    const result = await closeAuctionEarlyHandler(
+      mockCtx as unknown as MutationCtx,
+      { auctionId }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.finalStatus).toBe("sold");
+    expect(result.winnerId).toBe(validBidderId);
+    expect(result.winningAmount).toBe(1500);
+  });
 });

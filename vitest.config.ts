@@ -31,9 +31,9 @@ export default defineConfig({
       ],
       thresholds: {
         // Global Baseline - Updated March 2026 after test coverage improvements
-        statements: 93,
-        branches: 87,
-        functions: 90,
+        statements: 95,
+        branches: 89,
+        functions: 94,
         lines: 95,
 
         // Phase 3: Improved Backend Files

@@ -48,7 +48,18 @@ describe("Admin Utils", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn().mockReturnThis(),
+      withIndex: vi.fn((_index, cb) => {
+        if (cb) {
+          cb({
+            eq: vi.fn().mockReturnThis(),
+            lte: vi.fn().mockReturnThis(),
+            gt: vi.fn().mockReturnThis(),
+            lt: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+          });
+        }
+        return queryMock;
+      }),
       unique: vi.fn().mockResolvedValue(null),
       collect: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0),
@@ -196,41 +207,67 @@ describe("Admin Utils", () => {
     });
 
     it("should handle kycStatus filter", async () => {
-      let capturedFilter:
-        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
-        | undefined;
-      queryMock.withIndex.mockImplementation((_index, filter) => {
-        capturedFilter = filter;
-        return queryMock;
-      });
       queryMock.count?.mockResolvedValue(3);
 
       await countUsers(mockCtx as unknown as QueryCtx, {
         kycStatus: "pending",
       });
 
-      const q = { eq: vi.fn() };
-      if (capturedFilter) capturedFilter(q);
-      expect(q.eq).toHaveBeenCalledWith("kycStatus", "pending");
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_kycStatus",
+        expect.any(Function)
+      );
+    });
+
+    it("should use counter for pending KYC if requested", async () => {
+      queryMock.unique.mockResolvedValue({ total: 100, pending: 15 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        useCounter: true,
+        kycStatus: "pending",
+      });
+      expect(result).toBe(15);
     });
 
     it("should handle isVerified filter", async () => {
-      let capturedFilter:
-        | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
-        | undefined;
-      queryMock.withIndex.mockImplementation((_index, filter) => {
-        capturedFilter = filter;
-        return queryMock;
-      });
       queryMock.count?.mockResolvedValue(3);
 
       await countUsers(mockCtx as unknown as QueryCtx, {
         isVerified: true,
       });
 
-      const q = { eq: vi.fn() };
-      if (capturedFilter) capturedFilter(q);
-      expect(q.eq).toHaveBeenCalledWith("isVerified", true);
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_isVerified",
+        expect.any(Function)
+      );
+    });
+
+    it("should handle complex multiple filters with kycStatus and isVerified (no role)", async () => {
+      queryMock.collect.mockResolvedValue([
+        { role: "buyer", isVerified: true, kycStatus: "verified" },
+        { role: "buyer", isVerified: false, kycStatus: "pending" },
+      ]);
+
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        kycStatus: "pending",
+        isVerified: false,
+      });
+
+      expect(result).toBe(1);
+    });
+
+    it("should handle filter mismatches in complex block", async () => {
+      queryMock.collect.mockResolvedValue([
+        { role: "buyer", isVerified: true, kycStatus: "verified" },
+      ]);
+
+      // All mismatches
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        role: "admin",
+        kycStatus: "pending",
+        isVerified: false,
+      });
+
+      expect(result).toBe(0);
     });
 
     it("should handle complex multiple filters via in-memory filtering", async () => {
