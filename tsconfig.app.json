@@ -29,5 +29,6 @@
       "convex/_generated/*": ["./convex/_generated/*"]
     }
   },
-  "include": ["src", "convex"]
+  "include": ["src", "convex"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test/**"]
 }
