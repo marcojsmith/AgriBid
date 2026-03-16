@@ -98,6 +98,7 @@ describe("ListingWizard Full Coverage", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    mockEnsureAuthenticated.mockReturnValue(true);
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ storageId: "test-storage-id" }),
@@ -249,7 +250,7 @@ describe("ListingWizard Full Coverage", () => {
     renderWizard();
     await fillAllSteps();
 
-    await screen.findByText(/Step 6 of 6/i);
+    await screen.findByText(/Review & Submit/i);
 
     mockCreateAuction.mockResolvedValue({ success: true });
     fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
@@ -331,7 +332,7 @@ describe("ListingWizard Full Coverage", () => {
     renderWizard();
 
     // We are on step 6
-    await screen.findByText(/Step 6 of 6/i);
+    await screen.findByRole("heading", { name: /Review & Submit/i });
 
     fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
     expect(toast.info).toHaveBeenCalledWith("Checking your session...");
@@ -348,7 +349,7 @@ describe("ListingWizard Full Coverage", () => {
     );
 
     renderWizard();
-    await screen.findByText(/Step 6 of 6/i);
+    await screen.findByRole("heading", { name: /Review & Submit/i });
 
     fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
     expect(mockCreateAuction).not.toHaveBeenCalled();
@@ -363,7 +364,136 @@ describe("ListingWizard Full Coverage", () => {
 
     renderWizard();
 
-    expect(screen.getByText(/Step 3 of 6/i)).toBeInTheDocument();
     expect(screen.getByText(/Condition Checklist/i)).toBeInTheDocument();
+  });
+
+  it("prevents double submission while submitting", async () => {
+    // Manually set a valid full draft in localStorage and start at last step
+    const fullDraft = {
+      title: "Tractor",
+      categoryId: "cat1",
+      make: "John Deere",
+      model: "6155R",
+      year: 2024,
+      operatingHours: 100,
+      location: "Pretoria",
+      description: "Desc",
+      conditionChecklist: {
+        engine: true,
+        hydraulics: true,
+        tires: true,
+        serviceHistory: true,
+      },
+      images: { front: "img.jpg" },
+      startingPrice: 1000,
+      reservePrice: 2000,
+      durationDays: 7,
+    };
+    localStorage.setItem("agribid_listing_draft", JSON.stringify(fullDraft));
+    localStorage.setItem("agribid_listing_step", "5");
+
+    renderWizard();
+    await screen.findByRole("heading", { name: /Review & Submit/i });
+
+    mockCreateAuction.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve({ success: true }), 100);
+        })
+    );
+
+    const submitBtn = screen.getByRole("button", { name: /Submit Listing/i });
+
+    // First click
+    fireEvent.click(submitBtn);
+    // Second click immediately after
+    fireEvent.click(submitBtn);
+
+    // Verify it was called exactly once despite two clicks
+    expect(mockCreateAuction).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Submission Received/i)).toBeInTheDocument();
+    });
+  });
+
+  it("handles validation error during submit and jumps to that step", async () => {
+    // Set step 6 but with empty title (invalid step 1)
+    localStorage.setItem("agribid_listing_step", "5");
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({
+        categoryId: "cat1",
+        title: "", // Missing!
+        location: "Loc",
+        year: 2024,
+        operatingHours: 10,
+        make: "JD",
+        model: "M",
+        conditionChecklist: {
+          engine: true,
+          hydraulics: true,
+          tires: true,
+          serviceHistory: true,
+        },
+        images: { front: "i.jpg" },
+        startingPrice: 100,
+        reservePrice: 200,
+        durationDays: 7,
+      })
+    );
+
+    renderWizard();
+    await screen.findByRole("heading", { name: /Review & Submit/i });
+
+    const submitBtn = screen.getByRole("button", { name: /Submit Listing/i });
+    fireEvent.click(submitBtn);
+
+    // Should jump to General Information step (Step 1)
+    await waitFor(() => {
+      // Step indicator should show Step 1
+      expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Listing Title/i)).toBeInTheDocument();
+      expect(toast.error).toHaveBeenCalledWith("Title is required");
+    });
+  });
+
+  it("saves auctionId to form data after first server-side draft save", async () => {
+    renderWizard();
+    fillStep1();
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    await screen.findByText(/Technical Specifications/i);
+
+    // Select category, manufacturer, and model to ensure valid step 2
+    fireEvent.click(screen.getByText(/Tractor/i));
+    fireEvent.click(screen.getByText(/John Deere/i));
+    fireEvent.click(screen.getByText(/6155R/i));
+
+    // Fill pricing to ensure overall form progress if needed,
+    // though Save Draft should work now.
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({
+        ...JSON.parse(localStorage.getItem("agribid_listing_draft") || "{}"),
+        startingPrice: 1000,
+        reservePrice: 2000,
+      })
+    );
+
+    mockSaveDraft.mockResolvedValue("new-id-123");
+
+    // Click Save Draft button
+    const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
+
+    await waitFor(() => expect(saveBtn).not.toBeDisabled());
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockSaveDraft).toHaveBeenCalled();
+      const saved = JSON.parse(
+        localStorage.getItem("agribid_listing_draft") || "{}"
+      );
+      expect(saved.auctionId).toBe("new-id-123");
+    });
   });
 });

@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
 import { useSession } from "@/lib/auth-client";
+import { isValidCallbackUrl } from "@/lib/utils";
+import type { AuctionWithCategory } from "@/types/auction";
 
 import { AuctionCard } from "./AuctionCard";
 
@@ -37,6 +39,12 @@ vi.mock("convex/_generated/api", () => ({
 
 vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(),
+}));
+
+vi.mock("@/lib/utils", () => ({
+  isValidCallbackUrl: vi.fn().mockReturnValue(true),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
+  getErrorMessage: (err: unknown, fallback: string) => fallback,
 }));
 
 vi.mock("sonner", () => ({
@@ -298,40 +306,137 @@ describe("AuctionCard", () => {
     );
   });
 
-  it("handles different image structures", () => {
-    const auctionNoImages = {
-      ...mockAuction,
-      images: { additional: ["add1.jpg"] },
-    };
+  it("handles front image as primary", () => {
+    const auction = { ...mockAuction, images: { front: "front.jpg" } };
     renderWithRouter({
-      auction: auctionNoImages as unknown as React.ComponentProps<
-        typeof AuctionCard
-      >["auction"],
+      auction: auction as unknown as AuctionWithCategory,
     });
-    // Should render without crashing, using additional[0]
-    expect(screen.getByText("Test Tractor")).toBeInTheDocument();
+    const img = screen.getByAltText(mockAuction.title);
+    expect(img).toHaveAttribute("src", "front.jpg");
   });
 
-  it("shows fallback category name", () => {
-    const auctionNoCategory = {
-      ...mockAuction,
-      categoryName: undefined,
-    };
+  it("handles engine image fallback as primary", () => {
+    const auction = { ...mockAuction, images: { engine: "engine.jpg" } };
     renderWithRouter({
-      auction: auctionNoCategory as unknown as React.ComponentProps<
-        typeof AuctionCard
-      >["auction"],
+      auction: auction as unknown as AuctionWithCategory,
     });
-    expect(screen.getByText("Equipment")).toBeInTheDocument();
+    const img = screen.getByAltText(mockAuction.title);
+    expect(img).toHaveAttribute("src", "engine.jpg");
   });
 
-  it("shows UNSOLD badge for unsold auctions", () => {
-    const unsoldAuction = { ...mockAuction, status: "unsold" as const };
+  it("handles cabin image fallback as primary", () => {
+    const auction = { ...mockAuction, images: { cabin: "cabin.jpg" } };
     renderWithRouter({
-      auction: unsoldAuction as unknown as React.ComponentProps<
-        typeof AuctionCard
-      >["auction"],
+      auction: auction as unknown as AuctionWithCategory,
     });
+    const img = screen.getByAltText(mockAuction.title);
+    expect(img).toHaveAttribute("src", "cabin.jpg");
+  });
+
+  it("handles rear image fallback as primary", () => {
+    const auction = { ...mockAuction, images: { rear: "rear.jpg" } };
+    renderWithRouter({
+      auction: auction as unknown as AuctionWithCategory,
+    });
+    const img = screen.getByAltText(mockAuction.title);
+    expect(img).toHaveAttribute("src", "rear.jpg");
+  });
+
+  it("handles additional[0] image fallback as primary", () => {
+    const auction = { ...mockAuction, images: { additional: ["add1.jpg"] } };
+    renderWithRouter({
+      auction: auction as unknown as AuctionWithCategory,
+    });
+    const img = screen.getByAltText(mockAuction.title);
+    expect(img).toHaveAttribute("src", "add1.jpg");
+  });
+
+  it("handles no image at all", () => {
+    const auction = { ...mockAuction, images: {} };
+    renderWithRouter({
+      auction: auction as unknown as AuctionWithCategory,
+    });
+    // Should render a placeholder emoji/text instead of img
+    expect(screen.getByText("🚜")).toBeInTheDocument();
+  });
+
+  it("handles invalid callback URL during bid initiation", () => {
+    vi.mocked(isValidCallbackUrl).mockReturnValueOnce(false);
+    (useSession as Mock).mockReturnValue({ data: null });
+
+    renderWithRouter();
+    fireEvent.click(screen.getByRole("button", { name: /Bid R 1/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/login?callbackUrl=/");
+  });
+
+  it("handles invalid callback URL during watchlist toggle", () => {
+    vi.mocked(isValidCallbackUrl).mockReturnValueOnce(false);
+    (useSession as Mock).mockReturnValue({ data: null });
+
+    renderWithRouter();
+    fireEvent.click(screen.getByRole("button", { name: /watchlist/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/login?callbackUrl=/");
+  });
+
+  it("renders closed and compact state with sold badge", () => {
+    const closedAuction = { ...mockAuction, status: "sold" as const };
+    renderWithRouter({
+      auction: closedAuction as unknown as AuctionWithCategory,
+      viewMode: "compact",
+    });
+
+    expect(screen.getByLabelText("Sold auction")).toBeInTheDocument();
+  });
+
+  it("renders closed and compact state with unsold badge", () => {
+    const closedAuction = { ...mockAuction, status: "unsold" as const };
+    renderWithRouter({
+      auction: closedAuction as unknown as AuctionWithCategory,
+      viewMode: "compact",
+    });
+
+    expect(screen.getByLabelText("Closed auction")).toBeInTheDocument();
+  });
+
+  it("renders closed and detailed state with SOLD badge", () => {
+    const closedAuction = { ...mockAuction, status: "sold" as const };
+    renderWithRouter({
+      auction: closedAuction as unknown as AuctionWithCategory,
+      viewMode: "detailed",
+    });
+
+    expect(screen.getByText("SOLD")).toBeInTheDocument();
+  });
+
+  it("renders closed and detailed state with UNSOLD badge", () => {
+    const closedAuction = { ...mockAuction, status: "unsold" as const };
+    renderWithRouter({
+      auction: closedAuction as unknown as AuctionWithCategory,
+      viewMode: "detailed",
+    });
+
     expect(screen.getByText("UNSOLD")).toBeInTheDocument();
+  });
+
+  it("renders active and compact state without closed badges", () => {
+    renderWithRouter({
+      auction: mockAuction as unknown as AuctionWithCategory,
+      viewMode: "compact",
+    });
+
+    expect(screen.queryByLabelText("Sold auction")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Closed auction")).not.toBeInTheDocument();
+  });
+
+  it("renders active and detailed state without closed badges", () => {
+    renderWithRouter({
+      auction: mockAuction as unknown as AuctionWithCategory,
+      viewMode: "detailed",
+    });
+
+    expect(screen.queryByText("SOLD")).not.toBeInTheDocument();
+    expect(screen.queryByText("UNSOLD")).not.toBeInTheDocument();
   });
 });

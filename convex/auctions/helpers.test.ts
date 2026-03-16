@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { resolveImageUrls, toAuctionSummary, toAuctionDetail } from "./helpers";
+import {
+  resolveImageUrls,
+  toAuctionSummary,
+  toAuctionDetail,
+  validateAuctionStatus,
+} from "./helpers";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -229,6 +234,15 @@ describe("toAuctionSummary", () => {
     expect(result.categoryName).toBe("Unknown");
   });
 
+  it("should handle category found but missing name", async () => {
+    mockCtx = setupMockCtx({ _id: "cat_123" });
+    const auction = createMockAuction();
+
+    const result = await toAuctionSummary(mockCtx, auction);
+
+    expect(result.categoryName).toBe("Unknown");
+  });
+
   it("should include all required fields", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category);
@@ -347,6 +361,20 @@ describe("toAuctionDetail", () => {
     expect(result.sellerEmail).toBeUndefined();
   });
 
+  it("should handle seller found but missing email", async () => {
+    const { findUserById } = await import("../users");
+    vi.mocked(findUserById).mockResolvedValue({
+      _id: "seller_123",
+    } as unknown as { _id: string; email?: string });
+    const category = { _id: "cat_123", name: "Tractors", isActive: true };
+    mockCtx = setupMockCtx(category, true);
+    const auction = createMockAuction();
+
+    const result = await toAuctionDetail(mockCtx, auction);
+
+    expect(result.sellerEmail).toBeUndefined();
+  });
+
   it("should handle missing category", async () => {
     mockCtx = setupMockCtx(null, true);
     const auction = createMockAuction();
@@ -402,5 +430,28 @@ describe("toAuctionDetail", () => {
     const result = await toAuctionDetail(mockCtx, auction);
 
     expect(result.sellerEmail).toBeUndefined();
+  });
+});
+
+describe("validateAuctionStatus", () => {
+  it("should throw if status is active but endTime is missing", () => {
+    expect(() =>
+      validateAuctionStatus({ status: "pending_review" }, "active")
+    ).toThrow("Cannot set status to 'active' without endTime");
+  });
+
+  it("should not throw if status is active and endTime is present", () => {
+    expect(() =>
+      validateAuctionStatus(
+        { status: "pending_review", endTime: Date.now() },
+        "active"
+      )
+    ).not.toThrow();
+  });
+
+  it("should not throw for other status transitions", () => {
+    expect(() =>
+      validateAuctionStatus({ status: "draft" }, "pending_review")
+    ).not.toThrow();
   });
 });

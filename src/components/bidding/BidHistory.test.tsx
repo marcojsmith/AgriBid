@@ -97,4 +97,112 @@ describe("BidHistory", () => {
 
     expect(screen.getByText(/Load More Bids/i)).toBeInTheDocument();
   });
+
+  it("anonymizes empty names correctly", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "b1",
+          amount: 100,
+          bidderId: "u1",
+          bidderName: "",
+          timestamp: Date.now(),
+        },
+      ],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.getByText("Anonymous")).toBeInTheDocument();
+  });
+
+  it("anonymizes single character names correctly", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "b1",
+          amount: 100,
+          bidderId: "u1",
+          bidderName: "A B",
+          timestamp: Date.now(),
+        },
+      ],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.getByText("A B")).toBeInTheDocument();
+  });
+
+  it("shows loading indicator for first page", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "LoadingFirstPage",
+      loadMore: vi.fn(),
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("shows loading more indicator", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockBids,
+      status: "LoadingMore",
+      loadMore: vi.fn(),
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("handles auction fallback for highest bid amount", () => {
+    (useQuery as Mock).mockImplementation((apiRef: { _path: string }) => {
+      if (apiRef._path === "auctions:getAuctionById") return null;
+      return null;
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    // Should render without crashing, highestBidAmount should be -1
+    expect(screen.getByText(/Bid History/i)).toBeInTheDocument();
+  });
+
+  it("handles missing totalBids", () => {
+    (useQuery as Mock).mockImplementation((apiRef: { _path: string }) => {
+      if (apiRef._path === "auctions:getAuctionBidCount") return undefined;
+      return null;
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    expect(screen.queryByText(/Showing/i)).not.toBeInTheDocument();
+  });
+
+  it("triggers loadMore on button click", () => {
+    const loadMore = vi.fn();
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockBids,
+      status: "CanLoadMore",
+      loadMore,
+    });
+
+    render(<BidHistory auctionId={mockAuctionId} />);
+    fireEvent.click(screen.getByText(/Bid History/i));
+
+    fireEvent.click(screen.getByText(/Load More Bids/i));
+    expect(loadMore).toHaveBeenCalledWith(20);
+  });
 });

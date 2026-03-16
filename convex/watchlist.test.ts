@@ -76,6 +76,19 @@ describe("Watchlist Coverage", () => {
   });
 
   describe("toggleWatchlistHandler", () => {
+    it("should throw if resolveUserId returns null", async () => {
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+      } as unknown as { _id: string });
+      vi.mocked(auth.resolveUserId).mockReturnValue(null);
+
+      await expect(
+        toggleWatchlistHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Unable to determine user ID");
+    });
+
     it("should delete if existing", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
@@ -136,6 +149,17 @@ describe("Watchlist Coverage", () => {
       expect(result).toBe(false);
     });
 
+    it("should return false if resolveUserId returns null", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as { _id: string });
+      vi.mocked(auth.resolveUserId).mockReturnValue(null);
+      const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+      expect(result).toBe(false);
+    });
+
     it("should return false and log on error", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -146,9 +170,34 @@ describe("Watchlist Coverage", () => {
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
+
+    it("should return false for unauthenticated error", async () => {
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
+        new Error("Unauthenticated")
+      );
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+      expect(result).toBe(false);
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
   });
 
   describe("getWatchedAuctionsHandler", () => {
+    it("should return empty if resolveUserId returns null", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as { _id: string });
+      vi.mocked(auth.resolveUserId).mockReturnValue(null);
+      const result = await getWatchedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 10, cursor: null } }
+      );
+      expect(result.page).toHaveLength(0);
+    });
+
     it("should return empty if not authenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       const result = await getWatchedAuctionsHandler(
@@ -177,6 +226,25 @@ describe("Watchlist Coverage", () => {
       expect(auctions.toAuctionSummary).toHaveBeenCalled();
     });
 
+    it("should filter out missing auctions", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as { _id: string });
+      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+      queryMock.paginate.mockResolvedValue({
+        page: [{ auctionId: "a1" as Id<"auctions"> }],
+        isDone: true,
+        continueCursor: "next",
+      });
+      mockCtx.db.get.mockResolvedValue(null);
+
+      const result = await getWatchedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 10, cursor: null } }
+      );
+      expect(result.page).toHaveLength(0);
+    });
+
     it("should handle error gracefully", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -188,9 +256,34 @@ describe("Watchlist Coverage", () => {
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
+
+    it("should handle unauthenticated error gracefully", async () => {
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
+        new Error("Unauthenticated")
+      );
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const result = await getWatchedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 10, cursor: null } }
+      );
+      expect(result.page).toHaveLength(0);
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
   });
 
   describe("getWatchedAuctionIdsHandler", () => {
+    it("should return empty if resolveUserId returns null", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as { _id: string });
+      vi.mocked(auth.resolveUserId).mockReturnValue(null);
+      const result = await getWatchedAuctionIdsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(result).toHaveLength(0);
+    });
+
     it("should paginate through all IDs", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
@@ -240,10 +333,26 @@ describe("Watchlist Coverage", () => {
 
     it("should handle error", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       const result = await getWatchedAuctionIdsHandler(
         mockCtx as unknown as QueryCtx
       );
       expect(result).toHaveLength(0);
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it("should handle unauthenticated error", async () => {
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
+        new Error("Unauthenticated")
+      );
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const result = await getWatchedAuctionIdsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(result).toHaveLength(0);
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
     });
   });
 });

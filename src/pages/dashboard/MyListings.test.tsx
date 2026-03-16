@@ -541,4 +541,86 @@ describe("MyListings Page", () => {
     // Badge should still render with default variant
     expect(screen.getByText(/unknown/i)).toBeInTheDocument();
   });
+
+  it("handles publishing guard when already publishing", async () => {
+    mockSubmitForReview.mockImplementation(() => new Promise(() => {})); // Hangs
+    renderMyListings();
+
+    const draftCard = screen
+      .getByText("Draft Tractor")
+      .closest("div[class*='group']");
+    const submitBtn = within(draftCard as HTMLElement).getByRole("button", {
+      name: /Submit/i,
+    });
+
+    fireEvent.click(submitBtn);
+    fireEvent.click(submitBtn); // Second click while publishingId is set
+
+    expect(mockSubmitForReview).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles non-Error objects in submit catch block", async () => {
+    mockSubmitForReview.mockRejectedValueOnce("String error");
+    renderMyListings();
+
+    const submitBtn = screen.getByRole("button", { name: /Submit/i });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("Failed to submit for review");
+  });
+
+  it("handles non-Error objects in delete catch block", async () => {
+    mockDeleteDraft.mockRejectedValueOnce({ custom: "object error" });
+    renderMyListings();
+
+    const draftCard = screen
+      .getByText("Draft Tractor")
+      .closest("div[class*='group']");
+    const trigger = within(draftCard as HTMLElement).getByTestId(
+      "alert-dialog-trigger"
+    );
+    const deleteBtn = within(trigger).getByRole("button", { name: /delete/i });
+
+    fireEvent.click(deleteBtn);
+    const content = screen.getByTestId("alert-dialog-content");
+    const confirmDeleteBtn = within(content).getByRole("button", {
+      name: "Delete",
+    });
+
+    await act(async () => {
+      fireEvent.click(confirmDeleteBtn);
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("Failed to delete draft");
+  });
+
+  it("handles localStorage clear error when creating listing", async () => {
+    vi.spyOn(window.localStorage, "removeItem").mockImplementationOnce(() => {
+      throw new Error("Clear failed");
+    });
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    renderMyListings();
+    fireEvent.click(screen.getByText("Create Listing"));
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to clear localStorage"),
+      expect.any(Error)
+    );
+    expect(mockNavigate).toHaveBeenCalledWith("/sell");
+    spy.mockRestore();
+  });
+
+  it("handles null listingStats in getStatusCount", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.auctions.getMyListingsStats) return null;
+      return null;
+    });
+
+    renderMyListings();
+    // Tabs should show (0)
+    expect(screen.getByText(/All \(0\)/i)).toBeInTheDocument();
+  });
 });

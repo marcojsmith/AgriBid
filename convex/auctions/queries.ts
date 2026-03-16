@@ -879,6 +879,7 @@ export const getAllAuctions = query({
  */
 async function getAuthenticatedUserId(ctx: QueryCtx): Promise<string | null> {
   const authUser = await authComponent.getAuthUser(ctx);
+  if (!authUser) return null;
   return resolveUserId(authUser);
 }
 

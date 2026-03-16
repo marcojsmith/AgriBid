@@ -378,4 +378,117 @@ describe("MyBids Page", () => {
       .closest("div[class*='group']");
     expect(within(wonCard as HTMLElement).getByText("WON")).toBeInTheDocument();
   });
+
+  it("handles unsold status correctly", () => {
+    const unsoldAuction = {
+      ...mockAuctions[0],
+      _id: "auction4",
+      status: "unsold",
+      isWinning: false,
+      isWon: false,
+    };
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [unsoldAuction],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyBids();
+    expect(screen.getByText("RESERVE NOT MET")).toBeInTheDocument();
+  });
+
+  it("handles cancelled status correctly", () => {
+    const cancelledAuction = {
+      ...mockAuctions[0],
+      _id: "auction5",
+      isCancelled: true,
+      isWinning: false,
+      isWon: false,
+    };
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [cancelledAuction],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyBids();
+    expect(screen.getByText("CANCELLED")).toBeInTheDocument();
+  });
+
+  it("handles default status correctly", () => {
+    const otherAuction = {
+      ...mockAuctions[0],
+      _id: "auction6",
+      status: "pending_review",
+      isWinning: false,
+      isWon: false,
+    };
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [otherAuction],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyBids();
+    expect(screen.getByText("PENDING_REVIEW")).toBeInTheDocument();
+  });
+
+  it("handles null serverStats", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.auctions.queries.getMyBidsStats) return null;
+      return 3;
+    });
+
+    renderMyBids();
+    // Stats should show 0 instead of crashing
+    const activeBidsCard = screen.getByText("Active Bids").parentElement;
+    expect(
+      within(activeBidsCard as HTMLElement).getByText("0")
+    ).toBeInTheDocument();
+  });
+
+  it("shows message when filter returns no results", async () => {
+    renderMyBids();
+
+    // Click "Ended" filter when there are no ended auctions
+    const noEndedAuctions = mockAuctions.filter((a) => a.status === "active");
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: noEndedAuctions,
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    // Re-render to apply new mock
+    renderMyBids();
+
+    await act(async () => {
+      const endedFilter = screen
+        .getAllByText("Ended")
+        .find((el) => el.tagName === "BUTTON");
+      fireEvent.click(endedFilter!);
+    });
+
+    expect(
+      screen.getByText(/No auctions found matching this filter/i)
+    ).toBeInTheDocument();
+  });
+
+  it("renders without images and endTime correctly", () => {
+    const minimalAuction = {
+      ...mockAuctions[0],
+      _id: "auction7",
+      images: {},
+      endTime: undefined,
+    };
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [minimalAuction],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderMyBids();
+    // Should show fallback gavel icon (mocked as Gavel)
+    expect(screen.getByText("Winning Auction")).toBeInTheDocument();
+    expect(screen.queryByTestId("countdown-timer")).not.toBeInTheDocument();
+  });
 });

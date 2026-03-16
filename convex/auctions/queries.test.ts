@@ -7,9 +7,6 @@ import {
   getActiveAuctionsHandler,
   getAuctionBidsHandler,
   getMyBidsHandler,
-  getMyBids,
-  getAuctionById,
-  getActiveAuctions,
   getAuctionFlagsHandler,
   getMyListingsStatsHandler,
   getSellerInfoHandler,
@@ -947,13 +944,55 @@ describe("Queries Consolidated", () => {
       expect(result[0].auctionTitle).toBe("Unknown Auction");
       expect(result[0].reporterName).toBe("Unknown User");
     });
-  });
 
-  describe("Exported Query Metadata", () => {
-    it("validators should be defined", () => {
-      expect((getActiveAuctions as any).args).toBeDefined();
-      expect((getAuctionById as any).args).toBeDefined();
-      expect((getMyBids as any).args).toBeDefined();
+    it("getAuctionFlagsHandler should handle missing reporter name but user exists", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "admin" } as any);
+      queryMock.collect.mockResolvedValue([
+        { _id: "f1", reporterId: "r1", auctionId: "a1" },
+      ]);
+      vi.mocked(findUserById).mockResolvedValue({ _id: "r1" } as any); // Found but no name
+
+      const result = await getAuctionFlagsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+      expect(result[0].reporterName).toBe("Unknown User");
+    });
+
+    it("getAllPendingFlagsHandler should handle reporter with missing name", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as any);
+      queryMock.collect.mockResolvedValue([
+        { auctionId: "a1", reporterId: "r1", status: "pending" },
+      ]);
+      vi.mocked(mockCtx.db.get).mockResolvedValue({
+        title: "Auction 1",
+      } as any);
+      vi.mocked(findUserById).mockResolvedValue({ _id: "r1" } as any); // Found but no name
+
+      const result = await getAllPendingFlagsHandler(mockCtx);
+      expect(result[0].reporterName).toBe("Unknown User");
+    });
+
+    it("getMyListingsStatsHandler should skip unrecognized status", async () => {
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as any);
+      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+      queryMock.collect.mockResolvedValue([
+        { status: "active" },
+        { status: "invalid_status" },
+      ]);
+
+      const result = await getMyListingsStatsHandler(mockCtx);
+      expect(result.active).toBe(1);
+      expect(result.all).toBe(2);
+    });
+
+    it("getAuctionByIdHandler returns null for missing auction", async () => {
+      vi.mocked(mockCtx.db.get).mockResolvedValue(null);
+      const result = await getAuctionByIdHandler(mockCtx, {
+        auctionId: "missing" as any,
+      });
+      expect(result).toBeNull();
     });
   });
 });
