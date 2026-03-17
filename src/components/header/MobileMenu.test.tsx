@@ -39,6 +39,14 @@ describe("MobileMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Mock offsetParent for visibility check in focus trap
+    Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+      get() {
+        return this.parentNode;
+      },
+      configurable: true,
+    });
+
     const mockUserData: UserDataWithProfile = {
       name: "Test User",
       email: "test@example.com",
@@ -169,13 +177,6 @@ describe("MobileMenu", () => {
   });
 
   it("should trap focus and wrap around on Tab", () => {
-    // Mock offsetParent for visibility check in focus trap
-    Object.defineProperty(HTMLElement.prototype, "offsetParent", {
-      get() {
-        return this.parentNode;
-      },
-    });
-
     render(
       <MemoryRouter>
         <MobileMenu {...defaultProps} />
@@ -195,6 +196,30 @@ describe("MobileMenu", () => {
     // Tab forward from last should go to first
     fireEvent.keyDown(lastElement, { key: "Tab", shiftKey: false });
     expect(document.activeElement).toBe(firstElement);
+  });
+
+  it("should not trap focus when tabbing on middle elements", () => {
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    const middleElement = screen.getByText("Home");
+
+    middleElement.focus();
+    expect(document.activeElement).toBe(middleElement);
+
+    // Tab from middle should NOT be prevented/trapped (let browser handle it)
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    const spy = vi.spyOn(event, "preventDefault");
+    middleElement.dispatchEvent(event);
+
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("should restore focus when closed", () => {
@@ -276,18 +301,21 @@ describe("MobileMenu", () => {
         <MobileMenu {...defaultProps} isOpen={true} />
       </MemoryRouter>
     );
-    
-    const menuRoot = screen.getByRole("navigation").parentElement?.parentElement;
+
+    const menuRoot =
+      screen.getByRole("navigation").parentElement?.parentElement;
     vi.spyOn(menuRoot!, "querySelectorAll").mockReturnValue({
       length: 0,
       item: () => null,
       forEach: () => {},
-      [Symbol.iterator]: function* () { yield* []; }
+      [Symbol.iterator]: function* () {
+        yield* [];
+      },
     } as unknown as NodeListOf<HTMLElement>);
-    
+
     const event = new KeyboardEvent("keydown", { key: "Tab" });
     menuRoot?.dispatchEvent(event);
-    
+
     // Should not throw and just return
     expect(menuRoot).toBeInTheDocument();
   });

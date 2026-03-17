@@ -496,6 +496,33 @@ describe("CategoryManager", () => {
     });
   });
 
+  it("should handle update category error with non-Error object", async () => {
+    const { toast } = await import("sonner");
+    mockUpdateCategory.mockRejectedValue("Generic error");
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const editButtons = screen.getAllByLabelText("Edit category");
+    fireEvent.click(editButtons[0]);
+
+    const input = screen.getByDisplayValue("Tractors");
+    fireEvent.change(input, { target: { value: "New Name" } });
+
+    const saveButton = screen.getByRole("button", { name: /Save/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to update category");
+    });
+  });
+
   it("should close add dialog when cancel is clicked", async () => {
     render(
       <CategoryManager

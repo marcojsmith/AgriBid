@@ -9,6 +9,7 @@ import {
   ListingWizardContext,
   type ListingWizardContextType,
 } from "../context/ListingWizardContextDef";
+import type { ListingFormData } from "../types";
 
 vi.mock("convex/react", () => ({
   useMutation: vi.fn(),
@@ -33,42 +34,70 @@ global.URL.createObjectURL = vi.fn().mockReturnValue("blob:test-url");
 global.URL.revokeObjectURL = vi.fn();
 
 describe("useListingMedia", () => {
-  const mockSetFormData = vi.fn();
-  const mockSetPreviews = vi.fn();
+  const mockSetFormData = vi.fn((cb) => {
+    if (typeof cb === "function") {
+      cb(currentFormData);
+    }
+  });
+  const mockSetPreviews = vi.fn((cb) => {
+    if (typeof cb === "function") {
+      cb(currentPreviews);
+    }
+  });
   const mockGenerateUploadUrl = vi.fn();
+
+  let currentFormData: ListingFormData;
+  let currentPreviews: Record<string, string>;
 
   const wrapper = ({
     children,
-    formData = { images: { additional: [] } },
+    formData,
     previews = {},
   }: {
     children: React.ReactNode;
-    formData?: {
-      images: {
-        additional: string[];
-        [key: string]: string | string[] | undefined;
-      };
-    };
+    formData?: ListingFormData;
     previews?: Record<string, string>;
-  }) => (
-    <ListingWizardContext.Provider
-      value={
-        {
-          formData,
-          setFormData: mockSetFormData,
-          previews,
-          setPreviews: mockSetPreviews,
-        } as unknown as ListingWizardContextType
-      }
-    >
-      {children}
-    </ListingWizardContext.Provider>
-  );
+  }) => {
+    if (formData) {
+      currentFormData = formData;
+    }
+    currentPreviews = previews;
+    return (
+      <ListingWizardContext.Provider
+        value={
+          {
+            formData: currentFormData,
+            setFormData: mockSetFormData,
+            previews: currentPreviews,
+            setPreviews: mockSetPreviews,
+          } as unknown as ListingWizardContextType
+        }
+      >
+        {children}
+      </ListingWizardContext.Provider>
+    );
+  };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    mockSetFormData.mockImplementation((cb) => {
+      if (typeof cb === "function") {
+        cb(currentFormData);
+      }
+    });
+    mockSetPreviews.mockImplementation((cb) => {
+      if (typeof cb === "function") {
+        cb(currentPreviews);
+      }
+    });
+    currentFormData = {
+      images: { additional: [] },
+    } as unknown as ListingFormData;
+    currentPreviews = {};
     (useMutation as Mock).mockReturnValue(mockGenerateUploadUrl);
     global.fetch = vi.fn();
+    global.URL.createObjectURL = vi.fn().mockReturnValue("blob:test-url");
+    global.URL.revokeObjectURL = vi.fn();
   });
 
   it("should handle single upload success and revoke old preview", async () => {
@@ -96,6 +125,26 @@ describe("useListingMedia", () => {
     expect(global.URL.revokeObjectURL).toHaveBeenCalledWith("blob:old");
     expect(mockSetPreviews).toHaveBeenCalled();
     expect(mockSetFormData).toHaveBeenCalled();
+  });
+
+  it("should handle single upload to empty slot (covers false branch of line 44)", async () => {
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    const file = new File([""], "test.jpg", { type: "image/jpeg" });
+    const { result } = renderHook(() => useListingMedia(), {
+      wrapper: (props) => wrapper({ ...props, previews: {} }), // Empty previews
+    });
+
+    await act(async () => {
+      await result.current.handleUpload("front", file);
+    });
+
+    expect(global.URL.revokeObjectURL).not.toHaveBeenCalled();
+    expect(mockSetPreviews).toHaveBeenCalled();
   });
 
   it("should handle single upload failure", async () => {

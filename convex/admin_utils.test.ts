@@ -357,7 +357,25 @@ describe("Admin Utils", () => {
       expect(result).toBe(1);
     });
 
-    it("should try to hit isVerified branch in complex block by providing only isVerified and skipping optimized", async () => {
+    it("should cover all filter branches in complex block", async () => {
+      queryMock.collect.mockResolvedValue([
+        { role: "buyer", isVerified: true, kycStatus: "verified" },
+        { role: "seller", isVerified: true, kycStatus: "verified" },
+        { role: "buyer", isVerified: false, kycStatus: "verified" },
+        { role: "buyer", isVerified: true, kycStatus: "pending" },
+      ]);
+
+      // Provide only one optimized index filter (role), but have mismatches in others
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        role: "buyer",
+        isVerified: true,
+        kycStatus: "verified",
+      });
+
+      expect(result).toBe(1); // Only the first one matches all 3
+    });
+
+    it("should hit isVerified branch in complex block by providing only isVerified and skipping optimized", async () => {
       queryMock.withIndex.mockImplementation(() => {
         return queryMock;
       });
@@ -510,6 +528,122 @@ describe("Admin Utils", () => {
           total: 0,
         })
       );
+    });
+  });
+
+  describe("updateCounter exhaustive", () => {
+    const fields = [
+      "total",
+      "active",
+      "pending",
+      "verified",
+      "open",
+      "resolved",
+      "draft",
+      "salesVolume",
+      "soldCount",
+    ];
+
+    fields.forEach((field) => {
+      it(`should create new counter with ${field} field`, async () => {
+        queryMock.unique.mockResolvedValue(null);
+
+        await updateCounter(
+          mockCtx as unknown as MutationCtx,
+          "test_table",
+          field as Parameters<typeof updateCounter>[2],
+          10
+        );
+
+        expect(mockCtx.db.insert).toHaveBeenCalledWith(
+          "counters",
+          expect.objectContaining({
+            [field]: 10,
+          })
+        );
+      });
+
+      it(`should update existing counter with ${field} field`, async () => {
+        queryMock.unique.mockResolvedValue({ _id: "c1", [field]: 5 });
+
+        await updateCounter(
+          mockCtx as unknown as MutationCtx,
+          "test_table",
+          field as Parameters<typeof updateCounter>[2],
+          10
+        );
+
+        expect(mockCtx.db.patch).toHaveBeenCalledWith(
+          "c1",
+          expect.objectContaining({
+            [field]: 15,
+          })
+        );
+      });
+
+      it(`should handle undefined existing ${field} value`, async () => {
+        queryMock.unique.mockResolvedValue({ _id: "c1" }); // field is missing
+
+        await updateCounter(
+          mockCtx as unknown as MutationCtx,
+          "test_table",
+          field as Parameters<typeof updateCounter>[2],
+          10
+        );
+
+        expect(mockCtx.db.patch).toHaveBeenCalledWith(
+          "c1",
+          expect.objectContaining({
+            [field]: 10,
+          })
+        );
+      });
+    });
+  });
+
+  describe("countUsers filter combinations", () => {
+    it("should handle combination of role and isVerified (complex case)", async () => {
+      queryMock.collect.mockResolvedValue([
+        { _id: "p1", role: "buyer", isVerified: true },
+        { _id: "p2", role: "buyer", isVerified: false },
+      ]);
+
+      const count = await countUsers(mockCtx as unknown as QueryCtx, {
+        role: "buyer",
+        isVerified: true,
+      });
+
+      expect(count).toBe(1);
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_role",
+        expect.any(Function)
+      );
+    });
+
+    it("should handle combination of kycStatus and isVerified (complex case)", async () => {
+      queryMock.collect.mockResolvedValue([
+        { _id: "p1", kycStatus: "verified", isVerified: true },
+        { _id: "p2", kycStatus: "verified", isVerified: false },
+      ]);
+
+      const count = await countUsers(mockCtx as unknown as QueryCtx, {
+        kycStatus: "verified",
+        isVerified: true,
+      });
+
+      expect(count).toBe(1);
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_kycStatus",
+        expect.any(Function)
+      );
+    });
+
+    it("should handle no filters (complex case fallback)", async () => {
+      queryMock.collect.mockResolvedValue([{ _id: "p1" }, { _id: "p2" }]);
+
+      const count = await countUsers(mockCtx as unknown as QueryCtx, {});
+
+      expect(count).toBe(2);
     });
   });
 });

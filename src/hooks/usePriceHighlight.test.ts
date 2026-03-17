@@ -124,4 +124,42 @@ describe("usePriceHighlight", () => {
     expect(clearTimeoutSpy).toHaveBeenCalled();
     clearTimeoutSpy.mockRestore();
   });
+
+  it("should reschedule timeout if duration changes during highlight", () => {
+    const { result, rerender } = renderHook(
+      ({ price, duration }) => usePriceHighlight(price, { duration }),
+      {
+        initialProps: { price: 100, duration: 800 },
+      }
+    );
+
+    // Start highlight
+    act(() => {
+      rerender({ price: 110, duration: 800 });
+    });
+    expect(result.current).toBe(true);
+
+    // Change duration while highlighted
+    act(() => {
+      rerender({ price: 110, duration: 1000 });
+    });
+    expect(result.current).toBe(true);
+
+    // Should have rescheduled (timeoutRef was null after cleanup of first effect)
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(result.current).toBe(true); // Still true because 1000ms duration used
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(result.current).toBe(false);
+  });
+
+  it("should handle unmount without active timeout", () => {
+    const { unmount } = renderHook(() => usePriceHighlight(100));
+    unmount();
+    // No error should occur
+  });
 });

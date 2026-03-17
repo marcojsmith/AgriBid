@@ -28,7 +28,7 @@ export const Footer = () => {
       title: "Support",
       links: [
         { name: "Help Center", href: "#", icon: HelpCircle },
-        { name: "Contact Us", href: "#", icon: Mail },
+        { name: "Contact Us", href: "/support", icon: Mail },
         { name: "Terms of Service", href: "#", icon: Scale },
       ],
     },

@@ -113,4 +113,67 @@ describe("MediaGalleryStep", () => {
       expect(mockHandleAdditionalUpload).toHaveBeenCalledWith([file]);
     });
   });
+
+  it("renders check icon for additional photo without preview URL", () => {
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        ...mockFormData,
+        images: { ...mockFormData.images, additional: ["add1"] },
+      } as unknown as ListingFormData,
+      previews: {}, // No preview for add1
+      isSubmitting: false,
+    } as unknown as ListingWizardContextType);
+
+    render(<MediaGalleryStep />);
+    // CheckCircle2 should be rendered. Since it's an SVG, we can check for a container or aria-label if it had one.
+    // Or just verify alt text Additional 1 is NOT present.
+    expect(screen.queryByAltText("Additional 1")).not.toBeInTheDocument();
+
+    const removeButton = screen.getByRole("button", { name: /remove image/i });
+    fireEvent.click(removeButton);
+    expect(mockHandleRemove).toHaveBeenCalledWith("additional", 0);
+  });
+
+  it("renders preview from http storageId for fixed slots", () => {
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        images: { ...mockFormData.images, front: "http://example.com/img.jpg" },
+      } as unknown as ListingFormData,
+      previews: {},
+      isSubmitting: false,
+    } as unknown as ListingWizardContextType);
+
+    render(<MediaGalleryStep />);
+    expect(screen.getByAltText(/Front 45° View/i)).toBeInTheDocument();
+  });
+
+  it("renders preview from http storageId for additional slots", () => {
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        images: {
+          ...mockFormData.images,
+          additional: ["http://example.com/add.jpg"],
+        },
+      } as unknown as ListingFormData,
+      previews: {},
+      isSubmitting: false,
+    } as unknown as ListingWizardContextType);
+
+    render(<MediaGalleryStep />);
+    expect(screen.getByAltText(/Additional 1/i)).toBeInTheDocument();
+  });
+
+  it("renders check icon for fixed slot without preview URL", () => {
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        images: { ...mockFormData.images, front: "some-id" },
+      } as unknown as ListingFormData,
+      previews: {},
+      isSubmitting: false,
+    } as unknown as ListingWizardContextType);
+
+    render(<MediaGalleryStep />);
+    // Verify image is NOT present
+    expect(screen.queryByAltText(/Front 45° View/i)).not.toBeInTheDocument();
+  });
 });

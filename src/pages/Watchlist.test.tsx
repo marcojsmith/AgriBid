@@ -98,4 +98,16 @@ describe("Watchlist Page", () => {
 
     expect(loadMore).toHaveBeenCalledWith(10);
   });
+
+  it("renders loading more state", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockWatchedAuctions,
+      status: "LoadingMore",
+      loadMore: vi.fn(),
+    });
+
+    renderWatchlist();
+    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /loading/i })).toBeDisabled();
+  });
 });

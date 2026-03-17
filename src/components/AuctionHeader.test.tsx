@@ -46,8 +46,11 @@ const mockAuction = {
   images: ["img1"],
 };
 
-const { mockNavigate } = vi.hoisted(() => ({
+const { mockNavigate, mockLocation } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
+  mockLocation: vi
+    .fn()
+    .mockReturnValue({ pathname: "/auction/a1", search: "", hash: "" }),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -55,13 +58,18 @@ vi.mock("react-router-dom", async () => {
   return {
     ...(actual as Record<string, unknown>),
     useNavigate: () => mockNavigate,
-    useLocation: () => ({ pathname: "/auction/a1", search: "", hash: "" }),
+    useLocation: mockLocation,
   };
 });
 
 describe("AuctionHeader", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockLocation.mockReturnValue({
+      pathname: "/auction/a1",
+      search: "",
+      hash: "",
+    });
     vi.mocked(useSession).mockReturnValue({
       data: null,
       isPending: false,
@@ -196,5 +204,94 @@ describe("AuctionHeader", () => {
     const watchBtn = screen.getByRole("button", { name: "Watch" });
     fireEvent.click(watchBtn);
     expect(watchBtn.getAttribute("disabled")).toBeDefined();
+  });
+
+  it("handles watchlist removal success", async () => {
+    const toggleMock = vi.fn().mockResolvedValue(false); // nowWatched = false
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    vi.mocked(useQuery).mockReturnValue(true); // isWatched = true
+    vi.mocked(useMutation).mockReturnValue(
+      toggleMock as unknown as ReturnType<typeof useMutation>
+    );
+
+    renderComponent();
+    const watchBtn = screen.getByRole("button", { name: "Watching" });
+    fireEvent.click(watchBtn);
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Removed from watchlist");
+    });
+  });
+
+  it("handles watchlist toggle failure", async () => {
+    const toggleMock = vi.fn().mockRejectedValue(new Error("Fail"));
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    vi.mocked(useQuery).mockReturnValue(false);
+    vi.mocked(useMutation).mockReturnValue(
+      toggleMock as unknown as ReturnType<typeof useMutation>
+    );
+
+    renderComponent();
+    const watchBtn = screen.getByRole("button", { name: "Watch" });
+    fireEvent.click(watchBtn);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to update watchlist");
+    });
+  });
+
+  it("renders UNCATEGORIZED_LABEL when categoryName is missing", () => {
+    const noCatAuction = { ...mockAuction, categoryName: undefined };
+    renderComponent(
+      noCatAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+    );
+    expect(screen.getByText("Uncategorized")).toBeDefined();
+  });
+
+  it("handles invalid callback URL during login redirect", () => {
+    // Mock location to have invalid callback URL
+    vi.mocked(useSession).mockReturnValue({
+      data: null,
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+
+    mockLocation.mockReturnValue({
+      pathname: "http://malicious.com",
+      search: "",
+      hash: "",
+    });
+
+    renderComponent();
+    const watchBtn = screen.getByRole("button", { name: /watch/i });
+    fireEvent.click(watchBtn);
+
+    // It should redirect to /login?callbackUrl=/ if validation fails (unencoded)
+    expect(mockNavigate).toHaveBeenCalledWith("/login?callbackUrl=/");
+  });
+
+  it("returns early if isWatched is undefined", async () => {
+    const toggleMock = vi.fn();
+    vi.mocked(useSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    } as ReturnType<typeof useSession>);
+    vi.mocked(useQuery).mockReturnValue(undefined); // isWatched undefined
+    vi.mocked(useMutation).mockReturnValue(
+      toggleMock as unknown as ReturnType<typeof useMutation>
+    );
+
+    renderComponent();
+    // Button should be disabled
+    const watchBtn = screen.getByRole("button");
+    expect(watchBtn).toBeDisabled();
+
+    fireEvent.click(watchBtn);
+    expect(toggleMock).not.toHaveBeenCalled();
   });
 });

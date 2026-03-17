@@ -248,4 +248,91 @@ describe("Login Page", () => {
       expect(screen.getByText("Signup failed")).toBeInTheDocument();
     });
   });
+
+  it("handles invalid callbackUrl by defaulting to root", () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "1" } },
+      isPending: false,
+    });
+    renderComponent(["/login?callbackUrl=http://evil.com"]);
+    expect(screen.getByText("Home Page")).toBeInTheDocument();
+  });
+
+  it("uses default sign in error message if message is missing", async () => {
+    (signIn.email as Mock).mockResolvedValue({
+      error: { message: "" },
+    });
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Secure Password"), {
+      target: { value: "password" },
+    });
+    fireEvent.click(screen.getByText("Sign In to AgriBid"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Sign in failed")).toBeInTheDocument();
+    });
+  });
+
+  it("handles sign in catch block with non-Error object", async () => {
+    (signIn.email as Mock).mockRejectedValue("not an error object");
+    renderComponent();
+
+    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Secure Password"), {
+      target: { value: "password" },
+    });
+    fireEvent.click(screen.getByText("Sign In to AgriBid"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Sign in failed. Please try again.")
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("uses default sign up error message if message is missing", async () => {
+    (signUp.email as Mock).mockResolvedValue({
+      error: { message: "" },
+    });
+    renderComponent();
+    fireEvent.click(screen.getByText("Switch to Registration"));
+
+    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
+      target: { value: "password" },
+    });
+    fireEvent.click(screen.getByText("Create Verified Account"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Registration failed")).toBeInTheDocument();
+    });
+  });
+
+  it("handles sign up catch block with non-Error object", async () => {
+    (signUp.email as Mock).mockRejectedValue("string error");
+    renderComponent();
+    fireEvent.click(screen.getByText("Switch to Registration"));
+
+    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
+      target: { value: "password" },
+    });
+    fireEvent.click(screen.getByText("Create Verified Account"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Registration failed. Please try again.")
+      ).toBeInTheDocument();
+    });
+  });
 });

@@ -8,6 +8,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 - When encountering lint or typesafety errors or warns, correct these where possible.
 - You are a master delegator and make use of subagents where possible.
 - There are a lot of tests, run tests for specific files where possible instead of for the whole codebase.
+- Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
 
 ---
 
@@ -90,9 +91,9 @@ Consult these regularly. Keep them accurate when making changes.
 
 # 5. Coding Standards
 
-## TypeScript
+## Type safety
 
-- **No `any`.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
+- **NO `any` types.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
 - **No `eslint-disable`.** Refactor to comply instead. Remove stale/unused directives.
 - **JSDoc** all exported functions, components, and types.
 

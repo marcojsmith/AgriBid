@@ -43,6 +43,7 @@ export const Header = () => {
     { name: "Marketplace", href: "/" },
     { name: "Sell", href: "/sell" },
     { name: "Support", href: "/support" },
+    { name: "About", href: "/about", disabled: true },
   ];
 
   const handleSignOut = async () => {

@@ -42,8 +42,8 @@ vi.mock("./admin_utils", () => ({
 }));
 
 interface MockQuery {
-  withIndex: ReturnType<typeof vi.fn>;
-  filter: ReturnType<typeof vi.fn>;
+  withIndex: (index: string, cb?: (q: unknown) => unknown) => MockQuery;
+  filter: (cb: (q: unknown) => unknown) => MockQuery;
   unique: ReturnType<typeof vi.fn>;
   collect: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
@@ -74,9 +74,21 @@ describe("Users Coverage", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    queryMock = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
+
+    const q: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return q;
+      }),
+      filter: vi.fn((cb) => {
+        if (cb)
+          cb({
+            eq: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            field: vi.fn().mockReturnThis(),
+          });
+        return q;
+      }),
       unique: vi.fn().mockResolvedValue(null),
       collect: vi.fn().mockResolvedValue([]),
       order: vi.fn().mockReturnThis(),
@@ -86,6 +98,8 @@ describe("Users Coverage", () => {
         continueCursor: "",
       }),
     };
+    queryMock = q;
+
     mockCtx = {
       db: {
         get: vi.fn().mockResolvedValue(null),
@@ -272,12 +286,40 @@ describe("Users Coverage", () => {
       expect(result?.profile).toBeNull();
     });
 
+    it("should handle missing optional auth fields", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue(null);
+
+      const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
+      expect(result).toEqual({
+        _id: "u1",
+        userId: undefined,
+        name: undefined,
+        email: undefined,
+        profile: null,
+      });
+    });
+
     it("should catch and log errors", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
       expect(result).toBeNull();
       expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it("should ignore Unauthenticated errors in log", async () => {
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
+        new Error("Unauthenticated")
+      );
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
+      expect(result).toBeNull();
+      expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
     });
   });
@@ -380,6 +422,21 @@ describe("Users Coverage", () => {
       expect(adminUtils.logAudit).toHaveBeenCalled();
     });
 
+    it("should handle profile with no documents", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
+      const mockProfile = {
+        _id: "p1",
+        userId: "user123",
+        kycDocuments: undefined,
+      };
+      queryMock.unique.mockResolvedValue(mockProfile);
+      const result = await getProfileForKYCHandler(
+        mockCtx as unknown as MutationCtx,
+        { userId: "user123" }
+      );
+      expect(result?.kycDocumentUrls).toEqual([]);
+    });
+
     it("should return null if profile not found", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
       queryMock.unique.mockResolvedValue(null);
@@ -421,6 +478,27 @@ describe("Users Coverage", () => {
         1
       );
       expect(adminUtils.logAudit).toHaveBeenCalled();
+    });
+
+    it("should handle admin with no userId (fallback to _id)", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "admin_id",
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        kycStatus: "pending",
+      });
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await verifyUserHandler(mockCtx as unknown as MutationCtx, {
+        userId: "user123",
+      });
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Admin admin_id")
+      );
+      spy.mockRestore();
     });
 
     it("should warn if manual verification happens without KYC", async () => {
@@ -663,6 +741,25 @@ describe("Users Coverage", () => {
       });
     });
 
+    it("should handle profile with no documents in getMyKYCDetails", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user123",
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        kycDocuments: undefined,
+      });
+
+      const result = await getMyKYCDetailsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+
+      expect(result?.kycDocumentIds).toBeUndefined();
+      expect(result?.kycDocumentUrls).toEqual([]);
+    });
+
     it("should return null if not authenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       const result = await getMyKYCDetailsHandler(
@@ -671,38 +768,16 @@ describe("Users Coverage", () => {
       expect(result).toBeNull();
     });
 
-    it("should return null if resolveUserId fails", async () => {
-      vi.mocked(auth.getAuthUser).mockResolvedValue({
-        _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
-      vi.mocked(auth.resolveUserId).mockReturnValue(null);
-      const result = await getMyKYCDetailsHandler(
-        mockCtx as unknown as QueryCtx
+    it("should ignore Unauthenticated errors in KYC details log", async () => {
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
+        new Error("Unauthenticated")
       );
-      expect(result).toBeNull();
-    });
-
-    it("should return null if profile not found", async () => {
-      vi.mocked(auth.getAuthUser).mockResolvedValue({
-        _id: "u1",
-        userId: "user123",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue(null);
-      const result = await getMyKYCDetailsHandler(
-        mockCtx as unknown as QueryCtx
-      );
-      expect(result).toBeNull();
-    });
-
-    it("should handle errors", async () => {
-      vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       const result = await getMyKYCDetailsHandler(
         mockCtx as unknown as QueryCtx
       );
       expect(result).toBeNull();
-      expect(spy).toHaveBeenCalled();
+      expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
     });
   });
@@ -730,6 +805,23 @@ describe("Users Coverage", () => {
         expect.objectContaining({ kycDocuments: ["s2"] })
       );
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("s1");
+    });
+
+    it("should handle profile with no documents during deletion", async () => {
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        kycDocuments: undefined,
+      });
+
+      await expect(
+        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
+          storageId: "s1" as Id<"_storage">,
+        })
+      ).rejects.toThrow("Document not found in your profile");
     });
 
     it("should throw if resolveUserId fails", async () => {

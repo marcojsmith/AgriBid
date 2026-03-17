@@ -115,7 +115,9 @@ export function useUserManagement() {
         setKycRejectionReason("");
       } else if (
         fullProfile &&
+        typeof fullProfile === "object" &&
         "userId" in fullProfile &&
+        typeof fullProfile.userId === "string" &&
         fullProfile.userId !== userId
       ) {
         // Stale response, ignore

@@ -120,6 +120,14 @@ describe("UserDropdown", () => {
     expect(onSignOut).toHaveBeenCalled();
   });
 
+  it("renders default name when user name is missing", () => {
+    renderWithRouter({
+      ...defaultProps,
+      userData: { ...defaultProps.userData, name: "" },
+    });
+    expect(screen.getByText("User")).toBeInTheDocument();
+  });
+
   it("shows error toast if sign out fails", async () => {
     const onSignOut = vi.fn().mockRejectedValue(new Error("Failed"));
     renderWithRouter({ ...defaultProps, onSignOut });

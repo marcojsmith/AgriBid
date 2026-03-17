@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import {
   describe,
@@ -495,5 +496,59 @@ describe("ListingWizard Full Coverage", () => {
       );
       expect(saved.auctionId).toBe("new-id-123");
     });
+  });
+
+  it("prevents double save draft while saving", async () => {
+    renderWizard();
+    fillStep1();
+
+    // Move to step 2 and select category to set categoryId
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    await screen.findByText(/Tractor/i);
+    fireEvent.click(screen.getByText(/Tractor/i));
+
+    mockSaveDraft.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve("id1"), 100))
+    );
+
+    const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
+    fireEvent.click(saveBtn);
+    fireEvent.click(saveBtn);
+
+    expect(mockSaveDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows technical specs empty state when no category selected", async () => {
+    renderWizard();
+    fillStep1();
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+
+    await screen.findByText(/Technical Specifications/i);
+    expect(
+      screen.getByText(/Select a category to view available equipment catalog/i)
+    ).toBeInTheDocument();
+  });
+
+  it("prevents handleSaveDraft when isSubmitting is true", async () => {
+    // We can simulate isSubmitting by making createAuction a long-running promise
+    renderWizard();
+    await fillAllSteps();
+
+    mockCreateAuction.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ success: true }), 500)
+        )
+    );
+
+    const submitBtn = screen.getByRole("button", { name: /Submit Listing/i });
+    fireEvent.click(submitBtn);
+
+    // Now isSubmitting should be true. Try to click Save Draft.
+    const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
+    fireEvent.click(saveBtn);
+
+    // SaveDraft should NOT have been called
+    expect(mockSaveDraft).not.toHaveBeenCalled();
   });
 });

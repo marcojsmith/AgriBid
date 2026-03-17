@@ -31,10 +31,10 @@ export default defineConfig({
       ],
       thresholds: {
         // Global Baseline - Updated March 2026 after test coverage improvements
-        statements: 96,
-        branches: 91,
-        functions: 94,
-        lines: 97,
+        statements: 98,
+        branches: 94,
+        functions: 98,
+        lines: 98,
 
         // Phase 3: Improved Backend Files
         "convex/support.ts": {

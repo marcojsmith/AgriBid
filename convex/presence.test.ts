@@ -44,7 +44,18 @@ describe("Presence Coverage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn().mockReturnThis(),
+      withIndex: vi.fn((_index, cb) => {
+        if (cb) {
+          cb({
+            eq: vi.fn().mockReturnThis(),
+            lte: vi.fn().mockReturnThis(),
+            gt: vi.fn().mockReturnThis(),
+            lt: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+          });
+        }
+        return queryMock;
+      }),
       unique: vi.fn().mockResolvedValue(null),
       collect: vi.fn().mockResolvedValue([]),
       take: vi.fn().mockResolvedValue([]),
@@ -117,6 +128,26 @@ describe("Presence Coverage", () => {
         "p1",
         expect.objectContaining({
           updatedAt: expect.any(Number),
+        })
+      );
+    });
+
+    it("should fallback to _id if userId is missing", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+      } as unknown as AuthUser);
+      queryMock.unique.mockResolvedValue(null);
+
+      await (
+        heartbeat as unknown as {
+          handler: (...args: unknown[]) => Promise<unknown>;
+        }
+      ).handler(mockCtx, {});
+
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "presence",
+        expect.objectContaining({
+          userId: "u1",
         })
       );
     });

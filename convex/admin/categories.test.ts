@@ -17,6 +17,13 @@ vi.mock("../lib/auth", () => ({
   requireAdmin: vi.fn(),
 }));
 
+interface MockQuery {
+  withIndex?: (index: string, cb?: (q: unknown) => unknown) => MockQuery;
+  filter?: (cb: (q: unknown) => unknown) => MockQuery;
+  first?: () => Promise<unknown>;
+  collect?: () => Promise<unknown[]>;
+}
+
 describe("Categories Backend", () => {
   let mockCtx: MutationCtx;
 
@@ -24,7 +31,7 @@ describe("Categories Backend", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: unknown) => {
+  const setupMockCtx = (mockQuery: MockQuery) => {
     const mockDb = {
       get: vi.fn(),
       patch: vi.fn(),
@@ -39,8 +46,13 @@ describe("Categories Backend", () => {
   };
 
   it("should create a new category when called by admin", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue(null),
     };
     mockCtx = setupMockCtx(mockQuery);
@@ -62,8 +74,13 @@ describe("Categories Backend", () => {
   });
 
   it("should throw an error if a duplicate category name exists", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue({
         _id: "cat_456",
         name: "Tractors",
@@ -94,8 +111,13 @@ describe("Categories Backend", () => {
   });
 
   it("should reject non-admin requests", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue(null),
     };
     mockCtx = setupMockCtx(mockQuery);
@@ -110,8 +132,13 @@ describe("Categories Backend", () => {
   });
 
   it("should reactivate an inactive category if it exists", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue({
         _id: "cat_inactive",
         name: "Tractors",
@@ -141,7 +168,7 @@ describe("updateCategory", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: unknown, getResponse?: unknown) => {
+  const setupMockCtx = (mockQuery: MockQuery, getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
@@ -155,8 +182,13 @@ describe("updateCategory", () => {
   };
 
   it("should update category name successfully", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue(null),
     };
     const existingCategory = {
@@ -179,8 +211,13 @@ describe("updateCategory", () => {
   });
 
   it("should throw error if category not found", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue(null),
     };
     mockCtx = setupMockCtx(mockQuery, null);
@@ -201,8 +238,13 @@ describe("updateCategory", () => {
       name: "Old Name",
       isActive: true,
     };
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue(null),
     };
     mockCtx = setupMockCtx(mockQuery, existingCategory);
@@ -223,8 +265,13 @@ describe("updateCategory", () => {
       name: "Old Name",
       isActive: true,
     };
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue({
         _id: "cat_456",
         name: "Duplicate",
@@ -249,8 +296,13 @@ describe("updateCategory", () => {
       name: "Old Name",
       isActive: true,
     };
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue({
         _id: "cat_456",
         name: "Duplicate",
@@ -270,8 +322,13 @@ describe("updateCategory", () => {
   });
 
   it("should reject non-admin users", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return mockQuery;
+      }),
+      filter: vi.fn(() => mockQuery),
+      collect: vi.fn().mockResolvedValue([]),
       first: vi.fn().mockResolvedValue(null),
     };
     mockCtx = setupMockCtx(mockQuery, {});
@@ -295,8 +352,8 @@ describe("deleteCategory", () => {
   });
 
   const setupMockCtx = (
-    equipmentQuery: unknown,
-    auctionQuery: unknown,
+    equipmentQuery: MockQuery,
+    auctionQuery: MockQuery,
     getResponse?: unknown
   ) => {
     const mockDb = {
@@ -322,10 +379,21 @@ describe("deleteCategory", () => {
   };
 
   const createChainedQuery = (firstResult: unknown) => {
-    const queryObj = {
-      withIndex: vi.fn(() => queryObj),
-      filter: vi.fn(() => queryObj),
+    const queryObj: MockQuery = {
+      withIndex: vi.fn((_idx, cb) => {
+        if (cb) cb({ eq: vi.fn().mockReturnThis() });
+        return queryObj;
+      }),
+      filter: vi.fn((cb) => {
+        if (cb)
+          cb({
+            eq: vi.fn().mockReturnThis(),
+            field: vi.fn().mockReturnThis(),
+          });
+        return queryObj;
+      }),
       first: vi.fn().mockResolvedValue(firstResult),
+      collect: vi.fn().mockResolvedValue([]),
     };
     return queryObj;
   };
@@ -794,7 +862,7 @@ describe("getCategories", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: unknown) => {
+  const setupMockCtx = (mockQuery: MockQuery) => {
     const mockDb = {
       query: vi.fn(
         () => mockQuery as unknown as ReturnType<QueryCtx["db"]["query"]>
@@ -806,13 +874,22 @@ describe("getCategories", () => {
   };
 
   it("should return only active categories by default", async () => {
-    const mockQuery = {
-      filter: vi.fn().mockReturnThis(),
+    const mockQuery: MockQuery = {
+      filter: vi.fn((cb) => {
+        if (cb)
+          cb({
+            eq: vi.fn().mockReturnThis(),
+            field: vi.fn().mockReturnThis(),
+          });
+        return mockQuery;
+      }),
       collect: vi
         .fn()
         .mockResolvedValue([
           { _id: "cat_1", name: "Tractors", isActive: true },
         ]),
+      withIndex: vi.fn().mockReturnThis(),
+      first: vi.fn().mockResolvedValue(null),
     };
     mockCtx = setupMockCtx(mockQuery);
 
