@@ -536,7 +536,6 @@ export const listAnnouncements = query({
 
     const page = announcementsResult.page.map((announcement) => ({
       ...announcement,
-       
       readCount: readCounts.get(announcement._id) ?? 0,
     }));
 

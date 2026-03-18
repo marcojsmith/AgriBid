@@ -62,9 +62,14 @@ under this stricter config before committing.
 
 This extends the boy scout rule: leave every file you touch fully compliant
 with `strictTypeChecked` + `stylisticTypeChecked` — not just free of
-pre-existing warnings, but actively improved. Do not suppress errors with
-`@ts-ignore`, `@ts-expect-error`, or `eslint-disable` comments unless there
-is no viable alternative, and always add an explanation comment if you do.
+pre-existing warnings, but actively improved. **Never suppress errors.** Do not
+use `@ts-ignore`, `@ts-expect-error`, or `eslint-disable` (or any variant such
+as `@ts-nocheck`, `// eslint-disable-next-line`, `/* eslint-disable */`) in
+any `**/*.{ts,tsx,js,jsx}` file under any circumstances. Instead of suppressing
+errors, refactor the code to comply with the type system and lint rules. If a
+rule cannot be satisfied and genuinely blocks progress, open an issue describing
+the exceptional case before considering any suppression — but never commit
+suppressions without an issue reference.
 
 ---
 

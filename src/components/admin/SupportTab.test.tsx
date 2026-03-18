@@ -73,12 +73,9 @@ describe("SupportTab", () => {
 
   it("renders empty state when no tickets", () => {
     mockUseQuery.mockReturnValue({
+      ...mockPaginatedTickets,
       page: [],
-      isDone: true,
-      continueCursor: "",
       totalCount: 0,
-      pageStatus: null,
-      splitCursor: null,
     });
     render(<SupportTab />);
     expect(screen.getByText("No support tickets")).toBeInTheDocument();

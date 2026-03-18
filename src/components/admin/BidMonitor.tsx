@@ -157,6 +157,7 @@ export function BidMonitor() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-label={`Void bid ${bid._id}`}
                         onClick={() => {
                           setVoidTarget(bid._id);
                         }}

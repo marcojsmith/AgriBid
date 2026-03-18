@@ -9,6 +9,40 @@ import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 import AdminMarketplace from "./AdminMarketplace";
 
+interface PaginatedBidsPage {
+  page: Array<{
+    _id: string;
+    _creationTime?: number;
+    auctionId?: string;
+    timestamp: number;
+    auctionTitle?: string;
+    auctionLookupStatus: string;
+    bidderId: string;
+    amount: number;
+    status: string;
+  }>;
+  isDone: boolean;
+  continueCursor: string;
+  totalCount: number;
+  pageStatus: null;
+  splitCursor: null;
+}
+
+function createPaginatedBids(
+  pageItems: PaginatedBidsPage["page"],
+  overrides?: Partial<PaginatedBidsPage>
+): PaginatedBidsPage {
+  return {
+    page: pageItems,
+    isDone: true,
+    continueCursor: "",
+    totalCount: pageItems.length,
+    pageStatus: null,
+    splitCursor: null,
+    ...overrides,
+  };
+}
+
 // Mock Convex hooks
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
@@ -169,9 +203,9 @@ describe("AdminMarketplace Page", () => {
       if (query === "admin:getRecentBids") return undefined;
       return undefined;
     });
-    (useLoadingTimeout as Mock).mockImplementation((isLoading: boolean) => {
-      return isLoading as boolean;
-    });
+    (useLoadingTimeout as Mock).mockImplementation(
+      (isLoading: boolean) => isLoading
+    );
 
     renderPage();
     expect(screen.getByText(/Feed Timeout/i)).toBeInTheDocument();
@@ -183,15 +217,7 @@ describe("AdminMarketplace Page", () => {
   it("renders empty state when no bids are present", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids")
-        return {
-          page: [],
-          isDone: true,
-          continueCursor: "",
-          totalCount: 0,
-          pageStatus: null,
-          splitCursor: null,
-        };
+      if (query === "admin:getRecentBids") return createPaginatedBids([]);
       return undefined;
     });
 
@@ -250,14 +276,7 @@ describe("AdminMarketplace Page", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
       if (query === "admin:getRecentBids")
-        return {
-          page: errorBids,
-          isDone: true,
-          continueCursor: "",
-          totalCount: errorBids.length,
-          pageStatus: null,
-          splitCursor: null,
-        };
+        return createPaginatedBids(errorBids);
       return undefined;
     });
 

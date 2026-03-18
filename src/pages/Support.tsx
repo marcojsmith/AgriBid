@@ -34,7 +34,7 @@ export default function Support() {
   });
   const createTicket = useMutation(api.support.createTicket);
 
-  const tickets = ticketsResult?.page ?? [];
+  const tickets = ticketsResult?.page;
 
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -207,7 +207,7 @@ export default function Support() {
               </div>
             ) : (
               <>
-                {tickets.map((ticket) => (
+                {tickets?.map((ticket) => (
                   <Card
                     key={ticket._id}
                     className="p-4 border-2 hover:border-primary/40 transition-all"
@@ -239,7 +239,7 @@ export default function Support() {
                     )}
                   </Card>
                 ))}
-                {tickets.length === 0 && (
+                {tickets?.length === 0 && (
                   <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">
                     <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
                     <p className="text-xs font-black uppercase text-muted-foreground">

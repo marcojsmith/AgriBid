@@ -105,11 +105,15 @@ export const getFinancialStats = query({
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
 
+      const numItems = args.salesPaginationOpts?.numItems ?? 100;
+      const cursor = args.salesPaginationOpts?.cursor ?? null;
+      const startIndex = cursor ? parseInt(cursor, 10) : 0;
+
       const recentSoldAuctions = await ctx.db
         .query("auctions")
         .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
         .order("desc")
-        .collect();
+        .take(startIndex + numItems);
 
       const allSales = recentSoldAuctions.map((a) => ({
         id: a._id,
@@ -119,12 +123,9 @@ export const getFinancialStats = query({
         date: a.endTime ?? 0,
       }));
 
-      const numItems = args.salesPaginationOpts?.numItems ?? 100;
-      const cursor = args.salesPaginationOpts?.cursor ?? null;
-      const startIndex = cursor ? parseInt(cursor, 10) : 0;
-      const page = allSales.slice(startIndex, startIndex + numItems);
-      const isDone = startIndex + numItems >= allSales.length;
-      const continueCursor = isDone ? "" : String(startIndex + numItems);
+      const page = allSales.slice(startIndex);
+      const isDone = allSales.length < startIndex + numItems;
+      const continueCursor = isDone ? "" : String(startIndex + page.length);
 
       return {
         totalSalesVolume,

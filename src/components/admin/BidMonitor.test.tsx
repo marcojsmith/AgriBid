@@ -7,10 +7,12 @@ import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 import { BidMonitor } from "./BidMonitor";
 
+const FIXED_TIMESTAMP = 1704067200000;
+
 const mockBids = [
   {
     _id: "bid-1" as Id<"bids">,
-    timestamp: Date.now(),
+    timestamp: FIXED_TIMESTAMP,
     auctionTitle: "John Deere 8R",
     auctionLookupStatus: "FOUND" as const,
     bidderId: "bidder-123456789",
@@ -19,7 +21,7 @@ const mockBids = [
   },
   {
     _id: "bid-2" as Id<"bids">,
-    timestamp: Date.now(),
+    timestamp: FIXED_TIMESTAMP,
     auctionTitle: "Case IH Combine",
     auctionLookupStatus: "FOUND" as const,
     bidderId: "bidder-987654321",
@@ -73,12 +75,9 @@ describe("BidMonitor", () => {
 
   it("renders empty state when no bids", () => {
     mockUseQuery.mockReturnValue({
+      ...mockPaginatedBids,
       page: [],
-      isDone: true,
-      continueCursor: "",
       totalCount: 0,
-      pageStatus: null,
-      splitCursor: null,
     });
     render(<BidMonitor />);
     expect(screen.getByText("No bids yet")).toBeInTheDocument();
