@@ -551,4 +551,49 @@ describe("ListingWizard Full Coverage", () => {
     // SaveDraft should NOT have been called
     expect(mockSaveDraft).not.toHaveBeenCalled();
   });
+
+  it("handles handleSaveDraft when authentication check fails", async () => {
+    mockEnsureAuthenticated.mockReturnValue(false);
+    renderWizard();
+    fillStep1();
+
+    // Move to step 2 and select category to enable server-side save
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    await screen.findByText(/Tractor/i);
+    fireEvent.click(screen.getByText(/Tractor/i));
+
+    const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
+    fireEvent.click(saveBtn);
+
+    expect(mockSaveDraft).not.toHaveBeenCalled();
+  });
+
+  it("normalizes draft with missing conditionChecklist", () => {
+    // This tests the branch in validateAndNormalizeDraft: ...(data.conditionChecklist || {})
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({
+        title: "Test",
+        conditionChecklist: undefined,
+      })
+    );
+
+    renderWizard();
+    // If it didn't crash, the branch was hit and fallback used
+    expect(screen.getByLabelText(/Listing Title/i)).toHaveValue("Test");
+  });
+
+  it("handles invalid step in localStorage", () => {
+    localStorage.setItem("agribid_listing_step", "invalid");
+    renderWizard();
+    // Should fallback to step 0
+    expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
+  });
+
+  it("handles out of range step in localStorage", () => {
+    localStorage.setItem("agribid_listing_step", "10");
+    renderWizard();
+    // Should fallback to step 0
+    expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
+  });
 });

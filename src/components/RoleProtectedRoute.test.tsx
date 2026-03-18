@@ -226,20 +226,19 @@ describe("RoleProtectedRoute", () => {
     consoleSpy.mockRestore();
   });
 
-  it("handles unsuccessful sync result during retry and clears existing timer", async () => {
+  it("handles null sync result during retry", async () => {
     vi.useFakeTimers();
     (useSession as Mock).mockReturnValue({
       data: { user: {} },
       isPending: false,
     });
     (useQuery as Mock).mockReturnValue(undefined);
-    mockSyncUser.mockResolvedValue({ success: false });
+    mockSyncUser.mockResolvedValue(null);
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     renderWithRouter("admin");
 
-    // Trigger timeout - this sets timerRef.current
     act(() => {
       vi.advanceTimersByTime(16000);
     });
@@ -254,6 +253,59 @@ describe("RoleProtectedRoute", () => {
     await waitFor(() => {
       expect(screen.getByText(/Profile Loading Error/i)).toBeInTheDocument();
     });
+    consoleSpy.mockRestore();
+  });
+
+  it("handles retry catch block when component is unmounted (timerRef is null)", async () => {
+    vi.useFakeTimers();
+    (useSession as Mock).mockReturnValue({
+      data: { user: {} },
+      isPending: false,
+    });
+    (useQuery as Mock).mockReturnValue(undefined);
+
+    // Create a promise we can control
+    let rejectPromise: (reason?: unknown) => void;
+    mockSyncUser.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectPromise = reject;
+      })
+    );
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { unmount } = render(
+      <BrowserRouter>
+        <RoleProtectedRoute allowedRole="admin">
+          <div>Content</div>
+        </RoleProtectedRoute>
+      </BrowserRouter>
+    );
+
+    // Trigger timeout to show retry button
+    act(() => {
+      vi.advanceTimersByTime(16000);
+    });
+
+    vi.useRealTimers();
+
+    const retryBtn = screen.getByRole("button", { name: /Retry Connection/i });
+    act(() => {
+      retryBtn.click();
+    });
+
+    // Now unmount! This clears the timer and sets it to undefined.
+    unmount();
+
+    // Now fail the syncUser mutation
+    await act(async () => {
+      rejectPromise!(new Error("Sync failed after unmount"));
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Manual profile sync failed:",
+      expect.any(Error)
+    );
     consoleSpy.mockRestore();
   });
 

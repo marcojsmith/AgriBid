@@ -4,11 +4,21 @@ import {
   fireEvent,
   waitFor,
   within,
+  act,
+  cleanup,
 } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
+
+vi.mock("@/contexts/useAdminStats", () => ({
+  useAdminStats: vi.fn(() => ({
+    adminStats: { totalAuctions: 10 },
+    isLoading: false,
+    error: null,
+  })),
+}));
 
 import AdminAuctions from "./AdminAuctions";
 
@@ -626,17 +636,6 @@ describe("AdminAuctions", () => {
           model: "m",
           year: 2020,
         },
-        {
-          _id: "auction9",
-          title: "Ended Already",
-          status: "active",
-          endTime: now - 1000,
-          currentPrice: 100,
-          reservePrice: 100,
-          make: "m",
-          model: "m",
-          year: 2020,
-        },
       ],
       status: "CanLoadMore",
       loadMore: vi.fn(),
@@ -705,11 +704,160 @@ describe("AdminAuctions", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-    await openForceEnd("Ended Already");
+    // Add cases for singular day/hour combinations
+    cleanup();
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "auction10",
+          title: "1 Day 1 Hour",
+          status: "active",
+          endTime: now + 86400000 + 3600000,
+          currentPrice: 100,
+          reservePrice: 100,
+          make: "m",
+          model: "m",
+          year: 2020,
+        },
+        {
+          _id: "auction11",
+          title: "2 Days 1 Hour",
+          status: "active",
+          endTime: now + 2 * 86400000 + 3600000,
+          currentPrice: 100,
+          reservePrice: 100,
+          make: "m",
+          model: "m",
+          year: 2020,
+        },
+      ],
+      status: "CanLoadMore",
+      loadMore: vi.fn(),
+    });
+    renderComponent();
+
+    await openForceEnd("1 Day 1 Hour");
     expect(
-      within(screen.getByRole("alertdialog")).getByText(/^Ended$/i)
+      within(screen.getByRole("alertdialog")).getByText(/^1 day, 1 hour$/i)
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await openForceEnd("2 Days 1 Hour");
+    expect(
+      within(screen.getByRole("alertdialog")).getByText(/^2 days, 1 hour$/i)
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     dateSpy.mockRestore();
   }, 30000);
+
+  it("handles close auction early with missing error message", async () => {
+    closeAuctionEarlyMock.mockResolvedValue({
+      success: false,
+      // No error field
+    });
+
+    renderComponent();
+
+    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
+    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    openDropdown(actionButton);
+    await waitFor(() =>
+      expect(screen.getByText("Force End")).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByText("Force End"));
+
+    const confirmButton = screen.getByRole("button", { name: "Close Auction" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to close auction");
+    });
+  });
+
+  it("displays dash when adminStats is missing", () => {
+    (useQuery as Mock).mockImplementation((name: string) => {
+      if (name === "admin:getAdminStats") return null;
+      if (name === "users:getMyProfile") return { profile: { role: "admin" } };
+      return undefined;
+    });
+    renderComponent();
+    expect(screen.getByText(/Showing 3 of — Auctions/i)).toBeInTheDocument();
+  });
+
+  it("displays reserve not met status in close dialog", async () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "auction_no_reserve",
+          title: "No Reserve Met",
+          status: "active",
+          currentPrice: 50,
+          reservePrice: 100,
+          make: "m",
+          model: "m",
+          year: 2020,
+          endTime: Date.now() + 3600000,
+        },
+      ],
+      status: "CanLoadMore",
+      loadMore: vi.fn(),
+    });
+
+    renderComponent();
+    const row = screen.getByText("No Reserve Met").closest("tr")!;
+    const actionButton = within(row).getAllByRole("button").pop()!;
+    openDropdown(actionButton);
+    await waitFor(() =>
+      expect(screen.getByText("Force End")).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByText("Force End"));
+
+    await waitFor(() => {
+      expect(screen.getByText("✗ Not Met")).toBeInTheDocument();
+    });
+  });
+
+  it("prevents closing dialog when isClosing is true", async () => {
+    // Delay resolution to keep isClosing true
+    let resolveClose: (val: unknown) => void;
+    const closePromise = new Promise((resolve) => {
+      resolveClose = resolve;
+    });
+    closeAuctionEarlyMock.mockReturnValue(closePromise);
+
+    renderComponent();
+    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
+    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    openDropdown(actionButton);
+    await waitFor(() =>
+      expect(screen.getByText("Force End")).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByText("Force End"));
+
+    const confirmButton = screen.getByRole("button", { name: "Close Auction" });
+    fireEvent.click(confirmButton);
+
+    // Now isClosing should be true
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+
+    // Dialog should still be there
+    expect(screen.getByText("Close Auction Early?")).toBeInTheDocument();
+
+    // Resolve and then it should be able to close
+    await act(async () => {
+      resolveClose!({
+        success: true,
+        finalStatus: "sold",
+        winnerId: "u",
+        winningAmount: 100,
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Close Auction Early?")
+      ).not.toBeInTheDocument();
+    });
+  });
 });

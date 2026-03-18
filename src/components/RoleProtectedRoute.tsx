@@ -53,6 +53,7 @@ export const RoleProtectedRoute = ({
         console.error("Manual profile sync returned an unsuccessful result.");
         if (timerRef.current) {
           clearTimeout(timerRef.current);
+          timerRef.current = undefined;
         }
         setHasTimedOut(true);
       }
@@ -60,6 +61,7 @@ export const RoleProtectedRoute = ({
       console.error("Manual profile sync failed:", err);
       if (timerRef.current) {
         clearTimeout(timerRef.current);
+        timerRef.current = undefined;
       }
       setHasTimedOut(true);
     }
@@ -88,7 +90,10 @@ export const RoleProtectedRoute = ({
     // It is reset in handleRetry.
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = undefined;
+      }
     };
   }, [session, userData, hasTimedOut]);
 

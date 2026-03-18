@@ -78,14 +78,18 @@ describe("getErrorMessage", () => {
       message: "Invalid",
     });
     const result = getErrorMessage(error);
-    // ConvexError with object usually has a generated message including the data
     expect(result).toContain("Invalid");
   });
 
   it("falls back to default fallback if ConvexError message is missing", () => {
-    const error = new ConvexError({});
-    // Manually clear message if possible or just test fallback
-    expect(getErrorMessage(error, "Fallback")).toBeDefined();
+    const error = new (class extends ConvexError {
+      constructor() {
+        super({});
+        // @ts-expect-error - forcing empty message for test
+        this.message = "";
+      }
+    })();
+    expect(getErrorMessage(error, "Fallback")).toBe("Fallback");
   });
 
   it("returns fallback for unknown error types", () => {
@@ -98,5 +102,9 @@ describe("getErrorMessage", () => {
     expect(getErrorMessage("string error", "Custom fallback")).toBe(
       "Custom fallback"
     );
+  });
+
+  it("handles non-Error objects with message property", () => {
+    expect(getErrorMessage({ message: "Custom" }, "Fallback")).toBe("Fallback");
   });
 });

@@ -626,4 +626,188 @@ describe("BiddingPanel", () => {
       expect(toast.error).toHaveBeenCalledWith("Mutation failed syntax error");
     });
   });
+
+  it("handles auction without endTime gracefully (fallback to ended)", () => {
+    const auctionNoEndTime = {
+      ...mockAuctionBase,
+      endTime: undefined,
+      status: "active",
+    } as unknown as Doc<"auctions">;
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auctionNoEndTime} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Auction Ended/i)).toBeInTheDocument();
+  });
+
+  it("applies correct styles for all combinations of isEnded and isHighlighted", () => {
+    const auction = getActiveAuction();
+    const { rerender, container } = render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    // Case 1: !isEnded && isHighlighted
+    vi.mocked(usePriceHighlight).mockReturnValue(true);
+    rerender(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+    expect(
+      container.querySelector(".border-green-500\\/30")
+    ).toBeInTheDocument();
+
+    // Case 2: !isEnded && !isHighlighted
+    vi.mocked(usePriceHighlight).mockReturnValue(false);
+    rerender(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+    expect(container.querySelector(".border-transparent")).toBeInTheDocument();
+
+    // Case 3: isEnded && isHighlighted (should still be border-border because !isEnded is false)
+    const endedAuction = { ...auction, status: "sold" } as any;
+    vi.mocked(usePriceHighlight).mockReturnValue(true);
+    rerender(
+      <BrowserRouter>
+        <BiddingPanel auction={endedAuction} />
+      </BrowserRouter>
+    );
+    expect(container.querySelector(".border-transparent")).toBeInTheDocument();
+
+    // Case 4: isEnded && !isHighlighted
+    vi.mocked(usePriceHighlight).mockReturnValue(false);
+    rerender(
+      <BrowserRouter>
+        <BiddingPanel auction={endedAuction} />
+      </BrowserRouter>
+    );
+    expect(container.querySelector(".border-transparent")).toBeInTheDocument();
+  });
+
+  it("renders with 0 amount when pendingBid.amount is falsy", async () => {
+    const auction = getActiveAuction();
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    // This should trigger the line `amount={pendingBid.amount || 0}` in BidConfirmation props
+    // which we can verify by checking the rendered text in our mock
+    expect(screen.getByText(/Confirm Bid 0/i)).toBeInTheDocument();
+  });
+
+  it("handles bid confirm with zero amount by returning early", async () => {
+    const auction = getActiveAuction();
+    const mockPlaceBid = vi.fn();
+    vi.mocked(convexReact.useMutation).mockReturnValue(
+      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
+    );
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    // Trigger handleBidConfirm directly through the mock
+    const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    expect(mockPlaceBid).not.toHaveBeenCalled();
+  });
+
+  it("handles proxyBidActive true but confirmedMaxBid missing during confirm", async () => {
+    const auction = getActiveAuction();
+    const mockPlaceBid = Object.assign(
+      vi.fn().mockResolvedValue({
+        success: true,
+        proxyBidActive: true,
+        confirmedMaxBid: undefined, // Missing
+      }),
+      {
+        withOptimisticUpdate: vi.fn().mockReturnThis(),
+      }
+    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(
+      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
+    );
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    // Set a pending bid first
+    const bidButton = screen.getByRole("button", { name: /Place Bid/i });
+    fireEvent.click(bidButton);
+
+    const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it("shows pending verification message when kycStatus is pending", async () => {
+    const auction = getActiveAuction();
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+      const queryArgs = args[1];
+      if (queryArgs === undefined) {
+        return { profile: { isVerified: false, kycStatus: "pending" } };
+      }
+      return null;
+    });
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Your identity verification is currently under review/i
+        )
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Complete KYC Now/i)).not.toBeInTheDocument();
+  });
+
+  it("shows rejected verification message and KYC link when kycStatus is rejected", async () => {
+    const auction = getActiveAuction();
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+      const queryArgs = args[1];
+      if (queryArgs === undefined) {
+        return { profile: { isVerified: false, kycStatus: "rejected" } };
+      }
+      return null;
+    });
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /you must complete identity verification before placing bids/i
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Complete KYC Now/i)).toBeInTheDocument();
+    });
+  });
 });

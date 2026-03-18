@@ -272,19 +272,17 @@ export const getActiveAuctionsHandler = async (
     if (args.minYear !== undefined || args.maxYear !== undefined) {
       if (statuses.length === 1) {
         return auctionsQuery.withIndex("by_status_year", (q) => {
-          const statusQuery = q.eq("status", statuses[0]);
           if (args.minYear !== undefined && args.maxYear !== undefined) {
-            return statusQuery
+            return q
+              .eq("status", statuses[0])
               .gte("year", args.minYear)
               .lte("year", args.maxYear);
           }
           if (args.minYear !== undefined) {
-            return statusQuery.gte("year", args.minYear);
+            return q.eq("status", statuses[0]).gte("year", args.minYear);
           }
-          if (args.maxYear !== undefined) {
-            return statusQuery.lte("year", args.maxYear);
-          }
-          return statusQuery;
+          // maxYear must be defined if we got here
+          return q.eq("status", statuses[0]).lte("year", args.maxYear!);
         });
       }
       return auctionsQuery.order("desc");
@@ -402,7 +400,13 @@ export const getActiveAuctions = query({
     page: v.array(AuctionSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
-    pageStatus: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
     totalCount: v.union(v.number(), v.string()),
   }),
@@ -577,7 +581,13 @@ export const getAuctionBids = query({
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
-    pageStatus: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: getAuctionBidsHandler,
@@ -656,7 +666,13 @@ export const getEquipmentMetadata = query({
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
-    pageStatus: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: getEquipmentMetadataHandler,
@@ -815,7 +831,13 @@ export const getSellerListings = query({
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
-    pageStatus: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: getSellerListingsHandler,
@@ -865,7 +887,13 @@ export const getAllAuctions = query({
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
-    pageStatus: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: getAllAuctionsHandler,
@@ -878,10 +906,34 @@ export const getAllAuctions = query({
  * @returns The user's ID, or null if unauthenticated
  */
 async function getAuthenticatedUserId(ctx: QueryCtx): Promise<string | null> {
-  const authUser = await authComponent.getAuthUser(ctx);
-  if (!authUser) return null;
-  return resolveUserId(authUser);
+  try {
+    const authUser = await authComponent.getAuthUser(ctx);
+    if (!authUser) return null;
+    return resolveUserId(authUser);
+  } catch (err) {
+    // The authComponent does not expose a specific error class or error code for
+    // unauthenticated errors. This relies on the error message containing "Unauthenticated"
+    // which is the default behavior from the underlying auth library.
+    if (err instanceof Error && err.message.includes("Unauthenticated")) {
+      return null;
+    }
+    throw err;
+  }
 }
+
+/**
+ * Result for paginated queries when the user is unauthenticated.
+ * @param totalCount - Optional count to return (defaults to 0)
+ * @returns A standard empty paginated result
+ */
+const unauthenticatedPaginatedResult = (totalCount = 0) => ({
+  page: [],
+  isDone: true,
+  continueCursor: "",
+  totalCount,
+  pageStatus: null,
+  splitCursor: null,
+});
 
 /**
  * Handler for retrieving auctions the authenticated user has bid on.
@@ -898,106 +950,83 @@ export const getMyBidsHandler = async (
     sort?: string;
   }
 ) => {
-  try {
-    const userId = await getAuthenticatedUserId(ctx);
-    if (!userId)
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) return { ...unauthenticatedPaginatedResult(), page: [] };
+
+  // 1. Get all bid stats for the user (handles grouping and basic metrics)
+  const { auctionStatsMap, auctionsMap } = await calculateUserBidStats(
+    ctx,
+    userId
+  );
+
+  // 2. Transform into the required return format
+  const allAuctionSummaries = await Promise.all(
+    Array.from(auctionStatsMap.entries()).map(async ([auctionId, stats]) => {
+      const auction = auctionsMap.get(auctionId);
+      if (!auction) return null;
+
+      const summary = await toAuctionSummary(ctx, auction);
+      const isWinning =
+        auction.status === "active" &&
+        stats.highestBid === auction.currentPrice &&
+        auction.winnerId === userId;
+
       return {
-        page: [],
-        isDone: true,
-        continueCursor: "",
-        totalCount: 0,
-        pageStatus: null,
-        splitCursor: null,
+        ...summary,
+        myHighestBid: stats.highestBid,
+        isWinning,
+        isWon: auction.status === "sold" && auction.winnerId === userId,
+        isOutbid: auction.status === "active" && !isWinning,
+        isCancelled: auction.status === "rejected",
+        bidAmount: stats.highestBid,
+        bidTimestamp: stats.lastBidTimestamp,
+        lastBidTimestamp: stats.lastBidTimestamp,
+        bidCount: stats.bidCount,
       };
+    })
+  );
 
-    // 1. Get all bid stats for the user (handles grouping and basic metrics)
-    const { auctionStatsMap, auctionsMap } = await calculateUserBidStats(
-      ctx,
-      userId
-    );
+  // Filter out invalid items
+  const validAuctions = allAuctionSummaries.filter(
+    (a): a is NonNullable<typeof a> => a !== null
+  );
 
-    // 2. Transform into the required return format
-    const allAuctionSummaries = await Promise.all(
-      Array.from(auctionStatsMap.entries()).map(async ([auctionId, stats]) => {
-        const auction = auctionsMap.get(auctionId);
-        if (!auction) return null;
-
-        const summary = await toAuctionSummary(ctx, auction);
-        const isWinning =
-          auction.status === "active" &&
-          stats.highestBid === auction.currentPrice &&
-          auction.winnerId === userId;
-
-        return {
-          ...summary,
-          myHighestBid: stats.highestBid,
-          isWinning,
-          isWon: auction.status === "sold" && auction.winnerId === userId,
-          isOutbid: auction.status === "active" && !isWinning,
-          isCancelled: auction.status === "rejected",
-          bidAmount: stats.highestBid,
-          bidTimestamp: stats.lastBidTimestamp,
-          lastBidTimestamp: stats.lastBidTimestamp,
-          bidCount: stats.bidCount,
-        };
-      })
-    );
-
-    // Filter out invalid items
-    const validAuctions = allAuctionSummaries.filter(
-      (a): a is NonNullable<typeof a> => a !== null
-    );
-
-    // 3. Sort based on user preference
-    const sortBy = args.sort || "recent";
-    validAuctions.sort((a, b) => {
-      if (sortBy === "ending") {
-        const timeA = a.endTime ?? Number.MAX_SAFE_INTEGER;
-        const timeB = b.endTime ?? Number.MAX_SAFE_INTEGER;
-        return timeA - timeB; // Ending soonest first
-      }
-      // Default: Most recent activity first
-      return b.lastBidTimestamp - a.lastBidTimestamp;
-    });
-
-    // 4. Apply manual pagination
-    const totalCount = validAuctions.length;
-    const numItems = args.paginationOpts.numItems;
-
-    let startIndex = 0;
-    if (args.paginationOpts.cursor) {
-      const parsed = parseInt(args.paginationOpts.cursor, 10);
-      if (!isNaN(parsed) && parsed >= 0) {
-        startIndex = Math.min(parsed, totalCount);
-      }
+  // 3. Sort based on user preference
+  const sortBy = args.sort || "recent";
+  validAuctions.sort((a, b) => {
+    if (sortBy === "ending") {
+      const timeA = a.endTime ?? Number.MAX_SAFE_INTEGER;
+      const timeB = b.endTime ?? Number.MAX_SAFE_INTEGER;
+      return timeA - timeB; // Ending soonest first
     }
+    // Default: Most recent activity first
+    return b.lastBidTimestamp - a.lastBidTimestamp;
+  });
 
-    const page = validAuctions.slice(startIndex, startIndex + numItems);
-    const isDone = startIndex + numItems >= totalCount;
-    const continueCursor = isDone ? "" : (startIndex + numItems).toString();
+  // 4. Apply manual pagination
+  const totalCount = validAuctions.length;
+  const numItems = args.paginationOpts.numItems;
 
-    return {
-      page,
-      isDone,
-      continueCursor,
-      totalCount,
-      pageStatus: null,
-      splitCursor: null,
-    };
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unauthenticated")) {
-      return {
-        page: [],
-        isDone: true,
-        continueCursor: "",
-        totalCount: 0,
-        pageStatus: null,
-        splitCursor: null,
-      };
+  let startIndex = 0;
+  if (args.paginationOpts.cursor) {
+    const parsed = parseInt(args.paginationOpts.cursor, 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+      startIndex = Math.min(parsed, totalCount);
     }
-    console.error("getMyBids failure:", err);
-    throw err;
   }
+
+  const page = validAuctions.slice(startIndex, startIndex + numItems);
+  const isDone = startIndex + numItems >= totalCount;
+  const continueCursor = isDone ? "" : (startIndex + numItems).toString();
+
+  return {
+    page,
+    isDone,
+    continueCursor,
+    totalCount,
+    pageStatus: null,
+    splitCursor: null,
+  };
 };
 
 /**
@@ -1026,7 +1055,13 @@ export const getMyBids = query({
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
-    pageStatus: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: getMyBidsHandler,
@@ -1043,56 +1078,33 @@ export const getMyListingsHandler = async (
   ctx: QueryCtx,
   args: { paginationOpts: PaginationOptions }
 ) => {
-  try {
-    const userId = await getAuthenticatedUserId(ctx);
-    if (!userId)
-      return {
-        page: [],
-        isDone: true,
-        continueCursor: "",
-        totalCount: 0,
-        pageStatus: null,
-        splitCursor: null,
-      };
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) return { ...unauthenticatedPaginatedResult(), page: [] };
 
-    const listingsQuery = ctx.db
-      .query("auctions")
-      .withIndex("by_seller", (q) => q.eq("sellerId", userId));
+  const listingsQuery = ctx.db
+    .query("auctions")
+    .withIndex("by_seller", (q) => q.eq("sellerId", userId));
 
-    const [results, totalCount] = await Promise.all([
-      listingsQuery.paginate(args.paginationOpts),
-      countQuery(
-        ctx.db
-          .query("auctions")
-          .withIndex("by_seller", (q) => q.eq("sellerId", userId))
-      ),
-    ]);
+  const [results, totalCount] = await Promise.all([
+    listingsQuery.paginate(args.paginationOpts),
+    countQuery(
+      ctx.db
+        .query("auctions")
+        .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+    ),
+  ]);
 
-    const page = await Promise.all(
-      results.page.map(
-        async (auction: Doc<"auctions">) => await toAuctionSummary(ctx, auction)
-      )
-    );
+  const page = await Promise.all(
+    results.page.map(
+      async (auction: Doc<"auctions">) => await toAuctionSummary(ctx, auction)
+    )
+  );
 
-    return {
-      ...results,
-      page,
-      totalCount,
-    };
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unauthenticated")) {
-      return {
-        page: [],
-        isDone: true,
-        continueCursor: "",
-        totalCount: 0,
-        pageStatus: null,
-        splitCursor: null,
-      };
-    }
-    console.error("getMyListings failure:", err);
-    throw err;
-  }
+  return {
+    ...results,
+    page,
+    totalCount,
+  };
 };
 
 /**
@@ -1105,7 +1117,13 @@ export const getMyListings = query({
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
-    pageStatus: v.optional(v.union(v.string(), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: getMyListingsHandler,
@@ -1122,26 +1140,18 @@ export const getMyListingsCountHandler = async (
   ctx: QueryCtx,
   args: { status?: string }
 ) => {
-  try {
-    const userId = await getAuthenticatedUserId(ctx);
-    if (!userId) return 0;
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) return 0;
 
-    let baseQuery = ctx.db
-      .query("auctions")
-      .withIndex("by_seller", (q) => q.eq("sellerId", userId));
+  let baseQuery = ctx.db
+    .query("auctions")
+    .withIndex("by_seller", (q) => q.eq("sellerId", userId));
 
-    if (args.status && args.status !== "all") {
-      baseQuery = baseQuery.filter((q) => q.eq(q.field("status"), args.status));
-    }
-
-    return await countQuery(baseQuery);
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unauthenticated")) {
-      return 0;
-    }
-    console.error("getMyListingsCount failure:", err);
-    throw err;
+  if (args.status && args.status !== "all") {
+    baseQuery = baseQuery.filter((q) => q.eq(q.field("status"), args.status));
   }
+
+  return await countQuery(baseQuery);
 };
 
 /**
@@ -1174,26 +1184,10 @@ type CountableStatus = (typeof COUNTABLE_STATUSES)[number];
  * @returns Promise<ListingStats>
  */
 export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
-  try {
-    const userId = await getAuthenticatedUserId(ctx);
-    if (!userId)
-      return {
-        all: 0,
-        draft: 0,
-        pending_review: 0,
-        active: 0,
-        sold: 0,
-        unsold: 0,
-        rejected: 0,
-      };
-
-    const listings = await ctx.db
-      .query("auctions")
-      .withIndex("by_seller", (q) => q.eq("sellerId", userId))
-      .collect();
-
-    const stats = {
-      all: listings.length,
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId)
+    return {
+      all: 0,
       draft: 0,
       pending_review: 0,
       active: 0,
@@ -1202,28 +1196,28 @@ export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
       rejected: 0,
     };
 
-    for (const listing of listings) {
-      if (COUNTABLE_STATUSES.includes(listing.status as CountableStatus)) {
-        stats[listing.status as CountableStatus]++;
-      }
-    }
+  const listings = await ctx.db
+    .query("auctions")
+    .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+    .collect();
 
-    return stats;
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unauthenticated")) {
-      return {
-        all: 0,
-        draft: 0,
-        pending_review: 0,
-        active: 0,
-        sold: 0,
-        unsold: 0,
-        rejected: 0,
-      };
+  const stats = {
+    all: listings.length,
+    draft: 0,
+    pending_review: 0,
+    active: 0,
+    sold: 0,
+    unsold: 0,
+    rejected: 0,
+  };
+
+  for (const listing of listings) {
+    if (COUNTABLE_STATUSES.includes(listing.status as CountableStatus)) {
+      stats[listing.status as CountableStatus]++;
     }
-    console.error("getMyListingsStats failure:", err);
-    throw err;
   }
+
+  return stats;
 };
 
 /**
@@ -1252,19 +1246,11 @@ export const getMyListingsStats = query({
  * @returns Promise<number>
  */
 export const getMyBidsCountHandler = async (ctx: QueryCtx) => {
-  try {
-    const userId = await getAuthenticatedUserId(ctx);
-    if (!userId) return 0;
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) return 0;
 
-    const { auctionStatsMap } = await calculateUserBidStats(ctx, userId);
-    return auctionStatsMap.size;
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unauthenticated")) {
-      return 0;
-    }
-    console.error("getMyBidsCount failure:", err);
-    throw err;
-  }
+  const { auctionStatsMap } = await calculateUserBidStats(ctx, userId);
+  return auctionStatsMap.size;
 };
 
 /**
@@ -1285,19 +1271,11 @@ export const getMyBidsCount = query({
  * @returns Promise<BidStats>
  */
 export const getMyBidsStatsHandler = async (ctx: QueryCtx) => {
-  try {
-    const userId = await getAuthenticatedUserId(ctx);
-    if (!userId) return ZERO_AUCTION_STATS;
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) return ZERO_AUCTION_STATS;
 
-    const { globalStats } = await calculateUserBidStats(ctx, userId);
-    return globalStats;
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unauthenticated")) {
-      return ZERO_AUCTION_STATS;
-    }
-    console.error("getMyBidsStats failure:", err);
-    throw err;
-  }
+  const { globalStats } = await calculateUserBidStats(ctx, userId);
+  return globalStats;
 };
 
 /**

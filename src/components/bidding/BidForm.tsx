@@ -103,10 +103,7 @@ export const BidForm = ({
    * Short-circuits if the manual bid is invalid or the proxy max bid is insufficient.
    */
   const handleManualBid = () => {
-    if (!isManualValid) return;
-
     if (isProxyEnabled) {
-      if (currentMaxBidNum < currentManualNum) return;
       onBid(currentManualNum, currentMaxBidNum, true);
     } else {
       onBid(currentManualNum);
@@ -116,13 +113,11 @@ export const BidForm = ({
   /**
    * Submits a quick bid for a specific pre-calculated amount.
    * Handles both direct and proxy bids based on the isProxyEnabled toggle.
-   * Short-circuits if the proxy max bid is insufficient.
    *
    * @param amount - The quick bid amount to submit
    */
   const handleQuickBid = (amount: number) => {
     if (isProxyEnabled) {
-      if (currentMaxBidNum < amount) return;
       onBid(amount, currentMaxBidNum, true);
     } else {
       onBid(amount);

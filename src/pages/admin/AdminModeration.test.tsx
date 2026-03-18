@@ -355,4 +355,51 @@ describe("AdminModeration Page", () => {
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     });
   });
+
+  it("handles flag dismissal with empty reason (hits undefined branch)", async () => {
+    mockDismissFlagMutation.mockResolvedValue({ auctionRestored: false });
+    renderPage();
+
+    const dismissButton = screen.getByRole("button", { name: /^dismiss$/i });
+    fireEvent.click(dismissButton);
+
+    const dialog = await screen.findByRole("alertdialog");
+    const confirmDismissButton = within(dialog).getByRole("button", {
+      name: "Dismiss Flag",
+    });
+    fireEvent.click(confirmDismissButton);
+
+    await waitFor(() => {
+      expect(mockDismissFlagMutation).toHaveBeenCalledWith(
+        expect.objectContaining({ dismissalReason: undefined })
+      );
+    });
+  });
+
+  it("renders outline variant for unknown flag reasons", async () => {
+    const unknownFlag = {
+      _id: "flag3",
+      auctionId: "a1",
+      reason: "unknown_reason",
+      status: "pending",
+      reporterName: "Reporter",
+      auctionTitle: "Auction",
+      createdAt: Date.now(),
+    };
+
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      // Handle both object and string paths
+      const path = typeof apiPath === "string" ? apiPath : apiPath?._path;
+      if (path === "auctions:getAllPendingFlags") return [unknownFlag];
+      if (path === "auctions:getPendingAuctions") return [];
+      return [];
+    });
+
+    renderPage();
+
+    // The badge should be rendered with the unknown reason text
+    await waitFor(() => {
+      expect(screen.getByText("unknown_reason")).toBeInTheDocument();
+    });
+  });
 });

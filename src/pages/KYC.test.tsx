@@ -255,6 +255,28 @@ describe("KYC Page Full Coverage", () => {
     expect(submitBtn).toBeDisabled();
   });
 
+  it("handles click on submit when no documents are selected (bypassing disabled)", async () => {
+    mockFileUpload.files = [];
+    mockFileUpload.existingDocuments = ["existing_doc"];
+    mockKYCForm.validate.mockReturnValue({
+      valid: false,
+      message: "Validation failed",
+    });
+    renderKYC();
+
+    const submitBtn = screen.getByRole("button", {
+      name: /submit application/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Validation failed");
+    });
+  });
+
   it("handles validation error", async () => {
     mockKYCForm.validate.mockReturnValue({
       valid: false,
@@ -552,5 +574,61 @@ describe("KYC Page Full Coverage", () => {
     });
     expect(submitBtn).toBeDisabled();
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
+  it("hits skipConfirm branch in handleUpload", async () => {
+    const verifiedProfile = {
+      userId: "user1",
+      profile: { kycStatus: "verified", kycRejectionReason: null },
+    };
+    const verifiedKycDetails = {
+      firstName: "John",
+      lastName: "Doe",
+      phoneNumber: "123",
+      idNumber: "456",
+      kycEmail: "john@example.com",
+      kycDocumentIds: ["existing_doc_1"],
+    };
+
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return verifiedProfile;
+      if (apiPath === mockApi.users.getMyKYCDetails) return verifiedKycDetails;
+      return null;
+    });
+    mockFileUpload.files = [new File([""], "test.jpg")];
+    mockFileUpload.uploadFiles.mockResolvedValue(["storage1"]);
+    mockSubmitKYC.mockResolvedValue({});
+
+    renderKYC();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("verification-status")).toBeInTheDocument();
+    });
+
+    const editBtn = screen.getByRole("button", { name: /edit/i });
+    await act(async () => {
+      fireEvent.click(editBtn);
+    });
+
+    const submitBtn = screen.getByRole("button", {
+      name: /submit application/i,
+    });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    const confirmBtn = await screen.findByRole("button", {
+      name: /confirm update/i,
+    });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    await waitFor(() => {
+      expect(mockSubmitKYC).toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith(
+        "KYC Documents submitted for review"
+      );
+    });
   });
 });

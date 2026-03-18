@@ -110,4 +110,38 @@ describe("Encryption Utilities Functionality", () => {
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
+
+  it("should handle non-Error throws in encryptPII", async () => {
+    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
+    const { encryptPII } = await import("./encryption?final");
+    const originalEncrypt = crypto.subtle.encrypt;
+    crypto.subtle.encrypt = vi
+      .fn()
+      .mockRejectedValue("Generic encryption error");
+
+    await expect(encryptPII("test")).rejects.toThrow(
+      "encryptPII failed: Generic encryption error"
+    );
+
+    crypto.subtle.encrypt = originalEncrypt;
+  });
+
+  it("should handle non-Error throws in decryptPII", async () => {
+    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
+    const { decryptPII } = await import("./encryption?final");
+    const iv = btoa("123456789012");
+    const data = btoa("some-data");
+    const encrypted = `${iv}.${data}`;
+
+    const originalDecrypt = crypto.subtle.decrypt;
+    crypto.subtle.decrypt = vi
+      .fn()
+      .mockRejectedValue("Generic decryption error");
+
+    await expect(decryptPII(encrypted)).rejects.toThrow(
+      "Decryption failed: Generic decryption error"
+    );
+
+    crypto.subtle.decrypt = originalDecrypt;
+  });
 });

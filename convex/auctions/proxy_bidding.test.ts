@@ -58,7 +58,20 @@ const createMockQuery = (
       }
       return query;
     }),
-    filter: vi.fn().mockReturnThis(),
+    filter: vi.fn((cb: (q: unknown) => unknown) => {
+      if (cb) {
+        cb({
+          eq: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
+          lt: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+          lte: vi.fn().mockReturnThis(),
+          field: vi.fn().mockReturnThis(),
+        } as Record<string, unknown>);
+      }
+      return query;
+    }),
     order: vi.fn().mockReturnThis(),
     first: vi.fn().mockResolvedValue(results[0] || null),
     unique: vi.fn().mockResolvedValue(results[0] || null),
@@ -685,6 +698,353 @@ describe("Proxy Bidding Coverage", () => {
       );
 
       expect(result).toEqual(proxyBid);
+    });
+
+    it("should fallback to _id if userId is missing", async () => {
+      const { getAuthUser } = await import("../lib/auth");
+      vi.mocked(getAuthUser).mockResolvedValue({
+        _id: "u1",
+        email: "test@example.com",
+      });
+
+      const mockQuery = createMockQuery([]);
+      mockCtx.db.query.mockReturnValue(mockQuery);
+
+      await getMyProxyBidHandler(mockCtx as unknown as QueryCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      expect(mockCtx.db.query).toHaveBeenCalledWith("proxy_bids");
+    });
+  });
+
+  describe("upsertProxyBid through handleNewBid", () => {
+    it("should update existing proxy bid", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        status: "active" as const,
+        sellerId: "u2",
+        endTime: now + 100000,
+      } as Doc<"auctions">;
+
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const existingProxy = {
+        _id: "p1" as Id<"proxy_bids">,
+        bidderId: "u1",
+        auctionId: "a1",
+        maxBid: 1500,
+      };
+
+      mockCtx.db.query.mockImplementation((table) => {
+        if (table === "proxy_bids") return createMockQuery([existingProxy]);
+        return createMockQuery();
+      });
+
+      await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100,
+        2000
+      );
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({
+          maxBid: 2000,
+        })
+      );
+    });
+  });
+
+  describe("extendAuctionIfNeeded through handleNewBid", () => {
+    it("should not extend if endTime is missing", async () => {
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        status: "active" as const,
+        sellerId: "u2",
+        endTime: undefined, // Missing
+      } as Doc<"auctions">;
+
+      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.query.mockReturnValue(createMockQuery([]));
+
+      await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100
+      );
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          isExtended: true,
+        })
+      );
+    });
+  });
+
+  describe("resolveProxyBids additional cases", () => {
+    it("should handle Case A with second highest proxy", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        status: "active" as const,
+        sellerId: "u2",
+        endTime: now + 1000000,
+      } as Doc<"auctions">;
+
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const proxyQuery = createMockQuery([
+        {
+          _id: "p1" as Id<"proxy_bids">,
+          _creationTime: now - 200,
+          bidderId: "u3",
+          maxBid: 3000,
+        },
+        {
+          _id: "p2" as Id<"proxy_bids">,
+          _creationTime: now - 100,
+          bidderId: "u4",
+          maxBid: 2000,
+        },
+      ]);
+
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "proxy_bids") return proxyQuery;
+        return createMockQuery([]);
+      });
+
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100
+      );
+
+      // Should be max(1100 + 100, 2000 + 100) = 2100
+      expect(result.bidAmount).toBe(2100);
+      expect(result.isProxyBid).toBe(true);
+    });
+
+    it("should handle Case A where highestProxy.maxBid < bidAmount + minIncrement", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        status: "active" as const,
+        sellerId: "u2",
+        endTime: now + 1000000,
+      } as Doc<"auctions">;
+
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const proxyQuery = createMockQuery([
+        {
+          _id: "p1" as Id<"proxy_bids">,
+          _creationTime: now - 200,
+          bidderId: "u3",
+          maxBid: 1150, // Higher than current bid (1100) but lower than next required (1200)
+        },
+      ]);
+
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "proxy_bids") return proxyQuery;
+        return createMockQuery([]);
+      });
+
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100
+      );
+
+      // It should NOT place an auto-bid because it can't meet increment
+      expect(result.isProxyBid).toBe(false);
+      expect(result.bidAmount).toBe(1100);
+    });
+
+    it("should handle Case A where highestProxy.maxBid is exactly bidAmount + minIncrement", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        status: "active" as const,
+        sellerId: "u2",
+        endTime: now + 1000000,
+      } as Doc<"auctions">;
+
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const proxyQuery = createMockQuery([
+        {
+          _id: "p1" as Id<"proxy_bids">,
+          _creationTime: now - 200,
+          bidderId: "u3",
+          maxBid: 1200, // Exactly the next required amount
+        },
+      ]);
+
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "proxy_bids") return proxyQuery;
+        return createMockQuery([]);
+      });
+
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100
+      );
+
+      expect(result.bidAmount).toBe(1200);
+      expect(result.isProxyBid).toBe(true);
+    });
+
+    it("should handle Case A with manual bid + increment being larger than second highest proxy", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        status: "active" as const,
+        sellerId: "u2",
+        endTime: now + 1000000,
+      } as Doc<"auctions">;
+
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const proxyQuery = createMockQuery([
+        {
+          _id: "p1" as Id<"proxy_bids">,
+          _creationTime: now - 200,
+          bidderId: "u3",
+          maxBid: 5000,
+        },
+        {
+          _id: "p2" as Id<"proxy_bids">,
+          _creationTime: now - 100,
+          bidderId: "u4",
+          maxBid: 2000,
+        },
+      ]);
+
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "proxy_bids") return proxyQuery;
+        return createMockQuery([]);
+      });
+
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        3000 // manual bid is 3000, + 100 increment = 3100. max(3100, 2000+100) = 3100.
+      );
+
+      expect(result.bidAmount).toBe(3100);
+    });
+
+    it("should return null from resolveProxyBids if Case B validatedAmount <= bidAmount", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        status: "active",
+        endTime: now + 100000,
+      } as Doc<"auctions">;
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const proxyQuery = createMockQuery([
+        { bidderId: "u1", maxBid: 1100, _creationTime: now },
+        { bidderId: "u2", maxBid: 1050, _creationTime: now - 100 },
+      ]);
+      mockCtx.db.query.mockImplementation((table) => {
+        if (table === "proxy_bids") return proxyQuery;
+        return createMockQuery();
+      });
+
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100,
+        1100
+      );
+
+      // validatedAmount would be 1100, which is NOT > bidAmount (1100)
+      expect(result.isProxyBid).toBe(false);
+      expect(result.bidAmount).toBe(1100);
+    });
+
+    it("should handle Case B where secondMaxPlusIncrement >= targetAmount", async () => {
+      const now = Date.now();
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        status: "active",
+        endTime: now + 100000,
+      } as Doc<"auctions">;
+      mockCtx.db.get.mockResolvedValue(auction);
+
+      const proxyQuery = createMockQuery([
+        { bidderId: "u1", maxBid: 1200, _creationTime: now }, // highest
+        { bidderId: "u2", maxBid: 1150, _creationTime: now - 100 }, // second highest
+      ]);
+      mockCtx.db.query.mockImplementation((table) => {
+        if (table === "proxy_bids") return proxyQuery;
+        return createMockQuery();
+      });
+
+      // New bid is 1100. minIncrement is 100.
+      // secondMaxPlusIncrement = 1150 + 100 = 1250.
+      // targetAmount = 1200.
+      // 1250 < 1200 is FALSE.
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100,
+        1200
+      );
+
+      expect(result.bidAmount).toBe(1200);
+    });
+  });
+
+  describe("handleNewBid final return coverage", () => {
+    it("should have proxyBidActive false if maxBid == bidAmount", async () => {
+      const auction = {
+        _id: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        status: "active",
+        startingPrice: 1000,
+        endTime: Date.now() + 100000,
+      } as Doc<"auctions">;
+      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.query.mockReturnValue(createMockQuery());
+
+      const result = await handleNewBid(
+        mockCtx as unknown as MutationCtx,
+        "a1" as Id<"auctions">,
+        "u1",
+        1100,
+        1100
+      );
+
+      expect(result.proxyBidActive).toBe(false);
     });
   });
 });

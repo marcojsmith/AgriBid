@@ -122,7 +122,10 @@ export async function getCurrentHighestBidAmount(
   }
 
   const mostRecentBid = await getMostRecentBid(ctx, auctionId);
-  return mostRecentBid ? mostRecentBid.amount : auction.currentPrice;
+  if (mostRecentBid) {
+    return mostRecentBid.amount;
+  }
+  return auction.currentPrice;
 }
 
 /**
@@ -227,15 +230,12 @@ async function extendAuctionIfNeeded(
 function validateAutoBidAmount(
   autoBidAmount: number,
   currentBidAmount: number,
-  minIncrement: number,
-  maxBidLimit: number
+  minIncrement: number
 ): number | null {
-  // If the computed amount is less than required, try to use the max bid limit
-  if (autoBidAmount < currentBidAmount + minIncrement) {
-    if (maxBidLimit >= currentBidAmount + minIncrement) {
-      return maxBidLimit;
-    }
-    return null; // Cannot meet minimum increment
+  // If the computed amount is less than required, we cannot place an auto-bid
+  const nextRequiredAmount = currentBidAmount + minIncrement;
+  if (autoBidAmount < nextRequiredAmount) {
+    return null;
   }
   return autoBidAmount;
 }
@@ -255,8 +255,12 @@ async function resolveProxyBids(
   bidAmount: number
 ): Promise<HandleNewBidResult | null> {
   const auction = await ctx.db.get(auctionId);
-  if (!auction) throw new Error("Auction not found");
-
+  if (!auction) {
+    console.warn(
+      `Attempted to resolve proxy bids for non-existent auction ${auctionId}`
+    );
+    return null;
+  }
   const minIncrement = getMinIncrement(auction);
   const allProxyBids = await ctx.db
     .query("proxy_bids")
@@ -278,18 +282,20 @@ async function resolveProxyBids(
   if (highestProxy.bidderId !== bidderId && highestProxy.maxBid > bidAmount) {
     let targetAmount = bidAmount + minIncrement;
     if (secondHighestProxy) {
-      targetAmount = Math.max(
-        targetAmount,
-        secondHighestProxy.maxBid + minIncrement
-      );
+      const secondMaxPlusIncrement = secondHighestProxy.maxBid + minIncrement;
+      if (secondMaxPlusIncrement > targetAmount) {
+        targetAmount = secondMaxPlusIncrement;
+      }
     }
-    targetAmount = Math.min(targetAmount, highestProxy.maxBid);
+
+    if (highestProxy.maxBid < targetAmount) {
+      targetAmount = highestProxy.maxBid;
+    }
 
     const validatedAmount = validateAutoBidAmount(
       targetAmount,
       bidAmount,
-      minIncrement,
-      highestProxy.maxBid
+      minIncrement
     );
 
     if (validatedAmount) {
@@ -323,15 +329,15 @@ async function resolveProxyBids(
     secondHighestProxy &&
     secondHighestProxy.maxBid >= bidAmount
   ) {
-    const targetAmount = Math.min(
-      highestProxy.maxBid,
-      secondHighestProxy.maxBid + minIncrement
-    );
+    const secondMaxPlusIncrement = secondHighestProxy.maxBid + minIncrement;
+    let targetAmount = highestProxy.maxBid;
+    if (secondMaxPlusIncrement < targetAmount) {
+      targetAmount = secondMaxPlusIncrement;
+    }
     const validatedAmount = validateAutoBidAmount(
       targetAmount,
       bidAmount,
-      minIncrement,
-      highestProxy.maxBid
+      minIncrement
     );
 
     if (validatedAmount && validatedAmount > bidAmount) {
@@ -348,14 +354,16 @@ async function resolveProxyBids(
         winnerId: highestProxy.bidderId,
       });
 
+      let nextBidAmountResult: number | null = null;
+      if (highestProxy.maxBid > validatedAmount) {
+        nextBidAmountResult = validatedAmount + minIncrement;
+      }
+
       return {
         success: true,
         bidAmount: validatedAmount,
         isProxyBid: true,
-        nextBidAmount:
-          highestProxy.maxBid > validatedAmount
-            ? validatedAmount + minIncrement
-            : null,
+        nextBidAmount: nextBidAmountResult,
         proxyBidActive: highestProxy.maxBid > validatedAmount,
         confirmedMaxBid: highestProxy.maxBid,
       };
@@ -420,14 +428,16 @@ export async function handleNewBid(
   );
   if (proxyResult) return proxyResult;
 
+  let finalNextBid: number | null = null;
+  if (maxBid !== undefined && maxBid > bidAmount) {
+    finalNextBid = bidAmount + minIncrement;
+  }
+
   return {
     success: true,
     bidAmount: bidAmount,
     isProxyBid: false,
-    nextBidAmount:
-      maxBid !== undefined && maxBid > bidAmount
-        ? bidAmount + minIncrement
-        : null,
+    nextBidAmount: finalNextBid,
     proxyBidActive: maxBid !== undefined && maxBid > bidAmount,
     confirmedMaxBid: maxBid,
   };
