@@ -82,10 +82,9 @@ describe("getErrorMessage", () => {
   });
 
   it("falls back to default fallback if ConvexError message is missing", () => {
-    const error = new (class extends ConvexError {
+    const error = new (class extends ConvexError<{ message?: string }> {
       constructor() {
         super({});
-        // @ts-expect-error - forcing empty message for test
         this.message = "";
       }
     })();

@@ -25,7 +25,7 @@ import { StatCard } from "./StatCard";
  * @returns A React element containing the finance statistics and recent transactions UI.
  */
 export function FinanceTab() {
-  const stats = useQuery(api.admin.getFinancialStats);
+  const stats = useQuery(api.admin.getFinancialStats, {});
 
   if (!stats) {
     return (
@@ -48,7 +48,7 @@ export function FinanceTab() {
           iconSize="h-12 w-12"
         />
         <StatCard
-          label={`Est. Commission (${stats.commissionRate * 100}%)`}
+          label={`Est. Commission (${(stats.commissionRate * 100).toFixed(0)}%)`}
           value={`R ${stats.estimatedCommission.toLocaleString()}`}
           icon={<TrendingUp className="h-5 w-5" />}
           color="text-primary"
@@ -80,7 +80,7 @@ export function FinanceTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {stats.recentSales.length === 0 ? (
+            {stats.recentSales.page.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={4}
@@ -90,7 +90,7 @@ export function FinanceTab() {
                 </TableCell>
               </TableRow>
             ) : (
-              stats.recentSales.map((sale) => (
+              stats.recentSales.page.map((sale) => (
                 <TableRow key={sale.id}>
                   <TableCell>
                     {new Date(sale.date).toLocaleDateString()}

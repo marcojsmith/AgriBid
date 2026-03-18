@@ -41,10 +41,14 @@ import { getErrorMessage } from "@/lib/utils";
  * @returns The page's JSX element for the Admin Announcements interface.
  */
 export default function AdminAnnouncements() {
-  const announcements = useQuery(api.admin.listAnnouncements, {});
+  const announcementsResult = useQuery(api.admin.listAnnouncements, {
+    paginationOpts: { numItems: 50, cursor: null },
+  });
   const announcementStats = useQuery(api.admin.getAnnouncementStats, {});
   const adminStats = useQuery(api.admin.getAdminStats);
   const createAnnouncementMutation = useMutation(api.admin.createAnnouncement);
+
+  const announcements = announcementsResult?.page ?? [];
 
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState("");
@@ -85,7 +89,7 @@ export default function AdminAnnouncements() {
     }
   };
 
-  if (announcements === undefined || adminStats === undefined) {
+  if (!announcementsResult || !adminStats) {
     return (
       <AdminLayout
         title="Global Announcements"
@@ -128,7 +132,9 @@ export default function AdminAnnouncements() {
                   <Input
                     placeholder="Maintenance Update"
                     value={announcementTitle}
-                    onChange={(e) => setAnnouncementTitle(e.target.value)}
+                    onChange={(e) => {
+                      setAnnouncementTitle(e.target.value);
+                    }}
                     className="h-12 border-2 rounded-xl bg-muted/30 focus:ring-primary/20"
                   />
                 </div>
@@ -139,7 +145,9 @@ export default function AdminAnnouncements() {
                   <Textarea
                     placeholder="We will be offline for 2 hours..."
                     value={announcementMessage}
-                    onChange={(e) => setAnnouncementMessage(e.target.value)}
+                    onChange={(e) => {
+                      setAnnouncementMessage(e.target.value);
+                    }}
                     className="min-h-[120px] border-2 rounded-xl bg-muted/30 focus:ring-primary/20 resize-none"
                   />
                 </div>
@@ -147,7 +155,9 @@ export default function AdminAnnouncements() {
               <DialogFooter>
                 <Button
                   variant="outline"
-                  onClick={() => setAnnouncementOpen(false)}
+                  onClick={() => {
+                    setAnnouncementOpen(false);
+                  }}
                   className="rounded-xl border-2"
                   disabled={isSending}
                 >
@@ -175,19 +185,19 @@ export default function AdminAnnouncements() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
             label="Total Sent"
-            value={announcementStats?.total || 0}
+            value={announcementStats?.total ?? 0}
             icon={<History className="h-5 w-5" />}
           />
           <StatCard
             label="Last 7 Days"
-            value={announcementStats?.recent || 0}
+            value={announcementStats?.recent ?? 0}
             icon={<Plus className="h-5 w-5" />}
             color="text-primary"
           />
           <StatCard
             label="Engaged Users"
             value={announcements.reduce(
-              (acc, curr) => acc + (curr.readCount || 0),
+              (acc, curr) => acc + (curr.readCount ?? 0),
               0
             )}
             icon={<Eye className="h-5 w-5" />}

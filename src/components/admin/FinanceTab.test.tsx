@@ -8,22 +8,29 @@ const mockStats = {
   estimatedCommission: 75000,
   commissionRate: 0.05,
   auctionCount: 150,
-  recentSales: [
-    {
-      id: "sale-1",
-      date: "2024-01-15T10:00:00Z",
-      title: "John Deere 8R Tractor",
-      amount: 250000,
-      estimatedCommission: 12500,
-    },
-    {
-      id: "sale-2",
-      date: "2024-01-14T10:00:00Z",
-      title: "Case IH Combine",
-      amount: 180000,
-      estimatedCommission: 9000,
-    },
-  ],
+  recentSales: {
+    page: [
+      {
+        id: "sale-1",
+        date: 1705312800000,
+        title: "John Deere 8R Tractor",
+        amount: 250000,
+        estimatedCommission: 12500,
+      },
+      {
+        id: "sale-2",
+        date: 1705226400000,
+        title: "Case IH Combine",
+        amount: 180000,
+        estimatedCommission: 9000,
+      },
+    ],
+    isDone: true,
+    continueCursor: "",
+    totalCount: 2,
+    pageStatus: null,
+    splitCursor: null,
+  },
 };
 
 const { mockUseQuery } = vi.hoisted(() => ({
@@ -87,7 +94,17 @@ describe("FinanceTab", () => {
   });
 
   it("renders empty state when no recent sales", () => {
-    const emptyStats = { ...mockStats, recentSales: [] };
+    const emptyStats = {
+      ...mockStats,
+      recentSales: {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      },
+    };
     mockUseQuery.mockReturnValue(emptyStats);
     render(<FinanceTab />);
     expect(screen.getByText("No recent transactions")).toBeInTheDocument();

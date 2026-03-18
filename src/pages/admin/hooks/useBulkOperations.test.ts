@@ -33,7 +33,7 @@ describe("useBulkOperations hook", () => {
     vi.mocked(useMutation).mockImplementation(((apiPath: string) => {
       if (apiPath === "auctions:bulkUpdateAuctions") return mockBulkUpdate;
       return vi.fn();
-    }) as unknown as ReturnType<typeof useMutation>);
+    }) as unknown as typeof useMutation);
   });
 
   describe("getSelectionState branches", () => {

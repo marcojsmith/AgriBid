@@ -1,4 +1,5 @@
 import { v, ConvexError } from "convex/values";
+import { paginationOptsValidator, type PaginationOptions } from "convex/server";
 
 import {
   mutation,
@@ -7,17 +8,17 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
-import { updateCounter } from "./admin_utils";
+import { updateCounter, countQuery } from "./admin_utils";
 import type { Id } from "./_generated/dataModel";
 
 /**
  * Handler for creating a support ticket.
- * @param ctx
- * @param args
- * @param args.subject
- * @param args.message
- * @param args.priority
- * @param args.auctionId
+ * @param ctx - The mutation context
+ * @param args - The arguments for creating a ticket
+ * @param args.subject - The subject of the ticket
+ * @param args.message - The message content
+ * @param args.priority - The priority level (low, medium, high)
+ * @param args.auctionId - Optional auction ID associated with the ticket
  * @returns Promise<Id<"supportTickets">>
  */
 export const createTicketHandler = async (
@@ -78,31 +79,61 @@ export const createTicket = mutation({
  * Handler for getting the current user's support tickets.
  * @param ctx
  * @param args
- * @param args.limit
+ * @param args.paginationOpts
  * @returns Promise<PaginatedTickets>
  */
 export const getMyTicketsHandler = async (
   ctx: QueryCtx,
-  args: { limit?: number }
+  args: { paginationOpts: PaginationOptions }
 ) => {
   try {
     const authUser = await getAuthUser(ctx);
-    if (!authUser) return [];
+    if (!authUser)
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      };
     const userId = resolveUserId(authUser);
-    if (!userId) return [];
+    if (!userId)
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      };
 
-    const limit = Math.max(1, Math.min(args.limit || 50, 100));
-
-    return await ctx.db
+    const ticketsQuery = ctx.db
       .query("supportTickets")
       .withIndex("by_user_updatedAt", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(limit);
+      .order("desc");
+
+    const [results, totalCount] = await Promise.all([
+      ticketsQuery.paginate(args.paginationOpts),
+      countQuery(ticketsQuery),
+    ]);
+
+    return {
+      ...results,
+      totalCount,
+    };
   } catch (err) {
     if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
       console.error("getMyTickets query failed:", err);
     }
-    return [];
+    return {
+      page: [],
+      isDone: true,
+      continueCursor: "",
+      totalCount: 0,
+      pageStatus: null,
+      splitCursor: null,
+    };
   }
 };
 
@@ -110,29 +141,42 @@ export const getMyTicketsHandler = async (
  * Retrieve a paginated list of support tickets for the authenticated user.
  */
 export const getMyTickets = query({
-  args: { limit: v.optional(v.number()) },
-  returns: v.array(
-    v.object({
-      _id: v.id("supportTickets"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      auctionId: v.optional(v.id("auctions")),
-      subject: v.string(),
-      message: v.string(),
-      status: v.union(
-        v.literal("open"),
-        v.literal("resolved"),
-        v.literal("closed")
-      ),
-      priority: v.union(
-        v.literal("low"),
-        v.literal("medium"),
-        v.literal("high")
-      ),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-      resolvedBy: v.optional(v.string()),
-    })
-  ),
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("supportTickets"),
+        _creationTime: v.number(),
+        userId: v.string(),
+        auctionId: v.optional(v.id("auctions")),
+        subject: v.string(),
+        message: v.string(),
+        status: v.union(
+          v.literal("open"),
+          v.literal("resolved"),
+          v.literal("closed")
+        ),
+        priority: v.union(
+          v.literal("low"),
+          v.literal("medium"),
+          v.literal("high")
+        ),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+        resolvedBy: v.optional(v.string()),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    totalCount: v.number(),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: getMyTicketsHandler,
 });

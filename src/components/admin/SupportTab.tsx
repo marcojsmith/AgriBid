@@ -34,12 +34,18 @@ import { Label } from "@/components/ui/label";
  * @returns A React element showing a centered loading indicator while tickets are loading, or a table of tickets with per-ticket status, subject, message, priority, and controls to open a resolution dialog for open tickets.
  */
 export function SupportTab() {
-  const tickets = useQuery(api.admin.getTickets, {});
+  // Pagination intentionally limited to first page — admin ticket review
+  // does not require full scan; cursor state is not needed.
+  const ticketsResult = useQuery(api.admin.getTickets, {
+    paginationOpts: { numItems: 50, cursor: null },
+  });
   const resolveTicket = useMutation(api.admin.resolveTicket);
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
   const [selectedTicketId, setSelectedTicketId] =
     useState<Id<"supportTickets"> | null>(null);
   const [resolutionText, setResolutionText] = useState("");
+
+  const tickets = ticketsResult?.page ?? [];
 
   const handleResolve = (ticketId: Id<"supportTickets">) => {
     setSelectedTicketId(ticketId);
@@ -74,7 +80,7 @@ export function SupportTab() {
     }
   };
 
-  if (!tickets) {
+  if (ticketsResult === undefined) {
     return (
       <div className="flex justify-center p-8">
         <LoadingIndicator />
@@ -130,7 +136,9 @@ export function SupportTab() {
                     {ticket.status === "open" && (
                       <Button
                         size="sm"
-                        onClick={() => handleResolve(ticket._id)}
+                        onClick={() => {
+                          handleResolve(ticket._id);
+                        }}
                         disabled={resolvingIds.has(ticket._id)}
                       >
                         {resolvingIds.has(ticket._id) ? (
@@ -151,7 +159,11 @@ export function SupportTab() {
 
       <Dialog
         open={!!selectedTicketId}
-        onOpenChange={(open) => !open && setSelectedTicketId(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedTicketId(null);
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -168,13 +180,20 @@ export function SupportTab() {
                 id="resolution"
                 placeholder="Describe the resolution..."
                 value={resolutionText}
-                onChange={(e) => setResolutionText(e.target.value)}
+                onChange={(e) => {
+                  setResolutionText(e.target.value);
+                }}
                 className="min-h-[100px]"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedTicketId(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedTicketId(null);
+              }}
+            >
               Cancel
             </Button>
             <Button

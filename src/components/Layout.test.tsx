@@ -40,7 +40,9 @@ describe("Layout", () => {
       data: null,
       isPending: false,
     } as unknown as ReturnType<typeof useSession>);
-    vi.mocked(useMutation).mockReturnValue(vi.fn().mockResolvedValue({}));
+    vi.mocked(useMutation).mockReturnValue(
+      vi.fn().mockResolvedValue({}) as unknown as ReturnType<typeof useMutation>
+    );
   });
 
   it("renders children and includes Header and Footer", () => {
@@ -63,7 +65,9 @@ describe("Layout", () => {
       data: { user: { id: "user1" } },
       isPending: false,
     } as unknown as ReturnType<typeof useSession>);
-    vi.mocked(useMutation).mockReturnValue(mockSyncUser);
+    vi.mocked(useMutation).mockReturnValue(
+      mockSyncUser as unknown as ReturnType<typeof useMutation>
+    );
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 

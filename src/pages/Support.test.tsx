@@ -53,7 +53,9 @@ vi.mock("@/components/ui/select", () => ({
   }) => (
     <select
       value={value}
-      onChange={(e) => onValueChange(e.target.value)}
+      onChange={(e) => {
+        onValueChange(e.target.value);
+      }}
       aria-label="Priority"
     >
       {children}
@@ -97,12 +99,21 @@ describe("Support Page", () => {
     },
   ];
 
+  const mockPaginatedTickets = {
+    page: mockTickets,
+    isDone: true,
+    continueCursor: "",
+    totalCount: mockTickets.length,
+    pageStatus: null,
+    splitCursor: null,
+  };
+
   const mockCreateTicket = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.support.getMyTickets) return mockTickets;
+      if (apiPath === mockApi.support.getMyTickets) return mockPaginatedTickets;
       return null;
     });
     (useMutation as Mock).mockImplementation((apiPath) => {
@@ -153,7 +164,7 @@ describe("Support Page", () => {
     const submitBtn = screen.getByRole("button", {
       name: /submit support ticket/i,
     });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -199,7 +210,15 @@ describe("Support Page", () => {
 
   it("renders empty state when no tickets are found", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.support.getMyTickets) return [];
+      if (apiPath === mockApi.support.getMyTickets)
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
+        };
       return null;
     });
     renderSupport();
@@ -223,19 +242,27 @@ describe("Support Page", () => {
   });
 
   it("handles ticket creation failure", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      void "suppress error logging";
+    });
     mockCreateTicket.mockRejectedValue(new Error("Creation failed"));
-    
+
     renderSupport();
-    
-    fireEvent.change(screen.getByLabelText(/subject/i), { target: { value: "Fail" } });
-    fireEvent.change(screen.getByLabelText(/message/i), { target: { value: "Fail" } });
-    
-    const submitBtn = screen.getByRole("button", { name: /submit support ticket/i });
+
+    fireEvent.change(screen.getByLabelText(/subject/i), {
+      target: { value: "Fail" },
+    });
+    fireEvent.change(screen.getByLabelText(/message/i), {
+      target: { value: "Fail" },
+    });
+
+    const submitBtn = screen.getByRole("button", {
+      name: /submit support ticket/i,
+    });
     await act(async () => {
       fireEvent.click(submitBtn);
     });
-    
+
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Creation failed");
       expect(consoleSpy).toHaveBeenCalled();

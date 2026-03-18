@@ -87,6 +87,15 @@ describe("AdminMarketplace Page", () => {
     },
   ];
 
+  const mockPaginatedBids = {
+    page: mockBids,
+    isDone: true,
+    continueCursor: "",
+    totalCount: mockBids.length,
+    pageStatus: null,
+    splitCursor: null,
+  };
+
   const mockVoidBid = vi.fn().mockResolvedValue({ success: true });
 
   beforeEach(() => {
@@ -131,7 +140,7 @@ describe("AdminMarketplace Page", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats")
         return { ...mockStats, status: "partial" };
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -160,8 +169,8 @@ describe("AdminMarketplace Page", () => {
       if (query === "admin:getRecentBids") return undefined;
       return undefined;
     });
-    (useLoadingTimeout as Mock).mockImplementation((isLoading) => {
-      return isLoading;
+    (useLoadingTimeout as Mock).mockImplementation((isLoading: boolean) => {
+      return isLoading as boolean;
     });
 
     renderPage();
@@ -174,7 +183,15 @@ describe("AdminMarketplace Page", () => {
   it("renders empty state when no bids are present", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return [];
+      if (query === "admin:getRecentBids")
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
+        };
       return undefined;
     });
 
@@ -185,7 +202,7 @@ describe("AdminMarketplace Page", () => {
   it("renders list of bids correctly", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -232,7 +249,15 @@ describe("AdminMarketplace Page", () => {
 
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return errorBids;
+      if (query === "admin:getRecentBids")
+        return {
+          page: errorBids,
+          isDone: true,
+          continueCursor: "",
+          totalCount: errorBids.length,
+          pageStatus: null,
+          splitCursor: null,
+        };
       return undefined;
     });
 
@@ -245,7 +270,7 @@ describe("AdminMarketplace Page", () => {
   it("opens void confirmation dialog and cancels", async () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -277,7 +302,7 @@ describe("AdminMarketplace Page", () => {
   it("performs void bid successfully", async () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -315,7 +340,7 @@ describe("AdminMarketplace Page", () => {
 
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -339,7 +364,7 @@ describe("AdminMarketplace Page", () => {
 
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 

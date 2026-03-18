@@ -38,11 +38,15 @@ import { AdminConnectionError } from "./AdminConnectionError";
  * @returns A JSX element containing the bids table, confirmation dialog and loading state.
  */
 export function BidMonitor() {
-  const bids = useQuery(api.admin.getRecentBids, { limit: 20 });
+  const bidsResult = useQuery(api.admin.getRecentBids, {
+    paginationOpts: { numItems: 50, cursor: null },
+  });
   const voidBid = useMutation(api.admin.voidBid);
   const [voidTarget, setVoidTarget] = useState<Id<"bids"> | null>(null);
   const [isVoiding, setIsVoiding] = useState(false);
-  const hasTimedOut = useLoadingTimeout(bids === undefined);
+  const hasTimedOut = useLoadingTimeout(bidsResult === undefined);
+
+  const bids = bidsResult?.page ?? [];
 
   const handleVoid = async () => {
     if (!voidTarget) return;
@@ -59,7 +63,7 @@ export function BidMonitor() {
     }
   };
 
-  if (bids === undefined) {
+  if (bidsResult === undefined) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4 border-2 border-dashed rounded-2xl bg-muted/10 min-h-[400px]">
         {!hasTimedOut ? (
@@ -126,7 +130,7 @@ export function BidMonitor() {
                   </TableCell>
                   <TableCell
                     className="font-medium truncate"
-                    title={bid.auctionTitle || bid.auctionLookupStatus}
+                    title={bid.auctionTitle ?? bid.auctionLookupStatus}
                   >
                     {bid.auctionLookupStatus === "FOUND"
                       ? bid.auctionTitle
@@ -153,7 +157,9 @@ export function BidMonitor() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setVoidTarget(bid._id)}
+                        onClick={() => {
+                          setVoidTarget(bid._id);
+                        }}
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Ban className="h-4 w-4" />
@@ -169,7 +175,11 @@ export function BidMonitor() {
 
       <AlertDialog
         open={!!voidTarget}
-        onOpenChange={(open) => !open && setVoidTarget(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setVoidTarget(null);
+          }
+        }}
       >
         <AlertDialogContent className="rounded-2xl border-2">
           <AlertDialogHeader>
@@ -191,7 +201,7 @@ export function BidMonitor() {
             <Button
               onClick={(e) => {
                 e.preventDefault();
-                handleVoid();
+                void handleVoid();
               }}
               disabled={isVoiding}
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-black uppercase text-[10px]"

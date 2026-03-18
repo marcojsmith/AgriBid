@@ -113,6 +113,16 @@ describe("AdminDashboard Page", () => {
   const mockFinancialStats = {
     totalSalesVolume: 1000000,
     estimatedCommission: 100000,
+    recentSales: {
+      page: [],
+      isDone: true,
+      continueCursor: "",
+      totalCount: 0,
+      pageStatus: null,
+      splitCursor: null,
+    },
+    auctionCount: 200,
+    commissionRate: 0.1,
   };
 
   const mockAnnouncementStats = {

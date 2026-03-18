@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 
 import { mutation, query, type MutationCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
@@ -57,24 +58,32 @@ async function upsertCounter(
  * Financial statistics including total sales volume and estimated commissions.
  */
 export const getFinancialStats = query({
-  args: {},
+  args: {
+    salesPaginationOpts: v.optional(paginationOptsValidator),
+  },
   returns: v.object({
     totalSalesVolume: v.number(),
     estimatedCommission: v.number(),
     commissionRate: v.number(),
-    recentSales: v.array(
-      v.object({
-        id: v.id("auctions"),
-        title: v.string(),
-        amount: v.number(),
-        estimatedCommission: v.number(),
-        date: v.number(),
-      })
-    ),
+    recentSales: v.object({
+      page: v.array(
+        v.object({
+          id: v.id("auctions"),
+          title: v.string(),
+          amount: v.number(),
+          estimatedCommission: v.number(),
+          date: v.number(),
+        })
+      ),
+      isDone: v.boolean(),
+      continueCursor: v.string(),
+      totalCount: v.number(),
+      pageStatus: v.null(),
+      splitCursor: v.null(),
+    }),
     auctionCount: v.number(),
-    truncated: v.optional(v.boolean()),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
     try {
@@ -82,9 +91,7 @@ export const getFinancialStats = query({
 
       let totalSalesVolume = counter?.salesVolume ?? 0;
       let auctionCount = counter?.soldCount ?? 0;
-      const truncated = false;
 
-      // Fallback: If counters are missing or look wrong, we can still do a scan
       if (!counter || counter.soldCount === undefined) {
         const soldStats = await sumQuery(
           ctx.db
@@ -98,14 +105,13 @@ export const getFinancialStats = query({
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
 
-      // Fetch only the most recent sales for the activity list
       const recentSoldAuctions = await ctx.db
         .query("auctions")
         .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
         .order("desc")
-        .take(10);
+        .collect();
 
-      const recentSales = recentSoldAuctions.map((a) => ({
+      const allSales = recentSoldAuctions.map((a) => ({
         id: a._id,
         title: a.title,
         amount: a.currentPrice,
@@ -113,17 +119,29 @@ export const getFinancialStats = query({
         date: a.endTime ?? 0,
       }));
 
+      const numItems = args.salesPaginationOpts?.numItems ?? 100;
+      const cursor = args.salesPaginationOpts?.cursor ?? null;
+      const startIndex = cursor ? parseInt(cursor, 10) : 0;
+      const page = allSales.slice(startIndex, startIndex + numItems);
+      const isDone = startIndex + numItems >= allSales.length;
+      const continueCursor = isDone ? "" : String(startIndex + numItems);
+
       return {
         totalSalesVolume,
         estimatedCommission,
         commissionRate: COMMISSION_RATE,
-        recentSales,
+        recentSales: {
+          page,
+          isDone,
+          continueCursor,
+          totalCount: allSales.length,
+          pageStatus: null,
+          splitCursor: null,
+        },
         auctionCount,
-        truncated,
       };
     } catch (err) {
       console.error("Error in getFinancialStats:", err);
-      // Re-throw to allow frontend to catch and show error state
       throw err;
     }
   },

@@ -42,7 +42,10 @@ interface NotificationItem {
  */
 export function NotificationDropdown() {
   const navigate = useNavigate();
-  const notifications = useQuery(api.notifications.getMyNotifications);
+  const notificationsResult = useQuery(api.notifications.getMyNotifications, {
+    paginationOpts: { numItems: 50, cursor: null },
+  });
+  const notifications = notificationsResult?.page;
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
@@ -110,7 +113,7 @@ export function NotificationDropdown() {
         </div>
         <DropdownMenuSeparator />
         <div className="max-h-[400px] overflow-y-auto space-y-1 py-1">
-          {notifications === undefined ? (
+          {notificationsResult === undefined ? (
             <div className="py-12 text-center">
               <LoadingIndicator className="mx-auto" />
               <p className="text-[10px] font-black uppercase text-muted-foreground mt-2">
@@ -162,7 +165,7 @@ export function NotificationDropdown() {
             </DropdownMenuItem>
           ))}
         </div>
-        {notifications && typedNotifications.length > 0 && (
+        {notificationsResult && typedNotifications.length > 0 && (
           <>
             <DropdownMenuSeparator />
             <div className="p-1">

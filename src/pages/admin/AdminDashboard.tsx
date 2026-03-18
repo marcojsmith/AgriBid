@@ -38,7 +38,7 @@ export default function AdminDashboard() {
  */
 function AdminDashboardContent() {
   const adminStats = useQuery(api.admin.getAdminStats);
-  const financialStats = useQuery(api.admin.getFinancialStats);
+  const financialStats = useQuery(api.admin.getFinancialStats, {});
   const announcementStats = useQuery(api.admin.getAnnouncementStats);
   const supportStats = useQuery(api.admin.getSupportStats);
 

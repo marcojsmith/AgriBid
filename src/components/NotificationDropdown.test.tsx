@@ -60,29 +60,36 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
 
 describe("NotificationDropdown", () => {
   const mockNavigate = vi.fn();
-  const mockNotifications = [
-    {
-      _id: "n1",
-      type: "info",
-      title: "New Bid",
-      message: "You got a bid",
-      createdAt: Date.now(),
-      isRead: false,
-    },
-    {
-      _id: "n2",
-      type: "success",
-      title: "Sold",
-      message: "Item sold",
-      createdAt: Date.now(),
-      isRead: true,
-    },
-  ];
+  const mockNotificationsResult = {
+    page: [
+      {
+        _id: "n1",
+        type: "info",
+        title: "New Bid",
+        message: "You got a bid",
+        createdAt: Date.now(),
+        isRead: false,
+      },
+      {
+        _id: "n2",
+        type: "success",
+        title: "Sold",
+        message: "Item sold",
+        createdAt: Date.now(),
+        isRead: true,
+      },
+    ],
+    isDone: true,
+    continueCursor: "",
+    totalCount: 2,
+    pageStatus: null,
+    splitCursor: null,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     (useNavigate as Mock).mockReturnValue(mockNavigate);
-    (useQuery as Mock).mockReturnValue(mockNotifications);
+    (useQuery as Mock).mockReturnValue(mockNotificationsResult);
     (useMutation as Mock).mockReturnValue(vi.fn());
   });
 
@@ -110,7 +117,14 @@ describe("NotificationDropdown", () => {
   });
 
   it("renders empty state", () => {
-    (useQuery as Mock).mockReturnValue([]);
+    (useQuery as Mock).mockReturnValue({
+      page: [],
+      isDone: true,
+      continueCursor: "",
+      totalCount: 0,
+      pageStatus: null,
+      splitCursor: null,
+    });
     renderDropdown();
     expect(screen.getByText(/All caught up/i)).toBeInTheDocument();
   });

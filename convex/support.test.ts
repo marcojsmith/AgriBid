@@ -17,6 +17,7 @@ vi.mock("./lib/auth", () => ({
 vi.mock("./admin_utils", () => ({
   logAudit: vi.fn(),
   updateCounter: vi.fn(),
+  countQuery: vi.fn(),
 }));
 
 describe("Support Coverage", () => {
@@ -26,7 +27,7 @@ describe("Support Coverage", () => {
       query: ReturnType<typeof vi.fn>;
       withIndex: ReturnType<typeof vi.fn>;
       order: ReturnType<typeof vi.fn>;
-      take: ReturnType<typeof vi.fn>;
+      paginate: ReturnType<typeof vi.fn>;
     };
   }
 
@@ -40,7 +41,13 @@ describe("Support Coverage", () => {
         query: vi.fn().mockReturnThis(),
         withIndex: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
-        take: vi.fn().mockResolvedValue([]),
+        paginate: vi.fn().mockResolvedValue({
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          pageStatus: null,
+          splitCursor: null,
+        }),
       },
     };
   });
@@ -163,50 +170,77 @@ describe("Support Coverage", () => {
       } as unknown as AuthUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       const mockTickets = [{ _id: "t1", subject: "Test" }];
-      mockCtx.db.take.mockResolvedValue(mockTickets);
+      mockCtx.db.paginate.mockResolvedValue({
+        page: mockTickets,
+        isDone: true,
+        continueCursor: "",
+        pageStatus: null,
+        splitCursor: null,
+      });
+      vi.mocked(adminUtils.countQuery).mockResolvedValue(1);
 
       const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
-        limit: 10,
+        paginationOpts: { numItems: 50, cursor: null },
       });
 
-      expect(result).toEqual(mockTickets);
+      expect(result.page).toEqual(mockTickets);
       expect(mockCtx.db.query).toHaveBeenCalledWith("supportTickets");
     });
 
-    it("should return empty array if unauthenticated", async () => {
+    it("should return empty result if unauthenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
 
-      const result = await getMyTicketsHandler(
-        mockCtx as unknown as QueryCtx,
-        {}
-      );
-      expect(result).toEqual([]);
+      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts: { numItems: 50, cursor: null },
+      });
+      expect(result).toEqual({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      });
     });
 
-    it("should return empty array if userId resolution fails", async () => {
+    it("should return empty result if userId resolution fails", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
       } as unknown as AuthUser);
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
 
-      const result = await getMyTicketsHandler(
-        mockCtx as unknown as QueryCtx,
-        {}
-      );
-      expect(result).toEqual([]);
+      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts: { numItems: 50, cursor: null },
+      });
+      expect(result).toEqual({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      });
     });
 
     it("should handle unexpected errors gracefully", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Database error")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        void "suppress error logging";
+      });
 
-      const result = await getMyTicketsHandler(
-        mockCtx as unknown as QueryCtx,
-        {}
-      );
-      expect(result).toEqual([]);
+      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts: { numItems: 50, cursor: null },
+      });
+      expect(result).toEqual({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      });
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
@@ -215,28 +249,46 @@ describe("Support Coverage", () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated user")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        void "suppress error logging";
+      });
 
-      const result = await getMyTicketsHandler(
-        mockCtx as unknown as QueryCtx,
-        {}
-      );
-      expect(result).toEqual([]);
+      const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts: { numItems: 50, cursor: null },
+      });
+      expect(result).toEqual({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      });
       expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
     });
 
-    it("should respect limit boundaries", async () => {
+    it("should paginate correctly", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
       } as unknown as AuthUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+      mockCtx.db.paginate.mockResolvedValue({
+        page: [{ _id: "t1", subject: "Test" }],
+        isDone: true,
+        continueCursor: "",
+        pageStatus: null,
+        splitCursor: null,
+      });
+      vi.mocked(adminUtils.countQuery).mockResolvedValue(1);
 
-      await getMyTicketsHandler(mockCtx as unknown as QueryCtx, { limit: 200 });
-      expect(mockCtx.db.take).toHaveBeenCalledWith(100);
-
-      await getMyTicketsHandler(mockCtx as unknown as QueryCtx, { limit: -10 });
-      expect(mockCtx.db.take).toHaveBeenCalledWith(1);
+      await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts: { numItems: 50, cursor: null },
+      });
+      expect(mockCtx.db.paginate).toHaveBeenCalledWith({
+        numItems: 50,
+        cursor: null,
+      });
     });
   });
 });
