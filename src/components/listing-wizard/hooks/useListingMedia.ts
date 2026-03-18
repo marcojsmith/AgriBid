@@ -149,12 +149,12 @@ export function useListingMedia() {
     let previewKey = targetId;
 
     if (targetId === "additional" && index !== undefined) {
-      previewKey = formData.images.additional[index];
+      previewKey = formData.images.additional[index]!;
     }
 
     // Revoke preview
     if (previews[previewKey]) {
-      URL.revokeObjectURL(previews[previewKey]);
+      URL.revokeObjectURL(previews[previewKey]!);
       setPreviews((prev: Record<string, string>) => {
         const next = { ...prev };
         delete next[previewKey];

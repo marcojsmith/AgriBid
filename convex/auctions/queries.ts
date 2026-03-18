@@ -117,9 +117,9 @@ async function calculateUserBidStats(
   const auctionsMap = new Map<string, Doc<"auctions"> | null>();
 
   fullAuctions.forEach((auction: Doc<"auctions"> | null, index: number) => {
-    auctionsMap.set(auctionIds[index], auction);
+    auctionsMap.set(auctionIds[index]!, auction);
     if (!auction) return;
-    const stats = auctionStatsMap.get(auctionIds[index])!;
+    const stats = auctionStatsMap.get(auctionIds[index]!)!;
 
     if (auction.status === "active") {
       globalStats.totalActive++;
@@ -250,7 +250,7 @@ export const getActiveAuctionsHandler = async (
     if (args.search) {
       if (statuses.length === 1) {
         return auctionsQuery.withSearchIndex("search_title", (q) =>
-          q.search("title", args.search!).eq("status", statuses[0])
+          q.search("title", args.search!).eq("status", statuses[0]!)
         );
       }
       return auctionsQuery.withSearchIndex("search_title_simple", (q) =>
@@ -261,7 +261,7 @@ export const getActiveAuctionsHandler = async (
     if (args.make) {
       if (statuses.length === 1) {
         return auctionsQuery.withIndex("by_status_make", (q) =>
-          q.eq("status", statuses[0]).eq("make", args.make!)
+          q.eq("status", statuses[0]!).eq("make", args.make!)
         );
       }
       return auctionsQuery
@@ -274,15 +274,15 @@ export const getActiveAuctionsHandler = async (
         return auctionsQuery.withIndex("by_status_year", (q) => {
           if (args.minYear !== undefined && args.maxYear !== undefined) {
             return q
-              .eq("status", statuses[0])
+              .eq("status", statuses[0]!)
               .gte("year", args.minYear)
               .lte("year", args.maxYear);
           }
           if (args.minYear !== undefined) {
-            return q.eq("status", statuses[0]).gte("year", args.minYear);
+            return q.eq("status", statuses[0]!).gte("year", args.minYear);
           }
           // maxYear must be defined if we got here
-          return q.eq("status", statuses[0]).lte("year", args.maxYear!);
+          return q.eq("status", statuses[0]!).lte("year", args.maxYear!);
         });
       }
       return auctionsQuery.order("desc");
@@ -291,7 +291,7 @@ export const getActiveAuctionsHandler = async (
     // Default listing
     if (statuses.length === 1) {
       return auctionsQuery
-        .withIndex("by_status", (q) => q.eq("status", statuses[0]))
+        .withIndex("by_status", (q) => q.eq("status", statuses[0]!))
         .order("desc");
     }
     return auctionsQuery.order("desc");

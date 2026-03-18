@@ -43,7 +43,7 @@ export const MediaGalleryStep = () => {
       } else {
         await handleUpload(
           slotId as "front" | "engine" | "cabin" | "rear",
-          files[0]
+          files[0]!
         );
       }
     } finally {
