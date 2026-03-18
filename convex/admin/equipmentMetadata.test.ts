@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { ConvexError } from "convex/values";
 
 import {
@@ -19,35 +18,89 @@ vi.mock("../lib/auth", () => ({
   requireAdmin: vi.fn(),
 }));
 
+interface MockQueryChain {
+  withIndex: Mock;
+  filter: Mock;
+  order: Mock;
+  first: Mock;
+  collect: Mock;
+  paginate: Mock;
+}
+
+const createMockQuery = (): MockQueryChain => {
+  const q: MockQueryChain = {
+    withIndex: vi.fn((_idx, cb) => {
+      if (cb) cb({ eq: vi.fn().mockReturnThis() });
+      return q;
+    }),
+    filter: vi.fn((cb) => {
+      if (cb)
+        cb({
+          eq: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
+          field: vi.fn().mockReturnThis(),
+        });
+      return q;
+    }),
+    order: vi.fn().mockReturnThis(),
+    first: vi.fn(),
+    collect: vi.fn(),
+    paginate: vi.fn(),
+  };
+  return q;
+};
+
+const setupMockCtx = (
+  mockQuery: Partial<MockQueryChain>,
+  getResponse?: unknown
+) => {
+  const mockDb = {
+    get: vi.fn().mockResolvedValue(getResponse),
+    patch: vi.fn(),
+    insert: vi.fn(),
+    query: vi.fn(
+      () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+    ),
+  };
+  return {
+    db: mockDb as unknown as MutationCtx["db"],
+  } as unknown as MutationCtx;
+};
+
+const setupGetMockCtx = (metadataItems: unknown[]) => {
+  const mockDb = {
+    get: vi.fn((id: string) => {
+      if (id === "cat_1") return Promise.resolve({ name: "Tractors" });
+      if (id === "cat_2") return Promise.resolve({ name: "Harvesters" });
+      return Promise.resolve(null);
+    }),
+    query: vi.fn(() => {
+      const q = createMockQuery();
+      q.collect.mockResolvedValue(metadataItems);
+      return q;
+    }),
+  };
+  return {
+    db: mockDb as unknown as MutationCtx["db"],
+  } as unknown as MutationCtx;
+};
+
 describe("Equipment Metadata Backend", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: any) => {
-    const mockDb = {
-      get: vi.fn(),
-      patch: vi.fn(),
-      insert: vi.fn(),
-      query: vi.fn(() => mockQuery),
-    };
-    return {
-      db: mockDb as any,
-    } as unknown as MutationCtx;
-  };
-
   it("should create a new equipment make when called by admin", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
+    mockQuery.first.mockResolvedValue(null);
     mockCtx = setupMockCtx(mockQuery);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
-    mockCtx.db.insert.mockResolvedValue("make_123");
+    vi.mocked(mockCtx.db.insert).mockResolvedValue(
+      "make_123" as Id<"equipmentMetadata">
+    );
 
     const result = await addEquipmentMakeHandler(mockCtx, {
       make: "John Deere",
@@ -68,22 +121,21 @@ describe("Equipment Metadata Backend", () => {
   });
 
   it("should add a model to an existing make", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
     const existingMake = {
-      _id: "make_123",
+      _id: "make_123" as Id<"equipmentMetadata">,
+      _creationTime: Date.now(),
       make: "John Deere",
       models: ["8R"],
-      categoryId: "cat_123",
+      categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    mockCtx.db.get.mockResolvedValue(existingMake);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(
+      existingMake as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+    );
 
     await addModelToMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,
@@ -122,11 +174,7 @@ describe("Equipment Metadata Backend", () => {
   });
 
   it("should throw error if make name is empty", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -141,11 +189,7 @@ describe("Equipment Metadata Backend", () => {
   });
 
   it("should throw error if no valid models provided", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -192,11 +236,7 @@ describe("Equipment Metadata Backend", () => {
   });
 
   it("should throw error if model already exists", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery);
 
     const existingMake = {
@@ -206,7 +246,9 @@ describe("Equipment Metadata Backend", () => {
       categoryId: "cat_123",
       isActive: true,
     };
-    mockCtx.db.get.mockResolvedValue(existingMake);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(
+      existingMake as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+    );
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -219,11 +261,7 @@ describe("Equipment Metadata Backend", () => {
   });
 
   it("should throw error if model name is empty", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -237,14 +275,10 @@ describe("Equipment Metadata Backend", () => {
   });
 
   it("should throw error if make not found for addModel", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery);
 
-    mockCtx.db.get.mockResolvedValue(null);
+    vi.mocked(mockCtx.db.get).mockResolvedValue(null);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -255,32 +289,53 @@ describe("Equipment Metadata Backend", () => {
       })
     ).rejects.toThrow(ConvexError);
   });
+
+  it("should reject non-admin users for addEquipmentMake", async () => {
+    mockCtx = setupMockCtx({});
+    vi.mocked(auth.getCallerRole).mockResolvedValue("user");
+    await expect(
+      addEquipmentMakeHandler(mockCtx, {
+        make: "JD",
+        models: ["8R"],
+        categoryId: "cat1" as Id<"equipmentCategories">,
+      })
+    ).rejects.toThrow(/Unauthorized: Admin access required/);
+  });
+
+  it("should reject non-admin users for addModelToMake", async () => {
+    mockCtx = setupMockCtx({});
+    vi.mocked(auth.getCallerRole).mockResolvedValue("user");
+    await expect(
+      addModelToMakeHandler(mockCtx, {
+        id: "m1" as Id<"equipmentMetadata">,
+        model: "8R",
+      })
+    ).rejects.toThrow(/Unauthorized: Admin access required/);
+  });
 });
 
 describe("updateEquipmentMake", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: any, getResponse?: any) => {
+  const setupMockCtx = (mockQuery: unknown, getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
-      query: vi.fn(() => mockQuery),
+      query: vi.fn(
+        () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
+      ),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
   it("should update equipment make successfully", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     const existingMake = {
       _id: "make_123" as Id<"equipmentMetadata">,
       make: "John Deere",
@@ -310,11 +365,7 @@ describe("updateEquipmentMake", () => {
   });
 
   it("should throw error if equipment make not found", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery, null);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -337,11 +388,7 @@ describe("updateEquipmentMake", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery, existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -364,11 +411,7 @@ describe("updateEquipmentMake", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
-    };
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery, existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -414,12 +457,32 @@ describe("updateEquipmentMake", () => {
     ).rejects.toThrow(ConvexError);
   });
 
-  it("should reject non-admin users", async () => {
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      first: vi.fn().mockResolvedValue(null),
+  it("should not check for duplicates if make and category are unchanged", async () => {
+    const existingMake = {
+      _id: "make_123" as Id<"equipmentMetadata">,
+      make: "John Deere",
+      models: ["8R"],
+      categoryId: "cat_123" as Id<"equipmentCategories">,
+      isActive: true,
     };
+    const mockQuery = createMockQuery();
+    mockCtx = setupMockCtx(mockQuery, existingMake);
+
+    vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+
+    await updateEquipmentMakeHandler(mockCtx, {
+      id: "make_123" as Id<"equipmentMetadata">,
+      make: "John Deere", // Unchanged
+      models: ["8R", "New Model"],
+      categoryId: "cat_123" as Id<"equipmentCategories">, // Unchanged
+    });
+
+    expect(mockQuery.withIndex).not.toHaveBeenCalled();
+    expect(mockCtx.db.patch).toHaveBeenCalled();
+  });
+
+  it("should reject non-admin users", async () => {
+    const mockQuery = createMockQuery();
     mockCtx = setupMockCtx(mockQuery, {});
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
@@ -436,19 +499,19 @@ describe("updateEquipmentMake", () => {
 });
 
 describe("deleteEquipmentMake", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (getResponse?: any) => {
+  const setupMockCtx = (getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -502,19 +565,19 @@ describe("deleteEquipmentMake", () => {
 });
 
 describe("removeModelFromMake", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (getResponse?: any) => {
+  const setupMockCtx = (getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
     };
     return {
-      db: mockDb as any,
+      db: mockDb as unknown as MutationCtx["db"],
     } as unknown as MutationCtx;
   };
 
@@ -611,28 +674,11 @@ describe("removeModelFromMake", () => {
 });
 
 describe("getAllEquipmentMetadata", () => {
-  let mockCtx: any;
+  let mockCtx: MutationCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
-
-  const setupMockCtx = (metadataItems: any[]) => {
-    const mockDb = {
-      get: vi.fn((id: string) => {
-        if (id === "cat_1") return Promise.resolve({ name: "Tractors" });
-        if (id === "cat_2") return Promise.resolve({ name: "Harvesters" });
-        return Promise.resolve(null);
-      }),
-      query: vi.fn(() => ({
-        filter: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(metadataItems),
-      })),
-    };
-    return {
-      db: mockDb as any,
-    } as unknown as MutationCtx;
-  };
 
   it("should return active equipment metadata with category names", async () => {
     const metadataItems = [
@@ -651,7 +697,7 @@ describe("getAllEquipmentMetadata", () => {
         isActive: true,
       },
     ];
-    mockCtx = setupMockCtx(metadataItems);
+    mockCtx = setupGetMockCtx(metadataItems);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -679,7 +725,7 @@ describe("getAllEquipmentMetadata", () => {
         isActive: false,
       },
     ];
-    mockCtx = setupMockCtx(metadataItems);
+    mockCtx = setupGetMockCtx(metadataItems);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -700,7 +746,7 @@ describe("getAllEquipmentMetadata", () => {
         isActive: true,
       },
     ];
-    mockCtx = setupMockCtx(metadataItems);
+    mockCtx = setupGetMockCtx(metadataItems);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -711,7 +757,7 @@ describe("getAllEquipmentMetadata", () => {
   });
 
   it("should reject non-admin users", async () => {
-    mockCtx = setupMockCtx([]);
+    mockCtx = setupMockCtx({});
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 

@@ -76,6 +76,7 @@ User → Login Page → Sign Up Form
 ```
 
 **Steps:**
+
 1. User fills registration form (email, password, name)
 2. Better Auth creates auth user and hashes password
 3. Profile is created with default role (buyer)
@@ -98,12 +99,12 @@ User → Login Page → Email/Password
               │                  │
               ▼                  ▼
         Create Session    Show Error
-              │                  
-              ▼                  
-        Check/Create      
-        Profile            
-              │                  
-              ▼                  
+              │
+              ▼
+        Check/Create
+        Profile
+              │
+              ▼
         Redirect to Home
 ```
 
@@ -166,15 +167,15 @@ Request → Auth Middleware
 
 Located in `app/convex/lib/auth.ts`:
 
-| Function | Purpose | Access Level |
-|----------|---------|--------------|
-| `getAuthUser()` | Get current authenticated user | Public |
-| `getCallerRole()` | Get user's role from profile | Public |
-| `requireAuth()` | Ensure user is authenticated | Authenticated |
-| `requireProfile()` | Ensure authenticated with profile | Authenticated |
-| `requireAdmin()` | Ensure user is admin | Admin only |
-| `requireVerified()` | Ensure profile is KYC verified | Verified users |
-| `getAuthenticatedProfile()` | Get auth user + profile | Public |
+| Function                    | Purpose                           | Access Level   |
+| --------------------------- | --------------------------------- | -------------- |
+| `getAuthUser()`             | Get current authenticated user    | Public         |
+| `getCallerRole()`           | Get user's role from profile      | Public         |
+| `requireAuth()`             | Ensure user is authenticated      | Authenticated  |
+| `requireProfile()`          | Ensure authenticated with profile | Authenticated  |
+| `requireAdmin()`            | Ensure user is admin              | Admin only     |
+| `requireVerified()`         | Ensure profile is KYC verified    | Verified users |
+| `getAuthenticatedProfile()` | Get auth user + profile           | Public         |
 
 ---
 
@@ -243,20 +244,20 @@ User logs in via Better Auth
 // RoleProtectedRoute component
 // Located: app/src/components/RoleProtectedRoute.tsx
 
-function RoleProtectedRoute({ 
-  children, 
-  allowedRoles 
+function RoleProtectedRoute({
+  children,
+  allowedRoles
 }) {
   const { profile } = useUserProfile();
-  
+
   if (!profile) {
     return <Navigate to="/login" />;
   }
-  
+
   if (allowedRoles && !allowedRoles.includes(profile.role)) {
     return <Navigate to="/" />;
   }
-  
+
   return children;
 }
 ```
@@ -271,7 +272,7 @@ export const adminAction = internalMutation({
   handler: async (ctx, args) => {
     // requireAdmin throws if not admin
     await requireAdmin(ctx);
-    
+
     // Proceed with admin action
   }
 });
@@ -330,4 +331,4 @@ Table: profiles
 
 ---
 
-*Last Updated: 2026-03-02*
+_Last Updated: 2026-03-02_

@@ -96,67 +96,68 @@ User Views Auction Detail
 export const placeBid = mutation({
   args: {
     auctionId: v.id("auctions"),
-    amount: v.number()
+    amount: v.number(),
   },
   handler: async (ctx, args) => {
     // 1. Authenticate user
     const { profile, userId } = await requireProfile(ctx);
-    
+
     // 2. Get auction
     const auction = await ctx.db.get(args.auctionId);
-    
+
     // 3. Validate auction is active
     if (auction.status !== "active") {
       throw new Error("Auction is not active");
     }
-    
+
     // 4. Calculate minimum bid
     const minBid = auction.currentPrice + auction.minIncrement;
     if (args.amount < minBid) {
       throw new Error(`Minimum bid is ${minBid}`);
     }
-    
+
     // 5. Prevent self-bidding
     if (auction.sellerId === userId) {
       throw new Error("Cannot bid on your own auction");
     }
-    
+
     // 6. Check for proxy bids
     const proxyBids = await ctx.db
       .query("proxy_bids")
-      .withIndex("by_auction", q => q.eq("auctionId", args.auctionId))
+      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
       .collect();
-    
+
     // ... proxy bid processing
-    
+
     // 7. Handle soft close
     const now = Date.now();
     const timeRemaining = (auction.endTime || 0) - now;
     const SOFT_CLOSE_THRESHOLD = 120000; // 2 minutes
-    
-    const newEndTime = timeRemaining < SOFT_CLOSE_THRESHOLD
-      ? now + SOFT_CLOSE_THRESHOLD
-      : auction.endTime;
-    
+
+    const newEndTime =
+      timeRemaining < SOFT_CLOSE_THRESHOLD
+        ? now + SOFT_CLOSE_THRESHOLD
+        : auction.endTime;
+
     // 8. Update auction
     await ctx.db.patch(args.auctionId, {
       currentPrice: args.amount,
       endTime: newEndTime,
-      isExtended: timeRemaining < SOFT_CLOSE_THRESHOLD
+      isExtended: timeRemaining < SOFT_CLOSE_THRESHOLD,
     });
-    
+
     // 9. Record bid
     await ctx.db.insert("bids", {
       auctionId: args.auctionId,
       bidderId: userId,
       amount: args.amount,
       timestamp: now,
-      status: "valid"
+      status: "valid",
     });
-    
+
     // 10. Create notification for outbid user
     // ... notification logic
-  }
+  },
 });
 ```
 
@@ -264,28 +265,28 @@ User Sets Maximum Bid (Proxy Bid)
 export const placeProxyBid = mutation({
   args: {
     auctionId: v.id("auctions"),
-    maxBid: v.number()
+    maxBid: v.number(),
   },
   handler: async (ctx, args) => {
     const { profile, userId } = await requireProfile(ctx);
-    
+
     // Validate auction exists and is active
     // Validate maxBid >= currentPrice + minIncrement
-    
+
     // Upsert proxy bid
     const existing = await ctx.db
       .query("proxy_bids")
-      .withIndex("by_bidder_auction", q => 
+      .withIndex("by_bidder_auction", (q) =>
         q.eq("bidderId", userId).eq("auctionId", args.auctionId)
       )
       .unique();
-    
+
     if (existing) {
       // Update if new max is higher
       if (args.maxBid > existing.maxBid) {
         await ctx.db.patch(existing._id, {
           maxBid: args.maxBid,
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
         });
       }
     } else {
@@ -293,10 +294,10 @@ export const placeProxyBid = mutation({
         auctionId: args.auctionId,
         bidderId: userId,
         maxBid: args.maxBid,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       });
     }
-  }
+  },
 });
 ```
 
@@ -348,49 +349,59 @@ sold   unsold
 export const settleExpiredAuctions = internalMutation({
   handler: async (ctx) => {
     const now = Date.now();
-    
+
     // Find all active auctions that have ended
     const expiredAuctions = await ctx.db
       .query("auctions")
-      .withIndex("by_status_endTime", q => 
+      .withIndex("by_status_endTime", (q) =>
         q.eq("status", "active").lt("endTime", now)
       )
       .collect();
-    
+
     for (const auction of expiredAuctions) {
       // Get highest bid
       const highestBid = await ctx.db
         .query("bids")
-        .withIndex("by_auction", q => 
-          q.eq("auctionId", auction._id)
-        )
+        .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
         .order("desc")
         .first();
-      
+
       if (highestBid && auction.currentPrice >= auction.reservePrice) {
         // Sold
         await ctx.db.patch(auction._id, {
           status: "sold",
-          winnerId: highestBid.bidderId
+          winnerId: highestBid.bidderId,
         });
-        
+
         // Notify winner and seller
-        await createNotification(auction.sellerId, "success", 
-          "Your item sold!", `Sold for ${auction.currentPrice}`);
-        await createNotification(highestBid.bidderId, "success",
-          "You won!", `Won for ${auction.currentPrice}`);
+        await createNotification(
+          auction.sellerId,
+          "success",
+          "Your item sold!",
+          `Sold for ${auction.currentPrice}`
+        );
+        await createNotification(
+          highestBid.bidderId,
+          "success",
+          "You won!",
+          `Won for ${auction.currentPrice}`
+        );
       } else {
         // Unsold
         await ctx.db.patch(auction._id, {
-          status: "unsold"
+          status: "unsold",
         });
-        
+
         // Notify seller
-        await createNotification(auction.sellerId, "info",
-          "Auction ended", "Your item did not meet reserve");
+        await createNotification(
+          auction.sellerId,
+          "info",
+          "Auction ended",
+          "Your item did not meet reserve"
+        );
       }
     }
-  }
+  },
 });
 ```
 
@@ -401,6 +412,7 @@ export const settleExpiredAuctions = internalMutation({
 ### Bid Recording
 
 All bids are recorded in the `bids` table with:
+
 - `auctionId`: Reference to auction
 - `bidderId`: User who placed bid
 - `amount`: Bid amount
@@ -410,6 +422,7 @@ All bids are recorded in the `bids` table with:
 ### Voiding Bids
 
 In cases requiring bid voiding (e.g., fraud detection):
+
 - Bid status changed to `voided` rather than deleted
 - Maintains audit trail
 - Auction price recalculated if needed
@@ -422,15 +435,9 @@ In cases requiring bid voiding (e.g., fraud detection):
 
 ```typescript
 // React component using Convex hooks
-const auction = useQuery(
-  "auctions:get",
-  { auctionId }
-);
+const auction = useQuery("auctions:get", { auctionId });
 
-const bids = useQuery(
-  "bids:getByAuction", 
-  { auctionId }
-);
+const bids = useQuery("bids:getByAuction", { auctionId });
 
 // Real-time updates automatically
 // when bids change
@@ -439,10 +446,11 @@ const bids = useQuery(
 ### Notification System
 
 When a bid is placed:
+
 1. Check previous highest bidder
 2. Create notification for outbid user
 3. Notification appears in real-time via Convex
 
 ---
 
-*Last Updated: 2026-03-02*
+_Last Updated: 2026-03-02_

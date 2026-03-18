@@ -1,13 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { resolveImageUrls, toAuctionSummary, toAuctionDetail } from "./helpers";
+import {
+  resolveImageUrls,
+  toAuctionSummary,
+  toAuctionDetail,
+  validateAuctionStatus,
+} from "./helpers";
 import type { QueryCtx } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 
 // Mock the image_cache module
 vi.mock("../image_cache", () => ({
-  resolveUrlCached: vi.fn((_storage: any, id?: string) => {
+  resolveUrlCached: vi.fn((_storage: unknown, id?: string) => {
     if (!id) return Promise.resolve(undefined);
     return Promise.resolve(`https://example.com/images/${id}`);
   }),
@@ -15,7 +19,7 @@ vi.mock("../image_cache", () => ({
 
 // Mock the users module
 vi.mock("../users", () => ({
-  findUserById: vi.fn((_ctx: any, userId: string) => {
+  findUserById: vi.fn((_ctx: unknown, userId: string) => {
     if (userId === "seller_123") {
       return Promise.resolve({
         _id: "seller_123",
@@ -29,11 +33,11 @@ vi.mock("../users", () => ({
 }));
 
 describe("resolveImageUrls", () => {
-  let mockStorage: any;
+  let mockStorage: QueryCtx["storage"];
 
   beforeEach(() => {
     vi.resetAllMocks();
-    mockStorage = {};
+    mockStorage = {} as QueryCtx["storage"];
   });
 
   it("should resolve object format images", async () => {
@@ -83,7 +87,12 @@ describe("resolveImageUrls", () => {
     const images = {
       front: "",
       engine: "valid_id",
-      additional: ["", "valid_id", null as any, undefined as any],
+      additional: [
+        "",
+        "valid_id",
+        null as unknown as string,
+        undefined as unknown as string,
+      ],
     };
 
     const result = await resolveImageUrls(mockStorage, images);
@@ -104,15 +113,24 @@ describe("resolveImageUrls", () => {
   });
 
   it("should handle null or undefined input", async () => {
-    const result1 = await resolveImageUrls(mockStorage, null);
-    const result2 = await resolveImageUrls(mockStorage, undefined);
+    const result1 = await resolveImageUrls(
+      mockStorage,
+      null as unknown as Parameters<typeof resolveImageUrls>[1]
+    );
+    const result2 = await resolveImageUrls(
+      mockStorage,
+      undefined as unknown as Parameters<typeof resolveImageUrls>[1]
+    );
 
     expect(result1.additional).toEqual([]);
     expect(result2.additional).toEqual([]);
   });
 
   it("should handle non-object, non-array input", async () => {
-    const result = await resolveImageUrls(mockStorage, "invalid" as any);
+    const result = await resolveImageUrls(
+      mockStorage,
+      "invalid" as unknown as Parameters<typeof resolveImageUrls>[1]
+    );
 
     expect(result.front).toBeUndefined();
     expect(result.additional).toEqual([]);
@@ -121,7 +139,7 @@ describe("resolveImageUrls", () => {
   it("should filter out undefined URLs from resolved images", async () => {
     const { resolveUrlCached } = await import("../image_cache");
     vi.mocked(resolveUrlCached).mockImplementation(
-      (_storage: any, id?: string) => {
+      (_storage: unknown, id?: string) => {
         if (id === "valid") return Promise.resolve("https://example.com/valid");
         return Promise.resolve(undefined);
       }
@@ -139,13 +157,13 @@ describe("resolveImageUrls", () => {
 });
 
 describe("toAuctionSummary", () => {
-  let mockCtx: any;
+  let mockCtx: QueryCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (category: any = null) => {
+  const setupMockCtx = (category: unknown = null) => {
     return {
       db: {
         get: vi.fn().mockResolvedValue(category),
@@ -155,7 +173,7 @@ describe("toAuctionSummary", () => {
   };
 
   const createMockAuction = (): Doc<"auctions"> => ({
-    _id: "auction_123" as any,
+    _id: "auction_123" as Id<"auctions">,
     _creationTime: Date.now(),
     title: "Test Auction",
     description: "Test description",
@@ -172,7 +190,7 @@ describe("toAuctionSummary", () => {
     reservePrice: 45000,
     operatingHours: 1200,
     location: "Iowa, USA",
-    categoryId: "cat_123" as any,
+    categoryId: "cat_123" as Id<"equipmentCategories">,
     sellerId: "seller_123",
     winnerId: undefined,
     conditionReportUrl: undefined,
@@ -216,6 +234,15 @@ describe("toAuctionSummary", () => {
     expect(result.categoryName).toBe("Unknown");
   });
 
+  it("should handle category found but missing name", async () => {
+    mockCtx = setupMockCtx({ _id: "cat_123" });
+    const auction = createMockAuction();
+
+    const result = await toAuctionSummary(mockCtx, auction);
+
+    expect(result.categoryName).toBe("Unknown");
+  });
+
   it("should include all required fields", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category);
@@ -248,14 +275,14 @@ describe("toAuctionSummary", () => {
 });
 
 describe("toAuctionDetail", () => {
-  let mockCtx: any;
+  let mockCtx: QueryCtx;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   const setupMockCtx = (
-    category: any = null,
+    category: unknown = null,
     isAuthenticated: boolean = false
   ) => {
     return {
@@ -272,7 +299,7 @@ describe("toAuctionDetail", () => {
   };
 
   const createMockAuction = (): Doc<"auctions"> => ({
-    _id: "auction_123" as any,
+    _id: "auction_123" as Id<"auctions">,
     _creationTime: Date.now(),
     title: "Test Auction",
     description: "Test description",
@@ -289,7 +316,7 @@ describe("toAuctionDetail", () => {
     reservePrice: 45000,
     operatingHours: 1200,
     location: "Iowa, USA",
-    categoryId: "cat_123" as any,
+    categoryId: "cat_123" as Id<"equipmentCategories">,
     sellerId: "seller_123",
     winnerId: undefined,
     conditionReportUrl: undefined,
@@ -327,6 +354,20 @@ describe("toAuctionDetail", () => {
   it("should not include seller email for unauthenticated users", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category, false);
+    const auction = createMockAuction();
+
+    const result = await toAuctionDetail(mockCtx, auction);
+
+    expect(result.sellerEmail).toBeUndefined();
+  });
+
+  it("should handle seller found but missing email", async () => {
+    const { findUserById } = await import("../users");
+    vi.mocked(findUserById).mockResolvedValue({
+      _id: "seller_123",
+    } as unknown as { _id: string; email?: string });
+    const category = { _id: "cat_123", name: "Tractors", isActive: true };
+    mockCtx = setupMockCtx(category, true);
     const auction = createMockAuction();
 
     const result = await toAuctionDetail(mockCtx, auction);
@@ -389,5 +430,28 @@ describe("toAuctionDetail", () => {
     const result = await toAuctionDetail(mockCtx, auction);
 
     expect(result.sellerEmail).toBeUndefined();
+  });
+});
+
+describe("validateAuctionStatus", () => {
+  it("should throw if status is active but endTime is missing", () => {
+    expect(() =>
+      validateAuctionStatus({ status: "pending_review" }, "active")
+    ).toThrow("Cannot set status to 'active' without endTime");
+  });
+
+  it("should not throw if status is active and endTime is present", () => {
+    expect(() =>
+      validateAuctionStatus(
+        { status: "pending_review", endTime: Date.now() },
+        "active"
+      )
+    ).not.toThrow();
+  });
+
+  it("should not throw for other status transitions", () => {
+    expect(() =>
+      validateAuctionStatus({ status: "draft" }, "pending_review")
+    ).not.toThrow();
   });
 });

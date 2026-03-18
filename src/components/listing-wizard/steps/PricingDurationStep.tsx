@@ -34,7 +34,10 @@ export const PricingDurationStep = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase text-muted-foreground ml-1">
+            <label
+              htmlFor="starting-price"
+              className="text-xs font-black uppercase text-muted-foreground ml-1"
+            >
               Starting Price (R)
             </label>
             <div className="relative">
@@ -42,6 +45,7 @@ export const PricingDurationStep = () => {
                 R
               </span>
               <Input
+                id="starting-price"
                 type="number"
                 inputMode="numeric"
                 min="0"
@@ -56,7 +60,10 @@ export const PricingDurationStep = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase text-muted-foreground ml-1">
+            <label
+              htmlFor="reserve-price"
+              className="text-xs font-black uppercase text-muted-foreground ml-1"
+            >
               Reserve Price (R)
             </label>
             <div className="relative">
@@ -64,6 +71,7 @@ export const PricingDurationStep = () => {
                 R
               </span>
               <Input
+                id="reserve-price"
                 type="number"
                 inputMode="numeric"
                 min="0"

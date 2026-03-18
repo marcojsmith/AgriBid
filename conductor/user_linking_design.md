@@ -20,6 +20,7 @@ We use a **Stable Shared Identifier** (`userId`) rather than internal database I
 #### Identity (Managed by Better Auth)
 
 Table: `user`
+
 - `_id`: Convex ID
 - `userId`: `string` (**The Link Key**) - Indexed.
 - `email`: `string`
@@ -28,6 +29,7 @@ Table: `user`
 #### Profile (Managed by AgriBid)
 
 Table: `profiles`
+
 - `_id`: Convex ID
 - `userId`: `string` (**The Foreign Key**) - Unique Index.
 - `role`: `union("buyer", "seller", "admin")`
@@ -45,15 +47,15 @@ Table: `profiles`
 - `createdAt`: `number` (Timestamp)
 - `updatedAt`: `number` (Timestamp)
 
-*Note: This schema reflects the canonical implementation in `app/convex/schema.ts`.*
+_Note: This schema reflects the canonical implementation in `app/convex/schema.ts`._
 
 ## 3. Relationship Map
 
-| Source Entity | Relation | Target Entity | Key Used |
-|---------------|----------|---------------|----------|
-| `auctions` | Many -> 1 | `profiles` | `sellerId` -> `profiles.userId` |
-| `bids` | Many -> 1 | `profiles` | `bidderId` -> `profiles.userId` |
-| `watchlist` | Many -> 1 | `profiles` | `userId` -> `profiles.userId` |
+| Source Entity | Relation  | Target Entity | Key Used                        |
+| ------------- | --------- | ------------- | ------------------------------- |
+| `auctions`    | Many -> 1 | `profiles`    | `sellerId` -> `profiles.userId` |
+| `bids`        | Many -> 1 | `profiles`    | `bidderId` -> `profiles.userId` |
+| `watchlist`   | Many -> 1 | `profiles`    | `userId` -> `profiles.userId`   |
 
 ## 4. Operational Flow: Just-In-Time Linking
 

@@ -10,6 +10,7 @@
 These are low-risk, isolated frontend fixes that can be completed quickly to build momentum.
 
 ### QW-1: Fix Form Field Missing id/name Attribute
+
 - **Issue**: #140
 - **Labels**: quick-win, frontend
 - **Description**: Browser console warning about form field missing id or name attribute on auction detail page bid form
@@ -22,6 +23,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### QW-2: Fix Images Not Same Size in Auction Cards (Compact View)
+
 - **Issue**: #114
 - **Labels**: quick-win, frontend
 - **Description**: Auction card images have inconsistent sizes in compact view
@@ -33,6 +35,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### QW-3: Change Filters to Dropdowns
+
 - **Issue**: #112
 - **Labels**: quick-win, frontend
 - **Description**: Change year min/max, price min/max, and operating hours max filters to dropdown fields
@@ -47,6 +50,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### QW-4: Add Resize Animation to Auction Cards
+
 - **Issue**: #110
 - **Labels**: quick-win, frontend
 - **Description**: Add smooth resize animation when filters panel is toggled
@@ -62,6 +66,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 ## Phase 1: Infrastructure & Code Quality
 
 ### P1-1: Add Type-Checking and Tests to Pre-Commit Hook
+
 - **Issue**: #165
 - **Priority**: HIGH
 - **Description**: Pre-commit hook runs linting/build but missing TypeScript type checking and test running
@@ -74,6 +79,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### P1-2: Configure Test Coverage Reporting
+
 - **Issue**: #170
 - **Priority**: MEDIUM
 - **Description**: No test coverage reporting configured in Vitest
@@ -90,6 +96,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P1-1 (tests must work first)
 
 ### P1-3: Increase Vitest Coverage Thresholds
+
 - **Issue**: #174
 - **Priority**: MEDIUM
 - **Description**: Current thresholds below best practice; goal is 80%+
@@ -103,6 +110,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P1-2 (coverage must be configured first)
 
 ### P1-4: Enhance ESLint with Stricter Rules
+
 - **Issue**: #171
 - **Priority**: MEDIUM
 - **Description**: Current ESLint uses only recommended rules
@@ -122,6 +130,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### P1-5: Extract Magic Numbers into Named Constants
+
 - **Issue**: #168
 - **Priority**: MEDIUM
 - **Description**: Magic numbers throughout codebase should be named constants
@@ -131,6 +140,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
      - `10000`, `8000` = toast durations (NotificationListener.tsx)
      - Other time-related numbers
   2. Create `app/src/lib/constants.ts`:
+
      ```typescript
      export const TIME = {
        ONE_SECOND_MS: 1_000,
@@ -138,23 +148,26 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
        ONE_HOUR_MS: 3_600_000,
        ONE_DAY_MS: 86_400_000,
      } as const;
-     
+
      export const TOAST = {
        SETTLEMENT_DURATION: 10_000,
        UNSOLD_DURATION: 8_000,
        DEFAULT_DURATION: 5_000,
      } as const;
-     
+
      export const BIDDING = {
        MIN_INCREMENT: 1,
        SOFT_CLOSE_MINUTES: 5,
      } as const;
      ```
+
   3. Replace all magic numbers with constants
+
 - **Verification**: Build passes, constants properly imported
 - **Dependencies**: None
 
 ### P1-6: Centralize Custom Hooks
+
 - **Issue**: #167
 - **Priority**: MEDIUM
 - **Description**: Hooks scattered across multiple directories
@@ -184,6 +197,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### P1-7: Replace Default README.md
+
 - **Issue**: #172
 - **Priority**: LOW
 - **Description**: `app/README.md` is default Vite template, not project-specific
@@ -203,6 +217,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 ## Phase 2: Backend Refactoring
 
 ### P2-1: Fix Admin Scalability and Statistics
+
 - **Issue**: #81
 - **Priority**: HIGH
 - **Description**: Inefficient full-table scans and result truncation in admin stats
@@ -215,6 +230,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### P2-2: Split auctions/queries.ts (729 Lines)
+
 - **Issue**: #163
 - **Priority**: HIGH
 - **Description**: Oversized file needs splitting by feature
@@ -241,6 +257,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P2-1 (fix critical bug first)
 
 ### P2-3: Split auctions/mutations.ts (1,182 Lines)
+
 - **Issue**: #162
 - **Priority**: HIGH
 - **Description**: Oversized file with ~25 mutations needs splitting
@@ -269,6 +286,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P2-2 (complete after queries split)
 
 ### P2-4: Implement Pagination for Queries (COMPLETED in PR #159)
+
 - **Issue**: #82
 - **Priority**: MEDIUM
 - **Description**: cursor-based pagination implemented for all primary list queries
@@ -280,6 +298,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 ## Phase 3: Feature Development & UX
 
 ### P3-1: Add Loading Spinners/Skeleton Components
+
 - **Issue**: #157
 - **Priority**: HIGH
 - **Description**: All pages need loading states before data fetches complete
@@ -299,6 +318,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P2-2, P2-3 (pagination ready for large lists)
 
 ### P3-2: Update Profile Page
+
 - **Issue**: #131
 - **Priority**: MEDIUM
 - **Description**: Enhance profile page with new cards and features from prototype
@@ -318,6 +338,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P3-1 (loading states ready)
 
 ### P3-3: Admin Page for Business Info
+
 - **Issue**: #132
 - **Priority**: MEDIUM
 - **Description**: Admin can update footer business info (address, phone, etc.)
@@ -331,6 +352,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P2-2 (queries split complete)
 
 ### P3-4: Configure Platform Fees
+
 - **Issue**: #106
 - **Priority**: MEDIUM
 - **Description**: Admin can configure platform fees on admin dashboard
@@ -344,6 +366,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P3-3 (business info table exists)
 
 ### P3-5: Manage Equipment Metadata
+
 - **Issue**: #105
 - **Priority**: MEDIUM
 - **Description**: Admin can manage equipment metadata on admin page
@@ -356,6 +379,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P3-3 (admin infrastructure ready)
 
 ### P3-6: Remember User Settings
+
 - **Issue**: #118
 - **Priority**: LOW
 - **Description**: Persist user preferences (compact/detailed view, etc.)
@@ -375,6 +399,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 ## Phase 4: Major Features & Testing
 
 ### P4-1: Create Sufficient Unit Tests
+
 - **Issue**: #84
 - **Priority**: HIGH
 - **Description**: Comprehensive unit testing strategy for codebase
@@ -391,6 +416,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: P1-2, P1-3, P2-2, P2-3 (coverage configured, refactoring done)
 
 ### P4-2: SEO Implementation
+
 - **Issue**: #133
 - **Priority**: MEDIUM
 - **Description**: Implement SEO strategy using Vite-compatible solutions
@@ -406,6 +432,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### P4-3: Align Brief.md with Implementation
+
 - **Issue**: #149
 - **Priority**: LOW
 - **Description**: Ensure product documentation matches current implementation
@@ -417,6 +444,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### P4-4: HTTP/2+ Protocol
+
 - **Issue**: #151
 - **Priority**: LOW
 - **Description**: Enable HTTP/2+ for better performance
@@ -428,6 +456,7 @@ These are low-risk, isolated frontend fixes that can be completed quickly to bui
 - **Dependencies**: None
 
 ### P4-5: AI Chatbot Support
+
 - **Issue**: #129
 - **Priority**: LOW
 - **Description**: Add AI chatbot for user support

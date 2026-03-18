@@ -1,6 +1,7 @@
 # Development Notes
 
 ## Current Status (2026-03-01)
+
 - **Proxy Bidding**: Fully implemented (backend & frontend). Auto-incrementing logic verified.
 - **Admin Portal**: Route-based refactor complete. KPIs and moderation flows are isolated to local route state.
 - **Performance**: Image caching, paginated queries, and context-based state management implemented.
@@ -9,6 +10,7 @@
 - **Settlement & Cleanup**: Automated auction settlement (Sold/Unsold) and periodic cleanup of abandoned drafts.
 
 ## Next Focus
+
 - **Real-time Bidding Enhancements**: Refining bid concurrency handling and proxy bidding notifications.
 - **User Profile Extensions**: Implementing detailed KYC verification for commercial sellers.
 - **Performance Optimization**: Optimizing image delivery and caching for high-traffic auctions.
@@ -16,6 +18,7 @@
 ## Naming Conventions
 
 For consistency, this project follows these naming rules:
+
 - **Folders**: hyphen-case (e.g., `user-profile`)
 - **React component files**: PascalCase (e.g., `UserProfile.tsx`)
 - **Utility/module files**: camelCase or kebab-case (e.g., `queries.ts`, `authConfig.ts`)
@@ -55,6 +58,7 @@ For consistency, this project follows these naming rules:
 ## PII Protection & Encryption
 
 Sensitive user data, such as `firstName`, `lastName`, `phoneNumber`, `kycEmail`, and `idNumber` collected during KYC, is protected using **AES-256-GCM** encryption via the **Web Crypto API**.
+
 - **Implementation**: Located in `app/convex/admin_utils.ts`.
 - **Key Validation**: The `PII_ENCRYPTION_KEY` must be exactly 32 bytes. In production, the system throws a critical error if the key is missing or invalid.
 - **Data Integrity**: Decryption includes authentication tag validation. Legacy plaintext values are handled gracefully during the transition period.
@@ -67,6 +71,7 @@ Sensitive user data, such as `firstName`, `lastName`, `phoneNumber`, `kycEmail`,
 ## Administrative Audit Logging
 
 All administrative mutations (e.g., voiding bids, reviewing KYC, bulk updating auctions) are automatically recorded in the `auditLogs` table.
+
 - **Helper**: Use the centralized `logAudit` helper in `app/convex/admin_utils.ts`.
 - **Metadata**: Logs capture the admin identity, action type (SCREAMING_CASE), target ID, target type, and a JSON-serialized summary of the changes.
 - **Performance**: Large bulk updates are summarized (e.g., count and sample IDs) to keep log entries within reasonable size limits.
@@ -74,6 +79,7 @@ All administrative mutations (e.g., voiding bids, reviewing KYC, bulk updating a
 ## Bidding Verification Gate
 
 To maintain marketplace integrity, bidding is restricted to verified users.
+
 - **Backend Enforcement**: The `placeBid` mutation in `app/convex/auctions.ts` checks `profile.isVerified`.
 - **Frontend Feedback**: The `BiddingPanel` detects the user's verification status and displays a high-visibility alert with a link to the KYC flow if they are unverified or pending review.
 
@@ -109,6 +115,7 @@ The `ListingWizard` now uses permanent Convex File Storage for all equipment ima
 ## Admin Moderation Workflow
 
 The Admin Dashboard has been refactored from a monolithic context-based design to a modular route-based architecture (`/admin/*`).
+
 - **Structure**: Each administrative function (Moderation, Auctions, Users, Announcements, Finance, etc.) is its own standalone page component with isolated local state.
 - **Layout**: A shared `AdminLayout` component provides the persistent sidebar navigation and a high-density KPI header.
 - **Workflow**:
@@ -134,5 +141,3 @@ The Admin Dashboard has been refactored from a monolithic context-based design t
 - **Data Integrity**: Enforced hierarchical selection in the `ListingWizard`. Added soft-delete support via `isActive` flags.
 - **Migration**: Implemented `fixMetadata` to map legacy auction data to the new hierarchical structure.
 - **Seeding**: Expanded `runSeed` with a comprehensive catalog of Southern African agricultural machinery.
-
-

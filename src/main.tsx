@@ -6,7 +6,7 @@ import { Toaster } from "sonner";
 
 import { authClient } from "./lib/auth-client";
 import "./index.css";
-import App from "./App.tsx";
+import App from "./App";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 

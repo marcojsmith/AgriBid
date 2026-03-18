@@ -57,6 +57,7 @@ const ListingWizardContent = () => {
   const submitForReview = useMutation(api.auctions.submitForReview);
 
   const initializedRef = useRef(false);
+  const submissionStateRef = useRef(false);
 
   // Initialize form state on mount
   useEffect(() => {
@@ -131,6 +132,14 @@ const ListingWizardContent = () => {
       // Update in-memory state with the new auctionId if it was just created
       if (!formData.auctionId && id) {
         updateField("auctionId", id);
+        // Also update localStorage immediately so subsequent saves use the ID
+        const currentDraft = JSON.parse(
+          localStorage.getItem("agribid_listing_draft") || "{}"
+        );
+        localStorage.setItem(
+          "agribid_listing_draft",
+          JSON.stringify({ ...currentDraft, auctionId: id })
+        );
       }
     } catch (error) {
       console.error("Draft save failed", {
@@ -146,7 +155,7 @@ const ListingWizardContent = () => {
 
   /**
    * Handles the final listing submission.
-   * - Prevents double-submit via isSubmitting guard
+   * - Prevents double-submit via submissionState guard
    * - Validates all steps before submission
    * - Calls createAuction or submitForReview mutation
    * - Updates submission state and navigates on success
@@ -155,8 +164,6 @@ const ListingWizardContent = () => {
    * @returns Promise that resolves when submission completes (success or failure)
    */
   const handleSubmit = async () => {
-    if (isSubmitting) return;
-
     if (isPending) {
       toast.info("Checking your session...");
       return;
@@ -165,6 +172,7 @@ const ListingWizardContent = () => {
       return;
     }
 
+    // Validate all steps BEFORE checking submissionState to allow jumping to error step
     for (const [stepIndex] of STEPS.entries()) {
       const error = getStepError(stepIndex);
       if (error) {
@@ -174,7 +182,10 @@ const ListingWizardContent = () => {
       }
     }
 
+    if (submissionStateRef.current) return;
+    submissionStateRef.current = true;
     setIsSubmitting(true);
+
     try {
       const images = normalizeListingImages(formData.images);
 
@@ -233,6 +244,7 @@ const ListingWizardContent = () => {
       toast.error(getErrorMessage(error, "Submission failed"));
     } finally {
       setIsSubmitting(false);
+      submissionStateRef.current = false;
     }
   };
 

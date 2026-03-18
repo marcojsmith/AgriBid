@@ -1,6 +1,7 @@
 # Performance Optimization Checklist
 
 ## Task 1: Bandwidth Optimization (Completed)
+
 - [x] Implement Image URL Caching (`resolveUrlCached` in `app/convex/image_cache.ts`)
 - [x] Update `resolveImageUrls` in `app/convex/auctions.ts` to use caching
 - [x] Pagination for `getMyListings` (`app/convex/auctions.ts`)
@@ -12,6 +13,7 @@
 - [x] Add limits to `getPendingKYC` (`app/convex/admin.ts`)
 
 ## Task 2: Database Query Efficiency (Completed)
+
 - [x] Add composite indexes in `app/convex/schema.ts`
   - [x] `by_status_make` for `[status, make]`
   - [x] `by_status_year` for `[status, year]`
@@ -24,6 +26,7 @@
 - [x] Update `getPendingAuctions` to return summary objects
 
 ## Task 3: Consolidate Frontend Subscriptions (Completed)
+
 - [x] Lift Admin Stats to Context
   - [x] Create `AdminStatsContext` in `app/src/contexts/AdminStatsContext.tsx`
   - [x] Create `useAdminStats` hook

@@ -274,22 +274,22 @@ An admin user can perform multiple actions that are logged.
 
 ## Foreign Key Summary
 
-| Child Table | Parent Table | Field | Relationship Type |
-|-------------|-------------|-------|-------------------|
-| `auctions` | `profiles` | `sellerId` | Many-to-One |
-| `auctions` | `profiles` | `winnerId` | Many-to-One (optional) |
-| `bids` | `auctions` | `auctionId` | Many-to-One |
-| `bids` | `profiles` | `bidderId` | Many-to-One |
-| `proxy_bids` | `auctions` | `auctionId` | Many-to-One |
-| `proxy_bids` | `profiles` | `bidderId` | Many-to-One |
-| `watchlist` | `auctions` | `auctionId` | Many-to-One |
-| `watchlist` | `profiles` | `userId` | Many-to-One |
-| `notifications` | `profiles` | `recipientId` | Many-to-One (Application-level) |
-| `readReceipts` | `notifications` | `notificationId` | Many-to-One |
-| `readReceipts` | `profiles` | `userId` | Many-to-One |
-| `supportTickets` | `profiles` | `userId` | Many-to-One |
-| `supportTickets` | `auctions` | `auctionId` | Many-to-One (optional) |
-| `auditLogs` | `profiles` | `adminId` | Many-to-One |
+| Child Table      | Parent Table    | Field            | Relationship Type               |
+| ---------------- | --------------- | ---------------- | ------------------------------- |
+| `auctions`       | `profiles`      | `sellerId`       | Many-to-One                     |
+| `auctions`       | `profiles`      | `winnerId`       | Many-to-One (optional)          |
+| `bids`           | `auctions`      | `auctionId`      | Many-to-One                     |
+| `bids`           | `profiles`      | `bidderId`       | Many-to-One                     |
+| `proxy_bids`     | `auctions`      | `auctionId`      | Many-to-One                     |
+| `proxy_bids`     | `profiles`      | `bidderId`       | Many-to-One                     |
+| `watchlist`      | `auctions`      | `auctionId`      | Many-to-One                     |
+| `watchlist`      | `profiles`      | `userId`         | Many-to-One                     |
+| `notifications`  | `profiles`      | `recipientId`    | Many-to-One (Application-level) |
+| `readReceipts`   | `notifications` | `notificationId` | Many-to-One                     |
+| `readReceipts`   | `profiles`      | `userId`         | Many-to-One                     |
+| `supportTickets` | `profiles`      | `userId`         | Many-to-One                     |
+| `supportTickets` | `auctions`      | `auctionId`      | Many-to-One (optional)          |
+| `auditLogs`      | `profiles`      | `adminId`        | Many-to-One                     |
 
 ---
 
@@ -298,21 +298,25 @@ An admin user can perform multiple actions that are logged.
 ### Common Query Patterns
 
 1. **Get user's active bids:**
+
    ```text
    profiles (userId) → bids (bidderId) → auctions (status = 'active')
    ```
 
 2. **Get auction with all bids:**
+
    ```text
    auctions (id) → bids (auctionId) ordered by timestamp
    ```
 
 3. **Get user's watchlist with auction details:**
+
    ```text
    profiles (userId) → watchlist (userId) → auctions (auctionId)
    ```
 
 4. **Get notifications for user:**
+
    ```text
    profiles (userId) → notifications (recipientId) ordered by createdAt
    ```
@@ -334,4 +338,4 @@ Convex does not support foreign key constraints with automatic cascades. Applica
 
 ---
 
-*Last Updated: 2026-03-02*
+_Last Updated: 2026-03-02_

@@ -103,10 +103,14 @@ export default function Support() {
             <Card className="p-6 border-2 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest">
+                  <Label
+                    htmlFor="subject"
+                    className="text-[10px] font-black uppercase tracking-widest"
+                  >
                     Subject
                   </Label>
                   <Input
+                    id="subject"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value.slice(0, 100))}
                     placeholder="e.g. Bidding Issue"
@@ -127,7 +131,10 @@ export default function Support() {
                     }
                     disabled={tickets === undefined}
                   >
-                    <SelectTrigger className="h-12 border-2 rounded-xl">
+                    <SelectTrigger
+                      aria-label="Priority"
+                      className="h-12 border-2 rounded-xl"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -144,7 +151,10 @@ export default function Support() {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
-                  <Label className="text-[10px] font-black uppercase tracking-widest">
+                  <Label
+                    htmlFor="message"
+                    className="text-[10px] font-black uppercase tracking-widest"
+                  >
                     Message
                   </Label>
                   <span className="text-[9px] font-bold text-muted-foreground uppercase">
@@ -152,6 +162,7 @@ export default function Support() {
                   </span>
                 </div>
                 <Textarea
+                  id="message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value.slice(0, 2000))}
                   placeholder="Describe your issue in detail..."

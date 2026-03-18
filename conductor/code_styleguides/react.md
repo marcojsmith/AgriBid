@@ -11,6 +11,7 @@ To maintain readability and testability, we follow these size guidelines:
 ## Modularization Pattern
 
 ### 1. Feature Directory Structure
+
 For complex features (e.g., `AdminDashboard`, `KYC`, `ListingWizard`), use a dedicated directory structure:
 
 ```text
@@ -25,18 +26,21 @@ src/pages/feature-name/
 ```
 
 **When to use full structure:**
+
 - Features with 3+ major UI sections or tabs.
 - Multi-step flows (e.g., `ListingWizard`, `KYC`).
 - Features requiring a dedicated Context Provider to manage shared state.
 - **Simpler Alternative:** For small features, use a single file or a flat folder containing `{Component.tsx, utils.ts, types.ts}`.
 
 ### 2. State Management
+
 - **Local State:** Use `useState` for simple, component-specific state.
 - **Shared Feature State:** Use a **React Context Provider** for state shared across multiple sections or tabs within a single feature.
 - **Business Logic:** Extract complex logic, validations, and async operations into **Custom Hooks**.
 - **Global State:** Opt for external libraries (e.g., **Zustand**, **Redux**) only when state must be shared across many unrelated features, or when performance issues arise from Context re-renders.
 
 ### 3. Component Extraction
+
 - Extract repetitive UI elements into small, reusable components in `src/components/feature-name/` or `src/components/ui/` if generic.
 - Extract major visual blocks (e.g., Tabs, Form Sections) into `sections/`.
 - Extract large dialogs and modals into a separate `Dialogs.tsx` or individual component files.
@@ -49,6 +53,7 @@ src/pages/feature-name/
 - `src/lib/`: Global utility functions and service clients.
 
 ## Canonical Examples
+
 - **AdminDashboard Refactor:** `app/src/pages/admin/` - Demonstrates Context-based state sharing and Tab extraction.
 - **ListingWizard Refactor:** `app/src/components/ListingWizard/` - Demonstrates step-based modularization and form logic extraction.
 - **KYC Refactor:** `app/src/pages/kyc/` - Demonstrates hook-based logic extraction and section splitting.

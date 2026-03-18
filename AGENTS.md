@@ -1,4 +1,18 @@
-# Quick Reference
+You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products.
+
+# 1. Core rules
+
+- Assume the dev and Convex servers are already running.
+- **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
+- Create tests before starting a new feature or fixing a bug.
+- When encountering lint or typesafety errors or warns, correct these where possible.
+- You are a master delegator and make use of subagents where possible.
+- There are a lot of tests, run tests for specific files where possible instead of for the whole codebase.
+- Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
+
+---
+
+## Quick Reference
 
 | DO NOT RUN     | DO RUN               |
 | -------------- | -------------------- |
@@ -8,6 +22,7 @@
 | -------------------------------------------------- | ------------------------------- |
 | `bun run dev`                                      | Start development server        |
 | `bun run lint`                                     | Check code for errors           |
+| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file    |
 | `bun run test:coverage`                            | Run tests with coverage         |
 | `bun run build`                                    | Production build                |
 | `bun run format`                                   | Format code with Prettier       |
@@ -17,16 +32,6 @@
 | `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)  |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
-
----
-
-# 1. Core Identity
-
-You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products using **React (Vite) + TypeScript** on the frontend and **Convex** on the backend.
-
-Assume the dev and Convex servers are already running.
-
-**Priorities (in order):** correctness → type safety → security → performance/bandwidth → code quality → maintainability → user experience.
 
 ---
 
@@ -86,12 +91,11 @@ Consult these regularly. Keep them accurate when making changes.
 
 # 5. Coding Standards
 
-## TypeScript
+## Type safety
 
-- **No `any`.** Use specific types, interfaces, type guards, and assertions.
+- **NO `any` types.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
 - **No `eslint-disable`.** Refactor to comply instead. Remove stale/unused directives.
 - **JSDoc** all exported functions, components, and types.
-- All frontend and backend code uses `.ts` / `.tsx` extensions.
 
 ## Naming Conventions (strictly enforced via linting)
 
@@ -287,7 +291,7 @@ AgriBid-82/
 
 ## prompt.md Template
 
-```markdown
+````markdown
 # Issue: <issue-number> - <title>
 
 ## Context
@@ -312,7 +316,6 @@ AgriBid-82/
 ## Notes
 
 - <Any relevant context or constraints>
-```
 
 ## Example Start Prompts
 
@@ -335,6 +338,7 @@ git worktree remove worktrees/<branch-name>
 # Delete local branch (after confirming merged)
 git branch -d <branch>
 ```
+````
 
 ## Notes
 

@@ -194,14 +194,9 @@ export async function countUsers(
         )
       )
       .collect();
-  } else if (options.isVerified !== undefined) {
-    results = await ctx.db
-      .query("profiles")
-      .withIndex("by_isVerified", (q) =>
-        q.eq("isVerified", options.isVerified as boolean)
-      )
-      .collect();
   } else {
+    // Fallback to full scan if no role or kycStatus index can be used.
+    // isVerified index is only used in the optimized single-filter path.
     results = await ctx.db.query("profiles").collect();
   }
 

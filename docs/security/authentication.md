@@ -8,11 +8,11 @@ AgriBid uses **Better Auth** as the authentication solution, integrated with **C
 
 ### Supported Methods
 
-| Method | Status | Description |
-|--------|--------|-------------|
-| Email/Password | Implemented | Traditional login with hashed passwords |
-| Google OAuth | Implemented | OAuth 2.0 with Google |
-| Session Management | Implemented | Server-side session handling |
+| Method             | Status      | Description                             |
+| ------------------ | ----------- | --------------------------------------- |
+| Email/Password     | Implemented | Traditional login with hashed passwords |
+| Google OAuth       | Implemented | OAuth 2.0 with Google                   |
+| Session Management | Implemented | Server-side session handling            |
 
 ---
 
@@ -35,13 +35,13 @@ AgriBid uses **Better Auth** as the authentication solution, integrated with **C
 ```typescript
 // Password handling is managed by Better Auth
 // Registration flow:
-const signUpResponse = await fetch('/api/sign-up', {
-  method: 'POST',
+const signUpResponse = await fetch("/api/sign-up", {
+  method: "POST",
   body: JSON.stringify({
-    email: 'user@example.com',
-    password: 'securePassword123',
-    name: 'John Doe'
-  })
+    email: "user@example.com",
+    password: "securePassword123",
+    name: "John Doe",
+  }),
 });
 ```
 
@@ -73,13 +73,13 @@ const signUpResponse = await fetch('/api/sign-up', {
 
 ### Session Lifecycle
 
-| Event | Action |
-|-------|--------|
-| Login | Create session, set cookie |
-| Valid Request | Extend session |
-| Logout | Invalidate session |
-| Inactivity | Session expires (configurable) |
-| Browser Close | Cookie cleared |
+| Event         | Action                         |
+| ------------- | ------------------------------ |
+| Login         | Create session, set cookie     |
+| Valid Request | Extend session                 |
+| Logout        | Invalidate session             |
+| Inactivity    | Session expires (configurable) |
+| Browser Close | Cookie cleared                 |
 
 ### Configuration
 
@@ -103,15 +103,15 @@ All authentication redirects are validated against an allowed list of domains.
 // app/convex/auth.config.ts
 
 const ALLOWED_REDIRECT_URLS = [
-  'http://localhost:5173',
-  'https://agribid.vercel.app'
+  "http://localhost:5173",
+  "https://agribid.vercel.app",
 ];
 
 export function isAllowedRedirect(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return ALLOWED_REDIRECT_URLS.some(allowed => 
-      parsed.origin === new URL(allowed).origin
+    return ALLOWED_REDIRECT_URLS.some(
+      (allowed) => parsed.origin === new URL(allowed).origin
     );
   } catch {
     return false;
@@ -123,7 +123,7 @@ export function isAllowedRedirect(url: string): boolean {
 
 ```typescript
 // In auth handlers
-const redirectTo = request.nextUrl.searchParams.get('redirect');
+const redirectTo = request.nextUrl.searchParams.get("redirect");
 if (redirectTo && isAllowedRedirect(redirectTo)) {
   // Safe to redirect
 }
@@ -147,13 +147,13 @@ const MAX_BIDS_PER_WINDOW = 10;
 
 async function checkBidRateLimit(ctx: MutationCtx, userId: string) {
   const windowStart = Date.now() - RECENT_BID_WINDOW;
-  
+
   const recentBids = await ctx.db
     .query("bids")
-    .withIndex("by_bidder", q => q.eq("bidderId", userId))
-    .filter(q => q.gte("timestamp", windowStart))
+    .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+    .filter((q) => q.gte("timestamp", windowStart))
     .collect();
-  
+
   if (recentBids.length >= MAX_BIDS_PER_WINDOW) {
     throw new Error("Rate limit exceeded. Please wait before bidding again.");
   }
@@ -211,14 +211,14 @@ async function checkBidRateLimit(ctx: MutationCtx, userId: string) {
 
 ### HTTP Security Headers
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| X-Content-Type-Options | nosniff | Prevent MIME sniffing |
-| X-Frame-Options | DENY | Prevent iframe embedding |
-| X-XSS-Protection | 0 (Legacy) | Recommendation: Use Content-Security-Policy (CSP) |
-| Strict-Transport-Security | max-age=31536000 | Force HTTPS |
+| Header                    | Value            | Purpose                                           |
+| ------------------------- | ---------------- | ------------------------------------------------- |
+| X-Content-Type-Options    | nosniff          | Prevent MIME sniffing                             |
+| X-Frame-Options           | DENY             | Prevent iframe embedding                          |
+| X-XSS-Protection          | 0 (Legacy)       | Recommendation: Use Content-Security-Policy (CSP) |
+| Strict-Transport-Security | max-age=31536000 | Force HTTPS                                       |
 
-*Note: These are handled by Vercel deployment platform. A strong CSP using nonces or strict-dynamic is recommended for modern XSS mitigation.*
+_Note: These are handled by Vercel deployment platform. A strong CSP using nonces or strict-dynamic is recommended for modern XSS mitigation._
 
 ---
 
@@ -273,6 +273,7 @@ async function checkBidRateLimit(ctx: MutationCtx, userId: string) {
 ### Audit Trail
 
 All authentication events logged:
+
 - Login attempts (success/failure)
 - Logouts
 - Password changes
@@ -280,4 +281,4 @@ All authentication events logged:
 
 ---
 
-*Last Updated: 2026-03-02*
+_Last Updated: 2026-03-02_
