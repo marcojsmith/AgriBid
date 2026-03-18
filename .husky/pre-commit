@@ -1,1 +1,1 @@
-bunx lint-staged && bun run build || echo "⚠️  Build has TypeScript warnings - fix when possible" && bun run test --run 
+bunx lint-staged && bun run build || (echo "⚠️  Build has TypeScript warnings - fix when possible"; exit 1) && bun run test --run 

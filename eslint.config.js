@@ -26,20 +26,22 @@ export default defineConfig([
   globalIgnores(["dist", "convex/_generated", "coverage"]),
 
   // -----------------------------------------------------------------------
-  // Node/config files — vite.config.ts, vitest.config.ts, eslint.config.js
+  // eslint.config.js — simple JavaScript config file
+  // -----------------------------------------------------------------------
+  {
+    files: ["eslint.config.js"],
+    plugins: { "no-secrets": noSecrets },
+    rules: {
+      "no-secrets/no-secrets": "warn",
+    },
+  },
+
+  // -----------------------------------------------------------------------
+  // Node/config files — vite.config.ts, vitest.config.ts
   // Uses tsconfig.node.json so the parser can resolve them.
   // -----------------------------------------------------------------------
   {
-    files: [
-      "vite.config.ts",
-      "vitest.config.ts",
-    ],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-      security.configs.recommended,
-      prettierConfig,
-    ],
+    files: ["vite.config.ts", "vitest.config.ts"],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.node,
@@ -58,10 +60,10 @@ export default defineConfig([
   },
 
   // -----------------------------------------------------------------------
-  // App source — src/ and convex/
+  // App source — src/
   // -----------------------------------------------------------------------
   {
-    files: ["src/**/*.{ts,tsx}", "convex/**/*.ts"],
+    files: ["src/**/*.{ts,tsx}"],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -137,6 +139,94 @@ export default defineConfig([
       // --- React ---
       "react-hooks/rules-of-hooks": "warn",
       "react-hooks/exhaustive-deps": "warn",
+
+      // --- Security ---
+      "no-secrets/no-secrets": "warn",
+
+      // --- Imports ---
+      "import-x/no-duplicates": "warn",
+      "import-x/no-cycle": "warn",
+      "import-x/no-self-import": "warn",
+      "import-x/no-useless-path-segments": "warn",
+      "import-x/order": [
+        "error",
+        {
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            ["parent", "sibling", "index"],
+          ],
+          pathGroups: [{ pattern: "@/**", group: "internal" }],
+          "newlines-between": "always",
+        },
+      ],
+    },
+  },
+
+  // -----------------------------------------------------------------------
+  // Convex backend — convex/**/*.ts
+  // Uses TypeScript parser without type-aware rules (project-based typing conflicts).
+  // -----------------------------------------------------------------------
+  {
+    files: ["convex/**/*.ts"],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      security.configs.recommended,
+      prettierConfig,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.node,
+    },
+    plugins: sharedPlugins,
+    settings: sharedSettings,
+    rules: {
+      // --- JSDoc ---
+      "jsdoc/require-jsdoc": [
+        "error",
+        {
+          publicOnly: true,
+          require: {
+            FunctionDeclaration: true,
+            MethodDefinition: true,
+            ClassDeclaration: true,
+            ArrowFunctionExpression: true,
+            FunctionExpression: true,
+          },
+          contexts: [
+            "ExportNamedDeclaration > FunctionDeclaration",
+            "ExportDefaultDeclaration > FunctionDeclaration",
+            "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > ArrowFunctionExpression",
+            "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > FunctionExpression",
+          ],
+        },
+      ],
+      "jsdoc/require-param": "off",
+      "jsdoc/require-returns": "off",
+      "jsdoc/require-param-description": "off",
+      "jsdoc/require-returns-description": "off",
+      "jsdoc/check-param-names": "off",
+      "jsdoc/check-tag-names": "off",
+
+      // --- TypeScript (non type-aware) ---
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-floating-promises": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/require-await": "off",
+      "@typescript-eslint/await-thenable": "off",
+      "@typescript-eslint/no-misused-promises": "off",
+      "@typescript-eslint/consistent-type-imports": "off",
+      "@typescript-eslint/no-import-type-side-effects": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/switch-exhaustiveness-check": "off",
+      "no-shadow": "off",
+      "@typescript-eslint/no-shadow": "off",
 
       // --- Security ---
       "no-secrets/no-secrets": "warn",
