@@ -126,10 +126,15 @@ export default function AdminAnnouncements() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                  <label
+                    htmlFor="announcement-title"
+                    className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+                  >
                     Notification Title
                   </label>
                   <Input
+                    id="announcement-title"
+                    name="announcement-title"
                     placeholder="Maintenance Update"
                     value={announcementTitle}
                     onChange={(e) => {
@@ -139,10 +144,15 @@ export default function AdminAnnouncements() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                  <label
+                    htmlFor="announcement-message"
+                    className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+                  >
                     Detailed Message
                   </label>
                   <Textarea
+                    id="announcement-message"
+                    name="announcement-message"
                     placeholder="We will be offline for 2 hours..."
                     value={announcementMessage}
                     onChange={(e) => {
@@ -196,10 +206,7 @@ export default function AdminAnnouncements() {
           />
           <StatCard
             label="Engaged Users"
-            value={announcements.reduce(
-              (acc, curr) => acc + (curr.readCount ?? 0),
-              0
-            )}
+            value={announcements.reduce((acc, curr) => acc + curr.readCount, 0)}
             icon={<Eye className="h-5 w-5" />}
             color="text-green-500"
           />

@@ -74,7 +74,8 @@ export function KycReviewDialog({
             KYC Verification Review
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Review the submitted KYC documents and details for user verification.
+            Review the submitted KYC documents and details for user
+            verification.
           </DialogDescription>
         </DialogHeader>
         {user && (
@@ -157,10 +158,15 @@ export function KycReviewDialog({
             </div>
 
             <div className="space-y-2 border-t pt-4">
-              <Label className="text-[10px] font-black uppercase tracking-widest">
+              <Label
+                htmlFor="rejection-reason"
+                className="text-[10px] font-black uppercase tracking-widest"
+              >
                 Rejection Reason (Required for Reject)
               </Label>
               <Textarea
+                id="rejection-reason"
+                name="rejection-reason"
                 placeholder="e.g. Documents are blurry or ID number doesn't match..."
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
