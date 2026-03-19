@@ -261,6 +261,7 @@ export const BidForm = ({
             <Input
               id="bid-amount"
               name="bid-amount"
+              aria-label="Bid amount"
               type="number"
               value={manualAmount}
               onChange={(e) => setManualAmount(e.target.value)}

@@ -150,7 +150,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
                 updateParam("minYear", value === "any" ? "" : value);
               }}
             >
-              <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+              <SelectTrigger
+                aria-label="Minimum year"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
                 <SelectValue placeholder="From" />
               </SelectTrigger>
               <SelectContent>
@@ -168,7 +171,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
                 updateParam("maxYear", value === "any" ? "" : value);
               }}
             >
-              <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+              <SelectTrigger
+                aria-label="Maximum year"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
                 <SelectValue placeholder="To" />
               </SelectTrigger>
               <SelectContent>
@@ -185,7 +191,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Price Range */}
         <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+          <label
+            id="price-range-label"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
             Price Range (ZAR)
           </label>
           <div className="grid grid-cols-2 gap-3">
@@ -195,7 +204,11 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
                 updateParam("minPrice", value === "any" ? "" : value);
               }}
             >
-              <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+              <SelectTrigger
+                aria-labelledby="price-range-label"
+                aria-label="Minimum price"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
                 <SelectValue placeholder="Min" />
               </SelectTrigger>
               <SelectContent>
@@ -213,7 +226,11 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
                 updateParam("maxPrice", value === "any" ? "" : value);
               }}
             >
-              <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+              <SelectTrigger
+                aria-labelledby="price-range-label"
+                aria-label="Maximum price"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
                 <SelectValue placeholder="Max" />
               </SelectTrigger>
               <SelectContent>
@@ -230,7 +247,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Operating Hours */}
         <div className="space-y-3">
-          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+          <label
+            id="hours-label"
+            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+          >
             Max Operating Hours
           </label>
           <Select
@@ -239,7 +259,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
               updateParam("maxHours", value === "any" ? "" : value);
             }}
           >
-            <SelectTrigger className="h-12 rounded-xl border-2 font-bold">
+            <SelectTrigger
+              aria-labelledby="hours-label"
+              className="h-12 rounded-xl border-2 font-bold"
+            >
               <SelectValue placeholder="Any" />
             </SelectTrigger>
             <SelectContent>

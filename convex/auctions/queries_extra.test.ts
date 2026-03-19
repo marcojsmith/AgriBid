@@ -155,7 +155,17 @@ describe("Queries Extra Coverage", () => {
       isDone: true,
       continueCursor: "",
     });
-    queryMock.take.mockResolvedValue([]);
+    queryMock.take.mockResolvedValue([
+      {
+        _id: "a1",
+        title: "tractor",
+        status: "active",
+        currentPrice: 100,
+        make: "m",
+        model: "m",
+        year: 2020,
+      },
+    ]);
     const result = await getActiveAuctionsHandler(
       mockCtx as unknown as QueryCtx,
       {

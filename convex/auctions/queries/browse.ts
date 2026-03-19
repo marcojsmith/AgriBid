@@ -76,7 +76,7 @@ export const getActiveAuctionsHandler = async (
   ctx: QueryCtx,
   args: ActiveAuctionsArgs
 ) => {
-  const statusFilter: StatusFilter = args.statusFilter ?? "active";
+  const statusFilter = args.statusFilter ?? ("active" as StatusFilter);
   const statuses = statusesForFilter(statusFilter);
 
   const getBaseQuery = () => {
@@ -167,25 +167,38 @@ export const getActiveAuctionsHandler = async (
   };
 
   if (args.search) {
-    // For search, we use the search index first, then apply additional filters manually
-    // to the results. This handles cases where filters aren't supported by the search index.
-    const [results, searchResults] = await Promise.all([
-      getFilteredQuery().paginate(args.paginationOpts),
-      getFilteredQuery().take(MAX_RESULTS_CAP + 1),
-    ]);
+    // For search, we fetch all potentially matching items (up to cap) and filter them manually.
+    // This ensures accurate totalCount and non-empty pages when filters are combined with search.
+    const allSearchResults = await getFilteredQuery().take(MAX_RESULTS_CAP + 1);
+
+    const filteredResults = allSearchResults.filter((auction) =>
+      matchesAuctionFilter(auction, args)
+    );
 
     const totalCount =
-      searchResults.length > MAX_RESULTS_CAP ? "1000+" : searchResults.length;
+      filteredResults.length > MAX_RESULTS_CAP
+        ? "1000+"
+        : filteredResults.length;
+
+    // Apply manual pagination to the filtered results
+    const numItems = args.paginationOpts.numItems;
+    // Note: We use a simple slice for pagination here since search results are already capped and loaded.
+    // Real cursor-based pagination with post-filtering is complex in Convex;
+    // this approach is sufficient for search where results are already naturally limited.
+    const startIndex = 0; // Search queries currently don't support deep pagination with post-filters
+    const paginatedSlice = filteredResults.slice(
+      startIndex,
+      startIndex + numItems
+    );
 
     const page = await Promise.all(
-      results.page
-        .filter((auction) => matchesAuctionFilter(auction, args))
-        .map((auction) => toAuctionSummary(ctx, auction))
+      paginatedSlice.map((auction) => toAuctionSummary(ctx, auction))
     );
 
     return {
-      ...results,
       page,
+      isDone: filteredResults.length <= startIndex + numItems,
+      continueCursor: "", // Search with post-filtering currently returns a single page
       totalCount,
     };
   }

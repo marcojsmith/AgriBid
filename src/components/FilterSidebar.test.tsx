@@ -158,9 +158,14 @@ describe("FilterSidebar", () => {
     expect(screen.queryByLabelText(/Close filters/i)).not.toBeInTheDocument();
   });
 
-  it("renders select triggers for all filters", () => {
+  it("renders select triggers for all filters with accessible labels", () => {
     renderSidebar();
-    const selectTriggers = screen.getAllByRole("combobox");
-    expect(selectTriggers.length).toBeGreaterThanOrEqual(6);
+    expect(screen.getByLabelText(/Manufacturer/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Minimum year/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Maximum year/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Minimum price/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Maximum price/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Max Operating Hours/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Auction Status/i)).toBeInTheDocument();
   });
 });
