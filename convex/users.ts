@@ -13,7 +13,7 @@ import {
   resolveUserId,
   requireAdmin,
 } from "./lib/auth";
-import { type Id } from "./_generated/dataModel";
+import type { Id, Doc } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import {
   logAudit,
@@ -22,7 +22,6 @@ import {
   updateCounter,
   countQuery,
 } from "./admin_utils";
-import type { Doc } from "./_generated/dataModel";
 import { PRESENCE_HEARTBEAT_THRESHOLD } from "./presence";
 
 /**
@@ -85,8 +84,9 @@ export const KYCDetailsValidator = v.object({
 
 /**
  * Helper to find a user by ID, checking both internal _id and shared userId.
- * @param ctx
- * @param id
+ *
+ * @param ctx - Convex Query or Mutation context
+ * @param id - The user ID to find
  * @returns The user document or null if not found.
  */
 export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
@@ -346,7 +346,7 @@ export const getProfileForKYCHandler = async (
     decryptPII(profile.phoneNumber),
     decryptPII(profile.kycEmail),
     Promise.all(
-      (profile.kycDocuments || []).map(async (id: Id<"_storage">) => {
+      (profile.kycDocuments ?? []).map(async (id: Id<"_storage">) => {
         const url = await ctx.storage.getUrl(id);
         return url;
       })
@@ -611,7 +611,7 @@ export const getMyKYCDetailsHandler = async (ctx: QueryCtx) => {
       decryptPII(profile.phoneNumber),
       decryptPII(profile.kycEmail),
       Promise.all(
-        (profile.kycDocuments || []).map(async (id) => {
+        (profile.kycDocuments ?? []).map(async (id) => {
           const url = await ctx.storage.getUrl(id);
           return url;
         })
@@ -670,7 +670,7 @@ export const deleteMyKYCDocumentHandler = async (
     throw new ConvexError("Cannot delete document while KYC is pending");
   }
 
-  const kycDocuments = profile.kycDocuments || [];
+  const kycDocuments = profile.kycDocuments ?? [];
   if (!kycDocuments.includes(storageId)) {
     throw new ConvexError("Document not found in your profile");
   }

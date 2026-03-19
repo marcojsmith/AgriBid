@@ -55,7 +55,7 @@ export default function AuctionDetail() {
 
   const flagAuction = useMutation(api.auctions.flagAuction);
 
-  const isOwner = session?.user?.email === auction?.sellerEmail;
+  const isOwner = session?.user?.id === auction?.sellerId;
 
   const handleFlagAuction = async () => {
     if (!flagReason) {
@@ -66,8 +66,8 @@ export default function AuctionDetail() {
     try {
       const result = await flagAuction({
         auctionId: id as Id<"auctions">,
-        reason: flagReason as FlagReason,
-        details: flagDetails || undefined,
+        reason: flagReason,
+        details: flagDetails ?? undefined,
       });
 
       if (result.hideTriggered) {
@@ -187,7 +187,7 @@ export default function AuctionDetail() {
             </div>
 
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {auction.description || "No description provided."}
+              {auction.description ?? "No description provided."}
             </p>
           </div>
 
@@ -220,7 +220,9 @@ export default function AuctionDetail() {
                         <label className="text-sm font-medium">Reason</label>
                         <Select
                           value={flagReason}
-                          onValueChange={(v) => setFlagReason(v as FlagReason)}
+                          onValueChange={(v) => {
+                            setFlagReason(v as FlagReason);
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select a reason" />
@@ -246,14 +248,18 @@ export default function AuctionDetail() {
                         <Textarea
                           placeholder="Provide more context..."
                           value={flagDetails}
-                          onChange={(e) => setFlagDetails(e.target.value)}
+                          onChange={(e) => {
+                            setFlagDetails(e.target.value);
+                          }}
                           rows={3}
                         />
                       </div>
                       <div className="flex gap-2 justify-end">
                         <Button
                           variant="outline"
-                          onClick={() => setFlagDialogOpen(false)}
+                          onClick={() => {
+                            setFlagDialogOpen(false);
+                          }}
                         >
                           Cancel
                         </Button>
