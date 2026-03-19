@@ -281,7 +281,7 @@ export const getAuctionByIdHandler = async (
     if (!auth?.profile) return null;
 
     const isAdmin = auth.profile.role === "admin";
-    const isOwner = auction.sellerId === auth.userId;
+    const isOwner = auction.sellerId === auth.authUser._id || auction.sellerId === auth.userId;
 
     if (!isAdmin && !isOwner) return null;
   }

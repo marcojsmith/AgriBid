@@ -2,8 +2,7 @@ import { paginationOptsValidator, type PaginationOptions } from "convex/server";
 
 import { query } from "../../_generated/server";
 import type { QueryCtx } from "../../_generated/server";
-import { authComponent } from "../../auth";
-import { resolveUserId } from "../../lib/auth";
+import { getAuthUser, resolveUserId } from "../../lib/auth";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { AuctionSummaryValidator } from "../helpers";
 
@@ -171,16 +170,9 @@ export function statusesForFilter(filter: StatusFilter): AuctionStatus[] {
 export async function getAuthenticatedUserId(
   ctx: QueryCtx
 ): Promise<string | null> {
-  try {
-    const authUser = await authComponent.getAuthUser(ctx);
-    if (!authUser) return null;
-    return resolveUserId(authUser);
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unauthenticated")) {
-      return null;
-    }
-    throw err;
-  }
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) return null;
+  return resolveUserId(authUser);
 }
 
 /**
