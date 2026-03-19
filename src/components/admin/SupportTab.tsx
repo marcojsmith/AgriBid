@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Check, MessageSquare } from "lucide-react";
+import { Check, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
@@ -34,10 +34,10 @@ import { Label } from "@/components/ui/label";
  * @returns A React element showing a centered loading indicator while tickets are loading, or a table of tickets with per-ticket status, subject, message, priority, and controls to open a resolution dialog for open tickets.
  */
 export function SupportTab() {
-  // Pagination intentionally limited to first page — admin ticket review
-  // does not require full scan; cursor state is not needed.
+  const [cursorStack, setCursorStack] = useState<Array<string>>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const ticketsResult = useQuery(api.admin.getTickets, {
-    paginationOpts: { numItems: 50, cursor: null },
+    paginationOpts: { numItems: 50, cursor: currentCursor },
   });
   const resolveTicket = useMutation(api.admin.resolveTicket);
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
@@ -46,6 +46,24 @@ export function SupportTab() {
   const [resolutionText, setResolutionText] = useState("");
 
   const tickets = ticketsResult?.page ?? [];
+
+  const handleNext = () => {
+    if (ticketsResult?.continueCursor) {
+      if (currentCursor !== null) {
+        setCursorStack([...cursorStack, currentCursor]);
+      }
+      setCurrentCursor(ticketsResult.continueCursor);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (cursorStack.length > 0) {
+      const newStack = [...cursorStack];
+      const previousCursor = newStack.pop();
+      setCursorStack(newStack);
+      setCurrentCursor(previousCursor ?? null);
+    }
+  };
 
   const handleResolve = (ticketId: Id<"supportTickets">) => {
     setSelectedTicketId(ticketId);
@@ -155,6 +173,34 @@ export function SupportTab() {
             )}
           </TableBody>
         </Table>
+
+        {tickets.length > 0 && (
+          <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
+            <p className="text-[10px] font-black uppercase text-muted-foreground">
+              Showing {tickets.length} tickets
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                onClick={handlePrevious}
+                disabled={cursorStack.length === 0}
+              >
+                <ChevronLeft className="h-3 w-3" /> Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                onClick={handleNext}
+                disabled={ticketsResult?.isDone ?? true}
+              >
+                Next <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Dialog
