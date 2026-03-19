@@ -34,7 +34,7 @@ import { Label } from "@/components/ui/label";
  * @returns A React element showing a centered loading indicator while tickets are loading, or a table of tickets with per-ticket status, subject, message, priority, and controls to open a resolution dialog for open tickets.
  */
 export function SupportTab() {
-  const [cursorStack, setCursorStack] = useState<Array<string>>([]);
+  const [cursorStack, setCursorStack] = useState<Array<string | null>>([]);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const ticketsResult = useQuery(api.admin.getTickets, {
     paginationOpts: { numItems: 50, cursor: currentCursor },
@@ -49,9 +49,7 @@ export function SupportTab() {
 
   const handleNext = () => {
     if (ticketsResult?.continueCursor) {
-      if (currentCursor !== null) {
-        setCursorStack([...cursorStack, currentCursor]);
-      }
+      setCursorStack([...cursorStack, currentCursor]);
       setCurrentCursor(ticketsResult.continueCursor);
     }
   };

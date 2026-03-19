@@ -107,13 +107,21 @@ export const getFinancialStats = query({
 
       const numItems = args.salesPaginationOpts?.numItems ?? 100;
       const cursor = args.salesPaginationOpts?.cursor ?? null;
-      const startIndex = cursor ? parseInt(cursor, 10) : 0;
+      const parsed = cursor ? parseInt(cursor, 10) : 0;
+      const startIndex = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 
-      const recentSoldAuctions = await ctx.db
-        .query("auctions")
-        .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
-        .order("desc")
-        .take(startIndex + numItems);
+      const [recentSoldAuctions, totalSoldCount] = await Promise.all([
+        ctx.db
+          .query("auctions")
+          .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+          .order("desc")
+          .take(startIndex + numItems),
+        countQuery(
+          ctx.db
+            .query("auctions")
+            .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+        ),
+      ]);
 
       const allSales = recentSoldAuctions.map((a) => ({
         id: a._id,
@@ -135,7 +143,7 @@ export const getFinancialStats = query({
           page,
           isDone,
           continueCursor,
-          totalCount: allSales.length,
+          totalCount: totalSoldCount,
           pageStatus: null,
           splitCursor: null,
         },
