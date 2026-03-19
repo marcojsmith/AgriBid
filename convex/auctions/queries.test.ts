@@ -802,13 +802,16 @@ describe("Queries Consolidated", () => {
       expect(result.winningCount).toBe(1);
     });
 
-    it("getMyListingsCountHandler applies filter and returns count", async () => {
+    it("getMyListingsCountHandler uses index and returns count", async () => {
       vi.mocked(countQuery).mockResolvedValue(5);
       const result = await getMyListingsCountHandler(mockCtx, {
         status: "active",
       });
       expect(result).toBe(5);
-      expect(queryMock.filter).toHaveBeenCalled();
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_seller_status",
+        expect.any(Function)
+      );
     });
   });
 

@@ -1,0 +1,193 @@
+import { paginationOptsValidator, type PaginationOptions } from "convex/server";
+
+import { query } from "../../_generated/server";
+import type { QueryCtx } from "../../_generated/server";
+import { getAuthUser, resolveUserId } from "../../lib/auth";
+import type { Doc, Id } from "../../_generated/dataModel";
+import { AuctionSummaryValidator } from "../helpers";
+
+export { paginationOptsValidator, type PaginationOptions };
+export { query };
+export type { QueryCtx };
+export { AuctionSummaryValidator };
+
+/**
+ * Bid statistics for a single auction.
+ * All timestamps are in milliseconds since epoch.
+ * Amounts are in dollars (major units).
+ */
+export interface AuctionBidStats {
+  /** Timestamp of the most recent bid in milliseconds */
+  lastBidTimestamp: number;
+  /** Highest bid amount in dollars */
+  highestBid: number;
+  /** Total number of bids on this auction */
+  bidCount: number;
+}
+
+/**
+ * Aggregated bid statistics across all auctions for a user.
+ * Amounts are in dollars (major units).
+ */
+export interface GlobalUserBidStats {
+  /** Number of active auctions the user is currently winning */
+  totalActive: number;
+  /** Number of auctions the user has won */
+  winningCount: number;
+  /** Number of active auctions where the user has been outbid */
+  outbidCount: number;
+  /** Sum of highest bids across all winning positions in dollars */
+  totalExposure: number;
+}
+
+/**
+ * Result of calculating user bid statistics.
+ * Contains global aggregates and per-auction breakdowns.
+ */
+export interface CalculateUserBidStatsResult {
+  /** Aggregated statistics across all auctions */
+  globalStats: GlobalUserBidStats;
+  /** Map of auctionId to bid stats for that auction */
+  auctionStatsMap: Map<string, AuctionBidStats>;
+  /** Map of auctionId to auction document (may be null if auction deleted) */
+  auctionsMap: Map<string, Doc<"auctions"> | null>;
+}
+
+export const ZERO_AUCTION_STATS: GlobalUserBidStats = {
+  totalActive: 0,
+  winningCount: 0,
+  outbidCount: 0,
+  totalExposure: 0,
+};
+
+/**
+ * Calculates bid statistics for a user across all their auctions.
+ * Returns global stats and maps of auction stats and auction documents.
+ *
+ * This function uses lightweight aggregations to avoid loading all bids and auctions
+ * when only global stats are needed. For detailed per-auction stats, it still loads
+ * the necessary data but does so more efficiently.
+ *
+ * @param ctx - Convex Query context
+ * @param userId - The user ID to calculate stats for
+ * @returns User bid statistics result
+ */
+export async function calculateUserBidStats(
+  ctx: QueryCtx,
+  userId: string
+): Promise<CalculateUserBidStatsResult> {
+  // Use async iteration instead of .collect() to avoid loading all bids at once
+  const auctionStatsMap = new Map<string, AuctionBidStats>();
+
+  // Process bids one at a time using async iteration
+  for await (const bid of ctx.db
+    .query("bids")
+    .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+    .filter((q) => q.neq(q.field("status"), "voided"))) {
+
+    const stats = auctionStatsMap.get(bid.auctionId) ?? {
+      lastBidTimestamp: 0,
+      highestBid: 0,
+      bidCount: 0,
+    };
+    stats.bidCount++;
+    if (bid.amount > stats.highestBid) {
+      stats.highestBid = bid.amount;
+    }
+    if (bid.timestamp > stats.lastBidTimestamp) {
+      stats.lastBidTimestamp = bid.timestamp;
+    }
+    auctionStatsMap.set(bid.auctionId, stats);
+  }
+
+  const globalStats: GlobalUserBidStats = {
+    totalActive: 0,
+    winningCount: 0,
+    outbidCount: 0,
+    totalExposure: 0,
+  };
+  const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
+
+  // Only load auctions that the user has bid on, in chunks to avoid overwhelming the database
+  const CHUNK_SIZE = 100;
+  const fullAuctions: (Doc<"auctions"> | null)[] = [];
+
+  for (let i = 0; i < auctionIds.length; i += CHUNK_SIZE) {
+    const chunk = auctionIds.slice(i, i + CHUNK_SIZE);
+    const chunkResults = await Promise.all(chunk.map((id) => ctx.db.get(id)));
+    fullAuctions.push(...chunkResults);
+  }
+
+  const auctionsMap = new Map<string, Doc<"auctions"> | null>();
+
+  fullAuctions.forEach((auction: Doc<"auctions"> | null, index: number) => {
+    auctionsMap.set(auctionIds[index], auction);
+    if (!auction) return;
+    const stats = auctionStatsMap.get(auctionIds[index]);
+    if (!stats) return;
+
+    if (auction.status === "active") {
+      globalStats.totalActive++;
+      const isWinning =
+        stats.highestBid === auction.currentPrice &&
+        auction.winnerId === userId;
+      if (isWinning) {
+        globalStats.winningCount++;
+        globalStats.totalExposure += stats.highestBid;
+      } else {
+        globalStats.outbidCount++;
+      }
+    }
+  });
+
+  return { globalStats, auctionStatsMap, auctionsMap };
+}
+
+/** Auction status values for public auctions */
+export type AuctionStatus = "active" | "sold" | "unsold";
+
+/** Filter options for auction status queries */
+export type StatusFilter = "active" | "closed" | "all";
+
+/**
+ * Converts StatusFilter to array of AuctionStatus values.
+ *
+ * @param filter - The status filter to convert
+ * @returns Array of auction statuses
+ */
+export function statusesForFilter(filter: StatusFilter): AuctionStatus[] {
+  if (filter === "active") return ["active"];
+  if (filter === "closed") return ["sold", "unsold"];
+  return ["active", "sold", "unsold"];
+}
+
+/**
+ * Gets the authenticated user ID from the query context, or null if not authenticated.
+ *
+ * @param ctx - Convex Query context
+ * @returns The user ID or null
+ */
+export async function getAuthenticatedUserId(
+  ctx: QueryCtx
+): Promise<string | null> {
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) return null;
+  return resolveUserId(authUser);
+}
+
+/**
+ * Returns an empty paginated result structure for unauthenticated users.
+ *
+ * @param totalCount - Optional total count (default 0)
+ * @returns Empty paginated result
+ */
+export function unauthenticatedPaginatedResult(totalCount = 0) {
+  return {
+    page: [],
+    isDone: true,
+    continueCursor: "",
+    totalCount,
+    pageStatus: null,
+    splitCursor: null,
+  };
+}
