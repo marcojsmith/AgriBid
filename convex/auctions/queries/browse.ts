@@ -57,21 +57,6 @@ export const getActiveAuctionsHandler = async (
   const statusFilter: StatusFilter = args.statusFilter ?? "active";
   const statuses = statusesForFilter(statusFilter);
 
-  const matchesAuctionFilter = (a: Doc<"auctions">) => {
-    if (!statuses.includes(a.status as "active" | "sold" | "unsold"))
-      return false;
-    if (args.make && a.make !== args.make) return false;
-    if (args.minYear !== undefined && a.year < args.minYear) return false;
-    if (args.maxYear !== undefined && a.year > args.maxYear) return false;
-    if (args.minPrice !== undefined && a.currentPrice < args.minPrice)
-      return false;
-    if (args.maxPrice !== undefined && a.currentPrice > args.maxPrice)
-      return false;
-    if (args.maxHours !== undefined && a.operatingHours > args.maxHours)
-      return false;
-    return true;
-  };
-
   const getBaseQuery = () => {
     const auctionsQuery = ctx.db.query("auctions");
 
@@ -159,9 +144,9 @@ export const getActiveAuctionsHandler = async (
     // we need to reject this combination or handle it specially since pagination and totalCount
     // will be incorrect. For now, we reject combinations that would require post-search filtering.
     const hasAdditionalFilters =
-      (args.minPrice !== undefined) ||
-      (args.maxPrice !== undefined) ||
-      (args.maxHours !== undefined) ||
+      args.minPrice !== undefined ||
+      args.maxPrice !== undefined ||
+      args.maxHours !== undefined ||
       (args.make !== undefined && statuses.length !== 1) ||
       (args.minYear !== undefined && statuses.length !== 1) ||
       (args.maxYear !== undefined && statuses.length !== 1);
