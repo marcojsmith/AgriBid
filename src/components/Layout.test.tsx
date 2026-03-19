@@ -7,6 +7,10 @@ import { useSession } from "@/lib/auth-client";
 
 import { Layout } from "./Layout";
 
+function typedMutationMock<T>(_val: unknown): T {
+  return _val as T;
+}
+
 // Mock Header and Footer to isolate Layout testing
 vi.mock("./header", () => ({
   Header: () => <header data-testid="mock-header">Header</header>,
@@ -40,7 +44,11 @@ describe("Layout", () => {
       data: null,
       isPending: false,
     } as unknown as ReturnType<typeof useSession>);
-    vi.mocked(useMutation).mockReturnValue(vi.fn().mockResolvedValue({}));
+    vi.mocked(useMutation).mockReturnValue(
+      typedMutationMock<ReturnType<typeof useMutation>>(
+        vi.fn().mockResolvedValue({})
+      )
+    );
   });
 
   it("renders children and includes Header and Footer", () => {
@@ -59,11 +67,17 @@ describe("Layout", () => {
 
   it("handles syncUser failure", async () => {
     const mockSyncUser = vi.fn().mockRejectedValue(new Error("Sync Fail"));
-    vi.mocked(useSession).mockReturnValue({
-      data: { user: { id: "user1" } },
-      isPending: false,
-    } as unknown as ReturnType<typeof useSession>);
-    vi.mocked(useMutation).mockReturnValue(mockSyncUser);
+    vi.mocked(useSession).mockReturnValue(
+      typedMutationMock<ReturnType<typeof useSession>>({
+        data: { user: { id: "user1" } },
+        isPending: false,
+      })
+    );
+    vi.mocked(useMutation).mockReturnValue(
+      typedMutationMock<ReturnType<typeof useMutation>>(
+        mockSyncUser.mockRejectedValue(new Error("Sync Fail"))
+      )
+    );
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 

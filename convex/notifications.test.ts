@@ -18,22 +18,23 @@ vi.mock("./lib/auth", () => ({
   resolveUserId: vi.fn(),
 }));
 
-type QueryMock = {
+interface QueryMock {
   withIndex: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   take: ReturnType<typeof vi.fn>;
   unique: ReturnType<typeof vi.fn>;
   collect: ReturnType<typeof vi.fn>;
-};
+  paginate: ReturnType<typeof vi.fn>;
+}
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
     get: ReturnType<typeof vi.fn>;
     insert: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
     query: ReturnType<typeof vi.fn>;
   };
-};
+}
 
 describe("Notifications Coverage", () => {
   let mockCtx: MockCtxType;
@@ -44,6 +45,7 @@ describe("Notifications Coverage", () => {
     queryMock = {
       withIndex: vi.fn((_index, cb) => {
         if (cb) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- test mock: cb is a query builder callback from vi.fn() mock
           cb({
             eq: vi.fn().mockReturnThis(),
             lte: vi.fn().mockReturnThis(),
@@ -58,6 +60,7 @@ describe("Notifications Coverage", () => {
       take: vi.fn().mockResolvedValue([]),
       unique: vi.fn().mockResolvedValue(null),
       collect: vi.fn().mockResolvedValue([]),
+      paginate: vi.fn(),
     };
     mockCtx = {
       db: {
@@ -70,12 +73,18 @@ describe("Notifications Coverage", () => {
   });
 
   describe("getMyNotificationsHandler", () => {
-    it("should return empty if not authenticated", async () => {
+    const defaultArgs = {
+      paginationOpts: { numItems: 20, cursor: null as string | null },
+    };
+
+    it("should return empty paginated result if not authenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       const result = await getMyNotificationsHandler(
-        mockCtx as unknown as QueryCtx
+        mockCtx as unknown as QueryCtx,
+        defaultArgs
       );
-      expect(result).toHaveLength(0);
+      expect(result.page).toHaveLength(0);
+      expect(result.isDone).toBe(true);
     });
 
     it("should merge and sort personal and announcements", async () => {
@@ -83,53 +92,63 @@ describe("Notifications Coverage", () => {
         _id: "u1",
         userId: "user1",
       } as unknown as AuthUser);
-      queryMock.take
+      queryMock.collect
         .mockResolvedValueOnce([
           { _id: "n1", createdAt: 100, recipientId: "user1" },
-        ]) // personal
+        ])
         .mockResolvedValueOnce([
           { _id: "a1", createdAt: 200, recipientId: "all" },
-        ]); // announcements
+        ]);
 
-      queryMock.unique.mockResolvedValue({ notificationId: "a1" }); // read receipt for a1
+      queryMock.unique.mockResolvedValue({ notificationId: "a1" });
 
       const result = await getMyNotificationsHandler(
-        mockCtx as unknown as QueryCtx
+        mockCtx as unknown as QueryCtx,
+        defaultArgs
       );
-      expect(result).toHaveLength(2);
-      expect(result[0]._id).toBe("a1"); // Sorted by createdAt desc
-      expect(result[0].isRead).toBe(true);
-      expect(result[1].isRead).toBeUndefined();
+      expect(result.page).toHaveLength(2);
+      expect(result.page[0]._id).toBe("a1");
+      expect(result.page[0].isRead).toBe(true);
+      expect(result.page[1].isRead).toBeUndefined();
     });
 
     it("should use fallback _id if userId is missing", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
       } as unknown as AuthUser);
-      queryMock.take.mockResolvedValue([]);
+      queryMock.collect.mockResolvedValue([]);
       const result = await getMyNotificationsHandler(
-        mockCtx as unknown as QueryCtx
+        mockCtx as unknown as QueryCtx,
+        defaultArgs
       );
-      expect(result).toHaveLength(0);
+      expect(result.page).toHaveLength(0);
     });
 
     it("should suppress console.error for unauthenticated errors", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-      await getMyNotificationsHandler(mockCtx as unknown as QueryCtx);
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        return;
+      });
+      await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx,
+        defaultArgs
+      );
       expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
     });
 
     it("should handle catch block for non-auth errors", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("DB Fail"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        return;
+      });
       const result = await getMyNotificationsHandler(
-        mockCtx as unknown as QueryCtx
+        mockCtx as unknown as QueryCtx,
+        defaultArgs
       );
-      expect(result).toHaveLength(0);
+      expect(result.page).toHaveLength(0);
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
@@ -139,14 +158,15 @@ describe("Notifications Coverage", () => {
         _id: "u1",
         userId: "user1",
       } as unknown as AuthUser);
-      queryMock.take
+      queryMock.collect
         .mockResolvedValueOnce([{ _id: "n1", createdAt: 100 }])
         .mockResolvedValueOnce([]);
 
       const result = await getMyNotificationsHandler(
-        mockCtx as unknown as QueryCtx
+        mockCtx as unknown as QueryCtx,
+        defaultArgs
       );
-      expect(result).toHaveLength(1);
+      expect(result.page).toHaveLength(1);
     });
   });
 
@@ -185,7 +205,9 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        return;
+      });
       await getNotificationArchiveHandler(mockCtx as unknown as QueryCtx, {});
       expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
@@ -193,7 +215,9 @@ describe("Notifications Coverage", () => {
 
     it("should handle error gracefully", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        return;
+      });
       const result = await getNotificationArchiveHandler(
         mockCtx as unknown as QueryCtx,
         {}
@@ -326,7 +350,7 @@ describe("Notifications Coverage", () => {
 
       // 60 personal notifications (2 batches of 50)
       const personal = Array.from({ length: 60 }, (_, i) => ({
-        _id: `n${i}`,
+        _id: `n${String(i)}`,
       }));
       queryMock.take.mockResolvedValueOnce(personal).mockResolvedValueOnce([]); // no announcements
 

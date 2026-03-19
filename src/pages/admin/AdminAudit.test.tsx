@@ -21,15 +21,24 @@ vi.mock("convex/_generated/api", () => ({
 }));
 
 const mockLogs = Array.from({ length: 60 }, (_, i) => ({
-  _id: `log${i}`,
-  adminId: `admin${i % 3}`,
+  _id: `log${String(i)}`,
+  adminId: `admin${String(i % 3)}`,
   action: i % 2 === 0 ? "UPDATE_USER" : "DELETE_AUCTION",
-  targetId: `target${i}`,
+  targetId: `target${String(i)}`,
   targetType: i % 2 === 0 ? "user" : "auction",
   timestamp: Date.now() - i * 1000 * 60,
   details:
     i === 0 ? JSON.stringify({ old: "val", new: "newVal" }) : "Regular details",
 }));
+
+const mockPaginatedLogs = {
+  page: mockLogs,
+  isDone: true,
+  continueCursor: "",
+  totalCount: mockLogs.length,
+  pageStatus: null,
+  splitCursor: null,
+};
 
 describe("AdminAudit Page", () => {
   beforeEach(() => {
@@ -52,15 +61,12 @@ describe("AdminAudit Page", () => {
   });
 
   it("renders audit logs when loaded", async () => {
-    (useQuery as Mock).mockImplementation((query, args) => {
+    (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") {
         return { totalUsers: 100 };
       }
       if (query === "admin:getAuditLogs") {
-        return {
-          logs: mockLogs.slice(0, args?.limit || 50),
-          totalCount: mockLogs.length,
-        };
+        return mockPaginatedLogs;
       }
       return undefined;
     });
@@ -71,22 +77,26 @@ describe("AdminAudit Page", () => {
       expect(screen.getAllByText("UPDATE_USER").length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByText(/showing 50 of 60 entries/i)).toBeInTheDocument();
-    // Header + 50 rows
+    expect(screen.getByText(/showing 60 of 60 entries/i)).toBeInTheDocument();
+    // Header + 60 rows
     const rows = screen.getAllByRole("row");
-    expect(rows.length).toBeGreaterThanOrEqual(51);
+    expect(rows.length).toBeGreaterThanOrEqual(61);
   });
 
-  it("handles pagination (More/Less)", async () => {
-    (useQuery as Mock).mockImplementation((query, args) => {
+  it("handles pagination (Reset)", async () => {
+    const partialLogs = mockLogs.slice(0, 50);
+    (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") {
         return { totalUsers: 100 };
       }
       if (query === "admin:getAuditLogs") {
-        const limit = args?.limit || 50;
         return {
-          logs: mockLogs.slice(0, limit),
+          page: partialLogs,
+          isDone: false,
+          continueCursor: "cursor_after_50",
           totalCount: mockLogs.length,
+          pageStatus: null,
+          splitCursor: null,
         };
       }
       return undefined;
@@ -102,15 +112,11 @@ describe("AdminAudit Page", () => {
     fireEvent.click(moreButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/showing 60 of 60 entries/i)).toBeInTheDocument();
-    });
-
-    const lessButton = screen.getByRole("button", { name: /less/i });
-    fireEvent.click(lessButton);
-
-    await waitFor(() => {
       expect(screen.getByText(/showing 50 of 60 entries/i)).toBeInTheDocument();
     });
+
+    const resetButton = screen.getByRole("button", { name: /reset/i });
+    fireEvent.click(resetButton);
   });
 
   it("renders empty state when no logs exist", async () => {
@@ -120,8 +126,12 @@ describe("AdminAudit Page", () => {
       }
       if (query === "admin:getAuditLogs") {
         return {
-          logs: [],
+          page: [],
+          isDone: true,
+          continueCursor: "",
           totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
         };
       }
       return undefined;
@@ -141,8 +151,12 @@ describe("AdminAudit Page", () => {
       }
       if (query === "admin:getAuditLogs") {
         return {
-          logs: [mockLogs[0]],
+          page: [mockLogs[0]],
+          isDone: true,
+          continueCursor: "",
           totalCount: 1,
+          pageStatus: null,
+          splitCursor: null,
         };
       }
       return undefined;
@@ -167,8 +181,12 @@ describe("AdminAudit Page", () => {
       }
       if (query === "admin:getAuditLogs") {
         return {
-          logs: [mockLogs[1]],
+          page: [mockLogs[1]],
+          isDone: true,
+          continueCursor: "",
           totalCount: 1,
+          pageStatus: null,
+          splitCursor: null,
         };
       }
       return undefined;

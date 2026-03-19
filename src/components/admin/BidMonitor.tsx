@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Ban, Gavel } from "lucide-react";
+import { Ban, Gavel, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
@@ -38,11 +38,16 @@ import { AdminConnectionError } from "./AdminConnectionError";
  * @returns A JSX element containing the bids table, confirmation dialog and loading state.
  */
 export function BidMonitor() {
-  const bids = useQuery(api.admin.getRecentBids, { limit: 20 });
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const bidsResult = useQuery(api.admin.getRecentBids, {
+    paginationOpts: { numItems: 50, cursor: currentCursor },
+  });
   const voidBid = useMutation(api.admin.voidBid);
   const [voidTarget, setVoidTarget] = useState<Id<"bids"> | null>(null);
   const [isVoiding, setIsVoiding] = useState(false);
-  const hasTimedOut = useLoadingTimeout(bids === undefined);
+  const hasTimedOut = useLoadingTimeout(bidsResult === undefined);
+
+  const bids = bidsResult?.page ?? [];
 
   const handleVoid = async () => {
     if (!voidTarget) return;
@@ -59,7 +64,7 @@ export function BidMonitor() {
     }
   };
 
-  if (bids === undefined) {
+  if (bidsResult === undefined) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4 border-2 border-dashed rounded-2xl bg-muted/10 min-h-[400px]">
         {!hasTimedOut ? (
@@ -126,7 +131,7 @@ export function BidMonitor() {
                   </TableCell>
                   <TableCell
                     className="font-medium truncate"
-                    title={bid.auctionTitle || bid.auctionLookupStatus}
+                    title={bid.auctionTitle ?? bid.auctionLookupStatus}
                   >
                     {bid.auctionLookupStatus === "FOUND"
                       ? bid.auctionTitle
@@ -153,7 +158,10 @@ export function BidMonitor() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setVoidTarget(bid._id)}
+                        aria-label={`Void bid ${bid._id}`}
+                        onClick={() => {
+                          setVoidTarget(bid._id);
+                        }}
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Ban className="h-4 w-4" />
@@ -165,11 +173,49 @@ export function BidMonitor() {
             )}
           </TableBody>
         </Table>
+
+        {bids.length > 0 && (
+          <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
+            <p className="text-[10px] font-black uppercase text-muted-foreground">
+              Showing {bids.length} bids
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                onClick={() => {
+                  setCurrentCursor(null);
+                }}
+                disabled={currentCursor === null}
+              >
+                <ChevronLeft className="h-3 w-3" /> Reset
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                onClick={() => {
+                  if (bidsResult?.continueCursor) {
+                    setCurrentCursor(bidsResult.continueCursor);
+                  }
+                }}
+                disabled={bidsResult?.isDone ?? true}
+              >
+                More <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <AlertDialog
         open={!!voidTarget}
-        onOpenChange={(open) => !open && setVoidTarget(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setVoidTarget(null);
+          }
+        }}
       >
         <AlertDialogContent className="rounded-2xl border-2">
           <AlertDialogHeader>
@@ -191,7 +237,7 @@ export function BidMonitor() {
             <Button
               onClick={(e) => {
                 e.preventDefault();
-                handleVoid();
+                void handleVoid();
               }}
               disabled={isVoiding}
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-black uppercase text-[10px]"

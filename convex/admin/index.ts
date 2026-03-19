@@ -10,11 +10,11 @@
  */
 
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 
 import { mutation, query } from "../_generated/server";
-import { requireAdmin } from "../lib/auth";
+import { requireAdmin, getAuthUser, UnauthorizedError } from "../lib/auth";
 import { logAudit, updateCounter, countQuery } from "../admin_utils";
-import { getAuthUser, UnauthorizedError } from "../lib/auth";
 import type { Doc, Id } from "../_generated/dataModel";
 
 // --- Re-export specialized modules for backward compatibility ---
@@ -37,40 +37,62 @@ export { getSystemConfig, updateSystemConfig } from "./settings";
  * Only accessible to admin users.
  */
 export const getRecentBids = query({
-  args: { limit: v.optional(v.number()) },
-  returns: v.array(
-    v.object({
-      _id: v.id("bids"),
-      _creationTime: v.number(),
-      auctionId: v.id("auctions"),
-      bidderId: v.string(),
-      amount: v.number(),
-      timestamp: v.number(),
-      status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
-      auctionTitle: v.optional(v.string()),
-      auctionLookupStatus: v.union(
-        v.literal("FOUND"),
-        v.literal("NOT_FOUND"),
-        v.literal("ERROR")
-      ),
-    })
-  ),
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("bids"),
+        _creationTime: v.number(),
+        auctionId: v.id("auctions"),
+        bidderId: v.string(),
+        amount: v.number(),
+        timestamp: v.number(),
+        status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
+        auctionTitle: v.optional(v.string()),
+        auctionLookupStatus: v.union(
+          v.literal("FOUND"),
+          v.literal("NOT_FOUND"),
+          v.literal("ERROR")
+        ),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    totalCount: v.number(),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
     try {
       await requireAdmin(ctx);
 
-      const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
+      const [bidsResult, totalCount] = await Promise.all([
+        ctx.db
+          .query("bids")
+          .withIndex("by_timestamp")
+          .order("desc")
+          .paginate(args.paginationOpts),
+        countQuery(ctx.db.query("bids")),
+      ]);
 
-      const bids = await ctx.db
-        .query("bids")
-        .withIndex("by_timestamp")
-        .order("desc")
-        .take(limit);
-
-      if (bids.length === 0) return [];
+      if (bidsResult.page.length === 0) {
+        return {
+          ...bidsResult,
+          page: [],
+          totalCount,
+        };
+      }
 
       // Collect unique auction IDs
-      const uniqueAuctionIds = [...new Set(bids.map((b) => b.auctionId))];
+      const uniqueAuctionIds = [
+        ...new Set(bidsResult.page.map((b) => b.auctionId)),
+      ];
 
       // Fetch all unique auctions in parallel
       const auctionMap = new Map<
@@ -92,12 +114,12 @@ export const getRecentBids = query({
 
       if (failedAuctionIds.length > 0) {
         console.error(
-          `Admin Monitor: Failed to fetch auction context for ${failedAuctionIds.length} IDs:`,
+          `Admin Monitor: Failed to fetch auction context for ${String(failedAuctionIds.length)} IDs:`,
           failedAuctionIds.slice(0, 5)
         );
       }
 
-      return bids.map((bid) => {
+      const page = bidsResult.page.map((bid) => {
         const auction = auctionMap.get(bid.auctionId);
         let auctionTitle: string | undefined;
         let auctionLookupStatus: "FOUND" | "NOT_FOUND" | "ERROR" = "NOT_FOUND";
@@ -116,6 +138,12 @@ export const getRecentBids = query({
           auctionLookupStatus,
         };
       });
+
+      return {
+        ...bidsResult,
+        page,
+        totalCount,
+      };
     } catch (err) {
       if (
         err instanceof UnauthorizedError ||
@@ -187,7 +215,7 @@ export const voidBid = mutation({
       action: "VOID_BID",
       targetId: args.bidId,
       targetType: "bid",
-      details: `Reason: ${args.reason}. New Price: ${newPrice}${auction.winnerId !== newWinnerId ? `. Winner recalculated to ${newWinnerId}` : ""}`,
+      details: `Reason: ${args.reason}. New Price: ${String(newPrice)}${auction.winnerId !== newWinnerId ? `. Winner recalculated to ${String(newWinnerId)}` : ""}`,
     });
 
     return { success: true };
@@ -199,30 +227,44 @@ export const voidBid = mutation({
 /**
  * Query support tickets by status.
  *
- * Returns support tickets with filtering by status (open, resolved, closed).
+ * Returns paginated support tickets with filtering by status (open, resolved, closed).
  * Only accessible to admin users.
  */
 export const getTickets = query({
-  args: { status: v.optional(v.string()), limit: v.optional(v.number()) },
-  returns: v.array(
-    v.object({
-      _id: v.id("supportTickets"),
-      _creationTime: v.number(),
-      userId: v.string(),
-      auctionId: v.optional(v.id("auctions")),
-      subject: v.string(),
-      message: v.string(),
-      status: v.string(),
-      priority: v.string(),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-      resolvedBy: v.optional(v.string()),
-    })
-  ),
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(v.string()),
+  },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("supportTickets"),
+        _creationTime: v.number(),
+        userId: v.string(),
+        auctionId: v.optional(v.id("auctions")),
+        subject: v.string(),
+        message: v.string(),
+        status: v.string(),
+        priority: v.string(),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+        resolvedBy: v.optional(v.string()),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    totalCount: v.number(),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-
-    const limit = Math.max(1, Math.min(args.limit || 50, 100));
 
     const allowedStatuses = ["open", "resolved", "closed"] as const;
     type TicketStatus = (typeof allowedStatuses)[number];
@@ -232,12 +274,34 @@ export const getTickets = query({
         throw new Error(`Invalid status: ${args.status}`);
       }
       const status = args.status as TicketStatus;
-      return await ctx.db
-        .query("supportTickets")
-        .withIndex("by_status", (q) => q.eq("status", status))
-        .take(limit);
+      const [results, totalCount] = await Promise.all([
+        ctx.db
+          .query("supportTickets")
+          .withIndex("by_status", (q) => q.eq("status", status))
+          .order("desc")
+          .paginate(args.paginationOpts),
+        countQuery(
+          ctx.db
+            .query("supportTickets")
+            .withIndex("by_status", (q) => q.eq("status", status))
+        ),
+      ]);
+      return {
+        ...results,
+        totalCount,
+      };
     } else {
-      return await ctx.db.query("supportTickets").take(limit);
+      const [results, totalCount] = await Promise.all([
+        ctx.db
+          .query("supportTickets")
+          .order("desc")
+          .paginate(args.paginationOpts),
+        countQuery(ctx.db.query("supportTickets")),
+      ]);
+      return {
+        ...results,
+        totalCount,
+      };
     }
   },
 });
@@ -290,20 +354,16 @@ export const resolveTicket = mutation({
   },
 });
 
-// --- Audit Logs ---
-
-const MAX_AUDIT_LOG_LIMIT = 100;
-
 /**
  * Query audit logs of admin actions.
  *
- * Returns a limited set of recent audit logs for admin review with total count.
+ * Returns a paginated set of recent audit logs for admin review with total count.
  * Only accessible to admin users.
  */
 export const getAuditLogs = query({
-  args: { limit: v.optional(v.number()) },
+  args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
-    logs: v.array(
+    page: v.array(
       v.object({
         _id: v.id("auditLogs"),
         _creationTime: v.number(),
@@ -316,29 +376,37 @@ export const getAuditLogs = query({
         timestamp: v.number(),
       })
     ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
     totalCount: v.number(),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    const limit = Math.max(1, Math.min(args.limit ?? 50, MAX_AUDIT_LOG_LIMIT));
-
-    const [logs, auditCounter] = await Promise.all([
+    const [logsResult, totalCount] = await Promise.all([
       ctx.db
         .query("auditLogs")
         .withIndex("by_timestamp")
         .order("desc")
-        .take(limit),
-      ctx.db
-        .query("counters")
-        .withIndex("by_name", (q) => q.eq("name", "auditLogs"))
-        .unique(),
+        .paginate(args.paginationOpts),
+      countQuery(ctx.db.query("auditLogs")),
     ]);
 
     return {
-      logs,
-      totalCount:
-        auditCounter?.total ?? (await countQuery(ctx.db.query("auditLogs"))),
+      page: logsResult.page,
+      isDone: logsResult.isDone,
+      continueCursor: logsResult.continueCursor,
+      totalCount,
+      pageStatus: logsResult.pageStatus,
+      splitCursor: logsResult.splitCursor,
     };
   },
 });
@@ -392,40 +460,66 @@ export const createAnnouncement = mutation({
 /**
  * List all announcements with read counts.
  *
- * Returns recent announcements with metadata about how many users have read them.
+ * Returns paginated announcements with metadata about how many users have read them.
  * Only accessible to admin users.
  */
 export const listAnnouncements = query({
-  args: { limit: v.optional(v.number()) },
-  returns: v.array(
-    v.object({
-      _id: v.id("notifications"),
-      _creationTime: v.number(),
-      recipientId: v.string(),
-      type: v.string(),
-      title: v.string(),
-      message: v.string(),
-      isRead: v.boolean(),
-      createdAt: v.number(),
-      link: v.optional(v.string()),
-      readCount: v.number(),
-    })
-  ),
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("notifications"),
+        _creationTime: v.number(),
+        recipientId: v.string(),
+        type: v.string(),
+        title: v.string(),
+        message: v.string(),
+        isRead: v.boolean(),
+        createdAt: v.number(),
+        link: v.optional(v.string()),
+        readCount: v.number(),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    totalCount: v.number(),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    const limit = Math.max(1, Math.min(args.limit || 50, 100));
+    const [announcementsResult, totalCount] = await Promise.all([
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient")
+        .filter((q) => q.eq(q.field("recipientId"), "all"))
+        .order("desc")
+        .paginate(args.paginationOpts),
+      countQuery(
+        ctx.db
+          .query("notifications")
+          .withIndex("by_recipient")
+          .filter((q) => q.eq(q.field("recipientId"), "all"))
+      ),
+    ]);
 
-    const announcements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", "all"))
-      .order("desc")
-      .take(limit);
-
-    if (announcements.length === 0) return [];
+    if (announcementsResult.page.length === 0) {
+      return {
+        ...announcementsResult,
+        page: [],
+        totalCount,
+      };
+    }
 
     // Parallel fetch read counts using indexed queries
-    const announcementIds = announcements.map((a) => a._id);
+    const announcementIds = announcementsResult.page.map((a) => a._id);
     const readCountsList = await Promise.all(
       announcementIds.map((id) =>
         countQuery(
@@ -440,10 +534,16 @@ export const listAnnouncements = query({
       announcementIds.map((id, index) => [id, readCountsList[index]])
     );
 
-    return announcements.map((announcement) => ({
+    const page = announcementsResult.page.map((announcement) => ({
       ...announcement,
-      readCount: readCounts.get(announcement._id) || 0,
+      readCount: readCounts.get(announcement._id) ?? 0,
     }));
+
+    return {
+      ...announcementsResult,
+      page,
+      totalCount,
+    };
   },
 });
 
@@ -471,15 +571,15 @@ export const syncAuctionWinners = mutation({
 
     const batchSize = Math.max(
       1,
-      Math.min(Math.floor(Number(args.batchSize ?? 50) || 50), 100)
+      Math.min(Math.floor(args.batchSize ?? 50) || 50, 100)
     );
 
-    const query = ctx.db.query("auctions");
+    const auctionsQuery = ctx.db.query("auctions");
 
     // We use the default ordering which is by _creationTime
-    const results = await query.paginate({
+    const results = await auctionsQuery.paginate({
       numItems: batchSize,
-      cursor: args.cursor || null,
+      cursor: args.cursor ?? null,
     });
 
     let updatedCount = 0;
@@ -507,7 +607,7 @@ export const syncAuctionWinners = mutation({
         action: "SYNC_AUCTION_WINNERS_BATCH",
         targetId: "batch",
         targetType: "auction",
-        details: `Processed batch of ${results.page.length} auctions, updated ${updatedCount} winners.`,
+        details: `Processed batch of ${String(results.page.length)} auctions, updated ${String(updatedCount)} winners.`,
       });
     }
 

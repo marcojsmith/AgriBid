@@ -52,6 +52,15 @@ const mockAnnouncements = [
   },
 ];
 
+const mockPaginatedAnnouncements = {
+  page: mockAnnouncements,
+  isDone: true,
+  continueCursor: "",
+  totalCount: mockAnnouncements.length,
+  pageStatus: null,
+  splitCursor: null,
+};
+
 const mockAnnouncementStats = {
   total: 2,
   recent: 1,
@@ -69,7 +78,8 @@ describe("AdminAnnouncements Page", () => {
 
     // Default mock implementation for useQuery
     (useQuery as Mock).mockImplementation((query) => {
-      if (query === api.admin.listAnnouncements) return mockAnnouncements;
+      if (query === api.admin.listAnnouncements)
+        return mockPaginatedAnnouncements;
       if (query === api.admin.getAnnouncementStats)
         return mockAnnouncementStats;
       if (query === api.admin.getAdminStats) return mockAdminStats;
@@ -100,7 +110,15 @@ describe("AdminAnnouncements Page", () => {
 
   it("renders empty state when no announcements exist", () => {
     (useQuery as Mock).mockImplementation((query) => {
-      if (query === api.admin.listAnnouncements) return [];
+      if (query === api.admin.listAnnouncements)
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
+        };
       if (query === api.admin.getAnnouncementStats)
         return { total: 0, recent: 0 };
       if (query === api.admin.getAdminStats) return mockAdminStats;

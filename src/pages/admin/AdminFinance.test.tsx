@@ -58,22 +58,29 @@ describe("AdminFinance Page", () => {
     commissionRate: 0.05,
     estimatedCommission: 25000,
     auctionCount: 42,
-    recentSales: [
-      {
-        id: "1",
-        date: 1742000000000,
-        title: "Tractor X1000",
-        amount: 100000,
-        estimatedCommission: 5000,
-      },
-      {
-        id: "2",
-        date: 1741900000000,
-        title: "Combine Harvester",
-        amount: 200000,
-        estimatedCommission: 10000,
-      },
-    ],
+    recentSales: {
+      page: [
+        {
+          id: "1",
+          date: 1742000000000,
+          title: "Tractor X1000",
+          amount: 100000,
+          estimatedCommission: 5000,
+        },
+        {
+          id: "2",
+          date: 1741900000000,
+          title: "Combine Harvester",
+          amount: 200000,
+          estimatedCommission: 10000,
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+      totalCount: 2,
+      pageStatus: null,
+      splitCursor: null,
+    },
   };
 
   const renderPage = () => {
@@ -138,7 +145,14 @@ describe("AdminFinance Page", () => {
       if (queryApi === api.admin.getFinancialStats) {
         return {
           ...mockFinancialStats,
-          recentSales: [],
+          recentSales: {
+            page: [],
+            isDone: true,
+            continueCursor: "",
+            totalCount: 0,
+            pageStatus: null,
+            splitCursor: null,
+          },
         };
       }
       return undefined;

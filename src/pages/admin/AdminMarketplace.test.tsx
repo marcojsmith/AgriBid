@@ -9,6 +9,40 @@ import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 
 import AdminMarketplace from "./AdminMarketplace";
 
+interface PaginatedBidsPage {
+  page: Array<{
+    _id: string;
+    _creationTime?: number;
+    auctionId?: string;
+    timestamp: number;
+    auctionTitle?: string;
+    auctionLookupStatus: string;
+    bidderId: string;
+    amount: number;
+    status: string;
+  }>;
+  isDone: boolean;
+  continueCursor: string;
+  totalCount: number;
+  pageStatus: null;
+  splitCursor: null;
+}
+
+function createPaginatedBids(
+  pageItems: PaginatedBidsPage["page"],
+  overrides?: Partial<PaginatedBidsPage>
+): PaginatedBidsPage {
+  return {
+    page: pageItems,
+    isDone: true,
+    continueCursor: "",
+    totalCount: pageItems.length,
+    pageStatus: null,
+    splitCursor: null,
+    ...overrides,
+  };
+}
+
 // Mock Convex hooks
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
@@ -87,6 +121,15 @@ describe("AdminMarketplace Page", () => {
     },
   ];
 
+  const mockPaginatedBids = {
+    page: mockBids,
+    isDone: true,
+    continueCursor: "",
+    totalCount: mockBids.length,
+    pageStatus: null,
+    splitCursor: null,
+  };
+
   const mockVoidBid = vi.fn().mockResolvedValue({ success: true });
 
   beforeEach(() => {
@@ -131,7 +174,7 @@ describe("AdminMarketplace Page", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats")
         return { ...mockStats, status: "partial" };
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -160,9 +203,9 @@ describe("AdminMarketplace Page", () => {
       if (query === "admin:getRecentBids") return undefined;
       return undefined;
     });
-    (useLoadingTimeout as Mock).mockImplementation((isLoading) => {
-      return isLoading;
-    });
+    (useLoadingTimeout as Mock).mockImplementation(
+      (isLoading: boolean) => isLoading
+    );
 
     renderPage();
     expect(screen.getByText(/Feed Timeout/i)).toBeInTheDocument();
@@ -174,7 +217,7 @@ describe("AdminMarketplace Page", () => {
   it("renders empty state when no bids are present", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return [];
+      if (query === "admin:getRecentBids") return createPaginatedBids([]);
       return undefined;
     });
 
@@ -185,7 +228,7 @@ describe("AdminMarketplace Page", () => {
   it("renders list of bids correctly", () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -232,7 +275,8 @@ describe("AdminMarketplace Page", () => {
 
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return errorBids;
+      if (query === "admin:getRecentBids")
+        return createPaginatedBids(errorBids);
       return undefined;
     });
 
@@ -245,7 +289,7 @@ describe("AdminMarketplace Page", () => {
   it("opens void confirmation dialog and cancels", async () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -277,7 +321,7 @@ describe("AdminMarketplace Page", () => {
   it("performs void bid successfully", async () => {
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -315,7 +359,7 @@ describe("AdminMarketplace Page", () => {
 
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 
@@ -339,7 +383,7 @@ describe("AdminMarketplace Page", () => {
 
     (useQuery as Mock).mockImplementation((query) => {
       if (query === "admin:getAdminStats") return mockStats;
-      if (query === "admin:getRecentBids") return mockBids;
+      if (query === "admin:getRecentBids") return mockPaginatedBids;
       return undefined;
     });
 

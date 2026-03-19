@@ -44,7 +44,7 @@ vi.mock("@/lib/auth-client", () => ({
 vi.mock("@/lib/utils", () => ({
   isValidCallbackUrl: vi.fn().mockReturnValue(true),
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
-  getErrorMessage: (err: unknown, fallback: string) => fallback,
+  getErrorMessage: (_err: unknown, fallback: string) => fallback,
 }));
 
 vi.mock("sonner", () => ({

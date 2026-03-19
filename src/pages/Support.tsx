@@ -29,15 +29,19 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
  * @returns The Support page component as a JSX.Element
  */
 export default function Support() {
-  const tickets = useQuery(api.support.getMyTickets, {});
+  const ticketsResult = useQuery(api.support.getMyTickets, {
+    paginationOpts: { numItems: 50, cursor: null },
+  });
   const createTicket = useMutation(api.support.createTicket);
+
+  const tickets = ticketsResult?.page;
 
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
 
     const cleanSubject = subject.trim();
@@ -59,9 +63,9 @@ export default function Support() {
       setSubject("");
       setMessage("");
       setPriority("medium");
-    } catch (e) {
-      console.error("Failed to create ticket:", e);
-      toast.error(getErrorMessage(e, "Failed to create ticket"));
+    } catch (err) {
+      console.error("Failed to create ticket:", err);
+      toast.error(getErrorMessage(err, "Failed to create ticket"));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,12 +116,14 @@ export default function Support() {
                   <Input
                     id="subject"
                     value={subject}
-                    onChange={(e) => setSubject(e.target.value.slice(0, 100))}
+                    onChange={(e) => {
+                      setSubject(e.target.value.slice(0, 100));
+                    }}
                     placeholder="e.g. Bidding Issue"
                     className="h-12 border-2 rounded-xl"
                     required
                     maxLength={100}
-                    disabled={tickets === undefined}
+                    disabled={!ticketsResult}
                   />
                 </div>
                 <div className="space-y-2">
@@ -126,10 +132,10 @@ export default function Support() {
                   </Label>
                   <Select
                     value={priority}
-                    onValueChange={(v: "low" | "medium" | "high") =>
-                      setPriority(v)
-                    }
-                    disabled={tickets === undefined}
+                    onValueChange={(v: "low" | "medium" | "high") => {
+                      setPriority(v);
+                    }}
+                    disabled={!ticketsResult}
                   >
                     <SelectTrigger
                       aria-label="Priority"
@@ -164,12 +170,14 @@ export default function Support() {
                 <Textarea
                   id="message"
                   value={message}
-                  onChange={(e) => setMessage(e.target.value.slice(0, 2000))}
+                  onChange={(e) => {
+                    setMessage(e.target.value.slice(0, 2000));
+                  }}
                   placeholder="Describe your issue in detail..."
                   className="min-h-[150px] border-2 rounded-xl resize-none"
                   required
                   maxLength={2000}
-                  disabled={tickets === undefined}
+                  disabled={!ticketsResult}
                 />
               </div>
               <Button
@@ -193,13 +201,13 @@ export default function Support() {
             My Tickets
           </h2>
           <div className="space-y-4">
-            {tickets === undefined ? (
+            {ticketsResult === undefined ? (
               <div className="flex justify-center p-8">
                 <LoadingIndicator size="sm" />
               </div>
             ) : (
               <>
-                {tickets.map((ticket) => (
+                {tickets?.map((ticket) => (
                   <Card
                     key={ticket._id}
                     className="p-4 border-2 hover:border-primary/40 transition-all"
@@ -231,7 +239,7 @@ export default function Support() {
                     )}
                   </Card>
                 ))}
-                {tickets.length === 0 && (
+                {tickets?.length === 0 && (
                   <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">
                     <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
                     <p className="text-xs font-black uppercase text-muted-foreground">

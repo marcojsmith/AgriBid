@@ -57,7 +57,7 @@
 - [x] `getUserBids` - fetch bids placed by a user -> `getMyBids`
 - [x] `getWatchlist` - fetch user's watched auctions -> `getWatchedAuctions`
 - [x] `searchAuctions` - implement search/filter logic (integrated into getActiveAuctions)
-- [ ] Implement pagination for all list-based queries (#82)
+- [x] Implement pagination for all list-based queries (#82)
 - [x] Optimize `readReceipts` with batching to avoid N+1 patterns (#66)
 
 ### Convex Mutations

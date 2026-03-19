@@ -193,7 +193,9 @@ describe("useListingMedia", () => {
   });
 
   it("should handle additional upload max limit", async () => {
-    const formData = { images: { additional: ["1", "2", "3", "4", "5", "6"] } };
+    const formData = {
+      images: { additional: ["1", "2", "3", "4", "5", "6"] },
+    } as unknown as ListingFormData;
     const { result } = renderHook(() => useListingMedia(), {
       wrapper: (props) => wrapper({ ...props, formData }),
     });
@@ -225,7 +227,7 @@ describe("useListingMedia", () => {
   it("should handle remove additional", () => {
     const formData = {
       images: { additional: ["storage-add-0", "storage-add-1"] },
-    };
+    } as unknown as ListingFormData;
     const previews = { "storage-add-0": "blob:url0" };
     const { result } = renderHook(() => useListingMedia(), {
       wrapper: (props) => wrapper({ ...props, formData, previews }),
@@ -248,7 +250,9 @@ describe("useListingMedia", () => {
   });
 
   it("should handle remove without preview", () => {
-    const formData = { images: { front: "s1", additional: [] } };
+    const formData = {
+      images: { front: "s1", additional: [] },
+    } as unknown as ListingFormData;
     const { result } = renderHook(() => useListingMedia(), {
       wrapper: (props) => wrapper({ ...props, formData, previews: {} }),
     });

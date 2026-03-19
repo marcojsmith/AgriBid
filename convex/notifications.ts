@@ -1,4 +1,5 @@
 import { v, ConvexError } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 
 import {
   mutation,
@@ -56,71 +57,116 @@ const notificationType = v.union(
 );
 
 /**
- * Handler for getting the current user's notifications.
- * @param ctx
- * @returns Promise<Notification[]>
+ * Handler for getting the current user's notifications with pagination.
+ * @param ctx - Query context
+ * @param args - Arguments including pagination options
+ * @param args.paginationOpts - Pagination options for cursor-based pagination
+ * @param args.paginationOpts.numItems - Number of items per page
+ * @param args.paginationOpts.cursor - Cursor for the next page
+ * @returns Paginated result with notifications page and pagination metadata
  */
-export const getMyNotificationsHandler = async (ctx: QueryCtx) => {
+export const getMyNotificationsHandler = async (
+  ctx: QueryCtx,
+  args: { paginationOpts?: { numItems: number; cursor?: string | null } }
+) => {
   try {
     const authUser = await getAuthUser(ctx);
-    if (!authUser) return [];
+    if (!authUser) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+        pageStatus: null,
+        splitCursor: null,
+      };
+    }
     const userId = authUser.userId ?? authUser._id;
 
-    // Fetch personal notifications
-    const personal = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
-      .order("desc")
-      .take(20);
-
-    // Fetch global announcements
-    const announcements = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
-      .order("desc")
-      .take(10);
+    const [personal, announcementsResult] = await Promise.all([
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
+        .order("desc")
+        .collect(),
+      ctx.db
+        .query("notifications")
+        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
+        .order("desc")
+        .collect(),
+    ]);
 
     const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
       ctx,
       userId,
-      announcements
+      announcementsResult
     );
 
-    // Merge and sort, applying read status for announcements
     const merged = [...personal, ...enrichedAnnouncements];
+    const sorted = merged.sort((a, b) => b.createdAt - a.createdAt);
 
-    return merged.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+    const numItems = args.paginationOpts?.numItems ?? 20;
+    const cursor = args.paginationOpts?.cursor ?? null;
+
+    const startIndex = cursor ? parseInt(cursor, 10) : 0;
+    const page = sorted.slice(startIndex, startIndex + numItems);
+    const isDone = startIndex + numItems >= sorted.length;
+    const continueCursor = isDone ? "" : String(startIndex + numItems);
+    const totalCount = sorted.length;
+
+    return {
+      page,
+      isDone,
+      continueCursor,
+      totalCount,
+      pageStatus: null,
+      splitCursor: null,
+    };
   } catch (err) {
     if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
       console.error("getMyNotifications failure:", err);
     }
-    return [];
+    return {
+      page: [],
+      isDone: true,
+      continueCursor: "",
+      totalCount: 0,
+      pageStatus: null,
+      splitCursor: null,
+    };
   }
 };
 
 export const getMyNotifications = query({
-  args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("notifications"),
-      _creationTime: v.number(),
-      recipientId: v.string(),
-      type: notificationType,
-      title: v.string(),
-      message: v.string(),
-      isRead: v.boolean(),
-      createdAt: v.number(),
-      link: v.optional(v.string()),
-    })
-  ),
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("notifications"),
+        _creationTime: v.number(),
+        recipientId: v.string(),
+        type: notificationType,
+        title: v.string(),
+        message: v.string(),
+        isRead: v.boolean(),
+        createdAt: v.number(),
+        link: v.optional(v.string()),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    totalCount: v.number(),
+    pageStatus: v.null(),
+    splitCursor: v.null(),
+  }),
   handler: getMyNotificationsHandler,
 });
 
 /**
  * Handler for getting the notification archive.
- * @param ctx
- * @param args
- * @param args.limit
+ * @param ctx - Query context
+ * @param args - Arguments including optional limit
+ * @param args.limit - Maximum number of notifications to return (capped at 100)
  * @returns Promise<Notification[]>
  */
 export const getNotificationArchiveHandler = async (
@@ -187,9 +233,9 @@ export const getNotificationArchive = query({
 
 /**
  * Handler for marking a notification as read.
- * @param ctx
- * @param args
- * @param args.notificationId
+ * @param ctx - Mutation context
+ * @param args - Arguments including the notification ID
+ * @param args.notificationId - The ID of the notification to mark as read
  * @returns Promise<null>
  */
 export const markAsReadHandler = async (
@@ -239,7 +285,7 @@ export const markAsRead = mutation({
 
 /**
  * Handler for marking all notifications as read.
- * @param ctx
+ * @param ctx - Mutation context
  * @returns Promise<null>
  */
 export const markAllReadHandler = async (ctx: MutationCtx) => {

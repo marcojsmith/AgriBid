@@ -1,15 +1,5 @@
 You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products.
 
-# 1. Core rules
-
-- Assume the dev and Convex servers are already running.
-- **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
-- Create tests before starting a new feature or fixing a bug.
-- When encountering lint or typesafety errors or warns, correct these where possible.
-- You are a master delegator and make use of subagents where possible.
-- There are a lot of tests, run tests for specific files where possible instead of for the whole codebase.
-- Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
-
 ---
 
 ## Quick Reference
@@ -32,6 +22,54 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)  |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
+
+---
+
+# 1. Core rules
+
+- Assume the dev and Convex servers are already running.
+- **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
+- Create tests before starting a new feature or fixing a bug.
+- When encountering lint or typesafety errors or warns, correct these where possible.
+- You are a master delegator and make use of subagents where possible.
+- There are a lot of tests, run tests for specific files where possible instead of for the whole codebase.
+- Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
+
+## ESLint Strictness — Progressive Tightening
+
+At the start of every new branch, upgrade the TypeScript ESLint preset in
+`eslint.config.js` by swapping the commented lines:
+
+**Before (what is committed on main):**
+
+```js
+tseslint.configs.recommended,
+// tseslint.configs.strictTypeChecked,
+// tseslint.configs.stylisticTypeChecked,
+```
+
+**After (apply this at the start of every branch):**
+
+```js
+// tseslint.configs.recommended,
+tseslint.configs.strictTypeChecked,
+tseslint.configs.stylisticTypeChecked,
+```
+
+This activates stricter type-aware linting for the duration of the branch.
+Any file you create or modify MUST pass with zero errors and zero warnings
+under this stricter config before committing.
+
+This extends the boy scout rule: leave every file you touch fully compliant
+with `strictTypeChecked` + `stylisticTypeChecked` — not just free of
+pre-existing warnings, but actively improved. **Never suppress errors.** Do not
+use `@ts-ignore`, `@ts-expect-error`, or `eslint-disable` (or any variant such
+as `@ts-nocheck`, `// eslint-disable-next-line`, `/* eslint-disable */`) in
+any `**/*.{ts,tsx,js,jsx}` file under any circumstances. Instead of suppressing
+errors, refactor the code to comply with the type system and lint rules. If a
+rule cannot be satisfied and genuinely blocks progress, open an issue describing
+the exceptional case before considering any suppression — but never commit
+suppressions without an issue reference.
 
 ---
 

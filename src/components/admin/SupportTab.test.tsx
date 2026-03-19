@@ -21,6 +21,15 @@ const mockTickets = [
   },
 ];
 
+const mockPaginatedTickets = {
+  page: mockTickets,
+  isDone: true,
+  continueCursor: "",
+  totalCount: mockTickets.length,
+  pageStatus: null,
+  splitCursor: null,
+};
+
 const { mockUseQuery, mockUseMutation, mockToastSuccess, mockToastError } =
   vi.hoisted(() => ({
     mockUseQuery: vi.fn(),
@@ -44,13 +53,13 @@ vi.mock("sonner", () => ({
 describe("SupportTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     mockToastSuccess.mockClear();
     mockToastError.mockClear();
   });
 
   it("renders tickets table with data", () => {
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     render(<SupportTab />);
     expect(screen.getByText("Can't login")).toBeInTheDocument();
     expect(screen.getByText("Password reset")).toBeInTheDocument();
@@ -63,33 +72,44 @@ describe("SupportTab", () => {
   });
 
   it("renders empty state when no tickets", () => {
-    mockUseQuery.mockReturnValue([]);
+    mockUseQuery.mockReturnValue({
+      ...mockPaginatedTickets,
+      page: [],
+      totalCount: 0,
+    });
     render(<SupportTab />);
     expect(screen.getByText("No support tickets")).toBeInTheDocument();
   });
 
   it("renders open ticket with resolve button", () => {
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     render(<SupportTab />);
     const resolveButtons = screen.getAllByText("Resolve");
     expect(resolveButtons.length).toBe(1);
   });
 
   it("does not render resolve button for resolved tickets", () => {
-    mockUseQuery.mockReturnValue([mockTickets[1]]);
+    mockUseQuery.mockReturnValue({
+      page: [mockTickets[1]],
+      isDone: true,
+      continueCursor: "",
+      totalCount: 1,
+      pageStatus: null,
+      splitCursor: null,
+    });
     render(<SupportTab />);
     expect(screen.queryByText("Resolve")).not.toBeInTheDocument();
   });
 
   it("opens resolve dialog when clicking resolve", () => {
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     render(<SupportTab />);
     fireEvent.click(screen.getByText("Resolve"));
     expect(screen.getByText("Resolve Support Ticket")).toBeInTheDocument();
   });
 
   it("closes dialog on cancel", () => {
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     render(<SupportTab />);
     fireEvent.click(screen.getByText("Resolve"));
     expect(screen.getByText("Resolve Support Ticket")).toBeInTheDocument();
@@ -101,14 +121,14 @@ describe("SupportTab", () => {
   });
 
   it("displays priority badges", () => {
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     render(<SupportTab />);
     expect(screen.getAllByText("high").length).toBeGreaterThan(0);
     expect(screen.getAllByText("medium").length).toBeGreaterThan(0);
   });
 
   it("resolves a ticket successfully", async () => {
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     const mockResolveTicket = vi.fn().mockResolvedValue(undefined);
     mockUseMutation.mockReturnValue(mockResolveTicket);
 
@@ -130,7 +150,7 @@ describe("SupportTab", () => {
   });
 
   it("handles resolve ticket with error", async () => {
-    mockUseQuery.mockReturnValue(mockTickets);
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
     const mockResolveTicket = vi
       .fn()
       .mockRejectedValue(new Error("Resolution failed"));

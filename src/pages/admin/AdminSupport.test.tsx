@@ -64,6 +64,15 @@ const mockTickets = [
   },
 ];
 
+const mockPaginatedTickets = {
+  page: mockTickets,
+  isDone: true,
+  continueCursor: "",
+  totalCount: mockTickets.length,
+  pageStatus: null,
+  splitCursor: null,
+};
+
 const mockAdminStatsValue: AdminStats = {
   totalAuctions: 50,
   activeAuctions: 20,
@@ -120,7 +129,7 @@ describe("AdminSupport Page", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
-  it("renders support tickets and layout when data is loaded", async () => {
+  it("renders support tickets and layout when data is loaded", () => {
     (useQuery as Mock).mockImplementation((queryApi) => {
       if (
         queryApi === api.admin.getAdminStats ||
@@ -128,7 +137,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -150,7 +159,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -188,7 +197,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -220,7 +229,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -251,7 +260,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -277,7 +286,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -300,7 +309,14 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return [];
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
+        };
       return undefined;
     });
 
@@ -317,7 +333,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -346,7 +362,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -374,7 +390,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -408,7 +424,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
@@ -433,13 +449,14 @@ describe("AdminSupport Page", () => {
       ).toBeInTheDocument();
     });
 
-    const row = screen.getByText("Help with bidding").closest("tr")!;
+    const row = screen.getByText("Help with bidding").closest("tr");
+    expect(row).not.toBeNull();
     expect(
-      within(row).getByRole("status", { hidden: true })
+      within(row as HTMLElement).getByRole("status", { hidden: true })
     ).toBeInTheDocument();
 
     await act(async () => {
-      resolvePromise!({ success: true });
+      resolvePromise({ success: true });
     });
   });
 
@@ -451,7 +468,7 @@ describe("AdminSupport Page", () => {
       )
         return mockAdminStatsValue;
       if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockTickets;
+        return mockPaginatedTickets;
       return undefined;
     });
 
