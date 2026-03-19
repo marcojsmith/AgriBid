@@ -9,6 +9,7 @@ import {
 import { authComponent, type AuthUser } from "../auth";
 import type { Id, Doc } from "../_generated/dataModel";
 import { findUserById } from "../users";
+import { countQuery } from "../admin_utils";
 import * as auth from "../lib/auth";
 import type { QueryCtx } from "../_generated/server";
 
@@ -61,6 +62,7 @@ interface MockQuery {
   count: () => Promise<number>;
   unique: () => Promise<unknown>;
   paginate: (opts: unknown) => Promise<unknown>;
+  [Symbol.asyncIterator]: () => AsyncIterator<unknown>;
 }
 
 describe("Queries Branch Coverage Expansion", () => {
@@ -116,6 +118,24 @@ describe("Queries Branch Coverage Expansion", () => {
       paginate: vi
         .fn()
         .mockResolvedValue({ page: [], isDone: true, continueCursor: "" }),
+      [Symbol.asyncIterator]: vi.fn(() => {
+        let index = 0;
+        let items: unknown[] = [];
+        let initialized = false;
+
+        return {
+          next: async () => {
+            if (!initialized) {
+              items = await qObj.collect();
+              initialized = true;
+            }
+            if (index < items.length) {
+              return { value: items[index++], done: false };
+            }
+            return { value: undefined, done: true };
+          },
+        };
+      }),
     };
     queryMock = qObj;
 
@@ -130,6 +150,17 @@ describe("Queries Branch Coverage Expansion", () => {
         getUserIdentity: vi.fn(),
       },
     } as unknown as QueryCtx;
+
+    vi.mocked(countQuery).mockImplementation(async (q) => {
+      const query = q as unknown as MockQuery;
+      // Check if count is a mock function or a real function
+      const countFn = query.count as unknown;
+      if (typeof countFn === "function") {
+        return (await (countFn as () => Promise<number>)()) as number;
+      }
+      const results = await (query.collect as () => Promise<unknown[]>)();
+      return results.length;
+    });
   });
 
   describe("getActiveAuctionsHandler branches", () => {

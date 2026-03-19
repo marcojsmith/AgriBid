@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { v } from "convex/values";
 
 import * as auth from "../lib/auth";
@@ -32,15 +32,16 @@ import { countQuery } from "../admin_utils";
 
 // Helper types for mocked objects
 type MockQuery = {
-  withIndex: ReturnType<typeof vi.fn>;
-  withSearchIndex: ReturnType<typeof vi.fn>;
-  filter: ReturnType<typeof vi.fn>;
-  order: ReturnType<typeof vi.fn>;
-  take: ReturnType<typeof vi.fn>;
-  collect: ReturnType<typeof vi.fn>;
-  count: ReturnType<typeof vi.fn>;
-  unique: ReturnType<typeof vi.fn>;
-  paginate: ReturnType<typeof vi.fn>;
+  withIndex: Mock;
+  withSearchIndex: Mock;
+  filter: Mock;
+  order: Mock;
+  take: Mock;
+  collect: Mock;
+  count: Mock;
+  unique: Mock;
+  paginate: Mock;
+  [Symbol.asyncIterator]: Mock;
 };
 
 type MockQ = {
@@ -157,6 +158,24 @@ describe("Queries Consolidated", () => {
       paginate: vi
         .fn()
         .mockResolvedValue({ page: [], isDone: true, continueCursor: "" }),
+      [Symbol.asyncIterator]: vi.fn(() => {
+        let index = 0;
+        let items: unknown[] = [];
+        let initialized = false;
+        return {
+          next: async () => {
+            if (!initialized) {
+              const collectFn = queryMock.collect as unknown;
+              items = await (collectFn as () => Promise<unknown[]>)();
+              initialized = true;
+            }
+            if (index < items.length) {
+              return { value: items[index++], done: false };
+            }
+            return { value: undefined, done: true };
+          },
+        };
+      }),
     };
 
     mockCtx = {
@@ -166,7 +185,16 @@ describe("Queries Consolidated", () => {
       },
     } as unknown as QueryCtx;
 
-    vi.mocked(countQuery).mockResolvedValue(0);
+    vi.mocked(countQuery).mockImplementation(async (q) => {
+      const query = q as unknown as MockQuery;
+      const countFn = query.count as unknown;
+      if (typeof countFn === "function") {
+        return (await (countFn as () => Promise<number>)()) as number;
+      }
+      const collectFn = query.collect as unknown;
+      const results = await (collectFn as () => Promise<unknown[]>)();
+      return results.length;
+    });
   });
 
   describe("getMyBidsHandler", () => {

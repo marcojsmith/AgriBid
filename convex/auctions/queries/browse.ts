@@ -12,8 +12,22 @@ import {
 import { getAuthenticatedProfile } from "../../lib/auth";
 import { findUserById } from "../../users";
 import { countQuery } from "../../admin_utils";
+import { MAX_RESULTS_CAP } from "../../constants";
 
 type StatusFilter = "active" | "closed" | "all";
+
+/** Arguments for getActiveAuctions query */
+export type ActiveAuctionsArgs = {
+  paginationOpts: PaginationOptions;
+  search?: string;
+  make?: string;
+  minYear?: number;
+  maxYear?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  maxHours?: number;
+  statusFilter?: StatusFilter;
+};
 
 function statusesForFilter(
   filter: StatusFilter
@@ -24,35 +38,43 @@ function statusesForFilter(
 }
 
 /**
+ * Manual filter check for auctions.
+ * Used when database-level filtering is limited (e.g., after search).
+ *
+ * @param auction - The auction document to check
+ * @param args - Filter arguments to match against
+ * @returns True if the auction matches all filter criteria
+ */
+function matchesAuctionFilter(
+  auction: Doc<"auctions">,
+  args: Partial<ActiveAuctionsArgs>
+): boolean {
+  if (args.make !== undefined && auction.make !== args.make) return false;
+  if (args.minYear !== undefined && auction.year < args.minYear) return false;
+  if (args.maxYear !== undefined && auction.year > args.maxYear) return false;
+  if (args.minPrice !== undefined && auction.currentPrice < args.minPrice)
+    return false;
+  if (args.maxPrice !== undefined && auction.currentPrice > args.maxPrice)
+    return false;
+  if (
+    args.maxHours !== undefined &&
+    (auction.operatingHours ?? 0) > args.maxHours
+  )
+    return false;
+  return true;
+}
+
+/**
  * Returns paginated active auctions with optional filtering.
  * Supports search, make, year range, price range, and hours filtering.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments including pagination options and filters
- * @param args.paginationOpts - Pagination options for the query
- * @param args.search - Optional search term for auction titles
- * @param args.make - Optional equipment make filter
- * @param args.minYear - Optional minimum year filter
- * @param args.maxYear - Optional maximum year filter
- * @param args.minPrice - Optional minimum price filter
- * @param args.maxPrice - Optional maximum price filter
- * @param args.maxHours - Optional maximum operating hours filter
- * @param args.statusFilter - Filter for auction status (active, closed, all)
  * @returns Paginated auction results with total count
  */
 export const getActiveAuctionsHandler = async (
   ctx: QueryCtx,
-  args: {
-    paginationOpts: PaginationOptions;
-    search?: string;
-    make?: string;
-    minYear?: number;
-    maxYear?: number;
-    minPrice?: number;
-    maxPrice?: number;
-    maxHours?: number;
-    statusFilter?: "active" | "closed" | "all";
-  }
+  args: ActiveAuctionsArgs
 ) => {
   const statusFilter: StatusFilter = args.statusFilter ?? "active";
   const statuses = statusesForFilter(statusFilter);
@@ -100,6 +122,11 @@ export const getActiveAuctionsHandler = async (
       return auctionsQuery.order("desc");
     }
 
+    if (statuses.length === 0) {
+      // Return an empty query if no status matches the filter using a type-safe always-false condition
+      return auctionsQuery.filter((q) => q.neq(q.field("_id"), q.field("_id")));
+    }
+
     if (statuses.length === 1) {
       return auctionsQuery
         .withIndex("by_status", (q) => q.eq("status", statuses[0]))
@@ -140,31 +167,20 @@ export const getActiveAuctionsHandler = async (
   };
 
   if (args.search) {
-    // When search is combined with additional filters that can't be expressed in the index,
-    // we need to reject this combination or handle it specially since pagination and totalCount
-    // will be incorrect. For now, we reject combinations that would require post-search filtering.
-    const hasAdditionalFilters =
-      args.minPrice !== undefined ||
-      args.maxPrice !== undefined ||
-      args.maxHours !== undefined ||
-      (args.make !== undefined && statuses.length !== 1) ||
-      (args.minYear !== undefined && statuses.length !== 1) ||
-      (args.maxYear !== undefined && statuses.length !== 1);
-
-    if (hasAdditionalFilters) {
-      throw new Error(
-        "Search cannot be combined with price, hours, or multi-status filters. Please use search alone or filters without search."
-      );
-    }
-
-    // For search without additional filters, we can use normal pagination
-    const [results, totalCount] = await Promise.all([
+    // For search, we use the search index first, then apply additional filters manually
+    // to the results. This handles cases where filters aren't supported by the search index.
+    const [results, searchResults] = await Promise.all([
       getFilteredQuery().paginate(args.paginationOpts),
-      countQuery(getFilteredQuery()),
+      getFilteredQuery().take(MAX_RESULTS_CAP + 1),
     ]);
 
+    const totalCount =
+      searchResults.length > MAX_RESULTS_CAP ? "1000+" : searchResults.length;
+
     const page = await Promise.all(
-      results.page.map((auction) => toAuctionSummary(ctx, auction))
+      results.page
+        .filter((auction) => matchesAuctionFilter(auction, args))
+        .map((auction) => toAuctionSummary(ctx, auction))
     );
 
     return {
@@ -183,10 +199,12 @@ export const getActiveAuctionsHandler = async (
     results.page.map((auction) => toAuctionSummary(ctx, auction))
   );
 
+  const finalTotalCount = totalCount > 1000 ? "1000+" : totalCount;
+
   return {
     ...results,
     page,
-    totalCount,
+    totalCount: finalTotalCount,
   };
 };
 

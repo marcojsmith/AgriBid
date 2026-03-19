@@ -108,8 +108,8 @@ describe("AdminAudit Page", () => {
       expect(screen.getByText(/showing 50 of 60 entries/i)).toBeInTheDocument();
     });
 
-    const moreButton = screen.getByRole("button", { name: /more/i });
-    fireEvent.click(moreButton);
+    const nextButton = screen.getByRole("button", { name: /next/i });
+    fireEvent.click(nextButton);
 
     await waitFor(() => {
       expect(screen.getByText(/showing 50 of 60 entries/i)).toBeInTheDocument();

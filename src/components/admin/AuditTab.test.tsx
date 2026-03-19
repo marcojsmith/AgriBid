@@ -104,7 +104,7 @@ describe("AuditTab", () => {
     mockUseQuery.mockReturnValue(mockPaginatedResult);
     render(<AuditTab />);
     expect(screen.getByText("Reset")).toBeInTheDocument();
-    expect(screen.getByText("More")).toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
   });
 
   it("disables Reset button when on last page (isDone)", () => {
@@ -169,8 +169,8 @@ describe("AuditTab", () => {
     });
     render(<AuditTab />);
 
-    const moreButton = screen.getByText("More");
-    fireEvent.click(moreButton);
+    const nextButton = screen.getByText("Next");
+    fireEvent.click(nextButton);
 
     // Reset button should now be enabled since cursor is not null
     const resetButton = screen.getByText("Reset").closest("button");
