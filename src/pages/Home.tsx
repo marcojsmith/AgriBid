@@ -14,11 +14,10 @@ import { cn } from "@/lib/utils";
 import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
 
 /**
- * Custom hook to detect media query matches.
+ * Subscribe to a CSS media query and provide whether it currently matches.
  *
- * Initialises synchronously to avoid layout jumps.
- * @param query - The media query to match
- * @returns Whether the media query matches
+ * @param query - A CSS media query string (e.g. "(max-width: 768px)")
+ * @returns `true` if the media query matches, `false` otherwise
  */
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => {
@@ -31,19 +30,23 @@ function useMediaQuery(query: string) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const media = window.matchMedia(query);
-    const listener = () => setMatches(media.matches);
+    const listener = () => {
+      setMatches(media.matches);
+    };
     media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
+    return () => {
+      media.removeEventListener("change", listener);
+    };
   }, [query]);
 
   return matches;
 }
 
 /**
- * Render the AgriBid home page with auction listings, filter controls (desktop and mobile) and view-mode toggles.
+ * Renders the AgriBid home page with auction listings, filter controls and view-mode toggles.
  *
- * Reads URL query parameters to apply search and filter criteria, fetches matching auctions and watched IDs,
- * and displays loading, empty or results states while supporting desktop sidebar and mobile filter overlay interactions.
+ * Reads URL query parameters for filters, fetches matching auctions and watched IDs, and displays
+ * loading, empty or results states while supporting a desktop sidebar and a mobile filter overlay.
  *
  * @returns The JSX element for the Home page
  */
@@ -134,9 +137,6 @@ export default function Home() {
         : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8"
     );
 
-  const getItemWrapperClasses = (mode: "compact" | "detailed") =>
-    cn("w-full h-full", mode === "compact" && "max-w-[500px]");
-
   return (
     <div className="flex flex-col lg:flex-row gap-8 pb-12">
       {/* Desktop Sidebar */}
@@ -152,7 +152,9 @@ export default function Home() {
           {/* Clickable Backdrop */}
           <button
             className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 w-full h-full cursor-default"
-            onClick={() => setIsMobileFilterOpen(false)}
+            onClick={() => {
+              setIsMobileFilterOpen(false);
+            }}
             aria-label="Close filters"
           />
           {/* Sidebar Container */}
@@ -198,7 +200,9 @@ export default function Home() {
             {/* Sidebar Toggle (Desktop Only) */}
             <Button
               variant={isDesktopSidebarOpen ? "default" : "outline"}
-              onClick={() => setIsDesktopSidebarOpen(!isDesktopSidebarOpen)}
+              onClick={() => {
+                setIsDesktopSidebarOpen(!isDesktopSidebarOpen);
+              }}
               className="hidden lg:flex h-10 px-4 rounded-xl border-2 gap-2 font-bold uppercase text-xs"
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -210,7 +214,9 @@ export default function Home() {
               <Button
                 variant={viewMode === "detailed" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setManualViewMode("detailed")}
+                onClick={() => {
+                  setManualViewMode("detailed");
+                }}
                 className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
               >
                 Detailed
@@ -218,7 +224,9 @@ export default function Home() {
               <Button
                 variant={viewMode === "compact" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setManualViewMode("compact")}
+                onClick={() => {
+                  setManualViewMode("compact");
+                }}
                 className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
               >
                 Compact
@@ -227,7 +235,9 @@ export default function Home() {
 
             <Button
               variant="outline"
-              onClick={() => setIsMobileFilterOpen(true)}
+              onClick={() => {
+                setIsMobileFilterOpen(true);
+              }}
               className="lg:hidden h-10 w-10 p-0 rounded-xl border-2 flex items-center justify-center font-bold uppercase"
               aria-label="Filters"
             >
@@ -244,9 +254,20 @@ export default function Home() {
         </div>
 
         {auctionsStatus === "LoadingFirstPage" ? (
-          <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
+          <div
+            className={cn(
+              "transition-all duration-300",
+              getGridClasses(viewMode, isDesktopSidebarOpen)
+            )}
+          >
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className={getItemWrapperClasses(viewMode)}>
+              <div
+                key={i}
+                className={cn(
+                  "w-full h-full transition-all duration-300",
+                  viewMode === "compact" && "max-w-[500px]"
+                )}
+              >
                 <AuctionCardSkeleton viewMode={viewMode} />
               </div>
             ))}
@@ -269,11 +290,19 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-8">
-            <div className={getGridClasses(viewMode, isDesktopSidebarOpen)}>
+            <div
+              className={cn(
+                "transition-all duration-300",
+                getGridClasses(viewMode, isDesktopSidebarOpen)
+              )}
+            >
               {auctions.map((auction) => (
                 <div
                   key={auction._id}
-                  className={getItemWrapperClasses(viewMode)}
+                  className={cn(
+                    "w-full h-full transition-all duration-300",
+                    viewMode === "compact" && "max-w-[500px]"
+                  )}
                 >
                   <AuctionCard
                     auction={auction}
@@ -288,7 +317,9 @@ export default function Home() {
             {auctionsStatus === "CanLoadMore" && (
               <div className="flex justify-center pt-4">
                 <Button
-                  onClick={() => loadMore(12)}
+                  onClick={() => {
+                    loadMore(12);
+                  }}
                   variant="outline"
                   className="rounded-xl font-black px-12 border-2 gap-2 h-12 uppercase tracking-widest text-xs"
                 >
