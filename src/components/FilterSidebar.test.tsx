@@ -96,7 +96,8 @@ describe("FilterSidebar", () => {
     renderSidebar();
 
     expect(screen.getByText("Auction Status")).toBeInTheDocument();
-    expect(screen.getByText("John Deere")).toBeInTheDocument();
+    const select = screen.getByLabelText(/Manufacturer/i);
+    expect(select).toHaveTextContent("John Deere");
   });
 
   it("applyFilters deletes status if it is 'active'", () => {
@@ -109,14 +110,20 @@ describe("FilterSidebar", () => {
   });
 
   it("applyFilters deletes empty values", () => {
-    mockSearchParams.set("make", "OldMake");
+    // Set an empty value in mockSearchParams
+    mockSearchParams.set("make", "");
+    mockSearchParams.set("minYear", "2020");
     renderSidebar();
 
+    // Click apply
     fireEvent.click(screen.getByText(/Apply Filters/i));
 
     const calledWith = mockSetSearchParams.mock
       .calls[0]?.[0] as URLSearchParams;
-    expect(calledWith.has("make")).toBe(true);
+    // Empty values should be removed
+    expect(calledWith.has("make")).toBe(false);
+    // Non-empty values should stay
+    expect(calledWith.get("minYear")).toBe("2020");
   });
 
   it("clearFilters preserves search query 'q'", () => {

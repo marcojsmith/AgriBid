@@ -159,8 +159,6 @@ export const getActiveAuctionsHandler = async (
         expressions.push(f.gte(f.field("currentPrice"), args.minPrice));
       if (args.maxPrice !== undefined)
         expressions.push(f.lte(f.field("currentPrice"), args.maxPrice));
-      if (args.maxHours !== undefined)
-        expressions.push(f.lte(f.field("operatingHours"), args.maxHours));
 
       return expressions.length > 0 ? f.and(...expressions) : true;
     });
@@ -182,10 +180,9 @@ export const getActiveAuctionsHandler = async (
 
     // Apply manual pagination to the filtered results
     const numItems = args.paginationOpts.numItems;
-    // Note: We use a simple slice for pagination here since search results are already capped and loaded.
-    // Real cursor-based pagination with post-filtering is complex in Convex;
-    // this approach is sufficient for search where results are already naturally limited.
-    const startIndex = 0; // Search queries currently don't support deep pagination with post-filters
+    const cursor = args.paginationOpts.cursor;
+    const startIndex = cursor ? parseInt(cursor, 10) : 0;
+
     const paginatedSlice = filteredResults.slice(
       startIndex,
       startIndex + numItems
@@ -195,10 +192,13 @@ export const getActiveAuctionsHandler = async (
       paginatedSlice.map((auction) => toAuctionSummary(ctx, auction))
     );
 
+    const nextIndex = startIndex + numItems;
+    const isDone = filteredResults.length <= nextIndex;
+
     return {
       page,
-      isDone: filteredResults.length <= startIndex + numItems,
-      continueCursor: "", // Search with post-filtering currently returns a single page
+      isDone,
+      continueCursor: isDone ? "" : nextIndex.toString(),
       totalCount,
     };
   }
