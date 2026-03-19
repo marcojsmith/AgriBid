@@ -29,12 +29,15 @@ export type ActiveAuctionsArgs = {
   statusFilter?: StatusFilter;
 };
 
+<<<<<<< coderabbitai/docstrings/70230d8
 /**
  * Map a status filter to the corresponding array of auction statuses.
  *
  * @param filter - One of `"active"`, `"closed"` or `"all"` indicating which statuses to include
  * @returns `['active']` for `"active"`, `['sold', 'unsold']` for `"closed"`, otherwise `['active', 'sold', 'unsold']`
  */
+=======
+>>>>>>> feature/quick-wins-ux-improvements
 function statusesForFilter(
   filter: StatusFilter
 ): ("active" | "sold" | "unsold")[] {
@@ -44,6 +47,7 @@ function statusesForFilter(
 }
 
 /**
+<<<<<<< coderabbitai/docstrings/70230d8
  * Check whether an auction satisfies the provided filter arguments.
  *
  * Compares the auction's `make`, `year`, `currentPrice` and `operatingHours`
@@ -53,6 +57,14 @@ function statusesForFilter(
  * @param args - Partial filter set; may include `make`, `minYear`, `maxYear`,
  *               `minPrice`, `maxPrice` and `maxHours`
  * @returns `true` if the auction matches all provided criteria, `false` otherwise
+=======
+ * Manual filter check for auctions.
+ * Used when database-level filtering is limited (e.g., after search).
+ *
+ * @param auction - The auction document to check
+ * @param args - Filter arguments to match against
+ * @returns True if the auction matches all filter criteria
+>>>>>>> feature/quick-wins-ux-improvements
  */
 function matchesAuctionFilter(
   auction: Doc<"auctions">,

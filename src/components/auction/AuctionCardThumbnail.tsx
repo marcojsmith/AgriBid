@@ -18,20 +18,14 @@ interface AuctionCardThumbnailProps {
 /**
  * Render a responsive auction thumbnail containing an image or placeholder, a watchlist toggle and an optional countdown.
  *
- * @param primaryImage.primaryImage
- * @param primaryImage - URL of the primary image; if undefined a placeholder is shown
- * @param title - Title used for the image alt text
- * @param isCompact - When true, render the compact layout (fixed width and inline countdown)
- * @param isWatched - Whether the item is currently on the user's watchlist
- * @param onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
- * @param endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
- * @param isClosed - Whether the auction is closed; when true the countdown is hidden
- * @param primaryImage.title
- * @param primaryImage.isCompact
- * @param primaryImage.isWatched
- * @param primaryImage.onWatchlistToggle
- * @param primaryImage.endTime
- * @param primaryImage.isClosed
+ * @param props - Component props
+ * @param props.primaryImage - URL of the primary image; if undefined a placeholder is shown
+ * @param props.title - Title used for the image alt text
+ * @param props.isCompact - When true, render the compact layout (fixed width and inline countdown)
+ * @param props.isWatched - Whether the item is currently on the user's watchlist
+ * @param props.onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
+ * @param props.endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
+ * @param props.isClosed - Whether the auction is closed; when true the countdown is hidden
  * @returns The JSX element representing the auction thumbnail
  */
 export function AuctionCardThumbnail({
@@ -52,15 +46,15 @@ export function AuctionCardThumbnail({
     >
       <div
         className={cn(
-          "bg-muted flex items-center justify-center relative overflow-hidden",
-          isCompact ? "flex-1 border-r" : "aspect-video"
+          "bg-muted flex items-center justify-center relative overflow-hidden transition-all duration-300",
+          isCompact ? "aspect-[4/3] border-r" : "aspect-video"
         )}
       >
         {primaryImage ? (
           <img
             src={primaryImage}
             alt={title}
-            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+            className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="text-muted-foreground flex flex-col items-center">
