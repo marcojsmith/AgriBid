@@ -144,7 +144,7 @@ export default function AuctionDetail() {
                     auction.images.engine,
                     auction.images.cabin,
                     auction.images.rear,
-                    ...auction.images.additional,
+                    ...(auction.images.additional ?? []),
                   ].filter((url): url is string => !!url)
             }
             title={auction.title}
