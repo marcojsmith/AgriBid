@@ -5,7 +5,13 @@ import { useSearchParams } from "react-router-dom";
 import { useState } from "react";
 
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 /**
  * Props for the FilterSidebar component.
@@ -39,17 +45,22 @@ interface LocalFilters {
  */
 export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeMakes = useQuery(api.auctions.getActiveMakes) || [];
+  const activeMakes = useQuery(api.auctions.getActiveMakes) ?? [];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 30 }, (_, i) =>
+    (currentYear - i).toString()
+  );
 
   // Local state for debounced inputs
   const [localFilters, setLocalFilters] = useState<LocalFilters>(() => ({
-    status: searchParams.get("status") || "active",
-    make: searchParams.get("make") || "",
-    minYear: searchParams.get("minYear") || "",
-    maxYear: searchParams.get("maxYear") || "",
-    minPrice: searchParams.get("minPrice") || "",
-    maxPrice: searchParams.get("maxPrice") || "",
-    maxHours: searchParams.get("maxHours") || "",
+    status: searchParams.get("status") ?? "active",
+    make: searchParams.get("make") ?? "",
+    minYear: searchParams.get("minYear") ?? "",
+    maxYear: searchParams.get("maxYear") ?? "",
+    minPrice: searchParams.get("minPrice") ?? "",
+    maxPrice: searchParams.get("maxPrice") ?? "",
+    maxHours: searchParams.get("maxHours") ?? "",
   }));
 
   const updateParam = (key: keyof LocalFilters, value: string) => {
@@ -60,7 +71,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     const newParams = new URLSearchParams(searchParams);
     Object.entries(localFilters).forEach(([key, value]) => {
       if (value && !(key === "status" && value === "active")) {
-        newParams.set(key, value);
+        newParams.set(key, value as string);
       } else {
         newParams.delete(key);
       }
@@ -129,93 +140,141 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Year Range */}
         <div className="space-y-3">
-          <label
-            htmlFor="filter-year-from"
-            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
-          >
+          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
             Year Model
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <Input
-              id="filter-year-from"
-              type="number"
-              placeholder="From"
-              min={1900}
-              value={localFilters.minYear}
-              onChange={(e) => updateParam("minYear", e.target.value)}
-              className="h-12 font-bold rounded-xl border-2"
-            />
-            <Input
-              id="filter-year-to"
-              type="number"
-              placeholder="To"
-              min={1900}
-              value={localFilters.maxYear}
-              onChange={(e) => updateParam("maxYear", e.target.value)}
-              className="h-12 font-bold rounded-xl border-2"
-            />
+            <Select
+              value={localFilters.minYear || "any"}
+              onValueChange={(value: string) => {
+                updateParam("minYear", value === "any" ? "" : value);
+              }}
+            >
+              <SelectTrigger
+                aria-label="Minimum year"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
+                <SelectValue placeholder="From" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">From</SelectItem>
+                {years.map((year) => (
+                  <SelectItem key={`min-${year}`} value={year}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={localFilters.maxYear || "any"}
+              onValueChange={(value: string) => {
+                updateParam("maxYear", value === "any" ? "" : value);
+              }}
+            >
+              <SelectTrigger
+                aria-label="Maximum year"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
+                <SelectValue placeholder="To" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">To</SelectItem>
+                {years.map((year) => (
+                  <SelectItem key={`max-${year}`} value={year}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         {/* Price Range */}
         <div className="space-y-3">
           <label
-            htmlFor="filter-price-min"
+            id="price-range-label"
             className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
           >
             Price Range (ZAR)
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">
-                R
-              </span>
-              <Input
-                id="filter-price-min"
-                type="number"
-                placeholder="Min"
-                value={localFilters.minPrice}
-                onChange={(e) => updateParam("minPrice", e.target.value)}
-                className="h-12 pl-7 font-bold rounded-xl border-2"
-              />
-            </div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">
-                R
-              </span>
-              <Input
-                id="filter-price-max"
-                type="number"
-                placeholder="Max"
-                value={localFilters.maxPrice}
-                onChange={(e) => updateParam("maxPrice", e.target.value)}
-                className="h-12 pl-7 font-bold rounded-xl border-2"
-              />
-            </div>
+            <Select
+              value={localFilters.minPrice || "any"}
+              onValueChange={(value: string) => {
+                updateParam("minPrice", value === "any" ? "" : value);
+              }}
+            >
+              <SelectTrigger
+                aria-labelledby="price-range-label"
+                aria-label="Minimum price"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
+                <SelectValue placeholder="Min" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Min</SelectItem>
+                <SelectItem value="100000">R100K</SelectItem>
+                <SelectItem value="250000">R250K</SelectItem>
+                <SelectItem value="500000">R500K</SelectItem>
+                <SelectItem value="1000000">R1M</SelectItem>
+                <SelectItem value="2000000">R2M</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={localFilters.maxPrice || "any"}
+              onValueChange={(value: string) => {
+                updateParam("maxPrice", value === "any" ? "" : value);
+              }}
+            >
+              <SelectTrigger
+                aria-labelledby="price-range-label"
+                aria-label="Maximum price"
+                className="h-12 rounded-xl border-2 font-bold"
+              >
+                <SelectValue placeholder="Max" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Max</SelectItem>
+                <SelectItem value="250000">R250K</SelectItem>
+                <SelectItem value="500000">R500K</SelectItem>
+                <SelectItem value="1000000">R1M</SelectItem>
+                <SelectItem value="2000000">R2M</SelectItem>
+                <SelectItem value="5000000">R5M</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         {/* Operating Hours */}
         <div className="space-y-3">
           <label
-            htmlFor="filter-hours"
+            id="hours-label"
             className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
           >
             Max Operating Hours
           </label>
-          <div className="relative">
-            <Input
-              id="filter-hours"
-              type="number"
-              placeholder="e.g. 5000"
-              value={localFilters.maxHours}
-              onChange={(e) => updateParam("maxHours", e.target.value)}
-              className="h-12 pr-12 font-bold rounded-xl border-2"
-            />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-black uppercase">
-              HRS
-            </span>
-          </div>
+          <Select
+            value={localFilters.maxHours || "any"}
+            onValueChange={(value: string) => {
+              updateParam("maxHours", value === "any" ? "" : value);
+            }}
+          >
+            <SelectTrigger
+              aria-labelledby="hours-label"
+              className="h-12 rounded-xl border-2 font-bold"
+            >
+              <SelectValue placeholder="Any" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any</SelectItem>
+              <SelectItem value="100">100 hrs</SelectItem>
+              <SelectItem value="500">500 hrs</SelectItem>
+              <SelectItem value="1000">1,000 hrs</SelectItem>
+              <SelectItem value="2500">2,500 hrs</SelectItem>
+              <SelectItem value="5000">5,000 hrs</SelectItem>
+              <SelectItem value="10000">10,000 hrs</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Auction Status Filter */}

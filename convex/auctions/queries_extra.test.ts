@@ -62,6 +62,7 @@ interface MockQuery {
   take: Mock;
   collect: Mock;
   paginate: Mock;
+  [Symbol.asyncIterator]: Mock;
 }
 
 // Ensure mock matches the generic context layout without extending QueryCtx
@@ -91,8 +92,26 @@ describe("Queries Extra Coverage", () => {
       filter: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       take: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([]),
       paginate: vi.fn().mockReturnThis(),
+      [Symbol.asyncIterator]: vi.fn(() => {
+        let index = 0;
+        let items: unknown[] = [];
+        let initialized = false;
+        return {
+          next: async () => {
+            if (!initialized) {
+              const collectFn = queryMock.collect as unknown;
+              items = await (collectFn as () => Promise<unknown[]>)();
+              initialized = true;
+            }
+            if (index < items.length) {
+              return { value: items[index++], done: false };
+            }
+            return { value: undefined, done: true };
+          },
+        };
+      }),
     };
     mockCtx = {
       db: {
@@ -136,7 +155,17 @@ describe("Queries Extra Coverage", () => {
       isDone: true,
       continueCursor: "",
     });
-    queryMock.take.mockResolvedValue([]);
+    queryMock.take.mockResolvedValue([
+      {
+        _id: "a1",
+        title: "tractor",
+        status: "active",
+        currentPrice: 100,
+        make: "m",
+        model: "m",
+        year: 2020,
+      },
+    ]);
     const result = await getActiveAuctionsHandler(
       mockCtx as unknown as QueryCtx,
       {

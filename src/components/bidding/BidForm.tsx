@@ -25,12 +25,12 @@ interface BidFormProps {
  * Interactive bid form for custom and quick bid submissions with proxy bidding support.
  *
  * @param props - Component props including auction data and handlers
- * @param props.auction
- * @param props.onBid
- * @param props.isLoading
- * @param props.isBidFormEnabled
- * @param props.currentUserMaxBid
- * @param props.isProxyActive
+ * @param props.auction - The auction document containing current pricing and status
+ * @param props.onBid - Callback triggered when a bid amount is submitted
+ * @param props.isLoading - Loading state during bid submission
+ * @param props.isBidFormEnabled - Whether the bid form is active; defaults to true
+ * @param props.currentUserMaxBid - Current user's highest proxy bid for this auction, if any
+ * @param props.isProxyActive - Whether proxy bidding is currently active for this user
  * @returns A React element for placing bids
  */
 export const BidForm = ({
@@ -159,6 +159,7 @@ export const BidForm = ({
               <input
                 type="checkbox"
                 id="proxy-enabled"
+                name="proxy-enabled"
                 checked={isProxyEnabled}
                 onChange={(e) => setIsProxyEnabled(e.target.checked)}
                 disabled={isLoading}
@@ -190,6 +191,7 @@ export const BidForm = ({
                 <input
                   type="number"
                   id="proxy-max-bid"
+                  name="proxy-max-bid"
                   value={maxBid}
                   onChange={(e) => setMaxBid(e.target.value)}
                   placeholder="Enter max amount"
@@ -257,6 +259,9 @@ export const BidForm = ({
               R
             </span>
             <Input
+              id="bid-amount"
+              name="bid-amount"
+              aria-label="Bid amount"
               type="number"
               value={manualAmount}
               onChange={(e) => setManualAmount(e.target.value)}
