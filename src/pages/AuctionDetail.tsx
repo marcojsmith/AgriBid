@@ -64,9 +64,7 @@ export default function AuctionDetail() {
     }
 
     try {
-      const normalizedDetails = flagDetails?.trim()
-        ? flagDetails.trim()
-        : undefined;
+      const normalizedDetails = flagDetails.trim() || undefined;
       const result = await flagAuction({
         auctionId: id as Id<"auctions">,
         reason: flagReason,
@@ -146,7 +144,7 @@ export default function AuctionDetail() {
                     auction.images.engine,
                     auction.images.cabin,
                     auction.images.rear,
-                    ...(auction.images.additional || []),
+                    ...auction.images.additional,
                   ].filter((url): url is string => !!url)
             }
             title={auction.title}
@@ -222,14 +220,19 @@ export default function AuctionDetail() {
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Reason</label>
+                        <label
+                          htmlFor="flag-reason"
+                          className="text-sm font-medium"
+                        >
+                          Reason
+                        </label>
                         <Select
                           value={flagReason}
                           onValueChange={(v) => {
                             setFlagReason(v as FlagReason);
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger id="flag-reason">
                             <SelectValue placeholder="Select a reason" />
                           </SelectTrigger>
                           <SelectContent>
@@ -247,10 +250,15 @@ export default function AuctionDetail() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">
+                        <label
+                          htmlFor="flag-details"
+                          className="text-sm font-medium"
+                        >
                           Additional details (optional)
                         </label>
                         <Textarea
+                          id="flag-details"
+                          name="flag-details"
                           placeholder="Provide more context..."
                           value={flagDetails}
                           onChange={(e) => {
