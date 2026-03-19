@@ -126,11 +126,11 @@
 
 - [x] **Hero Section**
 - [x] **Filter Sidebar**
-  - [ ] Convert filters to drop-down menus for better UX (#112)
+  - [x] Convert filters to drop-down menus for better UX (#112)
 - [x] **Auction Grid** (Basic implementation in `App.tsx`)
   - [x] `AuctionCard` component
   - [ ] Ensure uniform image sizing in compact view (#114)
-  - [ ] Add resize animation to cards (#110)
+  - [x] Add resize animation to cards (#110)
 - [ ] Pagination or infinite scroll
 
 ### Auction Detail Page (`/auction/:id`)

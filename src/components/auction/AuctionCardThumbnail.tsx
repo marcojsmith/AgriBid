@@ -47,7 +47,7 @@ export function AuctionCardThumbnail({
       <div
         className={cn(
           "bg-muted flex items-center justify-center relative overflow-hidden transition-all duration-300",
-          isCompact ? "aspect-[4/3] border-r" : "aspect-video"
+          isCompact ? "aspect-[4/3] h-full border-r" : "aspect-video"
         )}
       >
         {primaryImage ? (

@@ -7,7 +7,6 @@ import {
   getAuctionBidsHandler,
   getMyBidsHandler,
 } from "./queries";
-import { authComponent } from "../auth";
 import type { QueryCtx } from "../_generated/server";
 import { findUserById } from "../users";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -231,11 +230,11 @@ describe("Queries Extra Coverage", () => {
   });
 
   it("hits lines 976-978: Pagination with valid cursor in getMyBidsHandler", async () => {
-    vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+    vi.mocked(auth.getAuthUser).mockResolvedValue({
       _id: "u1",
       userId: "u1",
       name: "u1",
-    } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+    } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
     // mock bids and auctions to have something to paginate
@@ -263,11 +262,11 @@ describe("Queries Extra Coverage", () => {
   });
 
   it("hits lines 976-978: Pagination with out of bounds cursor in getMyBidsHandler", async () => {
-    vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+    vi.mocked(auth.getAuthUser).mockResolvedValue({
       _id: "u1",
       userId: "u1",
       name: "u1",
-    } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+    } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
     queryMock.collect.mockResolvedValue([

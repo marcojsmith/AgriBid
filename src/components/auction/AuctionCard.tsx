@@ -2,10 +2,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Clock, MapPin, Gavel } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import { useSession } from "@/lib/auth-client";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +63,7 @@ export const AuctionCard = ({
       const callbackUrl = isValidCallbackUrl(rawUrl)
         ? encodeURIComponent(rawUrl)
         : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
+      void navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
 
@@ -89,7 +88,7 @@ export const AuctionCard = ({
       const callbackUrl = isValidCallbackUrl(rawUrl)
         ? encodeURIComponent(rawUrl)
         : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
+      void navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
 
@@ -129,11 +128,11 @@ export const AuctionCard = ({
   const images = auction.images;
   const primaryImage = Array.isArray(images)
     ? images[0]
-    : images.front ||
-      images.engine ||
-      images.cabin ||
-      images.rear ||
-      images.additional?.[0];
+    : (images.front ??
+      images.engine ??
+      images.cabin ??
+      images.rear ??
+      images.additional?.[0]);
 
   const isCompact = viewMode === "compact";
   /**
@@ -146,7 +145,7 @@ export const AuctionCard = ({
   return (
     <Card
       className={cn(
-        "overflow-hidden border-2 hover:border-primary transition-colors bg-card group rounded-lg h-full shadow-none"
+        "overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:scale-[1.01] hover:shadow-xl bg-card group rounded-lg h-full shadow-none"
       )}
     >
       <div className="relative">
@@ -209,7 +208,7 @@ export const AuctionCard = ({
                   variant="outline"
                   className="text-[8px] h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5 uppercase font-bold"
                 >
-                  {auction.categoryName || "Equipment"}
+                  {auction.categoryName ?? "Equipment"}
                 </Badge>
               </div>
               <div className="flex justify-between items-start gap-2">
@@ -287,7 +286,7 @@ export const AuctionCard = ({
 
       <BidConfirmation
         isOpen={isConfirmOpen}
-        amount={pendingBid || 0}
+        amount={pendingBid ?? 0}
         onConfirm={handleBidConfirm}
         onCancel={() => {
           setIsConfirmOpen(false);

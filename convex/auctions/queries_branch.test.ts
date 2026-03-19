@@ -1,13 +1,13 @@
 import { v } from "convex/values";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
 import {
   getActiveAuctionsHandler,
   getAuctionBidsHandler,
   getMyBidsHandler,
 } from "./queries";
-import { authComponent, type AuthUser } from "../auth";
 import type { Id, Doc } from "../_generated/dataModel";
+import type { AuthUser } from "../auth";
 import { findUserById } from "../users";
 import { countQuery } from "../admin_utils";
 import * as auth from "../lib/auth";
@@ -16,6 +16,7 @@ import type { QueryCtx } from "../_generated/server";
 // Mocking necessary modules
 vi.mock("../_generated/server", () => ({
   query: vi.fn((q) => q),
+  mutation: vi.fn((m) => m),
 }));
 
 vi.mock("./helpers", () => ({
@@ -65,21 +66,25 @@ interface MockQuery {
   [Symbol.asyncIterator]: () => AsyncIterator<unknown>;
 }
 
+interface MockQ {
+  eq: ReturnType<typeof vi.fn>;
+  neq: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
+  lt: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
+  and: ReturnType<typeof vi.fn>;
+  or: ReturnType<typeof vi.fn>;
+  field: ReturnType<typeof vi.fn>;
+  search: ReturnType<typeof vi.fn>;
+}
+
 describe("Queries Branch Coverage Expansion", () => {
   let mockCtx: QueryCtx;
   let queryMock: MockQuery;
-  let qMock: {
-    eq: ReturnType<typeof vi.fn>;
-    neq: ReturnType<typeof vi.fn>;
-    gt: ReturnType<typeof vi.fn>;
-    gte: ReturnType<typeof vi.fn>;
-    lt: ReturnType<typeof vi.fn>;
-    lte: ReturnType<typeof vi.fn>;
-    and: ReturnType<typeof vi.fn>;
-    or: ReturnType<typeof vi.fn>;
-    field: ReturnType<typeof vi.fn>;
-    search: ReturnType<typeof vi.fn>;
-  };
+  let qMock: MockQ;
+  let dbGetMock: Mock;
+  let dbQueryMock: Mock;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -139,12 +144,15 @@ describe("Queries Branch Coverage Expansion", () => {
     };
     queryMock = qObj;
 
+    dbGetMock = vi.fn().mockResolvedValue(null);
+    dbQueryMock = vi.fn(
+      () => queryMock as unknown as ReturnType<QueryCtx["db"]["query"]>
+    );
+
     mockCtx = {
       db: {
-        get: vi.fn().mockResolvedValue(null),
-        query: vi.fn(
-          () => queryMock as unknown as ReturnType<QueryCtx["db"]["query"]>
-        ),
+        get: dbGetMock,
+        query: dbQueryMock,
       },
       auth: {
         getUserIdentity: vi.fn(),
@@ -152,13 +160,10 @@ describe("Queries Branch Coverage Expansion", () => {
     } as unknown as QueryCtx;
 
     vi.mocked(countQuery).mockImplementation(async (q) => {
-      const query = q as unknown as MockQuery;
-      // Check if count is a mock function or a real function
-      const countFn = query.count as unknown;
-      if (typeof countFn === "function") {
-        return (await (countFn as () => Promise<number>)()) as number;
+      if (typeof q.count === "function") {
+        return await q.count();
       }
-      const results = await (query.collect as () => Promise<unknown[]>)();
+      const results = await q.collect();
       return results.length;
     });
   });
@@ -234,7 +239,7 @@ describe("Queries Branch Coverage Expansion", () => {
         isDone: true,
         continueCursor: "",
       });
-      vi.mocked(mockCtx.db.get).mockResolvedValue({
+      vi.mocked(dbGetMock).mockResolvedValue({
         _id: "cat1" as Id<"equipmentCategories">,
         name: "Tractor Category",
         isActive: true,
@@ -268,7 +273,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
   describe("getMyBidsHandler sorting", () => {
     it("should sort by ending soonest", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -276,7 +281,7 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
@@ -294,7 +299,7 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      vi.mocked(mockCtx.db.get).mockImplementation(async (id: string) => {
+      vi.mocked(dbGetMock).mockImplementation(async (id: string) => {
         if (id === "a1")
           return {
             _id: id as Id<"auctions">,
@@ -316,7 +321,7 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should handle missing endTime during sorting", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -324,7 +329,7 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
@@ -342,7 +347,7 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      vi.mocked(mockCtx.db.get).mockImplementation(async (id: string) => {
+      vi.mocked(dbGetMock).mockImplementation(async (id: string) => {
         if (id === "a1")
           return {
             _id: id as Id<"auctions">,
@@ -372,7 +377,7 @@ describe("Queries Branch Coverage Expansion", () => {
         isDone: true,
         continueCursor: "",
       });
-      vi.mocked(mockCtx.db.get).mockResolvedValue({
+      vi.mocked(dbGetMock).mockResolvedValue({
         _id: "a1" as Id<"auctions">,
         sellerId: "seller1",
       } as unknown as Doc<"auctions">);
@@ -395,7 +400,7 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
 
       const result = await getAuctionBidsHandler(mockCtx, {
         auctionId: "a1" as Id<"auctions">,
@@ -467,7 +472,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
   describe("getMyBidsHandler branches", () => {
     it("should handle valid numeric cursor", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -475,7 +480,7 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockImplementation(async () => {
         console.log("Mock collect called");
@@ -496,7 +501,7 @@ describe("Queries Branch Coverage Expansion", () => {
           },
         ];
       });
-      vi.mocked(mockCtx.db.get).mockImplementation(async (id: string) => {
+      vi.mocked(dbGetMock).mockImplementation(async (id: string) => {
         console.log("Mock db.get called with:", id);
         return { _id: id, status: "active" } as unknown as Doc<"auctions">;
       });
@@ -509,9 +514,7 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should handle null userId", async () => {
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
-        new Error("Unauthenticated")
-      );
+      vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
       });
@@ -520,7 +523,7 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should handle Unauthenticated error", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -528,9 +531,9 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockImplementation(() => {
-        throw new Error("Unauthenticated");
+        return null;
       });
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -542,7 +545,7 @@ describe("Queries Branch Coverage Expansion", () => {
   describe("Unauthenticated catch blocks", () => {
     it("getMyListingsStatsHandler handles Unauthenticated", async () => {
       const { getMyListingsStatsHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -550,9 +553,9 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockImplementation(() => {
-        throw new Error("Unauthenticated");
+        return null;
       });
       const result = await getMyListingsStatsHandler(mockCtx);
       expect(result.all).toBe(0);
@@ -560,7 +563,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyBidsCountHandler handles Unauthenticated", async () => {
       const { getMyBidsCountHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -568,9 +571,9 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockImplementation(() => {
-        throw new Error("Unauthenticated");
+        return null;
       });
       const result = await getMyBidsCountHandler(mockCtx);
       expect(result).toBe(0);
@@ -578,7 +581,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyListingsCountHandler handles Unauthenticated", async () => {
       const { getMyListingsCountHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -586,9 +589,9 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockImplementation(() => {
-        throw new Error("Unauthenticated");
+        return null;
       });
       const result = await getMyListingsCountHandler(mockCtx, {});
       expect(result).toBe(0);
@@ -596,9 +599,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyListingsHandler handles null userId", async () => {
       const { getMyListingsHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
-        new Error("Unauthenticated")
-      );
+      vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       const result = await getMyListingsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
       });
@@ -608,7 +609,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyListingsHandler handles Unauthenticated", async () => {
       const { getMyListingsHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -616,9 +617,9 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockImplementation(() => {
-        throw new Error("Unauthenticated");
+        return null;
       });
       const result = await getMyListingsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -628,7 +629,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyBidsStatsHandler handles Unauthenticated", async () => {
       const { getMyBidsStatsHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -636,9 +637,9 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockImplementation(() => {
-        throw new Error("Unauthenticated");
+        return null;
       });
       const result = await getMyBidsStatsHandler(mockCtx);
       expect(result.totalActive).toBe(0);
@@ -691,7 +692,7 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
 
       const mapGetSpy = vi
         .spyOn(Map.prototype, "get")
@@ -712,7 +713,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
   describe("CalculateUserBidStats additional branches", () => {
     it("should handle multiple bids and update highest bid/timestamp", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -720,7 +721,7 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
@@ -745,7 +746,7 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      vi.mocked(mockCtx.db.get).mockResolvedValue({
+      vi.mocked(dbGetMock).mockResolvedValue({
         _id: "a1" as Id<"auctions">,
         status: "active",
         currentPrice: 150,
@@ -760,7 +761,7 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should handle null auction in calculateUserBidStats loop", async () => {
-      vi.mocked(authComponent.getAuthUser).mockResolvedValue({
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
         name: "Test User",
@@ -768,7 +769,7 @@ describe("Queries Branch Coverage Expansion", () => {
         emailVerified: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
@@ -779,7 +780,7 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      vi.mocked(mockCtx.db.get).mockResolvedValue(null);
+      vi.mocked(dbGetMock).mockResolvedValue(null);
 
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -791,7 +792,7 @@ describe("Queries Branch Coverage Expansion", () => {
   describe("Catch blocks for non-Unauthenticated errors", () => {
     it("getMyListingsStatsHandler rethrows non-Unauthenticated error", async () => {
       const { getMyListingsStatsHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Database error")
       );
       await expect(getMyListingsStatsHandler(mockCtx)).rejects.toThrow(
@@ -801,7 +802,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyBidsCountHandler rethrows non-Unauthenticated error", async () => {
       const { getMyBidsCountHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Database error")
       );
       await expect(getMyBidsCountHandler(mockCtx)).rejects.toThrow(
@@ -811,7 +812,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyListingsCountHandler rethrows non-Unauthenticated error", async () => {
       const { getMyListingsCountHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Database error")
       );
       await expect(getMyListingsCountHandler(mockCtx, {})).rejects.toThrow(
@@ -821,7 +822,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyListingsHandler rethrows non-Unauthenticated error", async () => {
       const { getMyListingsHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Database error")
       );
       await expect(
@@ -833,7 +834,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getMyBidsStatsHandler rethrows non-Unauthenticated error", async () => {
       const { getMyBidsStatsHandler } = await import("./queries");
-      vi.mocked(authComponent.getAuthUser).mockRejectedValue(
+      vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Database error")
       );
       await expect(getMyBidsStatsHandler(mockCtx)).rejects.toThrow(
