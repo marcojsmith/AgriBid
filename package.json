@@ -18,7 +18,7 @@
     "*.{ts,tsx}": [
       "bunx prettier --write",
       "bunx eslint --fix",
-      "bash -c 'tsc --noEmit'"
+      "bash -c 'tsc -p tsconfig.json --noEmit && tsc -p convex/tsconfig.json --noEmit'"
     ],
     "*.js": [
       "bunx eslint --fix --max-warnings=0"
