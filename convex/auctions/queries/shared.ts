@@ -12,22 +12,45 @@ export { query };
 export type { QueryCtx };
 export { AuctionSummaryValidator };
 
+/**
+ * Bid statistics for a single auction.
+ * All timestamps are in milliseconds since epoch.
+ * Amounts are in dollars (major units).
+ */
 export interface AuctionBidStats {
+  /** Timestamp of the most recent bid in milliseconds */
   lastBidTimestamp: number;
+  /** Highest bid amount in dollars */
   highestBid: number;
+  /** Total number of bids on this auction */
   bidCount: number;
 }
 
+/**
+ * Aggregated bid statistics across all auctions for a user.
+ * Amounts are in dollars (major units).
+ */
 export interface GlobalUserBidStats {
+  /** Number of active auctions the user is currently winning */
   totalActive: number;
+  /** Number of auctions the user has won */
   winningCount: number;
+  /** Number of active auctions where the user has been outbid */
   outbidCount: number;
+  /** Sum of highest bids across all winning positions in dollars */
   totalExposure: number;
 }
 
+/**
+ * Result of calculating user bid statistics.
+ * Contains global aggregates and per-auction breakdowns.
+ */
 export interface CalculateUserBidStatsResult {
+  /** Aggregated statistics across all auctions */
   globalStats: GlobalUserBidStats;
+  /** Map of auctionId to bid stats for that auction */
   auctionStatsMap: Map<string, AuctionBidStats>;
+  /** Map of auctionId to auction document (may be null if auction deleted) */
   auctionsMap: Map<string, Doc<"auctions"> | null>;
 }
 
@@ -116,8 +139,10 @@ export async function calculateUserBidStats(
   return { globalStats, auctionStatsMap, auctionsMap };
 }
 
+/** Auction status values for public auctions */
 export type AuctionStatus = "active" | "sold" | "unsold";
 
+/** Filter options for auction status queries */
 export type StatusFilter = "active" | "closed" | "all";
 
 /**

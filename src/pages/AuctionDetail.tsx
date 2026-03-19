@@ -64,10 +64,13 @@ export default function AuctionDetail() {
     }
 
     try {
+      const normalizedDetails = flagDetails?.trim()
+        ? flagDetails.trim()
+        : undefined;
       const result = await flagAuction({
         auctionId: id as Id<"auctions">,
         reason: flagReason,
-        details: flagDetails ?? undefined,
+        details: normalizedDetails,
       });
 
       if (result.hideTriggered) {
@@ -187,7 +190,9 @@ export default function AuctionDetail() {
             </div>
 
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {auction.description ?? "No description provided."}
+              {(auction.description || "").trim().length
+                ? auction.description
+                : "No description provided."}
             </p>
           </div>
 

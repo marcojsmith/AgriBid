@@ -94,12 +94,25 @@ export const getMyListingsCountHandler = async (
   const userId = await getAuthenticatedUserId(ctx);
   if (!userId) return 0;
 
-  let baseQuery = ctx.db
-    .query("auctions")
-    .withIndex("by_seller", (q) => q.eq("sellerId", userId));
+  let baseQuery;
 
   if (args.status && args.status !== "all") {
-    baseQuery = baseQuery.filter((q) => q.eq(q.field("status"), args.status));
+    const status = args.status as
+      | "draft"
+      | "pending_review"
+      | "active"
+      | "sold"
+      | "unsold"
+      | "rejected";
+    baseQuery = ctx.db
+      .query("auctions")
+      .withIndex("by_seller_status", (q) =>
+        q.eq("sellerId", userId).eq("status", status)
+      );
+  } else {
+    baseQuery = ctx.db
+      .query("auctions")
+      .withIndex("by_seller", (q) => q.eq("sellerId", userId));
   }
 
   return await countQuery(baseQuery);

@@ -126,8 +126,6 @@ export const getActiveAuctionsHandler = async (
   const getFilteredQuery = () => {
     const q = getBaseQuery();
 
-    if (args.search) return q;
-
     return q.filter((f) => {
       const expressions = [];
 
@@ -330,9 +328,12 @@ export const getSellerInfoHandler = async (
   const linkId = resolveUserId(user);
   if (!linkId) return null;
 
+  const sharedUserId = user.userId;
+  if (!sharedUserId) return null;
+
   const profile = await ctx.db
     .query("profiles")
-    .withIndex("by_userId", (q) => q.eq("userId", linkId))
+    .withIndex("by_userId", (q) => q.eq("userId", sharedUserId))
     .unique();
   const [soldAuctions, allListings] = await Promise.all([
     countQuery(

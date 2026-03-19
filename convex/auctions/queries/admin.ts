@@ -261,6 +261,8 @@ export const getEquipmentMetadataHandler = async (
   ctx: QueryCtx,
   args: { paginationOpts: PaginationOptions }
 ) => {
+  await requireAdmin(ctx);
+
   const metadataQuery = ctx.db.query("equipmentMetadata");
   const [results, totalCount] = await Promise.all([
     metadataQuery.paginate(args.paginationOpts),

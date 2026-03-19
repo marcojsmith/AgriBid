@@ -48,7 +48,6 @@ export const getAuctionBidsHandler = async (
 
   const bids = bidsResult.page;
 
-  const MIN_VALID_BIDDER_ID_LENGTH = 10;
   const ANONYMOUS_KEY = "anonymous";
 
   const uniqueBidderIds = Array.from(
@@ -63,9 +62,9 @@ export const getAuctionBidsHandler = async (
 
   await Promise.all(
     uniqueBidderIds.map(async (bidderId) => {
-      const mapKey = bidderId || ANONYMOUS_KEY;
+      const mapKey = bidderId ?? ANONYMOUS_KEY;
 
-      if (!bidderId || bidderId.length < MIN_VALID_BIDDER_ID_LENGTH) {
+      if (!bidderId) {
         bidderNames.set(mapKey, "Anonymous");
         return;
       }
@@ -87,7 +86,7 @@ export const getAuctionBidsHandler = async (
 
   const page = bids.map((bid: Doc<"bids">) => ({
     ...bid,
-    bidderName: bidderNames.get(bid.bidderId) ?? "Anonymous",
+    bidderName: bidderNames.get(bid.bidderId ?? ANONYMOUS_KEY) ?? "Anonymous",
   }));
 
   return {

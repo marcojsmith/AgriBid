@@ -14,7 +14,6 @@ export { UserProfileContext };
  * @returns A React element that renders `children` inside a `UserProfileContext.Provider`.
  */
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  // @ts-expect-error - Type instantiation is excessively deep and possibly infinite
   const userProfile = useQuery(api.users.getMyProfile);
 
   return (
