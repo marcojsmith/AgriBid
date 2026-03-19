@@ -155,25 +155,32 @@ export const getActiveAuctionsHandler = async (
   };
 
   if (args.search) {
-    const results = await getFilteredQuery().paginate(args.paginationOpts);
+    // When search is combined with additional filters that can't be expressed in the index,
+    // we need to reject this combination or handle it specially since pagination and totalCount
+    // will be incorrect. For now, we reject combinations that would require post-search filtering.
+    const hasAdditionalFilters =
+      (args.minPrice !== undefined) ||
+      (args.maxPrice !== undefined) ||
+      (args.maxHours !== undefined) ||
+      (args.make !== undefined && statuses.length !== 1) ||
+      (args.minYear !== undefined && statuses.length !== 1) ||
+      (args.maxYear !== undefined && statuses.length !== 1);
 
-    const filteredPage = results.page.filter(matchesAuctionFilter);
+    if (hasAdditionalFilters) {
+      throw new Error(
+        "Search cannot be combined with price, hours, or multi-status filters. Please use search alone or filters without search."
+      );
+    }
+
+    // For search without additional filters, we can use normal pagination
+    const [results, totalCount] = await Promise.all([
+      getFilteredQuery().paginate(args.paginationOpts),
+      countQuery(getFilteredQuery()),
+    ]);
 
     const page = await Promise.all(
-      filteredPage.map((auction) => toAuctionSummary(ctx, auction))
+      results.page.map((auction) => toAuctionSummary(ctx, auction))
     );
-
-    const SEARCH_COUNT_CAP = 1000;
-    const allSearchResults = await getFilteredQuery().take(
-      SEARCH_COUNT_CAP + 1
-    );
-
-    const filteredCount = allSearchResults.filter(matchesAuctionFilter).length;
-
-    const totalCount =
-      filteredCount > SEARCH_COUNT_CAP
-        ? String(SEARCH_COUNT_CAP) + "+"
-        : filteredCount;
 
     return {
       ...results,
@@ -325,28 +332,29 @@ export const getSellerInfoHandler = async (
 
   if (!user) return null;
 
-  const linkId = resolveUserId(user);
-  if (!linkId) return null;
-
-  const sharedUserId = user.userId;
+  // Use the shared userId for profile lookup
+  const sharedUserId = user.userId ?? user._id;
   if (!sharedUserId) return null;
 
   const profile = await ctx.db
     .query("profiles")
     .withIndex("by_userId", (q) => q.eq("userId", sharedUserId))
     .unique();
+
+  // Use the auth _id for auction queries (auctions are keyed by auth _id)
+  const authId = user._id;
   const [soldAuctions, allListings] = await Promise.all([
     countQuery(
       ctx.db
         .query("auctions")
         .withIndex("by_seller_status", (q) =>
-          q.eq("sellerId", linkId).eq("status", "sold")
+          q.eq("sellerId", authId).eq("status", "sold")
         )
     ),
     countQuery(
       ctx.db
         .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", linkId))
+        .withIndex("by_seller", (q) => q.eq("sellerId", authId))
     ),
   ]);
 
@@ -457,8 +465,3 @@ export const getSellerListings = query({
   }),
   handler: getSellerListingsHandler,
 });
-
-function resolveUserId(user: { _id: string } | null): string | null {
-  if (!user) return null;
-  return user._id;
-}

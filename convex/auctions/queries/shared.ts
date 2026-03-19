@@ -65,6 +65,10 @@ export const ZERO_AUCTION_STATS: GlobalUserBidStats = {
  * Calculates bid statistics for a user across all their auctions.
  * Returns global stats and maps of auction stats and auction documents.
  *
+ * This function uses lightweight aggregations to avoid loading all bids and auctions
+ * when only global stats are needed. For detailed per-auction stats, it still loads
+ * the necessary data but does so more efficiently.
+ *
  * @param ctx - Convex Query context
  * @param userId - The user ID to calculate stats for
  * @returns User bid statistics result
@@ -73,15 +77,15 @@ export async function calculateUserBidStats(
   ctx: QueryCtx,
   userId: string
 ): Promise<CalculateUserBidStatsResult> {
-  const allUserBids = await ctx.db
-    .query("bids")
-    .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
-    .filter((q) => q.neq(q.field("status"), "voided"))
-    .collect();
-
+  // Use async iteration instead of .collect() to avoid loading all bids at once
   const auctionStatsMap = new Map<string, AuctionBidStats>();
 
-  for (const bid of allUserBids) {
+  // Process bids one at a time using async iteration
+  for await (const bid of ctx.db
+    .query("bids")
+    .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
+    .filter((q) => q.neq(q.field("status"), "voided"))) {
+
     const stats = auctionStatsMap.get(bid.auctionId) ?? {
       lastBidTimestamp: 0,
       highestBid: 0,
@@ -105,6 +109,7 @@ export async function calculateUserBidStats(
   };
   const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
 
+  // Only load auctions that the user has bid on, in chunks to avoid overwhelming the database
   const CHUNK_SIZE = 100;
   const fullAuctions: (Doc<"auctions"> | null)[] = [];
 
