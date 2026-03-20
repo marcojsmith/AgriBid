@@ -34,12 +34,20 @@ export default function Support() {
   });
   const createTicket = useMutation(api.support.createTicket);
 
-  const tickets = ticketsResult?.page;
-
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (ticketsResult === undefined) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <LoadingIndicator />
+      </div>
+    );
+  }
+
+  const tickets = ticketsResult.page;
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -123,7 +131,6 @@ export default function Support() {
                     className="h-12 border-2 rounded-xl"
                     required
                     maxLength={100}
-                    disabled={!ticketsResult}
                   />
                 </div>
                 <div className="space-y-2">
@@ -135,7 +142,6 @@ export default function Support() {
                     onValueChange={(v: "low" | "medium" | "high") => {
                       setPriority(v);
                     }}
-                    disabled={!ticketsResult}
                   >
                     <SelectTrigger
                       aria-label="Priority"
@@ -177,13 +183,12 @@ export default function Support() {
                   className="min-h-[150px] border-2 rounded-xl resize-none"
                   required
                   maxLength={2000}
-                  disabled={!ticketsResult}
                 />
               </div>
               <Button
                 type="submit"
                 className="w-full h-14 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-primary/20"
-                disabled={isSubmitting || tickets === undefined}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <LoadingIndicator size="sm" className="border-white" />
@@ -201,53 +206,45 @@ export default function Support() {
             My Tickets
           </h2>
           <div className="space-y-4">
-            {ticketsResult === undefined ? (
-              <div className="flex justify-center p-8">
-                <LoadingIndicator size="sm" />
-              </div>
-            ) : (
-              <>
-                {tickets?.map((ticket) => (
-                  <Card
-                    key={ticket._id}
-                    className="p-4 border-2 hover:border-primary/40 transition-all"
+            {tickets.map((ticket) => (
+              <Card
+                key={ticket._id}
+                className="p-4 border-2 hover:border-primary/40 transition-all"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <Badge
+                    variant={
+                      ticket.status === "open" ? "destructive" : "outline"
+                    }
+                    className="text-[9px] font-black uppercase"
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge
-                        variant={
-                          ticket.status === "open" ? "destructive" : "outline"
-                        }
-                        className="text-[9px] font-black uppercase"
-                      >
-                        {ticket.status}
-                      </Badge>
-                      <span className="text-[9px] font-mono text-muted-foreground uppercase">
-                        {new Date(ticket.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-sm mb-1">{ticket.subject}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {ticket.message}
-                    </p>
-                    {ticket.status === "resolved" && (
-                      <div className="mt-3 pt-3 border-t flex items-center gap-2 text-green-600">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span className="text-[10px] font-black uppercase">
-                          Resolved by Admin
-                        </span>
-                      </div>
-                    )}
-                  </Card>
-                ))}
-                {tickets?.length === 0 && (
-                  <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">
-                    <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
-                    <p className="text-xs font-black uppercase text-muted-foreground">
-                      No active tickets
-                    </p>
+                    {ticket.status}
+                  </Badge>
+                  <span className="text-[9px] font-mono text-muted-foreground uppercase">
+                    {new Date(ticket.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <h3 className="font-bold text-sm mb-1">{ticket.subject}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {ticket.message}
+                </p>
+                {ticket.status === "resolved" && (
+                  <div className="mt-3 pt-3 border-t flex items-center gap-2 text-green-600">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span className="text-[10px] font-black uppercase">
+                      Resolved by Admin
+                    </span>
                   </div>
                 )}
-              </>
+              </Card>
+            ))}
+            {tickets.length === 0 && (
+              <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">
+                <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-xs font-black uppercase text-muted-foreground">
+                  No active tickets
+                </p>
+              </div>
             )}
           </div>
         </div>

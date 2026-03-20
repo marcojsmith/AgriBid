@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { DashboardListSkeleton } from "@/components/DashboardListSkeleton";
 import { formatCurrency } from "@/lib/currency";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -170,7 +170,7 @@ export default function MyBids() {
     { initialNumItems: 50 }
   ); // Higher limit for client filtering
 
-  const stats = serverStats || {
+  const stats = serverStats ?? {
     totalActive: 0,
     winningCount: 0,
     outbidCount: 0,
@@ -195,7 +195,7 @@ export default function MyBids() {
     // Sort
     if (sortBy === "recent") {
       result.sort(
-        (a, b) => (b.lastBidTimestamp || 0) - (a.lastBidTimestamp || 0)
+        (a, b) => (b.lastBidTimestamp ?? 0) - (a.lastBidTimestamp ?? 0)
       );
     } else if (sortBy === "bid") {
       result.sort((a, b) => b.myHighestBid - a.myHighestBid);
@@ -209,7 +209,7 @@ export default function MyBids() {
   if (status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
-        <LoadingIndicator />
+        <DashboardListSkeleton variant="bids" />
       </div>
     );
   }
@@ -514,7 +514,9 @@ export default function MyBids() {
             {status === "CanLoadMore" ? (
               <Button
                 variant="outline"
-                onClick={() => loadMore(10)}
+                onClick={() => {
+                  loadMore(10);
+                }}
                 className="h-12 px-10 rounded-xl font-black uppercase tracking-widest border-2 hover:bg-primary hover:text-white transition-[background-color,color,border-color]"
               >
                 Load More

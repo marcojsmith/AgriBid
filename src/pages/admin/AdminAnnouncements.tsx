@@ -89,7 +89,7 @@ export default function AdminAnnouncements() {
     }
   };
 
-  if (!announcementsResult || !adminStats) {
+  if (!announcementsResult || !adminStats || announcementStats === undefined) {
     return (
       <AdminLayout
         title="Global Announcements"
@@ -195,12 +195,12 @@ export default function AdminAnnouncements() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
             label="Total Sent"
-            value={announcementStats?.total ?? 0}
+            value={announcementStats.total}
             icon={<History className="h-5 w-5" />}
           />
           <StatCard
             label="Last 7 Days"
-            value={announcementStats?.recent ?? 0}
+            value={announcementStats.recent}
             icon={<Plus className="h-5 w-5" />}
             color="text-primary"
           />

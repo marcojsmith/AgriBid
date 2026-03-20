@@ -13,6 +13,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/auction";
 
@@ -32,7 +33,7 @@ export default function Profile() {
     (myProfile?.userId === userId || myProfile?._id === userId);
 
   const sellerInfo = useQuery(api.auctions.getSellerInfo, {
-    sellerId: userId || "",
+    sellerId: userId ?? "",
   });
 
   const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
@@ -43,14 +44,14 @@ export default function Profile() {
     loadMore,
   } = usePaginatedQuery(
     api.auctions.getSellerListings,
-    { userId: userId || "" },
+    { userId: userId ?? "" },
     { initialNumItems: 6 }
   );
 
   if (sellerInfo === undefined || status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
-        <LoadingIndicator />
+        <ProfileSkeleton />
       </div>
     );
   }
@@ -72,7 +73,9 @@ export default function Profile() {
     );
   }
 
-  const memberSince = new Date(sellerInfo.createdAt).getFullYear();
+  const memberSince = new Date(
+    sellerInfo.createdAt as string | number | Date
+  ).getFullYear();
   const activeListings = listings.filter((l) => l.status === "active");
   const soldListings = listings.filter((l) => l.status === "sold");
 
@@ -213,16 +216,14 @@ export default function Profile() {
       {(status === "CanLoadMore" || status === "LoadingMore") && (
         <div className="flex flex-col items-center gap-4 pt-8">
           <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
-            Showing {listings.length}
-            {(sellerInfo?.totalListings ?? listings.length) > 0
-              ? ` of ${sellerInfo?.totalListings ?? listings.length}`
-              : ""}{" "}
-            Listings
+            Showing {listings.length} of {sellerInfo.totalListings} Listings
           </p>
           <Button
             variant="outline"
             size="lg"
-            onClick={() => loadMore(6)}
+            onClick={() => {
+              loadMore(6);
+            }}
             disabled={status === "LoadingMore"}
             className="rounded-2xl border-2 px-12 font-black uppercase tracking-widest"
           >
