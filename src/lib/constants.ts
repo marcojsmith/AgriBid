@@ -60,3 +60,24 @@ export type KYCStatus = (typeof KYC_STATUS)[keyof typeof KYC_STATUS];
  * Default label for uncategorized equipment.
  */
 export const UNCATEGORIZED_LABEL = "Uncategorized";
+
+/**
+ * Pagination constants for queries.
+ */
+export const PAGINATION_INITIAL_ITEMS = 12;
+export const PAGINATION_LOAD_MORE_ITEMS = 12;
+export const DASHBOARD_PAGINATION_INITIAL_ITEMS = 50;
+export const DASHBOARD_PAGINATION_LOAD_MORE_ITEMS = 10;
+
+/**
+ * Time constants in milliseconds.
+ */
+export const MS_PER_SECOND = 1000;
+export const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+export const MS_PER_DAY = 24 * MS_PER_HOUR;
+
+/**
+ * Auction duration constants.
+ */
+export const DEFAULT_AUCTION_DURATION_DAYS = 7;

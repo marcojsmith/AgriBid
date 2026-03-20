@@ -14,19 +14,28 @@ import {
 import { normalizeImages, deleteAuctionImages } from "../lib/storage";
 import { logAudit, updateCounter } from "../admin_utils";
 import { validateAuctionStatus } from "./helpers";
-import type { Id } from "../_generated/dataModel";
+import {
+  MAX_ADDITIONAL_IMAGES,
+  AUCTION_MIN_DURATION_DAYS,
+  AUCTION_MAX_DURATION_DAYS,
+  PRICE_THRESHOLD_FOR_INCREMENT,
+  SMALL_INCREMENT_AMOUNT,
+  LARGE_INCREMENT_AMOUNT,
+  AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
+  MAX_BULK_UPDATE_SIZE,
+  AUCTION_DEFAULT_DURATION_DAYS,
+  MS_PER_DAY,
+} from "../constants";
+import type { Id, Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
 
 const EDITABLE_STATUSES = ["draft", "pending_review"] as const;
 type EditableStatus = (typeof EDITABLE_STATUSES)[number];
 
-const MAX_BULK_UPDATE_SIZE = 50;
-
 /**
  * Result type for closeAuctionEarly mutation.
  */
-interface CloseAuctionEarlyResult {
+interface EarlyClosureResult {
   success: boolean;
   finalStatus: string;
   winnerId?: string;
@@ -70,7 +79,7 @@ interface AuctionUpdates {
 
 /**
  * Ensures an auction can be edited (must be in draft or pending_review).
- * @param auction
+ * @param auction - The auction document to check.
  */
 function assertEditable(auction: Doc<"auctions">): void {
   if (!EDITABLE_STATUSES.includes(auction.status as EditableStatus)) {
@@ -82,13 +91,23 @@ function assertEditable(auction: Doc<"auctions">): void {
 
 /**
  * Ensures the caller owns the auction.
- * @param auction
- * @param userId
+ * @param auction - The auction document to check.
+ * @param userId - The ID of the user to check ownership against.
  */
 function assertOwnership(auction: Doc<"auctions">, userId: string): void {
   if (auction.sellerId !== userId) {
     throw new ConvexError("You can only modify your own auctions");
   }
+}
+
+/**
+ * Checks if a string or array exists and is not empty.
+ * @param value - The value to check.
+ * @returns True if the value exists and is non-empty.
+ */
+function isNonEmpty(value: string | string[] | undefined): boolean {
+  if (value === undefined) return false;
+  return value.length > 0;
 }
 
 /**
@@ -113,13 +132,11 @@ function validateAuctionBeforePublish(auction: Doc<"auctions">): void {
 
   const hasImages = Array.isArray(auction.images)
     ? auction.images.length > 0
-    : !!(
-        auction.images.front ||
-        auction.images.engine ||
-        auction.images.cabin ||
-        auction.images.rear ||
-        (auction.images.additional && auction.images.additional.length > 0)
-      );
+    : isNonEmpty(auction.images.front) ||
+      isNonEmpty(auction.images.engine) ||
+      isNonEmpty(auction.images.cabin) ||
+      isNonEmpty(auction.images.rear) ||
+      isNonEmpty(auction.images.additional);
 
   if (!hasImages) {
     throw new ConvexError("At least one image is required before submitting");
@@ -127,27 +144,38 @@ function validateAuctionBeforePublish(auction: Doc<"auctions">): void {
 }
 
 /**
+ * Helper to map auction status to its corresponding counter field.
+ * @param status - The auction status.
+ * @returns The counter field name or undefined.
+ */
+function getCounterKey(
+  status: string
+): "active" | "pending" | "draft" | undefined {
+  switch (status) {
+    case "active":
+      return "active";
+    case "pending_review":
+      return "pending";
+    case "draft":
+      return "draft";
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Update global auction counters when an auction changes status.
- * @param ctx
- * @param oldStatus
- * @param newStatus
+ * @param ctx - The mutation context.
+ * @param oldStatus - The previous status of the auction.
+ * @param newStatus - The new status of the auction.
  */
 async function adjustStatusCounters(
   ctx: MutationCtx,
   oldStatus: string,
   newStatus: string
 ) {
-  const statusToCounterKey: Record<
-    string,
-    "active" | "pending" | "draft" | undefined
-  > = {
-    active: "active",
-    pending_review: "pending",
-    draft: "draft",
-  };
-
-  const oldKey = statusToCounterKey[oldStatus];
-  const newKey = statusToCounterKey[newStatus];
+  const oldKey = getCounterKey(oldStatus);
+  const newKey = getCounterKey(newStatus);
 
   if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
   if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
@@ -155,7 +183,7 @@ async function adjustStatusCounters(
 
 /**
  * Handler for generating a storage upload URL.
- * @param ctx
+ * @param ctx - The mutation context.
  * @returns Promise<string>
  */
 export const generateUploadUrlHandler = async (ctx: MutationCtx) => {
@@ -171,9 +199,9 @@ export const generateUploadUrl = mutation({
 
 /**
  * Handler for deleting a storage item.
- * @param ctx
- * @param args
- * @param args.storageId
+ * @param ctx - The mutation context.
+ * @param args - The arguments for the deletion.
+ * @param args.storageId - The ID of the storage item to delete.
  * @returns Promise<null>
  */
 export const deleteUploadHandler = async (
@@ -202,32 +230,32 @@ export const deleteUpload = mutation({
 
 /**
  * Handler for creating a new auction.
- * @param ctx
- * @param args
- * @param args.title
- * @param args.categoryId
- * @param args.make
- * @param args.model
- * @param args.year
- * @param args.operatingHours
- * @param args.location
- * @param args.description
- * @param args.startingPrice
- * @param args.reservePrice
- * @param args.durationDays
- * @param args.images
- * @param args.images.front
- * @param args.images.engine
- * @param args.images.cabin
- * @param args.images.rear
- * @param args.images.additional
- * @param args.conditionChecklist
- * @param args.conditionChecklist.engine
- * @param args.conditionChecklist.hydraulics
- * @param args.conditionChecklist.tires
- * @param args.conditionChecklist.serviceHistory
- * @param args.conditionChecklist.notes
- * @param args.isDraft
+ * @param ctx - The mutation context.
+ * @param args - The arguments for creating an auction.
+ * @param args.title - The title of the auction.
+ * @param args.categoryId - The ID of the category.
+ * @param args.make - The make of the equipment.
+ * @param args.model - The model of the equipment.
+ * @param args.year - The year of the equipment.
+ * @param args.operatingHours - The operating hours.
+ * @param args.location - The location of the equipment.
+ * @param args.description - The description of the auction.
+ * @param args.startingPrice - The starting price.
+ * @param args.reservePrice - The reserve price.
+ * @param args.durationDays - The duration of the auction in days.
+ * @param args.images - The images for the auction.
+ * @param args.images.front - The front image.
+ * @param args.images.engine - The engine image.
+ * @param args.images.cabin - The cabin image.
+ * @param args.images.rear - The rear image.
+ * @param args.images.additional - Additional images.
+ * @param args.conditionChecklist - The condition checklist.
+ * @param args.conditionChecklist.engine - Engine condition.
+ * @param args.conditionChecklist.hydraulics - Hydraulics condition.
+ * @param args.conditionChecklist.tires - Tires condition.
+ * @param args.conditionChecklist.serviceHistory - Service history.
+ * @param args.conditionChecklist.notes - Additional notes.
+ * @param args.isDraft - Whether to create as a draft.
  * @returns Promise<Id<"auctions">>
  */
 export const createAuctionHandler = async (
@@ -265,12 +293,22 @@ export const createAuctionHandler = async (
 
   const { durationDays, isDraft, ...restArgs } = args;
 
-  if (durationDays <= 0 || durationDays > 365) {
-    throw new ConvexError("Invalid duration: must be between 1 and 365 days");
+  if (
+    durationDays < AUCTION_MIN_DURATION_DAYS ||
+    durationDays > AUCTION_MAX_DURATION_DAYS
+  ) {
+    throw new ConvexError(
+      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
+    );
   }
 
-  if (restArgs.images.additional && restArgs.images.additional.length > 6) {
-    throw new ConvexError("Additional images limit exceeded (max 6)");
+  if (
+    restArgs.images.additional &&
+    restArgs.images.additional.length > MAX_ADDITIONAL_IMAGES
+  ) {
+    throw new ConvexError(
+      `Additional images limit exceeded (max ${MAX_ADDITIONAL_IMAGES.toString()})`
+    );
   }
 
   // Validate categoryId exists
@@ -289,7 +327,10 @@ export const createAuctionHandler = async (
       sellerId: userId,
       status,
       currentPrice: args.startingPrice,
-      minIncrement: args.startingPrice < 10000 ? 100 : 500,
+      minIncrement:
+        args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+          ? SMALL_INCREMENT_AMOUNT
+          : LARGE_INCREMENT_AMOUNT,
       durationDays: durationDays,
     } as unknown as Doc<"auctions">);
   }
@@ -300,7 +341,10 @@ export const createAuctionHandler = async (
     sellerId: userId,
     status,
     currentPrice: args.startingPrice,
-    minIncrement: args.startingPrice < 10000 ? 100 : 500,
+    minIncrement:
+      args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+        ? SMALL_INCREMENT_AMOUNT
+        : LARGE_INCREMENT_AMOUNT,
     durationDays: durationDays,
   });
 
@@ -353,32 +397,32 @@ export const createAuction = mutation({
 
 /**
  * Handler for saving a draft auction.
- * @param ctx
- * @param args
- * @param args.auctionId
- * @param args.title
- * @param args.categoryId
- * @param args.make
- * @param args.model
- * @param args.year
- * @param args.operatingHours
- * @param args.location
- * @param args.description
- * @param args.startingPrice
- * @param args.reservePrice
- * @param args.durationDays
- * @param args.images
- * @param args.images.front
- * @param args.images.engine
- * @param args.images.cabin
- * @param args.images.rear
- * @param args.images.additional
- * @param args.conditionChecklist
- * @param args.conditionChecklist.engine
- * @param args.conditionChecklist.hydraulics
- * @param args.conditionChecklist.tires
- * @param args.conditionChecklist.serviceHistory
- * @param args.conditionChecklist.notes
+ * @param ctx - The mutation context.
+ * @param args - The arguments for saving a draft.
+ * @param args.auctionId - The optional ID of the auction to update.
+ * @param args.title - The title of the auction.
+ * @param args.categoryId - The ID of the category.
+ * @param args.make - The make of the equipment.
+ * @param args.model - The model of the equipment.
+ * @param args.year - The year of the equipment.
+ * @param args.operatingHours - The operating hours.
+ * @param args.location - The location of the equipment.
+ * @param args.description - The description of the auction.
+ * @param args.startingPrice - The starting price.
+ * @param args.reservePrice - The reserve price.
+ * @param args.durationDays - The duration of the auction in days.
+ * @param args.images - The images for the auction.
+ * @param args.images.front - The front image.
+ * @param args.images.engine - The engine image.
+ * @param args.images.cabin - The cabin image.
+ * @param args.images.rear - The rear image.
+ * @param args.images.additional - Additional images.
+ * @param args.conditionChecklist - The condition checklist.
+ * @param args.conditionChecklist.engine - Engine condition.
+ * @param args.conditionChecklist.hydraulics - Hydraulics condition.
+ * @param args.conditionChecklist.tires - Tires condition.
+ * @param args.conditionChecklist.serviceHistory - Service history.
+ * @param args.conditionChecklist.notes - Additional notes.
  * @returns Promise<Id<"auctions">>
  */
 export const saveDraftHandler = async (
@@ -416,13 +460,23 @@ export const saveDraftHandler = async (
 
   const { auctionId, durationDays, ...restArgs } = args;
 
-  if (durationDays <= 0 || durationDays > 365) {
-    throw new ConvexError("Invalid duration: must be between 1 and 365 days");
+  if (
+    durationDays < AUCTION_MIN_DURATION_DAYS ||
+    durationDays > AUCTION_MAX_DURATION_DAYS
+  ) {
+    throw new ConvexError(
+      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
+    );
   }
 
-  // Enforce 6-image cap for additional images
-  if (restArgs.images.additional && restArgs.images.additional.length > 6) {
-    restArgs.images.additional = restArgs.images.additional.slice(0, 6);
+  // Enforce image cap for additional images
+  if (
+    restArgs.images.additional &&
+    restArgs.images.additional.length > MAX_ADDITIONAL_IMAGES
+  ) {
+    throw new ConvexError(
+      `Additional images limit exceeded (max ${MAX_ADDITIONAL_IMAGES.toString()})`
+    );
   }
 
   const images = normalizeImages(restArgs.images);
@@ -457,7 +511,10 @@ export const saveDraftHandler = async (
       images,
       durationDays,
       currentPrice: restArgs.startingPrice,
-      minIncrement: restArgs.startingPrice < 10000 ? 100 : 500,
+      minIncrement:
+        restArgs.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+          ? SMALL_INCREMENT_AMOUNT
+          : LARGE_INCREMENT_AMOUNT,
     });
 
     return validAuctionId;
@@ -469,7 +526,10 @@ export const saveDraftHandler = async (
     sellerId: userId,
     status: "draft",
     currentPrice: args.startingPrice,
-    minIncrement: args.startingPrice < 10000 ? 100 : 500,
+    minIncrement:
+      args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+        ? SMALL_INCREMENT_AMOUNT
+        : LARGE_INCREMENT_AMOUNT,
     durationDays,
   });
 
@@ -546,17 +606,22 @@ export const updateAuctionHandler = async (
   const updates: AuctionUpdates = { ...args.updates };
 
   // If startingPrice is updated, recompute derived fields
-  if (updates.startingPrice !== undefined && updates.startingPrice !== null) {
+  if (updates.startingPrice !== undefined) {
     updates.currentPrice = updates.startingPrice;
-    updates.minIncrement = updates.startingPrice < 10000 ? 100 : 500;
+    updates.minIncrement =
+      updates.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+        ? SMALL_INCREMENT_AMOUNT
+        : LARGE_INCREMENT_AMOUNT;
   }
 
   if (
     updates.durationDays !== undefined &&
-    updates.durationDays !== null &&
-    (updates.durationDays <= 0 || updates.durationDays > 365)
+    (updates.durationDays < AUCTION_MIN_DURATION_DAYS ||
+      updates.durationDays > AUCTION_MAX_DURATION_DAYS)
   ) {
-    throw new ConvexError("Invalid duration: must be between 1 and 365 days");
+    throw new ConvexError(
+      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
+    );
   }
 
   // Merge images if provided to prevent overwriting other slots
@@ -580,8 +645,13 @@ export const updateAuctionHandler = async (
       ...updates.images,
     };
 
-    if (mergedImages.additional && mergedImages.additional.length > 6) {
-      throw new ConvexError("Additional images limit exceeded (max 6)");
+    if (
+      mergedImages.additional &&
+      mergedImages.additional.length > MAX_ADDITIONAL_IMAGES
+    ) {
+      throw new ConvexError(
+        `Additional images limit exceeded (max ${MAX_ADDITIONAL_IMAGES.toString()})`
+      );
     }
     updates.images = mergedImages;
   }
@@ -710,7 +780,7 @@ export const publishAuction = mutation({
  *
  * @param ctx - Mutation context
  * @param args - Arguments including auctionId
- * @param args.auctionId
+ * @param args.auctionId - The ID of the draft auction to delete.
  * @returns Object with success boolean
  */
 export const deleteDraftHandler = async (
@@ -821,9 +891,9 @@ export const uploadConditionReport = mutation({
 
 /**
  * Delete a condition report from an auction.
- * @param ctx
- * @param args
- * @param args.auctionId
+ * @param ctx - The mutation context.
+ * @param args - The arguments for the deletion.
+ * @param args.auctionId - The ID of the auction to remove the report from.
  * @returns Promise<{ success: boolean }>
  */
 export const deleteConditionReportHandler = async (
@@ -861,16 +931,14 @@ export const deleteConditionReport = mutation({
   handler: deleteConditionReportHandler,
 });
 
-const FLAG_THRESHOLD = 3;
-
 /**
  * Flag an auction for review.
- * Auto-hides auction if it receives 3 or more flags.
- * @param ctx
- * @param args
- * @param args.auctionId
- * @param args.reason
- * @param args.details
+ * Auto-hides auction if it receives enough flags.
+ * @param ctx - The mutation context.
+ * @param args - The arguments for flagging an auction.
+ * @param args.auctionId - The ID of the auction to flag.
+ * @param args.reason - The reason for flagging.
+ * @param args.details - Optional details about the flag.
  * @returns Promise<{ success: boolean; hideTriggered: boolean }>
  */
 export const flagAuctionHandler = async (
@@ -917,7 +985,7 @@ export const flagAuctionHandler = async (
   let hideTriggered = false;
 
   const pendingFlags = existingFlags.filter((f) => f.status === "pending");
-  if (pendingFlags.length + 1 >= FLAG_THRESHOLD) {
+  if (pendingFlags.length + 1 >= AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
     if (auction.status === "active") {
       await ctx.db.patch(args.auctionId, {
         status: "pending_review",
@@ -936,7 +1004,7 @@ export const flagAuctionHandler = async (
       targetType: "auction",
       details: JSON.stringify({
         flagCount: pendingFlags.length + 1,
-        threshold: FLAG_THRESHOLD,
+        threshold: AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
         hideTriggered,
         reason: args.reason,
       }),
@@ -963,10 +1031,10 @@ export const flagAuction = mutation({
 
 /**
  * Dismiss a flag (admin only).
- * @param ctx
- * @param args
- * @param args.flagId
- * @param args.dismissalReason
+ * @param ctx - The mutation context.
+ * @param args - The arguments for dismissing a flag.
+ * @param args.flagId - The ID of the flag to dismiss.
+ * @param args.dismissalReason - Optional reason for dismissal.
  * @returns Promise<{ success: boolean; auctionRestored: boolean }>
  */
 export const dismissFlagHandler = async (
@@ -997,11 +1065,7 @@ export const dismissFlagHandler = async (
   let auctionRestored = false;
 
   const auction = await ctx.db.get(flag.auctionId);
-  if (
-    auction &&
-    auction.status === "pending_review" &&
-    auction.hiddenByFlags === true
-  ) {
+  if (auction?.status === "pending_review" && auction.hiddenByFlags === true) {
     const remainingFlags = await ctx.db
       .query("auctionFlags")
       .withIndex("by_auction_status", (q) =>
@@ -1009,7 +1073,7 @@ export const dismissFlagHandler = async (
       )
       .collect();
 
-    if (remainingFlags.length < FLAG_THRESHOLD) {
+    if (remainingFlags.length < AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
       await ctx.db.patch(flag.auctionId, {
         status: "active",
         hiddenByFlags: false,
@@ -1051,11 +1115,11 @@ export const dismissFlag = mutation({
 });
 
 /**
- *
- * @param ctx
- * @param args
- * @param args.auctionId
- * @param args.durationDays
+ * Approve an auction for publication.
+ * @param ctx - The mutation context.
+ * @param args - The arguments for approving an auction.
+ * @param args.auctionId - The ID of the auction to approve.
+ * @param args.durationDays - Optional override for auction duration.
  * @returns Promise<{ success: boolean }>
  */
 export const approveAuctionHandler = async (
@@ -1070,13 +1134,19 @@ export const approveAuctionHandler = async (
     throw new ConvexError("Only auctions in pending_review can be approved");
   }
 
-  const durationDays = args.durationDays ?? auction.durationDays ?? 7;
-  if (durationDays <= 0 || durationDays > 365) {
-    throw new ConvexError("Invalid duration: must be between 1 and 365 days");
+  const durationDays =
+    args.durationDays ?? auction.durationDays ?? AUCTION_DEFAULT_DURATION_DAYS;
+  if (
+    durationDays < AUCTION_MIN_DURATION_DAYS ||
+    durationDays > AUCTION_MAX_DURATION_DAYS
+  ) {
+    throw new ConvexError(
+      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
+    );
   }
 
   const startTime = Date.now();
-  const durationMs = durationDays * 24 * 60 * 60 * 1000;
+  const durationMs = durationDays * MS_PER_DAY;
   const endTime = startTime + durationMs;
 
   await ctx.db.patch(args.auctionId, {
@@ -1099,10 +1169,10 @@ export const approveAuction = mutation({
 });
 
 /**
- *
- * @param ctx
- * @param args
- * @param args.auctionId
+ * Reject an auction during review.
+ * @param ctx - The mutation context.
+ * @param args - The arguments for rejecting an auction.
+ * @param args.auctionId - The ID of the auction to reject.
  * @returns Promise<{ success: boolean }>
  */
 export const rejectAuctionHandler = async (
@@ -1140,22 +1210,22 @@ export const rejectAuction = mutation({
  *
  * @param ctx - Mutation context
  * @param args - Arguments including auctionId and updates
- * @param args.auctionId
- * @param args.updates
- * @param args.updates.title
- * @param args.updates.categoryId
- * @param args.updates.make
- * @param args.updates.model
- * @param args.updates.year
- * @param args.updates.operatingHours
- * @param args.updates.location
- * @param args.updates.description
- * @param args.updates.startingPrice
- * @param args.updates.reservePrice
- * @param args.updates.status
- * @param args.updates.startTime
- * @param args.updates.endTime
- * @param args.updates.currentPrice
+ * @param args.auctionId - The ID of the auction to update.
+ * @param args.updates - The fields to update.
+ * @param args.updates.title - The new title.
+ * @param args.updates.categoryId - The new category ID.
+ * @param args.updates.make - The new make.
+ * @param args.updates.model - The new model.
+ * @param args.updates.year - The new year.
+ * @param args.updates.operatingHours - The new operating hours.
+ * @param args.updates.location - The new location.
+ * @param args.updates.description - The new description.
+ * @param args.updates.startingPrice - The new starting price.
+ * @param args.updates.reservePrice - The new reserve price.
+ * @param args.updates.status - The new status.
+ * @param args.updates.startTime - The new start time.
+ * @param args.updates.endTime - The new end time.
+ * @param args.updates.currentPrice - The new current price.
  * @returns Object with success boolean
  */
 export const adminUpdateAuctionHandler = async (
@@ -1260,15 +1330,15 @@ export const adminUpdateAuction = mutation({
 });
 
 /**
- *
- * @param ctx
- * @param args
- * @param args.auctionIds
- * @param args.updates
- * @param args.updates.status
- * @param args.updates.startTime
- * @param args.updates.endTime
- * @param args.updates.startingPrice
+ * Bulk update multiple auctions (admin only).
+ * @param ctx - The mutation context.
+ * @param args - The arguments for bulk update.
+ * @param args.auctionIds - The IDs of the auctions to update.
+ * @param args.updates - The fields to update.
+ * @param args.updates.status - The new status.
+ * @param args.updates.startTime - The new start time.
+ * @param args.updates.endTime - The new end time.
+ * @param args.updates.startingPrice - The new starting price.
  * @returns Promise<{ success: boolean; updated: Id<"auctions">[]; skipped: Id<"auctions">[] }>
  */
 export const bulkUpdateAuctionsHandler = async (
@@ -1293,7 +1363,7 @@ export const bulkUpdateAuctionsHandler = async (
 
   if (args.auctionIds.length > MAX_BULK_UPDATE_SIZE) {
     throw new Error(
-      `Bulk update exceeds limit of ${MAX_BULK_UPDATE_SIZE} auctions`
+      `Bulk update exceeds limit of ${MAX_BULK_UPDATE_SIZE.toString()} auctions`
     );
   }
 
@@ -1372,15 +1442,15 @@ export const bulkUpdateAuctions = mutation({
 
 /**
  * Admin mutation to manually close an active auction early.
- * @param ctx
- * @param args
- * @param args.auctionId
- * @returns Promise<CloseAuctionEarlyResult>
+ * @param ctx - The mutation context.
+ * @param args - The arguments for closing an auction.
+ * @param args.auctionId - The ID of the auction to close.
+ * @returns Promise<EarlyClosureResult>
  */
 export const closeAuctionEarlyHandler = async (
   ctx: MutationCtx,
   args: { auctionId: Id<"auctions"> }
-): Promise<CloseAuctionEarlyResult> => {
+): Promise<EarlyClosureResult> => {
   try {
     await requireAdmin(ctx);
   } catch (error) {
@@ -1448,10 +1518,10 @@ export const closeAuctionEarlyHandler = async (
     highestBid !== undefined &&
     highestBid.amount >= auction.reservePrice;
 
-  if (hasBids && reserveMet) {
+  if (hasBids && reserveMet && highestBid) {
     finalStatus = "sold";
-    winnerId = highestBid!.bidderId;
-    winningAmount = highestBid!.amount;
+    winnerId = highestBid.bidderId;
+    winningAmount = highestBid.amount;
   } else {
     finalStatus = "unsold";
   }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
 import {
   getMinIncrement,
@@ -8,6 +8,8 @@ import {
   getProxyBid,
   getMyProxyBidHandler,
 } from "./proxy_bidding";
+import { getAuthUser } from "../lib/auth";
+import type { AuthUser } from "../auth";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -15,63 +17,31 @@ vi.mock("../lib/auth", () => ({
   getAuthUser: vi.fn(),
 }));
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
-    get: ReturnType<typeof vi.fn>;
-    query: ReturnType<typeof vi.fn>;
-    insert: ReturnType<typeof vi.fn>;
-    patch: ReturnType<typeof vi.fn>;
+    get: Mock;
+    query: Mock;
+    insert: Mock;
+    patch: Mock;
   };
-};
-
-interface IndexQuery {
-  eq: ReturnType<typeof vi.fn>;
-  lte: ReturnType<typeof vi.fn>;
-  gt: ReturnType<typeof vi.fn>;
-  lt: ReturnType<typeof vi.fn>;
-  gte: ReturnType<typeof vi.fn>;
 }
 
 interface QueryMock {
-  withIndex: ReturnType<typeof vi.fn>;
-  filter: ReturnType<typeof vi.fn>;
-  order: ReturnType<typeof vi.fn>;
-  first: ReturnType<typeof vi.fn>;
-  unique: ReturnType<typeof vi.fn>;
-  collect: ReturnType<typeof vi.fn>;
-  paginate: ReturnType<typeof vi.fn>;
+  withIndex: Mock;
+  filter: Mock;
+  order: Mock;
+  first: Mock;
+  unique: Mock;
+  collect: Mock;
+  paginate: Mock;
 }
 
 const createMockQuery = (
   results: Record<string, unknown>[] = []
 ): QueryMock => {
   const query: QueryMock = {
-    withIndex: vi.fn((_index: string, cb?: (q: IndexQuery) => void) => {
-      if (cb) {
-        cb({
-          eq: vi.fn().mockReturnThis(),
-          lte: vi.fn().mockReturnThis(),
-          gt: vi.fn().mockReturnThis(),
-          lt: vi.fn().mockReturnThis(),
-          gte: vi.fn().mockReturnThis(),
-        });
-      }
-      return query;
-    }),
-    filter: vi.fn((cb: (q: unknown) => unknown) => {
-      if (cb) {
-        cb({
-          eq: vi.fn().mockReturnThis(),
-          neq: vi.fn().mockReturnThis(),
-          gt: vi.fn().mockReturnThis(),
-          lt: vi.fn().mockReturnThis(),
-          gte: vi.fn().mockReturnThis(),
-          lte: vi.fn().mockReturnThis(),
-          field: vi.fn().mockReturnThis(),
-        } as Record<string, unknown>);
-      }
-      return query;
-    }),
+    withIndex: vi.fn().mockReturnThis(),
+    filter: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     first: vi.fn().mockResolvedValue(results[0] || null),
     unique: vi.fn().mockResolvedValue(results[0] || null),
@@ -267,9 +237,9 @@ describe("Proxy Bidding Coverage", () => {
         status: "active",
         startingPrice: 1000,
       } as Doc<"auctions">;
-      const recentBid = { amount: 1000 };
+      const recentBid: Record<string, unknown> = { amount: 1000 };
       mockCtx.db.get.mockResolvedValue(auction);
-      mockCtx.db.query.mockImplementation((table) => {
+      mockCtx.db.query.mockImplementation((table: string) => {
         if (table === "bids") return createMockQuery([recentBid]);
         return createMockQuery();
       });
@@ -372,7 +342,7 @@ describe("Proxy Bidding Coverage", () => {
         auctionId: "a1",
         bidderId: "u1",
         amount: 1100,
-        timestamp: expect.any(Number),
+        timestamp: expect.any(Number) as number,
         status: "valid",
       });
     });
@@ -405,7 +375,7 @@ describe("Proxy Bidding Coverage", () => {
         auctionId: "a1",
         bidderId: "u1",
         maxBid: 2000,
-        updatedAt: expect.any(Number),
+        updatedAt: expect.any(Number) as number,
       });
     });
 
@@ -662,7 +632,6 @@ describe("Proxy Bidding Coverage", () => {
 
   describe("getMyProxyBidHandler", () => {
     it("should return null if user not authenticated", async () => {
-      const { getAuthUser } = await import("../lib/auth");
       vi.mocked(getAuthUser).mockResolvedValue(null);
 
       const result = await getMyProxyBidHandler(
@@ -674,12 +643,11 @@ describe("Proxy Bidding Coverage", () => {
     });
 
     it("should return proxy bid for authenticated user", async () => {
-      const { getAuthUser } = await import("../lib/auth");
       vi.mocked(getAuthUser).mockResolvedValue({
         userId: "u1",
         _id: "u1",
         email: "test@example.com",
-      });
+      } as AuthUser);
 
       const proxyBid = {
         _id: "p1" as Id<"proxy_bids">,
@@ -701,11 +669,10 @@ describe("Proxy Bidding Coverage", () => {
     });
 
     it("should fallback to _id if userId is missing", async () => {
-      const { getAuthUser } = await import("../lib/auth");
       vi.mocked(getAuthUser).mockResolvedValue({
         _id: "u1",
         email: "test@example.com",
-      });
+      } as AuthUser);
 
       const mockQuery = createMockQuery([]);
       mockCtx.db.query.mockReturnValue(mockQuery);

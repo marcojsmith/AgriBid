@@ -128,6 +128,7 @@ describe("MyListings Page", () => {
     active: 1,
     sold: 0,
     unsold: 0,
+    rejected: 0,
   };
 
   const mockListings = [

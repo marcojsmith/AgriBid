@@ -1,3 +1,5 @@
+import { MS_PER_DAY, DEFAULT_AUCTION_DURATION_DAYS } from "@/lib/constants";
+
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 
 const now = Date.now();
@@ -10,7 +12,7 @@ const now = Date.now();
  * @returns Mock profile document
  */
 export const createMockProfile = (
-  userId: string = "user123",
+  userId = "user123",
   role: "buyer" | "seller" | "admin" = "buyer",
   overrides: Partial<Doc<"profiles">> = {}
 ): Doc<"profiles"> => {
@@ -54,9 +56,9 @@ export const createMockAuction = (
     startingPrice: 45000,
     currentPrice: 47500,
     minIncrement: 100,
-    startTime: now - 86400000,
-    endTime: now + 86400000,
-    durationDays: 7,
+    startTime: now - MS_PER_DAY,
+    endTime: now - MS_PER_DAY + DEFAULT_AUCTION_DURATION_DAYS * MS_PER_DAY,
+    durationDays: DEFAULT_AUCTION_DURATION_DAYS,
     sellerId: "seller123",
     status: "active",
     winnerId: undefined,
@@ -86,13 +88,13 @@ export const createMockAuction = (
  * @returns Mock bid document
  */
 export const createMockBid = (
-  auctionId: string = "auction123",
-  bidderId: string = "bidder123",
-  amount: number = 50000,
+  auctionId = "auction123",
+  bidderId = "bidder123",
+  amount = 50000,
   overrides: Partial<Doc<"bids">> = {}
 ): Doc<"bids"> => {
   const base: Doc<"bids"> = {
-    _id: `bid_${now}` as Id<"bids">,
+    _id: `bid_${now.toString()}` as Id<"bids">,
     _creationTime: now,
     auctionId: auctionId as Id<"auctions">,
     bidderId,
@@ -112,13 +114,13 @@ export const createMockBid = (
  * @returns Mock proxy bid document
  */
 export const createMockProxyBid = (
-  auctionId: string = "auction123",
-  bidderId: string = "bidder123",
-  maxBid: number = 55000,
+  auctionId = "auction123",
+  bidderId = "bidder123",
+  maxBid = 55000,
   overrides: Partial<Doc<"proxy_bids">> = {}
 ): Doc<"proxy_bids"> => {
   const base: Doc<"proxy_bids"> = {
-    _id: `proxy_${now}` as Id<"proxy_bids">,
+    _id: `proxy_${now.toString()}` as Id<"proxy_bids">,
     _creationTime: now,
     auctionId: auctionId as Id<"auctions">,
     bidderId,
@@ -135,11 +137,11 @@ export const createMockProxyBid = (
  * @returns Mock notification document
  */
 export const createMockNotification = (
-  recipientId: string = "user123",
+  recipientId = "user123",
   overrides: Partial<Doc<"notifications">> = {}
 ): Doc<"notifications"> => {
   const base: Doc<"notifications"> = {
-    _id: `notif_${now}` as Id<"notifications">,
+    _id: `notif_${now.toString()}` as Id<"notifications">,
     _creationTime: now,
     recipientId,
     type: "info",
@@ -159,11 +161,11 @@ export const createMockNotification = (
  * @returns Mock support ticket document
  */
 export const createMockSupportTicket = (
-  userId: string = "user123",
+  userId = "user123",
   overrides: Partial<Doc<"supportTickets">> = {}
 ): Doc<"supportTickets"> => {
   const base: Doc<"supportTickets"> = {
-    _id: `ticket_${now}` as Id<"supportTickets">,
+    _id: `ticket_${now.toString()}` as Id<"supportTickets">,
     _creationTime: now,
     userId,
     auctionId: undefined,
@@ -185,11 +187,11 @@ export const createMockSupportTicket = (
  * @returns Mock audit log document
  */
 export const createMockAuditLog = (
-  adminId: string = "admin123",
+  adminId = "admin123",
   overrides: Partial<Doc<"auditLogs">> = {}
 ): Doc<"auditLogs"> => {
   const base: Doc<"auditLogs"> = {
-    _id: `log_${now}` as Id<"auditLogs">,
+    _id: `log_${now.toString()}` as Id<"auditLogs">,
     _creationTime: now,
     adminId,
     action: "test_action",
@@ -210,12 +212,12 @@ export const createMockAuditLog = (
  * @returns Mock watchlist item document
  */
 export const createMockWatchlistItem = (
-  userId: string = "user123",
-  auctionId: string = "auction123",
+  userId = "user123",
+  auctionId = "auction123",
   overrides: Partial<Doc<"watchlist">> = {}
 ): Doc<"watchlist"> => {
   const base: Doc<"watchlist"> = {
-    _id: `watch_${now}` as Id<"watchlist">,
+    _id: `watch_${now.toString()}` as Id<"watchlist">,
     _creationTime: now,
     userId,
     auctionId: auctionId as Id<"auctions">,
@@ -230,7 +232,7 @@ export const createMockWatchlistItem = (
  * @returns Mock category document
  */
 export const createMockCategory = (
-  name: string = "Tractors",
+  name = "Tractors",
   overrides: Partial<Doc<"equipmentCategories">> = {}
 ): Doc<"equipmentCategories"> => {
   const base: Doc<"equipmentCategories"> = {
@@ -250,7 +252,7 @@ export const createMockCategory = (
  * @returns Mock equipment metadata document
  */
 export const createMockEquipmentMetadata = (
-  make: string = "John Deere",
+  make = "John Deere",
   models: string[] = ["5075E", "5085E"],
   overrides: Partial<Doc<"equipmentMetadata">> = {}
 ): Doc<"equipmentMetadata"> => {
@@ -275,7 +277,7 @@ export const createMockEquipmentMetadata = (
  * @returns Mock settings document
  */
 export const createMockSettings = (
-  key: string = "pagination_limit",
+  key = "pagination_limit",
   value: string | number | boolean = 20,
   overrides: Partial<Doc<"settings">> = {}
 ): Doc<"settings"> => {
@@ -297,7 +299,7 @@ export const createMockSettings = (
  * @returns Mock counter document
  */
 export const createMockCounter = (
-  name: string = "auctions",
+  name = "auctions",
   overrides: Partial<Doc<"counters">> = {}
 ): Doc<"counters"> => {
   const base: Doc<"counters"> = {
@@ -326,12 +328,12 @@ export const createMockCounter = (
  * @returns Mock auction flag document
  */
 export const createMockAuctionFlag = (
-  auctionId: string = "auction123",
-  reporterId: string = "reporter123",
+  auctionId = "auction123",
+  reporterId = "reporter123",
   overrides: Partial<Doc<"auctionFlags">> = {}
 ): Doc<"auctionFlags"> => {
   const base: Doc<"auctionFlags"> = {
-    _id: `flag_${now}` as Id<"auctionFlags">,
+    _id: `flag_${now.toString()}` as Id<"auctionFlags">,
     _creationTime: now,
     auctionId: auctionId as Id<"auctions">,
     reporterId,
@@ -351,7 +353,7 @@ export const createMockAuctionFlag = (
  * @returns Mock document
  */
 export const createMockPresence = (
-  userId: string = "user123",
+  userId = "user123",
   overrides: Partial<Doc<"presence">> = {}
 ): Doc<"presence"> => {
   const base: Doc<"presence"> = {
