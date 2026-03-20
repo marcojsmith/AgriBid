@@ -345,24 +345,77 @@ describe("Home Page Full Coverage", () => {
     expect(screen.queryByText(/Filters Applied/i)).not.toBeInTheDocument();
   });
 
-  it("handles complex search and filter combinations", () => {
+  it("handles empty search and make strings as undefined", () => {
     (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams(
-        "q=tractor&make=John+Deere&minYear=2020&status=active"
-      ),
+      new URLSearchParams("q=&make="),
       vi.fn(),
     ]);
     renderHome();
-    expect(screen.getByText(/Results for "tractor"/i)).toBeInTheDocument();
     expect(usePaginatedQuery).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        search: "tractor",
-        make: "John Deere",
-        minYear: 2020,
-        statusFilter: "active",
+        search: undefined,
+        make: undefined,
       }),
       expect.anything()
     );
+  });
+
+  it("handles invalid numeric filter parameters", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("minYear=abc"),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        minYear: undefined,
+      }),
+      expect.anything()
+    );
+  });
+
+  it("handles empty state with search query", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("q=tractor"),
+      vi.fn(),
+    ]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderHome();
+    expect(
+      screen.getByText(/No auctions found matching "tractor"/i)
+    ).toBeInTheDocument();
+  });
+
+  it("handles undefined watchedAuctionIds gracefully", () => {
+    (useQuery as Mock).mockReturnValue(undefined);
+    renderHome();
+    expect(screen.getAllByTestId("auction-card")).toHaveLength(2);
+  });
+
+  it("applies compact grid classes in loading state", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "LoadingFirstPage",
+      loadMore: vi.fn(),
+    });
+
+    // Set compact mode
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === "(max-width: 768px)",
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+
+    renderHome();
+    const skeletons = screen.getAllByTestId("auction-skeleton");
+    expect(skeletons[0].parentElement).toHaveClass("max-w-[500px]");
   });
 });

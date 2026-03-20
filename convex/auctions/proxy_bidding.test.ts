@@ -7,6 +7,7 @@ import {
   handleNewBid,
   getProxyBid,
   getMyProxyBidHandler,
+  getMyProxyBid,
 } from "./proxy_bidding";
 import { getAuthUser } from "../lib/auth";
 import type { AuthUser } from "../auth";
@@ -1012,6 +1013,12 @@ describe("Proxy Bidding Coverage", () => {
       );
 
       expect(result.proxyBidActive).toBe(false);
+    });
+  });
+
+  describe("Exported Wrappers", () => {
+    it("should export getMyProxyBid query", () => {
+      expect(getMyProxyBid).toBeDefined();
     });
   });
 });

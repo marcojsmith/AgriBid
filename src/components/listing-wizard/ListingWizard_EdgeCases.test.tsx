@@ -8,6 +8,7 @@ vi.mock("./context/useListingWizard", () => ({
 
 import { ListingWizard } from "./ListingWizard";
 import { useListingWizard } from "./context/useListingWizard";
+import { DEFAULT_FORM_DATA } from "./constants";
 
 // Mock child components
 vi.mock("./steps/GeneralInfoStep", () => ({
@@ -54,7 +55,7 @@ vi.mock("convex/react", () => ({
 describe("ListingWizard Edge Cases", () => {
   const mockContextValue = {
     currentStep: 0,
-    formData: {},
+    formData: DEFAULT_FORM_DATA,
     updateField: vi.fn(),
     nextStep: vi.fn(),
     prevStep: vi.fn(),

@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { StepIndicator } from "./StepIndicator";
-import { useListingWizard } from "./hooks/useListingWizard";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-vi.mock("../listing-wizard/hooks/useListingWizard", () => ({
+import { StepIndicator } from "./StepIndicator";
+
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 

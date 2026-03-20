@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AdminStatsProvider } from "@/contexts/AdminStatsContext";
-import { useAdminStats } from "@/contexts/useAdminStats";
+import { useAdminStats } from "@/hooks/useAdminStats";
 
 import { StatCard } from "./StatCard";
 
@@ -68,14 +68,11 @@ export function AdminLayout(props: AdminLayoutProps) {
  * button when `onAnnounce` is provided. `title` and `subtitle` appear in the header and
  * `children` are rendered as the main content.
  *
- * @param children.children
- * @param children - Content to display in the main area
- * @param title - Header title (defaults to "Admin Dashboard")
- * @param subtitle - Header subtitle (defaults to "Global Marketplace Oversight")
- * @param onAnnounce - Optional callback invoked when the Announce button is clicked
- * @param children.title
- * @param children.subtitle
- * @param children.onAnnounce
+ * @param props - Properties controlling the layout content
+ * @param props.children - Main content to render
+ * @param props.title - Header title
+ * @param props.subtitle - Header subtitle
+ * @param props.onAnnounce - Announcement callback
  * @returns The layout content element for admin pages
  */
 function AdminLayoutContent({

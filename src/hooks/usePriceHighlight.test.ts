@@ -162,4 +162,27 @@ describe("usePriceHighlight", () => {
     unmount();
     // No error should occur
   });
+
+  it("should use default duration if options not provided", () => {
+    const { result, rerender } = renderHook(
+      ({ price }) => usePriceHighlight(price),
+      {
+        initialProps: { price: 100 },
+      }
+    );
+
+    rerender({ price: 110 });
+    expect(result.current).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(result.current).toBe(false);
+  });
+
+  it("should cover timeout cleanup branch when timeoutRef is null", () => {
+    const { unmount } = renderHook(() => usePriceHighlight(100));
+    // No timeout scheduled initially
+    unmount();
+  });
 });

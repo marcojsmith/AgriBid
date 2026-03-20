@@ -436,4 +436,11 @@ describe("AuctionDetail Page", () => {
       screen.getByText("No condition report available")
     ).toBeInTheDocument();
   });
+
+  it("renders fallback text when description is missing", () => {
+    const auctionNoDesc = { ...mockAuction, description: "" };
+    (useQuery as Mock).mockReturnValue(auctionNoDesc);
+    renderPage();
+    expect(screen.getByText("No description provided.")).toBeInTheDocument();
+  });
 });

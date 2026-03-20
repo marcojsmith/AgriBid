@@ -1,12 +1,13 @@
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { GeneralInfoStep } from "./GeneralInfoStep";
-import { useListingWizard } from "../hooks/useListingWizard";
-import { type ListingFormData } from "../types";
-import { type ListingWizardContextType } from "../context/ListingWizardContextDef";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-vi.mock("../hooks/useListingWizard", () => ({
+import { GeneralInfoStep } from "./GeneralInfoStep";
+import type { ListingFormData } from "../types";
+import type { ListingWizardContextType } from "../context/ListingWizardContextDef";
+
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 
@@ -126,7 +127,7 @@ describe("GeneralInfoStep", () => {
     );
   });
 
-  it("hides suggestions on blur", async () => {
+  it("hides suggestions on blur", () => {
     vi.useFakeTimers();
     const { rerender } = render(<GeneralInfoStep />);
     const input = screen.getByLabelText(/Location/i);

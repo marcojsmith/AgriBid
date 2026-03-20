@@ -158,22 +158,88 @@ describe("AuditTab", () => {
     expect(screen.getByText("Invalid JSON string")).toBeInTheDocument();
   });
 
-  it("handles pagination clicks", () => {
+  it("handles comprehensive pagination: next, previous, and reset", () => {
+    // 1. Initial State
     mockUseQuery.mockReturnValue({
       page: mockLogs,
       isDone: false,
-      continueCursor: "next_cursor",
+      continueCursor: "cursor-2",
       totalCount: 100,
       pageStatus: null,
       splitCursor: null,
     });
-    render(<AuditTab />);
+    const { rerender } = render(<AuditTab />);
 
-    const nextButton = screen.getByText("Next");
+    const nextButton = screen.getByRole("button", { name: /next/i });
+    const prevButton = screen.getByRole("button", { name: /previous/i });
+    const resetButton = screen.getByRole("button", { name: /reset/i });
+
+    expect(nextButton).not.toBeDisabled();
+    expect(prevButton).toBeDisabled();
+    expect(resetButton).toBeDisabled();
+
+    // 2. Click Next
     fireEvent.click(nextButton);
 
-    // Reset button should now be enabled since cursor is not null
-    const resetButton = screen.getByText("Reset").closest("button");
+    // Mock query for second page
+    mockUseQuery.mockReturnValue({
+      page: mockLogs,
+      isDone: false,
+      continueCursor: "cursor-3",
+      totalCount: 100,
+      pageStatus: null,
+      splitCursor: null,
+    });
+    rerender(<AuditTab />);
+
+    expect(nextButton).not.toBeDisabled();
+    expect(prevButton).not.toBeDisabled();
     expect(resetButton).not.toBeDisabled();
+
+    // 3. Click Previous
+    fireEvent.click(prevButton);
+
+    // Mock query back to first page
+    mockUseQuery.mockReturnValue({
+      page: mockLogs,
+      isDone: false,
+      continueCursor: "cursor-2",
+      totalCount: 100,
+      pageStatus: null,
+      splitCursor: null,
+    });
+    rerender(<AuditTab />);
+
+    expect(nextButton).not.toBeDisabled();
+    expect(prevButton).toBeDisabled();
+    expect(resetButton).toBeDisabled();
+
+    // 4. Click Next again and then Reset
+    fireEvent.click(nextButton);
+    mockUseQuery.mockReturnValue({
+      page: mockLogs,
+      isDone: false,
+      continueCursor: "cursor-3",
+      totalCount: 100,
+      pageStatus: null,
+      splitCursor: null,
+    });
+    rerender(<AuditTab />);
+
+    expect(resetButton).not.toBeDisabled();
+    fireEvent.click(resetButton);
+
+    mockUseQuery.mockReturnValue({
+      page: mockLogs,
+      isDone: false,
+      continueCursor: "cursor-2",
+      totalCount: 100,
+      pageStatus: null,
+      splitCursor: null,
+    });
+    rerender(<AuditTab />);
+
+    expect(prevButton).toBeDisabled();
+    expect(resetButton).toBeDisabled();
   });
 });

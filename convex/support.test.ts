@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
-import { createTicketHandler, getMyTicketsHandler } from "./support";
+import {
+  createTicketHandler,
+  getMyTicketsHandler,
+  createTicket,
+  getMyTickets,
+} from "./support";
 import * as auth from "./lib/auth";
 import * as adminUtils from "./admin_utils";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -289,6 +294,16 @@ describe("Support Coverage", () => {
         numItems: 50,
         cursor: null,
       });
+    });
+  });
+
+  describe("Exported Wrappers", () => {
+    it("should export createTicket mutation", () => {
+      expect(createTicket).toBeDefined();
+    });
+
+    it("should export getMyTickets query", () => {
+      expect(getMyTickets).toBeDefined();
     });
   });
 });

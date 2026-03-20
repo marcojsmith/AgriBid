@@ -7,13 +7,14 @@ import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { useListingForm } from "@/hooks/listing-wizard/useListingForm";
 import { normalizeListingImages } from "@/lib/normalize-images";
 import { getErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+import type { ListingFormData } from "./types";
 import { ListingWizardProvider } from "./context/ListingWizardContext";
 import { useListingWizard } from "./context/useListingWizard";
-import { useListingForm } from "./hooks/useListingForm";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
 import { STEPS } from "./constants";
@@ -67,17 +68,19 @@ const ListingWizardContent = () => {
     const savedStep = localStorage.getItem("agribid_listing_step");
     if (savedDraft) {
       try {
-        const parsed = JSON.parse(savedDraft);
+        const parsed = JSON.parse(
+          savedDraft
+        ) as unknown as Partial<ListingFormData>;
         const step = savedStep ? parseInt(savedStep, 10) : 0;
         resetForm(parsed, step);
       } catch (e) {
-        console.error("Failed to parse saved draft", e);
+        const error = e instanceof Error ? e : new Error(String(e));
+        console.error("Failed to parse saved draft", error);
         resetForm();
       }
     } else {
       resetForm();
     }
-
     initializedRef.current = true;
   }, [resetForm]);
 
@@ -98,8 +101,8 @@ const ListingWizardContent = () => {
       if (formData.categoryId) {
         id = await saveDraft({
           auctionId:
-            editingAuctionId ||
-            (formData.auctionId as Id<"auctions">) ||
+            editingAuctionId ??
+            (formData.auctionId as Id<"auctions"> | undefined) ??
             undefined,
           title: formData.title,
           categoryId: formData.categoryId as Id<"equipmentCategories">,
@@ -133,9 +136,11 @@ const ListingWizardContent = () => {
       if (!formData.auctionId && id) {
         updateField("auctionId", id);
         // Also update localStorage immediately so subsequent saves use the ID
-        const currentDraft = JSON.parse(
-          localStorage.getItem("agribid_listing_draft") || "{}"
-        );
+        const savedDraftJson = localStorage.getItem("agribid_listing_draft");
+        const currentDraft = (
+          savedDraftJson ? JSON.parse(savedDraftJson) : {}
+        ) as Partial<ListingFormData>;
+
         localStorage.setItem(
           "agribid_listing_draft",
           JSON.stringify({ ...currentDraft, auctionId: id })
@@ -211,7 +216,7 @@ const ListingWizardContent = () => {
         },
       };
 
-      const finalAuctionId = editingAuctionId || formData.auctionId;
+      const finalAuctionId = editingAuctionId ?? formData.auctionId;
 
       if (finalAuctionId) {
         // Persist local edits before publishing

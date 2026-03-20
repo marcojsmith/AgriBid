@@ -1,6 +1,6 @@
 import { useContext } from "react";
 
-import { UserProfileContext, NO_PROVIDER } from "./user-profile-types";
+import { UserProfileContext, NO_PROVIDER } from "@/contexts/user-profile-types";
 
 /**
  * Retrieve the current user's profile from the UserProfile context.
@@ -10,7 +10,6 @@ import { UserProfileContext, NO_PROVIDER } from "./user-profile-types";
  */
 export function useUserProfile() {
   const context = useContext(UserProfileContext);
-  // Throw if sentinel to ensure usage within provider
   if ((context as unknown) === NO_PROVIDER) {
     throw new Error("useUserProfile must be used within a UserProfileProvider");
   }

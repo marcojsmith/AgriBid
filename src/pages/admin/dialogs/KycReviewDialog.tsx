@@ -22,8 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { DetailItem } from "@/components/admin";
-
-import type { KycReviewUser } from "../hooks/useUserManagement";
+import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
 
 /**
  * Dialog component for reviewing a user's KYC (Know Your Customer) submission.
@@ -67,7 +66,12 @@ export function KycReviewDialog({
   const isKycReasonEmpty = !rejectionReason.trim();
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-black uppercase tracking-tight">
@@ -100,7 +104,7 @@ export function KycReviewDialog({
                       label="ID/Passport"
                       value={
                         showFullId
-                          ? user.idNumber || "Not Provided"
+                          ? (user.idNumber ?? "Not Provided")
                           : user.idNumber
                             ? `****${user.idNumber.slice(-4)}`
                             : "Not Provided"
@@ -112,7 +116,9 @@ export function KycReviewDialog({
                         variant="ghost"
                         size="sm"
                         className="h-6 px-2 text-[8px] font-black uppercase absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => setShowFullId(!showFullId)}
+                        onClick={() => {
+                          setShowFullId(!showFullId);
+                        }}
                       >
                         {showFullId ? "Hide" : "Reveal"}
                       </Button>
@@ -120,12 +126,12 @@ export function KycReviewDialog({
                   </div>
                   <DetailItem
                     label="Phone"
-                    value={user.phoneNumber || "Not Provided"}
+                    value={user.phoneNumber ?? "Not Provided"}
                     icon={<Phone className="h-4 w-4" />}
                   />
                   <DetailItem
                     label="Email"
-                    value={user.kycEmail || "Not Provided"}
+                    value={user.kycEmail ?? "Not Provided"}
                     icon={<Mail className="h-4 w-4" />}
                   />
                 </div>
@@ -140,11 +146,11 @@ export function KycReviewDialog({
                       key={i}
                       variant="outline"
                       className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2"
-                      onClick={() =>
-                        window.open(url, "_blank", "noopener,noreferrer")
-                      }
+                      onClick={() => {
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      }}
                     >
-                      <Eye className="h-3 w-3" /> View Document {i + 1}
+                      <Eye className="h-3 w-3" /> View Document {String(i + 1)}
                     </Button>
                   ))}
                   {(!user.kycDocumentUrls ||
@@ -169,7 +175,9 @@ export function KycReviewDialog({
                 name="rejection-reason"
                 placeholder="e.g. Documents are blurry or ID number doesn't match..."
                 value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
+                onChange={(e) => {
+                  setRejectionReason(e.target.value);
+                }}
                 className="border-2 rounded-xl"
               />
             </div>
@@ -177,7 +185,9 @@ export function KycReviewDialog({
               <Button
                 variant="outline"
                 className="border-2 font-black uppercase text-xs h-12 px-8 hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => onReview("reject")}
+                onClick={() => {
+                  onReview("reject");
+                }}
                 disabled={isKycReasonEmpty || isProcessing}
               >
                 {isProcessing ? (
@@ -189,7 +199,9 @@ export function KycReviewDialog({
               </Button>
               <Button
                 className="font-black uppercase text-xs h-12 px-8 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
-                onClick={() => onReview("approve")}
+                onClick={() => {
+                  onReview("approve");
+                }}
                 disabled={isProcessing}
               >
                 {isProcessing ? (

@@ -2,16 +2,16 @@ import React from "react";
 import { renderHook } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
-import { useListingWizard } from "./useListingWizard";
 import {
   ListingWizardContext,
   type ListingWizardContextType,
-} from "../context/ListingWizardContextDef";
+} from "@/components/listing-wizard/context/ListingWizardContextDef";
+
+import { useListingWizard } from "./useListingWizard";
 
 describe("useListingWizard", () => {
   it("should throw error when used outside of Provider", () => {
-    // Suppress console.error for this test as it's expected
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
 
     expect(() => renderHook(() => useListingWizard())).toThrow(
       "useListingWizard must be used within a ListingWizardProvider"

@@ -2,12 +2,16 @@ import React from "react";
 import { renderHook } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
+import {
+  AdminStatsContext,
+  type AdminStats,
+} from "@/contexts/admin-stats-types";
+
 import { useAdminStats } from "./useAdminStats";
-import { AdminStatsContext, type AdminStats } from "./admin-stats-types";
 
 describe("useAdminStats", () => {
   it("should throw error when used outside of Provider", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
 
     expect(() => renderHook(() => useAdminStats())).toThrow(
       "useAdminStats must be used within an AdminStatsProvider"

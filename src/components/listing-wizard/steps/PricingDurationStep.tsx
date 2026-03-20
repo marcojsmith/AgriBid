@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-import { useListingWizard } from "../hooks/useListingWizard";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 /**
  * Step 3 of the listing wizard: Pricing and Duration.
@@ -108,7 +107,9 @@ export const PricingDurationStep = () => {
                   variant={
                     formData.durationDays === days ? "default" : "outline"
                   }
-                  onClick={() => updateField("durationDays", days)}
+                  onClick={() => {
+                    updateField("durationDays", days);
+                  }}
                   className="h-12 font-black rounded-xl border-2"
                 >
                   {days} DAYS

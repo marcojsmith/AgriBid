@@ -96,7 +96,7 @@ export function useUserManagement() {
   /**
    * Initiates KYC review by fetching full user profile data.
    * Shows loading state and error handling via toast notifications.
-   * @param userId
+   * @param userId - The user ID to review KYC for
    */
   const handleReviewKYCClick = async (userId: string) => {
     if (isFetchingKYC) return;
@@ -137,18 +137,17 @@ export function useUserManagement() {
   /**
    * Manually verifies a user without KYC review.
    * Tracks verification state per user to prevent duplicate requests.
-   * @param userId
+   * @param userId - The ID of the user to verify
    */
   const handleManualVerify = async (userId: string) => {
-    let added = false;
+    const alreadyVerifying = verifyingUserIds.has(userId);
+    if (alreadyVerifying) return;
+
     setVerifyingUserIds((prev) => {
-      if (prev.has(userId)) return prev;
-      added = true;
       const next = new Set(prev);
       next.add(userId);
       return next;
     });
-    if (!added) return; // If not added, it means it was already being verified
 
     try {
       await verifyUserMutation({ userId });
@@ -168,7 +167,7 @@ export function useUserManagement() {
   /**
    * Submits KYC approval or rejection decision.
    * Validates rejection reason is provided when rejecting.
-   * @param decision
+   * @param decision - Decision type: 'approve' or 'reject'
    */
   const handleKycReview = async (decision: "approve" | "reject") => {
     if (!kycReviewUser) return;

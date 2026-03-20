@@ -25,7 +25,7 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-vi.mock("@/contexts/useAdminStats", () => ({
+vi.mock("@/hooks/useAdminStats", () => ({
   useAdminStats: mockUseAdminStats,
 }));
 

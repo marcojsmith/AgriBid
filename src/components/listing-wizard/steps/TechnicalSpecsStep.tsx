@@ -4,8 +4,8 @@ import { api } from "convex/_generated/api";
 
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-import { useListingWizard } from "../hooks/useListingWizard";
 import { EQUIPMENT_METADATA_LIMIT } from "../../../../convex/constants";
 
 /**
@@ -48,7 +48,7 @@ export const TechnicalSpecsStep = () => {
 
   const uniqueMakes: string[] = Array.from(
     new Set(selectedCategoryMakes.map((m) => m.make))
-  ).sort() as string[];
+  ).sort();
 
   const selectedMakeData = selectedCategoryMakes.filter(
     (m) => m.make === formData.make
@@ -56,7 +56,7 @@ export const TechnicalSpecsStep = () => {
 
   const availableModels: string[] = Array.from(
     new Set(selectedMakeData.flatMap((m) => m.models))
-  ).sort() as string[];
+  ).sort();
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -122,7 +122,9 @@ export const TechnicalSpecsStep = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => loadMore(EQUIPMENT_METADATA_LIMIT)}
+                onClick={() => {
+                  loadMore(EQUIPMENT_METADATA_LIMIT);
+                }}
                 disabled={status === "LoadingMore"}
                 className="text-[10px] font-black uppercase tracking-widest"
               >
@@ -154,7 +156,9 @@ export const TechnicalSpecsStep = () => {
               <Button
                 key={model}
                 variant={formData.model === model ? "default" : "outline"}
-                onClick={() => updateField("model", model)}
+                onClick={() => {
+                  updateField("model", model);
+                }}
                 className="h-12 font-bold rounded-xl border-2 transition-all"
               >
                 {model}

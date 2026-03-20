@@ -2,14 +2,15 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { useQuery } from "convex/react";
 
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
+
 import { ReviewSubmitStep } from "./ReviewSubmitStep";
-import { useListingWizard } from "../hooks/useListingWizard";
 
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
 }));
 
-vi.mock("../hooks/useListingWizard", () => ({
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 
@@ -70,13 +71,13 @@ describe("ReviewSubmitStep", () => {
     expect(startingPriceEl).toBeInTheDocument();
     const startingPriceContainer = startingPriceEl.parentElement;
     expect(startingPriceContainer).not.toBeNull();
-    expect(startingPriceContainer!.textContent).toMatch(/1\s*000/);
+    expect(startingPriceContainer?.textContent).toMatch(/1\s*000/);
 
     const reservePriceEl = screen.getByText(/Reserve Price/i);
     expect(reservePriceEl).toBeInTheDocument();
     const reservePriceContainer = reservePriceEl.parentElement;
     expect(reservePriceContainer).not.toBeNull();
-    expect(reservePriceContainer!.textContent).toMatch(/2\s*000/);
+    expect(reservePriceContainer?.textContent).toMatch(/2\s*000/);
   });
 
   it("renders condition checklist badges", () => {

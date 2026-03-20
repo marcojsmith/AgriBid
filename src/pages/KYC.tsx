@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LoadingIndicator, LoadingPage } from "@/components/LoadingIndicator";
 import { ListItem } from "@/components/kyc/ListItem";
+import { useKYCForm } from "@/hooks/kyc/useKYCForm";
+import { useKYCFileUpload } from "@/hooks/kyc/useKYCFileUpload";
 
-import { useKYCForm } from "./kyc/hooks/useKYCForm";
-import { useKYCFileUpload } from "./kyc/hooks/useKYCFileUpload";
 import { VerificationStatusSection } from "./kyc/sections/VerificationStatusSection";
 import { PersonalInfoSection } from "./kyc/sections/PersonalInfoSection";
 import { DocumentUploadSection } from "./kyc/sections/DocumentUploadSection";
@@ -113,10 +113,9 @@ export default function KYC() {
 
     try {
       // Collect all non-empty document IDs as strings
-      const allDocuments = [
-        ...(existingDocuments || []),
-        ...(storageIds || []),
-      ].filter((id): id is string => typeof id === "string" && id.length > 0);
+      const allDocuments = [...existingDocuments, ...(storageIds ?? [])].filter(
+        (id): id is string => typeof id === "string" && id.length > 0
+      );
 
       await submitKYC({
         // Branded type validation is enforced on the server; casting here to match API signature
@@ -136,7 +135,7 @@ export default function KYC() {
     }
   };
 
-  const status = profile.profile?.kycStatus || "none";
+  const status = profile.profile?.kycStatus ?? "none";
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
@@ -154,8 +153,10 @@ export default function KYC() {
         <VerificationStatusSection
           status={status}
           myKycDetails={myKycDetails}
-          userId={profile.userId || ""}
-          onEdit={() => setIsEditMode(true)}
+          userId={profile.userId ?? ""}
+          onEdit={() => {
+            setIsEditMode(true);
+          }}
         />
       ) : (
         <div className="space-y-8">
@@ -175,7 +176,9 @@ export default function KYC() {
                 variant="ghost"
                 size="sm"
                 className="ml-auto font-bold uppercase text-[10px]"
-                onClick={() => setIsEditMode(false)}
+                onClick={() => {
+                  setIsEditMode(false);
+                }}
               >
                 Cancel
               </Button>
@@ -261,7 +264,7 @@ export default function KYC() {
             <AlertDialogAction
               onClick={() => {
                 setShowConfirmModal(false);
-                handleUpload(true);
+                void handleUpload(true);
               }}
             >
               Confirm Update

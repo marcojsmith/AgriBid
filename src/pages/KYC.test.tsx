@@ -76,7 +76,9 @@ vi.mock("./kyc/sections/PersonalInfoSection", () => ({
       <input
         aria-label="First Name"
         value={formData.firstName}
-        onChange={(e) => updateField("firstName", e.target.value)}
+        onChange={(e) => {
+          updateField("firstName", e.target.value);
+        }}
       />
     </div>
   ),
@@ -95,7 +97,12 @@ vi.mock("./kyc/sections/DocumentUploadSection", () => ({
     <div data-testid="document-upload">
       <input type="file" aria-label="Upload Document" onChange={onFileChange} />
       {existingDocuments.map((doc: string) => (
-        <button key={doc} onClick={() => onDeleteDocument(doc)}>
+        <button
+          key={doc}
+          onClick={() => {
+            onDeleteDocument(doc);
+          }}
+        >
           Delete {doc}
         </button>
       ))}
@@ -138,11 +145,11 @@ const { mockKYCForm, mockFileUpload } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("./kyc/hooks/useKYCForm", () => ({
+vi.mock("@/hooks/kyc/useKYCForm", () => ({
   useKYCForm: () => mockKYCForm,
 }));
 
-vi.mock("./kyc/hooks/useKYCFileUpload", () => ({
+vi.mock("@/hooks/kyc/useKYCFileUpload", () => ({
   useKYCFileUpload: () => mockFileUpload,
 }));
 
@@ -231,7 +238,7 @@ describe("KYC Page Full Coverage", () => {
     const submitBtn = screen.getByRole("button", {
       name: /submit application/i,
     });
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -244,7 +251,7 @@ describe("KYC Page Full Coverage", () => {
     });
   });
 
-  it("disables submit button when no documents are selected", async () => {
+  it("disables submit button when no documents are selected", () => {
     mockFileUpload.files = [];
     mockFileUpload.existingDocuments = [];
     renderKYC();
@@ -268,7 +275,7 @@ describe("KYC Page Full Coverage", () => {
       name: /submit application/i,
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -288,7 +295,7 @@ describe("KYC Page Full Coverage", () => {
     const submitBtn = screen.getByRole("button", {
       name: /submit application/i,
     });
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -298,7 +305,7 @@ describe("KYC Page Full Coverage", () => {
     });
   });
 
-  it("switches to edit mode from verified status and exits", async () => {
+  it("switches to edit mode from verified status and exits", () => {
     const verifiedProfile = {
       ...mockProfile,
       profile: { kycStatus: "verified" },
@@ -344,11 +351,11 @@ describe("KYC Page Full Coverage", () => {
 
     const confirmBtn = screen.getByRole("button", { name: /confirm update/i });
     mockFileUpload.uploadFiles.mockResolvedValue(["new-id"]);
-    await act(async () => {
-      fireEvent.click(confirmBtn);
-    });
+    fireEvent.click(confirmBtn);
 
-    expect(mockSubmitKYC).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockSubmitKYC).toHaveBeenCalled();
+    });
   });
 
   it("cleans up uploads if submission fails", async () => {
@@ -361,7 +368,7 @@ describe("KYC Page Full Coverage", () => {
       name: /submit application/i,
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -373,7 +380,7 @@ describe("KYC Page Full Coverage", () => {
     });
   });
 
-  it("handles document deletion and cancellation", async () => {
+  it("handles document deletion and cancellation", () => {
     mockFileUpload.executeDeleteDocument.mockResolvedValue(true);
     renderKYC();
 
@@ -391,7 +398,7 @@ describe("KYC Page Full Coverage", () => {
     const confirmBtn = screen.getByRole("button", {
       name: /delete permanently/i,
     });
-    await act(async () => {
+    act(() => {
       fireEvent.click(confirmBtn);
     });
 
@@ -402,7 +409,9 @@ describe("KYC Page Full Coverage", () => {
     mockFileUpload.executeDeleteDocument.mockRejectedValue(
       new Error("Delete failed")
     );
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      /* no-op */
+    });
 
     renderKYC();
     fireEvent.click(screen.getByText("Delete doc1"));
@@ -410,14 +419,14 @@ describe("KYC Page Full Coverage", () => {
     const confirmBtn = screen.getByRole("button", {
       name: /delete permanently/i,
     });
-    await act(async () => {
-      fireEvent.click(confirmBtn);
-    });
+    fireEvent.click(confirmBtn);
 
-    expect(spy).toHaveBeenCalledWith(
-      "Delete document failed:",
-      expect.any(Error)
-    );
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith(
+        "Delete document failed:",
+        expect.any(Error)
+      );
+    });
     spy.mockRestore();
   });
 
@@ -436,7 +445,7 @@ describe("KYC Page Full Coverage", () => {
     expect(screen.getByText("Invalid ID")).toBeInTheDocument();
   });
 
-  it("handles upload failure where no storageIds are returned", async () => {
+  it("handles upload failure where no storageIds are returned", () => {
     mockFileUpload.files = [new File([""], "test.jpg")];
     mockFileUpload.uploadFiles.mockResolvedValue(null);
 
@@ -445,7 +454,7 @@ describe("KYC Page Full Coverage", () => {
     const submitBtn = screen.getByRole("button", {
       name: /submit application/i,
     });
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -457,14 +466,16 @@ describe("KYC Page Full Coverage", () => {
     mockFileUpload.files = [new File([""], "test.jpg")];
     mockFileUpload.uploadFiles.mockResolvedValue(["storage-id-fail"]);
     mockSubmitKYC.mockRejectedValue("String error");
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      /* no-op */
+    });
 
     renderKYC();
     const submitBtn = screen.getByRole("button", {
       name: /submit application/i,
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -527,7 +538,7 @@ describe("KYC Page Full Coverage", () => {
       name: /submit application/i,
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
@@ -557,12 +568,12 @@ describe("KYC Page Full Coverage", () => {
       name: /submit application/i,
     });
 
-    await act(async () => {
-      fireEvent.click(submitBtn);
-    });
+    fireEvent.click(submitBtn);
 
     // Should NOT return, should proceed to submission because files.length is 0
-    expect(mockSubmitKYC).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockSubmitKYC).toHaveBeenCalled();
+    });
   });
 
   it("disables button when isUploading is true", () => {
@@ -606,21 +617,21 @@ describe("KYC Page Full Coverage", () => {
     });
 
     const editBtn = screen.getByRole("button", { name: /edit/i });
-    await act(async () => {
+    act(() => {
       fireEvent.click(editBtn);
     });
 
     const submitBtn = screen.getByRole("button", {
       name: /submit application/i,
     });
-    await act(async () => {
+    act(() => {
       fireEvent.click(submitBtn);
     });
 
     const confirmBtn = await screen.findByRole("button", {
       name: /confirm update/i,
     });
-    await act(async () => {
+    act(() => {
       fireEvent.click(confirmBtn);
     });
 

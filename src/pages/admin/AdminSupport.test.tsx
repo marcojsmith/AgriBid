@@ -252,7 +252,7 @@ describe("AdminSupport Page", () => {
     });
   });
 
-  it("prevents submission with empty resolution after trimming", async () => {
+  it("prevents submission with empty resolution after trimming", () => {
     (useQuery as Mock).mockImplementation((queryApi) => {
       if (
         queryApi === api.admin.getAdminStats ||

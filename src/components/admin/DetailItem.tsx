@@ -6,7 +6,7 @@ import React from "react";
  *
  * @param props - Component props.
  * @param props.label - Text label displayed above the value
- * @param props.value - Value to display; if `null` or `undefined`, displays "Not Provided"
+ * @param props.value - Value to display; if `null`, `undefined`, or an empty string, displays "Not Provided"
  * @param props.icon - Icon element shown inside the square icon container
  * @returns The detail item as a React element
  */
@@ -29,7 +29,7 @@ export function DetailItem({
           {label}
         </p>
         <p className="text-sm font-bold tracking-tight">
-          {value ?? "Not Provided"}
+          {value || "Not Provided"}
         </p>
       </div>
     </div>

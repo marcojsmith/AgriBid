@@ -2,11 +2,13 @@ import React from "react";
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { useListingForm } from "./useListingForm";
 import {
   ListingWizardContext,
   type ListingWizardContextType,
-} from "../context/ListingWizardContextDef";
+} from "@/components/listing-wizard/context/ListingWizardContextDef";
+import { DEFAULT_FORM_DATA } from "@/components/listing-wizard/constants";
+
+import { useListingForm } from "./useListingForm";
 
 const mockSetCurrentStep = vi.fn();
 
@@ -16,7 +18,7 @@ describe("useListingForm", () => {
   });
 
   it("should validate General Info step (step 0)", () => {
-    let currentFormData: Record<string, unknown> = {};
+    let currentFormData = { ...DEFAULT_FORM_DATA };
     const currentStepValue = 0;
 
     const Wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -39,19 +41,34 @@ describe("useListingForm", () => {
 
     expect(result.current.getStepError(0)).toBe("Title is required");
 
-    currentFormData = { title: "Test" };
+    currentFormData = { ...DEFAULT_FORM_DATA, title: "Test" };
     rerender();
     expect(result.current.getStepError(0)).toBe("Location is required");
 
-    currentFormData = { title: "Test", location: "Loc" };
+    currentFormData = { ...DEFAULT_FORM_DATA, title: "Test", location: "Loc" };
+    rerender();
+    // Default year is current year, so we need to set an invalid year to test this
+    currentFormData = {
+      ...DEFAULT_FORM_DATA,
+      title: "Test",
+      location: "Loc",
+      year: 0,
+    };
     rerender();
     expect(result.current.getStepError(0)).toBe("Valid year is required");
 
-    currentFormData = { title: "Test", location: "Loc", year: 2020 };
+    currentFormData = {
+      ...DEFAULT_FORM_DATA,
+      title: "Test",
+      location: "Loc",
+      year: 2020,
+      operatingHours: -1,
+    };
     rerender();
     expect(result.current.getStepError(0)).toBe("Operating hours are required");
 
     currentFormData = {
+      ...DEFAULT_FORM_DATA,
       title: "Test",
       location: "Loc",
       year: 2020,
@@ -62,7 +79,11 @@ describe("useListingForm", () => {
   });
 
   it("should navigate next only if valid", () => {
-    const currentFormData: Record<string, unknown> = { title: "Test" };
+    const currentFormData = {
+      ...DEFAULT_FORM_DATA,
+      title: "Test",
+      location: "",
+    };
     const currentStepValue = 0;
 
     const Wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -86,12 +107,12 @@ describe("useListingForm", () => {
     act(() => {
       result.current.next();
     });
-    // Since title only is not enough
     expect(mockSetCurrentStep).not.toHaveBeenCalled();
   });
 
   it("should navigate next if valid", () => {
-    const currentFormData: Record<string, unknown> = {
+    const currentFormData = {
+      ...DEFAULT_FORM_DATA,
       title: "Test",
       location: "Loc",
       year: 2020,
@@ -124,7 +145,7 @@ describe("useListingForm", () => {
   });
 
   it("should navigate prev", () => {
-    const currentFormData: Record<string, unknown> = {};
+    const currentFormData = { ...DEFAULT_FORM_DATA };
     const currentStepValue = 1;
 
     const Wrapper = ({ children }: { children: React.ReactNode }) => (

@@ -42,6 +42,11 @@ describe("DetailItem", () => {
     expect(screen.getByText("Not Provided")).toBeInTheDocument();
   });
 
+  it("displays 'Not Provided' when value is an empty string", () => {
+    render(<DetailItem label="Address" value="" icon={<User />} />);
+    expect(screen.getByText("Not Provided")).toBeInTheDocument();
+  });
+
   it("renders with string value", () => {
     render(<DetailItem label="City" value="Cape Town" icon={<User />} />);
     expect(screen.getByText("Cape Town")).toBeInTheDocument();

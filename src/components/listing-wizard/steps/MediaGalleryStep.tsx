@@ -11,9 +11,9 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
+import { useListingMedia } from "@/hooks/listing-wizard/useListingMedia";
 
-import { useListingWizard } from "../hooks/useListingWizard";
-import { useListingMedia } from "../hooks/useListingMedia";
 import { PHOTO_SLOTS } from "../constants";
 
 /**
@@ -90,7 +90,9 @@ export const MediaGalleryStep = () => {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleRemove(slot.id)}
+                      onClick={() => {
+                        handleRemove(slot.id);
+                      }}
                       className="rounded-xl font-bold gap-2"
                     >
                       <X className="h-4 w-4" />
@@ -149,7 +151,8 @@ export const MediaGalleryStep = () => {
         <div className="flex flex-wrap gap-4">
           {formData.images.additional.map((id: string, index: number) => {
             const previewUrl =
-              previews[id] || (id.startsWith("http") ? id : null);
+              (Reflect.get(previews, id) as string | undefined) ??
+              (id.startsWith("http") ? id : null);
             return (
               <div
                 key={id}
@@ -158,7 +161,7 @@ export const MediaGalleryStep = () => {
                 {previewUrl ? (
                   <img
                     src={previewUrl}
-                    alt={`Additional ${index + 1}`}
+                    alt={`Additional ${String(index + 1)}`}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -167,7 +170,9 @@ export const MediaGalleryStep = () => {
                 <button
                   type="button"
                   aria-label="Remove image"
-                  onClick={() => handleRemove("additional", index)}
+                  onClick={() => {
+                    handleRemove("additional", index);
+                  }}
                   className="absolute -top-1 -right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                 >
                   <X className="h-3 w-3" />
@@ -185,13 +190,13 @@ export const MediaGalleryStep = () => {
                 id="file-upload-additional"
                 aria-label="Upload additional photo"
                 onChange={(e) => handleFileChange(e, "additional")}
-                disabled={isSubmitting || uploadingSlots["additional"]}
+                disabled={isSubmitting || uploadingSlots.additional}
               />
               <label
                 htmlFor="file-upload-additional"
                 className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer"
               >
-                {uploadingSlots["additional"] ? (
+                {uploadingSlots.additional ? (
                   <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
                 ) : (
                   <Plus className="h-5 w-5 text-muted-foreground" />

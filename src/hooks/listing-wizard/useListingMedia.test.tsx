@@ -1,15 +1,16 @@
 import React from "react";
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 
-import { useListingMedia } from "./useListingMedia";
 import {
   ListingWizardContext,
   type ListingWizardContextType,
-} from "../context/ListingWizardContextDef";
-import type { ListingFormData } from "../types";
+} from "@/components/listing-wizard/context/ListingWizardContextDef";
+import type { ListingFormData } from "@/components/listing-wizard/types";
+
+import { useListingMedia } from "./useListingMedia";
 
 vi.mock("convex/react", () => ({
   useMutation: vi.fn(),
@@ -29,21 +30,33 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock URL
-global.URL.createObjectURL = vi.fn().mockReturnValue("blob:test-url");
-global.URL.revokeObjectURL = vi.fn();
+const mockCreateObjectURL = vi.fn().mockReturnValue("blob:test-url");
+const mockRevokeObjectURL = vi.fn();
+const mockFetch = vi.fn();
+
+global.URL.createObjectURL = mockCreateObjectURL;
+global.URL.revokeObjectURL = mockRevokeObjectURL;
+global.fetch = mockFetch;
 
 describe("useListingMedia", () => {
-  const mockSetFormData = vi.fn((cb) => {
-    if (typeof cb === "function") {
-      cb(currentFormData);
+  const mockSetFormData = vi.fn(
+    (cb: ListingFormData | ((prev: ListingFormData) => ListingFormData)) => {
+      if (typeof cb === "function") {
+        cb(currentFormData);
+      }
     }
-  });
-  const mockSetPreviews = vi.fn((cb) => {
-    if (typeof cb === "function") {
-      cb(currentPreviews);
+  );
+  const mockSetPreviews = vi.fn(
+    (
+      cb:
+        | Record<string, string>
+        | ((prev: Record<string, string>) => Record<string, string>)
+    ) => {
+      if (typeof cb === "function") {
+        cb(currentPreviews);
+      }
     }
-  });
+  );
   const mockGenerateUploadUrl = vi.fn();
 
   let currentFormData: ListingFormData;
@@ -80,37 +93,54 @@ describe("useListingMedia", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    mockSetFormData.mockImplementation((cb) => {
-      if (typeof cb === "function") {
-        cb(currentFormData);
+    mockSetFormData.mockImplementation(
+      (cb: ListingFormData | ((prev: ListingFormData) => ListingFormData)) => {
+        if (typeof cb === "function") {
+          cb(currentFormData);
+        }
       }
-    });
-    mockSetPreviews.mockImplementation((cb) => {
-      if (typeof cb === "function") {
-        cb(currentPreviews);
+    );
+    mockSetPreviews.mockImplementation(
+      (
+        cb:
+          | Record<string, string>
+          | ((prev: Record<string, string>) => Record<string, string>)
+      ) => {
+        if (typeof cb === "function") {
+          cb(currentPreviews);
+        }
       }
-    });
+    );
     currentFormData = {
       images: { additional: [] },
     } as unknown as ListingFormData;
     currentPreviews = {};
-    (useMutation as Mock).mockReturnValue(mockGenerateUploadUrl);
-    global.fetch = vi.fn();
-    global.URL.createObjectURL = vi.fn().mockReturnValue("blob:test-url");
-    global.URL.revokeObjectURL = vi.fn();
+    vi.mocked(useMutation).mockReturnValue(
+      mockGenerateUploadUrl as unknown as ReturnType<typeof useMutation>
+    );
+    mockFetch.mockReset();
+    mockCreateObjectURL.mockReturnValue("blob:test-url");
+    mockRevokeObjectURL.mockReset();
   });
 
   it("should handle single upload success and revoke old preview", async () => {
     mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
-    (global.fetch as Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ storageId: "storage-1" }),
     });
 
-    // Mock setPreviews to trigger the callback where revocation happens
-    mockSetPreviews.mockImplementation((cb) => {
-      cb({ front: "blob:old" });
-    });
+    mockSetPreviews.mockImplementation(
+      (
+        cb:
+          | Record<string, string>
+          | ((prev: Record<string, string>) => Record<string, string>)
+      ) => {
+        if (typeof cb === "function") {
+          cb({ front: "blob:old" });
+        }
+      }
+    );
 
     const file = new File([""], "test.jpg", { type: "image/jpeg" });
     const { result } = renderHook(() => useListingMedia(), {
@@ -122,28 +152,28 @@ describe("useListingMedia", () => {
       await result.current.handleUpload("front", file);
     });
 
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith("blob:old");
+    expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:old");
     expect(mockSetPreviews).toHaveBeenCalled();
     expect(mockSetFormData).toHaveBeenCalled();
   });
 
   it("should handle single upload to empty slot (covers false branch of line 44)", async () => {
     mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
-    (global.fetch as Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ storageId: "storage-1" }),
     });
 
     const file = new File([""], "test.jpg", { type: "image/jpeg" });
     const { result } = renderHook(() => useListingMedia(), {
-      wrapper: (props) => wrapper({ ...props, previews: {} }), // Empty previews
+      wrapper: (props) => wrapper({ ...props, previews: {} }),
     });
 
     await act(async () => {
       await result.current.handleUpload("front", file);
     });
 
-    expect(global.URL.revokeObjectURL).not.toHaveBeenCalled();
+    expect(mockRevokeObjectURL).not.toHaveBeenCalled();
     expect(mockSetPreviews).toHaveBeenCalled();
   });
 
@@ -157,13 +187,13 @@ describe("useListingMedia", () => {
     });
 
     expect(toast.error).toHaveBeenCalledWith("API Error");
-    expect(mockSetPreviews).toHaveBeenCalled(); // Should cleanup on fail
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith("blob:test-url");
+    expect(mockSetPreviews).toHaveBeenCalled();
+    expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:test-url");
   });
 
   it("should handle upload result not ok", async () => {
     mockGenerateUploadUrl.mockResolvedValue("http://url");
-    (global.fetch as Mock).mockResolvedValue({ ok: false });
+    mockFetch.mockResolvedValue({ ok: false });
     const file = new File([""], "test.jpg", { type: "image/jpeg" });
     const { result } = renderHook(() => useListingMedia(), { wrapper });
 
@@ -176,7 +206,7 @@ describe("useListingMedia", () => {
 
   it("should handle additional upload success", async () => {
     mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
-    (global.fetch as Mock).mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ storageId: "storage-add-1" }),
     });
@@ -221,7 +251,7 @@ describe("useListingMedia", () => {
     expect(toast.error).toHaveBeenCalledWith(
       "Failed to upload one or more images"
     );
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith("blob:test-url");
+    expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:test-url");
   });
 
   it("should handle remove additional", () => {
@@ -237,7 +267,7 @@ describe("useListingMedia", () => {
       result.current.handleRemove("additional", 0);
     });
 
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith("blob:url0");
+    expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:url0");
     expect(mockSetFormData).toHaveBeenCalled();
   });
 
@@ -261,7 +291,7 @@ describe("useListingMedia", () => {
       result.current.handleRemove("front");
     });
 
-    expect(global.URL.revokeObjectURL).not.toHaveBeenCalled();
+    expect(mockRevokeObjectURL).not.toHaveBeenCalled();
     expect(mockSetFormData).toHaveBeenCalled();
   });
 
@@ -275,7 +305,7 @@ describe("useListingMedia", () => {
       result.current.cleanupPreviews();
     });
 
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith("blob:url1");
-    expect(global.URL.revokeObjectURL).not.toHaveBeenCalledWith("http://other");
+    expect(mockRevokeObjectURL).toHaveBeenCalledWith("blob:url1");
+    expect(mockRevokeObjectURL).not.toHaveBeenCalledWith("http://other");
   });
 });

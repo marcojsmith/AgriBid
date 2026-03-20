@@ -1,8 +1,7 @@
 import { AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
-import { useListingWizard } from "../hooks/useListingWizard";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 /**
  * Step component for collecting equipment condition checklist information.
@@ -68,7 +67,9 @@ export const ConditionChecklistStep = () => {
                     : "outline"
                 }
                 size="sm"
-                onClick={() => updateChecklist(item.id, true)}
+                onClick={() => {
+                  updateChecklist(item.id, true);
+                }}
                 className="rounded-lg font-bold w-16"
                 aria-pressed={formData.conditionChecklist[item.id] === true}
                 aria-label={`${item.label} yes`}
@@ -82,7 +83,9 @@ export const ConditionChecklistStep = () => {
                     : "outline"
                 }
                 size="sm"
-                onClick={() => updateChecklist(item.id, false)}
+                onClick={() => {
+                  updateChecklist(item.id, false);
+                }}
                 className="rounded-lg font-bold w-16"
                 aria-pressed={formData.conditionChecklist[item.id] === false}
                 aria-label={`${item.label} no`}
@@ -104,7 +107,9 @@ export const ConditionChecklistStep = () => {
         <textarea
           id="condition-notes"
           value={formData.conditionChecklist.notes}
-          onChange={(e) => updateChecklist("notes", e.target.value)}
+          onChange={(e) => {
+            updateChecklist("notes", e.target.value);
+          }}
           placeholder="Mention any recent repairs, known issues, or upgrades..."
           className="w-full min-h-[120px] p-4 rounded-xl border-2 bg-background focus:border-primary outline-none transition-colors text-sm"
         />

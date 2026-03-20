@@ -2,12 +2,16 @@ import React from "react";
 import { renderHook } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 
+import {
+  UserProfileContext,
+  type UserProfile,
+} from "@/contexts/user-profile-types";
+
 import { useUserProfile } from "./useUserProfile";
-import { UserProfileContext, type UserProfile } from "./user-profile-types";
 
 describe("useUserProfile", () => {
   it("should throw error when used outside of Provider", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
 
     expect(() => renderHook(() => useUserProfile())).toThrow(
       "useUserProfile must be used within a UserProfileProvider"

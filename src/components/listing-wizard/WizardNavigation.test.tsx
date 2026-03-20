@@ -1,16 +1,17 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { WizardNavigation } from "./WizardNavigation";
-import { useListingWizard } from "./hooks/useListingWizard";
-import { useListingForm } from "./hooks/useListingForm";
-import { type ListingWizardContextType } from "./context/ListingWizardContextDef";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
+import { useListingForm } from "@/hooks/listing-wizard/useListingForm";
 
-vi.mock("../listing-wizard/hooks/useListingWizard", () => ({
+import { WizardNavigation } from "./WizardNavigation";
+import type { ListingWizardContextType } from "./context/ListingWizardContextDef";
+
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 
-vi.mock("../listing-wizard/hooks/useListingForm", () => ({
+vi.mock("@/hooks/listing-wizard/useListingForm", () => ({
   useListingForm: vi.fn(),
 }));
 

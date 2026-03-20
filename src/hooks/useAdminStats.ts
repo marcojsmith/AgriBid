@@ -1,6 +1,6 @@
 import { useContext } from "react";
 
-import { AdminStatsContext, NO_PROVIDER } from "./admin-stats-types";
+import { AdminStatsContext, NO_PROVIDER } from "@/contexts/admin-stats-types";
 
 /**
  * Accesses the current admin statistics from the AdminStatsContext.

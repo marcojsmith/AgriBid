@@ -1,10 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
-import { PricingDurationStep } from "./PricingDurationStep";
-import { useListingWizard } from "../hooks/useListingWizard";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-vi.mock("../hooks/useListingWizard", () => ({
+import { PricingDurationStep } from "./PricingDurationStep";
+
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 

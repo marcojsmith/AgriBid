@@ -122,11 +122,6 @@ export const getActiveAuctionsHandler = async (
       return auctionsQuery.order("desc");
     }
 
-    if (statuses.length === 0) {
-      // Return an empty query if no status matches the filter using a type-safe always-false condition
-      return auctionsQuery.filter((q) => q.neq(q.field("_id"), q.field("_id")));
-    }
-
     if (statuses.length === 1) {
       return auctionsQuery
         .withIndex("by_status", (q) => q.eq("status", statuses[0]))
@@ -312,7 +307,9 @@ export const getAuctionByIdHandler = async (
     if (!auth?.profile) return null;
 
     const isAdmin = auth.profile.role === "admin";
-    const isOwner = auction.sellerId === auth.authUser._id || auction.sellerId === auth.userId;
+    const isOwner =
+      auction.sellerId === auth.authUser._id ||
+      auction.sellerId === auth.userId;
 
     if (!isAdmin && !isOwner) return null;
   }

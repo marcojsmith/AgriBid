@@ -2,8 +2,8 @@ import { useState, useMemo } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-import { useListingWizard } from "../hooks/useListingWizard";
 import { SOUTHERN_AFRICA_LOCATIONS } from "../constants";
 
 /**
@@ -53,7 +53,7 @@ export const GeneralInfoStep = () => {
                 updateField("year", Math.max(0, parsed));
               }
             }}
-            placeholder={`e.g. ${new Date().getFullYear()}`}
+            placeholder={`e.g. ${String(new Date().getFullYear())}`}
             className="h-12 border-2 rounded-xl"
           />
         </div>
@@ -72,7 +72,9 @@ export const GeneralInfoStep = () => {
               setShowLocationSuggestions(true);
             }}
             onBlur={() =>
-              setTimeout(() => setShowLocationSuggestions(false), 200)
+              setTimeout(() => {
+                setShowLocationSuggestions(false);
+              }, 200)
             }
             placeholder="e.g. Johannesburg, ZA or Gaborone, BW"
             className="h-12 border-2 rounded-xl"
@@ -117,7 +119,9 @@ export const GeneralInfoStep = () => {
         <Textarea
           id="description"
           value={formData.description}
-          onChange={(e) => updateField("description", e.target.value)}
+          onChange={(e) => {
+            updateField("description", e.target.value);
+          }}
           placeholder="Describe the condition, key features, and any recent maintenance..."
           className="min-h-[120px] border-2 rounded-xl resize-none"
         />
@@ -133,7 +137,9 @@ export const GeneralInfoStep = () => {
         <Input
           id="title"
           value={formData.title}
-          onChange={(e) => updateField("title", e.target.value)}
+          onChange={(e) => {
+            updateField("title", e.target.value);
+          }}
           placeholder="e.g. 2023 John Deere 6155R Premium"
           className="h-12 border-2 rounded-xl"
         />

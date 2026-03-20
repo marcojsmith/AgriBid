@@ -12,6 +12,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | -------------------------------------------------- | ------------------------------- |
 | `bun run dev`                                      | Start development server        |
 | `bun run lint`                                     | Check code for errors           |
+| `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file  |
 | `bun run test --run path/to/directory/file.ts`     | Run test for a specific file    |
 | `bun run test:coverage`                            | Run tests with coverage         |
 | `bun run build`                                    | Production build                |
@@ -71,6 +72,18 @@ rule cannot be satisfied and genuinely blocks progress, open an issue describing
 the exceptional case before considering any suppression — but never commit
 suppressions without an issue reference.
 
+**Revert before commit to main:**
+To maintain these guarantees during code review, development MUST be
+performed against `strictTypeChecked` + `stylisticTypeChecked`. Only revert
+to the following `recommended` configuration once the changes are ready to be
+committed to the branch:
+
+```js
+tseslint.configs.recommended,
+// tseslint.configs.strictTypeChecked,
+// tseslint.configs.stylisticTypeChecked,
+```
+
 ---
 
 # 2. Project Structure
@@ -128,6 +141,14 @@ Consult these regularly. Keep them accurate when making changes.
 ---
 
 # 5. Coding Standards
+
+## Testing coverage
+
+- Before you can commit, you need to achieve the global thresholds for test coverage:
+  - statements: 98%
+  - branches: 95%
+  - functions: 98%
+  - lines: 98%
 
 ## Type safety
 

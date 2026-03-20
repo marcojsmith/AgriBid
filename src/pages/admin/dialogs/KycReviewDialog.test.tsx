@@ -1,8 +1,27 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
+
 import { KycReviewDialog } from "./KycReviewDialog";
-import type { KycReviewUser } from "../hooks/useUserManagement";
+
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ children, open, onOpenChange }: any) => (
+    <div
+      data-testid="mock-dialog"
+      data-open={open}
+      onClick={() => onOpenChange(false)}
+    >
+      {children}
+    </div>
+  ),
+  DialogContent: ({ children }: any) => <div>{children}</div>,
+  DialogDescription: ({ children }: any) => <div>{children}</div>,
+  DialogHeader: ({ children }: any) => <div>{children}</div>,
+  DialogTitle: ({ children }: any) => <div>{children}</div>,
+  DialogFooter: ({ children }: any) => <div>{children}</div>,
+}));
 
 describe("KycReviewDialog", () => {
   const mockUser: KycReviewUser = {
@@ -222,12 +241,31 @@ describe("KycReviewDialog", () => {
     expect(rejectButton?.disabled).toBe(true);
   });
 
-  it("should call onClose when dialog is dismissed", () => {
+  it("should display message when kycDocumentUrls is undefined", () => {
+    const userWithoutDocs = { ...mockUser, kycDocumentUrls: undefined };
+    render(<KycReviewDialog {...defaultProps} user={userWithoutDocs} />);
+
+    expect(screen.getByText("No documents uploaded.")).toBeInTheDocument();
+  });
+
+  it("should handle undefined idNumber when showFullId is true", () => {
+    const userWithNoId = { ...mockUser, idNumber: undefined };
+    render(
+      <KycReviewDialog
+        {...defaultProps}
+        user={userWithNoId}
+        showFullId={true}
+      />
+    );
+
+    expect(screen.getByText("Not Provided")).toBeInTheDocument();
+  });
+
+  it("should call onClose when onOpenChange(false) is triggered", () => {
     render(<KycReviewDialog {...defaultProps} />);
 
-    const dialogContent = screen.getByRole("dialog");
-    fireEvent.keyDown(dialogContent, { key: "Escape" });
-
+    // Clicking the mock dialog triggers onOpenChange(false)
+    fireEvent.click(screen.getByTestId("mock-dialog"));
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 });
