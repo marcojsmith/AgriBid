@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-. "$(dirname "$0")/h"
 
 # Check that strictTypeChecked and stylisticTypeChecked are NOT uncommented in eslint.config.js
 # This ensures the pre-commit hook passes while allowing developers to enable strict mode during development
@@ -20,13 +19,14 @@ check_strict_disabled() {
       exit 1
     fi
   else
-    # Reading from stdin
-    if grep -q "^[[:space:]]*tseslint\.configs\.strictTypeChecked,"; then
+    # Reading from stdin - buffer it once to avoid stdin consumption issues
+    STAGED=$(cat)
+    if printf '%s\n' "$STAGED" | grep -q "^[[:space:]]*tseslint\.configs\.strictTypeChecked,"; then
       echo "ERROR: eslint.config.js has strictTypeChecked uncommented. Revert to 'recommended' before committing."
       echo "       Run 'bun run lint:strict' locally to voluntarily check strict mode compliance."
       exit 1
     fi
-    if grep -q "^[[:space:]]*tseslint\.configs\.stylisticTypeChecked,"; then
+    if printf '%s\n' "$STAGED" | grep -q "^[[:space:]]*tseslint\.configs\.stylisticTypeChecked,"; then
       echo "ERROR: eslint.config.js has stylisticTypeChecked uncommented. Revert to 'recommended' before committing."
       echo "       Run 'bun run lint:strict' locally to voluntarily check strict mode compliance."
       exit 1
