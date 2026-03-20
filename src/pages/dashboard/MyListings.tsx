@@ -238,6 +238,12 @@ export default function MyListings() {
           <TabsTrigger value="sold" className="flex-1 min-w-[80px]">
             Sold ({getStatusCount("sold")})
           </TabsTrigger>
+          <TabsTrigger value="unsold" className="flex-1 min-w-[80px]">
+            Unsold ({getStatusCount("unsold")})
+          </TabsTrigger>
+          <TabsTrigger value="rejected" className="flex-1 min-w-[80px]">
+            Rejected ({getStatusCount("rejected")})
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -428,7 +434,8 @@ export default function MyListings() {
                 : ""}{" "}
               Listings
             </p>
-            {status === "CanLoadMore" ? (
+            {status === "CanLoadMore" &&
+            filteredListings.length < getStatusCount(statusFilter) ? (
               <Button
                 variant="outline"
                 onClick={() => {
