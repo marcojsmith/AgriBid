@@ -474,8 +474,9 @@ export const saveDraftHandler = async (
     restArgs.images.additional &&
     restArgs.images.additional.length > MAX_ADDITIONAL_IMAGES
   ) {
-    throw new ConvexError(
-      `Additional images limit exceeded (max ${MAX_ADDITIONAL_IMAGES.toString()})`
+    restArgs.images.additional = restArgs.images.additional.slice(
+      0,
+      MAX_ADDITIONAL_IMAGES
     );
   }
 

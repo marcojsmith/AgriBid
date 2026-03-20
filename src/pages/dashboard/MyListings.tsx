@@ -267,8 +267,11 @@ export default function MyListings() {
             >
               <div className="w-full md:w-48 aspect-video bg-muted rounded-xl overflow-hidden shrink-0">
                 {(() => {
-                  const normalizedImages = normalizeListingImages(auction.images);
-                  const thumbnailUrl = normalizedImages.front ?? normalizedImages[0];
+                  const normalizedImages = normalizeListingImages(
+                    auction.images
+                  );
+                  const thumbnailUrl =
+                    normalizedImages.front || normalizedImages.additional[0];
                   return thumbnailUrl ? (
                     <img
                       src={thumbnailUrl}

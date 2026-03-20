@@ -357,18 +357,25 @@ describe("Mutations Coverage", () => {
       ).rejects.toThrow("Invalid duration");
     });
 
-    it("should throw if too many additional images in saveDraftHandler", async () => {
-      await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            title: "Test",
-            images: {
-              additional: ["1", "2", "3", "4", "5", "6", "7"],
-            },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
-      ).rejects.toThrow(/Additional images limit exceeded/);
+    it("should truncate additional images in saveDraftHandler", async () => {
+      const result = await saveDraftHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          title: "Test",
+          images: {
+            additional: ["1", "2", "3", "4", "5", "6", "7"],
+          },
+        } as PartialDraftArgs as SaveDraftArgs
+      );
+      expect(result).toBe("id");
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auctions",
+        expect.objectContaining({
+          images: expect.objectContaining({
+            additional: ["1", "2", "3", "4", "5", "6"],
+          }),
+        })
+      );
     });
 
     it("should throw if invalid auctionId provided", async () => {
