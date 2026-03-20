@@ -3,8 +3,8 @@ import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 
 import { Badge } from "@/components/ui/badge";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-import { useListingWizard } from "../hooks/useListingWizard";
 import { PHOTO_SLOTS } from "../constants";
 
 /**
@@ -21,7 +21,7 @@ export const ReviewSubmitStep = () => {
   const categories = useQuery(api.auctions.getCategories);
 
   const categoryName =
-    categories?.find((c) => c._id === formData.categoryId)?.name ||
+    categories?.find((c) => c._id === formData.categoryId)?.name ??
     "Not selected";
 
   return (
@@ -152,7 +152,7 @@ export const ReviewSubmitStep = () => {
                 slot.id as keyof Omit<typeof formData.images, "additional">
               ];
             const previewUrl =
-              previews[slot.id] ||
+              (Reflect.get(previews, slot.id) as string | undefined) ??
               (storageId?.startsWith("http") ? storageId : null);
 
             return (

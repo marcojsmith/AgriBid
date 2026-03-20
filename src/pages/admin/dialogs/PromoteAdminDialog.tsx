@@ -9,8 +9,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-
-import type { AdminProfile } from "../hooks/useUserManagement";
+import type { AdminProfile } from "@/hooks/admin/useUserManagement";
 
 /**
  * Renders a confirmation dialog to promote a user to an administrative role.
@@ -42,7 +41,12 @@ export function PromoteAdminDialog({
   targetUser: AdminProfile | null;
 }) {
   return (
-    <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <AlertDialogContent className="rounded-2xl border-2">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-black uppercase tracking-tight text-destructive">
@@ -51,7 +55,9 @@ export function PromoteAdminDialog({
           <AlertDialogDescription className="font-medium text-sm">
             You are about to promote{" "}
             <span className="font-bold text-primary">
-              {targetUser?.name || targetUser?.email || "this user"}
+              {targetUser?.name?.trim()
+                ? targetUser.name
+                : (targetUser?.email ?? "this user")}
             </span>{" "}
             to an administrative role. This grants full access to the Command
             Center and system settings.

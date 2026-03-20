@@ -1,5 +1,5 @@
-import { useListingWizard } from "../context/useListingWizard";
-import { STEPS } from "../constants";
+import { useListingWizard } from "@/components/listing-wizard/context/useListingWizard";
+import { STEPS } from "@/components/listing-wizard/constants";
 
 /**
  * Custom hook for managing listing wizard form navigation and step validation.
@@ -18,15 +18,19 @@ export function useListingForm() {
   const getStepError = (stepIndex: number): string | null => {
     switch (stepIndex) {
       case 0: // General Info
-        if (!formData.title?.trim()) return "Title is required";
-        if (!formData.location?.trim()) return "Location is required";
+        if (!formData.title.trim()) return "Title is required";
+        if (!formData.location.trim()) return "Location is required";
         if (!formData.year || formData.year < 1900)
           return "Valid year is required";
         if (
           formData.operatingHours === undefined ||
-          formData.operatingHours < 0
+          formData.operatingHours === null
         )
           return "Operating hours are required";
+        if (!Number.isFinite(formData.operatingHours))
+          return "Operating hours must be a valid number";
+        if (formData.operatingHours < 0)
+          return "Operating hours cannot be negative";
         return null;
       case 1: // Technical Specs
         if (!formData.categoryId) return "Please select a category.";
@@ -34,42 +38,24 @@ export function useListingForm() {
         if (!formData.model) return "Please select a model.";
         return null;
       case 2: // Condition Checklist
-        if (!formData.conditionChecklist) {
-          return "Please complete the condition checklist.";
-        }
-        if (
-          formData.conditionChecklist.engine === null ||
-          formData.conditionChecklist.engine === undefined
-        )
+        if (formData.conditionChecklist.engine === null)
           return "Please specify the engine condition.";
-        if (
-          formData.conditionChecklist.hydraulics === null ||
-          formData.conditionChecklist.hydraulics === undefined
-        )
+        if (formData.conditionChecklist.hydraulics === null)
           return "Please specify the hydraulics condition.";
-        if (
-          formData.conditionChecklist.tires === null ||
-          formData.conditionChecklist.tires === undefined
-        )
+        if (formData.conditionChecklist.tires === null)
           return "Please specify the tires condition.";
-        if (
-          formData.conditionChecklist.serviceHistory === null ||
-          formData.conditionChecklist.serviceHistory === undefined
-        )
+        if (formData.conditionChecklist.serviceHistory === null)
           return "Please specify the service history.";
         return null;
       case 3: {
         // Media Gallery
-        const hasImages = Array.isArray(formData.images)
-          ? formData.images.length > 0
-          : !!(
-              formData.images?.front ||
-              formData.images?.engine ||
-              formData.images?.cabin ||
-              formData.images?.rear ||
-              (formData.images?.additional &&
-                formData.images.additional.length > 0)
-            );
+        const hasImages = !!(
+          formData.images.front ??
+          formData.images.engine ??
+          formData.images.cabin ??
+          formData.images.rear ??
+          formData.images.additional.length > 0
+        );
         if (!hasImages) return "At least one photo is required";
         return null;
       }
@@ -111,7 +97,9 @@ export function useListingForm() {
    * Navigates to the previous step.
    * @returns void
    */
-  const prev = () => setCurrentStep(Math.max(currentStep - 1, 0));
+  const prev = () => {
+    setCurrentStep(Math.max(currentStep - 1, 0));
+  };
 
   return {
     next,

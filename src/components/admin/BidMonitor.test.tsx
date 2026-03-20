@@ -212,4 +212,39 @@ describe("BidMonitor", () => {
       expect(toast.error).toHaveBeenCalledWith("Void failed");
     });
   });
+
+  it("handles pagination: more and reset", () => {
+    const mockWithPagination = {
+      ...mockPaginatedBids,
+      isDone: false,
+      continueCursor: "cursor-2",
+    };
+    mockUseQuery.mockReturnValue(mockWithPagination);
+
+    render(<BidMonitor />);
+
+    const moreButton = screen.getByRole("button", { name: /more/i });
+    expect(moreButton).not.toBeDisabled();
+
+    fireEvent.click(moreButton);
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paginationOpts: expect.objectContaining({ cursor: "cursor-2" }),
+      })
+    );
+
+    // Test reset
+    const resetButton = screen.getByRole("button", { name: /reset/i });
+    expect(resetButton).not.toBeDisabled();
+    fireEvent.click(resetButton);
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paginationOpts: expect.objectContaining({ cursor: null }),
+      })
+    );
+  });
 });

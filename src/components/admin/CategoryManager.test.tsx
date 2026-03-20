@@ -523,6 +523,51 @@ describe("CategoryManager", () => {
     });
   });
 
+  it("should handle delete category error with non-Error object", async () => {
+    const { toast } = await import("sonner");
+    mockDeleteCategory.mockRejectedValue("Delete error");
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to delete");
+    });
+  });
+
+  it("should handle reactivation error with non-Error object", async () => {
+    const { toast } = await import("sonner");
+    mockAddCategory.mockRejectedValue("Reactivate error");
+
+    render(
+      <CategoryManager
+        categories={mockCategories}
+        addCategory={mockAddCategory}
+        updateCategory={mockUpdateCategory}
+        deleteCategory={mockDeleteCategory}
+      />
+    );
+
+    const reactivateButton = screen.getByLabelText(
+      "Reactivate category Inactive Category"
+    );
+    fireEvent.click(reactivateButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to reactivate");
+    });
+  });
+
   it("should close add dialog when cancel is clicked", async () => {
     render(
       <CategoryManager

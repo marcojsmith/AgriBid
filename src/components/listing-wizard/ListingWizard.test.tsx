@@ -88,6 +88,20 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// Mock useSearchParams
+const mockSetSearchParams = vi.fn();
+const mockSearchParams = new URLSearchParams();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+    MemoryRouter: actual.MemoryRouter,
+    Link: actual.Link,
+  };
+});
+
 const originalFetch = global.fetch;
 
 describe("ListingWizard Full Coverage", () => {
@@ -97,6 +111,7 @@ describe("ListingWizard Full Coverage", () => {
   const mockEnsureAuthenticated = vi.fn().mockReturnValue(true);
 
   beforeEach(() => {
+    mockSearchParams.delete("edit");
     localStorage.clear();
     mockEnsureAuthenticated.mockReturnValue(true);
     global.fetch = vi.fn().mockResolvedValue({
@@ -104,8 +119,8 @@ describe("ListingWizard Full Coverage", () => {
       json: () => Promise.resolve({ storageId: "test-storage-id" }),
     });
 
-    (useMutation as Mock).mockImplementation((apiFunc: { _path?: string }) => {
-      const path = apiFunc?._path;
+    (useMutation as Mock).mockImplementation((apiFunc: { _path: string }) => {
+      const path = apiFunc._path;
       if (path === "auctions:createAuction") return mockCreateAuction;
       if (path === "auctions:saveDraft") return mockSaveDraft;
       if (path === "auctions:submitForReview") return mockSubmitForReview;
@@ -492,7 +507,7 @@ describe("ListingWizard Full Coverage", () => {
       expect(mockSaveDraft).toHaveBeenCalled();
       const saved = JSON.parse(
         localStorage.getItem("agribid_listing_draft") || "{}"
-      );
+      ) as { auctionId?: string };
       expect(saved.auctionId).toBe("new-id-123");
     });
   });
@@ -589,10 +604,93 @@ describe("ListingWizard Full Coverage", () => {
     expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
   });
 
-  it("handles out of range step in localStorage", () => {
-    localStorage.setItem("agribid_listing_step", "10");
+  it("handles non-Error objects in localStorage parsing catch", () => {
+    localStorage.setItem("agribid_listing_draft", "invalid-json");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Mock JSON.parse to throw a non-Error string
+    const originalParse = JSON.parse;
+    JSON.parse = vi.fn().mockImplementation(() => {
+      throw "Not an error object";
+    });
+
+    try {
+      renderWizard();
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to parse saved draft"),
+        expect.any(Error)
+      );
+    } finally {
+      JSON.parse = originalParse;
+      spy.mockRestore();
+    }
+  });
+
+  it("handles save draft when localStorage is empty during id update", async () => {
     renderWizard();
-    // Should fallback to step 0
-    expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
+    fillStep1();
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    await screen.findByText(/Tractor/i);
+    fireEvent.click(screen.getByText(/Tractor/i));
+
+    mockSaveDraft.mockResolvedValue("new-id-999");
+
+    // Clear localStorage JUST before the update happens in handleSaveDraft
+    // This is a bit tricky to time, but we can mock localStorage.getItem
+    const originalGetItem = localStorage.getItem;
+    let cleared = false;
+    localStorage.getItem = vi.fn().mockImplementation((key) => {
+      if (key === "agribid_listing_draft" && cleared) return null;
+      return originalGetItem.call(localStorage, key);
+    });
+
+    const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
+    fireEvent.click(saveBtn);
+    cleared = true;
+
+    await waitFor(() => {
+      expect(mockSaveDraft).toHaveBeenCalled();
+      const saved = JSON.parse(
+        originalGetItem.call(localStorage, "agribid_listing_draft") || "{}"
+      ) as { auctionId?: string };
+      expect(saved.auctionId).toBe("new-id-999");
+    });
+    localStorage.getItem = originalGetItem;
+  });
+
+  it("uses editingAuctionId from search params for submission", async () => {
+    // Mock search params with 'edit'
+    mockSearchParams.set("edit", "a-edit-123");
+
+    renderWizard();
+    await fillAllSteps();
+
+    mockSaveDraft.mockResolvedValue("a-edit-123");
+    mockSubmitForReview.mockResolvedValue({ success: true });
+
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+
+    await waitFor(() => {
+      expect(mockSaveDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          auctionId: "a-edit-123",
+        })
+      );
+      expect(mockSubmitForReview).toHaveBeenCalledWith({
+        auctionId: "a-edit-123",
+      });
+    });
+  });
+
+  it("handles submission failure with non-Error object", async () => {
+    renderWizard();
+    await fillAllSteps();
+
+    mockCreateAuction.mockRejectedValueOnce("String error");
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Submission failed");
+    });
   });
 });

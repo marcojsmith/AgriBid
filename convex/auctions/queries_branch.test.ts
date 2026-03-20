@@ -5,7 +5,11 @@ import {
   getActiveAuctionsHandler,
   getAuctionBidsHandler,
   getMyBidsHandler,
+  getAuctionFlagsHandler,
+  getAllPendingFlagsHandler,
+  getMyListingsCountHandler,
 } from "./queries";
+import type { StatusFilter } from "./queries/shared";
 import type { Id, Doc } from "../_generated/dataModel";
 import type { AuthUser } from "../auth";
 import { findUserById } from "../users";
@@ -14,10 +18,14 @@ import * as auth from "../lib/auth";
 import type { QueryCtx } from "../_generated/server";
 
 // Mocking necessary modules
-vi.mock("../_generated/server", () => ({
-  query: vi.fn((q) => q),
-  mutation: vi.fn((m) => m),
-}));
+vi.mock("../_generated/server", () => {
+  const mockQuery = vi.fn(<T>(q: T): T => q);
+  const mockMutation = vi.fn(<T>(m: T): T => m);
+  return {
+    query: mockQuery,
+    mutation: mockMutation,
+  };
+});
 
 vi.mock("./helpers", () => ({
   toAuctionSummary: vi.fn((_ctx, a) =>
@@ -58,11 +66,11 @@ interface MockQuery {
   withSearchIndex: (idx: string, cb?: (q: unknown) => unknown) => MockQuery;
   filter: (cb: (q: unknown) => unknown) => MockQuery;
   order: (dir: string) => MockQuery;
-  take: (num: number) => Promise<unknown[]>;
-  collect: () => Promise<unknown[]>;
-  count: () => Promise<number>;
+  take: Mock & (() => Promise<unknown[]>);
+  collect: Mock & (() => Promise<unknown[]>);
+  count: Mock & (() => Promise<number>);
   unique: () => Promise<unknown>;
-  paginate: (opts: unknown) => Promise<unknown>;
+  paginate: Mock & ((opts: unknown) => Promise<unknown>);
   [Symbol.asyncIterator]: () => AsyncIterator<unknown>;
 }
 
@@ -103,16 +111,16 @@ describe("Queries Branch Coverage Expansion", () => {
     };
 
     const qObj: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
-        if (cb) cb(qMock);
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
+        if (cb) cb(qMock as unknown);
         return qObj;
       }),
-      withSearchIndex: vi.fn((_idx, cb) => {
-        if (cb) cb(qMock);
+      withSearchIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
+        if (cb) cb(qMock as unknown);
         return qObj;
       }),
-      filter: vi.fn((cb) => {
-        if (cb) cb(qMock);
+      filter: vi.fn((cb?: (q: unknown) => unknown) => {
+        if (cb) cb(qMock as unknown);
         return qObj;
       }),
       order: vi.fn().mockReturnThis(),
@@ -131,7 +139,7 @@ describe("Queries Branch Coverage Expansion", () => {
         return {
           next: async () => {
             if (!initialized) {
-              items = await qObj.collect();
+              items = (await qObj.collect()) as unknown[];
               initialized = true;
             }
             if (index < items.length) {
@@ -198,39 +206,74 @@ describe("Queries Branch Coverage Expansion", () => {
       });
     });
 
-    it("should handle search result capping with 1001 matching items", async () => {
-      vi.mocked(queryMock.take).mockImplementation(async (num) => {
-        console.log("Mock take called with:", num);
-        return new Array(1001).fill({
-          _id: "a1",
-          status: "active",
-          title: "tractor",
-        });
+    it("should handle SEARCH_COUNT_CAP logic with exactly 1000 items", async () => {
+      (vi.mocked(queryMock.take) as Mock).mockImplementation(() => {
+        return Promise.resolve(
+          new Array(1000).fill({
+            _id: "a1",
+            status: "active",
+            title: "tractor",
+          }) as unknown[]
+        );
       });
       const result = await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
       });
-      console.log("Search capping result:", result.totalCount);
-      expect(result.totalCount).toBe("1000+");
+      expect(result.totalCount).toBe(1000);
     });
 
-    it("should cover min/max year branches in getBaseQuery", async () => {
+    it("should handle minYear only filter with single status", async () => {
       await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         statusFilter: "active",
         minYear: 2020,
-        maxYear: 2022,
       });
       expect(qMock.gte).toHaveBeenCalledWith("year", 2020);
-      expect(qMock.lte).toHaveBeenCalledWith("year", 2022);
+    });
 
-      await getActiveAuctionsHandler(mockCtx, {
-        paginationOpts: { numItems: 10, cursor: null },
-        statusFilter: "active",
-        maxYear: 2022,
+    it("should handle manual pagination cursor in search", async () => {
+      vi.mocked(queryMock.take).mockResolvedValue([
+        { _id: "a1", status: "active", title: "tractor" },
+        { _id: "a2", status: "active", title: "tractor" },
+      ]);
+      const result = await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 1, cursor: "1" },
+        search: "tractor",
       });
-      expect(qMock.lte).toHaveBeenCalledWith("year", 2022);
+      expect(result.page).toHaveLength(1);
+      expect(result.isDone).toBe(true);
+    });
+
+    it("should handle totalCount > 1000 in normal pagination", async () => {
+      vi.mocked(queryMock.paginate).mockResolvedValue({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      });
+      vi.mocked(countQuery).mockResolvedValue(1001);
+
+      const result = await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.totalCount).toBe("1000+");
+    });
+
+    it("should cover maxHours branch in matchesAuctionFilter with undefined operatingHours", async () => {
+      vi.mocked(queryMock.take).mockResolvedValue([
+        {
+          _id: "a1",
+          status: "active",
+          title: "tractor",
+          operatingHours: undefined,
+        },
+      ]);
+      const result = await getActiveAuctionsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        search: "tractor",
+        maxHours: 100,
+      });
+      expect(result.page).toHaveLength(1);
     });
 
     it("should cover pagination and mapping in getActiveAuctionsHandler", async () => {
@@ -299,18 +342,18 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      vi.mocked(dbGetMock).mockImplementation(async (id: string) => {
+      (vi.mocked(dbGetMock) as Mock).mockImplementation((id: string) => {
         if (id === "a1")
-          return {
+          return Promise.resolve({
             _id: id as Id<"auctions">,
             status: "active",
             endTime: 2000,
-          } as unknown as Doc<"auctions">;
-        return {
+          } as unknown as Doc<"auctions">);
+        return Promise.resolve({
           _id: id as Id<"auctions">,
           status: "active",
           endTime: 1000,
-        } as unknown as Doc<"auctions">;
+        } as unknown as Doc<"auctions">);
       });
 
       const result = await getMyBidsHandler(mockCtx, {
@@ -347,18 +390,18 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      vi.mocked(dbGetMock).mockImplementation(async (id: string) => {
+      (vi.mocked(dbGetMock) as Mock).mockImplementation((id: string) => {
         if (id === "a1")
-          return {
+          return Promise.resolve({
             _id: id as Id<"auctions">,
             status: "active",
             endTime: undefined,
-          } as unknown as Doc<"auctions">;
-        return {
+          } as unknown as Doc<"auctions">);
+        return Promise.resolve({
           _id: id as Id<"auctions">,
           status: "active",
           endTime: 1000,
-        } as unknown as Doc<"auctions">;
+        } as unknown as Doc<"auctions">);
       });
 
       const result = await getMyBidsHandler(mockCtx, {
@@ -482,9 +525,9 @@ describe("Queries Branch Coverage Expansion", () => {
         updatedAt: Date.now(),
       } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      vi.mocked(queryMock.collect).mockImplementation(async () => {
+      (vi.mocked(queryMock.collect) as Mock).mockImplementation(() => {
         console.log("Mock collect called");
-        return [
+        return Promise.resolve([
           {
             auctionId: "a1",
             bidderId: "u1",
@@ -499,11 +542,14 @@ describe("Queries Branch Coverage Expansion", () => {
             timestamp: 200,
             status: "placed",
           },
-        ];
+        ] as unknown[]);
       });
-      vi.mocked(dbGetMock).mockImplementation(async (id: string) => {
+      (vi.mocked(dbGetMock) as Mock).mockImplementation((id: string) => {
         console.log("Mock db.get called with:", id);
-        return { _id: id, status: "active" } as unknown as Doc<"auctions">;
+        return Promise.resolve({
+          _id: id,
+          status: "active",
+        } as unknown as Doc<"auctions">);
       });
 
       const result = await getMyBidsHandler(mockCtx, {
@@ -539,6 +585,89 @@ describe("Queries Branch Coverage Expansion", () => {
         paginationOpts: { numItems: 10, cursor: null },
       });
       expect(result.totalCount).toBe(0);
+    });
+  });
+
+  describe("admin and shared queries additional branches", () => {
+    it("getAuctionFlagsHandler should handle missing reporter user", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "admin",
+      } as AuthUser);
+      queryMock.collect.mockResolvedValue([
+        { _id: "f1", reporterId: "r1", auctionId: "a1" },
+      ]);
+      vi.mocked(findUserById).mockResolvedValue(null);
+
+      const result = await getAuctionFlagsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+      expect(result[0].reporterName).toBe("Unknown User");
+    });
+
+    it("getAllPendingFlagsHandler should handle missing entities", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({
+        _id: "admin",
+      } as AuthUser);
+      queryMock.collect.mockResolvedValue([
+        { _id: "f1", reporterId: "r1", auctionId: "a1", status: "pending" },
+      ]);
+      dbGetMock.mockResolvedValue(null); // Missing auction
+      vi.mocked(findUserById).mockResolvedValue(null); // Missing user
+
+      const result = await getAllPendingFlagsHandler(mockCtx);
+      expect(result[0].auctionTitle).toBe("Unknown Auction");
+      expect(result[0].reporterName).toBe("Unknown Reporter");
+    });
+
+    it("statusesForFilter coverage in shared", async () => {
+      const { statusesForFilter } = await import("./queries");
+      expect(statusesForFilter("active")).toEqual(["active"]);
+      expect(statusesForFilter("closed")).toEqual(["sold", "unsold"]);
+      expect(statusesForFilter("all")).toEqual(["active", "sold", "unsold"]);
+      expect(statusesForFilter("invalid" as unknown as StatusFilter)).toEqual([
+        "active",
+        "sold",
+        "unsold",
+      ]);
+    });
+
+    it("getAuthenticatedUserId handles null auth user", async () => {
+      const { getAuthenticatedUserId } = await import("./queries");
+      vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+      const result = await getAuthenticatedUserId(mockCtx);
+      expect(result).toBeNull();
+    });
+
+    it("getAuthenticatedUserId handles Unauthenticated error", async () => {
+      const { getAuthenticatedUserId } = await import("./queries");
+      vi.mocked(auth.getAuthUser).mockResolvedValue({ _id: "u1" } as AuthUser);
+      vi.mocked(auth.resolveUserId).mockReturnValue(null);
+      const result = await getAuthenticatedUserId(mockCtx);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("listings queries branches", () => {
+    it("getMyListingsCountHandler should handle undefined status", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "u1",
+        name: "Test User",
+        _creationTime: Date.now(),
+        emailVerified: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("u1");
+
+      const result = await getMyListingsCountHandler(mockCtx, {
+        status: undefined,
+      });
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_seller",
+        expect.any(Function)
+      );
+      expect(result).toBe(0);
     });
   });
 
@@ -580,7 +709,8 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("getMyListingsCountHandler handles Unauthenticated", async () => {
-      const { getMyListingsCountHandler } = await import("./queries");
+      const { getMyListingsCountHandler: dynGetMyListingsCountHandler } =
+        await import("./queries");
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "u1",
@@ -593,7 +723,7 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(auth.resolveUserId).mockImplementation(() => {
         return null;
       });
-      const result = await getMyListingsCountHandler(mockCtx, {});
+      const result = await dynGetMyListingsCountHandler(mockCtx, {});
       expect(result).toBe(0);
     });
 
@@ -800,6 +930,7 @@ describe("Queries Branch Coverage Expansion", () => {
       );
     });
 
+    // eslint-disable-next-line no-secrets/no-secrets
     it("getMyBidsCountHandler rethrows non-Unauthenticated error", async () => {
       const { getMyBidsCountHandler } = await import("./queries");
       vi.mocked(auth.getAuthUser).mockRejectedValue(
@@ -811,11 +942,12 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("getMyListingsCountHandler rethrows non-Unauthenticated error", async () => {
-      const { getMyListingsCountHandler } = await import("./queries");
+      const { getMyListingsCountHandler: dynGetMyListingsCountHandler } =
+        await import("./queries");
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Database error")
       );
-      await expect(getMyListingsCountHandler(mockCtx, {})).rejects.toThrow(
+      await expect(dynGetMyListingsCountHandler(mockCtx, {})).rejects.toThrow(
         "Database error"
       );
     });

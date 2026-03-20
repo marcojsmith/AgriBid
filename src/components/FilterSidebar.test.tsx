@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
@@ -9,15 +10,98 @@ vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
 }));
 
-// Mock useSearchParams
+type ReactComponentType = React.ComponentType<unknown>;
+
 const mockSetSearchParams = vi.fn();
 let mockSearchParams = new URLSearchParams();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
+  type ActualType = typeof actual;
+  const typedActual = actual as ActualType & {
+    useSearchParams: () => [URLSearchParams, typeof mockSetSearchParams];
+  };
   return {
-    ...actual,
+    ...typedActual,
     useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+  };
+});
+
+vi.mock("./ui/select", () => {
+  interface MockProps {
+    children: React.ReactNode;
+    onValueChange?: (v: string) => void;
+    value?: string;
+    placeholder?: string;
+    "aria-label"?: string;
+    "aria-labelledby"?: string;
+    onClick?: () => void;
+  }
+
+  return {
+    Select: ({ children, onValueChange, value }: MockProps) => (
+      <div data-testid="mock-select" data-value={value}>
+        {React.Children.map(children, (child) => {
+          if (
+            React.isValidElement(child) &&
+            typeof child.type !== "string" &&
+            (child.type as ReactComponentType).name === "SelectContent"
+          ) {
+            return React.cloneElement(
+              child as React.ReactElement<{
+                onValueChange?: (v: string) => void;
+              }>,
+              {
+                onValueChange,
+              }
+            );
+          }
+          return child;
+        })}
+      </div>
+    ),
+    SelectTrigger: ({
+      children,
+      "aria-label": label,
+      "aria-labelledby": labelledBy,
+    }: MockProps) => (
+      <button aria-label={label} aria-labelledby={labelledBy}>
+        {children}
+      </button>
+    ),
+    SelectValue: ({ placeholder }: MockProps) => <span>{placeholder}</span>,
+    SelectContent: ({ children, onValueChange }: MockProps) => (
+      <div data-testid="mock-select-content">
+        {React.Children.map(children, (child) => {
+          if (
+            React.isValidElement(child) &&
+            typeof child.type !== "string" &&
+            (child.type as ReactComponentType).name === "SelectItem"
+          ) {
+            return React.cloneElement(
+              child as React.ReactElement<{
+                onClick?: () => void;
+                value: string;
+              }>,
+              {
+                onClick: () => {
+                  const childProps = child.props as React.PropsWithChildren<{
+                    value?: string;
+                  }>;
+                  return onValueChange?.(childProps.value ?? "");
+                },
+              }
+            );
+          }
+          return child;
+        })}
+      </div>
+    ),
+    SelectItem: ({ children, value, onClick }: MockProps) => (
+      <button data-testid={`select-item-${value}`} onClick={onClick}>
+        {children}
+      </button>
+    ),
   };
 });
 
@@ -35,6 +119,69 @@ describe("FilterSidebar", () => {
       </BrowserRouter>
     );
   };
+
+  it("updates minYear when a value is selected", () => {
+    renderSidebar();
+    const item = screen.getAllByTestId("select-item-2024")[0];
+    fireEvent.click(item);
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.get("minYear")).toBe("2024");
+  });
+
+  it("clears minYear when 'any' is selected", () => {
+    mockSearchParams.set("minYear", "2024");
+    renderSidebar();
+
+    const anyItem = screen.getAllByTestId("select-item-any")[0]; // minYear 'any'
+    fireEvent.click(anyItem);
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("minYear")).toBe(false);
+  });
+
+  it("updates maxYear and handles 'any' selection", () => {
+    renderSidebar();
+    const item = screen.getAllByTestId("select-item-2022")[1]; // maxYear '2022'
+    fireEvent.click(item);
+    fireEvent.click(screen.getAllByTestId("select-item-any")[1]); // maxYear 'any'
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("maxYear")).toBe(false);
+  });
+
+  it("updates minPrice and handles 'any' selection", () => {
+    renderSidebar();
+    fireEvent.click(screen.getByTestId("select-item-100000"));
+    fireEvent.click(screen.getAllByTestId("select-item-any")[2]); // minPrice 'any'
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("minPrice")).toBe(false);
+  });
+
+  it("updates maxPrice and handles 'any' selection", () => {
+    renderSidebar();
+    fireEvent.click(screen.getByTestId("select-item-5000000"));
+    fireEvent.click(screen.getAllByTestId("select-item-any")[3]); // maxPrice 'any'
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("maxPrice")).toBe(false);
+  });
+
+  it("updates maxHours and handles 'any' selection", () => {
+    renderSidebar();
+    fireEvent.click(screen.getByTestId("select-item-5000"));
+    fireEvent.click(screen.getAllByTestId("select-item-any")[4]); // maxHours 'any'
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("maxHours")).toBe(false);
+  });
 
   it("renders all filter sections", () => {
     renderSidebar();
@@ -175,4 +322,26 @@ describe("FilterSidebar", () => {
     expect(screen.getByLabelText(/Max Operating Hours/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Auction Status/i)).toBeInTheDocument();
   });
+
+  it("updates local state when manufacturer changes", () => {
+    renderSidebar();
+    const select = screen.getByLabelText(/Manufacturer/i);
+    fireEvent.change(select, { target: { value: "John Deere" } });
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.get("make")).toBe("John Deere");
+  });
+
+  it("updates local state when auction status changes", () => {
+    renderSidebar();
+    const select = screen.getByLabelText(/Auction Status/i);
+    fireEvent.change(select, { target: { value: "closed" } });
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.get("status")).toBe("closed");
+  });
+  // requires more complex interaction if they are not mocked.
+  // We can at least try to trigger the onValueChange if we can find the right way.
 });

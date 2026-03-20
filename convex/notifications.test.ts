@@ -301,6 +301,26 @@ describe("Notifications Coverage", () => {
         })
       ).rejects.toThrow(ConvexError);
     });
+
+    it("should successfully mark personal notification as read", async () => {
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+      } as unknown as AuthUser);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+      mockCtx.db.get.mockResolvedValue({
+        _id: "n1",
+        recipientId: "user1",
+        isRead: false,
+      });
+
+      await markAsReadHandler(mockCtx as unknown as MutationCtx, {
+        notificationId: "n1" as Id<"notifications">,
+      });
+
+      expect(mockCtx.db.patch).toHaveBeenCalledTimes(1);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("n1", { isRead: true });
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
   });
 
   describe("markAllReadHandler", () => {

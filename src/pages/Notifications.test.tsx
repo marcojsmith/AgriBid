@@ -194,8 +194,10 @@ describe("Notifications Page", () => {
 
   it("handles individual notification click failure", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.mocked(handleNotificationClick).mockRejectedValueOnce(new Error("Click fail"));
-    
+    vi.mocked(handleNotificationClick).mockRejectedValueOnce(
+      new Error("Click fail")
+    );
+
     renderNotifications();
 
     const notification = screen
@@ -208,6 +210,41 @@ describe("Notifications Page", () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Action failed: Click fail");
       expect(consoleSpy).toHaveBeenCalled();
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it("handles mark all read error with non-Error object", async () => {
+    mockMarkAllRead.mockRejectedValueOnce("Simple error string");
+    renderNotifications();
+
+    const markAllBtn = screen.getByText("Mark all as read");
+    await act(async () => {
+      fireEvent.click(markAllBtn);
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Action failed: Unknown error");
+    });
+  });
+
+  it("handles notification click error with non-Error object", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(handleNotificationClick).mockRejectedValueOnce(
+      "Click fail string"
+    );
+
+    renderNotifications();
+
+    const notification = screen
+      .getByText("New Bid")
+      .closest("div[class*='group']");
+    await act(async () => {
+      fireEvent.click(notification!);
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Action failed: Unknown error");
     });
     consoleSpy.mockRestore();
   });

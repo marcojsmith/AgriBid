@@ -68,7 +68,7 @@ describe("useUserManagement hook", () => {
     it("should return false if userId is not string or arrays are missing", async () => {
       const { result } = renderHook(() => useUserManagement());
 
-      mockGetProfileForKYC.mockResolvedValue({ userId: 123 }); // Not string
+      mockGetProfileForKYC.mockResolvedValue({ userId: 123 });
       await act(async () => {
         await result.current.handleReviewKYCClick("u1");
       });
@@ -111,10 +111,10 @@ describe("useUserManagement hook", () => {
         await result.current.handleReviewKYCClick("u2");
       });
 
-      expect(mockGetProfileForKYC).toHaveBeenCalledTimes(1); // Second call ignored
+      expect(mockGetProfileForKYC).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        resolveMutation!({
+        resolveMutation({
           userId: "u1",
           kycDocumentIds: [],
           kycDocumentUrls: [],
@@ -150,9 +150,24 @@ describe("useUserManagement hook", () => {
       expect(mockVerifyUser).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        resolveVerify!(undefined);
+        resolveVerify(undefined);
         await p1;
       });
+    });
+
+    it("should block duplicate invocation when called twice in immediate succession", async () => {
+      const { result } = renderHook(() => useUserManagement());
+
+      mockVerifyUser.mockResolvedValue(undefined);
+
+      act(() => {
+        result.current.handleManualVerify("u1");
+      });
+      act(() => {
+        result.current.handleManualVerify("u1");
+      });
+
+      expect(mockVerifyUser).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -174,7 +189,7 @@ describe("useUserManagement hook", () => {
           kycDocumentIds: [],
           kycDocumentUrls: [],
         });
-        result.current.setKycRejectionReason("   "); // Empty after trim
+        result.current.setKycRejectionReason("   ");
       });
 
       await act(async () => {

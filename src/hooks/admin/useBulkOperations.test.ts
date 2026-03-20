@@ -40,11 +40,11 @@ describe("useBulkOperations hook", () => {
     it("should handle empty auctions list (default and explicit)", () => {
       const { result } = renderHook(() => useBulkOperations());
 
-      const state1 = result.current.getSelectionState(); // Default []
+      const state1 = result.current.getSelectionState();
       expect(state1.isAllSelected).toBe(false);
       expect(state1.isPartiallySelected).toBe(false);
 
-      const state2 = result.current.getSelectionState([]); // Explicit []
+      const state2 = result.current.getSelectionState([]);
       expect(state2.isAllSelected).toBe(false);
     });
 
@@ -91,7 +91,7 @@ describe("useBulkOperations hook", () => {
       act(() => {
         result.current.handleToggleSelection("a1" as Id<"auctions">, true);
       });
-      expect(result.current.selectedAuctions).toHaveLength(1); // Still 1
+      expect(result.current.selectedAuctions).toHaveLength(1);
     });
 
     it("should remove ID if selected is false", () => {
@@ -113,7 +113,6 @@ describe("useBulkOperations hook", () => {
     it("should return immediately if no selections or no target", async () => {
       const { result } = renderHook(() => useBulkOperations());
 
-      // No selections, target set
       act(() => {
         result.current.setBulkStatusTarget("active");
       });
@@ -122,7 +121,6 @@ describe("useBulkOperations hook", () => {
       });
       expect(mockBulkUpdate).not.toHaveBeenCalled();
 
-      // Selections present, no target
       act(() => {
         result.current.setBulkStatusTarget(null);
         result.current.handleToggleSelection("a1" as Id<"auctions">, true);
@@ -131,6 +129,31 @@ describe("useBulkOperations hook", () => {
         await result.current.handleBulkStatusUpdate();
       });
       expect(mockBulkUpdate).not.toHaveBeenCalled();
+    });
+
+    it("should handle successful bulk status update", async () => {
+      const { result } = renderHook(() => useBulkOperations());
+      mockBulkUpdate.mockResolvedValue(undefined);
+
+      act(() => {
+        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
+        result.current.setBulkStatusTarget("active");
+      });
+
+      await act(async () => {
+        await result.current.handleBulkStatusUpdate();
+      });
+
+      expect(mockBulkUpdate).toHaveBeenCalledWith({
+        auctionIds: ["a1"],
+        updates: { status: "active" },
+      });
+      expect(toast.success).toHaveBeenCalledWith(
+        "Updated 1 auctions to active"
+      );
+      expect(result.current.selectedAuctions).toHaveLength(0);
+      expect(result.current.isBulkProcessing).toBe(false);
+      expect(result.current.bulkStatusTarget).toBe(null);
     });
 
     it("should handle catch block on mutation failure", async () => {

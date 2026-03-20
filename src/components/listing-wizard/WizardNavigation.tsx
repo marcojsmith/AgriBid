@@ -1,9 +1,9 @@
 import { ChevronLeft, ChevronRight, Check, Save, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
+import { useListingForm } from "@/hooks/listing-wizard/useListingForm";
 
-import { useListingWizard } from "./hooks/useListingWizard";
-import { useListingForm } from "./hooks/useListingForm";
 import { STEPS } from "./constants";
 
 interface WizardNavigationProps {
@@ -16,8 +16,8 @@ interface WizardNavigationProps {
  * Provides "Previous", "Next", "Save Draft", and final "Submit" actions.
  *
  * @param props - Component props containing final submit and save draft handlers
- * @param props.onFinalSubmit
- * @param props.onSaveDraft
+ * @param props.onFinalSubmit - Callback for final listing submission
+ * @param props.onSaveDraft - Callback for saving a draft
  * @returns The navigation UI row
  */
 export const WizardNavigation = ({

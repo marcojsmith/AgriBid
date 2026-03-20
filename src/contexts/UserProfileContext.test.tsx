@@ -3,9 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, render as rtlRender } from "@testing-library/react";
 import * as convexReact from "convex/react";
 
+import { useUserProfile } from "@/hooks/useUserProfile";
+
 import type { Id } from "../../convex/_generated/dataModel";
 import { UserProfileProvider } from "./UserProfileContext";
-import { useUserProfile } from "./useUserProfile";
 
 // Mock convex/react
 vi.mock("convex/react", () => ({

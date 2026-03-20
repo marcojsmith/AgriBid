@@ -1,8 +1,40 @@
 import { describe, it, expect, vi } from "vitest";
+import type { ReactNode, ComponentProps } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
+
 import { KycReviewDialog } from "./KycReviewDialog";
-import type { KycReviewUser } from "../hooks/useUserManagement";
+
+type DialogProps = ComponentProps<"div"> & {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ children, open, onOpenChange }: DialogProps) => (
+    <div
+      data-testid="mock-dialog"
+      data-open={open}
+      onClick={() => onOpenChange?.(false)}
+    >
+      {children}
+    </div>
+  ),
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogDescription: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
 
 describe("KycReviewDialog", () => {
   const mockUser: KycReviewUser = {
@@ -222,12 +254,31 @@ describe("KycReviewDialog", () => {
     expect(rejectButton?.disabled).toBe(true);
   });
 
-  it("should call onClose when dialog is dismissed", () => {
+  it("should display message when kycDocumentUrls is undefined", () => {
+    const userWithoutDocs = { ...mockUser, kycDocumentUrls: undefined };
+    render(<KycReviewDialog {...defaultProps} user={userWithoutDocs} />);
+
+    expect(screen.getByText("No documents uploaded.")).toBeInTheDocument();
+  });
+
+  it("should handle undefined idNumber when showFullId is true", () => {
+    const userWithNoId = { ...mockUser, idNumber: undefined };
+    render(
+      <KycReviewDialog
+        {...defaultProps}
+        user={userWithNoId}
+        showFullId={true}
+      />
+    );
+
+    expect(screen.getByText("Not Provided")).toBeInTheDocument();
+  });
+
+  it("should call onClose when onOpenChange(false) is triggered", () => {
     render(<KycReviewDialog {...defaultProps} />);
 
-    const dialogContent = screen.getByRole("dialog");
-    fireEvent.keyDown(dialogContent, { key: "Escape" });
-
+    // Clicking the mock dialog triggers onOpenChange(false)
+    fireEvent.click(screen.getByTestId("mock-dialog"));
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 });

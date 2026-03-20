@@ -1,12 +1,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { ConditionChecklistStep } from "./ConditionChecklistStep";
-import { useListingWizard } from "../hooks/useListingWizard";
-import { type ListingFormData } from "../types";
-import { type ListingWizardContextType } from "../context/ListingWizardContextDef";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-vi.mock("../hooks/useListingWizard", () => ({
+import { ConditionChecklistStep } from "./ConditionChecklistStep";
+import type { ListingFormData } from "../types";
+import type { ListingWizardContextType } from "../context/ListingWizardContextDef";
+
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 

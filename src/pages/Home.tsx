@@ -1,5 +1,5 @@
 // app/src/pages/Home.tsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
@@ -16,36 +16,7 @@ import {
   PAGINATION_INITIAL_ITEMS,
   PAGINATION_LOAD_MORE_ITEMS,
 } from "@/lib/constants";
-
-/**
- * Custom hook to detect media query matches.
- *
- * Initialises synchronously to avoid layout jumps.
- * @param query - The media query to match
- * @returns Whether the media query matches
- */
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() => {
-    if (typeof window !== "undefined") {
-      return window.matchMedia(query).matches;
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const media = window.matchMedia(query);
-    const listener = () => {
-      setMatches(media.matches);
-    };
-    media.addEventListener("change", listener);
-    return () => {
-      media.removeEventListener("change", listener);
-    };
-  }, [query]);
-
-  return matches;
-}
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 /**
  * Render the AgriBid home page with auction listings, filter controls (desktop and mobile) and view-mode toggles.

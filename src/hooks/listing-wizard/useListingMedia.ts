@@ -4,9 +4,12 @@ import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/utils";
+import { useListingWizard } from "@/components/listing-wizard/context/useListingWizard";
+import type { ListingFormData } from "@/components/listing-wizard/types";
 
-import { useListingWizard } from "../context/useListingWizard";
-import type { ListingFormData } from "../types";
+interface UploadResponse {
+  storageId: string;
+}
 
 /**
  * Custom hook for managing media uploads and previews in the listing wizard.
@@ -22,7 +25,7 @@ export function useListingMedia() {
    */
   const cleanupPreviews = useCallback(() => {
     Object.values(previews).forEach((url) => {
-      if (url.startsWith("blob:")) {
+      if (typeof url === "string" && url.startsWith("blob:")) {
         URL.revokeObjectURL(url);
       }
     });
@@ -38,11 +41,11 @@ export function useListingMedia() {
     slotId: "front" | "engine" | "cabin" | "rear",
     file: File
   ) => {
-    // 1. Create local preview
     const blobUrl = URL.createObjectURL(file);
     setPreviews((prev: Record<string, string>) => {
-      if (prev[slotId]?.startsWith("blob:")) {
-        URL.revokeObjectURL(prev[slotId]);
+      const currentPreview = prev[slotId];
+      if (currentPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentPreview);
       }
       return {
         ...prev,
@@ -51,10 +54,8 @@ export function useListingMedia() {
     });
 
     try {
-      // 2. Get upload URL from Convex
       const uploadUrl = await generateUploadUrl();
 
-      // 3. POST binary data to Convex storage
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -63,9 +64,8 @@ export function useListingMedia() {
 
       if (!result.ok) throw new Error("Upload failed");
 
-      const { storageId } = await result.json();
+      const { storageId } = (await result.json()) as UploadResponse;
 
-      // 4. Update form state with storageId
       setFormData((prev: ListingFormData) => ({
         ...prev,
         images: {
@@ -76,11 +76,10 @@ export function useListingMedia() {
     } catch (error) {
       console.error("Upload failed", error);
       toast.error(getErrorMessage(error, "Image upload failed"));
-      // Cleanup preview on failure
       setPreviews((prev: Record<string, string>) => {
-        const next = { ...prev };
-        delete next[slotId];
-        return next;
+        return Object.fromEntries(
+          Object.entries(prev).filter(([key]) => key !== slotId)
+        );
       });
       URL.revokeObjectURL(blobUrl);
     }
@@ -114,7 +113,7 @@ export function useListingMedia() {
         });
 
         if (!result.ok) throw new Error("Upload failed");
-        const { storageId } = await result.json();
+        const { storageId } = (await result.json()) as UploadResponse;
 
         setPreviews((prev: Record<string, string>) => ({
           ...prev,
@@ -142,27 +141,31 @@ export function useListingMedia() {
    * @param index - The zero-based index of the image in the additional images array (only used when targetId is "additional")
    */
   const handleRemove = (targetId: string, index?: number) => {
-    if (targetId === "additional" && index === undefined) {
+    if (
+      targetId === "additional" &&
+      (index === undefined ||
+        index < 0 ||
+        index >= formData.images.additional.length)
+    ) {
       return;
     }
 
     let previewKey = targetId;
 
     if (targetId === "additional" && index !== undefined) {
-      previewKey = formData.images.additional[index];
+      previewKey = Reflect.get(formData.images.additional, index);
     }
 
-    // Revoke preview
-    if (previews[previewKey]) {
-      URL.revokeObjectURL(previews[previewKey]);
+    const previewUrl = previewKey ? previews[previewKey] : undefined;
+    if (previewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
       setPreviews((prev: Record<string, string>) => {
-        const next = { ...prev };
-        delete next[previewKey];
-        return next;
+        return Object.fromEntries(
+          Object.entries(prev).filter(([key]) => key !== previewKey)
+        );
       });
     }
 
-    // Update form state
     setFormData((prev: ListingFormData) => {
       if (targetId === "additional" && index !== undefined) {
         return {

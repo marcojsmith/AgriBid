@@ -252,7 +252,7 @@ describe("AdminSupport Page", () => {
     });
   });
 
-  it("prevents submission with empty resolution after trimming", async () => {
+  it("prevents submission with empty resolution after trimming", () => {
     (useQuery as Mock).mockImplementation((queryApi) => {
       if (
         queryApi === api.admin.getAdminStats ||
@@ -458,20 +458,5 @@ describe("AdminSupport Page", () => {
     await act(async () => {
       resolvePromise({ success: true });
     });
-  });
-
-  it("handles confirmResolve call when no ticket is selected", async () => {
-    (useQuery as Mock).mockImplementation((queryApi) => {
-      if (
-        queryApi === api.admin.getAdminStats ||
-        queryApi === "admin:getAdminStats"
-      )
-        return mockAdminStatsValue;
-      if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockPaginatedTickets;
-      return undefined;
-    });
-
-    renderPage();
   });
 });

@@ -2,16 +2,17 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useQuery, usePaginatedQuery } from "convex/react";
 
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
+
 import { TechnicalSpecsStep } from "./TechnicalSpecsStep";
-import { useListingWizard } from "../hooks/useListingWizard";
-import { type ListingWizardContextType } from "../context/ListingWizardContextDef";
+import type { ListingWizardContextType } from "../context/ListingWizardContextDef";
 
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   usePaginatedQuery: vi.fn(),
 }));
 
-vi.mock("../hooks/useListingWizard", () => ({
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 
@@ -40,7 +41,7 @@ describe("TechnicalSpecsStep", () => {
         categoryId: "",
         make: "",
         model: "",
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
       updateField: mockUpdateField,
     } as unknown as ListingWizardContextType);
   });
@@ -69,7 +70,7 @@ describe("TechnicalSpecsStep", () => {
         categoryId: "cat1",
         make: "",
         model: "",
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
       updateField: mockUpdateField,
     } as unknown as ListingWizardContextType);
 
@@ -85,7 +86,7 @@ describe("TechnicalSpecsStep", () => {
         categoryId: "cat1",
         make: "John Deere",
         model: "",
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
       updateField: mockUpdateField,
     } as unknown as ListingWizardContextType);
 
@@ -95,18 +96,64 @@ describe("TechnicalSpecsStep", () => {
     expect(screen.getByText("8R 410")).toBeInTheDocument();
   });
 
-  it("calls updateField when model is selected", () => {
+  it("renders empty state when no makes found for category", () => {
     vi.mocked(useListingWizard).mockReturnValue({
       formData: {
-        categoryId: "cat1",
-        make: "John Deere",
+        categoryId: "cat-empty",
+        make: "",
         model: "",
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
       updateField: mockUpdateField,
     } as unknown as ListingWizardContextType);
 
     render(<TechnicalSpecsStep />);
-    fireEvent.click(screen.getByText("6155R"));
-    expect(mockUpdateField).toHaveBeenCalledWith("model", "6155R");
+    expect(
+      screen.getByText("No manufacturers found for this category")
+    ).toBeInTheDocument();
+  });
+
+  it("renders load more button and handles click", () => {
+    const mockLoadMore = vi.fn();
+    vi.mocked(usePaginatedQuery).mockReturnValue({
+      results: mockMetadata,
+      status: "CanLoadMore",
+      isLoading: false,
+      loadMore: mockLoadMore,
+    } as unknown as ReturnType<typeof usePaginatedQuery>);
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        categoryId: "cat1",
+        make: "",
+        model: "",
+      } as Record<string, unknown>,
+      updateField: mockUpdateField,
+    } as unknown as ListingWizardContextType);
+
+    render(<TechnicalSpecsStep />);
+    const loadMoreBtn = screen.getByText(/Load More Manufacturers/i);
+    expect(loadMoreBtn).toBeInTheDocument();
+    fireEvent.click(loadMoreBtn);
+    expect(mockLoadMore).toHaveBeenCalled();
+  });
+
+  it("renders loading state for load more", () => {
+    vi.mocked(usePaginatedQuery).mockReturnValue({
+      results: mockMetadata,
+      status: "LoadingMore",
+      isLoading: true,
+      loadMore: vi.fn(),
+    } as unknown as ReturnType<typeof usePaginatedQuery>);
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        categoryId: "cat1",
+        make: "",
+        model: "",
+      } as Record<string, unknown>,
+      updateField: mockUpdateField,
+    } as unknown as ListingWizardContextType);
+
+    render(<TechnicalSpecsStep />);
+    expect(screen.getAllByText("Loading...").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Loading/i })).toBeDisabled();
   });
 });

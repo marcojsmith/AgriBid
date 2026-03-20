@@ -18,9 +18,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import {
+  useUserManagement,
+  type AdminProfile,
+} from "@/hooks/admin/useUserManagement";
 
 import { KycReviewDialog, PromoteAdminDialog } from "./dialogs";
-import { useUserManagement, type AdminProfile } from "./hooks";
 
 /**
  * Render the Admin Users page with search, paginated user list, status indicators and actions for KYC review, manual verification and promotion.
@@ -60,20 +63,15 @@ export default function AdminUsers() {
   } = useUserManagement();
 
   const filteredUsers = useMemo(() => {
-    if (!allProfiles) return [];
     return (allProfiles as AdminProfile[]).filter(
       (p) =>
-        (p.name?.toLowerCase() || "").includes(userSearch.toLowerCase()) ||
-        (p.email?.toLowerCase() || "").includes(userSearch.toLowerCase()) ||
+        (p.name?.toLowerCase() ?? "").includes(userSearch.toLowerCase()) ||
+        (p.email?.toLowerCase() ?? "").includes(userSearch.toLowerCase()) ||
         p.userId.toLowerCase().includes(userSearch.toLowerCase())
     );
   }, [allProfiles, userSearch]);
 
-  if (
-    profilesStatus === "LoadingFirstPage" ||
-    profilesStatus === undefined ||
-    adminStats === undefined
-  ) {
+  if (profilesStatus === "LoadingFirstPage" || adminStats === undefined) {
     return (
       <AdminLayout
         title="User Management"
@@ -99,16 +97,17 @@ export default function AdminUsers() {
               placeholder="Search Users..."
               className="pl-9 h-9 border-2 rounded-lg bg-background focus-visible:ring-primary/20"
               value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
+              onChange={(e) => {
+                setUserSearch(e.target.value);
+              }}
             />
           </div>
           <div className="flex gap-2">
             <Badge variant="secondary" className="font-bold">
-              Showing {filteredUsers.length} of{" "}
-              {adminStats ? adminStats.totalUsers : "—"} Users
+              Showing {filteredUsers.length} of {adminStats.totalUsers} Users
             </Badge>
             <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 font-bold">
-              {adminStats ? adminStats.verifiedSellers : "—"} Verified
+              {adminStats.verifiedSellers} Verified
             </Badge>
           </div>
         </div>
@@ -152,11 +151,11 @@ export default function AdminUsers() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-xs border-2 border-primary/20">
-                          {p.name?.[0] || "?"}
+                          {p.name?.[0] ?? "?"}
                         </div>
                         <div className="space-y-0.5">
                           <p className="font-bold text-sm flex items-center gap-2">
-                            {p.name || "Anonymous"}
+                            {p.name ?? "Anonymous"}
                             {p.isOnline && (
                               <span
                                 className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"
@@ -235,7 +234,9 @@ export default function AdminUsers() {
                             size="sm"
                             variant="outline"
                             className="h-8 border-2 font-black uppercase text-[10px] tracking-wider"
-                            onClick={() => setPromoteTarget(p)}
+                            onClick={() => {
+                              setPromoteTarget(p);
+                            }}
                           >
                             Promote
                           </Button>
@@ -262,7 +263,9 @@ export default function AdminUsers() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loadMoreProfiles(50)}
+                onClick={() => {
+                  loadMoreProfiles(50);
+                }}
                 className="font-bold uppercase text-[10px] tracking-widest border-2"
               >
                 Load More Users

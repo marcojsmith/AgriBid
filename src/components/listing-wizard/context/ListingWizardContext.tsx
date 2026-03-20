@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 import { normalizeListingImages } from "@/lib/normalize-images";
 
@@ -50,7 +50,7 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedDraft = localStorage.getItem("agribid_listing_draft");
       if (savedDraft) {
         try {
-          const parsed = JSON.parse(savedDraft);
+          const parsed = JSON.parse(savedDraft) as unknown;
           return validateAndNormalizeDraft(parsed);
         } catch {
           // fallback to DEFAULT_FORM_DATA below
@@ -86,27 +86,30 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [formData, currentStep, isSuccess]);
 
-  const updateField = <K extends keyof ListingFormData>(
-    field: K,
-    value: ListingFormData[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setDraftSaved(false);
-  };
+  const updateField = useCallback(
+    <K extends keyof ListingFormData>(field: K, value: ListingFormData[K]) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      setDraftSaved(false);
+    },
+    []
+  );
 
-  const updateChecklist = <K extends keyof ConditionChecklist>(
-    field: K,
-    value: ConditionChecklist[K]
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      conditionChecklist: {
-        ...prev.conditionChecklist,
-        [field]: value,
-      },
-    }));
-    setDraftSaved(false);
-  };
+  const updateChecklist = useCallback(
+    <K extends keyof ConditionChecklist>(
+      field: K,
+      value: ConditionChecklist[K]
+    ) => {
+      setFormData((prev) => ({
+        ...prev,
+        conditionChecklist: {
+          ...prev.conditionChecklist,
+          [field]: value,
+        },
+      }));
+      setDraftSaved(false);
+    },
+    []
+  );
 
   /**
    * Resets the form state.
@@ -116,35 +119,35 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
    * @param initialData - Optional partial data to hydrate the form with
    * @param initialStep - Optional number indicating which wizard step to start on; defaults to 0.
    */
-  const resetForm = (
-    initialData?: Partial<ListingFormData>,
-    initialStep?: number
-  ) => {
-    if (initialData) {
-      // Hydration path: normalize and set state, but don't clear storage
-      const normalized = validateAndNormalizeDraft(initialData);
-      setFormData(normalized);
+  const resetForm = useCallback(
+    (initialData?: Partial<ListingFormData>, initialStep?: number) => {
+      if (initialData) {
+        // Hydration path: normalize and set state, but don't clear storage
+        const normalized = validateAndNormalizeDraft(initialData);
+        setFormData(normalized);
 
-      const clampedStep = Math.max(
-        0,
-        Math.min(initialStep ?? 0, STEPS.length - 1)
-      );
-      setCurrentStep(clampedStep);
-      setIsSuccess(false);
-      setIsSubmitting(false);
-      setDraftSaved(true);
-    } else {
-      // Reset path: clear state and clear storage
-      setFormData(DEFAULT_FORM_DATA);
-      setCurrentStep(0);
-      setIsSuccess(false);
-      setIsSubmitting(false);
-      setDraftSaved(false);
-      localStorage.removeItem("agribid_listing_draft");
-      localStorage.removeItem("agribid_listing_step");
-    }
-    setPreviews({});
-  };
+        const clampedStep = Math.max(
+          0,
+          Math.min(initialStep ?? 0, STEPS.length - 1)
+        );
+        setCurrentStep(clampedStep);
+        setIsSuccess(false);
+        setIsSubmitting(false);
+        setDraftSaved(true);
+      } else {
+        // Reset path: clear state and clear storage
+        setFormData(DEFAULT_FORM_DATA);
+        setCurrentStep(0);
+        setIsSuccess(false);
+        setIsSubmitting(false);
+        setDraftSaved(false);
+        localStorage.removeItem("agribid_listing_draft");
+        localStorage.removeItem("agribid_listing_step");
+      }
+      setPreviews({});
+    },
+    []
+  );
 
   return (
     <ListingWizardContext.Provider

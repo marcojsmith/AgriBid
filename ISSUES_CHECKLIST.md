@@ -26,13 +26,13 @@ Prioritized by size and quick wins for efficient resolution.
 
 ### Priority: Medium-High
 
-- [ ] #171: [Linting] Enhance ESLint with stricter rules
+- [ ] #171: (Linting) Enhance ESLint with stricter rules
   - _Description_: Upgrade ESLint configuration to use stricter TypeScript rules. **Status (2026-03-19)**: Unresolved. Enabling `strictTypeChecked` and `stylisticTypeChecked` currently yields 1,463 problems (593 errors, 870 warnings).
   - _Labels_: None
-- [ ] #168: [Code Quality] Extract magic numbers into named constants
+- [x] #168: (Code Quality) Extract magic numbers into named constants
   - _Description_: Replace hardcoded numbers with descriptive constants
   - _Labels_: enhancement
-- [ ] #167: [Refactor] Centralize all custom hooks in app/src/hooks/
+- [x] #167: (Refactor) Centralize all custom hooks in src/hooks/
   - _Description_: Move all custom hooks to a centralized hooks directory
   - _Labels_: enhancement
 - [ ] #157: For all pages where we need to fetch data, we need to load the UI components first/show a loading spinner/show skeleton components
@@ -58,13 +58,13 @@ Prioritized by size and quick wins for efficient resolution.
 - [ ] #174: Increase Vitest coverage thresholds to best practice levels
   - _Description_: Raise test coverage requirements to industry standards
   - _Labels_: enhancement
-- [ ] #172: [Docs] Replace default app/README.md with project-specific content
+- [ ] #172: (Docs) Replace default app/README.md with project-specific content
   - _Description_: Replace placeholder README with AgriBid-specific documentation
   - _Labels_: documentation
-- [ ] #170: [Testing] Configure test coverage reporting
+- [ ] #170: (Testing) Configure test coverage reporting
   - _Description_: Set up proper test coverage reporting tools
   - _Labels_: enhancement
-- [ ] #169: [Refactor] Consolidate duplicate context patterns
+- [ ] #169: (Refactor) Consolidate duplicate context patterns
   - _Description_: Eliminate duplicate React context implementations
   - _Labels_: enhancement
 - [ ] #133: SEO Optimization Strategy for Auction Platform
@@ -78,10 +78,10 @@ Prioritized by size and quick wins for efficient resolution.
 
 ### Priority: Lower (Requires more planning and effort)
 
-- [ ] #163: [Refactor] Split oversized auctions/queries.ts file (729 lines)
+- [ ] #163: (Refactor) Split oversized auctions/queries.ts file (729 lines)
   - _Description_: Break down large queries file into smaller, focused modules
   - _Labels_: enhancement, backend
-- [ ] #162: [Refactor] Split oversized auctions/mutations.ts file (1,182 lines)
+- [ ] #162: (Refactor) Split oversized auctions/mutations.ts file (1,182 lines)
   - _Description_: Break down large mutations file into smaller, focused modules
   - _Labels_: enhancement, backend
 - [ ] #151: Enabling HTTP/2+ Protocol

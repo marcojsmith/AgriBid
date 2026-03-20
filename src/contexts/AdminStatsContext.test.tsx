@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, render as rtlRender } from "@testing-library/react";
 import * as convexReact from "convex/react";
 
+import { useAdminStats } from "@/hooks/useAdminStats";
+
 import { AdminStatsProvider } from "./AdminStatsContext";
-import { useAdminStats } from "./useAdminStats";
 
 // Mock convex/react
 vi.mock("convex/react", () => ({

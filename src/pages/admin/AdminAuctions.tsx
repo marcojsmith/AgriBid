@@ -40,9 +40,9 @@ import { formatCurrency } from "@/lib/currency";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { AuctionWithCategory } from "@/types/auction";
+import { useBulkOperations } from "@/hooks/admin/useBulkOperations";
 
 import { BulkActionDialog } from "./dialogs";
-import { useBulkOperations } from "./hooks";
 
 /**
  * Format time remaining until a given timestamp.
@@ -62,16 +62,16 @@ function formatTimeRemaining(endTime: number): string {
 
   if (days > 0) {
     const remainingHours = hours % 24;
-    return `${days} day${days > 1 ? "s" : ""}, ${remainingHours} hour${remainingHours !== 1 ? "s" : ""}`;
+    return `${String(days)} day${days > 1 ? "s" : ""}, ${String(remainingHours)} hour${remainingHours !== 1 ? "s" : ""}`;
   }
   if (hours > 0) {
     const remainingMinutes = minutes % 60;
-    return `${hours} hour${hours > 1 ? "s" : ""}, ${remainingMinutes} min`;
+    return `${String(hours)} hour${hours > 1 ? "s" : ""}, ${String(remainingMinutes)} min`;
   }
   if (minutes > 0) {
-    return `${minutes} minute${minutes > 1 ? "s" : ""}`;
+    return `${String(minutes)} minute${minutes > 1 ? "s" : ""}`;
   }
-  return `${seconds} second${seconds !== 1 ? "s" : ""}`;
+  return `${String(seconds)} second${seconds !== 1 ? "s" : ""}`;
 }
 
 /**
@@ -141,8 +141,7 @@ export default function AdminAuctions() {
         if (
           result.finalStatus === "sold" &&
           result.winnerId &&
-          result.winningAmount !== undefined &&
-          result.winningAmount !== null
+          result.winningAmount !== undefined
         ) {
           toast.success(
             `Auction closed successfully. Awarded to highest bidder for ${formatCurrency(result.winningAmount)}`
@@ -153,7 +152,7 @@ export default function AdminAuctions() {
           );
         }
       } else {
-        toast.error(result.error || "Failed to close auction");
+        toast.error(result.error ?? "Failed to close auction");
       }
     } catch {
       toast.error("Network error—please try again");
@@ -164,8 +163,7 @@ export default function AdminAuctions() {
   };
 
   const filteredAuctions = useMemo(() => {
-    if (!allAuctions) return [];
-    return (allAuctions as AuctionWithCategory[]).filter(
+    return ((allAuctions ?? []) as AuctionWithCategory[]).filter(
       (a) =>
         a.title.toLowerCase().includes(auctionSearch.toLowerCase()) ||
         a.make.toLowerCase().includes(auctionSearch.toLowerCase()) ||
@@ -220,10 +218,7 @@ export default function AdminAuctions() {
     }
   };
 
-  if (
-    (auctionsStatus === "LoadingFirstPage" || auctionsStatus === undefined) &&
-    adminStats === undefined
-  ) {
+  if (auctionsStatus === "LoadingFirstPage") {
     return (
       <AdminLayout
         title="Auction Marketplace"
@@ -249,7 +244,9 @@ export default function AdminAuctions() {
               placeholder="Search Auctions..."
               className="pl-9 h-9 border-2 rounded-lg bg-background focus-visible:ring-primary/20"
               value={auctionSearch}
-              onChange={(e) => setAuctionSearch(e.target.value)}
+              onChange={(e) => {
+                setAuctionSearch(e.target.value);
+              }}
             />
           </div>
           <Badge variant="secondary" className="font-bold">
@@ -266,7 +263,9 @@ export default function AdminAuctions() {
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  onClick={() => setBulkStatusTarget("active")}
+                  onClick={() => {
+                    setBulkStatusTarget("active");
+                  }}
                   disabled={isBulkProcessing}
                   className="font-bold uppercase text-xs h-9"
                 >
@@ -274,7 +273,9 @@ export default function AdminAuctions() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => setBulkStatusTarget("unsold")}
+                  onClick={() => {
+                    setBulkStatusTarget("unsold");
+                  }}
                   disabled={isBulkProcessing}
                   variant="outline"
                   className="font-bold uppercase text-xs h-9"
@@ -283,7 +284,9 @@ export default function AdminAuctions() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => clearSelection()}
+                  onClick={() => {
+                    clearSelection();
+                  }}
                   disabled={isBulkProcessing}
                   variant="ghost"
                   className="font-bold uppercase text-xs h-9"
@@ -301,9 +304,9 @@ export default function AdminAuctions() {
                     checked={
                       isPartiallySelected ? "indeterminate" : isAllSelected
                     }
-                    onCheckedChange={(checked) =>
-                      handleSelectAll(filteredAuctions, checked as boolean)
-                    }
+                    onCheckedChange={(checked) => {
+                      handleSelectAll(filteredAuctions, checked === true);
+                    }}
                   />
                 </TableHead>
                 <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
@@ -342,9 +345,9 @@ export default function AdminAuctions() {
                     <TableCell>
                       <Checkbox
                         checked={selectedAuctions.includes(a._id)}
-                        onCheckedChange={(checked) =>
-                          handleToggleSelection(a._id, checked as boolean)
-                        }
+                        onCheckedChange={(checked) => {
+                          handleToggleSelection(a._id, checked as boolean);
+                        }}
                       />
                     </TableCell>
                     <TableCell>{getStatusBadge(a.status)}</TableCell>
@@ -358,7 +361,7 @@ export default function AdminAuctions() {
                             variant="outline"
                             className="text-[8px] h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5"
                           >
-                            {a.categoryName || "Uncategorized"}
+                            {a.categoryName ?? "Uncategorized"}
                           </Badge>
                           <span>{a.make}</span>
                           <span>{a.model}</span>
@@ -410,9 +413,9 @@ export default function AdminAuctions() {
                           <DropdownMenuItem
                             className="text-destructive font-bold rounded-lg gap-2"
                             disabled={a.status !== "active"}
-                            onClick={() =>
-                              a.status === "active" && handleForceEnd(a)
-                            }
+                            onClick={() => {
+                              if (a.status === "active") handleForceEnd(a);
+                            }}
                           >
                             <AlertCircle className="h-4 w-4" /> Force End
                           </DropdownMenuItem>
@@ -429,7 +432,9 @@ export default function AdminAuctions() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loadMoreAuctions(50)}
+                onClick={() => {
+                  loadMoreAuctions(50);
+                }}
                 className="font-bold uppercase text-[10px] tracking-widest border-2"
               >
                 Load More
@@ -440,8 +445,12 @@ export default function AdminAuctions() {
       </div>
       <BulkActionDialog
         isOpen={!!bulkStatusTarget}
-        onClose={() => setBulkStatusTarget(null)}
-        onConfirm={handleBulkStatusUpdate}
+        onClose={() => {
+          setBulkStatusTarget(null);
+        }}
+        onConfirm={() => {
+          void handleBulkStatusUpdate();
+        }}
         isProcessing={isBulkProcessing}
         selectedCount={selectedAuctions.length}
         targetStatus={bulkStatusTarget}

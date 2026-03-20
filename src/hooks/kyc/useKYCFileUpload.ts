@@ -1,4 +1,3 @@
-// app/src/pages/kyc/hooks/useKYCFileUpload.ts
 import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
@@ -44,15 +43,21 @@ export function useKYCFileUpload() {
     maxFiles: 5,
     cleanupHandler: async (storageIds) => {
       const results = await Promise.allSettled(
-        storageIds.map((id) =>
-          deleteMyKYCDocument({ storageId: id as Id<"_storage"> })
-        )
+        storageIds.map(async (id) => {
+          try {
+            await deleteMyKYCDocument({ storageId: id as Id<"_storage"> });
+            return { id, success: true };
+          } catch (error) {
+            return { id, success: false, error };
+          }
+        })
       );
-      results.forEach((result, index) => {
-        if (result.status === "rejected") {
+
+      results.forEach((result) => {
+        if (result.status === "fulfilled" && !result.value.success) {
           console.error(
-            `Failed to delete KYC storage ${storageIds[index]}:`,
-            result.reason
+            `Failed to delete KYC storage ${result.value.id}:`,
+            result.value.error
           );
         }
       });
@@ -60,7 +65,6 @@ export function useKYCFileUpload() {
   });
 
   const executeDeleteDocument = async (docId: string) => {
-    // Optimistic update
     setExistingDocuments((prev) => prev.filter((id) => id !== docId));
 
     try {
@@ -70,7 +74,6 @@ export function useKYCFileUpload() {
       toast.success("Document deleted");
       return true;
     } catch (err) {
-      // Rollback on failure: only add it back if it's not already there
       setExistingDocuments((prev) =>
         prev.includes(docId) ? prev : [...prev, docId]
       );

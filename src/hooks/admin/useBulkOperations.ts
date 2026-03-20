@@ -66,11 +66,11 @@ export function useBulkOperations() {
   /**
    * Toggles select-all checkbox: selects all visible auctions or clears selection.
    * This respects the current visible/filtered auctions, not all auctions.
-   * @param auctions
-   * @param checked
+   * @param auctions - List of visible auctions to select/deselect
+   * @param checked - Whether to select all or deselect all
    */
   const handleSelectAll = (auctions: Doc<"auctions">[], checked: boolean) => {
-    if (checked === true) {
+    if (checked) {
       const visibleIds = auctions.map((a) => a._id);
       setSelectedAuctions((prev) =>
         Array.from(new Set([...prev, ...visibleIds]))
@@ -83,15 +83,15 @@ export function useBulkOperations() {
 
   /**
    * Toggles individual auction selection
-   * @param auctionId
-   * @param selected
+   * @param auctionId - The ID of the auction to toggle
+   * @param selected - Whether the auction should be selected
    */
   const handleToggleSelection = (
     auctionId: Id<"auctions">,
     selected: boolean
   ) => {
     setSelectedAuctions((prev) =>
-      selected === true
+      selected
         ? prev.includes(auctionId)
           ? prev
           : [...prev, auctionId]
@@ -113,7 +113,7 @@ export function useBulkOperations() {
         updates: { status: bulkStatusTarget },
       });
       toast.success(
-        `Updated ${selectedAuctions.length} auctions to ${bulkStatusTarget}`
+        `Updated ${String(selectedAuctions.length)} auctions to ${bulkStatusTarget}`
       );
       setSelectedAuctions([]);
       setBulkStatusTarget(null);

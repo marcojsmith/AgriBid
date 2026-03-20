@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
@@ -77,6 +77,7 @@ export function useUserManagement() {
   const [verifyingUserIds, setVerifyingUserIds] = useState<Set<string>>(
     new Set()
   );
+  const verifyingUserIdsRef = useRef(new Set<string>());
 
   /**
    * Type guard to ensure profile has all required fields for KYC review.
@@ -96,7 +97,7 @@ export function useUserManagement() {
   /**
    * Initiates KYC review by fetching full user profile data.
    * Shows loading state and error handling via toast notifications.
-   * @param userId
+   * @param userId - The user ID to review KYC for
    */
   const handleReviewKYCClick = async (userId: string) => {
     if (isFetchingKYC) return;
@@ -137,18 +138,17 @@ export function useUserManagement() {
   /**
    * Manually verifies a user without KYC review.
    * Tracks verification state per user to prevent duplicate requests.
-   * @param userId
+   * @param userId - The ID of the user to verify
    */
   const handleManualVerify = async (userId: string) => {
-    let added = false;
+    if (verifyingUserIdsRef.current.has(userId)) return;
+    verifyingUserIdsRef.current.add(userId);
+
     setVerifyingUserIds((prev) => {
-      if (prev.has(userId)) return prev;
-      added = true;
       const next = new Set(prev);
       next.add(userId);
       return next;
     });
-    if (!added) return; // If not added, it means it was already being verified
 
     try {
       await verifyUserMutation({ userId });
@@ -157,6 +157,7 @@ export function useUserManagement() {
       console.error(err);
       toast.error("Verification failed");
     } finally {
+      verifyingUserIdsRef.current.delete(userId);
       setVerifyingUserIds((prev) => {
         const next = new Set(prev);
         next.delete(userId);
@@ -168,7 +169,7 @@ export function useUserManagement() {
   /**
    * Submits KYC approval or rejection decision.
    * Validates rejection reason is provided when rejecting.
-   * @param decision
+   * @param decision - Decision type: 'approve' or 'reject'
    */
   const handleKycReview = async (decision: "approve" | "reject") => {
     if (!kycReviewUser) return;

@@ -4,8 +4,7 @@ import { User, Fingerprint, Phone, Mail } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-
-import type { KYCFormData } from "../hooks/useKYCForm";
+import type { KYCFormData } from "@/hooks/kyc/useKYCForm";
 
 interface PersonalInfoSectionProps {
   formData: KYCFormData;
@@ -51,7 +50,9 @@ export function PersonalInfoSection({
             placeholder="Enter all names as per ID"
             className={`h-12 border-2 rounded-xl ${errors?.firstName ? "border-destructive" : ""}`}
             value={formData.firstName}
-            onChange={(e) => updateField("firstName", e.target.value)}
+            onChange={(e) => {
+              updateField("firstName", e.target.value);
+            }}
             aria-invalid={!!errors?.firstName}
             aria-describedby="firstName-error"
           />
@@ -76,7 +77,9 @@ export function PersonalInfoSection({
             placeholder="Surname"
             className={`h-12 border-2 rounded-xl ${errors?.lastName ? "border-destructive" : ""}`}
             value={formData.lastName}
-            onChange={(e) => updateField("lastName", e.target.value)}
+            onChange={(e) => {
+              updateField("lastName", e.target.value);
+            }}
           />
           {errors?.lastName && (
             <p className="text-[10px] text-destructive font-black uppercase px-1">
@@ -101,7 +104,9 @@ export function PersonalInfoSection({
               placeholder="National ID Number"
               className={`h-12 pl-10 border-2 rounded-xl ${errors?.idNumber ? "border-destructive" : ""}`}
               value={formData.idNumber}
-              onChange={(e) => updateField("idNumber", e.target.value)}
+              onChange={(e) => {
+                updateField("idNumber", e.target.value);
+              }}
             />
           </div>
           {errors?.idNumber && (
@@ -125,7 +130,9 @@ export function PersonalInfoSection({
               placeholder="+27..."
               className={`h-12 pl-10 border-2 rounded-xl ${errors?.phoneNumber ? "border-destructive" : ""}`}
               value={formData.phoneNumber}
-              onChange={(e) => updateField("phoneNumber", e.target.value)}
+              onChange={(e) => {
+                updateField("phoneNumber", e.target.value);
+              }}
             />
           </div>
           {errors?.phoneNumber && (
@@ -152,7 +159,9 @@ export function PersonalInfoSection({
               placeholder="verify@example.com"
               className={`h-12 pl-10 border-2 rounded-xl ${errors?.email ? "border-destructive" : ""}`}
               value={formData.email}
-              onChange={(e) => updateField("email", e.target.value)}
+              onChange={(e) => {
+                updateField("email", e.target.value);
+              }}
             />
           </div>
           {errors?.email && (
@@ -176,7 +185,9 @@ export function PersonalInfoSection({
               placeholder="Repeat email address"
               className={`h-12 pl-10 border-2 rounded-xl ${errors?.confirmEmail ? "border-destructive" : ""}`}
               value={formData.confirmEmail}
-              onChange={(e) => updateField("confirmEmail", e.target.value)}
+              onChange={(e) => {
+                updateField("confirmEmail", e.target.value);
+              }}
               aria-invalid={!!errors?.confirmEmail}
               aria-describedby="confirmEmail-error"
             />

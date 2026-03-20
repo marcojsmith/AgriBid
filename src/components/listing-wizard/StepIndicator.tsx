@@ -1,8 +1,8 @@
 import { Save } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-import { useListingWizard } from "./hooks/useListingWizard";
 import { STEPS } from "./constants";
 
 /**
@@ -46,7 +46,9 @@ export const StepIndicator = () => {
       >
         <div
           className="h-full bg-primary transition-all duration-500 ease-out"
-          style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+          style={{
+            width: `${((currentStep + 1) / STEPS.length) * 100}%`,
+          }}
         />
       </div>
     </div>

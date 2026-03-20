@@ -1,17 +1,18 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { MediaGalleryStep } from "./MediaGalleryStep";
-import { useListingWizard } from "../hooks/useListingWizard";
-import { useListingMedia } from "../hooks/useListingMedia";
-import { type ListingFormData } from "../types";
-import { type ListingWizardContextType } from "../context/ListingWizardContextDef";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
+import { useListingMedia } from "@/hooks/listing-wizard/useListingMedia";
 
-vi.mock("../hooks/useListingWizard", () => ({
+import { MediaGalleryStep } from "./MediaGalleryStep";
+import type { ListingFormData } from "../types";
+import type { ListingWizardContextType } from "../context/ListingWizardContextDef";
+
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 
-vi.mock("../hooks/useListingMedia", () => ({
+vi.mock("@/hooks/listing-wizard/useListingMedia", () => ({
   useListingMedia: vi.fn(),
 }));
 

@@ -162,4 +162,21 @@ describe("usePriceHighlight", () => {
     unmount();
     // No error should occur
   });
+
+  it("should use default duration if options not provided", () => {
+    const { result, rerender } = renderHook(
+      ({ price }) => usePriceHighlight(price),
+      {
+        initialProps: { price: 100 },
+      }
+    );
+
+    rerender({ price: 110 });
+    expect(result.current).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(result.current).toBe(false);
+  });
 });

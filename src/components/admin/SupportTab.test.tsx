@@ -169,4 +169,58 @@ describe("SupportTab", () => {
       expect(mockToastError).toHaveBeenCalledWith("Resolution failed");
     });
   });
+
+  it("handles ticket resolution failure with non-Error object", async () => {
+    mockUseQuery.mockReturnValue(mockPaginatedTickets);
+    const mockResolveTicket = vi.fn().mockRejectedValue("Generic error string");
+    mockUseMutation.mockReturnValue(mockResolveTicket);
+
+    render(<SupportTab />);
+    fireEvent.click(screen.getByText("Resolve"));
+
+    const textarea = screen.getByPlaceholderText(/Describe the resolution/i);
+    fireEvent.change(textarea, { target: { value: "Fixed the issue" } });
+
+    fireEvent.click(screen.getByText("Confirm Resolution"));
+
+    await waitFor(() => {
+      expect(mockResolveTicket).toHaveBeenCalled();
+      expect(mockToastError).toHaveBeenCalledWith("Failed to resolve ticket");
+    });
+  });
+
+  it("handles pagination next and previous", () => {
+    const mockWithPagination = {
+      ...mockPaginatedTickets,
+      isDone: false,
+      continueCursor: "cursor-2",
+    };
+    mockUseQuery.mockReturnValue(mockWithPagination);
+
+    render(<SupportTab />);
+
+    const nextButton = screen.getByRole("button", { name: /next/i });
+    expect(nextButton).not.toBeDisabled();
+
+    fireEvent.click(nextButton);
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paginationOpts: expect.objectContaining({ cursor: "cursor-2" }),
+      })
+    );
+
+    // Now test previous
+    const prevButton = screen.getByRole("button", { name: /previous/i });
+    expect(prevButton).not.toBeDisabled();
+    fireEvent.click(prevButton);
+
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paginationOpts: expect.objectContaining({ cursor: null }),
+      })
+    );
+  });
 });
