@@ -30,10 +30,7 @@ export default defineConfig([
   // Uses tsconfig.node.json so the parser can resolve them.
   // -----------------------------------------------------------------------
   {
-    files: [
-      "vite.config.ts",
-      "vitest.config.ts",
-    ],
+    files: ["vite.config.ts", "vitest.config.ts"],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -139,7 +136,10 @@ export default defineConfig([
       "react-hooks/exhaustive-deps": "warn",
 
       // --- Security ---
-      "no-secrets/no-secrets": "warn",
+      "no-secrets/no-secrets": [
+        "warn",
+        { ignoreIdentifiers: ["getMyBidsCountHandler"] },
+      ],
 
       // --- Imports ---
       "import-x/no-duplicates": "warn",

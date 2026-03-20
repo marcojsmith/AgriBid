@@ -9,6 +9,12 @@ export interface KYCFormData {
   confirmEmail: string;
 }
 
+/**
+ * Result of form field validation.
+ * - `{ valid: true }` when all fields pass validation.
+ * - `{ valid: false; message: string }` when validation fails,
+ *   with `message` describing the specific failure reason.
+ */
 export type ValidationResult =
   | { valid: true }
   | { valid: false; message: string };

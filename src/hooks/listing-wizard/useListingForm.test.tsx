@@ -65,6 +65,18 @@ describe("useListingForm", () => {
       operatingHours: -1,
     };
     rerender();
+    expect(result.current.getStepError(0)).toBe(
+      "Operating hours cannot be negative"
+    );
+
+    currentFormData = {
+      ...DEFAULT_FORM_DATA,
+      title: "Test",
+      location: "Loc",
+      year: 2020,
+      operatingHours: undefined as unknown as number,
+    };
+    rerender();
     expect(result.current.getStepError(0)).toBe("Operating hours are required");
 
     currentFormData = {

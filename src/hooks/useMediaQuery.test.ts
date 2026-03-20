@@ -59,21 +59,15 @@ describe("useMediaQuery", () => {
   });
 
   it("should handle undefined window gracefully", () => {
-    const originalWindow = global.window;
+    const originalMatchMedia = window.matchMedia;
     // @ts-expect-error - simulating non-browser environment
-    delete global.window;
+    window.matchMedia = undefined;
 
     try {
-      // Direct call of initial state logic (since we can't renderHook easily without window)
-      // This is to specifically target the branch coverage
-      const result = useMediaQuery("(max-width: 768px)");
-      expect(result).toBe(false);
-    } catch {
-      // Handle the error that might occur due to hooks being called outside a component
-      // or other issues in a non-browser environment.
-      // But we are mainly interested in the coverage of the first branch.
+      const { result } = renderHook(() => useMediaQuery("(max-width: 768px)"));
+      expect(result.current).toBe(false);
     } finally {
-      global.window = originalWindow;
+      window.matchMedia = originalMatchMedia;
     }
   });
 });

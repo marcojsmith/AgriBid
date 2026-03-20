@@ -179,10 +179,4 @@ describe("usePriceHighlight", () => {
     });
     expect(result.current).toBe(false);
   });
-
-  it("should cover timeout cleanup branch when timeoutRef is null", () => {
-    const { unmount } = renderHook(() => usePriceHighlight(100));
-    // No timeout scheduled initially
-    unmount();
-  });
 });

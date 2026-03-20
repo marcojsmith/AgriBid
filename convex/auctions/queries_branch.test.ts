@@ -9,6 +9,7 @@ import {
   getAllPendingFlagsHandler,
   getMyListingsCountHandler,
 } from "./queries";
+import type { StatusFilter } from "./queries/shared";
 import type { Id, Doc } from "../_generated/dataModel";
 import type { AuthUser } from "../auth";
 import { findUserById } from "../users";
@@ -623,8 +624,7 @@ describe("Queries Branch Coverage Expansion", () => {
       expect(statusesForFilter("active")).toEqual(["active"]);
       expect(statusesForFilter("closed")).toEqual(["sold", "unsold"]);
       expect(statusesForFilter("all")).toEqual(["active", "sold", "unsold"]);
-      // @ts-expect-error testing invalid input for coverage
-      expect(statusesForFilter("invalid")).toEqual([
+      expect(statusesForFilter("invalid" as unknown as StatusFilter)).toEqual([
         "active",
         "sold",
         "unsold",
@@ -690,7 +690,6 @@ describe("Queries Branch Coverage Expansion", () => {
       expect(result.all).toBe(0);
     });
 
-    // eslint-disable-next-line no-secrets/no-secrets
     it("getMyBidsCountHandler handles Unauthenticated", async () => {
       const { getMyBidsCountHandler } = await import("./queries");
       vi.mocked(auth.getAuthUser).mockResolvedValue({

@@ -18,10 +18,10 @@ export const StepIndicator = () => {
       <div className="flex justify-between items-end">
         <div className="space-y-1">
           <p className="text-xs font-black text-primary uppercase tracking-[0.2em]">
-            Step {String(currentStep + 1)} of {String(STEPS.length)}
+            Step {currentStep + 1} of {STEPS.length}
           </p>
           <h2 className="text-2xl font-black uppercase tracking-tight">
-            {Reflect.get(STEPS, currentStep)}
+            {STEPS[currentStep]}
           </h2>
         </div>
         <div
@@ -42,14 +42,12 @@ export const StepIndicator = () => {
         aria-valuenow={currentStep + 1}
         aria-valuemin={1}
         aria-valuemax={STEPS.length}
-        aria-label={`Step ${String(currentStep + 1)} of ${String(
-          STEPS.length
-        )}`}
+        aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
       >
         <div
           className="h-full bg-primary transition-all duration-500 ease-out"
           style={{
-            width: `${String(((currentStep + 1) / STEPS.length) * 100)}%`,
+            width: `${((currentStep + 1) / STEPS.length) * 100}%`,
           }}
         />
       </div>

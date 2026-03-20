@@ -43,11 +43,8 @@ export function useListingMedia() {
   ) => {
     const blobUrl = URL.createObjectURL(file);
     setPreviews((prev: Record<string, string>) => {
-      const currentPreview = Reflect.get(prev, slotId) as string | undefined;
-      if (
-        typeof currentPreview === "string" &&
-        currentPreview.startsWith("blob:")
-      ) {
+      const currentPreview = prev[slotId];
+      if (currentPreview?.startsWith("blob:")) {
         URL.revokeObjectURL(currentPreview);
       }
       return {
@@ -159,13 +156,9 @@ export function useListingMedia() {
       previewKey = Reflect.get(formData.images.additional, index);
     }
 
-    const previewUrl = previewKey
-      ? (Reflect.get(previews, previewKey) as string | undefined)
-      : undefined;
-    if (previewUrl) {
-      if (typeof previewUrl === "string" && previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(previewUrl);
-      }
+    const previewUrl = previewKey ? previews[previewKey] : undefined;
+    if (previewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
       setPreviews((prev: Record<string, string>) => {
         return Object.fromEntries(
           Object.entries(prev).filter(([key]) => key !== previewKey)

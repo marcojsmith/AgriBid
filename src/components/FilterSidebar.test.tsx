@@ -327,17 +327,21 @@ describe("FilterSidebar", () => {
     renderSidebar();
     const select = screen.getByLabelText(/Manufacturer/i);
     fireEvent.change(select, { target: { value: "John Deere" } });
-    expect(select).toHaveValue("John Deere");
+
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.get("make")).toBe("John Deere");
   });
 
   it("updates local state when auction status changes", () => {
     renderSidebar();
     const select = screen.getByLabelText(/Auction Status/i);
     fireEvent.change(select, { target: { value: "closed" } });
-    expect(select).toHaveValue("closed");
-  });
 
-  // Note: Testing Radix Select components (minYear, maxYear, etc.)
+    fireEvent.click(screen.getByText(/Apply Filters/i));
+    const calledWith = mockSetSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.get("status")).toBe("closed");
+  });
   // requires more complex interaction if they are not mocked.
   // We can at least try to trigger the onValueChange if we can find the right way.
 });

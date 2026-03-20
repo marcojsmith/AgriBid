@@ -218,7 +218,7 @@ export default function AdminAuctions() {
     }
   };
 
-  if (auctionsStatus === "LoadingFirstPage" && adminStats === undefined) {
+  if (auctionsStatus === "LoadingFirstPage") {
     return (
       <AdminLayout
         title="Auction Marketplace"
@@ -305,7 +305,7 @@ export default function AdminAuctions() {
                       isPartiallySelected ? "indeterminate" : isAllSelected
                     }
                     onCheckedChange={(checked) => {
-                      handleSelectAll(filteredAuctions, checked as boolean);
+                      handleSelectAll(filteredAuctions, checked === true);
                     }}
                   />
                 </TableHead>

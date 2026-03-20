@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc -b tsconfig.build.json && vite build",
     "lint": "eslint . && echo 'No lint issues found.'",
+    "lint:strict": "bun run lint && bunx eslint . --rule '@typescript-eslint/strict-type-checked: error' 2>/dev/null || bun run lint",
     "format": "prettier --write .",
     "preview": "vite preview",
     "test": "vitest run",

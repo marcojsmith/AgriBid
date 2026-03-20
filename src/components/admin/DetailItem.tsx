@@ -29,7 +29,7 @@ export function DetailItem({
           {label}
         </p>
         <p className="text-sm font-bold tracking-tight">
-          {value || "Not Provided"}
+          {value?.trim() ? value.trim() : "Not Provided"}
         </p>
       </div>
     </div>

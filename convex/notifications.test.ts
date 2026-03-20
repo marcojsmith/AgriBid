@@ -317,7 +317,9 @@ describe("Notifications Coverage", () => {
         notificationId: "n1" as Id<"notifications">,
       });
 
+      expect(mockCtx.db.patch).toHaveBeenCalledTimes(1);
       expect(mockCtx.db.patch).toHaveBeenCalledWith("n1", { isRead: true });
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
     });
   });
 

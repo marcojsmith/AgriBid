@@ -129,30 +129,33 @@ describe("GeneralInfoStep", () => {
 
   it("hides suggestions on blur", () => {
     vi.useFakeTimers();
-    const { rerender } = render(<GeneralInfoStep />);
-    const input = screen.getByLabelText(/Location/i);
+    try {
+      const { rerender } = render(<GeneralInfoStep />);
+      const input = screen.getByLabelText(/Location/i);
 
-    fireEvent.change(input, { target: { value: "Jo" } });
+      fireEvent.change(input, { target: { value: "Jo" } });
 
-    vi.mocked(useListingWizard).mockReturnValue({
-      formData: {
-        ...mockFormData,
-        location: "Jo",
-      } as unknown as ListingFormData,
-      updateField: mockUpdateField,
-    } as unknown as ListingWizardContextType);
+      vi.mocked(useListingWizard).mockReturnValue({
+        formData: {
+          ...mockFormData,
+          location: "Jo",
+        } as unknown as ListingFormData,
+        updateField: mockUpdateField,
+      } as unknown as ListingWizardContextType);
 
-    rerender(<GeneralInfoStep />);
+      rerender(<GeneralInfoStep />);
 
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
 
-    fireEvent.blur(input);
+      fireEvent.blur(input);
 
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
 
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    vi.useRealTimers();
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

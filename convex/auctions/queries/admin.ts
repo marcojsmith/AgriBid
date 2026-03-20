@@ -136,7 +136,7 @@ export const getAuctionFlagsHandler = async (
 
   return flags.map((flag: Doc<"auctionFlags">) => ({
     ...flag,
-    reporterName: reporterNames.get(flag.reporterId)!,
+    reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
   }));
 };
 
@@ -210,8 +210,8 @@ export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
 
   return flags.map((flag: Doc<"auctionFlags">) => ({
     ...flag,
-    auctionTitle: auctionTitles.get(flag.auctionId)!,
-    reporterName: reporterNames.get(flag.reporterId)!,
+    auctionTitle: auctionTitles.get(flag.auctionId) ?? "Unknown Auction",
+    reporterName: reporterNames.get(flag.reporterId) ?? "Unknown Reporter",
   }));
 };
 

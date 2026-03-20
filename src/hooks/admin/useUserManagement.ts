@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
@@ -77,6 +77,7 @@ export function useUserManagement() {
   const [verifyingUserIds, setVerifyingUserIds] = useState<Set<string>>(
     new Set()
   );
+  const verifyingUserIdsRef = useRef(new Set<string>());
 
   /**
    * Type guard to ensure profile has all required fields for KYC review.
@@ -140,8 +141,8 @@ export function useUserManagement() {
    * @param userId - The ID of the user to verify
    */
   const handleManualVerify = async (userId: string) => {
-    const alreadyVerifying = verifyingUserIds.has(userId);
-    if (alreadyVerifying) return;
+    if (verifyingUserIdsRef.current.has(userId)) return;
+    verifyingUserIdsRef.current.add(userId);
 
     setVerifyingUserIds((prev) => {
       const next = new Set(prev);
@@ -156,6 +157,7 @@ export function useUserManagement() {
       console.error(err);
       toast.error("Verification failed");
     } finally {
+      verifyingUserIdsRef.current.delete(userId);
       setVerifyingUserIds((prev) => {
         const next = new Set(prev);
         next.delete(userId);

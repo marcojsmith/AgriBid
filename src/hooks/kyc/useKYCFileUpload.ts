@@ -59,9 +59,6 @@ export function useKYCFileUpload() {
             `Failed to delete KYC storage ${result.value.id}:`,
             result.value.error
           );
-        } else if (result.status === "rejected") {
-          // This should rarely happen as we catch inside map, but for completeness:
-          console.error("Failed to delete KYC storage:", result.reason);
         }
       });
     },

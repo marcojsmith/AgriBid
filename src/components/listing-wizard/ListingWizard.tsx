@@ -51,7 +51,7 @@ const ListingWizardContent = () => {
   const { getStepError } = useListingForm();
 
   const [searchParams] = useSearchParams();
-  const editingAuctionId = searchParams.get("edit");
+  const editingAuctionId = searchParams.get("edit") || undefined;
 
   const createAuction = useMutation(api.auctions.createAuction);
   const saveDraft = useMutation(api.auctions.saveDraft);

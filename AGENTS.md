@@ -72,17 +72,26 @@ rule cannot be satisfied and genuinely blocks progress, open an issue describing
 the exceptional case before considering any suppression — but never commit
 suppressions without an issue reference.
 
-**Revert before commit to main:**
-To maintain these guarantees during code review, development MUST be
-performed against `strictTypeChecked` + `stylisticTypeChecked`. Only revert
-to the following `recommended` configuration once the changes are ready to be
-committed to the branch:
+**Revert before commit (Strict TypeScript ESLint Workflow):**
+Development MUST be performed with `strictTypeChecked` + `stylisticTypeChecked`
+enabled (uncommented in eslint.config.js) to catch type-aware issues during
+coding. Before committing, swap the extends back to `recommended` so the
+pre-commit hook passes — the codebase still carries 593+ strict errors that
+must be resolved incrementally:
 
 ```js
 tseslint.configs.recommended,
 // tseslint.configs.strictTypeChecked,
 // tseslint.configs.stylisticTypeChecked,
 ```
+
+**Rationale:** Enabling `strictTypeChecked` + `stylisticTypeChecked` on main
+permanently would break the pre-commit hook immediately (1,463 problems).
+These configs are a developer toggle: enabled while working in a branch,
+disabled (reverted to `recommended`) before committing. Over time, as the
+backlog of strict violations is resolved, the strict configs will be
+permanently uncommented on main — at that point the pre-commit hook itself
+should be updated to enforce them.
 
 ---
 

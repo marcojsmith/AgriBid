@@ -55,7 +55,9 @@ export function PromoteAdminDialog({
           <AlertDialogDescription className="font-medium text-sm">
             You are about to promote{" "}
             <span className="font-bold text-primary">
-              {targetUser?.name ?? targetUser?.email ?? "this user"}
+              {targetUser?.name?.trim()
+                ? targetUser.name
+                : (targetUser?.email ?? "this user")}
             </span>{" "}
             to an administrative role. This grants full access to the Command
             Center and system settings.

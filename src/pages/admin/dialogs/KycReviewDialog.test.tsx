@@ -1,26 +1,39 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi } from "vitest";
+import type { ReactNode, ComponentProps } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
 
 import { KycReviewDialog } from "./KycReviewDialog";
 
+type DialogProps = ComponentProps<"div"> & {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
 vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children, open, onOpenChange }: any) => (
+  Dialog: ({ children, open, onOpenChange }: DialogProps) => (
     <div
       data-testid="mock-dialog"
       data-open={open}
-      onClick={() => onOpenChange(false)}
+      onClick={() => onOpenChange?.(false)}
     >
       {children}
     </div>
   ),
-  DialogContent: ({ children }: any) => <div>{children}</div>,
-  DialogDescription: ({ children }: any) => <div>{children}</div>,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <div>{children}</div>,
-  DialogFooter: ({ children }: any) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogDescription: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogHeader: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 describe("KycReviewDialog", () => {

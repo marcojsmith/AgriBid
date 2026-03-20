@@ -150,7 +150,7 @@ export function KycReviewDialog({
                         window.open(url, "_blank", "noopener,noreferrer");
                       }}
                     >
-                      <Eye className="h-3 w-3" /> View Document {String(i + 1)}
+                      <Eye className="h-3 w-3" /> View Document {i + 1}
                     </Button>
                   ))}
                   {(!user.kycDocumentUrls ||

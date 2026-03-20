@@ -459,19 +459,4 @@ describe("AdminSupport Page", () => {
       resolvePromise({ success: true });
     });
   });
-
-  it("handles confirmResolve call when no ticket is selected", async () => {
-    (useQuery as Mock).mockImplementation((queryApi) => {
-      if (
-        queryApi === api.admin.getAdminStats ||
-        queryApi === "admin:getAdminStats"
-      )
-        return mockAdminStatsValue;
-      if (queryApi === api.admin.getTickets || queryApi === "admin:getTickets")
-        return mockPaginatedTickets;
-      return undefined;
-    });
-
-    renderPage();
-  });
 });

@@ -22,7 +22,13 @@ export function useListingForm() {
         if (!formData.location.trim()) return "Location is required";
         if (!formData.year || formData.year < 1900)
           return "Valid year is required";
-        if (formData.operatingHours < 0) return "Operating hours are required";
+        if (
+          formData.operatingHours === undefined ||
+          formData.operatingHours === null
+        )
+          return "Operating hours are required";
+        if (formData.operatingHours < 0)
+          return "Operating hours cannot be negative";
         return null;
       case 1: // Technical Specs
         if (!formData.categoryId) return "Please select a category.";

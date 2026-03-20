@@ -218,8 +218,6 @@ describe("MyListings Page", () => {
     (useMutation as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.auctions.submitForReview)
         return mockSubmitForReview;
-      if (apiPath === mockApi.auctions.submitForReview)
-        return mockSubmitForReview;
       if (apiPath === mockApi.auctions.deleteDraft) return mockDeleteDraft;
       return vi.fn();
     });
@@ -388,12 +386,12 @@ describe("MyListings Page", () => {
       fireEvent.click(createBtn);
     });
 
-    expect(() => {
-      localStorage.removeItem("agribid_listing_draft");
-    }).not.toThrow();
-    expect(() => {
-      localStorage.removeItem("agribid_listing_step");
-    }).not.toThrow();
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(
+      "agribid_listing_draft"
+    );
+    expect(localStorageMock.removeItem).toHaveBeenCalledWith(
+      "agribid_listing_step"
+    );
     expect(mockNavigate).toHaveBeenCalledWith("/sell");
   });
 

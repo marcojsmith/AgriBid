@@ -11,7 +11,7 @@ import { useAdminStats } from "./useAdminStats";
 
 describe("useAdminStats", () => {
   it("should throw error when used outside of Provider", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => renderHook(() => useAdminStats())).toThrow(
       "useAdminStats must be used within an AdminStatsProvider"

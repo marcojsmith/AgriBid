@@ -32,7 +32,7 @@ Prioritized by size and quick wins for efficient resolution.
 - [x] #168: (Code Quality) Extract magic numbers into named constants
   - _Description_: Replace hardcoded numbers with descriptive constants
   - _Labels_: enhancement
-- [x] #167: (Refactor) Centralize all custom hooks in app/src/hooks/
+- [x] #167: (Refactor) Centralize all custom hooks in src/hooks/
   - _Description_: Move all custom hooks to a centralized hooks directory
   - _Labels_: enhancement
 - [ ] #157: For all pages where we need to fetch data, we need to load the UI components first/show a loading spinner/show skeleton components

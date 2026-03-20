@@ -178,8 +178,15 @@ describe("AuditTab", () => {
     expect(prevButton).toBeDisabled();
     expect(resetButton).toBeDisabled();
 
-    // 2. Click Next
+    // 2. Click Next — component calls useQuery with cursor-2 (the continueCursor from initial load)
     fireEvent.click(nextButton);
+
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paginationOpts: expect.objectContaining({ cursor: "cursor-2" }),
+      })
+    );
 
     // Mock query for second page
     mockUseQuery.mockReturnValue({
@@ -196,8 +203,15 @@ describe("AuditTab", () => {
     expect(prevButton).not.toBeDisabled();
     expect(resetButton).not.toBeDisabled();
 
-    // 3. Click Previous
+    // 3. Click Previous — component calls useQuery with null cursor (back to page 0)
     fireEvent.click(prevButton);
+
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paginationOpts: expect.objectContaining({ cursor: null }),
+      })
+    );
 
     // Mock query back to first page
     mockUseQuery.mockReturnValue({
@@ -228,6 +242,13 @@ describe("AuditTab", () => {
 
     expect(resetButton).not.toBeDisabled();
     fireEvent.click(resetButton);
+
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paginationOpts: expect.objectContaining({ cursor: null }),
+      })
+    );
 
     mockUseQuery.mockReturnValue({
       page: mockLogs,
