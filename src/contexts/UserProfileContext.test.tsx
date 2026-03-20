@@ -71,6 +71,16 @@ describe("UserProfileContext", () => {
   });
 
   describe("useUserProfile", () => {
+    it("should throw error when used outside of Provider", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
+
+      expect(() => renderHook(() => useUserProfile())).toThrow(
+        "useUserProfile must be used within a UserProfileProvider"
+      );
+
+      consoleSpy.mockRestore();
+    });
+
     it("should return user profile when used within provider", () => {
       vi.mocked(convexReact.useQuery).mockReturnValue(mockUserProfile);
 

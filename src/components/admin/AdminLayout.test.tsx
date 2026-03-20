@@ -25,9 +25,13 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-vi.mock("@/hooks/useAdminStats", () => ({
-  useAdminStats: mockUseAdminStats,
-}));
+vi.mock("@/hooks/useAdminStats", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useAdminStats")>();
+  return {
+    ...actual,
+    useAdminStats: mockUseAdminStats,
+  };
+});
 
 const mockStats = {
   totalAuctions: 150,

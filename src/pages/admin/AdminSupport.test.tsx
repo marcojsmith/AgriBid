@@ -12,10 +12,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 
-import {
-  AdminStatsContext,
-  type AdminStats,
-} from "../../contexts/admin-stats-types";
+import { AdminStatsContext, type AdminStats } from "../../hooks/useAdminStats";
 import AdminSupport from "./AdminSupport";
 
 // Mock convex

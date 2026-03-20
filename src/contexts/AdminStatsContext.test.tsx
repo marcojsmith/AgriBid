@@ -59,6 +59,18 @@ describe("AdminStatsContext", () => {
   });
 
   describe("useAdminStats", () => {
+    it("should throw error when used outside of Provider", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      expect(() => renderHook(() => useAdminStats())).toThrow(
+        "useAdminStats must be used within a AdminStatsProvider"
+      );
+
+      consoleSpy.mockRestore();
+    });
+
     it("should return stats when used within provider", () => {
       vi.mocked(convexReact.useQuery).mockReturnValue(mockStats);
 
