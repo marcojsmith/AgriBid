@@ -1,17 +1,36 @@
-import { useContext } from "react";
+import { createTypedContext } from "../contexts/createTypedContext";
+import type { Id } from "../../convex/_generated/dataModel";
 
-import { UserProfileContext, NO_PROVIDER } from "@/contexts/user-profile-types";
-
-/**
- * Retrieve the current user's profile from the UserProfile context.
- *
- * @returns An object containing userId, _id, email, profile, and kyc properties, `null` when the user has no profile, or `undefined` while the profile is loading.
- * @throws Error If called outside a `UserProfileProvider`.
- */
-export function useUserProfile() {
-  const context = useContext(UserProfileContext);
-  if ((context as unknown) === NO_PROVIDER) {
-    throw new Error("useUserProfile must be used within a UserProfileProvider");
-  }
-  return context;
+export interface PublicProfile {
+  userId: string;
+  _id: Id<"profiles">;
+  _creationTime: number;
+  role: "buyer" | "seller" | "admin";
+  isVerified: boolean;
+  kycStatus?: "pending" | "verified" | "rejected" | null;
+  bio?: string;
+  companyName?: string;
+  createdAt: number;
+  updatedAt: number;
 }
+
+export interface KycProfile {
+  idNumber?: string;
+  phoneNumber?: string;
+  kycEmail?: string;
+  kycDocuments?: string[];
+  kycRejectionReason?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface UserProfile {
+  userId?: string | null;
+  _id?: string;
+  email?: string;
+  profile?: PublicProfile | null;
+  kyc?: KycProfile | null;
+}
+
+export const [UserProfileContext, useUserProfile] =
+  createTypedContext<UserProfile>("UserProfile");

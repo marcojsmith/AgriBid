@@ -1,17 +1,16 @@
-import { useContext } from "react";
+import { createTypedContext } from "../contexts/createTypedContext";
 
-import { AdminStatsContext, NO_PROVIDER } from "@/contexts/admin-stats-types";
-
-/**
- * Accesses the current admin statistics from the AdminStatsContext.
- *
- * @returns The `AdminStats` object from context, `null` when explicitly no statistics are available, or `undefined` while loading.
- * @throws Error If called outside an `AdminStatsProvider`.
- */
-export function useAdminStats() {
-  const context = useContext(AdminStatsContext);
-  if ((context as unknown) === NO_PROVIDER) {
-    throw new Error("useAdminStats must be used within an AdminStatsProvider");
-  }
-  return context;
+export interface AdminStats {
+  totalAuctions: number;
+  activeAuctions: number;
+  pendingReview: number;
+  totalUsers: number;
+  verifiedSellers: number;
+  kycPending: number;
+  status: "partial" | "healthy";
+  liveUsers: number;
+  activeWatch: number;
 }
+
+export const [AdminStatsContext, useAdminStats] =
+  createTypedContext<AdminStats>("AdminStats");

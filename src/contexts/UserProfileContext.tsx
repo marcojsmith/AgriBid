@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "../../convex/_generated/api";
-import { UserProfileContext } from "./user-profile-types";
+import { UserProfileContext } from "../hooks/useUserProfile";
 
 export { UserProfileContext };
 
