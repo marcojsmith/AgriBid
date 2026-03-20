@@ -357,7 +357,7 @@ describe("Mutations Coverage", () => {
       ).rejects.toThrow("Invalid duration");
     });
 
-    it("should cap additional images to 6", async () => {
+    it("should truncate additional images in saveDraftHandler", async () => {
       const result = await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {

@@ -9,6 +9,10 @@ import {
 } from "./_generated/server";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import { updateCounter, countQuery } from "./admin_utils";
+import {
+  SUPPORT_TICKET_MAX_SUBJECT_LENGTH,
+  SUPPORT_TICKET_MAX_MESSAGE_LENGTH,
+} from "./constants";
 import type { Id } from "./_generated/dataModel";
 
 /**
@@ -37,11 +41,21 @@ export const createTicketHandler = async (
   const subject = args.subject.trim();
   const message = args.message.trim();
 
-  if (subject.length === 0 || subject.length > 100) {
-    throw new ConvexError("Subject must be between 1 and 100 characters");
+  if (
+    subject.length === 0 ||
+    subject.length > SUPPORT_TICKET_MAX_SUBJECT_LENGTH
+  ) {
+    throw new ConvexError(
+      `Subject must be between 1 and ${SUPPORT_TICKET_MAX_SUBJECT_LENGTH.toString()} characters`
+    );
   }
-  if (message.length === 0 || message.length > 2000) {
-    throw new ConvexError("Message must be between 1 and 2000 characters");
+  if (
+    message.length === 0 ||
+    message.length > SUPPORT_TICKET_MAX_MESSAGE_LENGTH
+  ) {
+    throw new ConvexError(
+      `Message must be between 1 and ${SUPPORT_TICKET_MAX_MESSAGE_LENGTH.toString()} characters`
+    );
   }
 
   const ticketId = await ctx.db.insert("supportTickets", {
@@ -77,9 +91,9 @@ export const createTicket = mutation({
 
 /**
  * Handler for getting the current user's support tickets.
- * @param ctx
- * @param args
- * @param args.paginationOpts
+ * @param ctx - The query context.
+ * @param args - The arguments for the query.
+ * @param args.paginationOpts - Pagination options.
  * @returns Promise<PaginatedTickets>
  */
 export const getMyTicketsHandler = async (

@@ -7,6 +7,10 @@ import { Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/auction";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import {
+  PAGINATION_INITIAL_ITEMS,
+  DASHBOARD_PAGINATION_LOAD_MORE_ITEMS,
+} from "@/lib/constants";
 
 /**
  * Renders the user's watchlist page.
@@ -23,7 +27,7 @@ export default function Watchlist() {
   } = usePaginatedQuery(
     api.watchlist.getWatchedAuctions,
     {},
-    { initialNumItems: 12 }
+    { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
 
   if (status === "LoadingFirstPage") {
@@ -76,7 +80,9 @@ export default function Watchlist() {
             {status === "CanLoadMore" ? (
               <Button
                 variant="outline"
-                onClick={() => loadMore(10)}
+                onClick={() => {
+                  loadMore(DASHBOARD_PAGINATION_LOAD_MORE_ITEMS);
+                }}
                 className="font-bold min-w-[200px]"
               >
                 Load More

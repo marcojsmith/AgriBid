@@ -12,6 +12,9 @@ import {
   type CounterField,
 } from "../admin_utils";
 import { countOnlineUsers } from "../presence";
+import { MS_PER_DAY } from "../constants";
+
+const RECENT_DAYS_THRESHOLD = 7;
 
 /**
  * Internal helper to upsert a counter document with multiple fields.
@@ -92,7 +95,7 @@ export const getFinancialStats = query({
       let totalSalesVolume = counter?.salesVolume ?? 0;
       let auctionCount = counter?.soldCount ?? 0;
 
-      if (!counter || counter.soldCount === undefined) {
+      if (counter?.soldCount === undefined) {
         const soldStats = await sumQuery(
           ctx.db
             .query("auctions")
@@ -301,7 +304,7 @@ export const getAnnouncementStats = query({
     const counter = await getCounter(ctx, "announcements");
 
     const now = Date.now();
-    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = now - RECENT_DAYS_THRESHOLD * MS_PER_DAY;
 
     const recent = await countQuery(
       ctx.db

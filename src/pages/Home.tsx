@@ -12,6 +12,10 @@ import { AuctionCardSkeleton } from "@/components/AuctionCardSkeleton";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { cn } from "@/lib/utils";
 import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
+import {
+  PAGINATION_INITIAL_ITEMS,
+  PAGINATION_LOAD_MORE_ITEMS,
+} from "@/lib/constants";
 
 /**
  * Custom hook to detect media query matches.
@@ -67,8 +71,12 @@ export default function Home() {
   const viewMode = manualViewMode ?? (isMobile ? "compact" : "detailed");
 
   // Extract filter params
-  const searchQuery = searchParams.get("q") || undefined;
-  const make = searchParams.get("make") || undefined;
+  let searchQuery = searchParams.get("q") ?? undefined;
+  let make = searchParams.get("make") ?? undefined;
+
+  // Convert empty strings to undefined to avoid active filters
+  searchQuery = searchQuery === "" ? undefined : searchQuery;
+  make = make === "" ? undefined : make;
 
   const isValidStatus = (
     value: string | null
@@ -108,7 +116,7 @@ export default function Home() {
       maxHours,
       statusFilter,
     },
-    { initialNumItems: 12 }
+    { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
 
   // Batch-fetch watched auction IDs to avoid per-card queries
@@ -162,7 +170,9 @@ export default function Home() {
           <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80 z-20">
             <FilterSidebar
               key={searchParams.toString()}
-              onClose={() => setIsMobileFilterOpen(false)}
+              onClose={() => {
+                setIsMobileFilterOpen(false);
+              }}
             />
           </div>
         </div>
@@ -319,7 +329,7 @@ export default function Home() {
               <div className="flex justify-center pt-4">
                 <Button
                   onClick={() => {
-                    loadMore(12);
+                    loadMore(PAGINATION_LOAD_MORE_ITEMS);
                   }}
                   variant="outline"
                   className="rounded-xl font-black px-12 border-2 gap-2 h-12 uppercase tracking-widest text-xs"

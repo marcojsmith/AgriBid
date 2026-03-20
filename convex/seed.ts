@@ -2,6 +2,7 @@
 import { v } from "convex/values";
 
 import { mutation } from "./_generated/server";
+import { MS_PER_DAY } from "./constants";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { components } from "./_generated/api";
@@ -22,6 +23,72 @@ interface DeleteManyResult {
   isDone: boolean;
   continueCursor?: string | null;
 }
+
+interface AuthUser {
+  _id: string;
+  userId?: string;
+  email: string;
+}
+
+const MOCK_IMAGE_URLS = {
+  JD_FRONT:
+    "https://www.deere.com/assets/images/region-4/products/tractors/" +
+    "row-crop-tractors/8r-8rt-row-crop-tractors/" +
+    "8r-410/" +
+    "8r_410_r4f063847_large_" +
+    "660c917945cea0af3aeb242ddf4c52b9540ef7cc.jpg",
+  JD_ENGINE:
+    "https://photos.machinefinder.com/06/10805006/" + "70729678_large.jpg",
+  JD_CABIN:
+    "https://www.deere.asia/assets/images/region-2/products/tractors/large/" +
+    "8r-series/" +
+    "2_8r410_joskin_slurrytank_" +
+    "dsc2539_large_large_" +
+    "7a4506d66221ef20112cf11f13bf7ffc898ffec6.jpg",
+  CASE_FRONT:
+    "https://titanmachinery.bg/media/stenik_article/article/cache/2/" +
+    "image/9df78eab33525d08d6e5fb8d27136e95/1/4/14228766973.jpg",
+  CASE_ENGINE:
+    "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/" +
+    "content/a74b2445b23f440bacd99ab8eaf177cc?" +
+    "v=abc51e43",
+  CASE_CABIN:
+    "https://www.lectura-specs.com/models/renamed/orig/" +
+    "4wd-tractors-magnum-380-cvxdrive-case-ih.jpg",
+  NH_FRONT:
+    "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/" +
+    "content/8938fcb66b3a4f48abced368ef3e49ae?" +
+    "v=8416d11a&t=size1100",
+  NH_ENGINE:
+    "https://rollinsmachinery.com/wp-content/uploads/2024/02/" +
+    "Right-Side-T7.315.jpg",
+  NH_CABIN:
+    "https://www.worldtractors.co.uk/wp-content/uploads/2025/03/" +
+    "IMG_0131-scaled.jpeg",
+  MF_FRONT: "https://www.scotagri.com/media/bz5dn5hz/" + "image001-33.jpg",
+  MF_ENGINE:
+    "https://ik.imagekit.io/efarm/images/f1e19830-278d-4d3c-894b-18101ec963ec.jpg?" +
+    "tr=w-600%2Cl-image%2Ci-%40%40website-machine-images-watermarks%40%40" +
+    "watermark_DZDDMXPYs_" +
+    "M9F2mQxfH.png%2Clx-6%2Cly-6%2Cw-90%2Cl-end",
+  MF_CABIN:
+    "https://heavyequipmentspecs.s3.amazonaws.com/tractors/" +
+    "massey-ferguson-8s.305/massey-ferguson-8s.305_1.jpg",
+  FENDT_FRONT:
+    "https://www.fendt.com/int/images/" +
+    "60cc414b69b3411a3a4b5114_1623998796_web_en.png",
+  FENDT_ENGINE:
+    "https://cdn.gebrauchtmaschinen.de/data/listing/img/vga/ms/97/53/" +
+    "16247668-01.jpg?v=1717573999",
+  FENDT_CABIN:
+    "https://media.sandhills.com/img.axd?id=9026328987&" +
+    "wid=4326185391&" +
+    "rwl=False&p=&ext=&w=350&h=220&t=&lp=&c=True&wt=False&sz=Cover&rt=0&" +
+    "checksum=42ysNVTRQ" +
+    "48SZVTD4" +
+    "%2BotMVL9yMULXnb" +
+    "1mnh8ao7tBzk%3D",
+};
 
 const BATCH_SIZE = 500;
 
@@ -56,7 +123,7 @@ async function checkDestructiveAccess(ctx: MutationCtx) {
   if (!isDev && !isPreview) {
     throw new Error(
       `Unauthorized: Destructive operations are only allowed in development or preview environments. ` +
-        `Current environment: ${nodeEnv || vercelEnv}.`
+        `Current environment: ${nodeEnv ?? vercelEnv ?? "unknown"}.`
     );
   }
 }
@@ -77,7 +144,7 @@ export const runSeed = mutation({
   handler: async (ctx, args) => {
     // --- SECURITY GUARD ---
     const seedSecret = process.env.SEED_SECRET;
-    const isSecretMatch = seedSecret && args.providedSeed === seedSecret;
+    const isSecretMatch = !!seedSecret && args.providedSeed === seedSecret;
 
     if (!isSecretMatch) {
       await checkDestructiveAccess(ctx);
@@ -95,13 +162,15 @@ export const runSeed = mutation({
       ];
       for (const tableName of tablesToClear) {
         let deletedCount = 0;
-        while (true) {
-          const batch = await ctx.db.query(tableName).take(BATCH_SIZE);
-          if (batch.length === 0) break;
+        let batch = await ctx.db.query(tableName).take(BATCH_SIZE);
+        while (batch.length > 0) {
           await Promise.all(batch.map((item) => ctx.db.delete(item._id)));
           deletedCount += batch.length;
+          batch = await ctx.db.query(tableName).take(BATCH_SIZE);
         }
-        console.log(`Cleared ${deletedCount} records from ${tableName}.`);
+        console.log(
+          `Cleared ${deletedCount.toString()} records from ${tableName}.`
+        );
       }
 
       /* 
@@ -169,7 +238,7 @@ export const runSeed = mutation({
       "Other",
     ];
 
-    const categoryIds: Record<string, Id<"equipmentCategories">> = {};
+    const categoryIds = new Map<string, Id<"equipmentCategories">>();
 
     for (const catName of categories) {
       const existing = await ctx.db
@@ -182,11 +251,24 @@ export const runSeed = mutation({
           name: catName,
           isActive: true,
         });
-        categoryIds[catName] = id;
+        categoryIds.set(catName, id);
       } else {
-        categoryIds[catName] = existing._id;
+        categoryIds.set(catName, existing._id);
       }
     }
+
+    /**
+     * Helper to get a category ID by name, throwing if not found.
+     * @param name - The category name.
+     * @returns The category ID.
+     */
+    const getCategoryId = (name: string): Id<"equipmentCategories"> => {
+      const id = categoryIds.get(name);
+      if (!id) {
+        throw new Error(`Missing category "${name}" during seeding`);
+      }
+      return id;
+    };
 
     // 1. Seed Equipment Metadata (Extensive list for Southern Africa)
     const metadataItems = [
@@ -341,7 +423,7 @@ export const runSeed = mutation({
     ];
 
     for (const item of metadataItems) {
-      const categoryId = categoryIds[item.category];
+      const categoryId = getCategoryId(item.category);
 
       // Try to find by make AND categoryId first
       let existing = await ctx.db
@@ -381,24 +463,24 @@ export const runSeed = mutation({
 
     // 2. Create Mock Seller User Profile (Idempotent)
     const mockSellerEmail = "mock-seller@farm.com";
-    const mockSellerId = "mock-seller";
 
-    const seller = await ctx.runQuery(components.auth.adapter.findOne, {
+    const seller = (await ctx.runQuery(components.auth.adapter.findOne, {
       model: "user",
       where: [{ field: "email", operator: "eq", value: mockSellerEmail }],
-    });
+    })) as AuthUser | null;
+
+    let sellerId = "mock-seller"; // fallback if seller not found
 
     if (seller) {
+      sellerId = seller.userId ?? seller._id;
       const existingSellerProfile = await ctx.db
         .query("profiles")
-        .withIndex("by_userId", (q) =>
-          q.eq("userId", seller.userId || seller._id)
-        )
+        .withIndex("by_userId", (q) => q.eq("userId", sellerId))
         .first();
 
       if (!existingSellerProfile) {
         await ctx.db.insert("profiles", {
-          userId: seller.userId || seller._id,
+          userId: sellerId,
           role: "seller",
           isVerified: true,
           createdAt: Date.now(),
@@ -410,22 +492,21 @@ export const runSeed = mutation({
     // 2.5. Create Mock Admin User Profile (Idempotent)
     const mockAdminEmail = "admin@agribid.com";
 
-    const admin = await ctx.runQuery(components.auth.adapter.findOne, {
+    const admin = (await ctx.runQuery(components.auth.adapter.findOne, {
       model: "user",
       where: [{ field: "email", operator: "eq", value: mockAdminEmail }],
-    });
+    })) as AuthUser | null;
 
     if (admin) {
+      const adminId = admin.userId ?? admin._id;
       const existingAdminProfile = await ctx.db
         .query("profiles")
-        .withIndex("by_userId", (q) =>
-          q.eq("userId", admin.userId || admin._id)
-        )
+        .withIndex("by_userId", (q) => q.eq("userId", adminId))
         .first();
 
       if (!existingAdminProfile) {
         await ctx.db.insert("profiles", {
-          userId: admin.userId || admin._id,
+          userId: adminId,
           role: "admin",
           isVerified: true,
           createdAt: Date.now(),
@@ -436,12 +517,11 @@ export const runSeed = mutation({
 
     // 3. Seed Mock Auctions
     const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
     const mockAuctions = [
       {
         seedId: "jd-8r-410",
         title: "John Deere 8R 410 — Row Crop Titan",
-        categoryId: categoryIds["Tractor"],
+        categoryId: getCategoryId("Tractor"),
         make: "John Deere",
         model: "8R 410",
         year: 2023,
@@ -453,24 +533,21 @@ export const runSeed = mutation({
         startingPrice: 250000,
         currentPrice: 275000,
         minIncrement: 5000,
-        startTime: now - oneDay,
-        endTime: now + 3 * oneDay,
-        sellerId: mockSellerId,
+        startTime: now - MS_PER_DAY,
+        endTime: now + 3 * MS_PER_DAY,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
-          front:
-            "https://www.deere.com/assets/images/region-4/products/tractors/row-crop-tractors/8r-8rt-row-crop-tractors/8r-410/8r_410_r4f063847_large_660c917945cea0af3aeb242ddf4c52b9540ef7cc.jpg",
-          engine:
-            "https://photos.machinefinder.com/06/10805006/70729678_large.jpg",
-          cabin:
-            "https://www.deere.asia/assets/images/region-2/products/tractors/large/8r-series/2_8r410_joskin_slurrytank_dsc2539_large_large_7a4506d66221ef20112cf11f13bf7ffc898ffec6.jpg",
+          front: MOCK_IMAGE_URLS.JD_FRONT,
+          engine: MOCK_IMAGE_URLS.JD_ENGINE,
+          cabin: MOCK_IMAGE_URLS.JD_CABIN,
           additional: [],
         },
       },
       {
         seedId: "case-magnum-380",
         title: "Case IH Magnum 380 — Prairie Powerhouse",
-        categoryId: categoryIds["Tractor"],
+        categoryId: getCategoryId("Tractor"),
         make: "Case IH",
         model: "Magnum 380",
         year: 2022,
@@ -482,24 +559,21 @@ export const runSeed = mutation({
         startingPrice: 200000,
         currentPrice: 215000,
         minIncrement: 2500,
-        startTime: now - 2 * oneDay,
-        endTime: now + 4 * oneDay,
-        sellerId: mockSellerId,
+        startTime: now - 2 * MS_PER_DAY,
+        endTime: now + 4 * MS_PER_DAY,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
-          front:
-            "https://titanmachinery.bg/media/stenik_article/article/cache/2/image/9df78eab33525d08d6e5fb8d27136e95/1/4/14228766973.jpg",
-          engine:
-            "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/a74b2445b23f440bacd99ab8eaf177cc?v=abc51e43",
-          cabin:
-            "https://www.lectura-specs.com/models/renamed/orig/4wd-tractors-magnum-380-cvxdrive-case-ih.jpg",
+          front: MOCK_IMAGE_URLS.CASE_FRONT,
+          engine: MOCK_IMAGE_URLS.CASE_ENGINE,
+          cabin: MOCK_IMAGE_URLS.CASE_CABIN,
           additional: [],
         },
       },
       {
         seedId: "nh-t7-315",
         title: "New Holland T7.315 — Blue Diamond",
-        categoryId: categoryIds["Tractor"],
+        categoryId: getCategoryId("Tractor"),
         make: "New Holland",
         model: "T7.315",
         year: 2023,
@@ -511,24 +585,21 @@ export const runSeed = mutation({
         startingPrice: 150000,
         currentPrice: 165000,
         minIncrement: 2000,
-        startTime: now - oneDay,
-        endTime: now + 5 * oneDay,
-        sellerId: mockSellerId,
+        startTime: now - MS_PER_DAY,
+        endTime: now + 5 * MS_PER_DAY,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
-          front:
-            "https://cnhi-p-001-delivery.sitecorecontenthub.cloud/api/public/content/8938fcb66b3a4f48abced368ef3e49ae?v=8416d11a&t=size1100",
-          engine:
-            "https://rollinsmachinery.com/wp-content/uploads/2024/02/Right-Side-T7.315.jpg",
-          cabin:
-            "https://www.worldtractors.co.uk/wp-content/uploads/2025/03/IMG_0131-scaled.jpeg",
+          front: MOCK_IMAGE_URLS.NH_FRONT,
+          engine: MOCK_IMAGE_URLS.NH_ENGINE,
+          cabin: MOCK_IMAGE_URLS.NH_CABIN,
           additional: [],
         },
       },
       {
         seedId: "mf-8s-305",
         title: "Massey Ferguson 8S.305 — Crimson Legend",
-        categoryId: categoryIds["Tractor"],
+        categoryId: getCategoryId("Tractor"),
         make: "Massey Ferguson",
         model: "8S.305",
         year: 2024,
@@ -540,23 +611,21 @@ export const runSeed = mutation({
         startingPrice: 140000,
         currentPrice: 142000,
         minIncrement: 1500,
-        startTime: now - 3 * oneDay,
-        endTime: now + 2 * oneDay,
-        sellerId: mockSellerId,
+        startTime: now - 3 * MS_PER_DAY,
+        endTime: now + 2 * MS_PER_DAY,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
-          front: "https://www.scotagri.com/media/bz5dn5hz/image001-33.jpg",
-          engine:
-            "https://ik.imagekit.io/efarm/images/f1e19830-278d-4d3c-894b-18101ec963ec.jpg?tr=w-600%2Cl-image%2Ci-%40%40website-machine-images-watermarks%40%40watermark_DZDDMXPYs_M9F2mQxfH.png%2Clx-6%2Cly-6%2Cw-90%2Cl-end",
-          cabin:
-            "https://heavyequipmentspecs.s3.amazonaws.com/tractors/massey-ferguson-8s.305/massey-ferguson-8s.305_1.jpg",
+          front: MOCK_IMAGE_URLS.MF_FRONT,
+          engine: MOCK_IMAGE_URLS.MF_ENGINE,
+          cabin: MOCK_IMAGE_URLS.MF_CABIN,
           additional: [],
         },
       },
       {
         seedId: "fendt-1050",
         title: "Fendt 1050 Vario — German Precision",
-        categoryId: categoryIds["Tractor"],
+        categoryId: getCategoryId("Tractor"),
         make: "Fendt",
         model: "1050 Vario",
         year: 2023,
@@ -568,17 +637,14 @@ export const runSeed = mutation({
         startingPrice: 300000,
         currentPrice: 325000,
         minIncrement: 10000,
-        startTime: now - oneDay,
-        endTime: now + 6 * oneDay,
-        sellerId: mockSellerId,
+        startTime: now - MS_PER_DAY,
+        endTime: now + 6 * MS_PER_DAY,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
-          front:
-            "https://www.fendt.com/int/images/60cc414b69b3411a3a4b5114_1623998796_web_en.png",
-          engine:
-            "https://cdn.gebrauchtmaschinen.de/data/listing/img/vga/ms/97/53/16247668-01.jpg?v=1717573999",
-          cabin:
-            "https://media.sandhills.com/img.axd?id=9026328987&wid=4326185391&rwl=False&p=&ext=&w=350&h=220&t=&lp=&c=True&wt=False&sz=Cover&rt=0&checksum=42ysNVTRQ48SZVTD4%2BotMVL9yMULXnb1mnh8ao7tBzk%3D",
+          front: MOCK_IMAGE_URLS.FENDT_FRONT,
+          engine: MOCK_IMAGE_URLS.FENDT_ENGINE,
+          cabin: MOCK_IMAGE_URLS.FENDT_CABIN,
           additional: [],
         },
       },
@@ -690,23 +756,23 @@ export const clearAuctions = mutation({
     let auctionsCount = 0;
 
     // 1. Sweep and delete all bids first to avoid nested loops/long mutations
-    while (true) {
-      const bidsBatch = await ctx.db.query("bids").take(BATCH_SIZE);
-      if (bidsBatch.length === 0) break;
+    let bidsBatch = await ctx.db.query("bids").take(BATCH_SIZE);
+    while (bidsBatch.length > 0) {
       await Promise.all(bidsBatch.map((b) => ctx.db.delete(b._id)));
       totalBidsDeleted += bidsBatch.length;
+      bidsBatch = await ctx.db.query("bids").take(BATCH_SIZE);
     }
 
     // 2. Delete auctions in batches
-    while (true) {
-      const auctionsBatch = await ctx.db.query("auctions").take(BATCH_SIZE);
-      if (auctionsBatch.length === 0) break;
+    let auctionsBatch = await ctx.db.query("auctions").take(BATCH_SIZE);
+    while (auctionsBatch.length > 0) {
       await Promise.all(auctionsBatch.map((a) => ctx.db.delete(a._id)));
       auctionsCount += auctionsBatch.length;
+      auctionsBatch = await ctx.db.query("auctions").take(BATCH_SIZE);
     }
 
     console.log(
-      `Cleared ${auctionsCount} auctions and ${totalBidsDeleted} bids.`
+      `Cleared ${auctionsCount.toString()} auctions and ${totalBidsDeleted.toString()} bids.`
     );
     return auctionsCount;
   },
@@ -737,11 +803,11 @@ export const clearAllData = mutation({
     // Clear App Tables
     for (const tableName of appTables) {
       let deletedCount = 0;
-      while (true) {
-        const batch = await ctx.db.query(tableName).take(BATCH_SIZE);
-        if (batch.length === 0) break;
+      let batch = await ctx.db.query(tableName).take(BATCH_SIZE);
+      while (batch.length > 0) {
         await Promise.all(batch.map((r) => ctx.db.delete(r._id)));
         deletedCount += batch.length;
+        batch = await ctx.db.query(tableName).take(BATCH_SIZE);
       }
       totalDeleted += deletedCount;
     }
@@ -764,7 +830,9 @@ export const clearAllData = mutation({
 
         // Runtime guard for unexpected result shapes
         if (
-          typeof result?.isDone !== "boolean" ||
+          result == null ||
+          typeof result !== "object" ||
+          typeof result.isDone !== "boolean" ||
           (result.continueCursor !== null &&
             result.continueCursor !== undefined &&
             typeof result.continueCursor !== "string")
@@ -777,13 +845,15 @@ export const clearAllData = mutation({
           break;
         }
 
-        const count = Number(result.count ?? 0);
+        const count = result.count;
         totalDeleted += count;
         isDone = result.isDone;
         cursor = result.continueCursor ?? null;
 
         if (!cursor) isDone = true;
-        console.log(`Wiped batch of auth model: ${model} (${count} deleted)`);
+        console.log(
+          `Wiped batch of auth model: ${model} (${count.toString()} deleted)`
+        );
       }
     }
 

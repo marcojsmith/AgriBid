@@ -3,18 +3,19 @@ import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { updateCounter, logAudit } from "../admin_utils";
 import { deleteAuctionImages } from "../lib/storage";
+import {
+  DRAFT_RETENTION_MS,
+  CLEANUP_BATCH_SIZE,
+  DRAFT_RETENTION_DAYS,
+} from "../constants";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-
-const DRAFT_RETENTION_DAYS = 30;
-const DRAFT_RETENTION_MS = DRAFT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-const CLEANUP_BATCH_SIZE = 100;
 
 /**
  * Internal mutation to settle auctions that have reached their end time.
  * Transitions status to 'sold' if reserve is met, or 'unsold' otherwise.
  *
- * @param ctx
+ * @param ctx - The mutation context.
  * @returns Promise<void>
  */
 export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
@@ -89,9 +90,9 @@ export const settleExpiredAuctions = internalMutation({
  * Handler for cleaning up abandoned drafts.
  * Uses batching to stay within Convex mutation limits.
  *
- * @param ctx - Mutation context
- * @param args
- * @param args.system - Whether this is a system-initiated cleanup (default: true)
+ * @param ctx - The mutation context.
+ * @param args - The arguments for the cleanup.
+ * @param args.system - Whether this is a system-initiated cleanup (default: true).
  * @returns Object containing the number of deleted auctions and errors encountered.
  */
 export const cleanupDraftsHandler = async (
@@ -157,7 +158,9 @@ export const cleanupDraftsHandler = async (
     await updateCounter(ctx, "auctions", "draft", -deleted);
   }
 
-  console.log(`Cleanup: deleted ${deleted} draft auctions, ${errors} errors`);
+  console.log(
+    `Cleanup: deleted ${deleted.toString()} draft auctions, ${errors.toString()} errors`
+  );
 
   return { deleted, errors };
 };
