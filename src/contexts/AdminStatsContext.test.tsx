@@ -65,7 +65,7 @@ describe("AdminStatsContext", () => {
         .mockImplementation(() => {});
 
       expect(() => renderHook(() => useAdminStats())).toThrow(
-        "useAdminStats must be used within a AdminStatsProvider"
+        "useAdminStats must be used within an AdminStatsProvider"
       );
 
       consoleSpy.mockRestore();

@@ -16,8 +16,9 @@ export function createTypedContext<T>(displayName: string) {
   const useContextHook = () => {
     const ctx = useContext(Context);
     if ((ctx as unknown) === NO_PROVIDER) {
+      const article = /^[aeiou]/i.test(displayName) ? "an" : "a";
       throw new Error(
-        `use${displayName} must be used within a ${displayName}Provider`
+        `use${displayName} must be used within ${article} ${displayName}Provider`
       );
     }
     return ctx;
