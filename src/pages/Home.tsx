@@ -114,21 +114,34 @@ export default function Home() {
             "grid-cols-1 gap-2 sm:gap-3",
             sidebarOpen ? "md:grid-cols-2" : "md:grid-cols-2 lg:grid-cols-3"
           )
-        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-8"
+        : cn(
+            "grid-cols-1 md:grid-cols-2",
+            sidebarOpen ? "xl:grid-cols-3" : "xl:grid-cols-4",
+            "gap-3 md:gap-8"
+          )
     );
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 pb-12">
-      {/* Desktop Sidebar */}
-      {isDesktopSidebarOpen && (
-        <aside className="hidden lg:block w-80 shrink-0 sticky top-24 h-[calc(100vh-8rem)]">
+      {/* Desktop Sidebar — animated slide in/out */}
+      <aside
+        data-testid="desktop-sidebar"
+        className={cn(
+          "hidden lg:block shrink-0 sticky top-24 h-[calc(100vh-8rem)] transition-[width,max-width,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden",
+          isDesktopSidebarOpen ? "w-80 opacity-100" : "w-0 opacity-0"
+        )}
+      >
+        <div className="h-full w-80">
           <FilterSidebar key={searchParams.toString()} />
-        </aside>
-      )}
+        </div>
+      </aside>
 
       {/* Mobile Filter Overlay */}
       {isMobileFilterOpen && (
-        <div className="fixed inset-0 z-[100] lg:hidden animate-in fade-in duration-300">
+        <div
+          data-testid="mobile-filter-overlay"
+          className="fixed inset-0 z-[100] lg:hidden animate-in fade-in duration-300"
+        >
           {/* Clickable Backdrop */}
           <button
             className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 w-full h-full cursor-default"

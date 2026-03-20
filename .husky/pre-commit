@@ -1,1 +1,21 @@
-bunx lint-staged && bun run build && bun run test --run 
+#!/usr/bin/env bash
+set -e
+
+step() {
+  echo "▶ $1"
+}
+
+run() {
+  echo "▶ $1"
+  shift
+  if "$@"; then
+    echo "  ✓ passed"
+  else
+    echo "  ✗ FAILED"
+    exit 1
+  fi
+}
+
+run "lint-staged" bunx lint-staged
+run "build" bun run build
+run "tests" bun run test --run
