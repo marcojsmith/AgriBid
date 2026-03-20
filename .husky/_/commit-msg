@@ -7,7 +7,7 @@ STAGED_ESLINT=$(git diff --cached --name-only | grep -E "eslint\.config\.js$" | 
 CURRENT_ESLINT="eslint.config.js"
 
 check_strict_disabled() {
-  if [ -t 0 ]; then
+  if [ $# -gt 0 ]; then
     # Reading from file argument
     if grep -q "^[[:space:]]*tseslint\.configs\.strictTypeChecked," "$1" 2>/dev/null; then
       echo "ERROR: eslint.config.js has strictTypeChecked uncommented. Revert to 'recommended' before committing."
