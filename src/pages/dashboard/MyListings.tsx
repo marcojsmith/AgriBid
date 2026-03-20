@@ -266,13 +266,17 @@ export default function MyListings() {
               className="bg-card border-2 rounded-2xl p-4 flex flex-col md:flex-row gap-6 items-start md:items-center group hover:border-primary/50 transition-colors"
             >
               <div className="w-full md:w-48 aspect-video bg-muted rounded-xl overflow-hidden shrink-0">
-                {auction.images.front ? (
-                  <img
-                    src={auction.images.front}
-                    alt={auction.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : null}
+                {(() => {
+                  const normalizedImages = normalizeListingImages(auction.images);
+                  const thumbnailUrl = normalizedImages.front ?? normalizedImages[0];
+                  return thumbnailUrl ? (
+                    <img
+                      src={thumbnailUrl}
+                      alt={auction.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : null;
+                })()}
               </div>
 
               <div className="flex-1 space-y-2">

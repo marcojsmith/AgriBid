@@ -71,8 +71,12 @@ export default function Home() {
   const viewMode = manualViewMode ?? (isMobile ? "compact" : "detailed");
 
   // Extract filter params
-  const searchQuery = searchParams.get("q") ?? undefined;
-  const make = searchParams.get("make") ?? undefined;
+  let searchQuery = searchParams.get("q") ?? undefined;
+  let make = searchParams.get("make") ?? undefined;
+
+  // Convert empty strings to undefined to avoid active filters
+  searchQuery = searchQuery === "" ? undefined : searchQuery;
+  make = make === "" ? undefined : make;
 
   const isValidStatus = (
     value: string | null

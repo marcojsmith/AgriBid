@@ -93,13 +93,14 @@ export const createMockBid = (
   amount = 50000,
   overrides: Partial<Doc<"bids">> = {}
 ): Doc<"bids"> => {
+  const timestamp = Date.now();
   const base: Doc<"bids"> = {
-    _id: `bid_${now.toString()}` as Id<"bids">,
-    _creationTime: now,
+    _id: `bid_${timestamp.toString()}_${Math.random().toString(36).substring(2, 9)}` as Id<"bids">,
+    _creationTime: timestamp,
     auctionId: auctionId as Id<"auctions">,
     bidderId,
     amount,
-    timestamp: now,
+    timestamp: timestamp,
     status: "valid",
   };
   return { ...base, ...overrides };
@@ -119,13 +120,14 @@ export const createMockProxyBid = (
   maxBid = 55000,
   overrides: Partial<Doc<"proxy_bids">> = {}
 ): Doc<"proxy_bids"> => {
+  const timestamp = Date.now();
   const base: Doc<"proxy_bids"> = {
-    _id: `proxy_${now.toString()}` as Id<"proxy_bids">,
-    _creationTime: now,
+    _id: `proxy_${timestamp.toString()}_${Math.random().toString(36).substring(2, 9)}` as Id<"proxy_bids">,
+    _creationTime: timestamp,
     auctionId: auctionId as Id<"auctions">,
     bidderId,
     maxBid,
-    updatedAt: now,
+    updatedAt: timestamp,
   };
   return { ...base, ...overrides };
 };
@@ -140,16 +142,17 @@ export const createMockNotification = (
   recipientId = "user123",
   overrides: Partial<Doc<"notifications">> = {}
 ): Doc<"notifications"> => {
+  const timestamp = Date.now();
   const base: Doc<"notifications"> = {
-    _id: `notif_${now.toString()}` as Id<"notifications">,
-    _creationTime: now,
+    _id: `notif_${timestamp.toString()}_${Math.random().toString(36).substring(2, 9)}` as Id<"notifications">,
+    _creationTime: timestamp,
     recipientId,
     type: "info",
     title: "Test Notification",
     message: "This is a test notification",
     link: undefined,
     isRead: false,
-    createdAt: now,
+    createdAt: timestamp,
   };
   return { ...base, ...overrides };
 };
@@ -164,17 +167,18 @@ export const createMockSupportTicket = (
   userId = "user123",
   overrides: Partial<Doc<"supportTickets">> = {}
 ): Doc<"supportTickets"> => {
+  const timestamp = Date.now();
   const base: Doc<"supportTickets"> = {
-    _id: `ticket_${now.toString()}` as Id<"supportTickets">,
-    _creationTime: now,
+    _id: `ticket_${timestamp.toString()}_${Math.random().toString(36).substring(2, 9)}` as Id<"supportTickets">,
+    _creationTime: timestamp,
     userId,
     auctionId: undefined,
     subject: "Test Ticket",
     message: "This is a test support ticket",
     status: "open",
     priority: "medium",
-    createdAt: now,
-    updatedAt: now,
+    createdAt: timestamp,
+    updatedAt: timestamp,
     resolvedBy: undefined,
   };
   return { ...base, ...overrides };
@@ -190,16 +194,17 @@ export const createMockAuditLog = (
   adminId = "admin123",
   overrides: Partial<Doc<"auditLogs">> = {}
 ): Doc<"auditLogs"> => {
+  const timestamp = Date.now();
   const base: Doc<"auditLogs"> = {
-    _id: `log_${now.toString()}` as Id<"auditLogs">,
-    _creationTime: now,
+    _id: `log_${timestamp.toString()}_${Math.random().toString(36).substring(2, 9)}` as Id<"auditLogs">,
+    _creationTime: timestamp,
     adminId,
     action: "test_action",
     targetId: "target123",
     targetType: "auction",
     details: "Test audit log entry",
     targetCount: undefined,
-    timestamp: now,
+    timestamp: timestamp,
   };
   return { ...base, ...overrides };
 };
@@ -216,9 +221,10 @@ export const createMockWatchlistItem = (
   auctionId = "auction123",
   overrides: Partial<Doc<"watchlist">> = {}
 ): Doc<"watchlist"> => {
+  const timestamp = Date.now();
   const base: Doc<"watchlist"> = {
-    _id: `watch_${now.toString()}` as Id<"watchlist">,
-    _creationTime: now,
+    _id: `watch_${timestamp.toString()}_${Math.random().toString(36).substring(2, 9)}` as Id<"watchlist">,
+    _creationTime: timestamp,
     userId,
     auctionId: auctionId as Id<"auctions">,
   };
@@ -332,15 +338,16 @@ export const createMockAuctionFlag = (
   reporterId = "reporter123",
   overrides: Partial<Doc<"auctionFlags">> = {}
 ): Doc<"auctionFlags"> => {
+  const timestamp = Date.now();
   const base: Doc<"auctionFlags"> = {
-    _id: `flag_${now.toString()}` as Id<"auctionFlags">,
-    _creationTime: now,
+    _id: `flag_${timestamp.toString()}_${Math.random().toString(36).substring(2, 9)}` as Id<"auctionFlags">,
+    _creationTime: timestamp,
     auctionId: auctionId as Id<"auctions">,
     reporterId,
     reason: "misleading",
     details: "Test flag reason",
     status: "pending",
-    createdAt: now,
+    createdAt: timestamp,
   };
   return { ...base, ...overrides };
 };

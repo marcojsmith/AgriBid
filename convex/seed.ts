@@ -463,15 +463,16 @@ export const runSeed = mutation({
 
     // 2. Create Mock Seller User Profile (Idempotent)
     const mockSellerEmail = "mock-seller@farm.com";
-    const mockSellerId = "mock-seller";
 
     const seller = (await ctx.runQuery(components.auth.adapter.findOne, {
       model: "user",
       where: [{ field: "email", operator: "eq", value: mockSellerEmail }],
     })) as AuthUser | null;
 
+    let sellerId = "mock-seller"; // fallback if seller not found
+
     if (seller) {
-      const sellerId = seller.userId ?? seller._id;
+      sellerId = seller.userId ?? seller._id;
       const existingSellerProfile = await ctx.db
         .query("profiles")
         .withIndex("by_userId", (q) => q.eq("userId", sellerId))
@@ -534,7 +535,7 @@ export const runSeed = mutation({
         minIncrement: 5000,
         startTime: now - MS_PER_DAY,
         endTime: now + 3 * MS_PER_DAY,
-        sellerId: mockSellerId,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
           front: MOCK_IMAGE_URLS.JD_FRONT,
@@ -560,7 +561,7 @@ export const runSeed = mutation({
         minIncrement: 2500,
         startTime: now - 2 * MS_PER_DAY,
         endTime: now + 4 * MS_PER_DAY,
-        sellerId: mockSellerId,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
           front: MOCK_IMAGE_URLS.CASE_FRONT,
@@ -586,7 +587,7 @@ export const runSeed = mutation({
         minIncrement: 2000,
         startTime: now - MS_PER_DAY,
         endTime: now + 5 * MS_PER_DAY,
-        sellerId: mockSellerId,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
           front: MOCK_IMAGE_URLS.NH_FRONT,
@@ -612,7 +613,7 @@ export const runSeed = mutation({
         minIncrement: 1500,
         startTime: now - 3 * MS_PER_DAY,
         endTime: now + 2 * MS_PER_DAY,
-        sellerId: mockSellerId,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
           front: MOCK_IMAGE_URLS.MF_FRONT,
@@ -638,7 +639,7 @@ export const runSeed = mutation({
         minIncrement: 10000,
         startTime: now - MS_PER_DAY,
         endTime: now + 6 * MS_PER_DAY,
-        sellerId: mockSellerId,
+        sellerId: sellerId,
         status: "active" as const,
         images: {
           front: MOCK_IMAGE_URLS.FENDT_FRONT,
@@ -829,6 +830,8 @@ export const clearAllData = mutation({
 
         // Runtime guard for unexpected result shapes
         if (
+          result == null ||
+          typeof result !== "object" ||
           typeof result.isDone !== "boolean" ||
           (result.continueCursor !== null &&
             result.continueCursor !== undefined &&
