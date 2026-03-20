@@ -136,10 +136,7 @@ export default defineConfig([
       "react-hooks/exhaustive-deps": "warn",
 
       // --- Security ---
-      "no-secrets/no-secrets": [
-        "warn",
-        { ignoreIdentifiers: ["getMyBidsCountHandler"] },
-      ],
+      "no-secrets/no-secrets": "warn",
 
       // --- Imports ---
       "import-x/no-duplicates": "warn",
@@ -158,6 +155,19 @@ export default defineConfig([
           pathGroups: [{ pattern: "@/**", group: "internal" }],
           "newlines-between": "always",
         },
+      ],
+    },
+  },
+
+  // -----------------------------------------------------------------------
+  // File-scoped override for getMyBidsCountHandler
+  // -----------------------------------------------------------------------
+  {
+    files: ["convex/auctions/queries/bids.ts"],
+    rules: {
+      "no-secrets/no-secrets": [
+        "warn",
+        { ignoreIdentifiers: ["getMyBidsCountHandler"] },
       ],
     },
   },

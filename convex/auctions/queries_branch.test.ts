@@ -616,7 +616,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
       const result = await getAllPendingFlagsHandler(mockCtx);
       expect(result[0].auctionTitle).toBe("Unknown Auction");
-      expect(result[0].reporterName).toBe("Unknown User");
+      expect(result[0].reporterName).toBe("Unknown Reporter");
     });
 
     it("statusesForFilter coverage in shared", async () => {

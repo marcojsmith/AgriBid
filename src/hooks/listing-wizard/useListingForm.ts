@@ -27,6 +27,8 @@ export function useListingForm() {
           formData.operatingHours === null
         )
           return "Operating hours are required";
+        if (!Number.isFinite(formData.operatingHours))
+          return "Operating hours must be a valid number";
         if (formData.operatingHours < 0)
           return "Operating hours cannot be negative";
         return null;
