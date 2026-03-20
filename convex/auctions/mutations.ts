@@ -306,9 +306,17 @@ export const createAuctionHandler = async (
     restArgs.images.additional &&
     restArgs.images.additional.length > MAX_ADDITIONAL_IMAGES
   ) {
-    throw new ConvexError(
-      `Additional images limit exceeded (max ${MAX_ADDITIONAL_IMAGES.toString()})`
-    );
+    if (isDraft) {
+      // If draft, truncate to max allowed
+      restArgs.images.additional = restArgs.images.additional.slice(
+        0,
+        MAX_ADDITIONAL_IMAGES
+      );
+    } else {
+      throw new ConvexError(
+        `Additional images limit exceeded (max ${MAX_ADDITIONAL_IMAGES.toString()})`
+      );
+    }
   }
 
   // Validate categoryId exists
@@ -1270,7 +1278,11 @@ export const adminUpdateAuctionHandler = async (
     validateAuctionStatus(patched, newStatus);
   }
 
-  const patchData: typeof args.updates & { hiddenByFlags?: boolean } = {
+  const patchData: typeof args.updates & {
+    hiddenByFlags?: boolean;
+    currentPrice?: number;
+    minIncrement?: number;
+  } = {
     ...args.updates,
   };
   if (
@@ -1279,6 +1291,18 @@ export const adminUpdateAuctionHandler = async (
     newStatus !== "pending_review"
   ) {
     patchData.hiddenByFlags = false;
+  }
+
+  // If admin updates startingPrice for pre-live auctions, recompute derived fields
+  if (
+    args.updates.startingPrice !== undefined &&
+    (auction.status === "draft" || auction.status === "pending_review")
+  ) {
+    patchData.currentPrice = args.updates.startingPrice;
+    patchData.minIncrement =
+      args.updates.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+        ? SMALL_INCREMENT_AMOUNT
+        : LARGE_INCREMENT_AMOUNT;
   }
 
   await ctx.db.patch(args.auctionId, patchData);
