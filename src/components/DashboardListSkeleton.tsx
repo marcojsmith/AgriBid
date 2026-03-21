@@ -72,7 +72,7 @@ export function DashboardListSkeleton({
             key={i}
             className={cn(
               "overflow-hidden border-2 bg-card h-full shadow-none rounded-lg",
-              isBids ? "flex flex-col sm:flex-row sm:h-48" : "flex-col"
+              isBids ? "flex flex-col sm:flex-row sm:h-48" : "flex flex-col md:flex-row"
             )}
           >
             <div

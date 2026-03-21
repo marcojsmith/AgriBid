@@ -39,15 +39,8 @@ export default function Support() {
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (ticketsResult === undefined) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <LoadingIndicator />
-      </div>
-    );
-  }
-
-  const tickets = ticketsResult.page;
+  const tickets = ticketsResult?.page ?? [];
+  const isTicketsLoading = ticketsResult === undefined;
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -206,7 +199,13 @@ export default function Support() {
             My Tickets
           </h2>
           <div className="space-y-4">
-            {tickets.map((ticket) => (
+            {isTicketsLoading ? (
+              <div className="flex h-[300px] items-center justify-center">
+                <LoadingIndicator />
+              </div>
+            ) : (
+              <>
+                {tickets.map((ticket) => (
               <Card
                 key={ticket._id}
                 className="p-4 border-2 hover:border-primary/40 transition-all"
@@ -237,14 +236,16 @@ export default function Support() {
                   </div>
                 )}
               </Card>
-            ))}
-            {tickets.length === 0 && (
-              <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">
-                <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
-                <p className="text-xs font-black uppercase text-muted-foreground">
-                  No active tickets
-                </p>
-              </div>
+                ))}
+                {tickets.length === 0 && (
+                  <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">
+                    <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
+                    <p className="text-xs font-black uppercase text-muted-foreground">
+                      No active tickets
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
