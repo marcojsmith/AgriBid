@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
@@ -26,8 +26,14 @@ vi.mock("react-router-dom", async () => {
 
 // Mock FilterSidebar to keep it simple
 vi.mock("@/components/FilterSidebar", () => ({
-  FilterSidebar: ({ onClose }: { onClose?: () => void }) => (
-    <div data-testid="filter-sidebar">
+  FilterSidebar: ({
+    onClose,
+    "data-testid": testid = "filter-sidebar",
+  }: {
+    onClose?: () => void;
+    "data-testid"?: string;
+  }) => (
+    <div data-testid={testid}>
       Filter Sidebar
       {onClose && <button onClick={onClose}>Close Sidebar</button>}
     </div>
@@ -135,12 +141,13 @@ describe("Home Page Full Coverage", () => {
 
   it("toggles desktop sidebar", () => {
     renderHome();
-    expect(screen.queryByTestId("filter-sidebar")).not.toBeInTheDocument();
+    expect(screen.getByText(/Show Filters/i)).toBeInTheDocument();
 
     const showFiltersBtn = screen.getByText(/Show Filters/i);
     fireEvent.click(showFiltersBtn);
 
-    expect(screen.getByTestId("filter-sidebar")).toBeInTheDocument();
+    const desktopSidebar = screen.getByTestId("desktop-sidebar");
+    expect(within(desktopSidebar).getByTestId("filter-sidebar")).toBeVisible();
     expect(screen.getByText(/Hide Filters/i)).toBeInTheDocument();
   });
 
@@ -213,12 +220,15 @@ describe("Home Page Full Coverage", () => {
     const filterBtn = screen.getByLabelText(/Filters/i);
     fireEvent.click(filterBtn);
 
-    expect(screen.getByTestId("filter-sidebar")).toBeInTheDocument();
+    const overlay = screen.getByTestId("mobile-filter-overlay");
+    expect(within(overlay).getByTestId("filter-sidebar")).toBeVisible();
 
     // Click backdrop to close
     const backdrop = screen.getByLabelText(/Close filters/i);
     fireEvent.click(backdrop);
-    expect(screen.queryByTestId("filter-sidebar")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("mobile-filter-overlay")
+    ).not.toBeInTheDocument();
   });
 
   it("closes mobile filters via onClose prop", () => {
@@ -232,9 +242,12 @@ describe("Home Page Full Coverage", () => {
     renderHome();
     fireEvent.click(screen.getByLabelText(/Filters/i));
 
-    const closeBtn = screen.getByText(/Close Sidebar/i);
+    const overlay = screen.getByTestId("mobile-filter-overlay");
+    const closeBtn = within(overlay).getByText(/Close Sidebar/i);
     fireEvent.click(closeBtn);
-    expect(screen.queryByTestId("filter-sidebar")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("mobile-filter-overlay")
+    ).not.toBeInTheDocument();
   });
 
   it("renders load more button and status", () => {

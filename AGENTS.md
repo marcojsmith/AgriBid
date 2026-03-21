@@ -38,16 +38,8 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 
 ## ESLint Strictness — Progressive Tightening
 
-At the start of every new branch, upgrade the TypeScript ESLint preset in
+Before you make any code changes, upgrade the TypeScript ESLint preset in
 `eslint.config.js` by swapping the commented lines:
-
-**Before (what is committed on main):**
-
-```js
-tseslint.configs.recommended,
-// tseslint.configs.strictTypeChecked,
-// tseslint.configs.stylisticTypeChecked,
-```
 
 **After (apply this at the start of every branch):**
 
