@@ -39,7 +39,7 @@ export function useBulkOperations() {
 
   // Mutation
   const bulkUpdateAuctionsMutation = useMutation(
-    api.auctions.bulkUpdateAuctions
+    api.auctions.mutations.update.bulkUpdateAuctions
   );
 
   /**

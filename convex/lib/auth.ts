@@ -243,6 +243,31 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
+ * Attempt to require admin without throwing an error for missing auth/permissions.
+ * Useful for mutations that need to return an error object rather than throwing.
+ * @param ctx
+ * @returns Object indicating authorization status and either the user or an error message.
+ */
+export async function tryRequireAdmin(
+  ctx: QueryCtx | MutationCtx
+): Promise<
+  { authorized: true; user: AuthUser } | { authorized: false; error: string }
+> {
+  try {
+    const authUser = await requireAdmin(ctx);
+    return { authorized: true, user: authUser };
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return { authorized: false, error: error.message };
+    }
+    if (error instanceof Error && error.message === "Not authenticated") {
+      return { authorized: false, error: error.message };
+    }
+    throw error;
+  }
+}
+
+/**
  * Alias for getAuthWithProfile.
  * @param ctx
  * @returns Object containing user identity, profile, and resolved linkId

@@ -22,11 +22,23 @@ vi.mock("convex/_generated/api", () => ({
     auctions: {
       getCategories: { _path: "auctions:getCategories" },
       getEquipmentMetadata: { _path: "auctions:getEquipmentMetadata" },
-      createAuction: { _path: "auctions:createAuction" },
-      saveDraft: { _path: "auctions:saveDraft" },
-      submitForReview: { _path: "auctions:submitForReview" },
-      generateUploadUrl: { _path: "auctions:generateUploadUrl" },
-      deleteUpload: { _path: "auctions:deleteUpload" },
+      mutations: {
+        create: {
+          createAuction: { _path: "auctions/mutations/create:createAuction" },
+          saveDraft: { _path: "auctions/mutations/create:saveDraft" },
+          generateUploadUrl: {
+            _path: "auctions/mutations/create:generateUploadUrl",
+          },
+        },
+        publish: {
+          submitForReview: {
+            _path: "auctions/mutations/publish:submitForReview",
+          },
+        },
+        delete: {
+          deleteUpload: { _path: "auctions/mutations/delete:deleteUpload" },
+        },
+      },
     },
     admin: {
       categories: {
@@ -121,10 +133,12 @@ describe("ListingWizard Full Coverage", () => {
 
     (useMutation as Mock).mockImplementation((apiFunc: { _path: string }) => {
       const path = apiFunc._path;
-      if (path === "auctions:createAuction") return mockCreateAuction;
-      if (path === "auctions:saveDraft") return mockSaveDraft;
-      if (path === "auctions:submitForReview") return mockSubmitForReview;
-      if (path === "auctions:generateUploadUrl")
+      if (path === "auctions/mutations/create:createAuction")
+        return mockCreateAuction;
+      if (path === "auctions/mutations/create:saveDraft") return mockSaveDraft;
+      if (path === "auctions/mutations/publish:submitForReview")
+        return mockSubmitForReview;
+      if (path === "auctions/mutations/create:generateUploadUrl")
         return vi.fn().mockResolvedValue("http://upload.url");
       return vi.fn();
     });

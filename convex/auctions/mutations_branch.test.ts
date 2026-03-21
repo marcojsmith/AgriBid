@@ -32,6 +32,7 @@ vi.mock("../lib/auth", () => ({
   resolveUserId: vi.fn(),
   requireAuth: vi.fn(),
   requireAdmin: vi.fn(),
+  tryRequireAdmin: vi.fn(),
   requireVerified: vi.fn(),
   UnauthorizedError: class extends Error {
     name = "UnauthorizedError";
@@ -93,6 +94,10 @@ describe("Mutations Branch Coverage Expansion", () => {
         getUserIdentity: vi.fn(),
       },
     };
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { userId: "u1", _id: "u1" },
+    });
   });
 
   describe("deleteUploadHandler", () => {
@@ -394,9 +399,10 @@ describe("Mutations Branch Coverage Expansion", () => {
 
   describe("closeAuctionEarlyHandler branches", () => {
     it("should handle UnauthorizedError variant", async () => {
-      vi.mocked(auth.requireAdmin).mockRejectedValue(
-        new Error("Not authorized")
-      );
+      vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+        authorized: false,
+        error: "Not authorized",
+      });
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
         { auctionId: "a1" as Id<"auctions"> }
@@ -406,9 +412,10 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
 
     it("should handle tie-break bid (earlier wins)", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({
-        _id: "admin1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAdmin>>);
+      vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+        authorized: true,
+        user: { _id: "admin1" },
+      });
       vi.mocked(mockCtx.db.get).mockResolvedValue({
         _id: "a1",
         status: "active",
@@ -434,9 +441,10 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
 
     it("should handle no bids case", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({
-        _id: "admin1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAdmin>>);
+      vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+        authorized: true,
+        user: { _id: "admin1" },
+      });
       vi.mocked(mockCtx.db.get).mockResolvedValue({
         _id: "a1",
         status: "active",

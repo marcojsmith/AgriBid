@@ -19,7 +19,11 @@ vi.mock("convex/react", () => ({
 vi.mock("convex/_generated/api", () => ({
   api: {
     auctions: {
-      generateUploadUrl: "generateUploadUrl",
+      mutations: {
+        create: {
+          generateUploadUrl: "auctions/mutations/create:generateUploadUrl",
+        },
+      },
     },
   },
 }));

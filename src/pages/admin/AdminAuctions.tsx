@@ -114,7 +114,9 @@ export default function AdminAuctions() {
   );
   const [isClosing, setIsClosing] = useState(false);
 
-  const closeAuctionEarly = useMutation(api.auctions.closeAuctionEarly);
+  const closeAuctionEarly = useMutation(
+    api.auctions.mutations.publish.closeAuctionEarly
+  );
 
   /**
    * Opens the confirmation dialog to force end an auction.

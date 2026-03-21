@@ -53,7 +53,7 @@ export default function AuctionDetail() {
     id ? { auctionId: id as Id<"auctions"> } : "skip"
   );
 
-  const flagAuction = useMutation(api.auctions.flagAuction);
+  const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
 
   const isOwner = session?.user?.id === auction?.sellerId;
 

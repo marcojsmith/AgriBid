@@ -78,3 +78,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Pagination for Queries - Refactor hardcoded .take() limits to Convex .paginate()**
       _Link: [./archive/query_pagination_20260302/](./archive/query_pagination_20260302/)_
+
+---
+
+- [x] **Track: Refactor app/convex/auctions/mutations.ts by splitting it into separate files by feature**
+      _Link: [./tracks/refactor_auction_mutations_20260321/](./tracks/refactor_auction_mutations_20260321/)_

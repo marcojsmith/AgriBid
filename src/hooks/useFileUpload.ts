@@ -40,8 +40,10 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
   const [isUploading, setIsUploading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
 
-  const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
-  const deleteUpload = useMutation(api.auctions.deleteUpload);
+  const generateUploadUrl = useMutation(
+    api.auctions.mutations.create.generateUploadUrl
+  );
+  const deleteUpload = useMutation(api.auctions.mutations.delete.deleteUpload);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);

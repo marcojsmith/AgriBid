@@ -6,7 +6,7 @@
  * have been decomposed into focused modules:
  *
  * - queries.ts: Read operations (listAuctions, getAuctionById, etc.)
- * - mutations.ts: Standard write operations (createAuction, updateAuction, etc.)
+ * - mutations/: Standard write operations (createAuction, updateAuction, etc.)
  * - bidding.ts: Bid-specific mutations (placeBid, etc.)
  * - internal.ts: Internal operations called by the system (settleExpiredAuctions)
  * - helpers.ts: Shared utilities and transformation functions
@@ -34,29 +34,38 @@ export {
   getAllPendingFlags,
 } from "./auctions/queries";
 
-// Re-export all standard mutations
+// Re-export mutations from the new modular structure
 export {
   generateUploadUrl,
-  deleteUpload,
   createAuction,
   saveDraft,
+} from "./auctions/mutations/create";
+
+export {
   updateAuction,
-  submitForReview,
-  deleteDraft,
-  uploadConditionReport,
-  deleteConditionReport,
-  flagAuction,
-  dismissFlag,
-  approveAuction,
-  rejectAuction,
   adminUpdateAuction,
   bulkUpdateAuctions,
-  closeAuctionEarly,
+  uploadConditionReport,
+} from "./auctions/mutations/update";
+
+export {
+  deleteUpload,
+  deleteDraft,
+  deleteConditionReport,
+} from "./auctions/mutations/delete";
+
+export {
+  submitForReview,
   publishAuction,
-} from "./auctions/mutations";
+  approveAuction,
+  rejectAuction,
+  flagAuction,
+  dismissFlag,
+  closeAuctionEarly,
+} from "./auctions/mutations/publish";
 
 // Re-export bidding mutations
-export { placeBid } from "./auctions/bidding";
+export { placeBid } from "./auctions/mutations/bidding";
 
 // Re-export proxy bidding queries
 export { getMyProxyBid } from "./auctions/proxy_bidding";

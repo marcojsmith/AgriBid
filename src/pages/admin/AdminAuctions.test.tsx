@@ -89,8 +89,14 @@ vi.mock("convex/_generated/api", () => ({
     },
     auctions: {
       getAllAuctions: "auctions:getAllAuctions",
-      closeAuctionEarly: "auctions:closeAuctionEarly",
-      bulkUpdateAuctions: "auctions:bulkUpdateAuctions",
+      mutations: {
+        publish: {
+          closeAuctionEarly: "auctions/mutations/publish:closeAuctionEarly",
+        },
+        update: {
+          bulkUpdateAuctions: "auctions/mutations/update:bulkUpdateAuctions",
+        },
+      },
     },
   },
 }));
@@ -168,8 +174,10 @@ describe("AdminAuctions", () => {
     });
 
     (useMutation as Mock).mockImplementation((name: string) => {
-      if (name === "auctions:closeAuctionEarly") return closeAuctionEarlyMock;
-      if (name === "auctions:bulkUpdateAuctions") return bulkUpdateAuctionsMock;
+      if (name === "auctions/mutations/publish:closeAuctionEarly")
+        return closeAuctionEarlyMock;
+      if (name === "auctions/mutations/update:bulkUpdateAuctions")
+        return bulkUpdateAuctionsMock;
       return vi.fn();
     });
   });

@@ -53,9 +53,13 @@ const ListingWizardContent = () => {
   const [searchParams] = useSearchParams();
   const editingAuctionId = searchParams.get("edit") || undefined;
 
-  const createAuction = useMutation(api.auctions.createAuction);
-  const saveDraft = useMutation(api.auctions.saveDraft);
-  const submitForReview = useMutation(api.auctions.submitForReview);
+  const createAuction = useMutation(
+    api.auctions.mutations.create.createAuction
+  );
+  const saveDraft = useMutation(api.auctions.mutations.create.saveDraft);
+  const submitForReview = useMutation(
+    api.auctions.mutations.publish.submitForReview
+  );
 
   const initializedRef = useRef(false);
   const submissionStateRef = useRef(false);

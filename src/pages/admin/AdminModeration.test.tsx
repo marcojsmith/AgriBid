@@ -42,9 +42,13 @@ vi.mock("convex/_generated/api", () => ({
     auctions: {
       getPendingAuctions: "auctions:getPendingAuctions",
       getAllPendingFlags: "auctions:getAllPendingFlags",
-      approveAuction: "auctions:approveAuction",
-      rejectAuction: "auctions:rejectAuction",
-      dismissFlag: "auctions:dismissFlag",
+      mutations: {
+        publish: {
+          approveAuction: "auctions/mutations/publish:approveAuction",
+          rejectAuction: "auctions/mutations/publish:rejectAuction",
+          dismissFlag: "auctions/mutations/publish:dismissFlag",
+        },
+      },
     },
     admin: {
       getAdminStats: "admin:getAdminStats",
@@ -117,9 +121,12 @@ describe("AdminModeration Page", () => {
     });
 
     (useMutation as Mock).mockImplementation((apiPath) => {
-      if (apiPath === "auctions:approveAuction") return mockApproveMutation;
-      if (apiPath === "auctions:rejectAuction") return mockRejectMutation;
-      if (apiPath === "auctions:dismissFlag") return mockDismissFlagMutation;
+      if (apiPath === "auctions/mutations/publish:approveAuction")
+        return mockApproveMutation;
+      if (apiPath === "auctions/mutations/publish:rejectAuction")
+        return mockRejectMutation;
+      if (apiPath === "auctions/mutations/publish:dismissFlag")
+        return mockDismissFlagMutation;
       return vi.fn();
     });
   });

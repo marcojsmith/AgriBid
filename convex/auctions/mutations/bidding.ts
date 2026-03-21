@@ -1,18 +1,18 @@
 import { v, ConvexError } from "convex/values";
 
-import { mutation } from "../_generated/server";
-import type { MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
-import { requireVerified } from "../lib/auth";
-import { handleNewBid } from "./proxy_bidding";
+import { mutation } from "../../_generated/server";
+import type { MutationCtx } from "../../_generated/server";
+import type { Id } from "../../_generated/dataModel";
+import { requireVerified } from "../../lib/auth";
+import { handleNewBid } from "../proxy_bidding";
 
 /**
  * Handler for placing a bid.
- * @param ctx
- * @param args
- * @param args.auctionId
- * @param args.amount
- * @param args.maxBid
+ * @param ctx - Mutation context
+ * @param args - Arguments for placing a bid
+ * @param args.auctionId - The ID of the auction
+ * @param args.amount - The bid amount
+ * @param args.maxBid - Optional maximum bid for proxy bidding
  * @returns The result of the bid placement
  */
 export const placeBidHandler = async (

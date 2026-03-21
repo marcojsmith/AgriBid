@@ -20,7 +20,11 @@ vi.mock("sonner", () => ({
 vi.mock("convex/_generated/api", () => ({
   api: {
     auctions: {
-      bulkUpdateAuctions: "auctions:bulkUpdateAuctions",
+      mutations: {
+        update: {
+          bulkUpdateAuctions: "auctions/mutations/update:bulkUpdateAuctions",
+        },
+      },
     },
   },
 }));
@@ -31,7 +35,8 @@ describe("useBulkOperations hook", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(useMutation).mockImplementation(((apiPath: string) => {
-      if (apiPath === "auctions:bulkUpdateAuctions") return mockBulkUpdate;
+      if (apiPath === "auctions/mutations/update:bulkUpdateAuctions")
+        return mockBulkUpdate;
       return vi.fn();
     }) as unknown as typeof useMutation);
   });
