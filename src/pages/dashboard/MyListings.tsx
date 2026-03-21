@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { DashboardListSkeleton } from "@/components/DashboardListSkeleton";
 import { normalizeListingImages } from "@/lib/normalize-images";
 import type { ListingFormData } from "@/components/listing-wizard/types";
 import {
@@ -181,7 +181,7 @@ export default function MyListings() {
   if (status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
-        <LoadingIndicator />
+        <DashboardListSkeleton variant="listings" />
       </div>
     );
   }
@@ -277,7 +277,7 @@ export default function MyListings() {
                     auction.images
                   );
                   const thumbnailUrl =
-                    normalizedImages.front || normalizedImages.additional[0];
+                    normalizedImages.front ?? normalizedImages.additional[0];
                   return thumbnailUrl ? (
                     <img
                       src={thumbnailUrl}

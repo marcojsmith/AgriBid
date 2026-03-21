@@ -196,8 +196,8 @@ describe("Profile Page", () => {
 
     renderProfile();
     expect(screen.getByText("Sales History")).toBeInTheDocument();
-    // Check pagination shows "Showing 0 Listings" (no "of X" since total is 0)
-    expect(screen.getByText(/Showing 0 Listings/)).toBeInTheDocument();
+    // Check pagination shows "Showing 0 of 0 Listings"
+    expect(screen.getByText(/Showing 0 of 0 Listings/)).toBeInTheDocument();
   });
 
   it("handles watchedAuctionIds being undefined", () => {
