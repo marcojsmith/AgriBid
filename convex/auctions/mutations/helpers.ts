@@ -5,6 +5,27 @@ import type { MutationCtx } from "../../_generated/server";
 import { updateCounter } from "../../admin_utils";
 
 export const EDITABLE_STATUSES = ["draft", "pending_review"] as const;
+
+/**
+ * Union type representing auction statuses that allow editing.
+ * Derived from the EDITABLE_STATUSES constant array.
+ *
+ * Editable statuses include:
+ * - "draft": Auctions that have not yet been submitted for review
+ * - "pending_review": Auctions awaiting admin approval
+ *
+ * Once an auction moves to "active", "sold", "unsold", or "rejected",
+ * it can no longer be edited by the seller.
+ *
+ * @public
+ * @example
+ * ```typescript
+ * const status: EditableStatus = "draft";
+ * if (isEditableStatus(auction.status)) {
+ *   // Allow editing
+ * }
+ * ```
+ */
 export type EditableStatus = (typeof EDITABLE_STATUSES)[number];
 
 /**
@@ -74,11 +95,13 @@ export function validateAuctionBeforePublish(auction: Doc<"auctions">): void {
 
   const hasImages = Array.isArray(auction.images)
     ? auction.images.length > 0
-    : isNonEmpty(auction.images.front) ||
-      isNonEmpty(auction.images.engine) ||
-      isNonEmpty(auction.images.cabin) ||
-      isNonEmpty(auction.images.rear) ||
-      isNonEmpty(auction.images.additional);
+    : typeof auction.images === "object" && auction.images !== null
+      ? isNonEmpty(auction.images.front) ||
+        isNonEmpty(auction.images.engine) ||
+        isNonEmpty(auction.images.cabin) ||
+        isNonEmpty(auction.images.rear) ||
+        isNonEmpty(auction.images.additional)
+      : false;
 
   if (!hasImages) {
     throw new ConvexError("At least one image is required before submitting");
@@ -107,6 +130,7 @@ export function getCounterKey(
 
 /**
  * Update global auction counters when an auction changes status.
+ * Only updates counters if the status actually changes to avoid redundant operations.
  * @param ctx - The mutation context.
  * @param oldStatus - The previous status of the auction.
  * @param newStatus - The new status of the auction.
@@ -119,6 +143,11 @@ export async function adjustStatusCounters(
   const oldKey = getCounterKey(oldStatus);
   const newKey = getCounterKey(newStatus);
 
-  if (oldKey) await updateCounter(ctx, "auctions", oldKey, -1);
-  if (newKey) await updateCounter(ctx, "auctions", newKey, 1);
+  // Only update counters if the keys differ
+  if (oldKey && oldKey !== newKey) {
+    await updateCounter(ctx, "auctions", oldKey, -1);
+  }
+  if (newKey && oldKey !== newKey) {
+    await updateCounter(ctx, "auctions", newKey, 1);
+  }
 }

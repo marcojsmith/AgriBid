@@ -268,7 +268,16 @@ export const adminUpdateAuctionHandler = async (
 
   if (newStatus === "active") {
     const patched = { ...auction, ...args.updates };
-    validateAuctionStatus(patched, newStatus);
+    try {
+      validateAuctionStatus(patched, newStatus);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new ConvexError(
+          `Cannot activate auction: ${error.message}`
+        );
+      }
+      throw error;
+    }
   }
 
   const patchData: typeof args.updates & {
@@ -406,6 +415,7 @@ export const bulkUpdateAuctionsHandler = async (
       const patchData: typeof args.updates & {
         currentPrice?: number;
         minIncrement?: number;
+        hiddenByFlags?: boolean;
       } = { ...args.updates };
       if (
         args.updates.startingPrice !== undefined &&
@@ -416,6 +426,13 @@ export const bulkUpdateAuctionsHandler = async (
           args.updates.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
             ? SMALL_INCREMENT_AMOUNT
             : LARGE_INCREMENT_AMOUNT;
+      }
+      if (
+        oldStatus === "pending_review" &&
+        newStatus &&
+        newStatus !== "pending_review"
+      ) {
+        patchData.hiddenByFlags = false;
       }
 
       await ctx.db.patch(id, patchData);

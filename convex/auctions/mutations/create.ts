@@ -217,27 +217,28 @@ export const createAuction = mutation({
 
 /**
  * Handler for saving a draft auction.
+ * Allows partial updates for draft auctions, enabling users to save incomplete work.
  * @param ctx - The mutation context.
  * @param args - The arguments for saving a draft.
- * @param args.auctionId - The ID of the auction to update.
- * @param args.title - The title of the auction.
- * @param args.categoryId - The ID of the category for the auction.
- * @param args.make - The make of the equipment.
- * @param args.model - The model of the equipment.
- * @param args.year - The year of the equipment.
- * @param args.operatingHours - The operating hours of the equipment.
- * @param args.location - The location of the equipment.
- * @param args.description - The description of the auction.
- * @param args.startingPrice - The starting price of the auction.
- * @param args.reservePrice - The reserve price of the auction.
- * @param args.durationDays - The duration of the auction in days.
- * @param args.images - The images for the auction.
+ * @param args.auctionId - The ID of the auction to update (optional).
+ * @param args.title - The title of the auction (optional for drafts).
+ * @param args.categoryId - The ID of the category for the auction (optional for drafts).
+ * @param args.make - The make of the equipment (optional for drafts).
+ * @param args.model - The model of the equipment (optional for drafts).
+ * @param args.year - The year of the equipment (optional for drafts).
+ * @param args.operatingHours - The operating hours of the equipment (optional for drafts).
+ * @param args.location - The location of the equipment (optional for drafts).
+ * @param args.description - The description of the auction (optional for drafts).
+ * @param args.startingPrice - The starting price of the auction (optional for drafts).
+ * @param args.reservePrice - The reserve price of the auction (optional for drafts).
+ * @param args.durationDays - The duration of the auction in days (optional for drafts).
+ * @param args.images - The images for the auction (optional for drafts).
  * @param args.images.front - The front image of the equipment.
  * @param args.images.engine - The engine image of the equipment.
  * @param args.images.cabin - The cabin image of the equipment.
  * @param args.images.rear - The rear image of the equipment.
  * @param args.images.additional - Additional images of the equipment.
- * @param args.conditionChecklist - The condition checklist for the equipment.
+ * @param args.conditionChecklist - The condition checklist for the equipment (optional for drafts).
  * @param args.conditionChecklist.engine - The condition of the engine.
  * @param args.conditionChecklist.hydraulics - The condition of the hydraulics.
  * @param args.conditionChecklist.tires - The condition of the tires.
@@ -249,25 +250,25 @@ export const saveDraftHandler = async (
   ctx: MutationCtx,
   args: {
     auctionId?: string;
-    title: string;
-    categoryId: Id<"equipmentCategories">;
-    make: string;
-    model: string;
-    year: number;
-    operatingHours: number;
-    location: string;
-    description: string;
-    startingPrice: number;
-    reservePrice: number;
-    durationDays: number;
-    images: {
+    title?: string;
+    categoryId?: Id<"equipmentCategories">;
+    make?: string;
+    model?: string;
+    year?: number;
+    operatingHours?: number;
+    location?: string;
+    description?: string;
+    startingPrice?: number;
+    reservePrice?: number;
+    durationDays?: number;
+    images?: {
       front?: string;
       engine?: string;
       cabin?: string;
       rear?: string;
       additional?: string[];
     };
-    conditionChecklist: {
+    conditionChecklist?: {
       engine: boolean;
       hydraulics: boolean;
       tires: boolean;
@@ -281,8 +282,9 @@ export const saveDraftHandler = async (
   const { auctionId, durationDays, ...restArgs } = args;
 
   if (
-    durationDays < AUCTION_MIN_DURATION_DAYS ||
-    durationDays > AUCTION_MAX_DURATION_DAYS
+    durationDays !== undefined &&
+    (durationDays < AUCTION_MIN_DURATION_DAYS ||
+      durationDays > AUCTION_MAX_DURATION_DAYS)
   ) {
     throw new ConvexError(
       `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
@@ -291,7 +293,7 @@ export const saveDraftHandler = async (
 
   // Enforce image cap for additional images
   if (
-    restArgs.images.additional &&
+    restArgs.images?.additional &&
     restArgs.images.additional.length > MAX_ADDITIONAL_IMAGES
   ) {
     restArgs.images.additional = restArgs.images.additional.slice(
@@ -300,7 +302,7 @@ export const saveDraftHandler = async (
     );
   }
 
-  const images = normalizeImages(restArgs.images);
+  const images = restArgs.images ? normalizeImages(restArgs.images) : undefined;
 
   let validAuctionId: Id<"auctions"> | null = null;
   if (auctionId) {
@@ -322,28 +324,61 @@ export const saveDraftHandler = async (
       const mergedState = {
         ...existing,
         ...restArgs,
-        images,
+        ...(images && { images }),
       } as Doc<"auctions">;
       validateAuctionBeforePublish(mergedState);
     }
 
-    await ctx.db.patch(validAuctionId, {
-      ...restArgs,
-      images,
-      durationDays,
-      currentPrice: restArgs.startingPrice,
-      minIncrement:
+    const patchData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(restArgs)) {
+      if (value !== undefined) {
+        patchData[key] = value;
+      }
+    }
+    if (images !== undefined) {
+      patchData.images = images;
+    }
+    if (durationDays !== undefined) {
+      patchData.durationDays = durationDays;
+    }
+    if (restArgs.startingPrice !== undefined) {
+      patchData.currentPrice = restArgs.startingPrice;
+      patchData.minIncrement =
         restArgs.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
           ? SMALL_INCREMENT_AMOUNT
-          : LARGE_INCREMENT_AMOUNT,
-    });
+          : LARGE_INCREMENT_AMOUNT;
+    }
+
+    await ctx.db.patch(validAuctionId, patchData);
 
     return validAuctionId;
   }
 
+  // For new drafts, we need at least some required fields
+  if (!args.title || !args.categoryId || !args.make || !args.model) {
+    throw new ConvexError(
+      "Title, categoryId, make, and model are required to create a new draft"
+    );
+  }
+  if (args.startingPrice === undefined) {
+    throw new ConvexError("Starting price is required to create a new draft");
+  }
+
   const newAuctionId = await ctx.db.insert("auctions", {
-    ...restArgs,
-    images,
+    title: args.title,
+    categoryId: args.categoryId,
+    make: args.make,
+    model: args.model,
+    year: args.year ?? 0,
+    operatingHours: args.operatingHours ?? 0,
+    location: args.location ?? "",
+    description: args.description ?? "",
+    startingPrice: args.startingPrice,
+    reservePrice: args.reservePrice ?? args.startingPrice,
+    ...(images && { images }),
+    ...(args.conditionChecklist && {
+      conditionChecklist: args.conditionChecklist,
+    }),
     sellerId: userId,
     status: "draft",
     currentPrice: args.startingPrice,
@@ -351,7 +386,7 @@ export const saveDraftHandler = async (
       args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
-    durationDays,
+    durationDays: durationDays ?? AUCTION_MIN_DURATION_DAYS,
   });
 
   await updateCounter(ctx, "auctions", "total", 1);
@@ -363,35 +398,40 @@ export const saveDraftHandler = async (
 /**
  * Save or update a draft auction.
  * Creates new draft if no auctionId provided, otherwise updates existing draft.
+ * All fields except those required for new draft creation are optional to support partial saves.
  */
 export const saveDraft = mutation({
   args: {
     auctionId: v.optional(v.string()),
-    title: v.string(),
-    categoryId: v.id("equipmentCategories"),
-    make: v.string(),
-    model: v.string(),
-    year: v.number(),
-    operatingHours: v.number(),
-    location: v.string(),
-    description: v.string(),
-    startingPrice: v.number(),
-    reservePrice: v.number(),
-    durationDays: v.number(),
-    images: v.object({
-      front: v.optional(v.string()),
-      engine: v.optional(v.string()),
-      cabin: v.optional(v.string()),
-      rear: v.optional(v.string()),
-      additional: v.optional(v.array(v.string())),
-    }),
-    conditionChecklist: v.object({
-      engine: v.boolean(),
-      hydraulics: v.boolean(),
-      tires: v.boolean(),
-      serviceHistory: v.boolean(),
-      notes: v.optional(v.string()),
-    }),
+    title: v.optional(v.string()),
+    categoryId: v.optional(v.id("equipmentCategories")),
+    make: v.optional(v.string()),
+    model: v.optional(v.string()),
+    year: v.optional(v.number()),
+    operatingHours: v.optional(v.number()),
+    location: v.optional(v.string()),
+    description: v.optional(v.string()),
+    startingPrice: v.optional(v.number()),
+    reservePrice: v.optional(v.number()),
+    durationDays: v.optional(v.number()),
+    images: v.optional(
+      v.object({
+        front: v.optional(v.string()),
+        engine: v.optional(v.string()),
+        cabin: v.optional(v.string()),
+        rear: v.optional(v.string()),
+        additional: v.optional(v.array(v.string())),
+      })
+    ),
+    conditionChecklist: v.optional(
+      v.object({
+        engine: v.boolean(),
+        hydraulics: v.boolean(),
+        tires: v.boolean(),
+        serviceHistory: v.boolean(),
+        notes: v.optional(v.string()),
+      })
+    ),
   },
   returns: v.id("auctions"),
   handler: saveDraftHandler,

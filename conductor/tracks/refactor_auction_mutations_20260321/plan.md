@@ -4,7 +4,8 @@
 
 - [x] Task: Create new mutations directory and base files
   - [x] Create `convex/auctions/mutations/` directory
-  - [x] Create `create.ts`, `update.ts`, `delete.ts`, `publish.ts`, `bidding.ts` inside `mutations/`- [x] Task: Migrate production code to new files
+  - [x] Create `create.ts`, `update.ts`, `delete.ts`, `publish.ts`, `bidding.ts` inside `mutations/`
+- [x] Task: Migrate production code to new files
   - [x] Move creation-related mutations to `create.ts`
   - [x] Move update-related mutations to `update.ts`
   - [x] Move deletion-related mutations to `delete.ts`
