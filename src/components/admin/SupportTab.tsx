@@ -28,6 +28,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
+import { confirmResolveTicket } from "./confirmResolveTicket";
+
 /**
  * Render the admin Support tab that lists support tickets and provides a UI to resolve open tickets.
  *
@@ -71,29 +73,24 @@ export function SupportTab() {
   const confirmResolve = async () => {
     if (!selectedTicketId) return;
 
-    const resolution = resolutionText.trim();
-    if (!resolution) {
-      toast.error("Please provide a resolution message");
-      return;
-    }
-
-    setResolvingIds((prev) => new Set(prev).add(selectedTicketId));
-    try {
-      await resolveTicket({ ticketId: selectedTicketId, resolution });
-      toast.success("Ticket resolved");
-      setSelectedTicketId(null);
-    } catch (err) {
-      console.error("Failed to resolve ticket:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to resolve ticket"
-      );
-    } finally {
-      setResolvingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(selectedTicketId);
-        return next;
-      });
-    }
+    await confirmResolveTicket({
+      ticketId: selectedTicketId,
+      resolutionText,
+      onResolveStart: (ticketId) =>
+        setResolvingIds((prev) => new Set(prev).add(ticketId)),
+      onResolveEnd: (ticketId) =>
+        setResolvingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(ticketId);
+          return next;
+        }),
+      resolveTicket,
+      toastError: (message) => toast.error(message),
+      toastSuccess: (message) => {
+        toast.success(message);
+        setSelectedTicketId(null);
+      },
+    });
   };
 
   if (ticketsResult === undefined) {
