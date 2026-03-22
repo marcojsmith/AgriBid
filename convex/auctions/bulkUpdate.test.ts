@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { bulkUpdateAuctionsHandler } from "./mutations";
+import { bulkUpdateAuctionsHandler } from "./mutations/update";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { Id } from "../_generated/dataModel";

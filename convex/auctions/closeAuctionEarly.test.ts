@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { closeAuctionEarlyHandler } from "./mutations";
+import { closeAuctionEarlyHandler } from "./mutations/publish";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
