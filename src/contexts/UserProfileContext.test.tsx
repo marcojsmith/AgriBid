@@ -75,7 +75,7 @@ describe("UserProfileContext", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
 
       expect(() => renderHook(() => useUserProfile())).toThrow(
-        "useUserProfile must be used within an UserProfileProvider"
+        "useUserProfile must be used within a UserProfileProvider"
       );
 
       consoleSpy.mockRestore();

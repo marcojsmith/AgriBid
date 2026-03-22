@@ -48,6 +48,8 @@ describe("publishAuction mutation", () => {
       title: "Test Auction",
       description: "Test Description",
       images: { front: "storage_id" },
+      startingPrice: 100,
+      reservePrice: 200,
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
@@ -91,6 +93,8 @@ describe("publishAuction mutation", () => {
       title: "Test Auction",
       description: "Test Description",
       images: { front: "storage_id" },
+      startingPrice: 100,
+      reservePrice: 200,
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
@@ -114,6 +118,8 @@ describe("publishAuction mutation", () => {
       title: "Test Auction",
       description: "Test Description",
       images: { front: "storage_id" },
+      startingPrice: 100,
+      reservePrice: 200,
     };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);

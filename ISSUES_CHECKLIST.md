@@ -7,7 +7,7 @@ Prioritized by size and quick wins for efficient resolution.
 
 ## Quick Wins (Small, Self-Contained Fixes)
 
-### Priority: High (Can be completed quickly with minimal risk)
+### Priority: High (Can be completed quickly with minimal risk) - RESOLVED
 
 - [x] #140: Console warning: Form field missing id or name attribute
   - _Description_: Browser console shows warning about form field missing id or name attribute on auction detail pages
@@ -35,10 +35,10 @@ Prioritized by size and quick wins for efficient resolution.
 - [x] #167: (Refactor) Centralize all custom hooks in src/hooks/
   - _Description_: Move all custom hooks to a centralized hooks directory
   - _Labels_: enhancement
-- [ ] #157: For all pages where we need to fetch data, we need to load the UI components first/show a loading spinner/show skeleton components
+- [x] #157: For all pages where we need to fetch data, we need to load the UI components first/show a loading spinner/show skeleton components
   - _Description_: Implement consistent loading states for data-fetching pages
   - _Labels_: None
-- [ ] #149: Align Brief.md location features with implementation phases
+- [x] #149: Align Brief.md location features with implementation phases
   - _Description_: Update documentation to match current implementation phases
   - _Labels_: None
 - [ ] #75: Revise README.md for best practice
@@ -55,16 +55,16 @@ Prioritized by size and quick wins for efficient resolution.
 
 ### Priority: Medium
 
-- [ ] #174: Increase Vitest coverage thresholds to best practice levels
+- [x] #174: Increase Vitest coverage thresholds to best practice levels
   - _Description_: Raise test coverage requirements to industry standards
   - _Labels_: enhancement
-- [ ] #172: (Docs) Replace default app/README.md with project-specific content
+- [x] #172: (Docs) Replace default app/README.md with project-specific content
   - _Description_: Replace placeholder README with AgriBid-specific documentation
   - _Labels_: documentation
-- [ ] #170: (Testing) Configure test coverage reporting
+- [x] #170: (Testing) Configure test coverage reporting
   - _Description_: Set up proper test coverage reporting tools
   - _Labels_: enhancement
-- [ ] #169: (Refactor) Consolidate duplicate context patterns
+- [x] #169: (Refactor) Consolidate duplicate context patterns
   - _Description_: Eliminate duplicate React context implementations
   - _Labels_: enhancement
 - [ ] #133: SEO Optimization Strategy for Auction Platform
@@ -78,16 +78,16 @@ Prioritized by size and quick wins for efficient resolution.
 
 ### Priority: Lower (Requires more planning and effort)
 
-- [ ] #163: (Refactor) Split oversized auctions/queries.ts file (729 lines)
+- [x] #163: (Refactor) Split oversized auctions/queries.ts file (729 lines)
   - _Description_: Break down large queries file into smaller, focused modules
   - _Labels_: enhancement, backend
-- [ ] #162: (Refactor) Split oversized auctions/mutations.ts file (1,182 lines)
+- [x] #162: (Refactor) Split oversized auctions/mutations.ts file (1,182 lines)
   - _Description_: Break down large mutations file into smaller, focused modules
   - _Labels_: enhancement, backend
-- [ ] #151: Enabling HTTP/2+ Protocol
+- [x] #151: Enabling HTTP/2+ Protocol
   - _Description_: Configure server to use HTTP/2 for better performance
   - _Labels_: None
-- [ ] #148: Resolve notification scope conflict in Listing Storage spec
+- [x] #148: Resolve notification scope conflict in Listing Storage spec
   - _Description_: Fix conflicting notification requirements in storage specifications
   - _Labels_: bug, documentation
 - [ ] #132: Admin page for managing business info
@@ -108,7 +108,7 @@ Prioritized by size and quick wins for efficient resolution.
 - [ ] #81: Admin.ts will limit auctions to 200 - potentially returning inaccurate financial stats
   - _Description_: Fix auction limit causing incorrect financial calculations
   - _Labels_: bug, backend
-- [ ] #74: Replace admin KPI for verified users to be online users
+- [x] #74: Replace admin KPI for verified users to be online users
   - _Description_: Change verified users metric to online users metric in admin
   - _Labels_: enhancement, backend
 - [ ] #66: Performance: Batch readReceipts queries to avoid N+1 pattern
