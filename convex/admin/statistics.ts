@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
-import { mutation, query, type MutationCtx } from "../_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
 import {
@@ -161,7 +161,7 @@ export const getFinancialStats = query({
 
 /**
  * Handler for recalculating all counters from scratch.
- * @param ctx
+ * @param ctx - The mutation context.
  * @returns Object indicating success status.
  */
 export const initializeCountersHandler = async (ctx: MutationCtx) => {
@@ -232,7 +232,7 @@ export const initializeCounters = mutation({
 
 /**
  * Handler for core admin dashboard statistics.
- * @param ctx
+ * @param ctx - The query context.
  * @returns Stats object.
  */
 export const getAdminStatsHandler = async (ctx: QueryCtx) => {

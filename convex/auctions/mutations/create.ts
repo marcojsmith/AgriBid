@@ -12,6 +12,7 @@ import {
   validateAuctionBeforePublish,
   assertOwnership,
   assertEditable,
+  type AuctionValidationInput,
 } from "./helpers";
 import {
   MAX_ADDITIONAL_IMAGES,
@@ -142,18 +143,14 @@ export const createAuctionHandler = async (
   const status = isDraft ? "draft" : "pending_review";
 
   if (!isDraft) {
-    validateAuctionBeforePublish({
-      ...restArgs,
+    const validationInput: AuctionValidationInput = {
+      title: args.title,
+      description: args.description,
+      startingPrice: args.startingPrice,
+      reservePrice: args.reservePrice,
       images,
-      sellerId: userId,
-      status,
-      currentPrice: args.startingPrice,
-      minIncrement:
-        args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
-          ? SMALL_INCREMENT_AMOUNT
-          : LARGE_INCREMENT_AMOUNT,
-      durationDays: durationDays,
-    } as unknown as Doc<"auctions">);
+    };
+    validateAuctionBeforePublish(validationInput);
   }
 
   const auctionId = await ctx.db.insert("auctions", {
@@ -332,9 +329,10 @@ export const saveDraftHandler = async (
 
     const patchData: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(restArgs)) {
-      if (value !== undefined) {
-        patchData[key] = value;
+      if (key === "images" || value === undefined) {
+        continue;
       }
+      patchData[key] = value;
     }
     if (images !== undefined) {
       patchData.images = images;

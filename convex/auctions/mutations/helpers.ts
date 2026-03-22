@@ -4,6 +4,22 @@ import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { updateCounter } from "../../admin_utils";
 
+export type AuctionValidationInput = {
+  title?: string;
+  description?: string;
+  startingPrice?: number;
+  reservePrice?: number;
+  images?:
+    | string[]
+    | {
+        front?: string;
+        engine?: string;
+        cabin?: string;
+        rear?: string;
+        additional?: string[];
+      };
+};
+
 export const EDITABLE_STATUSES = ["draft", "pending_review"] as const;
 
 /**
@@ -79,17 +95,19 @@ export function isNonEmpty(value: string | string[] | undefined): boolean {
  * @param auction - The auction document to validate
  * @throws ConvexError if any required field is missing or invalid
  */
-export function validateAuctionBeforePublish(auction: Doc<"auctions">): void {
+export function validateAuctionBeforePublish(
+  auction: AuctionValidationInput
+): void {
   if (!auction.title || auction.title.trim().length === 0) {
     throw new ConvexError("Title is required before publishing");
   }
   if (!auction.description || auction.description.trim().length === 0) {
     throw new ConvexError("Description is required before publishing");
   }
-  if (auction.startingPrice <= 0) {
+  if (auction.startingPrice === undefined || auction.startingPrice <= 0) {
     throw new ConvexError("Starting price must be greater than zero");
   }
-  if (auction.reservePrice <= 0) {
+  if (auction.reservePrice === undefined || auction.reservePrice <= 0) {
     throw new ConvexError("Reserve price must be greater than zero");
   }
 
