@@ -165,7 +165,7 @@
 - [x] Fix inconsistent user count data (#139)
 - [x] Fix real-time loading in Live Monitor (#138)
 - [x] Fix KPI data accuracy (#63)
-- [x] Replace "Verified Users" KPI with "Online Users" (#74)
+- [x] Replace "Live Users" KPI with "Online Users" (#74)
 - [x] Integrate KYC pending count into User Base summary (#71)
 - [x] Fix 200 auction limit in admin stats for accurate analytics review (#81)
 - [ ] Implement platform fee configuration page (out-of-scope — payment removal) (#106)
