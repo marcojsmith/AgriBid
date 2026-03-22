@@ -25,18 +25,18 @@ describe("createTypedContext", () => {
 
     const ErrorBoundary = class extends React.Component<
       { children: React.ReactNode },
-      { hasError: boolean }
+      { hasError: boolean; errorMessage: string }
     > {
       constructor(props: { children: React.ReactNode }) {
         super(props);
-        this.state = { hasError: false };
+        this.state = { hasError: false, errorMessage: "" };
       }
-      static getDerivedStateFromError() {
-        return { hasError: true };
+      static getDerivedStateFromError(error: Error) {
+        return { hasError: true, errorMessage: error.message };
       }
       render() {
         if (this.state.hasError) {
-          return <div>Error thrown</div>;
+          return <div>{this.state.errorMessage}</div>;
         }
         return this.props.children;
       }
@@ -52,7 +52,11 @@ describe("createTypedContext", () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText("Error thrown")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "useTestContext must be used within a TestContextProvider"
+      )
+    ).toBeInTheDocument();
   });
 
   it("should return context value when used within provider", () => {
@@ -120,18 +124,18 @@ describe("createTypedContext", () => {
 
     const ErrorBoundary = class extends React.Component<
       { children: React.ReactNode },
-      { hasError: boolean }
+      { hasError: boolean; errorMessage: string }
     > {
       constructor(props: { children: React.ReactNode }) {
         super(props);
-        this.state = { hasError: false };
+        this.state = { hasError: false, errorMessage: "" };
       }
-      static getDerivedStateFromError() {
-        return { hasError: true };
+      static getDerivedStateFromError(error: Error) {
+        return { hasError: true, errorMessage: error.message };
       }
       render() {
         if (this.state.hasError) {
-          return <div>Error thrown</div>;
+          return <div>{this.state.errorMessage}</div>;
         }
         return this.props.children;
       }
@@ -147,7 +151,11 @@ describe("createTypedContext", () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText("Error thrown")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "useAuthContext must be used within an AuthContextProvider"
+      )
+    ).toBeInTheDocument();
   });
 
   it("should use correct article (a) for context names starting with consonant", () => {
@@ -155,18 +163,18 @@ describe("createTypedContext", () => {
 
     const ErrorBoundary = class extends React.Component<
       { children: React.ReactNode },
-      { hasError: boolean }
+      { hasError: boolean; errorMessage: string }
     > {
       constructor(props: { children: React.ReactNode }) {
         super(props);
-        this.state = { hasError: false };
+        this.state = { hasError: false, errorMessage: "" };
       }
-      static getDerivedStateFromError() {
-        return { hasError: true };
+      static getDerivedStateFromError(error: Error) {
+        return { hasError: true, errorMessage: error.message };
       }
       render() {
         if (this.state.hasError) {
-          return <div>Error thrown</div>;
+          return <div>{this.state.errorMessage}</div>;
         }
         return this.props.children;
       }
@@ -182,7 +190,11 @@ describe("createTypedContext", () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText("Error thrown")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "useUserContext must be used within a UserContextProvider"
+      )
+    ).toBeInTheDocument();
   });
 
   it("should export NO_PROVIDER symbol", () => {

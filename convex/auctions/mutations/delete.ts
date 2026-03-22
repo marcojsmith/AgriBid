@@ -68,7 +68,7 @@ export const deleteDraftHandler = async (
 
   if (auction.conditionReportUrl) {
     try {
-      await ctx.storage.delete(auction.conditionReportUrl as Id<"_storage">);
+      await ctx.storage.delete(auction.conditionReportUrl);
     } catch (e) {
       console.warn(
         `Failed to delete condition report: ${auction.conditionReportUrl}`,

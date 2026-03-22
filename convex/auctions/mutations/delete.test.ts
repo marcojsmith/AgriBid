@@ -231,6 +231,9 @@ describe("Delete Mutations", () => {
       );
       expect(result.success).toBe(true);
       expect(spy).toHaveBeenCalled();
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+        conditionReportUrl: undefined,
+      });
       spy.mockRestore();
     });
   });

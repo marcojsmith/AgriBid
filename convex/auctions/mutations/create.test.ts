@@ -249,6 +249,13 @@ describe("Create Mutations", () => {
         } as PartialDraftArgs as SaveDraftArgs
       );
       expect(result).toBe("a1");
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          title: "T",
+          images: { front: "img1" },
+        })
+      );
     });
 
     it("should throw if auction not found", async () => {

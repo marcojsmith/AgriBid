@@ -451,6 +451,9 @@ describe("Publish Mutations", () => {
       );
       expect(result.success).toBe(false);
       expect(result.error).toBe("Not authorized");
+      expect(mockCtx.db.get).not.toHaveBeenCalled();
+      expect(mockCtx.db.query).not.toHaveBeenCalled();
+      expect(mockCtx.db.patch).not.toHaveBeenCalled();
     });
   });
 });

@@ -13,11 +13,11 @@ interface SkeletonProps {
  * @param props.data-testid - Test identifier for the skeleton element.
  * @returns A pulsing placeholder element.
  */
-export function Skeleton({ className, "data-testid": testid }: SkeletonProps) {
+export function Skeleton({ className, "data-testid": testId }: SkeletonProps) {
   return (
     <div
       className={cn("animate-pulse rounded-md bg-muted", className)}
-      data-testid={testid}
+      data-testid={testId}
     />
   );
 }

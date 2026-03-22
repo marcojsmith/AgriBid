@@ -440,6 +440,9 @@ describe("Update Mutations", () => {
         storageId: "new-s" as Id<"_storage">,
       });
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("old-s");
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+        conditionReportUrl: "new-s",
+      });
     });
   });
 });

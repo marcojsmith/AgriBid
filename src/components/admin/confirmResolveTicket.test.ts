@@ -135,14 +135,14 @@ describe("confirmResolveTicket", () => {
 
   it("should call toastError with default message for unknown errors", async () => {
     const args = createArgs();
-    const error = new Error("Unknown error");
-    args.resolveTicket = vi.fn().mockRejectedValue(error);
+    args.resolveTicket = vi.fn().mockRejectedValue("some string error");
     args.toastError = vi.fn();
 
     const result = await confirmResolveTicket(args);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Unknown error");
+    expect(result.error).toBe("Failed to resolve ticket");
+    expect(args.toastError).toHaveBeenCalledWith("Failed to resolve ticket");
   });
 
   it("should handle null error from resolveTicket", async () => {
