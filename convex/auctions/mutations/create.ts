@@ -17,6 +17,7 @@ import {
   MAX_ADDITIONAL_IMAGES,
   AUCTION_MIN_DURATION_DAYS,
   AUCTION_MAX_DURATION_DAYS,
+  AUCTION_DEFAULT_DURATION_DAYS,
   PRICE_THRESHOLD_FOR_INCREMENT,
   SMALL_INCREMENT_AMOUNT,
   LARGE_INCREMENT_AMOUNT,
@@ -364,7 +365,7 @@ export const saveDraftHandler = async (
 
   const newAuctionId = await ctx.db.insert("auctions", {
     title: args.title,
-    categoryId: args.categoryId ?? ("" as Id<"equipmentCategories">),
+    ...(args.categoryId && { categoryId: args.categoryId }),
     make: args.make ?? "",
     model: args.model ?? "",
     year: args.year ?? 0,
@@ -384,7 +385,7 @@ export const saveDraftHandler = async (
       (args.startingPrice ?? 0) < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
-    durationDays: durationDays ?? AUCTION_MIN_DURATION_DAYS,
+    durationDays: durationDays ?? AUCTION_DEFAULT_DURATION_DAYS,
   });
 
   await updateCounter(ctx, "auctions", "total", 1);
