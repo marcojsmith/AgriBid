@@ -7,24 +7,44 @@ import {
   getCurrentHighestBidAmount,
   handleNewBid,
   getProxyBid,
-} from "./proxy_bidding";
-import * as auth from "../lib/auth";
-import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+} from "../proxy_bidding";
+import * as auth from "../../lib/auth";
+import type { Doc, Id } from "../../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 
-vi.mock("../lib/auth", () => ({
-  requireVerified: vi.fn(),
-  getAuthUser: vi.fn(),
+vi.mock("../../lib/auth", () => {
+  class UnauthorizedError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "UnauthorizedError";
+    }
+  }
+  return {
+    getAuthenticatedUserId: vi.fn(),
+    requireAdmin: vi.fn(),
+    requireAuth: vi.fn(),
+    requireVerified: vi.fn(),
+    getCallerRole: vi.fn(),
+    getAuthUser: vi.fn(),
+    resolveUserId: vi.fn(),
+    UnauthorizedError,
+  };
+});
+
+vi.mock("../../admin_utils", () => ({
+  updateCounter: vi.fn(),
+  adjustStatusCounters: vi.fn(),
+  logAudit: vi.fn(),
 }));
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
     get: ReturnType<typeof vi.fn>;
     query: ReturnType<typeof vi.fn>;
     insert: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
   };
-};
+}
 
 const createMockQuery = (results: Record<string, unknown>[] = []) => {
   const query = {

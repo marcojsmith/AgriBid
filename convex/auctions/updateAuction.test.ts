@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { updateAuctionHandler } from "./mutations";
+import { updateAuctionHandler } from "./mutations/update";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";

@@ -26,8 +26,16 @@ const { mockApi } = vi.hoisted(() => ({
   mockApi: {
     auctions: {
       getMyListingsStats: { name: "auctions:getMyListingsStats" },
-      submitForReview: { name: "auctions:submitForReview" },
-      deleteDraft: { name: "auctions:deleteDraft" },
+      mutations: {
+        publish: {
+          submitForReview: {
+            name: "auctions/mutations/publish:submitForReview",
+          },
+        },
+        delete: {
+          deleteDraft: { name: "auctions/mutations/delete:deleteDraft" },
+        },
+      },
     },
   },
 }));
@@ -216,9 +224,10 @@ describe("MyListings Page", () => {
       loadMore: vi.fn(),
     });
     (useMutation as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.auctions.submitForReview)
+      if (apiPath === mockApi.auctions.mutations.publish.submitForReview)
         return mockSubmitForReview;
-      if (apiPath === mockApi.auctions.deleteDraft) return mockDeleteDraft;
+      if (apiPath === mockApi.auctions.mutations.delete.deleteDraft)
+        return mockDeleteDraft;
       return vi.fn();
     });
 

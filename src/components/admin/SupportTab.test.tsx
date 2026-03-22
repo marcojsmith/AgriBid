@@ -145,8 +145,8 @@ describe("SupportTab", () => {
         ticketId: "ticket-1",
         resolution: "Fixed the issue",
       });
-      expect(mockToastSuccess).toHaveBeenCalledWith("Ticket resolved");
     });
+    expect(mockToastSuccess).toHaveBeenCalledWith("Ticket resolved");
   });
 
   it("handles resolve ticket with error", async () => {

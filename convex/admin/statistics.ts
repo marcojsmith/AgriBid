@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
-import { mutation, query, type MutationCtx } from "../_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
 import {
@@ -160,68 +160,129 @@ export const getFinancialStats = query({
 });
 
 /**
+ * Handler for recalculating all counters from scratch.
+ * @param ctx - The mutation context.
+ * @returns Object indicating success status.
+ */
+export const initializeCountersHandler = async (ctx: MutationCtx) => {
+  await requireAdmin(ctx);
+
+  const [
+    totalAuctions,
+    activeAuctions,
+    pendingAuctions,
+    totalUsers,
+    verifiedSellers,
+    kycPending,
+    activeWatch,
+    soldStats,
+  ] = await Promise.all([
+    countQuery(ctx.db.query("auctions")),
+    countQuery(
+      ctx.db
+        .query("auctions")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+    ),
+    countQuery(
+      ctx.db
+        .query("auctions")
+        .withIndex("by_status", (q) => q.eq("status", "pending_review"))
+    ),
+    countUsers(ctx),
+    countUsers(ctx, { isVerified: true }),
+    countUsers(ctx, { kycStatus: "pending" }),
+    countQuery(ctx.db.query("watchlist")),
+    sumQuery(
+      ctx.db
+        .query("auctions")
+        .withIndex("by_status", (q) => q.eq("status", "sold")),
+      "currentPrice"
+    ),
+  ]);
+
+  await Promise.all([
+    upsertCounter(ctx, "auctions", {
+      total: totalAuctions,
+      active: activeAuctions,
+      pending: pendingAuctions,
+      salesVolume: soldStats.sum,
+      soldCount: soldStats.count,
+    }),
+    upsertCounter(ctx, "profiles", {
+      total: totalUsers,
+      verified: verifiedSellers,
+      pending: kycPending,
+    }),
+    upsertCounter(ctx, "watchlist", {
+      total: activeWatch,
+    }),
+  ]);
+
+  return { success: true };
+};
+
+/**
  * Recalculates all counters from scratch.
  */
 export const initializeCounters = mutation({
   args: {},
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-
-    const [
-      totalAuctions,
-      activeAuctions,
-      pendingAuctions,
-      totalUsers,
-      verifiedSellers,
-      kycPending,
-      activeWatch,
-      soldStats,
-    ] = await Promise.all([
-      countQuery(ctx.db.query("auctions")),
-      countQuery(
-        ctx.db
-          .query("auctions")
-          .withIndex("by_status", (q) => q.eq("status", "active"))
-      ),
-      countQuery(
-        ctx.db
-          .query("auctions")
-          .withIndex("by_status", (q) => q.eq("status", "pending_review"))
-      ),
-      countUsers(ctx),
-      countUsers(ctx, { isVerified: true }),
-      countUsers(ctx, { kycStatus: "pending" }),
-      countQuery(ctx.db.query("watchlist")),
-      sumQuery(
-        ctx.db
-          .query("auctions")
-          .withIndex("by_status", (q) => q.eq("status", "sold")),
-        "currentPrice"
-      ),
-    ]);
-
-    await Promise.all([
-      upsertCounter(ctx, "auctions", {
-        total: totalAuctions,
-        active: activeAuctions,
-        pending: pendingAuctions,
-        salesVolume: soldStats.sum,
-        soldCount: soldStats.count,
-      }),
-      upsertCounter(ctx, "profiles", {
-        total: totalUsers,
-        verified: verifiedSellers,
-        pending: kycPending,
-      }),
-      upsertCounter(ctx, "watchlist", {
-        total: activeWatch,
-      }),
-    ]);
-
-    return { success: true };
-  },
+  handler: initializeCountersHandler,
 });
+
+/**
+ * Handler for core admin dashboard statistics.
+ * @param ctx - The query context.
+ * @returns Stats object.
+ */
+export const getAdminStatsHandler = async (ctx: QueryCtx) => {
+  await requireAdmin(ctx);
+
+  try {
+    const [
+      auctionCounter,
+      profileCounter,
+      watchlistCounter,
+      liveUsers,
+      pendingKycProfiles,
+    ] = await Promise.all([
+      getCounter(ctx, "auctions"),
+      getCounter(ctx, "profiles"),
+      getCounter(ctx, "watchlist"),
+      countOnlineUsers(ctx),
+      countQuery(
+        ctx.db
+          .query("profiles")
+          .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
+      ),
+    ]);
+
+    // If counters are missing, we return zeros but log a warning
+    let status: "partial" | "healthy" = "healthy";
+    if (!auctionCounter || !profileCounter || !watchlistCounter) {
+      console.warn(
+        "Admin stats: Some counters are missing. Run initializeCounters."
+      );
+      status = "partial";
+    }
+
+    return {
+      totalAuctions: auctionCounter?.total ?? 0,
+      activeAuctions: auctionCounter?.active ?? 0,
+      pendingReview: auctionCounter?.pending ?? 0,
+      totalUsers: profileCounter?.total ?? 0,
+      verifiedSellers: profileCounter?.verified ?? 0,
+      kycPending: pendingKycProfiles,
+      liveUsers,
+      activeWatch: watchlistCounter?.total ?? 0,
+      status,
+    };
+  } catch (err) {
+    console.error("Critical error in getAdminStats:", err);
+    // Re-throw to allow frontend to catch and show error state
+    throw err;
+  }
+};
 
 /**
  * Core admin dashboard statistics.
@@ -239,54 +300,7 @@ export const getAdminStats = query({
     liveUsers: v.number(),
     activeWatch: v.number(),
   }),
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-
-    try {
-      const [
-        auctionCounter,
-        profileCounter,
-        watchlistCounter,
-        liveUsers,
-        pendingKycProfiles,
-      ] = await Promise.all([
-        getCounter(ctx, "auctions"),
-        getCounter(ctx, "profiles"),
-        getCounter(ctx, "watchlist"),
-        countOnlineUsers(ctx),
-        countQuery(
-          ctx.db
-            .query("profiles")
-            .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-        ),
-      ]);
-
-      // If counters are missing, we return zeros but log a warning
-      let status: "partial" | "healthy" = "healthy";
-      if (!auctionCounter || !profileCounter || !watchlistCounter) {
-        console.warn(
-          "Admin stats: Some counters are missing. Run initializeCounters."
-        );
-        status = "partial";
-      }
-
-      return {
-        totalAuctions: auctionCounter?.total ?? 0,
-        activeAuctions: auctionCounter?.active ?? 0,
-        pendingReview: auctionCounter?.pending ?? 0,
-        totalUsers: profileCounter?.total ?? 0,
-        verifiedSellers: profileCounter?.verified ?? 0,
-        kycPending: pendingKycProfiles,
-        liveUsers,
-        activeWatch: watchlistCounter?.total ?? 0,
-        status,
-      };
-    } catch (err) {
-      console.error("Critical error in getAdminStats:", err);
-      // Re-throw to allow frontend to catch and show error state
-      throw err;
-    }
-  },
+  handler: getAdminStatsHandler,
 });
 
 /**

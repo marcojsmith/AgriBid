@@ -51,7 +51,7 @@ export const BiddingPanel = ({
   }>({ amount: 0 });
   const [isBidding, setIsBidding] = useState(false);
 
-  const placeBid = useMutation(api.auctions.placeBid);
+  const placeBid = useMutation(api.auctions.mutations.bidding.placeBid);
 
   const isEnded =
     auction.status !== "active" ||

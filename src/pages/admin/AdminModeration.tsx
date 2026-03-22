@@ -84,9 +84,15 @@ export default function AdminModeration() {
   const pendingAuctions = useQuery(api.auctions.getPendingAuctions);
   const allPendingFlags = useQuery(api.auctions.getAllPendingFlags);
 
-  const approveAuctionMutation = useMutation(api.auctions.approveAuction);
-  const rejectAuctionMutation = useMutation(api.auctions.rejectAuction);
-  const dismissFlagMutation = useMutation(api.auctions.dismissFlag);
+  const approveAuctionMutation = useMutation(
+    api.auctions.mutations.publish.approveAuction
+  );
+  const rejectAuctionMutation = useMutation(
+    api.auctions.mutations.publish.rejectAuction
+  );
+  const dismissFlagMutation = useMutation(
+    api.auctions.mutations.publish.dismissFlag
+  );
 
   const handleApprove = createAuctionActionHandler(
     approveAuctionMutation,

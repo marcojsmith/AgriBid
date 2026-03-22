@@ -12,6 +12,7 @@ export function createTypedContext<T>(displayName: string) {
   const Context = createContext<T | undefined | null>(
     NO_PROVIDER as unknown as T
   );
+  Context.displayName = displayName;
 
   const useContextHook = () => {
     const ctx = useContext(Context);

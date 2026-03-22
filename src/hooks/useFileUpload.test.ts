@@ -12,8 +12,14 @@ vi.mock("convex/react", () => ({
 vi.mock("convex/_generated/api", () => ({
   api: {
     auctions: {
-      generateUploadUrl: "generateUploadUrl",
-      deleteUpload: "deleteUpload",
+      mutations: {
+        create: {
+          generateUploadUrl: "auctions/mutations/create:generateUploadUrl",
+        },
+        delete: {
+          deleteUpload: "auctions/mutations/delete:deleteUpload",
+        },
+      },
     },
   },
 }));
@@ -32,8 +38,10 @@ describe("useFileUpload", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useMutation as Mock).mockImplementation((mutation: string) => {
-      if (mutation === "generateUploadUrl") return mockGenerateUploadUrl;
-      if (mutation === "deleteUpload") return mockDeleteUpload;
+      if (mutation === "auctions/mutations/create:generateUploadUrl")
+        return mockGenerateUploadUrl;
+      if (mutation === "auctions/mutations/delete:deleteUpload")
+        return mockDeleteUpload;
       return vi.fn();
     });
     global.fetch = vi.fn();

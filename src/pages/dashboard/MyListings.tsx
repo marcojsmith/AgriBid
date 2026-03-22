@@ -73,8 +73,10 @@ export default function MyListings() {
     { initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS }
   );
 
-  const submitForReview = useMutation(api.auctions.submitForReview);
-  const deleteDraft = useMutation(api.auctions.deleteDraft);
+  const submitForReview = useMutation(
+    api.auctions.mutations.publish.submitForReview
+  );
+  const deleteDraft = useMutation(api.auctions.mutations.delete.deleteDraft);
   const listingStats = useQuery(api.auctions.getMyListingsStats);
 
   const filteredListings = useMemo(() => {

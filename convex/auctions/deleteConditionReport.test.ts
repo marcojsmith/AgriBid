@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
-import { deleteConditionReportHandler } from "./mutations";
+import { deleteConditionReportHandler } from "./mutations/delete";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";

@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
-import { approveAuctionHandler, rejectAuctionHandler } from "./mutations";
+import {
+  approveAuctionHandler,
+  rejectAuctionHandler,
+} from "./mutations/publish";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";

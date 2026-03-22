@@ -26,6 +26,7 @@ export function DashboardListSkeleton({
       role="status"
       aria-label={`Loading ${isBids ? "bids" : "listings"}`}
       className={cn("space-y-8 pb-12 animate-pulse", className)}
+      data-testid="dashboard-list-skeleton"
     >
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -38,7 +39,11 @@ export function DashboardListSkeleton({
       {isBids && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="bg-card/50 border-2">
+            <Card
+              key={i}
+              className="bg-card/50 border-2"
+              data-testid="stat-card"
+            >
               <CardContent className="p-4 flex flex-col items-center justify-center text-center space-y-2">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-8 w-12" />
@@ -52,15 +57,26 @@ export function DashboardListSkeleton({
         {isBids ? (
           <>
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-10 w-20 rounded-lg" />
+              <Skeleton
+                key={i}
+                className="h-10 w-20 rounded-lg"
+                data-testid="status-badge"
+              />
             ))}
             <div className="flex-1" />
-            <Skeleton className="h-10 w-44 rounded-lg" />
+            <Skeleton
+              className="h-10 w-44 rounded-lg"
+              data-testid="view-all-skeleton"
+            />
           </>
         ) : (
           <>
             {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <Skeleton key={i} className="h-10 w-24 rounded-lg" />
+              <Skeleton
+                key={i}
+                className="h-10 w-24 rounded-lg"
+                data-testid="category-filter-skeleton"
+              />
             ))}
           </>
         )}
@@ -70,9 +86,12 @@ export function DashboardListSkeleton({
         {[1, 2, 3, 4].map((i) => (
           <Card
             key={i}
+            data-testid="auction-card-skeleton"
             className={cn(
               "overflow-hidden border-2 bg-card h-full shadow-none rounded-lg",
-              isBids ? "flex flex-col sm:flex-row sm:h-48" : "flex flex-col md:flex-row"
+              isBids
+                ? "flex flex-col sm:flex-row sm:h-48"
+                : "flex flex-col md:flex-row"
             )}
           >
             <div

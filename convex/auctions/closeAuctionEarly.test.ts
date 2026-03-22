@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { closeAuctionEarlyHandler } from "./mutations";
+import { closeAuctionEarlyHandler } from "./mutations/publish";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
@@ -8,6 +8,7 @@ import type { Id } from "../_generated/dataModel";
 
 vi.mock("../lib/auth", () => ({
   requireAdmin: vi.fn(),
+  tryRequireAdmin: vi.fn(),
   getAuthUser: vi.fn(),
   resolveUserId: vi.fn(),
   UnauthorizedError: class UnauthorizedError extends Error {
@@ -93,9 +94,9 @@ describe("closeAuctionEarly mutation", () => {
 
     mockCtx = setupMockCtx(mockQuery);
     mockCtx.db.get.mockResolvedValue(auctionDoc);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "admin",
-      userId: "admin",
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { _id: "admin", userId: "admin" },
     });
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       userId: "admin1",
@@ -143,9 +144,9 @@ describe("closeAuctionEarly mutation", () => {
 
     mockCtx = setupMockCtx(mockQuery);
     mockCtx.db.get.mockResolvedValue(auctionDoc);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "admin",
-      userId: "admin",
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { _id: "admin", userId: "admin" },
     });
 
     const result = await closeAuctionEarlyHandler(
@@ -163,9 +164,10 @@ describe("closeAuctionEarly mutation", () => {
 
   it("should return error if not authorized", async () => {
     mockCtx = setupMockCtx();
-    vi.mocked(auth.requireAdmin).mockRejectedValue(
-      new auth.UnauthorizedError("Not authorized")
-    );
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: false,
+      error: "Not authorized",
+    });
 
     const result = await closeAuctionEarlyHandler(
       mockCtx as unknown as MutationCtx,
@@ -180,9 +182,9 @@ describe("closeAuctionEarly mutation", () => {
   it("should return error if auction not found", async () => {
     mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(null);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "admin",
-      userId: "admin",
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { _id: "admin", userId: "admin" },
     });
 
     const result = await closeAuctionEarlyHandler(
@@ -227,9 +229,9 @@ describe("closeAuctionEarly mutation", () => {
 
     mockCtx = setupMockCtx(mockQuery);
     mockCtx.db.get.mockResolvedValue(auctionDoc);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "admin",
-      userId: "admin",
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { _id: "admin", userId: "admin" },
     });
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       userId: "admin1",
@@ -259,9 +261,9 @@ describe("closeAuctionEarly mutation", () => {
 
     mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(auctionDoc);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "admin",
-      userId: "admin",
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { _id: "admin", userId: "admin" },
     });
 
     const result = await closeAuctionEarlyHandler(
@@ -289,9 +291,9 @@ describe("closeAuctionEarly mutation", () => {
 
     mockCtx = setupMockCtx(mockQuery);
     mockCtx.db.get.mockResolvedValue(auctionDoc);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "admin",
-      userId: "admin",
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { _id: "admin", userId: "admin" },
     });
 
     const result = await closeAuctionEarlyHandler(
@@ -336,9 +338,9 @@ describe("closeAuctionEarly mutation", () => {
 
     mockCtx = setupMockCtx(mockQuery);
     mockCtx.db.get.mockResolvedValue(auctionDoc);
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "admin",
-      userId: "admin",
+    vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
+      authorized: true,
+      user: { _id: "admin", userId: "admin" },
     });
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       userId: "admin1",

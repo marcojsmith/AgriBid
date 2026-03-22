@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { updateConditionReportHandler } from "./mutations";
+import { updateConditionReportHandler } from "./mutations/update";
 import * as auth from "../lib/auth";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";

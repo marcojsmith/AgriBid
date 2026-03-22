@@ -1,0 +1,8 @@
+{
+  "track_id": "refactor_auction_mutations_20260321",
+  "type": "chore",
+  "status": "completed",
+  "created_at": "2026-03-21T00:00:00Z",
+  "updated_at": "2026-03-21T17:00:00Z",
+  "description": "Refactor app/convex/auctions/mutations.ts by splitting it into separate files by feature"
+}

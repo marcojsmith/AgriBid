@@ -29,7 +29,11 @@ vi.mock("convex/react", () => ({
 vi.mock("convex/_generated/api", () => ({
   api: {
     auctions: {
-      placeBid: { _path: "auctions:placeBid" },
+      mutations: {
+        bidding: {
+          placeBid: { _path: "auctions/mutations/bidding:placeBid" },
+        },
+      },
     },
     watchlist: {
       toggleWatchlist: { _path: "watchlist:toggleWatchlist" },
@@ -83,7 +87,8 @@ describe("AuctionCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useMutation as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef?._path === "auctions:placeBid") return mockPlaceBid;
+      if (apiRef?._path === "auctions/mutations/bidding:placeBid")
+        return mockPlaceBid;
       if (apiRef?._path === "watchlist:toggleWatchlist")
         return mockToggleWatchlist;
       return vi.fn();

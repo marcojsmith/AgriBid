@@ -18,7 +18,9 @@ interface UploadResponse {
  */
 export function useListingMedia() {
   const { formData, setFormData, previews, setPreviews } = useListingWizard();
-  const generateUploadUrl = useMutation(api.auctions.generateUploadUrl);
+  const generateUploadUrl = useMutation(
+    api.auctions.mutations.create.generateUploadUrl
+  );
 
   /**
    * Cleans up local preview URLs to prevent memory leaks.
