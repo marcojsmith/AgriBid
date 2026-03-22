@@ -110,7 +110,7 @@ describe("AdminLayout", () => {
         <div>Test Content</div>
       </AdminLayout>
     );
-    const statLabels = screen.getAllByText("Live Users");
+    const statLabels = screen.getAllByText("Online Users");
     expect(statLabels.length).toBeGreaterThan(0);
   });
 
@@ -121,7 +121,7 @@ describe("AdminLayout", () => {
         <div>Test Content</div>
       </AdminLayout>
     );
-    expect(screen.queryByText("Live Users")).not.toBeInTheDocument();
+    expect(screen.queryByText("Online Users")).not.toBeInTheDocument();
   });
 
   it("does not render stat cards when stats are undefined", () => {
@@ -131,7 +131,7 @@ describe("AdminLayout", () => {
         <div>Test Content</div>
       </AdminLayout>
     );
-    expect(screen.queryByText("Live Users")).not.toBeInTheDocument();
+    expect(screen.queryByText("Online Users")).not.toBeInTheDocument();
   });
 
   it("renders Announce button when onAnnounce callback is provided", () => {
