@@ -467,8 +467,7 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
   });
 
-  // eslint-disable-next-line no-secrets/no-secrets -- function name, not a secret
-  describe("bulkUpdateAuctionsHandler branches", () => {
+  describe("bulk update auctions handler branches", () => {
     it("should skip missing auctions", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin1",
