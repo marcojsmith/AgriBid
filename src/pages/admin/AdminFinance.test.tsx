@@ -114,7 +114,7 @@ describe("AdminFinance Page", () => {
     ).toBeInTheDocument();
 
     // Verify Header Stats (from AdminLayout context usage)
-    expect(screen.getByText("Live Users")).toBeInTheDocument();
+    expect(screen.getByText("Online Users")).toBeInTheDocument();
     expect(screen.getByText("10")).toBeInTheDocument();
     expect(screen.getAllByText("100")).toHaveLength(1); // One in header "Users" card
 

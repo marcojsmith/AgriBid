@@ -19,10 +19,10 @@ import { logAudit } from "../admin_utils";
 
 // Mocking necessary modules
 vi.mock("../_generated/server", () => ({
-  query: vi.fn((q) => q),
-  mutation: vi.fn((m) => m),
-  internalQuery: vi.fn((q) => q),
-  internalMutation: vi.fn((m) => m),
+  query: vi.fn((q: unknown) => q),
+  mutation: vi.fn((m: unknown) => m),
+  internalQuery: vi.fn((q: unknown) => q),
+  internalMutation: vi.fn((m: unknown) => m),
 }));
 
 vi.mock("../lib/auth", () => ({
@@ -45,7 +45,7 @@ vi.mock("../admin_utils", () => ({
 }));
 
 vi.mock("../lib/storage", () => ({
-  normalizeImages: vi.fn((i) => i),
+  normalizeImages: vi.fn((i: unknown) => i),
   deleteAuctionImages: vi.fn(),
 }));
 
@@ -83,7 +83,9 @@ describe("Mutations Branch Coverage Expansion", () => {
           withIndex: vi.fn().mockReturnThis(),
           collect: vi.fn().mockResolvedValue([]),
         })),
-        normalizeId: vi.fn((_table, id) => id),
+        normalizeId: vi.fn(
+          (_table: string, id: unknown) => id as string | null
+        ),
       },
       storage: {
         generateUploadUrl: vi.fn(),
@@ -197,6 +199,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
+          title: "Test Draft",
           durationDays: 7,
           images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
           startingPrice: 1000,
@@ -296,15 +299,17 @@ describe("Mutations Branch Coverage Expansion", () => {
         updates: { images: { cabin: "img3" } },
       });
 
+      const expectedImages = expect.objectContaining({
+        front: "img1",
+        additional: ["img2"],
+        cabin: "img3",
+      }) as Record<string, unknown>;
+
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "a1",
         expect.objectContaining({
-          images: expect.objectContaining({
-            front: "img1",
-            additional: ["img2"],
-            cabin: "img3",
-          }),
-        })
+          images: expectedImages,
+        }) as Record<string, unknown>
       );
     });
   });
@@ -321,7 +326,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       vi.mocked(mockCtx.storage.delete).mockRejectedValue(
         new Error("Delete failed")
       );
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(vi.fn());
 
       await deleteDraftHandler(mockCtx as unknown as MutationCtx, {
         auctionId: "a1" as Id<"auctions">,
@@ -378,22 +383,25 @@ describe("Mutations Branch Coverage Expansion", () => {
   describe("dismissFlagHandler branches", () => {
     it("should handle missing authUser for adminId", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
-      vi.mocked(mockCtx.db.get).mockImplementation(async (id) => {
+      vi.mocked(mockCtx.db.get).mockImplementation(((id: string) => {
         if (id === "f1")
-          return { _id: "f1", status: "pending", auctionId: "a1" };
-        return null;
-      });
+          return Promise.resolve({
+            _id: "f1",
+            status: "pending",
+            auctionId: "a1",
+          });
+        return Promise.resolve(null);
+      }) as unknown as typeof mockCtx.db.get);
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
 
       await dismissFlagHandler(mockCtx as unknown as MutationCtx, {
         flagId: "f1" as Id<"auctionFlags">,
       });
-      expect(logAudit).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          details: expect.stringContaining('"adminId":"unknown"'),
-        })
-      );
+      const expectedDetails = expect.objectContaining({
+        details: expect.stringContaining('"adminId":"unknown"') as string,
+      }) as Record<string, unknown>;
+
+      expect(logAudit).toHaveBeenCalledWith(expect.anything(), expectedDetails);
     });
   });
 
@@ -459,6 +467,7 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
   });
 
+  // eslint-disable-next-line no-secrets/no-secrets -- function name, not a secret
   describe("bulkUpdateAuctionsHandler branches", () => {
     it("should skip missing auctions", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
