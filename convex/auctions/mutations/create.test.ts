@@ -231,6 +231,14 @@ describe("Create Mutations", () => {
         } as PartialDraftArgs as SaveDraftArgs
       );
       expect(result).toBe("id");
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auctions",
+        expect.objectContaining({
+          title: "T",
+          images: { front: "img1", additional: [] },
+          status: "draft",
+        })
+      );
     });
 
     it("should update existing draft", async () => {

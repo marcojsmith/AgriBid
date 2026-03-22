@@ -23,7 +23,7 @@ N/A - This is a pure refactor. No new functionality will be added, and existing 
 
 ### Target File Structure
 
-```
+```text
 convex/auctions/
 ├── mutations/
 │   ├── create.ts         # Auction creation mutations
