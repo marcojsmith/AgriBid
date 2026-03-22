@@ -253,7 +253,7 @@ describe("Create Mutations", () => {
         "a1",
         expect.objectContaining({
           title: "T",
-          images: { front: "img1" },
+          images: { front: "img1", additional: [] },
         })
       );
     });

@@ -354,36 +354,34 @@ export const saveDraftHandler = async (
     return validAuctionId;
   }
 
-  // For new drafts, we need at least some required fields
-  if (!args.title || !args.categoryId || !args.make || !args.model) {
-    throw new ConvexError(
-      "Title, categoryId, make, and model are required to create a new draft"
-    );
+  // For new drafts, we need at least title and images
+  if (!args.title) {
+    throw new ConvexError("Title is required to create a new draft");
   }
-  if (args.startingPrice === undefined) {
-    throw new ConvexError("Starting price is required to create a new draft");
+  if (images === undefined) {
+    throw new ConvexError("Images are required to create a new draft");
   }
 
   const newAuctionId = await ctx.db.insert("auctions", {
     title: args.title,
-    categoryId: args.categoryId,
-    make: args.make,
-    model: args.model,
+    categoryId: args.categoryId ?? ("" as Id<"equipmentCategories">),
+    make: args.make ?? "",
+    model: args.model ?? "",
     year: args.year ?? 0,
     operatingHours: args.operatingHours ?? 0,
     location: args.location ?? "",
     description: args.description ?? "",
-    startingPrice: args.startingPrice,
-    reservePrice: args.reservePrice ?? args.startingPrice,
-    ...(images && { images }),
+    startingPrice: args.startingPrice ?? 0,
+    reservePrice: args.reservePrice ?? args.startingPrice ?? 0,
+    images,
     ...(args.conditionChecklist && {
       conditionChecklist: args.conditionChecklist,
     }),
     sellerId: userId,
     status: "draft",
-    currentPrice: args.startingPrice,
+    currentPrice: args.startingPrice ?? 0,
     minIncrement:
-      args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+      (args.startingPrice ?? 0) < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
     durationDays: durationDays ?? AUCTION_MIN_DURATION_DAYS,
