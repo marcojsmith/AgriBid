@@ -81,6 +81,7 @@ describe("AdminFinance Page", () => {
       pageStatus: null,
       splitCursor: null,
     },
+    partialResults: false,
   };
 
   const renderPage = () => {

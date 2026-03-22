@@ -1,13 +1,17 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
-import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { COMMISSION_RATE } from "../config";
 import {
   countQuery,
   countUsers,
-  sumQuery,
   getCounter,
   type CounterField,
 } from "../admin_utils";
@@ -85,6 +89,7 @@ export const getFinancialStats = query({
       splitCursor: v.null(),
     }),
     auctionCount: v.number(),
+    partialResults: v.boolean(),
   }),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -94,16 +99,28 @@ export const getFinancialStats = query({
 
       let totalSalesVolume = counter?.salesVolume ?? 0;
       let auctionCount = counter?.soldCount ?? 0;
+      let partialResults = false;
 
       if (counter?.soldCount === undefined) {
-        const soldStats = await sumQuery(
-          ctx.db
+        partialResults = true;
+        let sum = 0;
+        let count = 0;
+        let cursor: string | null = null;
+        let isDone = false;
+        while (!isDone) {
+          const page = await ctx.db
             .query("auctions")
-            .withIndex("by_status", (q) => q.eq("status", "sold")),
-          "currentPrice"
-        );
-        totalSalesVolume = soldStats.sum;
-        auctionCount = soldStats.count;
+            .withIndex("by_status", (q) => q.eq("status", "sold"))
+            .paginate({ numItems: 500, cursor });
+          for (const a of page.page) {
+            sum += a.currentPrice;
+            count++;
+          }
+          cursor = page.continueCursor;
+          isDone = page.isDone;
+        }
+        totalSalesVolume = sum;
+        auctionCount = count;
       }
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
@@ -151,6 +168,7 @@ export const getFinancialStats = query({
           splitCursor: null,
         },
         auctionCount,
+        partialResults,
       };
     } catch (err) {
       console.error("Error in getFinancialStats:", err);
@@ -175,7 +193,6 @@ export const initializeCountersHandler = async (ctx: MutationCtx) => {
     verifiedSellers,
     kycPending,
     activeWatch,
-    soldStats,
   ] = await Promise.all([
     countQuery(ctx.db.query("auctions")),
     countQuery(
@@ -192,21 +209,32 @@ export const initializeCountersHandler = async (ctx: MutationCtx) => {
     countUsers(ctx, { isVerified: true }),
     countUsers(ctx, { kycStatus: "pending" }),
     countQuery(ctx.db.query("watchlist")),
-    sumQuery(
-      ctx.db
-        .query("auctions")
-        .withIndex("by_status", (q) => q.eq("status", "sold")),
-      "currentPrice"
-    ),
   ]);
+
+  let soldSum = 0;
+  let soldCount = 0;
+  let cursor: string | null = null;
+  let isDone = false;
+  while (!isDone) {
+    const page = await ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "sold"))
+      .paginate({ numItems: 500, cursor });
+    for (const a of page.page) {
+      soldSum += a.currentPrice;
+      soldCount++;
+    }
+    cursor = page.continueCursor;
+    isDone = page.isDone;
+  }
 
   await Promise.all([
     upsertCounter(ctx, "auctions", {
       total: totalAuctions,
       active: activeAuctions,
       pending: pendingAuctions,
-      salesVolume: soldStats.sum,
-      soldCount: soldStats.count,
+      salesVolume: soldSum,
+      soldCount,
     }),
     upsertCounter(ctx, "profiles", {
       total: totalUsers,

@@ -15,7 +15,6 @@ vi.mock("../lib/auth", () => ({
 vi.mock("../admin_utils", () => ({
   getCounter: vi.fn(),
   countQuery: vi.fn(),
-  sumQuery: vi.fn(),
   countUsers: vi.fn(),
   updateCounter: vi.fn(),
 }));
@@ -32,7 +31,6 @@ vi.mock("../presence", () => ({
 vi.mock("../admin_utils", () => ({
   getCounter: vi.fn(),
   countQuery: vi.fn(),
-  sumQuery: vi.fn(),
   countUsers: vi.fn(),
   updateCounter: vi.fn(),
 }));
@@ -51,6 +49,7 @@ interface MockQuery {
   filter: (cb: (q: unknown) => unknown) => MockQuery;
   unique: ReturnType<typeof vi.fn>;
   collect: ReturnType<typeof vi.fn>;
+  paginate: ReturnType<typeof vi.fn>;
 }
 
 interface MockCtx {
@@ -73,6 +72,11 @@ describe("Admin Statistics", () => {
       filter: vi.fn(() => queryMock),
       unique: vi.fn().mockResolvedValue(null),
       collect: vi.fn().mockResolvedValue([]),
+      paginate: vi.fn().mockResolvedValue({
+        page: [{ currentPrice: 500 }],
+        continueCursor: null,
+        isDone: true,
+      }),
     };
 
     mockCtx = {
@@ -131,10 +135,6 @@ describe("Admin Statistics", () => {
     } as Awaited<ReturnType<typeof auth.requireAdmin>>);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
     vi.mocked(adminUtils.countUsers).mockResolvedValue(10);
-    vi.mocked(adminUtils.sumQuery).mockResolvedValue({
-      sum: 1000,
-      count: 2,
-    });
 
     const result = await (
       initializeCounters as unknown as {

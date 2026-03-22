@@ -123,6 +123,7 @@ describe("AdminDashboard Page", () => {
     },
     auctionCount: 200,
     commissionRate: 0.1,
+    partialResults: false,
   };
 
   const mockAnnouncementStats = {

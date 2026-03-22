@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { TrendingUp, DollarSign, Calendar } from "lucide-react";
+import { TrendingUp, DollarSign, Calendar, AlertCircle } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import {
@@ -37,6 +37,13 @@ export function FinanceTab() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+      {stats.partialResults && (
+        <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 rounded-lg text-sm font-medium">
+          <AlertCircle className="h-4 w-4" />
+          Sales volume figures are calculated from live data and may be
+          incomplete. Run initialize counters to reconcile.
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           label="Total Sales Volume"
