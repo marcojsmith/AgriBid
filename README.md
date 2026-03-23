@@ -20,6 +20,7 @@
 - [🛠 Tech Stack](#-tech-stack)
 - [📂 Project Structure](#-project-structure)
 - [🏁 Getting Started](#-getting-started)
+- [🌐 Deployment](#-deployment)
 - [🧪 Testing & Quality](#-testing--quality)
 - [🔒 Security & Integrity](#-security--integrity)
 - [🗺 Roadmap](#-roadmap)
@@ -32,7 +33,7 @@
 
 In a market where machinery often costs between $50k and $500k, trust is everything. AgriBid solves the common pitfalls of general auction sites:
 
-- **Sub-200ms Latency**: Built on Convex's reactive architecture for true real-time bidding.
+- **Low Latency**: Optimized for real-time responsiveness (often under 200ms in typical workloads).
 - **Agricultural Focus**: Tailored metadata for tractors, harvesters, and implements.
 - **Transparency First**: Mandatory inspection reports, hour-meter tracking, and verified seller profiles.
 - **Anti-Sniping**: Automated "Soft Close" extensions to ensure fair market value.
@@ -144,6 +145,21 @@ bunx convex run seed
 
 ---
 
+## 🌐 Deployment
+
+The project is optimized for deployment on Vercel. Configure your Vercel project with the following settings:
+
+- **Framework Preset**: Vite
+- **Root Directory**: `.`
+- **Build Command**: `bunx convex deploy --cmd 'bun run build'`
+- **Install Command**: `bun install`
+- **Output Directory**: `dist`
+
+**Triggering Deployments**:
+Deployments are automatically triggered when pushing to the `main` branch (if connected to GitHub) or can be initiated manually via the Vercel Dashboard.
+
+---
+
 ## 🧪 Testing & Quality
 
 AgriBid maintains a high standard of code quality through strict linting and comprehensive testing.
@@ -164,7 +180,7 @@ AgriBid maintains a high standard of code quality through strict linting and com
 
 - **PII Protection**: Sensitive KYC data is encrypted at rest using **AES-256-GCM**.
 - **Role-Based Access**: Granular control for Buyers, Sellers, and Admins.
-- **Input Validation**: Zero `any` types; all inputs validated via Zod/Convex Schema.
+- **Input Validation**: We enforce strict typing and validate critical inputs using Zod/Convex schemas to ensure data integrity.
 - **Anti-Sniping**: Auctions automatically extend by 2 minutes if a bid is placed in the final 2 minutes.
 - **Immutable Logs**: Bid history and admin actions are append-only.
 
