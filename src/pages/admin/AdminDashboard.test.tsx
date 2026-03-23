@@ -172,6 +172,7 @@ describe("AdminDashboard Page", () => {
 
     // Check for summary cards
     expect(screen.getByText("User Base")).toBeInTheDocument();
+    expect(screen.getByText(/KYC Pending: 3/i)).toBeInTheDocument();
     expect(screen.getByText("Auctions")).toBeInTheDocument();
     expect(screen.getByText("Moderation")).toBeInTheDocument();
     expect(screen.getByText("Financials")).toBeInTheDocument();

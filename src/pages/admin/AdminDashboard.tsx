@@ -71,6 +71,7 @@ function AdminDashboardContent() {
   }
 
   // Safe checks for potentially null/undefined data even after loading check if queries return null
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!adminStats || !financialStats || !announcementStats || !supportStats) {
     return (
       <div className="h-96 flex flex-col items-center justify-center text-center space-y-4">
@@ -107,6 +108,11 @@ function AdminDashboardContent() {
               label: "Verified Sellers",
               value: adminStats.verifiedSellers,
               color: "text-blue-600",
+            },
+            {
+              label: "KYC Pending",
+              value: adminStats.kycPending,
+              color: adminStats.kycPending > 0 ? "text-yellow-600" : undefined,
             },
           ]}
           link="/admin/users"

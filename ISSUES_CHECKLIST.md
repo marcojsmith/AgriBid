@@ -44,7 +44,7 @@ Prioritized by size and quick wins for efficient resolution.
 - [x] #75: Revise README.md for best practice
   - _Description_: Improve README.md with better documentation practices
   - _Labels_: documentation
-- [ ] #71: Integrate KYC pending count in User Base summary card
+- [x] #71: Integrate KYC pending count in User Base summary card
   - _Description_: Add KYC pending count to user base summary dashboard
   - _Labels_: None
 - [ ] #118: Remember user settings
