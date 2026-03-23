@@ -98,9 +98,8 @@ describe("Notifications Coverage", () => {
         ])
         .mockResolvedValueOnce([
           { _id: "a1", createdAt: 200, recipientId: "all" },
-        ]);
-
-      queryMock.unique.mockResolvedValue({ notificationId: "a1" });
+        ])
+        .mockResolvedValueOnce([{ notificationId: "a1" }]); // user receipts for a1
 
       const result = await getMyNotificationsHandler(
         mockCtx as unknown as QueryCtx,
@@ -335,9 +334,7 @@ describe("Notifications Coverage", () => {
         .mockResolvedValueOnce([{ _id: "n1" }, { _id: "n2" }]) // personal unread
         .mockResolvedValueOnce([{ _id: "a1" }, { _id: "a2" }]); // announcements
 
-      queryMock.unique
-        .mockResolvedValueOnce({ notificationId: "a1" }) // a1 already read
-        .mockResolvedValueOnce(null); // a2 not read
+      queryMock.collect.mockResolvedValueOnce([{ notificationId: "a1" }]); // a1 already read, a2 not
 
       await markAllReadHandler(mockCtx as unknown as MutationCtx);
 

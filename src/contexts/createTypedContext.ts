@@ -17,6 +17,8 @@ export function createTypedContext<T>(displayName: string) {
   const useContextHook = () => {
     const ctx = useContext(Context);
     if ((ctx as unknown) === NO_PROVIDER) {
+      // "User" starts with a vowel but is pronounced with a consonant sound ("yoo-zher"),
+      // so it gets "a" instead of "an" - this exception preserves grammatically correct error messages
       const isUser = displayName.startsWith("User");
       const article = /^[aeiou]/i.test(displayName) && !isUser ? "an" : "a";
       throw new Error(

@@ -124,7 +124,7 @@ The Admin Dashboard has been refactored from a monolithic context-based design t
   - User management includes KYC document review with decrypted PII access and role elevation (promotion to admin).
 - **KYC Document Storage**: KYC documents (ID, proof of residence, etc.) are stored using Convex storage IDs rather than string-based references, providing better type safety and integration with Convex's file storage system.
 - **Auditability**: All administrative actions are automatically logged via the `logAudit` helper.
-- **Performance**: N+1 queries in administrative views (e.g., fetching read counts for announcements) are optimized via batched or parallelized lookups.
+- **Performance**: N+1 queries in administrative views (e.g., fetching read counts for announcements) are optimized via the `batchFetchReadCounts()` helper in `convex/notifications.ts`, which consolidates parallel indexed queries into a single reusable function used by `listAnnouncements` (admin), `getAnnouncementsWithReadStatus` (notifications), and `markAllReadHandler` (notifications). User read status lookups use a single `.collect()` + Set filter instead of N × `.unique()` calls.
 - **Type Safety**: Backend queries used with `usePaginatedQuery` must have required `paginationOpts` in their validators to enable correct frontend type inference.
 
 ## My Bids Implementation

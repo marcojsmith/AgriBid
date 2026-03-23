@@ -446,6 +446,11 @@ export const closeAuctionEarlyHandler = async (
 
   await updateCounter(ctx, "auctions", "active", -1);
 
+  if (finalStatus === "sold") {
+    await updateCounter(ctx, "auctions", "soldCount", 1);
+    await updateCounter(ctx, "auctions", "salesVolume", winningAmount ?? 0);
+  }
+
   const authUser = await getAuthUser(ctx);
   const adminId = authUser ? resolveUserId(authUser) : "unknown";
 
