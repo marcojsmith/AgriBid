@@ -128,23 +128,27 @@ export const getFinancialStats = query({
 
     try {
       const counter = await getCounter(ctx, "auctions");
+      const salesVolume = counter?.salesVolume;
+      const soldCount = counter?.soldCount;
 
-      let totalSalesVolume = counter?.salesVolume ?? 0;
-      let auctionCount = counter?.soldCount ?? 0;
+      let totalSalesVolume = 0;
+      let auctionCount = 0;
       let partialResults = false;
 
-      if (counter?.salesVolume == null || counter?.soldCount == null) {
+      if (salesVolume == null || soldCount == null) {
         partialResults = true;
         const computed = await computeSoldAuctions(ctx);
         totalSalesVolume = computed.sum;
         auctionCount = computed.count;
-      } else if (counter?.soldCount !== undefined) {
+      } else {
+        totalSalesVolume = salesVolume;
+        auctionCount = soldCount;
         const liveSoldCount = await countQuery(
           ctx.db
             .query("auctions")
             .withIndex("by_status", (q) => q.eq("status", "sold"))
         );
-        if (liveSoldCount !== counter.soldCount) {
+        if (liveSoldCount !== soldCount) {
           partialResults = true;
           const computed = await computeSoldAuctions(ctx);
           totalSalesVolume = computed.sum;
@@ -281,23 +285,13 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
   try {
-    const [
-      auctionCounter,
-      profileCounter,
-      watchlistCounter,
-      liveUsers,
-      pendingKycProfiles,
-    ] = await Promise.all([
-      getCounter(ctx, "auctions"),
-      getCounter(ctx, "profiles"),
-      getCounter(ctx, "watchlist"),
-      countOnlineUsers(ctx),
-      countQuery(
-        ctx.db
-          .query("profiles")
-          .withIndex("by_kycStatus", (q) => q.eq("kycStatus", "pending"))
-      ),
-    ]);
+    const [auctionCounter, profileCounter, watchlistCounter, liveUsers] =
+      await Promise.all([
+        getCounter(ctx, "auctions"),
+        getCounter(ctx, "profiles"),
+        getCounter(ctx, "watchlist"),
+        countOnlineUsers(ctx),
+      ]);
 
     // If counters are missing, we return zeros but log a warning
     let status: "partial" | "healthy" = "healthy";
@@ -314,7 +308,7 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
       pendingReview: auctionCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
       verifiedSellers: profileCounter?.verified ?? 0,
-      kycPending: pendingKycProfiles,
+      kycPending: profileCounter?.pending ?? 0,
       liveUsers,
       activeWatch: watchlistCounter?.total ?? 0,
       status,
