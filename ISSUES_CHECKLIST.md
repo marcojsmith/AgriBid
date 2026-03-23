@@ -41,7 +41,7 @@ Prioritized by size and quick wins for efficient resolution.
 - [x] #149: Align Brief.md location features with implementation phases
   - _Description_: Update documentation to match current implementation phases
   - _Labels_: None
-- [ ] #75: Revise README.md for best practice
+- [x] #75: Revise README.md for best practice
   - _Description_: Improve README.md with better documentation practices
   - _Labels_: documentation
 - [ ] #71: Integrate KYC pending count in User Base summary card

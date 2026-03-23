@@ -1,182 +1,200 @@
-# AgriBid - High-Integrity Farming Equipment Auction Platform
+# 🚜 AgriBid
 
-AgriBid is a real-time auction platform purpose-built for the agricultural machinery marketplace. It leverages modern web technologies to deliver a fast, secure, and transparent bidding experience for buyers and sellers of heavy equipment.
+[![Project Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](package.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Built with Convex](https://img.shields.io/badge/Built%20with-Convex-orange.svg)](https://www.convex.dev/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-## 🚀 Key Features (Implemented)
+**AgriBid** is a high-integrity, real-time auction platform purpose-built for the agricultural machinery marketplace. It delivers a fast, secure, and transparent bidding experience for heavy equipment, bridging the trust gap in high-value online transactions.
 
-- **Real-Time Bidding**: Powered by Convex's reactive architecture for low-latency updates.
-- **Dynamic Density Views**: Marketplace supports a **View Toggle** (Detailed vs. Compact). The Compact view is optimized for mobile and high-density browsing.
-- **Advanced Filtering**: Multi-parameter search including Manufacturer (Make), Year Range, Price Range, and Max Operating Hours.
-- **Auction Lifecycle Management**:
-  - **Soft Close (Anti-Sniping)**: Automatically extends auctions by 2 minutes if a bid is placed in the final 2 minutes.
-  - **Automated Settlement**: Integrated cron jobs to finalize auctions as "Sold" (if reserve is met) or "Unsold".
-- **Advanced Listing Wizard**: Multi-step flow with hierarchical equipment selection (Category → Make → Model), condition reports, image slot management (Front, Engine, Cabin, Rear), and pricing.
-- **User Dashboards**:
-  - **Buyer Dashboard**: Track active bids, winning items, and lost auctions.
-  - **Seller Dashboard**: Manage equipment inventory, track listing status, and view sales.
-- **Watchlist Functionality**: Save and monitor auctions with real-time status updates and accessibility-optimized toggles.
-- **Live Notifications**: Instant toast notifications for outbids, auction extensions, and final settlement results.
-- **Admin Moderation & Management**:
-  - Dedicated dashboard for reviewing and approving/rejecting equipment listings.
-  - **Equipment Catalog**: Comprehensive management system for equipment metadata:
-    - **Category Manager**: CRUD operations for top-level equipment categories with soft-delete support.
-    - **Metadata Catalog**: Hierarchical management of manufacturers (makes) and models with category assignment via accordion-based UI.
-  - **KYC Workflows**: Review and approve/reject seller verification submissions with detailed document review.
-  - **Bulk Operations**: Process multiple auctions simultaneously with status updates and audit trails.
-  - **Real-Time Statistics**: Financial metrics, user counts, auction states, and support ticket tracking.
-  - **Support Ticket System**: Manage user inquiries with status tracking and resolution workflows.
-- **Security & Integrity**:
-  - Role-Based Access Control (RBAC) with centralized authentication utilities.
-  - **PII Encryption**: AES-256-GCM encryption for sensitive user data (ID numbers, passport details).
-  - Open Redirect protection on all authentication flows.
-  - Immutable bid history logs and audit trails for all administrative actions.
-  - NaN-safe parameter parsing and comprehensive input validation.
+[Explore the Marketplace](https://agribid.vercel.app) • [Read the Docs](docs/) • [Report a Bug](https://github.com/marcojsmith/AgriBid/issues)
 
-## 🗺️ Roadmap (Upcoming Features)
+---
 
-- [ ] **Proxy Bidding**: Set maximum bid amounts and allow the system to auto-bid on your behalf.
-- [ ] **Seller Verification**: Enhanced verification flow for commercial dealers.
-- [ ] **Optimistic Updates**: Further latency reduction for bid placement UI.
-- [ ] **Infinite Scroll**: Enhanced performance for large marketplace listings.
-- [ ] **PDF Condition Reports**: Generate and download printable equipment inspection summaries.
+## 📖 Table of Contents
+
+- [🌟 Why AgriBid?](#-why-agribid)
+- [🚀 Key Features](#-key-features)
+- [🛠 Tech Stack](#-tech-stack)
+- [📂 Project Structure](#-project-structure)
+- [🏁 Getting Started](#-getting-started)
+- [🧪 Testing & Quality](#-testing--quality)
+- [🔒 Security & Integrity](#-security--integrity)
+- [🗺 Roadmap](#-roadmap)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+---
+
+## 🌟 Why AgriBid?
+
+In a market where machinery often costs between $50k and $500k, trust is everything. AgriBid solves the common pitfalls of general auction sites:
+
+- **Sub-200ms Latency**: Built on Convex's reactive architecture for true real-time bidding.
+- **Agricultural Focus**: Tailored metadata for tractors, harvesters, and implements.
+- **Transparency First**: Mandatory inspection reports, hour-meter tracking, and verified seller profiles.
+- **Anti-Sniping**: Automated "Soft Close" extensions to ensure fair market value.
+
+---
+
+## 🚀 Key Features
+
+### 👤 For Buyers
+
+- **Real-Time Bidding**: Instant price updates and outbid notifications via WebSockets.
+- **Dynamic Views**: Detailed vs. Compact view toggle for high-density browsing.
+- **Advanced Filtering**: Filter by Make, Model, Year, Price, and Maximum Operating Hours.
+- **Watchlist & Alerts**: Save auctions and receive toast notifications for status changes.
+- **Proxy Bidding**: Set your maximum price and let the system bid on your behalf.
+
+### 🚜 For Sellers
+
+- **Listing Wizard**: Multi-step flow with hierarchical equipment lookup (Category → Make → Model).
+- **Inspection Gallery**: Purpose-built slots for Engine, Cabin, Rear, and Front views.
+- **Dashboard Analytics**: Track views, bid counts, and conversion rates for your listings.
+- **Draft Management**: Save progress and publish when ready.
+
+### 🛡 For Administrators
+
+- **Listing Moderation**: Review and approve equipment listings to maintain quality.
+- **KYC Workflows**: Securely review seller business verification documents.
+- **Equipment Catalog**: Manage the global hierarchy of categories, makes, and models.
+- **Live Monitoring**: Real-time KPI dashboard (GMV, active users, auction states).
+- **Audit Trails**: Immutable logs of all administrative actions for dispute resolution.
+
+---
 
 ## 🛠 Tech Stack
 
-- **Frontend**: [React](https://reactjs.org/) + [Vite](https://vitejs.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Backend & Database**: [Convex](https://www.convex.dev/) (Real-time synchronization & ACID transactions)
-- **Authentication**: [Better Auth](https://www.better-auth.com/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn/UI](https://ui.shadcn.com/)
-- **Testing**: [Vitest](https://vitest.dev/)
+- **Frontend**: [React 19](https://react.dev/) (Vite) + [TypeScript 5.9](https://www.typescriptlang.org/)
+- **Backend & Database**: [Convex](https://www.convex.dev/) (Reactive Queries, ACID Transactions, Cron Jobs, File Storage)
+- **Authentication**: [Better Auth](https://www.better-auth.com/) (RBAC, OIDC, Multi-tenant ready)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn/UI](https://ui.shadcn.com/)
+- **Testing**: [Vitest](https://vitest.dev/) (Unit & Integration)
 - **Deployment**: [Vercel](https://vercel.com/)
+
+---
 
 ## 📂 Project Structure
 
 ```text
 AgriBid/
-├── convex/                  # Backend (modular architecture)
-│   ├── admin/              # Admin operations (KYC, statistics, moderation, equipment metadata)
-│   ├── auctions/           # Auction logic (queries, mutations, bidding, settlement)
-│   ├── lib/                # Shared utilities (auth, encryption)
-│   ├── schema.ts           # Database schema definitions
-│   └── crons.ts           # Scheduled tasks (auction settlement)
-├── src/                    # React frontend
-│   ├── components/         # Reusable UI & business logic components
-│   │   └── admin/         # Admin UI components (CategoryManager, MetadataCatalog, etc.)
-│   ├── contexts/          # React contexts (admin stats, user profiles)
-│   ├── lib/               # Utilities and Auth client
-│   └── pages/             # Page components
-│       └── admin/         # Admin-specific UI
-│           ├── dialogs/   # Modals for KYC review, bulk actions, promotions
-│           └── hooks/     # Custom hooks for admin state management
-├── conductor/              # Spec-driven development tracks and project docs
-├── docs/                   # Project documentation
-│   ├── database/           # Database schema and relationships
-│   ├── ui-design/         # Design system and page layouts
-│   ├── data-flow/         # Authentication, bidding, and listing flows
-│   ├── security/          # Security policies and implementations
-│   └── features/         # Feature overview, completed, and roadmap
-├── Brief.md                # Project specification
-├── Checklist.md            # Feature implementation tracker
-└── README.md              # Project overview
+├── convex/                  # Backend Architecture
+│   ├── admin/              # KYC, Stats, Metadata & Moderation
+│   ├── auctions/           # Bidding logic, Settlement & Queries
+│   ├── lib/                # Auth utilities & Encryption helpers
+│   ├── schema.ts           # Type-safe Database Schema
+│   └── crons.ts           # Automated Settlement & Cleanup
+├── src/                    # Frontend Application (React)
+│   ├── components/         # Atomic UI & Compound Business Components
+│   ├── contexts/          # State providers (User, Stats, Global)
+│   ├── lib/               # Auth client & Shared Utilities
+│   └── pages/             # Route-level View Components
+├── conductor/              # Spec-Driven Development (Tracks & Plans)
+├── docs/                   # Engineering Documentation
+│   ├── database/           # ERDs & Table Relationships
+│   ├── ui-design/         # Design System & Layouts
+│   ├── security/          # Encryption & RBAC Policies
+│   └── data-flow/         # Auth & Transaction Sequences
+└── ... (Config files: Vite, Vitest, ESLint, Prettier)
 ```
 
-## 📚 Documentation
-
-Detailed project documentation is available in the `docs/` folder:
-
-- **[Database Documentation](docs/database/)**: Database schema, table relationships, and indexes
-- **[UI/UX Documentation](docs/ui-design/)**: Design system, component library, and page layouts
-- **[Data Flow Documentation](docs/data-flow/)**: Authentication, bidding, and listing creation flows
-- **[Security Documentation](docs/security/)**: Authentication, data protection, and access control policies
-- **[Features Documentation](docs/features/)**: Feature overview, completed features, and roadmap
+---
 
 ## 🏁 Getting Started
 
-### Naming Conventions
-
-For consistency, this project follows these naming rules:
-
-- **Folders**: hyphen-case (e.g., `user-profile`)
-- **React component files**: PascalCase (e.g., `UserProfile.tsx`)
-- **Utility/module files**: camelCase or kebab-case (e.g., `queries.ts`, `authConfig.ts`)
-- **Variables and functions**: camelCase (e.g., `getUserProfile`)
-- **React components**: PascalCase (e.g., `UserProfile`)
-
-> This document is the authoritative source for naming conventions; other project documents should mirror it.
-
 ### Prerequisites
 
-- Node.js (Latest LTS recommended)
-- A Convex account (for backend hosting)
+- [Node.js](https://nodejs.org/) (Latest LTS)
+- [Bun](https://bun.sh/) (Recommended package manager)
+- A [Convex](https://www.convex.dev/) account
 
 ### Installation
 
-1.  **Clone the repository**:
-
-    ```bash
-    git clone https://github.com/marcojsmith/AgriBid.git
-    cd AgriBid
-    ```
-
-2.  **Install dependencies**:
-
-    ```bash
-    bun install
-    ```
-
-3.  **Configure Environment Variables**:
-    Create a `.env.local` file in the project root (see `.env.example` for required keys):
-    - `VITE_CONVEX_URL`
-    - `BETTER_AUTH_SECRET`
-    - (Other Auth provider keys as needed)
-
-4.  **Launch Backend (Convex)**:
-
-    ```bash
-    bunx convex dev
-    ```
-
-5.  **Run Development Server**:
-    In a new terminal window:
-    ```bash
-    bun run dev
-    ```
+1. **Clone & Install**:
+   ```bash
+   git clone https://github.com/marcojsmith/AgriBid.git
+   cd AgriBid
+   bun install
+   ```
+2. **Setup Environment**:
+   Create a `.env.local` file (see `.env.example`):
+   ```bash
+   VITE_CONVEX_URL=your_convex_url
+   BETTER_AUTH_SECRET=your_auth_secret
+   ```
+3. **Launch Backend**:
+   ```bash
+   bunx convex dev
+   ```
+4. **Launch Frontend**:
+   ```bash
+   bun run dev
+   ```
 
 ### Seeding Data
 
-To populate your local environment with equipment metadata (categories, manufacturers, models), mock auctions, and recalculated system metrics:
+Populate your environment with Southern African market-focused metadata and mock auctions:
 
 ```bash
 bunx convex run seed
 ```
 
-This will seed:
+---
 
-- Equipment categories (e.g., Tractors, Harvesters, Implements)
-- Extensive list of manufacturers and models focused on the Southern African market
-- Sample auctions with category linkage
-- System metrics (auction counts, bid counts, user counts, etc.)
+## 🧪 Testing & Quality
 
-## 🏗 Development Workflow
+AgriBid maintains a high standard of code quality through strict linting and comprehensive testing.
 
-This project follows a **Spec-Driven Development** (Conductor) approach. Major features are tracked in the `conductor/tracks/` directory, each with its own specification and implementation plan.
+- **Run Tests**: `bun run test`
+- **Coverage Report**: `bun run test:coverage`
+- **Linting**: `bun run lint` (Checks for type-safety, security, and style)
 
-### Testing
+**Naming Conventions**:
 
-Run the test suite using Vitest:
-
-```bash
-bun run test
-```
-
-## 🌐 Deployment
-
-The project is optimized for deployment on Vercel:
-
-1.  Connect your repository to Vercel.
-2.  Add your environment variables to the Vercel dashboard.
-3.  Vercel will automatically handle the Convex deployment and frontend build.
+- Folders: `hyphen-case`
+- React Components: `PascalCase`
+- Utils/Hooks: `camelCase`
 
 ---
 
-Built with ❤️ for the farming community.
+## 🔒 Security & Integrity
+
+- **PII Protection**: Sensitive KYC data is encrypted at rest using **AES-256-GCM**.
+- **Role-Based Access**: Granular control for Buyers, Sellers, and Admins.
+- **Input Validation**: Zero `any` types; all inputs validated via Zod/Convex Schema.
+- **Anti-Sniping**: Auctions automatically extend by 2 minutes if a bid is placed in the final 2 minutes.
+- **Immutable Logs**: Bid history and admin actions are append-only.
+
+---
+
+## 🗺 Roadmap
+
+- [ ] **Phase 4 Integration**: AI-Powered Pricing Suggestions.
+- [ ] **Advanced Notifications**: SMS and Email outbid alerts.
+- [ ] **Condition Reports**: PDF generation for machine inspections.
+- [ ] **Mobile App**: React Native wrapper for on-field bidding.
+- [ ] **Multi-Currency Support**: Expand beyond Southern African regional markets.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow our workflow:
+
+1. Check the [ISSUES_CHECKLIST.md](ISSUES_CHECKLIST.md) for open tasks.
+2. Create a feature branch (`feature/description`).
+3. Ensure all tests pass (`bun run test`).
+4. Submit a Pull Request referencing the issue ID.
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+Built with ❤️ for the agricultural community.
