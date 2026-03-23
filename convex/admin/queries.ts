@@ -17,7 +17,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
 import { query } from "../_generated/server";
-import { requireAdmin, UnauthorizedError } from "../lib/auth";
+import { requireAdmin } from "../lib/auth";
 import { countQuery } from "../admin_utils";
 import { batchFetchReadCounts } from "../notifications";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -76,93 +76,78 @@ export const getRecentBids = query({
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
-    try {
-      await requireAdmin(ctx);
+    await requireAdmin(ctx);
 
-      const [bidsResult, totalCount] = await Promise.all([
-        ctx.db
-          .query("bids")
-          .withIndex("by_timestamp")
-          .order("desc")
-          .paginate(args.paginationOpts),
-        countQuery(ctx.db.query("bids")),
-      ]);
+    const [bidsResult, totalCount] = await Promise.all([
+      ctx.db
+        .query("bids")
+        .withIndex("by_timestamp")
+        .order("desc")
+        .paginate(args.paginationOpts),
+      countQuery(ctx.db.query("bids")),
+    ]);
 
-      if (bidsResult.page.length === 0) {
-        return {
-          ...bidsResult,
-          page: [],
-          totalCount,
-        };
-      }
-
-      const uniqueAuctionIds = [
-        ...new Set(bidsResult.page.map((b) => b.auctionId)),
-      ];
-
-      const auctionMap = new Map<
-        Id<"auctions">,
-        Doc<"auctions"> | null | { _error: true }
-      >();
-      const failedAuctionIds: Id<"auctions">[] = [];
-      await Promise.all(
-        uniqueAuctionIds.map(async (id) => {
-          try {
-            const auction = await ctx.db.get(id);
-            auctionMap.set(id, auction);
-          } catch {
-            failedAuctionIds.push(id);
-            auctionMap.set(id, { _error: true });
-          }
-        })
-      );
-
-      if (failedAuctionIds.length > 0) {
-        console.error(
-          `Admin Monitor: Failed to fetch auction context for ${String(failedAuctionIds.length)} IDs:`,
-          failedAuctionIds.slice(0, 5)
-        );
-      }
-
-      const page = bidsResult.page.map((bid) => {
-        const auction = auctionMap.get(bid.auctionId);
-        let auctionTitle: string | undefined;
-        let auctionLookupStatus: "FOUND" | "NOT_FOUND" | "ERROR" = "NOT_FOUND";
-
-        if (auction) {
-          if ("_error" in auction) {
-            auctionLookupStatus = "ERROR";
-          } else {
-            auctionTitle = auction.title;
-            auctionLookupStatus = "FOUND";
-          }
-        }
-        return {
-          ...bid,
-          auctionTitle,
-          auctionLookupStatus,
-        };
-      });
-
+    if (bidsResult.page.length === 0) {
       return {
         ...bidsResult,
-        page,
+        page: [],
         totalCount,
       };
-    } catch (err) {
-      if (
-        err instanceof UnauthorizedError ||
-        (err instanceof Error &&
-          (err.name === "UnauthorizedError" ||
-            /unauthorized|not authorized|authenticated|not authenticated|unauthenticated/i.test(
-              err.message
-            )))
-      ) {
-        throw err;
-      }
-      console.error("Critical error in getRecentBids:", err);
-      throw err;
     }
+
+    const uniqueAuctionIds = [
+      ...new Set(bidsResult.page.map((b) => b.auctionId)),
+    ];
+
+    const auctionMap = new Map<
+      Id<"auctions">,
+      Doc<"auctions"> | null | { _error: true }
+    >();
+    const failedAuctionIds: Id<"auctions">[] = [];
+    await Promise.all(
+      uniqueAuctionIds.map(async (id) => {
+        try {
+          const auction = await ctx.db.get(id);
+          auctionMap.set(id, auction);
+        } catch {
+          failedAuctionIds.push(id);
+          auctionMap.set(id, { _error: true });
+        }
+      })
+    );
+
+    if (failedAuctionIds.length > 0) {
+      console.error(
+        `Admin Monitor: Failed to fetch auction context for ${String(failedAuctionIds.length)} IDs:`,
+        failedAuctionIds.slice(0, 5)
+      );
+    }
+
+    const page = bidsResult.page.map((bid) => {
+      const auction = auctionMap.get(bid.auctionId);
+      let auctionTitle: string | undefined;
+      let auctionLookupStatus: "FOUND" | "NOT_FOUND" | "ERROR" = "NOT_FOUND";
+
+      if (auction) {
+        if ("_error" in auction) {
+          auctionLookupStatus = "ERROR";
+        } else {
+          auctionTitle = auction.title;
+          auctionLookupStatus = "FOUND";
+        }
+      }
+      return {
+        ...bid,
+        auctionTitle,
+        auctionLookupStatus,
+      };
+    });
+
+    return {
+      ...bidsResult,
+      page,
+      totalCount,
+    };
   },
 });
 

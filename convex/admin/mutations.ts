@@ -57,9 +57,9 @@ export const voidBid = mutation({
     const latestValidBid = await ctx.db
       .query("bids")
       .withIndex("by_auction", (q) => q.eq("auctionId", bid.auctionId))
+      .order("desc")
       .filter((q) => q.neq(q.field("status"), "voided"))
       .filter((q) => q.neq(q.field("_id"), bid._id))
-      .order("desc")
       .first();
 
     const newPrice = latestValidBid
@@ -225,8 +225,8 @@ export const syncAuctionWinners = mutation({
       const highestBid = await ctx.db
         .query("bids")
         .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
-        .filter((q) => q.neq(q.field("status"), "voided"))
         .order("desc")
+        .filter((q) => q.neq(q.field("status"), "voided"))
         .first();
 
       const currentWinnerId = highestBid ? highestBid.bidderId : null;
