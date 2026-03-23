@@ -293,7 +293,7 @@
 - [x] Setup instructions
 - [x] Environment variables table
 - [x] Revise for best practices and complete all sections (#75)
-- [ ] Deployment instructions
+- [x] Deployment instructions
 
 ---
 
