@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { getAdminStats, initializeCounters } from "./statistics";
+import {
+  getAdminStats,
+  getFinancialStats,
+  initializeCounters,
+} from "./statistics";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -50,6 +54,8 @@ interface MockQuery {
   unique: ReturnType<typeof vi.fn>;
   collect: ReturnType<typeof vi.fn>;
   paginate: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  take: ReturnType<typeof vi.fn>;
 }
 
 interface MockCtx {
@@ -77,6 +83,8 @@ describe("Admin Statistics", () => {
         continueCursor: null,
         isDone: true,
       }),
+      order: vi.fn().mockReturnThis(),
+      take: vi.fn().mockResolvedValue([]),
     };
 
     mockCtx = {
@@ -143,5 +151,113 @@ describe("Admin Statistics", () => {
     ).handler(mockCtx as unknown as MutationCtx, {});
 
     expect(result).toMatchObject({ success: true });
+  });
+
+  it("initializeCounters should accumulate soldCount across multiple pages", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
+    vi.mocked(adminUtils.countUsers).mockResolvedValue(10);
+
+    queryMock.paginate
+      .mockResolvedValueOnce({
+        page: [{ currentPrice: 1000 }, { currentPrice: 2000 }],
+        continueCursor: "cursor1",
+        isDone: false,
+      })
+      .mockResolvedValueOnce({
+        page: [{ currentPrice: 3000 }],
+        continueCursor: null,
+        isDone: true,
+      });
+
+    await (
+      initializeCounters as unknown as {
+        handler: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).handler(mockCtx as unknown as MutationCtx, {});
+
+    const insertCalls = mockCtx.db.insert.mock.calls;
+    const auctionsInsert = insertCalls.find(
+      (call: unknown[]) => call[0] === "counters"
+    );
+    expect(auctionsInsert).toBeDefined();
+    const insertedData = auctionsInsert?.[1] as {
+      salesVolume?: number;
+      soldCount?: number;
+    };
+    expect(insertedData.salesVolume).toBe(6000);
+    expect(insertedData.soldCount).toBe(3);
+  });
+
+  it("getFinancialStats should use pagination when counter.soldCount is undefined", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      name: "auctions",
+      total: 10,
+      active: 5,
+      salesVolume: undefined,
+      soldCount: undefined,
+    } as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
+
+    queryMock.paginate.mockResolvedValueOnce({
+      page: [{ currentPrice: 5000 }, { currentPrice: 3000 }],
+      continueCursor: null,
+      isDone: true,
+    });
+
+    const stats = await (
+      getFinancialStats as unknown as {
+        handler: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx, {});
+
+    expect(stats).toMatchObject({
+      totalSalesVolume: 8000,
+      auctionCount: 2,
+      partialResults: true,
+    });
+  });
+
+  it("getFinancialStats should detect divergence and recompute when counter diverges from live", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      name: "auctions",
+      total: 10,
+      active: 5,
+      salesVolume: 5000,
+      soldCount: 1,
+    } as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(3);
+
+    queryMock.paginate
+      .mockResolvedValueOnce({
+        page: [{ currentPrice: 1000 }, { currentPrice: 2000 }],
+        continueCursor: "cursor1",
+        isDone: false,
+      })
+      .mockResolvedValueOnce({
+        page: [{ currentPrice: 3000 }],
+        continueCursor: null,
+        isDone: true,
+      });
+
+    const stats = await (
+      getFinancialStats as unknown as {
+        handler: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx, {});
+
+    expect(stats).toMatchObject({
+      totalSalesVolume: 6000,
+      auctionCount: 3,
+      partialResults: true,
+    });
   });
 });

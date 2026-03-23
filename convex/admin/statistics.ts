@@ -101,8 +101,7 @@ export const getFinancialStats = query({
       let auctionCount = counter?.soldCount ?? 0;
       let partialResults = false;
 
-      if (counter?.soldCount === undefined) {
-        partialResults = true;
+      const computeSoldAuctions = async () => {
         let sum = 0;
         let count = 0;
         let cursor: string | null = null;
@@ -119,8 +118,26 @@ export const getFinancialStats = query({
           cursor = page.continueCursor;
           isDone = page.isDone;
         }
-        totalSalesVolume = sum;
-        auctionCount = count;
+        return { sum, count };
+      };
+
+      if (counter?.soldCount === undefined) {
+        partialResults = true;
+        const computed = await computeSoldAuctions();
+        totalSalesVolume = computed.sum;
+        auctionCount = computed.count;
+      } else if (counter?.soldCount !== undefined) {
+        const liveSoldCount = await countQuery(
+          ctx.db
+            .query("auctions")
+            .withIndex("by_status", (q) => q.eq("status", "sold"))
+        );
+        if (liveSoldCount !== counter.soldCount) {
+          partialResults = true;
+          const computed = await computeSoldAuctions();
+          totalSalesVolume = computed.sum;
+          auctionCount = computed.count;
+        }
       }
 
       const estimatedCommission = totalSalesVolume * COMMISSION_RATE;

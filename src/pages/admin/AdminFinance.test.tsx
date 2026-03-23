@@ -28,6 +28,7 @@ vi.mock("lucide-react", () => ({
   TrendingUp: () => <div data-testid="trending-up-icon" />,
   DollarSign: () => <div data-testid="dollar-sign-icon" />,
   Calendar: () => <div data-testid="calendar-icon" />,
+  AlertCircle: () => <div data-testid="alert-circle-icon" />,
   LayoutDashboard: () => <div data-testid="dashboard-icon" />,
   Megaphone: () => <div data-testid="megaphone-icon" />,
   Gavel: () => <div data-testid="gavel-icon" />,
@@ -177,5 +178,27 @@ describe("AdminFinance Page", () => {
     expect(screen.getByText("Financial Oversight")).toBeInTheDocument();
     // FinanceTab should be loading
     expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("renders partial results warning banner when partialResults is true", () => {
+    (useQuery as Mock).mockImplementation((queryApi) => {
+      if (queryApi === api.admin.getAdminStats) return mockAdminStats;
+      if (queryApi === api.admin.getFinancialStats) {
+        return {
+          ...mockFinancialStats,
+          partialResults: true,
+        };
+      }
+      return undefined;
+    });
+
+    renderPage();
+
+    expect(
+      screen.getByText(
+        /Sales volume figures are calculated from live data and may be incomplete/i
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 });

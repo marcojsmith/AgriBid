@@ -38,8 +38,12 @@ export function FinanceTab() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
       {stats.partialResults && (
-        <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 rounded-lg text-sm font-medium">
-          <AlertCircle className="h-4 w-4" />
+        <div
+          className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/20 text-warning rounded-lg text-sm font-medium"
+          role="alert"
+          aria-live="assertive"
+        >
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
           Sales volume figures are calculated from live data and may be
           incomplete. Run initialize counters to reconcile.
         </div>
