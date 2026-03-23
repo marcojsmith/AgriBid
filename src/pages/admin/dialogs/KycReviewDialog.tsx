@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { DetailItem } from "@/components/admin";
+import { DetailItem } from "@/components/admin/DetailItem";
 import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
 
 /**

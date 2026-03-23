@@ -12,7 +12,7 @@ function typedMutationMock<T>(_val: unknown): T {
 }
 
 // Mock Header and Footer to isolate Layout testing
-vi.mock("./header", () => ({
+vi.mock("./header/Header", () => ({
   Header: () => <header data-testid="mock-header">Header</header>,
 }));
 

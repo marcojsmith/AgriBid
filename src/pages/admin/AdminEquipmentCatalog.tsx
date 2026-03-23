@@ -1,5 +1,5 @@
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { EquipmentMetadataEditor } from "@/components/admin";
+import { EquipmentMetadataEditor } from "@/components/admin/EquipmentMetadataEditor";
 
 /**
  * Admin page for managing the equipment catalog, including makes, models, and categories.

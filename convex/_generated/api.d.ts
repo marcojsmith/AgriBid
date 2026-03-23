@@ -11,8 +11,9 @@
 import type * as admin from "../admin.js";
 import type * as admin_categories from "../admin/categories.js";
 import type * as admin_equipmentMetadata from "../admin/equipmentMetadata.js";
-import type * as admin_index from "../admin/index.js";
 import type * as admin_kyc from "../admin/kyc.js";
+import type * as admin_mutations from "../admin/mutations.js";
+import type * as admin_queries from "../admin/queries.js";
 import type * as admin_settings from "../admin/settings.js";
 import type * as admin_statistics from "../admin/statistics.js";
 import type * as admin_debug from "../admin_debug.js";
@@ -60,8 +61,9 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   "admin/categories": typeof admin_categories;
   "admin/equipmentMetadata": typeof admin_equipmentMetadata;
-  "admin/index": typeof admin_index;
   "admin/kyc": typeof admin_kyc;
+  "admin/mutations": typeof admin_mutations;
+  "admin/queries": typeof admin_queries;
   "admin/settings": typeof admin_settings;
   "admin/statistics": typeof admin_statistics;
   admin_debug: typeof admin_debug;

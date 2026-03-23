@@ -41,7 +41,7 @@ vi.mock("@/components/FilterSidebar", () => ({
 }));
 
 // Mock AuctionCard to keep it simple
-vi.mock("@/components/auction", () => ({
+vi.mock("@/components/auction/AuctionCard", () => ({
   AuctionCard: ({
     auction,
     viewMode,

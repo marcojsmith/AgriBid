@@ -150,8 +150,11 @@ vi.mock("@/components/ImageGallery", () => ({
   ImageGallery: () => <div data-testid="image-gallery">Image Gallery</div>,
 }));
 
-vi.mock("@/components/bidding", () => ({
+vi.mock("@/components/bidding/BiddingPanel", () => ({
   BiddingPanel: () => <div data-testid="bidding-panel">Bidding Panel</div>,
+}));
+
+vi.mock("@/components/bidding/BidHistory", () => ({
   BidHistory: () => <div data-testid="bid-history">Bid History</div>,
 }));
 

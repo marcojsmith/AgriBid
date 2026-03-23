@@ -42,7 +42,7 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { AuctionWithCategory } from "@/types/auction";
 import { useBulkOperations } from "@/hooks/admin/useBulkOperations";
 
-import { BulkActionDialog } from "./dialogs";
+import { BulkActionDialog } from "./dialogs/BulkActionDialog";
 
 /**
  * Format time remaining until a given timestamp.

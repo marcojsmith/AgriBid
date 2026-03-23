@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import Sell from "./Sell";
 
-vi.mock("@/components/listing-wizard", () => ({
+vi.mock("@/components/listing-wizard/ListingWizard", () => ({
   ListingWizard: () => <div data-testid="listing-wizard">Listing Wizard</div>,
 }));
 

@@ -10,7 +10,8 @@ import type { Id } from "convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { AuctionHeader } from "@/components/AuctionHeader";
 import { ImageGallery } from "@/components/ImageGallery";
-import { BiddingPanel, BidHistory } from "@/components/bidding";
+import { BiddingPanel } from "@/components/bidding/BiddingPanel";
+import { BidHistory } from "@/components/bidding/BidHistory";
 import { SellerInfo } from "@/components/SellerInfo";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useSession } from "@/lib/auth-client";
@@ -188,7 +189,7 @@ export default function AuctionDetail() {
             </div>
 
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {(auction.description || "").trim().length
+              {(auction.description ?? "").trim().length
                 ? auction.description
                 : "No description provided."}
             </p>

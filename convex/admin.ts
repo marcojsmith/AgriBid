@@ -5,7 +5,8 @@
  * to maintain backward compatibility with existing imports. All implementations
  * have been decomposed into focused modules:
  *
- * - index.ts: Core admin operations (bid mgmt, support, audit logs, announcements)
+ * - queries.ts: Core read-only operations (bid monitoring, support, audit, announcements)
+ * - mutations.ts: Core write operations (bid moderation, support, announcements, sync)
  * - kyc.ts: KYC verification and review
  * - statistics.ts: Dashboard metrics and financial reporting
  * - categories.ts: Equipment category management
@@ -16,23 +17,27 @@
 export * as categories from "./admin/categories";
 export * as equipmentMetadata from "./admin/equipmentMetadata";
 
-// Re-export all functions from admin submodules
+// Re-export query functions
 export {
-  // Core operations
   getRecentBids,
-  voidBid,
   getTickets,
-  resolveTicket,
   getAuditLogs,
-  createAnnouncement,
   listAnnouncements,
-  // KYC operations
   getPendingKYC,
-  reviewKYC,
-  // Statistics and reporting
   getFinancialStats,
   getAdminStats,
   getAnnouncementStats,
   getSupportStats,
+  getSystemConfig,
+} from "./admin/queries";
+
+// Re-export mutation functions
+export {
+  voidBid,
+  resolveTicket,
+  createAnnouncement,
+  syncAuctionWinners,
+  reviewKYC,
   initializeCounters,
-} from "./admin/index";
+  updateSystemConfig,
+} from "./admin/mutations";

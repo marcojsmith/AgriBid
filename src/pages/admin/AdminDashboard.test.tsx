@@ -35,7 +35,7 @@ vi.mock("@/hooks/useLoadingTimeout", () => ({
 }));
 
 // Mock AdminLayout to keep it simple
-vi.mock("@/components/admin", () => ({
+vi.mock("@/components/admin/AdminLayout", () => ({
   AdminLayout: ({
     children,
     title,
@@ -51,6 +51,9 @@ vi.mock("@/components/admin", () => ({
       {children}
     </div>
   ),
+}));
+
+vi.mock("@/components/admin/AdminConnectionError", () => ({
   AdminConnectionError: ({
     title,
     description,

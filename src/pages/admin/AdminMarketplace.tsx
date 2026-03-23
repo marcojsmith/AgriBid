@@ -2,7 +2,8 @@ import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { AlertCircle } from "lucide-react";
 
-import { BidMonitor, AdminConnectionError } from "@/components/admin";
+import { BidMonitor } from "@/components/admin/BidMonitor";
+import { AdminConnectionError } from "@/components/admin/AdminConnectionError";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";

@@ -1,4 +1,4 @@
-import type { ListingFormData } from "../types";
+import type { ListingFormData } from "./types";
 
 /**
  * Ordered list of step titles displayed in the listing wizard progress indicator.

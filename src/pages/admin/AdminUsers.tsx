@@ -23,7 +23,8 @@ import {
   type AdminProfile,
 } from "@/hooks/admin/useUserManagement";
 
-import { KycReviewDialog, PromoteAdminDialog } from "./dialogs";
+import { KycReviewDialog } from "./dialogs/KycReviewDialog";
+import { PromoteAdminDialog } from "./dialogs/PromoteAdminDialog";
 
 /**
  * Render the Admin Users page with search, paginated user list, status indicators and actions for KYC review, manual verification and promotion.
