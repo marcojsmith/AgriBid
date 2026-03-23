@@ -8,19 +8,20 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | -------------- | -------------------- |
 | `bun run test` | `bun run test --run` |
 
-| Command                                            | Description                     |
-| -------------------------------------------------- | ------------------------------- |
-| `bun run dev`                                      | Start development server        |
-| `bun run lint`                                     | Check code for errors           |
-| `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file  |
-| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file    |
-| `bun run test:coverage`                            | Run tests with coverage         |
-| `bun run build`                                    | Production build                |
-| `bun run format`                                   | Format code with Prettier       |
-| `bunx vercel`                                      | Deploy to staging               |
-| `bunx vercel --prod`                               | Deploy to production            |
-| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted) |
-| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)  |
+| Command                                            | Description                                 |
+| -------------------------------------------------- | ------------------------------------------- |
+| `bun run dev`                                      | Start development server                    |
+| `bun run type-check`                               | Type check with tsgo (4.6x faster than tsc) |
+| `bun run lint`                                     | Check code for errors                       |
+| `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file              |
+| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file                |
+| `bun run test:coverage`                            | Run tests with coverage                     |
+| `bun run build`                                    | Production build (uses tsgo)                |
+| `bun run format`                                   | Format code with Prettier                   |
+| `bunx vercel`                                      | Deploy to staging                           |
+| `bunx vercel --prod`                               | Deploy to production                        |
+| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)             |
+| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)              |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
 
