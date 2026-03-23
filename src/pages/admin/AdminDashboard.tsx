@@ -48,6 +48,13 @@ function AdminDashboardContent() {
     announcementStats === undefined ||
     supportStats === undefined;
 
+  const allStatsAvailable = [
+    adminStats,
+    financialStats,
+    announcementStats,
+    supportStats,
+  ].every((s) => s != null);
+
   const hasTimedOut = useLoadingTimeout(isLoading);
 
   if (isLoading) {
@@ -70,9 +77,7 @@ function AdminDashboardContent() {
     );
   }
 
-  // Safe checks for potentially null/undefined data even after loading check if queries return null
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (!adminStats || !financialStats || !announcementStats || !supportStats) {
+  if (!allStatsAvailable) {
     return (
       <div className="h-96 flex flex-col items-center justify-center text-center space-y-4">
         <AdminConnectionError

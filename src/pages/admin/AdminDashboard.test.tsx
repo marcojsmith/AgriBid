@@ -172,7 +172,9 @@ describe("AdminDashboard Page", () => {
 
     // Check for summary cards
     expect(screen.getByText("User Base")).toBeInTheDocument();
-    expect(screen.getByText(/KYC Pending: 3/i)).toBeInTheDocument();
+    const kycPendingItem = screen.getByText(/KYC Pending: 3/i);
+    expect(kycPendingItem).toBeInTheDocument();
+    expect(kycPendingItem).toHaveClass("text-yellow-600");
     expect(screen.getByText("Auctions")).toBeInTheDocument();
     expect(screen.getByText("Moderation")).toBeInTheDocument();
     expect(screen.getByText("Financials")).toBeInTheDocument();
@@ -186,7 +188,7 @@ describe("AdminDashboard Page", () => {
   it("renders different colors when stats are zero", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.admin.getAdminStats)
-        return { ...mockAdminStats, pendingReview: 0 };
+        return { ...mockAdminStats, pendingReview: 0, kycPending: 0 };
       if (apiPath === mockApi.admin.getFinancialStats)
         return mockFinancialStats;
       if (apiPath === mockApi.admin.getAnnouncementStats)
@@ -197,6 +199,10 @@ describe("AdminDashboard Page", () => {
     });
 
     renderAdminDashboard();
+
+    // KYC Pending === 0 branch
+    const kycItem = screen.getByText(/KYC Pending: 0/i);
+    expect(kycItem).not.toHaveClass("text-yellow-600");
 
     // pendingReview === 0 branch
     const pendingItem = screen.getByText(/Pending Review: 0/i);
