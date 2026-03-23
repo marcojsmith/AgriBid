@@ -8,7 +8,7 @@ import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
-import { Header } from "./header";
+import { Header } from "./header/Header";
 import { Footer } from "./Footer";
 import { NotificationListener } from "./NotificationListener";
 import { PresenceListener } from "./PresenceListener";

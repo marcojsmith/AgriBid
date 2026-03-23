@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import type { Id } from "convex/_generated/dataModel";
 
-import { ModerationCard } from "@/components/admin";
+import { ModerationCard } from "@/components/admin/ModerationCard";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";

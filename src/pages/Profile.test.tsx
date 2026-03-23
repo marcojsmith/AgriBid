@@ -39,7 +39,7 @@ vi.mock("convex/_generated/api", () => ({
 }));
 
 // Mock AuctionCard to keep it simple
-vi.mock("@/components/auction", () => ({
+vi.mock("@/components/auction/AuctionCard", () => ({
   AuctionCard: ({ auction, isWatched }: AuctionCardProps) => (
     <div data-testid="auction-card">
       {auction.title} {isWatched ? "(Watched)" : ""}

@@ -7,7 +7,7 @@ import { SlidersHorizontal, ChevronDown } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { AuctionCard } from "@/components/auction";
+import { AuctionCard } from "@/components/auction/AuctionCard";
 import { AuctionCardSkeleton } from "@/components/AuctionCardSkeleton";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { cn } from "@/lib/utils";

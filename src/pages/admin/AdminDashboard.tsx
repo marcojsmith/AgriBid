@@ -11,7 +11,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import { AdminLayout, AdminConnectionError } from "@/components/admin";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminConnectionError } from "@/components/admin/AdminConnectionError";
 import { SummaryCard } from "@/components/admin/SummaryCard";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { formatCurrency } from "@/lib/currency";

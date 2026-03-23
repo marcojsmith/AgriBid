@@ -11,7 +11,7 @@ vi.mock("convex/react", () => ({
 }));
 
 // Mock AuctionCard
-vi.mock("@/components/auction", () => ({
+vi.mock("@/components/auction/AuctionCard", () => ({
   AuctionCard: ({
     auction,
     isWatched,

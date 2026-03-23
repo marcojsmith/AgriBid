@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { SettingsCard } from "@/components/admin";
+import { SettingsCard } from "@/components/admin/SettingsCard";
 
 /**
  * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees and security logs.

@@ -10,7 +10,8 @@ import type { Id } from "convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { AuctionHeader } from "@/components/AuctionHeader";
 import { ImageGallery } from "@/components/ImageGallery";
-import { BiddingPanel, BidHistory } from "@/components/bidding";
+import { BiddingPanel } from "@/components/bidding/BiddingPanel";
+import { BidHistory } from "@/components/bidding/BidHistory";
 import { SellerInfo } from "@/components/SellerInfo";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useSession } from "@/lib/auth-client";
@@ -34,11 +35,11 @@ import { Textarea } from "@/components/ui/textarea";
 type FlagReason = "misleading" | "inappropriate" | "suspicious" | "other";
 
 /**
- * Display the auction detail page for the auction identified by the current route `id`.
+ * Render the auction detail page for the auction referenced by the current route `id`.
  *
- * Shows an "Invalid Auction ID" message when the route `id` is missing, a loading indicator while data is being fetched, and an "Auction Not Found" message when no auction exists for the given `id`. When the auction exists, renders the auction header, image gallery, equipment description, bidding panel with bid history, and seller information.
+ * Renders an "Invalid Auction ID" screen when `id` is undefined, a loading indicator while the auction is being fetched, an "Auction Not Found" screen when no auction exists for `id`, and the full auction UI (header, image gallery, equipment description, bidding panel, bid history and seller information) when the auction is found. Also provides UI to report (flag) a listing and to view or download a condition report when available.
  *
- * @returns A JSX element representing the auction detail page
+ * @returns The JSX element for the auction detail page.
  */
 export default function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
@@ -188,7 +189,7 @@ export default function AuctionDetail() {
             </div>
 
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {(auction.description || "").trim().length
+              {(auction.description ?? "").trim().length
                 ? auction.description
                 : "No description provided."}
             </p>

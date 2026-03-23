@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { Button } from "@/components/ui/button";
-import { AuctionCard } from "@/components/auction";
+import { AuctionCard } from "@/components/auction/AuctionCard";
 
 /**
  * Renders the seller profile page for the route parameter `userId`.
