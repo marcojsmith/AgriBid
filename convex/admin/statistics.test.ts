@@ -180,7 +180,9 @@ describe("Admin Statistics", () => {
 
     const insertCalls = mockCtx.db.insert.mock.calls;
     const auctionsInsert = insertCalls.find(
-      (call: unknown[]) => call[0] === "counters"
+      (call: unknown[]) =>
+        call[0] === "counters" &&
+        (call[1] as { name?: string })?.name === "auctions"
     );
     expect(auctionsInsert).toBeDefined();
     const insertedData = auctionsInsert?.[1] as {
