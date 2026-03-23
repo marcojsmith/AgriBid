@@ -1,6 +1,6 @@
 # Open GitHub Issues Checklist
 
-Below are open github issues (with there #ids).
+Below are open github issues (with their #ids).
 When creating a PR reference the github issue number in the PR description to automatically close it.
 
 Prioritized by size and quick wins for efficient resolution.
@@ -105,14 +105,14 @@ Prioritized by size and quick wins for efficient resolution.
 - [ ] #84: Create sufficient and best practice unit tests for the codebase
   - _Description_: Establish comprehensive unit testing practices
   - _Labels_: enhancement
-- [ ] #81: Admin.ts will limit auctions to 200 - potentially returning inaccurate financial stats
-  - _Description_: Fix auction limit causing incorrect financial calculations
+- [x] #81: Admin.ts will limit auctions to 200 - potentially returning inaccurate financial stats
+  - _Description_: Fix auction limit causing incorrect financial calculations (resolved via cursor-based pagination and counter initialization)
   - _Labels_: bug, backend
 - [x] #74: Replace admin KPI for verified users to be online users
   - _Description_: Change verified users metric to online users metric in admin
   - _Labels_: enhancement, backend
-- [ ] #66: Performance: Batch readReceipts queries to avoid N+1 pattern
-  - _Description_: Optimize database queries to prevent N+1 query problem
+- [x] #66: Performance: Batch readReceipts queries to avoid N+1 pattern
+  - _Description_: Optimize database queries to prevent N+1 query problem (resolved via batchFetchReadCounts helper)
   - _Labels_: backend, performance
 
 ## How to Use This Checklist

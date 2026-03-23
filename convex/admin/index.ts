@@ -15,6 +15,7 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "../_generated/server";
 import { requireAdmin, getAuthUser, UnauthorizedError } from "../lib/auth";
 import { logAudit, updateCounter, countQuery } from "../admin_utils";
+import { batchFetchReadCounts } from "../notifications";
 import type { Doc, Id } from "../_generated/dataModel";
 
 // --- Re-export specialized modules for backward compatibility ---
@@ -520,19 +521,7 @@ export const listAnnouncements = query({
 
     // Parallel fetch read counts using indexed queries
     const announcementIds = announcementsResult.page.map((a) => a._id);
-    const readCountsList = await Promise.all(
-      announcementIds.map((id) =>
-        countQuery(
-          ctx.db
-            .query("readReceipts")
-            .withIndex("by_notification", (q) => q.eq("notificationId", id))
-        )
-      )
-    );
-
-    const readCounts = new Map(
-      announcementIds.map((id, index) => [id, readCountsList[index]])
-    );
+    const readCounts = await batchFetchReadCounts(ctx, announcementIds);
 
     const page = announcementsResult.page.map((announcement) => ({
       ...announcement,

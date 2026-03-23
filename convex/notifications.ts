@@ -11,6 +11,41 @@ import { getAuthUser, requireAuth, resolveUserId } from "./lib/auth";
 import type { Doc, Id } from "./_generated/dataModel";
 
 /**
+ * Fetches read receipt counts for multiple notifications in parallel using indexed queries.
+ *
+ * In Convex, each indexed query is a distinct DB operation. This helper consolidates
+ * the parallel Promise.all pattern into a single, reusable function with O(1) Map lookup
+ * for callers. This is the recommended pattern for Convex -- there is no native "batch
+ * get by multiple IDs" operation.
+ *
+ * @param ctx - Convex Query context used to access the database
+ * @param notificationIds - Array of notification IDs to fetch read counts for
+ * @returns Map of notification ID to read receipt count
+ */
+export async function batchFetchReadCounts(
+  ctx: QueryCtx,
+  notificationIds: Id<"notifications">[]
+): Promise<Map<Id<"notifications">, number>> {
+  if (notificationIds.length === 0) return new Map();
+
+  const counts = await Promise.all(
+    notificationIds.map((id) =>
+      ctx.db
+        .query("readReceipts")
+        .withIndex("by_notification", (q) => q.eq("notificationId", id))
+        .collect()
+        .then((r) => r.length)
+    )
+  );
+
+  const result = new Map<Id<"notifications">, number>();
+  notificationIds.forEach((id, i) => {
+    result.set(id, counts[i] as number);
+  });
+  return result;
+}
+
+/**
  * Augments a list of announcement notifications with a per-user `isRead` flag.
  *
  * @param ctx - Convex Query context used to access the database for read receipts
@@ -25,21 +60,16 @@ async function getAnnouncementsWithReadStatus(
 ) {
   if (announcements.length === 0) return [];
 
-  // Fetch read receipts only for the provided announcements to keep it bounded
-  const readReceipts = await Promise.all(
-    announcements.map((a) =>
-      ctx.db
-        .query("readReceipts")
-        .withIndex("by_user_notification", (q) =>
-          q.eq("userId", userId).eq("notificationId", a._id)
-        )
-        .unique()
-    )
-  );
+  const announcementIds = announcements.map((a) => a._id);
+
+  const userReceipts = await ctx.db
+    .query("readReceipts")
+    .withIndex("by_user_notification", (q) => q.eq("userId", userId))
+    .collect();
 
   const readNotificationIds = new Set(
-    readReceipts
-      .filter((r): r is NonNullable<typeof r> => r !== null)
+    userReceipts
+      .filter((r) => announcementIds.includes(r.notificationId))
       .map((r) => r.notificationId)
   );
 
@@ -329,21 +359,16 @@ export const markAllReadHandler = async (ctx: MutationCtx) => {
     .take(100); // Only process latest 100 announcements
 
   if (announcements.length > 0) {
-    // Fetch read receipts only for these specific announcements
-    const existingReceipts = await Promise.all(
-      announcements.map((a: Doc<"notifications">) =>
-        ctx.db
-          .query("readReceipts")
-          .withIndex("by_user_notification", (q) =>
-            q.eq("userId", userId).eq("notificationId", a._id)
-          )
-          .unique()
-      )
-    );
+    const announcementIds = announcements.map((a) => a._id);
+
+    const userReceipts = await ctx.db
+      .query("readReceipts")
+      .withIndex("by_user_notification", (q) => q.eq("userId", userId))
+      .collect();
 
     const existingNotificationIds = new Set(
-      existingReceipts
-        .filter((r): r is NonNullable<typeof r> => r !== null)
+      userReceipts
+        .filter((r) => announcementIds.includes(r.notificationId))
         .map((r) => r.notificationId)
     );
     const now = Date.now();

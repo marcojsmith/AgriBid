@@ -5,6 +5,16 @@ import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
+const baseMockAuction = {
+  _id: "auction_123",
+  sellerId: "user_123",
+  title: "Test Auction",
+  description: "Test Description",
+  images: { front: "storage_id" },
+  startingPrice: 100,
+  reservePrice: 200,
+};
+
 vi.mock("../lib/auth", () => ({
   getAuthUser: vi.fn(),
   resolveUserId: vi.fn(),
@@ -41,16 +51,7 @@ describe("publishAuction mutation", () => {
   it("should successfully transition auction status from draft to pending_review", async () => {
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_123");
 
-    const mockAuction = {
-      _id: "auction_123",
-      sellerId: "user_123",
-      status: "draft",
-      title: "Test Auction",
-      description: "Test Description",
-      images: { front: "storage_id" },
-      startingPrice: 100,
-      reservePrice: 200,
-    };
+    const mockAuction = { ...baseMockAuction, status: "draft" };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
@@ -86,16 +87,7 @@ describe("publishAuction mutation", () => {
   it("should throw an error if the user is not the owner", async () => {
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_other");
 
-    const mockAuction = {
-      _id: "auction_123",
-      sellerId: "user_123",
-      status: "draft",
-      title: "Test Auction",
-      description: "Test Description",
-      images: { front: "storage_id" },
-      startingPrice: 100,
-      reservePrice: 200,
-    };
+    const mockAuction = { ...baseMockAuction, status: "draft" };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
@@ -111,16 +103,7 @@ describe("publishAuction mutation", () => {
   it("should throw an error if the auction is not in draft status", async () => {
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_123");
 
-    const mockAuction = {
-      _id: "auction_123",
-      sellerId: "user_123",
-      status: "pending_review",
-      title: "Test Auction",
-      description: "Test Description",
-      images: { front: "storage_id" },
-      startingPrice: 100,
-      reservePrice: 200,
-    };
+    const mockAuction = { ...baseMockAuction, status: "pending_review" };
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
 

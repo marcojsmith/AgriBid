@@ -32,22 +32,6 @@ vi.mock("../presence", () => ({
   countOnlineUsers: vi.fn(),
 }));
 
-vi.mock("../admin_utils", () => ({
-  getCounter: vi.fn(),
-  countQuery: vi.fn(),
-  countUsers: vi.fn(),
-  updateCounter: vi.fn(),
-}));
-
-vi.mock("../_generated/server", () => ({
-  query: vi.fn((q) => q),
-  mutation: vi.fn((m) => m),
-}));
-
-vi.mock("../presence", () => ({
-  countOnlineUsers: vi.fn(),
-}));
-
 interface MockQuery {
   withIndex: (index: string, cb?: (q: unknown) => unknown) => MockQuery;
   filter: (cb: (q: unknown) => unknown) => MockQuery;
