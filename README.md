@@ -33,7 +33,7 @@
 
 In a market where machinery often costs between $50k and $500k, trust is everything. AgriBid solves the common pitfalls of general auction sites:
 
-- **Low Latency**: Optimized for real-time responsiveness (often under 200ms in typical workloads).
+- **Low Latency**: Optimized for real-time responsiveness (often under 200 ms in typical workloads).
 - **Agricultural Focus**: Tailored metadata for tractors, harvesters, and implements.
 - **Transparency First**: Mandatory inspection reports, hour-meter tracking, and verified seller profiles.
 - **Anti-Sniping**: Automated "Soft Close" extensions to ensure fair market value.
@@ -202,8 +202,9 @@ We welcome contributions! Please follow our workflow:
 
 1. Check the [ISSUES_CHECKLIST.md](ISSUES_CHECKLIST.md) for open tasks.
 2. Create a feature branch (`feature/description`).
-3. Ensure all tests pass (`bun run test`).
-4. Submit a Pull Request referencing the issue ID.
+3. Follow the commit format specified in [Checklist.md](Checklist.md).
+4. Ensure all tests pass (`bun run test`).
+5. Submit a Pull Request referencing the issue ID.
 
 ---
 
