@@ -67,7 +67,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     reportErrorAsync(error, {
       additionalInfo: {
-        componentStack: errorInfo.componentStack,
+        componentStack: errorInfo.componentStack ?? "No component stack",
       },
     });
   }

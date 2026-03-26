@@ -39,6 +39,22 @@ vi.mock("./error-classifier", () => ({
   shouldReportError: vi.fn().mockReturnValue(true),
 }));
 
+type SubmitErrorReportArgs = {
+  errorType: string;
+  errorMessage: string;
+  stackTrace?: string;
+  userId?: string;
+  userRole?: string;
+  breadcrumbs: { timestamp: number; type: string; description: string }[];
+  metadata: { url: string; userAgent: string; timestamp: number };
+};
+
+function getMockCallArgs(
+  mockFn: ReturnType<typeof vi.fn>
+): SubmitErrorReportArgs {
+  return mockFn.mock.calls[0][1] as SubmitErrorReportArgs;
+}
+
 vi.mock("./utils", () => ({
   getErrorMessage: vi.fn((err: unknown, fallback: string) => {
     if (typeof err === "string") return err;
@@ -94,18 +110,11 @@ describe("Error Reporter", () => {
       expect(result).toBe(true);
       expect(mockMutation).toHaveBeenCalledTimes(1);
 
-      // Vitest mock typing limitation: mock.calls returns unknown[] - safe here since we control the mock
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const args = mockMutation.mock.calls[0][1];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const args = getMockCallArgs(mockMutation);
       expect(args.errorType).toBe("Error");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(args.errorMessage).toBe("Test error");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(args.userId).toBe("user-1");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(args.userRole).toBe("admin");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(args.breadcrumbs).toHaveLength(1);
     });
 
@@ -113,12 +122,8 @@ describe("Error Reporter", () => {
       const result = await reportError("String error");
       expect(result).toBe(true);
 
-      // Vitest mock typing limitation: mock.calls returns unknown[]
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const args = mockMutation.mock.calls[0][1];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const args = getMockCallArgs(mockMutation);
       expect(args.errorType).toBe("Error"); // Defaults to Error for strings
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(args.errorMessage).toBe("String error");
     });
 
@@ -148,12 +153,8 @@ describe("Error Reporter", () => {
       const result = await reportError(nonErrorObject as unknown as Error);
       expect(result).toBe(true);
 
-      // Vitest mock typing limitation: mock.calls returns unknown[]
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const args = mockMutation.mock.calls[0][1];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const args = getMockCallArgs(mockMutation);
       expect(args.errorType).toBe("Error");
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(args.errorMessage).toBe("Unknown Error");
     });
 

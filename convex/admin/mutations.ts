@@ -25,7 +25,10 @@ export { reviewKYC } from "./kyc";
 
 export { initializeCounters } from "./statistics";
 
-export { updateSystemConfig } from "./settings";
+export {
+  updateSystemConfig,
+  updateGitHubErrorReportingConfig,
+} from "./settings";
 
 // --- Bid Moderation ---
 

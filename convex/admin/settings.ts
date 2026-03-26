@@ -401,3 +401,83 @@ export const updateSystemConfig = mutation({
   },
   handler: updateSystemConfigHandler,
 });
+
+type GitHubErrorReportingConfig = {
+  enabled: boolean;
+  token?: string;
+  repoOwner: string;
+  repoName: string;
+  labels: string;
+};
+
+async function updateGitHubErrorReportingConfigHandler(
+  ctx: MutationCtx,
+  args: GitHubErrorReportingConfig
+): Promise<{ success: boolean }> {
+  await requireAdmin(ctx);
+
+  const settingsToUpdate: Array<{
+    key: string;
+    value: string | boolean;
+  }> = [
+    { key: "github_error_reporting_enabled", value: args.enabled },
+    { key: "github_repo_owner", value: args.repoOwner.trim() },
+    { key: "github_repo_name", value: args.repoName.trim() },
+    { key: "github_error_labels", value: args.labels.trim() },
+  ];
+
+  if (args.token && !args.token.startsWith("****")) {
+    const encrypted = await encryptPII(args.token);
+    if (!encrypted) {
+      throw new Error("Failed to encrypt GitHub token. Operation aborted.");
+    }
+    settingsToUpdate.push({ key: "github_api_token", value: encrypted });
+  }
+
+  for (const setting of settingsToUpdate) {
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", setting.key))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: setting.value,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("settings", {
+        key: setting.key,
+        value: setting.value,
+        description: "",
+        updatedAt: Date.now(),
+      });
+    }
+  }
+
+  await logAudit(ctx, {
+    action: "UPDATE_GITHUB_ERROR_REPORTING_CONFIG",
+    targetId: "github-error-reporting",
+    targetType: "settings",
+    details: `Updated GitHub error reporting config: enabled=${args.enabled}, repo=${args.repoOwner}/${args.repoName}`,
+  });
+
+  return { success: true };
+}
+
+/**
+ * Update GitHub error reporting configuration atomically.
+ *
+ * Updates all GitHub-related settings in a single transaction.
+ * Only accessible to admin users.
+ */
+export const updateGitHubErrorReportingConfig = mutation({
+  args: {
+    enabled: v.boolean(),
+    token: v.optional(v.string()),
+    repoOwner: v.string(),
+    repoName: v.string(),
+    labels: v.string(),
+  },
+  handler: updateGitHubErrorReportingConfigHandler,
+});

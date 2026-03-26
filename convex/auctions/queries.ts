@@ -7,4 +7,4 @@ export * from "./queries/admin";
 /**
  * Metadata for the auctions queries module.
  */
-export const MODULE_NAME = "auctions/queries";
+export const moduleName = "auctions/queries";

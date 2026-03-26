@@ -5,7 +5,7 @@ import * as queries from "./queries";
 describe("Auctions Queries Re-exports", () => {
   it("should export all expected query groups", () => {
     expect(queries).toBeDefined();
-    expect(queries.MODULE_NAME).toBe("auctions/queries");
+    expect(queries.moduleName).toBe("auctions/queries");
     // Verify some expected exports from various sub-modules
     expect(queries.getAuctionById).toBeDefined();
     expect(queries.getMyBids).toBeDefined();

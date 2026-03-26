@@ -45,16 +45,16 @@ export function sanitizeString(str: string): string {
  */
 function sanitizeAdditionalInfo(
   additionalInfo?: Record<string, unknown>
-): Record<string, unknown> | undefined {
+): Record<string, string | number> | undefined {
   if (!additionalInfo) return undefined;
 
-  const sanitized: Record<string, unknown> = {};
+  const sanitized: Record<string, string | number> = {};
   for (const key of ALLOWED_ADDITIONAL_INFO_KEYS) {
     if (additionalInfo[key] !== undefined) {
       const value = additionalInfo[key];
       if (typeof value === "string") {
         sanitized[key] = sanitizeString(value);
-      } else {
+      } else if (typeof value === "number") {
         sanitized[key] = value;
       }
     }
@@ -65,7 +65,7 @@ function sanitizeAdditionalInfo(
 interface ErrorReportContext {
   userId?: string;
   userRole?: string;
-  additionalInfo?: Record<string, unknown>;
+  additionalInfo?: Record<string, string | number>;
 }
 
 /**
@@ -106,8 +106,15 @@ export async function reportError(
       userId: context?.userId,
       userRole: context?.userRole,
       breadcrumbs: getBreadcrumbs().map((b) => ({
-        ...b,
+        timestamp: b.timestamp,
+        type: b.type,
         description: sanitizeString(b.description),
+        metadata: b.metadata
+          ? (sanitizeAdditionalInfo(b.metadata) as Record<
+              string,
+              string | number
+            >)
+          : undefined,
       })),
       metadata: {
         url: sanitizeString(

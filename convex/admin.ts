@@ -46,6 +46,7 @@ export {
   reviewKYC,
   initializeCounters,
   updateSystemConfig,
+  updateGitHubErrorReportingConfig,
 } from "./admin/mutations";
 
 // Re-export error reporting functions

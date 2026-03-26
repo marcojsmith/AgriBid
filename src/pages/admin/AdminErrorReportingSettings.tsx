@@ -17,7 +17,9 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
  */
 export default function AdminErrorReportingSettings() {
   const settings = useQuery(api.admin.getSystemConfig);
-  const updateConfig = useMutation(api.admin.updateSystemConfig);
+  const updateGitHubConfig = useMutation(
+    api.admin.updateGitHubErrorReportingConfig
+  );
 
   const [enabled, setEnabled] = useState(false);
   const [token, setToken] = useState("");
@@ -75,27 +77,12 @@ export default function AdminErrorReportingSettings() {
 
     setIsSaving(true);
     try {
-      await updateConfig({
-        key: "github_error_reporting_enabled",
-        value: enabled,
-      });
-      if (token && !token.startsWith("****")) {
-        await updateConfig({
-          key: "github_api_token",
-          value: token,
-        });
-      }
-      await updateConfig({
-        key: "github_repo_owner",
-        value: repoOwner.trim(),
-      });
-      await updateConfig({
-        key: "github_repo_name",
-        value: repoName.trim(),
-      });
-      await updateConfig({
-        key: "github_error_labels",
-        value: labels.trim(),
+      await updateGitHubConfig({
+        enabled,
+        token: token && !token.startsWith("****") ? token : undefined,
+        repoOwner,
+        repoName,
+        labels,
       });
       toast.success("Error reporting settings saved");
     } catch {

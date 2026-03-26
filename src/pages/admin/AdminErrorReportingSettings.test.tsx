@@ -4,12 +4,22 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import AdminErrorReportingSettings from "./AdminErrorReportingSettings";
 
-const mockUpdateConfig = vi.fn();
-let mockSettings: unknown = undefined;
+type MockSettings = {
+  githubConfig: {
+    enabled: boolean;
+    tokenMasked: string;
+    repoOwner: string | null;
+    repoName: string | null;
+    labels: string | null;
+  };
+};
+
+let mockSettings: MockSettings | undefined;
+const mockUpdateGitHubConfig = vi.fn();
 
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(() => mockSettings),
-  useMutation: vi.fn(() => mockUpdateConfig),
+  useMutation: vi.fn(() => mockUpdateGitHubConfig),
 }));
 
 vi.mock("sonner", () => ({
@@ -133,25 +143,12 @@ describe("AdminErrorReportingSettings", () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(mockUpdateConfig).toHaveBeenCalledWith({
-        key: "github_error_reporting_enabled",
-        value: true,
-      });
-      expect(mockUpdateConfig).toHaveBeenCalledWith({
-        key: "github_api_token",
-        value: "newtoken123",
-      });
-      expect(mockUpdateConfig).toHaveBeenCalledWith({
-        key: "github_repo_owner",
-        value: "newowner",
-      });
-      expect(mockUpdateConfig).toHaveBeenCalledWith({
-        key: "github_repo_name",
-        value: "newrepo",
-      });
-      expect(mockUpdateConfig).toHaveBeenCalledWith({
-        key: "github_error_labels",
-        value: "newlabel",
+      expect(mockUpdateGitHubConfig).toHaveBeenCalledWith({
+        enabled: true,
+        token: "newtoken123",
+        repoOwner: "newowner",
+        repoName: "newrepo",
+        labels: "newlabel",
       });
       expect(toast.success).toHaveBeenCalledWith(
         "Error reporting settings saved"
@@ -179,7 +176,7 @@ describe("AdminErrorReportingSettings", () => {
       expect(toast.error).toHaveBeenCalledWith(
         "Repository owner and name are required when enabled"
       );
-      expect(mockUpdateConfig).not.toHaveBeenCalled();
+      expect(mockUpdateGitHubConfig).not.toHaveBeenCalled();
     });
   });
 });

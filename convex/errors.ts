@@ -106,6 +106,35 @@ function checkRateLimit(): boolean {
   return true;
 }
 
+type BreadcrumbWithMetadata = {
+  timestamp: number;
+  type: string;
+  description: string;
+  metadata?: Record<string, unknown>;
+};
+
+function sanitizeBreadcrumbMetadata(
+  breadcrumb: BreadcrumbWithMetadata
+): BreadcrumbWithMetadata {
+  if (!breadcrumb.metadata) {
+    return breadcrumb;
+  }
+  const sanitized: Record<string, unknown> = {};
+  const allowedKeys = ["action", "path", "component", "props"];
+  for (const key of allowedKeys) {
+    if (breadcrumb.metadata[key] !== undefined) {
+      const value = breadcrumb.metadata[key];
+      if (typeof value === "string" || typeof value === "number") {
+        sanitized[key] = value;
+      }
+    }
+  }
+  return {
+    ...breadcrumb,
+    metadata: Object.keys(sanitized).length > 0 ? sanitized : undefined,
+  };
+}
+
 /**
  * Handler for submitErrorReport.
  *
@@ -131,10 +160,16 @@ export async function submitErrorReportHandler(
     stackTrace?: string;
     userId?: string;
     userRole?: string;
-    breadcrumbs: { timestamp: number; type: string; description: string }[];
+    breadcrumbs: {
+      timestamp: number;
+      type: string;
+      description: string;
+      metadata?: Record<string, unknown>;
+    }[];
     metadata: { url: string; userAgent: string; timestamp: number };
   }
 ) {
+  const sanitizedBreadcrumbs = args.breadcrumbs.map(sanitizeBreadcrumbMetadata);
   const authUser = await getAuthUser(ctx);
   const serverUserId = authUser?._id ?? null;
   const serverUserRole = null;
@@ -181,7 +216,7 @@ export async function submitErrorReportHandler(
       lastOccurredAt: now,
       userId: serverUserId ?? existingReport.userId,
       userRole: serverUserRole ?? existingReport.userRole,
-      breadcrumbs: args.breadcrumbs.slice(-20),
+      breadcrumbs: sanitizedBreadcrumbs.slice(-20),
       metadata: args.metadata,
     });
     return {
@@ -239,6 +274,9 @@ export const submitErrorReport = mutation({
         timestamp: v.number(),
         type: v.string(),
         description: v.string(),
+        metadata: v.optional(
+          v.record(v.string(), v.union(v.string(), v.number()))
+        ),
       })
     ),
     metadata: v.object({
@@ -261,15 +299,26 @@ function formatIssueBody(report: {
   stackTrace?: string;
   userId?: string;
   userRole?: string;
-  breadcrumbs: { timestamp: number; type: string; description: string }[];
+  breadcrumbs: {
+    timestamp: number;
+    type: string;
+    description: string;
+    metadata?: Record<string, unknown>;
+  }[];
   metadata: { url: string; userAgent: string; timestamp: number };
   instanceCount: number;
 }): string {
   const breadcrumbsMd = report.breadcrumbs
-    .map(
-      (b) =>
-        `- **${new Date(b.timestamp).toISOString()}** [${b.type}] ${b.description}`
-    )
+    .map((b) => {
+      let line = `- **${new Date(b.timestamp).toISOString()}** [${b.type}] ${b.description}`;
+      if (b.metadata) {
+        const metaStr = Object.entries(b.metadata)
+          .map(([k, v]) => `${k}=${String(v)}`)
+          .join(", ");
+        line += ` \`${metaStr}\``;
+      }
+      return line;
+    })
     .join("\n");
 
   return `## Production Error Report
