@@ -86,10 +86,9 @@ describe("Error Reporter", () => {
     });
 
     it("should redact IDs over 6 digits", () => {
-      expect(sanitizeString("User 1234567 failed")).toBe(
-        "User [ID REDACTED] failed"
-      );
+      expect(sanitizeString("UserID12345678")).toBe("[ID REDACTED]");
       expect(sanitizeString("Value 12345 is fine")).toBe("Value 12345 is fine");
+      expect(sanitizeString("order abc1234567890")).toBe("order [ID REDACTED]");
     });
   });
 

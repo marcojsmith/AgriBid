@@ -132,6 +132,9 @@ export default function AdminErrorReportingSettings() {
               }`}
               aria-checked={enabled}
               role="switch"
+              aria-label={
+                enabled ? "Disable error reporting" : "Enable error reporting"
+              }
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
