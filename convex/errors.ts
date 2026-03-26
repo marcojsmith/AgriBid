@@ -10,11 +10,16 @@ import {
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { getGitHubConfig, isGitHubReportingEnabled } from "./admin/settings";
-import { requireAdmin } from "./lib/auth";
+import { getAuthUser, requireAdmin } from "./lib/auth";
 import { internal } from "./_generated/api";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 5;
+
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_REPORTS_PER_WINDOW = 10;
+
+let reportTimestamps: number[] = [];
 
 /**
  * Generate a deterministic fingerprint for an error to enable deduplication.
@@ -41,19 +46,12 @@ export function generateFingerprint(
     const lines = stackTrace.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
-      if (
-        trimmed &&
-        !trimmed.startsWith("at ") &&
-        !trimmed.startsWith("TypeError")
-      ) {
-        continue;
-      }
-      // Match "at FunctionName (path:line:col)" or "at path:line:col"
-      // Groups: 1 = Function name (optional), 2 = Location
-      const match = /at\s+(?:(.+?)\s+\()?(.*?)\)?$/.exec(trimmed);
-      if (match) {
-        topFrame = match[1] || match[2];
-        break;
+      if (trimmed && trimmed.startsWith("at ")) {
+        const match = /at\s+(?:(.+?)\s+\()?(.*?)\)?$/.exec(trimmed);
+        if (match) {
+          topFrame = match[1] || match[2];
+          break;
+        }
       }
     }
   }
@@ -61,11 +59,58 @@ export function generateFingerprint(
   return `${errorType}:${normalizedMessage}:${topFrame}`;
 }
 
+const SERVER_VALIDATION_PATTERNS = [
+  /not authenticated/i,
+  /unauthorized/i,
+  /forbidden/i,
+  /must be logged in/i,
+  /is required/i,
+  /must be between/i,
+  /invalid format/i,
+  /cannot bid on own/i,
+  /kyc required/i,
+  /only .* can perform/i,
+  /invalid.*token/i,
+  /session.*expired/i,
+];
+
+/**
+ * Check if an error is a validation error server-side.
+ *
+ * @param errorMessage - The error message to check
+ * @returns True if the error is a validation error
+ */
+function isServerValidationError(errorMessage: string): boolean {
+  for (const pattern of SERVER_VALIDATION_PATTERNS) {
+    if (pattern.test(errorMessage)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Check rate limit for error reporting.
+ *
+ * @returns True if rate limit is not exceeded
+ */
+function checkRateLimit(): boolean {
+  const now = Date.now();
+  reportTimestamps = reportTimestamps.filter(
+    (ts) => now - ts < RATE_LIMIT_WINDOW_MS
+  );
+  if (reportTimestamps.length >= MAX_REPORTS_PER_WINDOW) {
+    return false;
+  }
+  reportTimestamps.push(now);
+  return true;
+}
+
 /**
  * Handler for submitErrorReport.
  *
  * @param ctx - Convex Mutation context
- * @param args - Error details and metadata
+ * @param args - Error report details
  * @param args.errorType - The type of error (e.g., "TypeError")
  * @param args.errorMessage - The user-friendly error message
  * @param args.stackTrace - Optional technical stack trace
@@ -90,6 +135,28 @@ export async function submitErrorReportHandler(
     metadata: { url: string; userAgent: string; timestamp: number };
   }
 ) {
+  const authUser = await getAuthUser(ctx);
+  const serverUserId = authUser?._id ?? null;
+  const serverUserRole = null;
+
+  if (isServerValidationError(args.errorMessage)) {
+    return {
+      success: false,
+      isDuplicate: false,
+      instanceCount: 0,
+      reason: "validation_error",
+    };
+  }
+
+  if (!checkRateLimit()) {
+    return {
+      success: false,
+      isDuplicate: false,
+      instanceCount: 0,
+      reason: "rate_limited",
+    };
+  }
+
   const fingerprint = generateFingerprint(
     args.errorType,
     args.errorMessage,
@@ -112,8 +179,8 @@ export async function submitErrorReportHandler(
     await ctx.db.patch(existingReport._id, {
       instanceCount: existingReport.instanceCount + 1,
       lastOccurredAt: now,
-      userId: args.userId ?? existingReport.userId,
-      userRole: args.userRole ?? existingReport.userRole,
+      userId: serverUserId ?? existingReport.userId,
+      userRole: serverUserRole ?? existingReport.userRole,
       breadcrumbs: args.breadcrumbs.slice(-20),
       metadata: args.metadata,
     });
@@ -130,8 +197,8 @@ export async function submitErrorReportHandler(
     errorType: args.errorType,
     errorMessage: args.errorMessage,
     stackTrace: args.stackTrace,
-    userId: args.userId,
-    userRole: args.userRole,
+    userId: serverUserId ?? undefined,
+    userRole: serverUserRole ?? undefined,
     breadcrumbs: args.breadcrumbs.slice(-20),
     metadata: args.metadata,
     githubIssueUrl: undefined,
@@ -412,6 +479,12 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
           }
         );
 
+        if (response.status === 403 || response.status === 429) {
+          await ctx.db.patch(report._id, { status: "pending" });
+          failed++;
+          continue;
+        }
+
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(
@@ -546,6 +619,17 @@ export const processErrorReportsAction = internalAction({
 
           if (!response.ok) {
             const errorText = await response.text();
+            if (response.status === 403 || response.status === 429) {
+              console.warn(
+                "GitHub API rate limited for comments, will retry later"
+              );
+              await ctx.runMutation(internal.errors.updateReportStatus, {
+                id: report._id,
+                status: "pending",
+              });
+              failed++;
+              continue;
+            }
             throw new Error(
               `GitHub API error: ${String(response.status)} - ${errorText}`
             );
@@ -632,10 +716,9 @@ export const getErrorReports = query({
     ),
     limit: v.optional(v.number()),
   },
-  // Convex query type inference issue: handler expects (ctx, args) but Convex wrapper passes (ctx, args, debug).
-  // Using 'as any' as a workaround - same pattern used in admin/queries.ts listAnnouncements.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handler: getErrorReportsHandler as any,
+  handler: async (ctx, args) => {
+    return await getErrorReportsHandler(ctx, args);
+  },
 });
 
 /**

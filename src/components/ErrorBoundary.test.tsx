@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import * as errorReporter from "@/lib/error-reporter";
 
@@ -14,8 +14,7 @@ const ThrowError = () => {
 };
 
 describe("ErrorBoundary", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let consoleErrorSpy: any;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -26,6 +25,7 @@ describe("ErrorBoundary", () => {
 
   afterEach(() => {
     consoleErrorSpy?.mockRestore();
+    vi.unstubAllGlobals();
   });
 
   it("renders children when there is no error", () => {
@@ -60,7 +60,6 @@ describe("ErrorBoundary", () => {
 
   it("handles string errors thrown by children", () => {
     const ThrowString = () => {
-       
       throw "String error";
     };
 

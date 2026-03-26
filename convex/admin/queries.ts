@@ -10,7 +10,7 @@
  * Re-exports from specialized sub-modules:
  * - kyc.ts: getPendingKYC
  * - statistics.ts: getFinancialStats, getAdminStats, getAnnouncementStats, getSupportStats
- * - settings.ts: getSystemConfig
+ * - settings.ts: getSystemConfig, getGitHubToken
  */
 
 import { v } from "convex/values";

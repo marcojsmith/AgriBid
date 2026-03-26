@@ -181,12 +181,14 @@ describe("Errors Backend", () => {
 
       expect(result.success).toBe(true);
       expect(result.isDuplicate).toBe(false);
+      expect(result.instanceCount).toBe(1);
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "errorReports",
         expect.objectContaining({
+          errorType: "Error",
           errorMessage: "New error",
+          userId: "u1",
           instanceCount: 1,
-          userId: "test-user-id",
         })
       );
     });
@@ -218,7 +220,39 @@ describe("Errors Backend", () => {
         "existing_id",
         expect.objectContaining({
           instanceCount: 6,
-          userId: "new_user",
+          userId: "u1",
+        })
+      );
+    });
+
+    it("should increment instanceCount if duplicate exists within 24h", async () => {
+      const existing = {
+        _id: "existing_id" as Id<"errorReports">,
+        fingerprint: generateFingerprint("Error", "Duplicate"),
+        instanceCount: 5,
+        lastOccurredAt: now - 1000,
+        userId: "old_user",
+      };
+      const mockCtx = setupMockCtx([existing]);
+
+      const args = {
+        errorType: "Error",
+        errorMessage: "Duplicate",
+        breadcrumbs: [],
+        metadata: { url: "test", userAgent: "test", timestamp: now },
+        userId: "new_user",
+      };
+
+      const result = await submitErrorReportHandler(mockCtx, args);
+
+      expect(result.success).toBe(true);
+      expect(result.isDuplicate).toBe(true);
+      expect(result.instanceCount).toBe(6);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "existing_id",
+        expect.objectContaining({
+          instanceCount: 6,
+          userId: "u1",
         })
       );
     });

@@ -8,20 +8,20 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | -------------- | -------------------- |
 | `bun run test` | `bun run test --run` |
 
-| Command                                            | Description                                                                |
-| -------------------------------------------------- | -------------------------------------------------------------------------- |
-| `bun run dev`                                      | Start development server                                                   |
-| `bun run type-check`                               | Type check with tsgo (4.6x faster than tsc)                                |
-| `bun run lint`                                     | Check code for errors                                                      |
-| `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file                                             |
-| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file                                               |
-| `bun run test:coverage`                            | Run tests with coverage - saves to test-coverage/latest-coverage-output.md |
-| `bun run build`                                    | Production build (uses tsgo)                                               |
-| `bun run format`                                   | Format code with Prettier                                                  |
-| `bunx vercel`                                      | Deploy to staging                                                          |
-| `bunx vercel --prod`                               | Deploy to production                                                       |
-| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)                                            |
-| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)                                             |
+| Command                                            | Description                                                                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| `bun run dev`                                      | Start development server                                                    |
+| `bun run type-check`                               | Type check with tsgo (4.6x faster than tsc)                                 |
+| `bun run lint`                                     | Check code for errors                                                       |
+| `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file                                              |
+| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file                                                |
+| `bun run test:coverage`                            | Run tests with coverage - saves to test-coverage/latest-coverage-output.txt |
+| `bun run build`                                    | Production build (uses tsgo)                                                |
+| `bun run format`                                   | Format code with Prettier                                                   |
+| `bunx vercel`                                      | Deploy to staging                                                           |
+| `bunx vercel --prod`                               | Deploy to production                                                        |
+| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)                                             |
+| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)                                              |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
 
@@ -34,7 +34,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 - Create tests before starting a new feature or fixing a bug.
 - When encountering lint or typesafety errors or warns, correct these where possible.
 - You are a master delegator and make use of subagents where possible.
-- There are A LOT of tests, run tests ONLY for specific files (e.g. `bun run test --run path/to/directory/file.ts`) where possible instead of running `bun run test`.
+- There are many tests, run tests ONLY for specific files (e.g. `bun run test --run path/to/directory/file.ts`) where possible instead of running `bun run test`.
 - Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
 - If you spot something important — an incorrect import, a structural issue, a potential improvement — raise it, even if unrelated to the current task.
 - Never make assumptions. Review code and ask for clarification when unsure.
@@ -91,7 +91,7 @@ should be updated to enforce them.
 
 ## Test coverage
 
-Test coverage is saved to [test-coverage/latest-coverage-output.md] latest-coverage-output.md file.
+Test coverage is saved to `test-coverage/latest-coverage-output.txt` file.
 Review this file for the current test coverage report or run `bun run test:coverage` to update the file.
 
 ---

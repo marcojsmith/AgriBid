@@ -38,7 +38,10 @@ describe("useErrorHandler", () => {
       "An error occurred"
     );
     expect(toast.error).toHaveBeenCalledWith("Mocked error message");
-    expect(errorReporter.reportError).toHaveBeenCalledWith(error, undefined);
+    expect(errorReporter.reportError).toHaveBeenCalledWith(
+      "Mocked error message",
+      undefined
+    );
   });
 
   it("should use a fallback message", async () => {
@@ -70,7 +73,10 @@ describe("useErrorHandler", () => {
 
     await result.current.handleError(error);
 
-    expect(errorReporter.reportError).toHaveBeenCalledWith(error, context);
+    expect(errorReporter.reportError).toHaveBeenCalledWith(
+      "Mocked error message",
+      context
+    );
   });
 
   it("should report string errors", async () => {
@@ -79,7 +85,10 @@ describe("useErrorHandler", () => {
 
     await result.current.handleError(error);
 
-    expect(errorReporter.reportError).toHaveBeenCalledWith(error, undefined);
+    expect(errorReporter.reportError).toHaveBeenCalledWith(
+      "Mocked error message",
+      undefined
+    );
   });
 
   it("should report fallback message if error is null", async () => {
@@ -88,7 +97,7 @@ describe("useErrorHandler", () => {
     await result.current.handleError(null, "Fallback message");
 
     expect(errorReporter.reportError).toHaveBeenCalledWith(
-      "Fallback message",
+      "Mocked error message",
       undefined
     );
   });

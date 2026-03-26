@@ -76,8 +76,8 @@ describe("Admin Statistics", () => {
     };
 
     queryMock = {
-      withIndex: vi.fn((cb) => {
-        if (typeof cb === "function") cb(mockQ);
+      withIndex: vi.fn((_indexName: string, cb?: (q: unknown) => void) => {
+        if (cb && typeof cb === "function") cb(mockQ);
         return queryMock;
       }),
       filter: vi.fn((cb) => {
@@ -449,7 +449,7 @@ describe("Admin Statistics", () => {
     });
   });
 
-  it("getAdminStatsHandler should re-throw errors from getCounter", async () => {
+  it("getAdminStats should re-throw errors from getCounter", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
     } as Awaited<ReturnType<typeof auth.requireAdmin>>);

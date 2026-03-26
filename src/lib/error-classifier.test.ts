@@ -18,16 +18,18 @@ describe("Error Classifier", () => {
     new Error("Cannot bid on own auction"),
     new Error("KYC required before bidding"),
     new Error("Only admins can perform this action"),
-    new Error("Document not found"),
-    new Error("Auction 123 not found"),
     new Error("Invalid auth token"),
     new Error("Session has expired"),
-    new Error("Rate limit exceeded"),
-    new Error("Too many requests, try again later"),
     "Name is required", // test string error
   ];
 
   const unexpectedErrors = [
+    new Error("Document not found"),
+    new Error("Auction 123 not found"),
+    new Error("User 123 not found"),
+    new Error("Resource not found"),
+    new Error("Rate limit exceeded"),
+    new Error("Too many requests, try again later"),
     new Error("Cannot read properties of undefined (reading 'foo')"),
     new Error("NetworkError when attempting to fetch resource."),
     new Error("Failed to compile module"),

@@ -43,8 +43,7 @@ describe("Support Coverage", () => {
     db: {
       insert: ReturnType<typeof vi.fn>;
       query: (table: string) => MockQueryBuilder;
-    } & Record<string, ReturnType<typeof vi.fn>>;
-    query: (table: string) => MockQueryBuilder;
+    };
   }
 
   let mockCtx: MockCtx;
@@ -89,7 +88,6 @@ describe("Support Coverage", () => {
         insert: vi.fn().mockResolvedValue("t1"),
         query: vi.fn().mockReturnValue(queryMock),
       },
-      query: vi.fn().mockReturnValue(queryMock),
     };
   });
 

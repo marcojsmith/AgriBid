@@ -451,7 +451,7 @@ describe("Create Mutations", () => {
       );
     });
 
-    it("should update draft counter for existing draft", async () => {
+    it("should NOT update draft counter for existing draft", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",

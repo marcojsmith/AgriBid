@@ -160,6 +160,14 @@ export async function getSystemConfigHandler(ctx: QueryCtx) {
   const dbSettings = await ctx.db.query("settings").collect();
   const githubConfig = await getGitHubConfig(ctx);
 
+  const sensitiveKeys = ["github_api_token"];
+  const filteredDbSettings = dbSettings.map((setting) => {
+    if (sensitiveKeys.includes(setting.key)) {
+      return { ...setting, value: "***REDACTED***" as const };
+    }
+    return setting;
+  });
+
   const [defaultLimit, maxResultsCap, equipmentMetadataLimit, bidHistoryLimit] =
     await Promise.all([
       getSetting(
@@ -199,7 +207,7 @@ export async function getSystemConfigHandler(ctx: QueryCtx) {
         key: "bid_history_limit",
       },
     },
-    dbSettings,
+    dbSettings: filteredDbSettings,
     githubConfig: {
       enabled: githubConfig.enabled,
       tokenMasked: githubConfig.token
@@ -336,7 +344,12 @@ export async function updateSystemConfigHandler(
   let finalValue: string | number | boolean = args.value;
   if (args.key === "github_api_token" && typeof args.value === "string") {
     const encrypted = await encryptPII(args.value);
-    finalValue = encrypted ?? args.value;
+    if (!encrypted) {
+      throw new Error(
+        "Failed to encrypt sensitive setting. Operation aborted."
+      );
+    }
+    finalValue = encrypted;
   }
 
   const existing = await ctx.db
@@ -359,11 +372,16 @@ export async function updateSystemConfigHandler(
     });
   }
 
+  const sensitiveKeyPattern = /token|secret|password/i;
+  const maskedValue = sensitiveKeyPattern.test(args.key)
+    ? "***"
+    : String(args.value);
+
   await logAudit(ctx, {
     action: "UPDATE_SETTING",
     targetId: args.key,
     targetType: "setting",
-    details: `Updated ${args.key} to ${String(args.value)}`,
+    details: `Updated ${args.key} to ${maskedValue}`,
   });
 
   return { success: true };

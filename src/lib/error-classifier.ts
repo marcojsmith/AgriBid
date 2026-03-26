@@ -7,6 +7,8 @@
 
 type ErrorClassification = "validation" | "unexpected";
 
+export type { ErrorClassification };
+
 const VALIDATION_PATTERNS = [
   /not authenticated/i,
   /unauthorized/i,
@@ -18,14 +20,8 @@ const VALIDATION_PATTERNS = [
   /cannot bid on own/i,
   /kyc required/i,
   /only .* can perform/i,
-  /auction.*not found/i,
-  /user.*not found/i,
-  /resource.*not found/i,
-  /document.*not found/i,
   /invalid.*token/i,
   /session.*expired/i,
-  /rate limit/i,
-  /too many requests/i,
 ];
 
 /**
@@ -36,6 +32,13 @@ const VALIDATION_PATTERNS = [
  */
 export function classifyError(error: Error | string): ErrorClassification {
   const errorMessage = error instanceof Error ? error.message : error;
+
+  if (error instanceof Error) {
+    const errorCode = (error as unknown as { code?: string }).code;
+    if (errorCode === "VALIDATION_ERROR" || errorCode === "validation") {
+      return "validation";
+    }
+  }
 
   for (const pattern of VALIDATION_PATTERNS) {
     if (pattern.test(errorMessage)) {

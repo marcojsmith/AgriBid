@@ -16,6 +16,13 @@ const EMAIL_REGEX = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g;
 const PHONE_REGEX = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b\d{10}\b/g;
 const ID_REGEX = /\b\d{6,}\b/g;
 
+const ALLOWED_ADDITIONAL_INFO_KEYS = [
+  "component",
+  "action",
+  "userAction",
+  "additionalDetails",
+];
+
 /**
  * Sanitize a string by removing potential PII.
  *
@@ -28,6 +35,31 @@ export function sanitizeString(str: string): string {
   sanitized = sanitized.replace(PHONE_REGEX, "[PHONE REDACTED]");
   sanitized = sanitized.replace(ID_REGEX, "[ID REDACTED]");
   return sanitized;
+}
+
+/**
+ * Sanitize additional info by filtering to allowed keys and sanitizing values.
+ *
+ * @param additionalInfo - The additional info object to sanitize
+ * @returns Sanitized object with only allowed keys
+ */
+function sanitizeAdditionalInfo(
+  additionalInfo?: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  if (!additionalInfo) return undefined;
+
+  const sanitized: Record<string, unknown> = {};
+  for (const key of ALLOWED_ADDITIONAL_INFO_KEYS) {
+    if (additionalInfo[key] !== undefined) {
+      const value = additionalInfo[key];
+      if (typeof value === "string") {
+        sanitized[key] = sanitizeString(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+  }
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
 interface ErrorReportContext {
@@ -69,15 +101,22 @@ export async function reportError(
           typeof error === "string" ? error : "Unknown Error"
         )
       ),
-      stackTrace: error instanceof Error ? error.stack : undefined,
+      stackTrace:
+        error instanceof Error ? sanitizeString(error.stack ?? "") : undefined,
       userId: context?.userId,
       userRole: context?.userRole,
-      breadcrumbs: getBreadcrumbs(),
+      breadcrumbs: getBreadcrumbs().map((b) => ({
+        ...b,
+        description: sanitizeString(b.description),
+      })),
       metadata: {
-        url: typeof window !== "undefined" ? window.location.href : "unknown",
+        url: sanitizeString(
+          typeof window !== "undefined" ? window.location.href : "unknown"
+        ),
         userAgent:
           typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
         timestamp: Date.now(),
+        ...sanitizeAdditionalInfo(context?.additionalInfo),
       },
     };
 

@@ -19,7 +19,7 @@ vi.mock("./_generated/api", () => ({
       cleanup: "presenceCleanup",
     },
     errors: {
-      processErrorReports: "processErrorReports",
+      processErrorReportsAction: "processErrorReportsAction",
     },
   },
 }));
@@ -46,6 +46,12 @@ describe("Crons Coverage", () => {
       "cleanup presence records",
       { minutes: 15 },
       "presenceCleanup"
+    );
+
+    expect(crons.daily).toHaveBeenCalledWith(
+      "process error reports",
+      { hourUTC: 2, minuteUTC: 0 },
+      "processErrorReportsAction"
     );
   });
 });

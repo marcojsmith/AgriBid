@@ -15,6 +15,8 @@
 
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { MutationCtx } from "./_generated/server";
+import { requireAdmin } from "./lib/auth";
 
 // Re-export specialized modules for hierarchical access
 export * as categories from "./admin/categories";
@@ -68,6 +70,7 @@ export const processErrorReports = action({
     commented: number;
     failed: number;
   }> => {
+    await requireAdmin(ctx as unknown as MutationCtx);
     return await ctx.runAction(internal.errors.processErrorReportsAction, {});
   },
 });

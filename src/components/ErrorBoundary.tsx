@@ -39,10 +39,22 @@ export class ErrorBoundary extends Component<Props, State> {
    * @param error - The error that was thrown
    * @returns New state object
    */
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: unknown): State {
+    let errorMessage: string;
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "string") {
+      errorMessage = error;
+    } else {
+      try {
+        errorMessage = JSON.stringify(error);
+      } catch {
+        errorMessage = "An unexpected error occurred";
+      }
+    }
     return {
       hasError: true,
-      errorMessage: error.message || "An unexpected error occurred",
+      errorMessage: errorMessage || "An unexpected error occurred",
     };
   }
 
@@ -76,11 +88,15 @@ export class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div
+          className="min-h-screen flex items-center justify-center bg-gray-50 p-4"
+          role="alert"
+        >
           <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
             <div className="mb-6">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                 <svg
+                  aria-hidden="true"
                   className="h-6 w-6 text-red-600"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -105,13 +121,14 @@ export class ErrorBoundary extends Component<Props, State> {
               automatically reported and we&apos;ll look into it.
             </p>
 
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-800">
-                ✓ Error has been logged for investigation
+            <div className="mb-4 p-3 bg-gray-100 border border-gray-200 rounded-md">
+              <p className="text-sm text-gray-700">
+                Error has been logged for investigation
               </p>
             </div>
 
             <button
+              type="button"
               onClick={this.handleReload}
               className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium mb-2"
             >
@@ -119,6 +136,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </button>
 
             <button
+              type="button"
               onClick={this.handleGoBack}
               className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
             >

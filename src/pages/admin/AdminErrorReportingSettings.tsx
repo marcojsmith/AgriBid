@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { AlertTriangle, CheckCircle, Eye, EyeOff, Shield } from "lucide-react";
@@ -17,7 +17,6 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
  */
 export default function AdminErrorReportingSettings() {
   const settings = useQuery(api.admin.getSystemConfig);
-  const actualToken = useQuery(api.admin.getGitHubToken);
   const updateConfig = useMutation(api.admin.updateSystemConfig);
 
   const [enabled, setEnabled] = useState(false);
@@ -28,30 +27,30 @@ export default function AdminErrorReportingSettings() {
   const [labels, setLabels] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [hasExistingToken, setHasExistingToken] = useState(false);
   const [hasStartedTyping, setHasStartedTyping] = useState(false);
 
-  if (settings !== undefined && !loaded) {
-    const gc = settings.githubConfig;
-    setEnabled(gc.enabled);
-    const existing =
-      gc.tokenMasked.startsWith("****") && gc.tokenMasked.length > 4;
-    setToken(existing ? "" : gc.tokenMasked);
-    setSavedTokenMasked(existing ? gc.tokenMasked : "");
-    setHasExistingToken(existing);
-    setHasStartedTyping(false);
-    setRepoOwner(gc.repoOwner ?? "");
-    setRepoName(gc.repoName ?? "");
-    setLabels(gc.labels ?? "");
-    setLoaded(true);
-  }
+  useEffect(() => {
+    if (settings !== undefined) {
+      const gc = settings.githubConfig;
+      setEnabled(gc.enabled);
+      const existing =
+        gc.tokenMasked.startsWith("****") && gc.tokenMasked.length > 4;
+      setToken(existing ? "" : gc.tokenMasked);
+      setSavedTokenMasked(existing ? gc.tokenMasked : "");
+      setHasExistingToken(existing);
+      setHasStartedTyping(false);
+      setRepoOwner(gc.repoOwner ?? "");
+      setRepoName(gc.repoName ?? "");
+      setLabels(gc.labels ?? "");
+    }
+  }, [settings]);
 
   const displayToken = hasStartedTyping
     ? token
     : hasExistingToken
       ? showToken
-        ? (actualToken ?? token)
+        ? token
         : savedTokenMasked
       : token;
 
@@ -158,12 +157,16 @@ export default function AdminErrorReportingSettings() {
           {enabled && (
             <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="github-pat"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   GitHub Personal Access Token
                 </label>
                 <div className="relative">
                   <input
-                    type="text"
+                    id="github-pat"
+                    type={showToken ? "text" : "password"}
                     value={displayToken}
                     onChange={(e) => {
                       setToken(e.target.value);
@@ -181,6 +184,7 @@ export default function AdminErrorReportingSettings() {
                     onClick={() => {
                       setShowToken(!showToken);
                     }}
+                    aria-label={showToken ? "Hide token" : "Show token"}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     {showToken ? (
