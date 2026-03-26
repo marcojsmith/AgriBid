@@ -14,7 +14,8 @@ import { getErrorMessage } from "./utils";
 
 const EMAIL_REGEX = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g;
 const PHONE_REGEX = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b\d{10}\b/g;
-const ID_REGEX = /\b\d{6,}\b/g;
+// More targeted ID patterns to avoid redacting line numbers and versions
+const ID_REGEX = /\b[a-zA-Z]{2,}\d{8,}\b|\b[0-9a-f]{24}\b|\buuid:[0-9a-f-]{36}\b/gi;
 
 const ALLOWED_ADDITIONAL_INFO_KEYS = [
   "component",
@@ -123,7 +124,6 @@ export async function reportError(
         userAgent:
           typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
         timestamp: Date.now(),
-        ...sanitizeAdditionalInfo(context?.additionalInfo),
       },
     };
 

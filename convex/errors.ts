@@ -234,7 +234,7 @@ export async function submitErrorReportHandler(
     stackTrace: args.stackTrace,
     userId: serverUserId ?? undefined,
     userRole: serverUserRole ?? undefined,
-    breadcrumbs: args.breadcrumbs.slice(-20),
+    breadcrumbs: sanitizedBreadcrumbs.slice(-20),
     metadata: args.metadata,
     githubIssueUrl: undefined,
     githubIssueNumber: undefined,

@@ -416,17 +416,42 @@ async function updateGitHubErrorReportingConfigHandler(
 ): Promise<{ success: boolean }> {
   await requireAdmin(ctx);
 
+  const repoOwner = args.repoOwner.trim();
+  const repoName = args.repoName.trim();
+
+  // If enabling, validate that we have all required fields
+  if (args.enabled) {
+    if (!repoOwner || !repoName) {
+      throw new Error("Repository owner and name are required when enabling GitHub error reporting");
+    }
+
+    // Check if a new token is provided
+    const hasNewToken = args.token && !args.token.startsWith("****") && args.token.trim() !== "";
+
+    if (!hasNewToken) {
+      // No new token, check if we have an existing stored token
+      const existingTokenSetting = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", "github_api_token"))
+        .unique();
+
+      if (!existingTokenSetting || !existingTokenSetting.value) {
+        throw new Error("GitHub API token is required when enabling error reporting");
+      }
+    }
+  }
+
   const settingsToUpdate: Array<{
     key: string;
     value: string | boolean;
   }> = [
     { key: "github_error_reporting_enabled", value: args.enabled },
-    { key: "github_repo_owner", value: args.repoOwner.trim() },
-    { key: "github_repo_name", value: args.repoName.trim() },
+    { key: "github_repo_owner", value: repoOwner },
+    { key: "github_repo_name", value: repoName },
     { key: "github_error_labels", value: args.labels.trim() },
   ];
 
-  if (args.token && !args.token.startsWith("****")) {
+  if (args.token && !args.token.startsWith("****") && args.token.trim() !== "") {
     const encrypted = await encryptPII(args.token);
     if (!encrypted) {
       throw new Error("Failed to encrypt GitHub token. Operation aborted.");
