@@ -5,6 +5,7 @@ import {
   isGitHubReportingEnabled,
   getSystemConfigHandler,
   updateSystemConfigHandler,
+  updateGitHubErrorReportingConfigHandler,
   getSetting,
 } from "./settings";
 import * as adminUtils from "../admin_utils";
@@ -167,27 +168,14 @@ describe("Settings Config", () => {
       );
     });
 
-    it("encrypts GitHub API token before saving", async () => {
-      const mockDb = {
-        query: vi.fn().mockReturnValue({
-          withIndex: vi.fn(() => ({
-            unique: vi.fn().mockResolvedValue(null),
-          })),
-        }),
-        insert: vi.fn().mockResolvedValue("new_id"),
-      };
-      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+    it("rejects GitHub API token keys", async () => {
+      const ctx = createMockCtx({});
       const args = { key: "github_api_token", value: "new_token" };
 
-      await updateSystemConfigHandler(ctx, args);
-
-      expect(adminUtils.encryptPII).toHaveBeenCalledWith("new_token");
-      expect(mockDb.insert).toHaveBeenCalledWith(
-        "settings",
-        expect.objectContaining({
-          key: "github_api_token",
-          value: "encrypted_new_token",
-        })
+      await expect(
+        updateSystemConfigHandler(ctx as unknown as MutationCtx, args)
+      ).rejects.toThrow(
+        "Use updateGitHubErrorReportingConfig for GitHub error-reporting settings"
       );
     });
 
@@ -277,6 +265,79 @@ describe("Settings Config", () => {
           value: 6000,
         })
       ).rejects.toThrow("Setting pagination_default_limit cannot exceed 5000");
+    });
+  });
+
+  describe("updateGitHubErrorReportingConfig", () => {
+    it("encrypts GitHub API token before saving if provided", async () => {
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn(() => ({
+            unique: vi.fn().mockResolvedValue(null),
+          })),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+      const args = {
+        enabled: true,
+        token: "secret_token",
+        repoOwner: "owner",
+        repoName: "repo",
+        labels: "bug",
+      };
+
+      await updateGitHubErrorReportingConfigHandler(ctx, args);
+
+      expect(adminUtils.encryptPII).toHaveBeenCalledWith("secret_token");
+      expect(mockDb.insert).toHaveBeenCalledWith(
+        "settings",
+        expect.objectContaining({
+          key: "github_api_token",
+          value: "encrypted_secret_token",
+        })
+      );
+    });
+
+    it("does not update token if not provided", async () => {
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn((_idx, cb) => {
+            let result: { value: string } | null = null;
+            const q = {
+              eq: vi.fn((_field, val) => {
+                if (val === "github_api_token") {
+                  result = { value: "encrypted_old" };
+                }
+                return q;
+              }),
+            };
+            if (cb) (cb as (q: unknown) => void)(q);
+            return {
+              unique: vi.fn().mockResolvedValue(result),
+            };
+          }),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+      const args = {
+        enabled: true,
+        repoOwner: "owner",
+        repoName: "repo",
+        labels: "bug",
+      };
+
+      await updateGitHubErrorReportingConfigHandler(ctx, args);
+
+      expect(adminUtils.encryptPII).not.toHaveBeenCalled();
+      // Should not insert a new token key
+      const tokenInsert = mockDb.insert.mock.calls.find(
+        (call) => call[1].key === "github_api_token"
+      );
+      expect(tokenInsert).toBeUndefined();
     });
   });
 

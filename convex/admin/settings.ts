@@ -67,29 +67,34 @@ export async function getSetting<K extends SettingsKey>(
  * @returns GitHub config object with enabled flag and settings (token is decrypted if present)
  */
 export async function getGitHubConfig(ctx: QueryCtx): Promise<GitHubConfig> {
-  const [enabledSetting, tokenSetting, repoOwnerSetting, repoNameSetting, labelsSetting] =
-    await Promise.all([
-      ctx.db
-        .query("settings")
-        .withIndex("by_key", (q) => q.eq("key", "github_error_reporting_enabled"))
-        .unique(),
-      ctx.db
-        .query("settings")
-        .withIndex("by_key", (q) => q.eq("key", "github_api_token"))
-        .unique(),
-      ctx.db
-        .query("settings")
-        .withIndex("by_key", (q) => q.eq("key", "github_repo_owner"))
-        .unique(),
-      ctx.db
-        .query("settings")
-        .withIndex("by_key", (q) => q.eq("key", "github_repo_name"))
-        .unique(),
-      ctx.db
-        .query("settings")
-        .withIndex("by_key", (q) => q.eq("key", "github_error_labels"))
-        .unique(),
-    ]);
+  const [
+    enabledSetting,
+    tokenSetting,
+    repoOwnerSetting,
+    repoNameSetting,
+    labelsSetting,
+  ] = await Promise.all([
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_error_reporting_enabled"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_api_token"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_repo_owner"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_repo_name"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_error_labels"))
+      .unique(),
+  ]);
 
   const enabled = enabledSetting?.value === true;
 
@@ -262,20 +267,6 @@ export const getSystemConfig = query({
 });
 
 /**
- * Query to get the actual (decrypted) GitHub API token.
- * Only accessible to admin users.
- */
-export const getGitHubToken = query({
-  args: {},
-  returns: v.union(v.string(), v.null()),
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-    const githubConfig = await getGitHubConfig(ctx);
-    return githubConfig.token;
-  },
-});
-
-/**
  * Handler for updateSystemConfig.
  *
  * @param ctx - Convex Mutation context
@@ -295,16 +286,17 @@ export async function updateSystemConfigHandler(
 ) {
   await requireAdmin(ctx);
 
+  if (args.key.startsWith("github_")) {
+    throw new Error(
+      "Use updateGitHubErrorReportingConfig for GitHub error-reporting settings"
+    );
+  }
+
   const allowedKeys: Record<string, "string" | "number" | "boolean"> = {
     pagination_default_limit: "number",
     max_results_cap: "number",
     equipment_metadata_limit: "number",
     bid_history_limit: "number",
-    github_error_reporting_enabled: "boolean",
-    github_api_token: "string",
-    github_repo_owner: "string",
-    github_repo_name: "string",
-    github_error_labels: "string",
   };
 
   if (!(args.key in allowedKeys)) {
@@ -399,7 +391,14 @@ type GitHubErrorReportingConfig = {
   labels: string;
 };
 
-async function updateGitHubErrorReportingConfigHandler(
+/**
+ * Updates the GitHub error reporting configuration.
+ *
+ * @param ctx - The mutation context.
+ * @param args - The configuration arguments.
+ * @returns An object indicating success.
+ */
+export async function updateGitHubErrorReportingConfigHandler(
   ctx: MutationCtx,
   args: GitHubErrorReportingConfig
 ): Promise<{ success: boolean }> {
@@ -411,11 +410,14 @@ async function updateGitHubErrorReportingConfigHandler(
   // If enabling, validate that we have all required fields
   if (args.enabled) {
     if (!repoOwner || !repoName) {
-      throw new Error("Repository owner and name are required when enabling GitHub error reporting");
+      throw new Error(
+        "Repository owner and name are required when enabling GitHub error reporting"
+      );
     }
 
     // Check if a new token is provided
-    const hasNewToken = args.token && !args.token.startsWith("****") && args.token.trim() !== "";
+    const hasNewToken =
+      args.token && !args.token.startsWith("****") && args.token.trim() !== "";
 
     if (!hasNewToken) {
       // No new token, check if we have an existing stored token
@@ -425,7 +427,9 @@ async function updateGitHubErrorReportingConfigHandler(
         .unique();
 
       if (!existingTokenSetting || !existingTokenSetting.value) {
-        throw new Error("GitHub API token is required when enabling error reporting");
+        throw new Error(
+          "GitHub API token is required when enabling error reporting"
+        );
       }
     }
   }
@@ -440,7 +444,11 @@ async function updateGitHubErrorReportingConfigHandler(
     { key: "github_error_labels", value: args.labels.trim() },
   ];
 
-  if (args.token && !args.token.startsWith("****") && args.token.trim() !== "") {
+  if (
+    args.token &&
+    !args.token.startsWith("****") &&
+    args.token.trim() !== ""
+  ) {
     const encrypted = await encryptPII(args.token);
     if (!encrypted) {
       throw new Error("Failed to encrypt GitHub token. Operation aborted.");

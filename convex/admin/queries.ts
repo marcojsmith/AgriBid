@@ -10,7 +10,7 @@
  * Re-exports from specialized sub-modules:
  * - kyc.ts: getPendingKYC
  * - statistics.ts: getFinancialStats, getAdminStats, getAnnouncementStats, getSupportStats
- * - settings.ts: getSystemConfig, getGitHubToken
+ * - settings.ts: getSystemConfig
  */
 
 import { v } from "convex/values";
@@ -33,7 +33,7 @@ export {
   getSupportStats,
 } from "./statistics";
 
-export { getSystemConfig, getGitHubToken } from "./settings";
+export { getSystemConfig } from "./settings";
 
 // --- Bid Monitoring ---
 

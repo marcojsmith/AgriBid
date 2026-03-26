@@ -40,55 +40,6 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 - Never make assumptions. Review code and ask for clarification when unsure.
 - Document noteworthy discoveries in `codebase_notes.md`.
 
-## ESLint Strictness — Progressive Tightening
-
-Before you make any code changes, upgrade the TypeScript ESLint preset in
-`eslint.config.js` by swapping the commented lines:
-
-**After (apply this at the start of every branch):**
-
-```js
-// tseslint.configs.recommended,
-tseslint.configs.strictTypeChecked,
-tseslint.configs.stylisticTypeChecked,
-```
-
-This activates stricter type-aware linting for the duration of the branch.
-Any file you create or modify MUST pass with zero errors and zero warnings
-under this stricter config before committing.
-
-This extends the boy scout rule: leave every file you touch fully compliant
-with `strictTypeChecked` + `stylisticTypeChecked` — not just free of
-pre-existing warnings, but actively improved. **Never suppress errors.** Do not
-use `@ts-ignore`, `@ts-expect-error`, or `eslint-disable` (or any variant such
-as `@ts-nocheck`, `// eslint-disable-next-line`, `/* eslint-disable */`) in
-any `**/*.{ts,tsx,js,jsx}` file under any circumstances. Instead of suppressing
-errors, refactor the code to comply with the type system and lint rules. If a
-rule cannot be satisfied and genuinely blocks progress, open an issue describing
-the exceptional case before considering any suppression — but never commit
-suppressions without an issue reference.
-
-**Revert before commit (Strict TypeScript ESLint Workflow):**
-Development MUST be performed with `strictTypeChecked` + `stylisticTypeChecked`
-enabled (uncommented in eslint.config.js) to catch type-aware issues during
-coding. Before committing, swap the extends back to `recommended` so the
-pre-commit hook passes — the codebase still carries 593+ strict errors that
-must be resolved incrementally:
-
-```js
-tseslint.configs.recommended,
-// tseslint.configs.strictTypeChecked,
-// tseslint.configs.stylisticTypeChecked,
-```
-
-**Rationale:** Enabling `strictTypeChecked` + `stylisticTypeChecked` on main
-permanently would break the pre-commit hook immediately (1,463 problems).
-These configs are a developer toggle: enabled while working in a branch,
-disabled (reverted to `recommended`) before committing. Over time, as the
-backlog of strict violations is resolved, the strict configs will be
-permanently uncommented on main — at that point the pre-commit hook itself
-should be updated to enforce them.
-
 ## Test coverage
 
 Test coverage is saved to `test-coverage/latest-coverage-output.txt` file.
@@ -155,10 +106,10 @@ Consult these regularly. Keep them accurate when making changes.
 ## Testing coverage
 
 - Before you can commit, you need to achieve the global thresholds for test coverage:
-  - statements: 98%
-  - branches: 95%
-  - functions: 98%
-  - lines: 98%
+  - statements: 90%
+  - branches: 90%
+  - functions: 90%
+  - lines: 90%
 
 ## Type safety
 

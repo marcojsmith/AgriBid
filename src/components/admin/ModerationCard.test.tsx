@@ -78,7 +78,7 @@ describe("ModerationCard", () => {
 
   it("renders starting price", () => {
     render(<ModerationCard {...defaultProps} />);
-    expect(screen.getByText("R 150,000")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*150\s*000/)).toBeInTheDocument();
   });
 
   it("renders category badge", () => {

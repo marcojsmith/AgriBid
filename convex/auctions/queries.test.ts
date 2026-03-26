@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import * as queries from "./queries";
 
@@ -14,6 +14,45 @@ describe("Auctions Queries Re-exports", () => {
     expect(queries.getActiveAuctions).toBeDefined();
     expect(queries.getAllAuctions).toBeDefined();
     expect(queries.getCategories).toBeDefined();
+  });
+
+  it("should have functional handlers that can be called", async () => {
+    // This is a smoke test to ensure the re-exported handlers are actually functional
+    // We mock the context and check if the handler executes
+    const mockCtx = {
+      db: {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn().mockReturnThis(),
+          withSearchIndex: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
+          order: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([]),
+          paginate: vi.fn().mockResolvedValue({
+            page: [],
+            isDone: true,
+            continueCursor: "",
+          }),
+        }),
+      },
+      auth: {
+        getUserIdentity: vi.fn().mockResolvedValue({ subject: "user1" }),
+      },
+    };
+
+    // Call one of the handlers to prove it's connected
+    const result = await (
+      queries as unknown as {
+        getActiveAuctionsHandler: (
+          ctx: unknown,
+          args: {
+            paginationOpts: { numItems: number; cursor: string | null };
+          }
+        ) => Promise<unknown>;
+      }
+    ).getActiveAuctionsHandler(mockCtx, {
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+    expect(result).toBeDefined();
   });
 });
 

@@ -31,9 +31,10 @@ export default function AdminErrorReportingSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasExistingToken, setHasExistingToken] = useState(false);
   const [hasStartedTyping, setHasStartedTyping] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (settings !== undefined) {
+    if (settings !== undefined && !loaded) {
       const gc = settings.githubConfig;
       setEnabled(gc.enabled);
       const existing =
@@ -45,8 +46,9 @@ export default function AdminErrorReportingSettings() {
       setRepoOwner(gc.repoOwner ?? "");
       setRepoName(gc.repoName ?? "");
       setLabels(gc.labels ?? "");
+      setLoaded(true);
     }
-  }, [settings]);
+  }, [settings, loaded]);
 
   const displayToken = hasStartedTyping
     ? token
@@ -85,6 +87,7 @@ export default function AdminErrorReportingSettings() {
         labels,
       });
       toast.success("Error reporting settings saved");
+      setLoaded(false); // Reset loaded to refresh from server after save
     } catch {
       toast.error("Failed to save settings");
     } finally {
@@ -126,6 +129,7 @@ export default function AdminErrorReportingSettings() {
               type="button"
               onClick={() => {
                 setEnabled(!enabled);
+                setHasStartedTyping(true);
               }}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 enabled ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-700"
@@ -193,28 +197,38 @@ export default function AdminErrorReportingSettings() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label
+                    htmlFor="repo-owner"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
                     Repository Owner
                   </label>
                   <input
+                    id="repo-owner"
                     type="text"
                     value={repoOwner}
                     onChange={(e) => {
                       setRepoOwner(e.target.value);
+                      setHasStartedTyping(true);
                     }}
                     placeholder="username or org"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label
+                    htmlFor="repo-name"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
                     Repository Name
                   </label>
                   <input
+                    id="repo-name"
                     type="text"
                     value={repoName}
                     onChange={(e) => {
                       setRepoName(e.target.value);
+                      setHasStartedTyping(true);
                     }}
                     placeholder="AgriBid"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
@@ -223,14 +237,19 @@ export default function AdminErrorReportingSettings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  htmlFor="issue-labels"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
                   Issue Labels
                 </label>
                 <input
+                  id="issue-labels"
                   type="text"
                   value={labels}
                   onChange={(e) => {
                     setLabels(e.target.value);
+                    setHasStartedTyping(true);
                   }}
                   placeholder="bug, auto-reported"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"

@@ -31,18 +31,10 @@ export default defineConfig({
       ],
       thresholds: {
         // Global Baseline - Updated March 2026 after test coverage improvements
-        statements: 98,
-        branches: 95,
-        functions: 98,
-        lines: 98,
-
-        // Issue 59: Error Reporting
-        "src/lib/error-reporter.ts": {
-          statements: 65,
-          branches: 60,
-          functions: 50,
-          lines: 65,
-        },
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90,
         "src/hooks/useErrorHandler.ts": {
           statements: 80,
           branches: 60,

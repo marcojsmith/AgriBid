@@ -34,7 +34,6 @@ export {
   getAnnouncementStats,
   getSupportStats,
   getSystemConfig,
-  getGitHubToken,
 } from "./admin/queries";
 
 // Re-export mutation functions

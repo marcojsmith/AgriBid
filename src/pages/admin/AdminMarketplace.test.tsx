@@ -239,11 +239,11 @@ describe("AdminMarketplace Page", () => {
     expect(screen.getByText("Case IH Baler")).toBeInTheDocument();
 
     // Check amounts (R 5,000 etc)
-    expect(screen.getByText(/R 5,000/i)).toBeInTheDocument();
-    expect(screen.getByText(/R 7,500/i)).toBeInTheDocument();
+    expect(screen.getByText(/R\s*5\s*000/i)).toBeInTheDocument();
+    expect(screen.getByText(/R\s*7\s*500/i)).toBeInTheDocument();
 
     // Voided bid should have line-through style
-    expect(screen.getByText(/R 3,000/i)).toBeInTheDocument();
+    expect(screen.getByText(/R\s*3\s*000/i)).toBeInTheDocument();
 
     // Check bidder IDs (truncated)
     expect(screen.getAllByText(/user1_lo.../i)).toHaveLength(1);

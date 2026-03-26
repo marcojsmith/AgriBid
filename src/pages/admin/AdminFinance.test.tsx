@@ -123,10 +123,10 @@ describe("AdminFinance Page", () => {
 
     // Verify Finance Metrics (from FinanceTab)
     expect(screen.getByText("Total Sales Volume")).toBeInTheDocument();
-    expect(screen.getByText("R 500,000")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*500\s*000/)).toBeInTheDocument();
 
     expect(screen.getByText("Est. Commission (5%)")).toBeInTheDocument();
-    expect(screen.getByText("R 25,000")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*25\s*000/)).toBeInTheDocument();
 
     expect(screen.getByText("Auctions Settled")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
@@ -134,12 +134,12 @@ describe("AdminFinance Page", () => {
     // Verify Recent Transactions Table
     expect(screen.getByText("Recent Transactions")).toBeInTheDocument();
     expect(screen.getByText("Tractor X1000")).toBeInTheDocument();
-    expect(screen.getByText("R 100,000")).toBeInTheDocument();
-    expect(screen.getByText("R 5,000")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*100\s*000/)).toBeInTheDocument();
+    expect(screen.getByText(/R\s*5\s*000/)).toBeInTheDocument();
 
     expect(screen.getByText("Combine Harvester")).toBeInTheDocument();
-    expect(screen.getByText("R 200,000")).toBeInTheDocument();
-    expect(screen.getByText("R 10,000")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*200\s*000/)).toBeInTheDocument();
+    expect(screen.getByText(/R\s*10\s*000/)).toBeInTheDocument();
   });
 
   it("renders empty state in transactions table when no sales exist", () => {
