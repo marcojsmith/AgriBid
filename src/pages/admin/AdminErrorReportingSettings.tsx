@@ -48,12 +48,9 @@ export default function AdminErrorReportingSettings() {
     }
   }, [settings]);
 
-  const displayToken = hasStartedTyping
-    ? token
-    : hasExistingToken
-      ? showToken
-        ? token
-        : savedTokenMasked
+  const displayToken =
+    hasExistingToken && !showToken && !hasStartedTyping
+      ? savedTokenMasked
       : token;
 
   if (settings === undefined) {
@@ -85,8 +82,10 @@ export default function AdminErrorReportingSettings() {
         labels,
       });
       toast.success("Error reporting settings saved");
-    } catch {
-      toast.error("Failed to save settings");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : String(err) || "Failed to save settings"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -159,7 +158,13 @@ export default function AdminErrorReportingSettings() {
                     type={showToken ? "text" : "password"}
                     value={displayToken}
                     onChange={(e) => {
-                      setToken(e.target.value);
+                      const newValue = e.target.value;
+                      setToken(newValue);
+                      if (newValue !== savedTokenMasked) {
+                        setHasStartedTyping(true);
+                      }
+                    }}
+                    onPaste={() => {
                       setHasStartedTyping(true);
                     }}
                     placeholder="ghp_xxxxxxxxxxxx"
