@@ -6,6 +6,11 @@ import { toast } from "sonner";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 /**
  * Renders the Error Reporting settings page for configuring GitHub issue integration.
@@ -31,10 +36,9 @@ export default function AdminErrorReportingSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasExistingToken, setHasExistingToken] = useState(false);
   const [hasStartedTyping, setHasStartedTyping] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (settings !== undefined && !loaded) {
+    if (settings !== undefined) {
       const gc = settings.githubConfig;
       setEnabled(gc.enabled);
       const existing =
@@ -46,9 +50,8 @@ export default function AdminErrorReportingSettings() {
       setRepoOwner(gc.repoOwner ?? "");
       setRepoName(gc.repoName ?? "");
       setLabels(gc.labels ?? "");
-      setLoaded(true);
     }
-  }, [settings, loaded]);
+  }, [settings]);
 
   const displayToken =
     hasExistingToken && !showToken && !hasStartedTyping
@@ -84,7 +87,7 @@ export default function AdminErrorReportingSettings() {
         labels,
       });
       toast.success("Error reporting settings saved");
-      setLoaded(false); // Reset loaded to refresh from server after save
+      // Form state will be updated via the useEffect when settings query refreshes
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -102,64 +105,52 @@ export default function AdminErrorReportingSettings() {
       subtitle="Configure GitHub Issue Integration"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <CardTitle>GitHub Integration</CardTitle>
+                <CardDescription>
+                  Automatically create GitHub issues for unexpected errors
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                GitHub Integration
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Automatically create GitHub issues for unexpected errors
-              </p>
-            </div>
-          </div>
+          </CardHeader>
+          <CardContent>
 
-          <div className="flex items-center justify-between py-4 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between py-4 border-t">
             <div>
-              <p className="font-medium text-gray-900 dark:text-gray-100">
+              <p className="font-medium text-primary">
                 Enable Error Reporting
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 Automatically report unexpected errors to GitHub issues
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setEnabled(!enabled);
+            <Checkbox
+              id="enable-error-reporting"
+              checked={enabled}
+              onCheckedChange={(checked) => {
+                setEnabled(checked === true);
                 setHasStartedTyping(true);
               }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                enabled ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-700"
-              }`}
-              aria-checked={enabled}
-              role="switch"
               aria-label={
                 enabled ? "Disable error reporting" : "Enable error reporting"
               }
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  enabled ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
+            />
           </div>
 
           {enabled && (
-            <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <div className="space-y-4 pt-4 border-t">
               <div>
-                <label
-                  htmlFor="github-pat"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
+                <Label htmlFor="github-pat">
                   GitHub Personal Access Token
-                </label>
-                <div className="relative">
-                  <input
+                </Label>
+                <div className="relative mt-1">
+                  <Input
                     id="github-pat"
                     type={showToken ? "text" : "password"}
                     value={displayToken}
@@ -174,9 +165,9 @@ export default function AdminErrorReportingSettings() {
                       setHasStartedTyping(true);
                     }}
                     placeholder="ghp_xxxxxxxxxxxx"
-                    className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 pr-10 ${
+                    className={`pr-10 ${
                       hasExistingToken && !showToken
-                        ? "italic text-gray-400"
+                        ? "italic text-muted-foreground"
                         : ""
                     }`}
                   />
@@ -186,7 +177,7 @@ export default function AdminErrorReportingSettings() {
                       setShowToken(!showToken);
                     }}
                     aria-label={showToken ? "Hide token" : "Show token"}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                   >
                     {showToken ? (
                       <EyeOff className="h-4 w-4" />
@@ -195,7 +186,7 @@ export default function AdminErrorReportingSettings() {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {hasExistingToken
                     ? "Token is set. Leave empty to keep, or enter new token to replace."
                     : "Requires repo scope. Stored encrypted."}
@@ -204,13 +195,10 @@ export default function AdminErrorReportingSettings() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label
-                    htmlFor="repo-owner"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
+                  <Label htmlFor="repo-owner">
                     Repository Owner
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     id="repo-owner"
                     type="text"
                     value={repoOwner}
@@ -219,17 +207,14 @@ export default function AdminErrorReportingSettings() {
                       setHasStartedTyping(true);
                     }}
                     placeholder="username or org"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    className="mt-1"
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="repo-name"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >
+                  <Label htmlFor="repo-name">
                     Repository Name
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     id="repo-name"
                     type="text"
                     value={repoName}
@@ -238,19 +223,16 @@ export default function AdminErrorReportingSettings() {
                       setHasStartedTyping(true);
                     }}
                     placeholder="AgriBid"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    className="mt-1"
                   />
                 </div>
               </div>
 
               <div>
-                <label
-                  htmlFor="issue-labels"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
+                <Label htmlFor="issue-labels">
                   Issue Labels
-                </label>
-                <input
+                </Label>
+                <Input
                   id="issue-labels"
                   type="text"
                   value={labels}
@@ -259,9 +241,9 @@ export default function AdminErrorReportingSettings() {
                     setHasStartedTyping(true);
                   }}
                   placeholder="bug, auto-reported"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="mt-1"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Comma-separated label names to apply to new issues
                 </p>
               </div>
@@ -283,8 +265,8 @@ export default function AdminErrorReportingSettings() {
           )}
 
           {!enabled && (
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4 mt-4">
-              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <div className="bg-muted rounded-md p-4 mt-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="text-sm">
                   Error reporting is disabled. Unexpected errors will not be
@@ -294,46 +276,48 @@ export default function AdminErrorReportingSettings() {
             </div>
           )}
 
-          <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-800">
-            <button
+          <div className="flex justify-end pt-4 border-t">
+            <Button
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {isSaving ? "Saving..." : "Save Settings"}
-            </button>
+            </Button>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {enabled && repoOwner && repoName && (
-          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 h-fit">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <Card className="h-fit">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <CardTitle>Configuration Status</CardTitle>
+                  <CardDescription>
+                    GitHub issues will be created in{" "}
+                    <span className="font-mono">
+                      {repoOwner}/{repoName}
+                    </span>
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                  Configuration Status
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  GitHub issues will be created in{" "}
-                  <span className="font-mono">
-                    {repoOwner}/{repoName}
-                  </span>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>
+                  Errors are processed daily at 2 AM UTC via a scheduled cron job.
+                </p>
+                <p>
+                  Duplicate errors (same fingerprint within 24 hours) are grouped
+                  and added as comments to existing issues.
                 </p>
               </div>
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-              <p>
-                Errors are processed daily at 2 AM UTC via a scheduled cron job.
-              </p>
-              <p>
-                Duplicate errors (same fingerprint within 24 hours) are grouped
-                and added as comments to existing issues.
-              </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </AdminLayout>
