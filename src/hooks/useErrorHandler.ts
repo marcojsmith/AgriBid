@@ -40,7 +40,7 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
 
       if (reportToGitHub) {
         const errorObj: Error | string =
-          error instanceof Error ? message : message;
+          error instanceof Error ? error : message;
         await reportError(errorObj, context);
       }
     },

@@ -180,6 +180,20 @@ describe("Admin Queries - Auction Flags", () => {
       expect(result[1].reporterName).toBe("Reporter Name");
       expect(users.findUserById).toHaveBeenCalledTimes(1);
     });
+
+    it("should throw unauthorized error when user is not admin", async () => {
+      vi.mocked(auth.requireAdmin).mockRejectedValueOnce(
+        new Error("unauthorized")
+      );
+
+      await expect(
+        getAuctionFlagsHandler(mockCtx as unknown as QueryCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("unauthorized");
+
+      expect(auth.requireAdmin).toHaveBeenCalled();
+    });
   });
 
   describe("getAllPendingFlagsHandler", () => {
@@ -250,6 +264,18 @@ describe("Admin Queries - Auction Flags", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].auctionTitle).toBe("Unknown Auction");
+    });
+
+    it("should throw unauthorized error when user is not admin", async () => {
+      vi.mocked(auth.requireAdmin).mockRejectedValueOnce(
+        new Error("unauthorized")
+      );
+
+      await expect(
+        getAllPendingFlagsHandler(mockCtx as unknown as QueryCtx)
+      ).rejects.toThrow("unauthorized");
+
+      expect(auth.requireAdmin).toHaveBeenCalled();
     });
   });
 });

@@ -278,6 +278,9 @@ export default defineSchema({
     stackTrace: v.optional(v.string()),
     userId: v.optional(v.string()),
     userRole: v.optional(v.string()),
+    additionalInfo: v.optional(
+      v.record(v.string(), v.union(v.string(), v.number()))
+    ),
     breadcrumbs: v.array(
       v.object({
         timestamp: v.number(),

@@ -145,6 +145,7 @@ function sanitizeBreadcrumbMetadata(
  * @param args.stackTrace - Optional technical stack trace
  * @param args.userId - Optional ID of the user who encountered the error
  * @param args.userRole - Optional role of the user
+ * @param args.additionalInfo - Optional additional context
  * @param args.breadcrumbs - Recent user actions leading to the error
  * @param args.metadata - Environment metadata (URL, user agent, etc.)
  * @param args.metadata.url - The URL where the error occurred
@@ -160,6 +161,7 @@ export async function submitErrorReportHandler(
     stackTrace?: string;
     userId?: string;
     userRole?: string;
+    additionalInfo?: Record<string, string | number>;
     breadcrumbs: {
       timestamp: number;
       type: string;
@@ -216,6 +218,7 @@ export async function submitErrorReportHandler(
       lastOccurredAt: now,
       userId: serverUserId ?? existingReport.userId,
       userRole: serverUserRole ?? existingReport.userRole,
+      additionalInfo: args.additionalInfo ?? existingReport.additionalInfo,
       breadcrumbs: sanitizedBreadcrumbs.slice(-20),
       metadata: args.metadata,
     });
@@ -234,6 +237,7 @@ export async function submitErrorReportHandler(
     stackTrace: args.stackTrace,
     userId: serverUserId ?? undefined,
     userRole: serverUserRole ?? undefined,
+    additionalInfo: args.additionalInfo,
     breadcrumbs: sanitizedBreadcrumbs.slice(-20),
     metadata: args.metadata,
     githubIssueUrl: undefined,
@@ -269,6 +273,9 @@ export const submitErrorReport = mutation({
     stackTrace: v.optional(v.string()),
     userId: v.optional(v.string()),
     userRole: v.optional(v.string()),
+    additionalInfo: v.optional(
+      v.record(v.string(), v.union(v.string(), v.number()))
+    ),
     breadcrumbs: v.array(
       v.object({
         timestamp: v.number(),
@@ -299,6 +306,7 @@ function formatIssueBody(report: {
   stackTrace?: string;
   userId?: string;
   userRole?: string;
+  additionalInfo?: Record<string, string | number>;
   breadcrumbs: {
     timestamp: number;
     type: string;
@@ -321,6 +329,12 @@ function formatIssueBody(report: {
     })
     .join("\n");
 
+  const additionalInfoMd = report.additionalInfo
+    ? Object.entries(report.additionalInfo)
+        .map(([k, v]) => `- **${k}:** ${String(v)}`)
+        .join("\n")
+    : "None";
+
   return `## Production Error Report
 
 **Error Type:** ${report.errorType}
@@ -335,6 +349,9 @@ ${report.stackTrace ?? "No stack trace available"}
 ### User Context
 - **User ID:** ${report.userId ?? "Anonymous"}
 - **User Role:** ${report.userRole ?? "N/A"}
+
+### Additional Info
+${additionalInfoMd}
 
 ### Recent Actions (Breadcrumbs)
 ${breadcrumbsMd || "No breadcrumbs recorded"}
