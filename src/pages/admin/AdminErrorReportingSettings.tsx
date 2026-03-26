@@ -185,7 +185,7 @@ export default function AdminErrorReportingSettings() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {token.startsWith("****")
+                  {hasExistingToken
                     ? "Token is set. Leave empty to keep, or enter new token to replace."
                     : "Requires repo scope. Stored encrypted."}
                 </p>
