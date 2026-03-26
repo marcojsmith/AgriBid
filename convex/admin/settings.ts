@@ -67,25 +67,12 @@ export async function getSetting<K extends SettingsKey>(
  * @returns GitHub config object with enabled flag and settings (token is decrypted if present)
  */
 export async function getGitHubConfig(ctx: QueryCtx): Promise<GitHubConfig> {
-  const enabledSetting = await ctx.db
-    .query("settings")
-    .withIndex("by_key", (q) => q.eq("key", "github_error_reporting_enabled"))
-    .unique();
-
-  const enabled = enabledSetting?.value === true;
-
-  if (!enabled) {
-    return {
-      enabled: false,
-      token: null,
-      repoOwner: null,
-      repoName: null,
-      labels: null,
-    };
-  }
-
-  const [tokenSetting, repoOwnerSetting, repoNameSetting, labelsSetting] =
+  const [enabledSetting, tokenSetting, repoOwnerSetting, repoNameSetting, labelsSetting] =
     await Promise.all([
+      ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", "github_error_reporting_enabled"))
+        .unique(),
       ctx.db
         .query("settings")
         .withIndex("by_key", (q) => q.eq("key", "github_api_token"))
@@ -103,6 +90,8 @@ export async function getGitHubConfig(ctx: QueryCtx): Promise<GitHubConfig> {
         .withIndex("by_key", (q) => q.eq("key", "github_error_labels"))
         .unique(),
     ]);
+
+  const enabled = enabledSetting?.value === true;
 
   let decryptedToken: string | null = null;
   if (tokenSetting?.value && typeof tokenSetting.value === "string") {
