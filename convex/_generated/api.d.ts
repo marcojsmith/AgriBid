@@ -39,6 +39,7 @@ import type * as auth from "../auth.js";
 import type * as config from "../config.js";
 import type * as constants from "../constants.js";
 import type * as crons from "../crons.js";
+import type * as errors from "../errors.js";
 import type * as http from "../http.js";
 import type * as image_cache from "../image_cache.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   config: typeof config;
   constants: typeof constants;
   crons: typeof crons;
+  errors: typeof errors;
   http: typeof http;
   image_cache: typeof image_cache;
   "lib/auth": typeof lib_auth;

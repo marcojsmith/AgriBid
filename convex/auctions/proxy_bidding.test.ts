@@ -40,9 +40,25 @@ interface QueryMock {
 const createMockQuery = (
   results: Record<string, unknown>[] = []
 ): QueryMock => {
+  const mockQ = {
+    eq: vi.fn().mockReturnThis(),
+    neq: vi.fn().mockReturnThis(),
+    gte: vi.fn().mockReturnThis(),
+    lte: vi.fn().mockReturnThis(),
+    gt: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
+    field: vi.fn((f) => f),
+  };
+
   const query: QueryMock = {
-    withIndex: vi.fn().mockReturnThis(),
-    filter: vi.fn().mockReturnThis(),
+    withIndex: vi.fn((cb) => {
+      if (typeof cb === "function") cb(mockQ);
+      return query;
+    }),
+    filter: vi.fn((cb) => {
+      if (typeof cb === "function") cb(mockQ);
+      return query;
+    }),
     order: vi.fn().mockReturnThis(),
     first: vi.fn().mockResolvedValue(results[0] || null),
     unique: vi.fn().mockResolvedValue(results[0] || null),

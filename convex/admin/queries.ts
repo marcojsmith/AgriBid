@@ -33,7 +33,7 @@ export {
   getSupportStats,
 } from "./statistics";
 
-export { getSystemConfig } from "./settings";
+export { getSystemConfig, getGitHubToken } from "./settings";
 
 // --- Bid Monitoring ---
 

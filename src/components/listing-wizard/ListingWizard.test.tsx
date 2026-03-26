@@ -53,6 +53,9 @@ vi.mock("convex/_generated/api", () => ({
         },
       },
     },
+    errors: {
+      submitErrorReport: { _path: "errors:submitErrorReport" },
+    },
   },
 }));
 

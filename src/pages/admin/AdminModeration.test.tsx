@@ -53,6 +53,9 @@ vi.mock("convex/_generated/api", () => ({
     admin: {
       getAdminStats: "admin:getAdminStats",
     },
+    errors: {
+      submitErrorReport: "errors:submitErrorReport",
+    },
   },
 }));
 

@@ -371,3 +371,49 @@ export const createMockPresence = (
   };
   return { ...base, ...overrides };
 };
+
+/**
+ * Creates a mock error report document for testing.
+ * @param overrides - Optional field overrides
+ * @returns Mock error report document
+ */
+export const createMockErrorReport = (
+  overrides: Partial<Doc<"errorReports">> = {}
+): Doc<"errorReports"> => {
+  const base: Doc<"errorReports"> = {
+    _id: `error_${now.toString()}` as Id<"errorReports">,
+    _creationTime: now,
+    fingerprint: "test_fingerprint_123",
+    status: "pending",
+    errorType: "TypeError",
+    errorMessage: "Cannot read properties of undefined (reading 'foo')",
+    stackTrace:
+      "TypeError: Cannot read properties of undefined (reading 'foo')\n    at Object.<anonymous> (/app/src/test.ts:1:1)",
+    userId: "user123",
+    userRole: "buyer",
+    breadcrumbs: [
+      {
+        timestamp: now - 10000,
+        type: "navigation",
+        description: "Navigated to /auctions",
+      },
+      {
+        timestamp: now - 5000,
+        type: "interaction",
+        description: "Clicked bid button",
+      },
+    ],
+    metadata: {
+      url: "https://agribid.com/auctions/123",
+      userAgent: "Mozilla/5.0 (Test)",
+      timestamp: now,
+    },
+    githubIssueUrl: undefined,
+    githubIssueNumber: undefined,
+    instanceCount: 1,
+    lastOccurredAt: now,
+    createdAt: now,
+    errorMessageNormalized: "cannot read properties of undefined reading foo",
+  };
+  return { ...base, ...overrides };
+};

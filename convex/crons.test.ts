@@ -18,6 +18,9 @@ vi.mock("./_generated/api", () => ({
     presence: {
       cleanup: "presenceCleanup",
     },
+    errors: {
+      processErrorReports: "processErrorReports",
+    },
   },
 }));
 

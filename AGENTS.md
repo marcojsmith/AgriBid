@@ -8,20 +8,20 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | -------------- | -------------------- |
 | `bun run test` | `bun run test --run` |
 
-| Command                                            | Description                                 |
-| -------------------------------------------------- | ------------------------------------------- |
-| `bun run dev`                                      | Start development server                    |
-| `bun run type-check`                               | Type check with tsgo (4.6x faster than tsc) |
-| `bun run lint`                                     | Check code for errors                       |
-| `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file              |
-| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file                |
-| `bun run test:coverage`                            | Run tests with coverage                     |
-| `bun run build`                                    | Production build (uses tsgo)                |
-| `bun run format`                                   | Format code with Prettier                   |
-| `bunx vercel`                                      | Deploy to staging                           |
-| `bunx vercel --prod`                               | Deploy to production                        |
-| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)             |
-| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)              |
+| Command                                            | Description                                                                |
+| -------------------------------------------------- | -------------------------------------------------------------------------- |
+| `bun run dev`                                      | Start development server                                                   |
+| `bun run type-check`                               | Type check with tsgo (4.6x faster than tsc)                                |
+| `bun run lint`                                     | Check code for errors                                                      |
+| `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file                                             |
+| `bun run test --run path/to/directory/file.ts`     | Run test for a specific file                                               |
+| `bun run test:coverage`                            | Run tests with coverage - saves to test-coverage/latest-coverage-output.md |
+| `bun run build`                                    | Production build (uses tsgo)                                               |
+| `bun run format`                                   | Format code with Prettier                                                  |
+| `bunx vercel`                                      | Deploy to staging                                                          |
+| `bunx vercel --prod`                               | Deploy to production                                                       |
+| `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)                                            |
+| `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)                                             |
 
 **URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
 
@@ -34,8 +34,11 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 - Create tests before starting a new feature or fixing a bug.
 - When encountering lint or typesafety errors or warns, correct these where possible.
 - You are a master delegator and make use of subagents where possible.
-- There are a lot of tests, run tests for specific files where possible instead of for the whole codebase.
+- There are A LOT of tests, run tests ONLY for specific files (e.g. `bun run test --run path/to/directory/file.ts`) where possible instead of running `bun run test`.
 - Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
+- If you spot something important — an incorrect import, a structural issue, a potential improvement — raise it, even if unrelated to the current task.
+- Never make assumptions. Review code and ask for clarification when unsure.
+- Document noteworthy discoveries in `codebase_notes.md`.
 
 ## ESLint Strictness — Progressive Tightening
 
@@ -85,6 +88,11 @@ disabled (reverted to `recommended`) before committing. Over time, as the
 backlog of strict violations is resolved, the strict configs will be
 permanently uncommented on main — at that point the pre-commit hook itself
 should be updated to enforce them.
+
+## Test coverage
+
+Test coverage is saved to [test-coverage/latest-coverage-output.md] latest-coverage-output.md file.
+Review this file for the current test coverage report or run `bun run test:coverage` to update the file.
 
 ---
 
@@ -297,128 +305,6 @@ When a task benefits from a specialist LLM (brainstorming, image generation, com
 
 ---
 
-# 13. Git Worktrees for Multi-Agent Workflow
-
-Use Git worktrees to run multiple agents in parallel on separate branches without interfering with each other.
-
-## Workflow Overview
-
-```text
-1. User    → Provides list of issues/branches
-2. Agent   → Creates worktrees + prompt.md for each
-3. Agent   → Provides "start prompts" for each worktree
-4. User    → Starts agents in each worktree (separate terminals)
-5. Agent   → Resolves issue in its worktree
-6. User    → Merges PR to main
-7. User    → Prompts agent to cleanup merged worktree
-```
-
-## Directory Structure
-
-```text
-AgriBid-82/
-├── app/
-├── conductor/
-├── worktrees/
-│   ├── feature-issue-123/
-│   │   ├── prompt.md          ← Instructions for this worktree
-│   │   └── app/
-│   ├── bugfix-issue-456/
-│   │   ├── prompt.md
-│   │   └── app/
-```
-
-## Commands
-
-| Command                                                | Description                          |
-| ------------------------------------------------------ | ------------------------------------ |
-| `git worktree add worktrees/<branch-name> -b <branch>` | Create worktree with new branch      |
-| `git worktree add worktrees/<branch-name> <branch>`    | Create worktree from existing branch |
-| `git worktree list`                                    | List all worktrees                   |
-| `git worktree remove worktrees/<branch-name>`          | Remove worktree                      |
-| `git branch -d <branch>`                               | Delete local branch (after merge)    |
-
-## Creating Worktrees
-
-**User provides:**
-
-- List of branch names
-- Issue descriptions
-
-**Agent creates:**
-
-1. Each worktree under `worktrees/<branch-name>/`
-2. `prompt.md` in each worktree with detailed instructions
-
-## prompt.md Template
-
-````markdown
-# Issue: <issue-number> - <title>
-
-## Context
-
-<Description of what this issue is about>
-
-## Goals
-
-- <Goal 1>
-- <Goal 2>
-
-## Success Criteria
-
-- <Criteria 1>
-- <Criteria 2>
-
-## Testing
-
-- How to verify the fix works
-- Any existing tests to run
-
-## Notes
-
-- <Any relevant context or constraints>
-
-## Example Start Prompts
-
-**Worktree: worktrees/feature-issue-123/**
-
-> Resolve the issue described in prompt.md in this directory. Run `bun run lint` → `bun run test --run` → `bun run build` must all pass before completing.
-
-**Worktree: worktrees/bugfix-issue-456/**
-
-> Fix the bug described in prompt.md. Ensure all tests pass and verify the fix manually using Chrome DevTools MCP.
-
-## Cleanup After Merge
-
-When a worktree's PR is merged to main:
-
-```bash
-# Remove worktree directory
-git worktree remove worktrees/<branch-name>
-
-# Delete local branch (after confirming merged)
-git branch -d <branch>
-```
-````
-
-## Notes
-
-- Each worktree has independent state — changes don't affect other worktrees
-- Worktrees share the same `.git` database (no separate clone)
-- Run dev servers on different ports: `bun run dev --port 5174`
-- Use absolute paths when working in worktrees: `~/repo/worktrees/<branch-name>/`
-
----
-
-# 14. Scratchpad
+# 11. Scratchpad
 
 Use `codebase_notes.md` (markdown) to capture architectural decisions, ideas, potential improvements, and anything noteworthy encountered during development. Update and reorganise it regularly.
-
----
-
-# 15. General Behaviour
-
-- If you spot something important — an incorrect import, a structural issue, a potential improvement — raise it, even if unrelated to the current task.
-- Never make assumptions. Review code and ask for clarification when unsure.
-- Document noteworthy discoveries in `codebase_notes.md`.
-- There is no seahorse emoji.

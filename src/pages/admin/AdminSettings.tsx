@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Hammer, TrendingUp, ShieldCheck } from "lucide-react";
+import { Hammer, TrendingUp, ShieldCheck, Bug } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -9,12 +9,13 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { SettingsCard } from "@/components/admin/SettingsCard";
 
 /**
- * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees and security logs.
+ * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees, security logs, and error reporting.
  *
- * Displays a centred loading indicator while admin statistics are being fetched. Once loaded, presents three settings cards:
+ * Displays a centred loading indicator while admin statistics are being fetched. Once loaded, presents four settings cards:
  * - Equipment Metadata: navigates to the internal equipment catalog management view.
  * - Platform Fees: opens the related GitHub issue and shows an info toast.
  * - Security Logs: navigates to the internal audit view.
+ * - Error Reporting: configures GitHub issue creation for unexpected errors.
  *
  * @returns The AdminSettings page component as a React element.
  */
@@ -66,6 +67,12 @@ export default function AdminSettings() {
             description="Audit administrative actions and access."
             icon={<ShieldCheck />}
             action={() => navigate("/admin/audit")}
+          />
+          <SettingsCard
+            title="Error Reporting"
+            description="Configure GitHub issue creation for unexpected errors."
+            icon={<Bug />}
+            action={() => navigate("/admin/error-reporting")}
           />
         </div>
       </div>

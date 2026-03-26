@@ -30,4 +30,14 @@ crons.interval(
   internal.presence.cleanup
 );
 
+/**
+ * Daily job to process error reports and create GitHub issues.
+ * Runs at 2 AM UTC to avoid peak hours.
+ */
+crons.daily(
+  "process error reports",
+  { hourUTC: 2, minuteUTC: 0 },
+  internal.errors.processErrorReportsAction
+);
+
 export default crons;

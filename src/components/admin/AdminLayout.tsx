@@ -16,6 +16,7 @@ import {
   FileText,
   Settings,
   Activity,
+  Bug,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const SIDEBAR_ITEMS = [
   { label: "Equipment", icon: LayoutGrid, path: "/admin/equipment-catalog" },
   { label: "Audit", icon: FileText, path: "/admin/audit" },
   { label: "System", icon: Settings, path: "/admin/settings" },
+  { label: "Error Reports", icon: Bug, path: "/admin/error-reports" },
 ];
 
 /**

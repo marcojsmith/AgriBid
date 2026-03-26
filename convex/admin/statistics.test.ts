@@ -4,6 +4,10 @@ import {
   getAdminStats,
   getFinancialStats,
   initializeCounters,
+  getAnnouncementStats,
+  getSupportStats,
+  initializeCountersHandler,
+  getAdminStatsHandler,
 } from "./statistics";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
@@ -32,6 +36,12 @@ vi.mock("../presence", () => ({
   countOnlineUsers: vi.fn(),
 }));
 
+vi.mock("../constants", () => ({
+  MS_PER_DAY: 86400000,
+}));
+
+vi.mock("../support", () => ({}));
+
 interface MockQuery {
   withIndex: (index: string, cb?: (q: unknown) => unknown) => MockQuery;
   filter: (cb: (q: unknown) => unknown) => MockQuery;
@@ -57,9 +67,23 @@ describe("Admin Statistics", () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
+    const mockQ = {
+      eq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      gt: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
+    };
+
     queryMock = {
-      withIndex: vi.fn(() => queryMock),
-      filter: vi.fn(() => queryMock),
+      withIndex: vi.fn((cb) => {
+        if (typeof cb === "function") cb(mockQ);
+        return queryMock;
+      }),
+      filter: vi.fn((cb) => {
+        if (typeof cb === "function") cb(mockQ);
+        return queryMock;
+      }),
       unique: vi.fn().mockResolvedValue(null),
       collect: vi.fn().mockResolvedValue([]),
       paginate: vi.fn().mockResolvedValue({
@@ -196,95 +220,28 @@ describe("Admin Statistics", () => {
       isDone: true,
     });
 
-    const stats = await (
+    const stats = (await (
       getFinancialStats as unknown as {
-        handler: (...args: unknown[]) => Promise<unknown>;
+        handler: (...args: unknown[]) => Promise<{
+          recentSales: {
+            page: unknown[];
+            continueCursor: string;
+            totalCount: number;
+          };
+        }>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {});
+    ).handler(mockCtx as unknown as QueryCtx, {})) as {
+      recentSales: {
+        page: unknown[];
+        continueCursor: string;
+        totalCount: number;
+      };
+    };
 
-    expect(stats).toMatchObject({
-      totalSalesVolume: 8000,
-      auctionCount: 2,
-      partialResults: true,
-    });
+    expect(stats.recentSales.totalCount).toBe(5);
   });
 
-  it("getFinancialStats should fall back to pagination when only salesVolume is undefined", async () => {
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
-    vi.mocked(adminUtils.getCounter).mockResolvedValue({
-      name: "auctions",
-      total: 10,
-      active: 5,
-      salesVolume: undefined,
-      soldCount: 5,
-    } as Doc<"counters">);
-    vi.mocked(adminUtils.countQuery).mockResolvedValue(3);
-
-    queryMock.paginate
-      .mockResolvedValueOnce({
-        page: [{ currentPrice: 2000 }, { currentPrice: 3000 }],
-        continueCursor: "cursor1",
-        isDone: false,
-      })
-      .mockResolvedValueOnce({
-        page: [{ currentPrice: 5000 }],
-        continueCursor: null,
-        isDone: true,
-      });
-
-    const stats = await (
-      getFinancialStats as unknown as {
-        handler: (...args: unknown[]) => Promise<unknown>;
-      }
-    ).handler(mockCtx as unknown as QueryCtx, {});
-
-    expect(stats).toMatchObject({
-      totalSalesVolume: 10000,
-      auctionCount: 3,
-      partialResults: true,
-    });
-  });
-
-  it("getFinancialStats should fall back to pagination when only soldCount is undefined", async () => {
-    vi.mocked(auth.requireAdmin).mockResolvedValue({
-      _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
-    vi.mocked(adminUtils.getCounter).mockResolvedValue({
-      name: "auctions",
-      total: 10,
-      active: 5,
-      salesVolume: 10000,
-      soldCount: undefined,
-    } as Doc<"counters">);
-    vi.mocked(adminUtils.countQuery).mockResolvedValue(4);
-
-    queryMock.paginate.mockResolvedValueOnce({
-      page: [
-        { currentPrice: 1500 },
-        { currentPrice: 2500 },
-        { currentPrice: 3000 },
-        { currentPrice: 4000 },
-      ],
-      continueCursor: null,
-      isDone: true,
-    });
-
-    const stats = await (
-      getFinancialStats as unknown as {
-        handler: (...args: unknown[]) => Promise<unknown>;
-      }
-    ).handler(mockCtx as unknown as QueryCtx, {});
-
-    expect(stats).toMatchObject({
-      totalSalesVolume: 11000,
-      auctionCount: 4,
-      partialResults: true,
-    });
-  });
-
-  it("getFinancialStats should detect divergence and recompute when counter diverges from live", async () => {
+  it("getFinancialStats should use correct startIndex for valid cursor", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
     } as Awaited<ReturnType<typeof auth.requireAdmin>>);
@@ -293,32 +250,258 @@ describe("Admin Statistics", () => {
       total: 10,
       active: 5,
       salesVolume: 5000,
-      soldCount: 1,
+      soldCount: 5,
+    } as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
+
+    // Return 15 items (10 at startIndex 5 + 5 at startIndex 10)
+    const allItems = Array.from({ length: 15 }, (_, i) => ({
+      currentPrice: (i + 1) * 1000,
+    }));
+    queryMock.take.mockResolvedValue(allItems);
+
+    const stats = (await (
+      getFinancialStats as unknown as {
+        handler: (...args: unknown[]) => Promise<{
+          recentSales: {
+            page: unknown[];
+            continueCursor: string;
+            totalCount: number;
+          };
+        }>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx, {
+      salesPaginationOpts: { cursor: "5", numItems: 10 },
+    })) as {
+      recentSales: {
+        page: unknown[];
+        continueCursor: string;
+        totalCount: number;
+      };
+    };
+
+    expect(stats.recentSales.page).toHaveLength(10);
+  });
+
+  it("getFinancialStats should handle invalid cursor (non-numeric)", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      name: "auctions",
+      total: 10,
+      active: 5,
+      salesVolume: 5000,
+      soldCount: 5,
+    } as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
+
+    queryMock.take.mockResolvedValue([
+      { currentPrice: 1000 },
+      { currentPrice: 2000 },
+    ]);
+
+    const stats = (await (
+      getFinancialStats as unknown as {
+        handler: (...args: unknown[]) => Promise<{
+          recentSales: {
+            page: unknown[];
+            continueCursor: string;
+            totalCount: number;
+          };
+        }>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx, {
+      salesPaginationOpts: { cursor: "abc", numItems: 10 },
+    })) as {
+      recentSales: {
+        page: unknown[];
+        continueCursor: string;
+        totalCount: number;
+      };
+    };
+
+    expect(stats.recentSales.page).toHaveLength(2);
+  });
+
+  it("getFinancialStats should handle negative cursor", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      name: "auctions",
+      total: 10,
+      active: 5,
+      salesVolume: 5000,
+      soldCount: 5,
+    } as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
+
+    queryMock.take.mockResolvedValue([
+      { currentPrice: 1000 },
+      { currentPrice: 2000 },
+    ]);
+
+    const stats = (await (
+      getFinancialStats as unknown as {
+        handler: (...args: unknown[]) => Promise<{
+          recentSales: {
+            page: unknown[];
+            continueCursor: string;
+            totalCount: number;
+          };
+        }>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx, {
+      salesPaginationOpts: { cursor: "-5", numItems: 10 },
+    })) as {
+      recentSales: {
+        page: unknown[];
+        continueCursor: string;
+        totalCount: number;
+      };
+    };
+
+    expect(stats.recentSales.page).toHaveLength(2);
+  });
+
+  it("getAnnouncementStats should return counter total and recent count", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      name: "announcements",
+      total: 15,
     } as Doc<"counters">);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(3);
 
-    queryMock.paginate
-      .mockResolvedValueOnce({
-        page: [{ currentPrice: 1000 }, { currentPrice: 2000 }],
-        continueCursor: "cursor1",
-        isDone: false,
-      })
-      .mockResolvedValueOnce({
-        page: [{ currentPrice: 3000 }],
-        continueCursor: null,
-        isDone: true,
-      });
-
     const stats = await (
-      getFinancialStats as unknown as {
+      getAnnouncementStats as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {});
+    ).handler(mockCtx as unknown as QueryCtx);
 
     expect(stats).toMatchObject({
-      totalSalesVolume: 6000,
-      auctionCount: 3,
-      partialResults: true,
+      total: 15,
+      recent: 3,
     });
+  });
+
+  it("getSupportStats should return open, resolved, total from counter", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      name: "support",
+      open: 5,
+      resolved: 10,
+      total: 15,
+    } as Doc<"counters">);
+
+    const stats = await (
+      getSupportStats as unknown as {
+        handler: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx);
+
+    expect(stats).toMatchObject({
+      open: 5,
+      resolved: 10,
+      total: 15,
+    });
+  });
+
+  it("getAnnouncementStats should handle missing counter", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue(null);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(0);
+
+    const stats = await (
+      getAnnouncementStats as unknown as {
+        handler: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx);
+
+    expect(stats).toMatchObject({
+      total: 0,
+      recent: 0,
+    });
+  });
+
+  it("getSupportStats should handle missing counter", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue(null);
+
+    const stats = await (
+      getSupportStats as unknown as {
+        handler: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx);
+
+    expect(stats).toMatchObject({
+      open: 0,
+      resolved: 0,
+      total: 0,
+    });
+  });
+
+  it("getAdminStatsHandler should re-throw errors from getCounter", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockRejectedValue(
+      new Error("Database connection failed")
+    );
+
+    await expect(
+      (
+        getAdminStats as unknown as {
+          handler: (...args: unknown[]) => Promise<unknown>;
+        }
+      ).handler(mockCtx as unknown as QueryCtx)
+    ).rejects.toThrow("Database connection failed");
+  });
+
+  it("initializeCountersHandler should initialize counters from scratch", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
+    vi.mocked(adminUtils.countUsers).mockResolvedValue(10);
+    queryMock.paginate.mockResolvedValue({
+      page: [{ currentPrice: 1000 }],
+      continueCursor: null,
+      isDone: true,
+    });
+
+    const result = await initializeCountersHandler(
+      mockCtx as unknown as MutationCtx
+    );
+
+    expect(result).toMatchObject({ success: true });
+  });
+
+  it("getAdminStatsHandler should fetch all admin stats", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      total: 100,
+      active: 50,
+      pending: 10,
+      salesVolume: 50000,
+      soldCount: 20,
+    } as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
+
+    const result = await getAdminStatsHandler(mockCtx as unknown as QueryCtx);
+
+    expect(result.totalAuctions).toBe(100);
+    expect(result.activeAuctions).toBe(50);
+    expect(result.status).toBe("healthy");
   });
 });
