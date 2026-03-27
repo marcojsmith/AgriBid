@@ -28,6 +28,7 @@ export const createMockProfile = (
     bio: "Test bio",
     companyName: undefined,
     phoneNumber: undefined,
+    location: undefined,
     createdAt: now,
     updatedAt: now,
   };

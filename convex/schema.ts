@@ -157,6 +157,7 @@ export default defineSchema({
     bio: v.optional(v.string()),
     phoneNumber: v.optional(v.string()), // Encrypted PII
     companyName: v.optional(v.string()),
+    location: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

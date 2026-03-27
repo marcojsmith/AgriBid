@@ -12,13 +12,11 @@ interface AuctionCardProps {
   isWatched: boolean;
 }
 
-// Mock Convex hooks
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   usePaginatedQuery: vi.fn(),
 }));
 
-// Mock Convex API
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
     users: {
@@ -38,7 +36,6 @@ vi.mock("convex/_generated/api", () => ({
   api: mockApi,
 }));
 
-// Mock AuctionCard to keep it simple
 vi.mock("@/components/auction/AuctionCard", () => ({
   AuctionCard: ({ auction, isWatched }: AuctionCardProps) => (
     <div data-testid="auction-card">
@@ -50,12 +47,17 @@ vi.mock("@/components/auction/AuctionCard", () => ({
 describe("Profile Page", () => {
   const mockSellerInfo = {
     _id: "user1",
-    name: "John Doe",
+    name: "John Dippenaar",
     isVerified: true,
-    role: "Seller",
-    createdAt: new Date("2026-01-15").getTime(), // Joined in 2026
+    role: "seller",
+    createdAt: new Date("2026-01-15").getTime(),
     itemsSold: 10,
     totalListings: 25,
+    bio: "Commercial farmer specialising in dryland maize production.",
+    companyName: "Dippenaar Farms",
+    location: "Lichtenburg, North West Province",
+    bidsPlaced: 24,
+    avgSalePrice: 485000,
   };
 
   const mockMyProfile = {
@@ -111,33 +113,39 @@ describe("Profile Page", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
-  it("renders seller information", () => {
+  it("renders seller name", () => {
     renderProfile();
-    expect(screen.getByText("John Doe")).toBeInTheDocument();
-    expect(screen.getByText("Verified Seller")).toBeInTheDocument();
-    // mockSellerInfo createdAt is in 2026
-    expect(screen.getByText(/Joined 2026/i)).toBeInTheDocument();
-    expect(screen.getByText("10")).toBeInTheDocument(); // itemsSold
+    expect(screen.getByText("John Dippenaar")).toBeInTheDocument();
   });
 
-  it("renders active and sold listings", () => {
+  it("renders member since with month and year format", () => {
     renderProfile();
-    expect(screen.getByText("Active Auctions")).toBeInTheDocument();
-    expect(screen.getByText("Sales History")).toBeInTheDocument();
-
-    const cards = screen.getAllByTestId("auction-card");
-    expect(cards).toHaveLength(2);
-    expect(screen.getByText(/Active Tractor/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sold Baler/i)).toBeInTheDocument();
-    expect(screen.getByText(/Watched/i)).toBeInTheDocument();
+    expect(screen.getByText(/January 2026/i)).toBeInTheDocument();
   });
 
-  it("shows 'Manage Verification' button for owner", () => {
-    renderProfile("user1");
-    expect(screen.getByText("Manage Verification")).toBeInTheDocument();
+  it("renders bio text when available", () => {
+    renderProfile();
+    expect(
+      screen.getByText(
+        "Commercial farmer specialising in dryland maize production."
+      )
+    ).toBeInTheDocument();
   });
 
-  it("does not show 'Manage Verification' button for non-owner", () => {
+  it("renders location with icon when available", () => {
+    renderProfile();
+    expect(
+      screen.getByText(/Lichtenburg, North West Province/i)
+    ).toBeInTheDocument();
+  });
+
+  it("renders placeholder rating", () => {
+    renderProfile();
+    expect(screen.getByText("★★★★★")).toBeInTheDocument();
+    expect(screen.getByText("No reviews yet")).toBeInTheDocument();
+  });
+
+  it("shows non-owner buttons for non-owner", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile)
         return { ...mockMyProfile, userId: "other", _id: "other" };
@@ -147,7 +155,48 @@ describe("Profile Page", () => {
     });
 
     renderProfile("user1");
-    expect(screen.queryByText("Manage Verification")).not.toBeInTheDocument();
+    expect(screen.getByText("Contact Seller")).toBeInTheDocument();
+    expect(screen.getByText("Report Profile")).toBeInTheDocument();
+  });
+
+  it("renders Active Auctions section with cards", () => {
+    renderProfile();
+    expect(screen.getByText("Active Auctions")).toBeInTheDocument();
+    const cards = screen.getAllByTestId("auction-card");
+    expect(cards).toHaveLength(2);
+    expect(screen.getByText(/Active Tractor/i)).toBeInTheDocument();
+    expect(screen.getByText(/Watched/i)).toBeInTheDocument();
+  });
+
+  it("renders Past Sales section with sold cards", () => {
+    renderProfile();
+    expect(screen.getByText("Sales History")).toBeInTheDocument();
+    expect(screen.getByText(/Sold Baler/i)).toBeInTheDocument();
+  });
+
+  it("renders empty active listings state when no active auctions", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [{ _id: "a1", title: "Auction 1", status: "sold" }],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderProfile();
+    expect(
+      screen.getByText("No active auctions at this time.")
+    ).toBeInTheDocument();
+  });
+
+  it("renders Recent Activity section placeholder", () => {
+    renderProfile();
+    expect(screen.getByText("Recent Activity")).toBeInTheDocument();
+    expect(screen.getByText("Account created")).toBeInTheDocument();
+  });
+
+  it("renders Trust & Compliance section placeholder", () => {
+    renderProfile();
+    expect(screen.getByText("Trust & Compliance")).toBeInTheDocument();
+    expect(screen.getByText("Identity")).toBeInTheDocument();
   });
 
   it("renders user-not-found view when seller does not exist", () => {
@@ -178,30 +227,7 @@ describe("Profile Page", () => {
     expect(loadMore).toHaveBeenCalledWith(6);
   });
 
-  it("renders sold history section when status is LoadingMore", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [], // No sold listings initially
-      status: "LoadingMore",
-      loadMore: vi.fn(),
-    });
-
-    // Mock seller info to have 0 total listings to test the empty string branch
-    (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
-      if (apiPath === mockApi.auctions.getSellerInfo)
-        return { ...mockSellerInfo, totalListings: 0 };
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
-      return null;
-    });
-
-    renderProfile();
-    expect(screen.getByText("Sales History")).toBeInTheDocument();
-    // Check pagination shows "Showing 0 of 0 Listings"
-    expect(screen.getByText(/Showing 0 of 0 Listings/)).toBeInTheDocument();
-  });
-
   it("handles watchedAuctionIds being undefined", () => {
-    // Mock watchedAuctionIds as undefined
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
@@ -210,20 +236,45 @@ describe("Profile Page", () => {
     });
 
     renderProfile();
-    // Should render without error
-    expect(screen.getByText("John Doe")).toBeInTheDocument();
+    expect(screen.getByText("John Dippenaar")).toBeInTheDocument();
   });
 
-  it("renders empty active listings state when status is Exhausted", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [{ _id: "a1", title: "Auction 1", status: "sold" }], // Only sold listings
-      status: "Exhausted",
-      loadMore: vi.fn(),
+  it("hides bio section when bio is empty", () => {
+    const sellerInfoNoBio = {
+      ...mockSellerInfo,
+      bio: undefined,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return sellerInfoNoBio;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
     });
 
     renderProfile();
     expect(
-      screen.getByText("No active auctions at this time.")
-    ).toBeInTheDocument();
+      screen.queryByText(
+        "Commercial farmer specialising in dryland maize production."
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides location section when location is empty", () => {
+    const sellerInfoNoLocation = {
+      ...mockSellerInfo,
+      location: undefined,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return sellerInfoNoLocation;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+    expect(
+      screen.queryByText(/Lichtenburg, North West Province/i)
+    ).not.toBeInTheDocument();
   });
 });
