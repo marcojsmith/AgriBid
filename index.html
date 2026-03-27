@@ -4,7 +4,49 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app</title>
+    <meta name="theme-color" content="#16a34a" />
+
+    <!-- Preconnect to Convex CDN to reduce TTFB for image/asset requests -->
+    <link rel="preconnect" href="https://dynamic.convex.cloud" />
+
+    <!-- Default SEO — overridden per-page by react-helmet-async -->
+    <!-- IMPORTANT: Keep in sync with DEFAULT_TITLE / DEFAULT_DESCRIPTION / SITE_URL in src/lib/seo.ts -->
+    <title>AgriBid – South Africa's Agricultural Equipment Auction Platform</title>
+    <meta
+      name="description"
+      content="Buy and sell farming equipment at auction. AgriBid is the national marketplace for heavy machinery — built for farmers, by farmers."
+    />
+    <link rel="canonical" href="https://agribid.co.za/" />
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="AgriBid" />
+    <meta
+      property="og:title"
+      content="AgriBid – South Africa's Agricultural Equipment Auction Platform"
+    />
+    <meta
+      property="og:description"
+      content="Buy and sell farming equipment at auction. AgriBid is the national marketplace for heavy machinery — built for farmers, by farmers."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://agribid.co.za/" />
+    <meta property="og:image" content="https://agribid.co.za/og-image.png" />
+    <meta property="og:locale" content="en_ZA" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="AgriBid – South Africa's Agricultural Equipment Auction Platform"
+    />
+    <meta
+      name="twitter:description"
+      content="Buy and sell farming equipment at auction. AgriBid is the national marketplace for heavy machinery — built for farmers, by farmers."
+    />
+    <meta name="twitter:image" content="https://agribid.co.za/og-image.png" />
+
+    <!-- Robots -->
+    <meta name="robots" content="index, follow" />
   </head>
   <body>
     <div id="root"></div>

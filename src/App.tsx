@@ -29,6 +29,9 @@ const AdminErrorReportingSettings = lazy(
   () => import("./pages/admin/AdminErrorReportingSettings")
 );
 const AdminErrorReports = lazy(() => import("./pages/admin/AdminErrorReports"));
+const AdminSEOSettings = lazy(() => import("./pages/admin/AdminSEOSettings"));
+const AdminFAQ = lazy(() => import("./pages/admin/AdminFAQ"));
+const FAQ = lazy(() => import("./pages/FAQ"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -82,6 +85,7 @@ function App() {
             <Route path="/auction/:id" element={<AuctionDetail />} />
             <Route path="/profile/:userId" element={<Profile />} />
             <Route path="/sell" element={<Sell />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route
               path="/watchlist"
               element={
@@ -215,6 +219,22 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminErrorReportingSettings />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/seo"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminSEOSettings />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/faq"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminFAQ />
                 </RoleProtectedRoute>
               }
             />

@@ -19,7 +19,7 @@ export const Footer = () => {
     {
       title: "Platform",
       links: [
-        { name: "How it Works", href: "#", icon: BookOpen },
+        { name: "How it Works", href: "/faq", icon: BookOpen },
         { name: "Safety & Trust", href: "#", icon: ShieldCheck },
         { name: "Auction Rules", href: "#", icon: Scale },
       ],

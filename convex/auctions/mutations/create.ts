@@ -70,6 +70,7 @@ export const generateUploadUrl = mutation({
  * @param args.conditionChecklist.serviceHistory - The service history of the equipment.
  * @param args.conditionChecklist.notes - Additional notes on the condition.
  * @param args.isDraft - Whether the auction is a draft.
+ * @param args.startTime
  * @returns Promise<Id<"auctions">>
  */
 export const createAuctionHandler = async (
@@ -101,11 +102,12 @@ export const createAuctionHandler = async (
       notes?: string;
     };
     isDraft?: boolean;
+    startTime?: number;
   }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const { durationDays, isDraft, ...restArgs } = args;
+  const { durationDays, isDraft, startTime, ...restArgs } = args;
 
   if (
     durationDays < AUCTION_MIN_DURATION_DAYS ||
@@ -164,6 +166,7 @@ export const createAuctionHandler = async (
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
     durationDays: durationDays,
+    ...(startTime !== undefined ? { startTime } : {}),
   });
 
   await updateCounter(ctx, "auctions", "total", 1);
@@ -208,6 +211,7 @@ export const createAuction = mutation({
       notes: v.optional(v.string()),
     }),
     isDraft: v.optional(v.boolean()),
+    startTime: v.optional(v.number()),
   },
   returns: v.id("auctions"),
   handler: createAuctionHandler,
@@ -242,6 +246,7 @@ export const createAuction = mutation({
  * @param args.conditionChecklist.tires - The condition of the tires.
  * @param args.conditionChecklist.serviceHistory - The service history of the equipment.
  * @param args.conditionChecklist.notes - Additional notes on the condition.
+ * @param args.startTime
  * @returns Promise<Id<"auctions">>
  */
 export const saveDraftHandler = async (
@@ -273,11 +278,12 @@ export const saveDraftHandler = async (
       serviceHistory: boolean;
       notes?: string;
     };
+    startTime?: number;
   }
 ) => {
   const { userId } = await requireVerified(ctx);
 
-  const { auctionId, durationDays, ...restArgs } = args;
+  const { auctionId, durationDays, startTime, ...restArgs } = args;
 
   if (
     durationDays !== undefined &&
@@ -340,6 +346,9 @@ export const saveDraftHandler = async (
     if (durationDays !== undefined) {
       patchData.durationDays = durationDays;
     }
+    if (startTime !== undefined) {
+      patchData.startTime = startTime;
+    }
     if (restArgs.startingPrice !== undefined) {
       patchData.currentPrice = restArgs.startingPrice;
       patchData.minIncrement =
@@ -376,6 +385,7 @@ export const saveDraftHandler = async (
     ...(args.conditionChecklist && {
       conditionChecklist: args.conditionChecklist,
     }),
+    ...(startTime !== undefined ? { startTime } : {}),
     sellerId: userId,
     status: "draft",
     currentPrice: args.startingPrice ?? 0,
@@ -429,6 +439,7 @@ export const saveDraft = mutation({
         notes: v.optional(v.string()),
       })
     ),
+    startTime: v.optional(v.number()),
   },
   returns: v.id("auctions"),
   handler: saveDraftHandler,

@@ -29,6 +29,9 @@ Prioritized by size and quick wins for efficient resolution.
 - [ ] #171: (Linting) Enhance ESLint with stricter rules
   - _Description_: Upgrade ESLint configuration to use stricter TypeScript rules. **Status (2026-03-19)**: Unresolved. Enabling `strictTypeChecked` and `stylisticTypeChecked` currently yields 1,463 problems (593 errors, 870 warnings).
   - _Labels_: None
+- [x] #208: Migrate from tsc to tsgo for faster type-checking
+  - _Description_: Replace tsc with tsgo for 4-7x faster type-checking in CI and pre-commit hooks
+  - _Labels_: enhancement, infra
 - [x] #168: (Code Quality) Extract magic numbers into named constants
   - _Description_: Replace hardcoded numbers with descriptive constants
   - _Labels_: enhancement
@@ -67,8 +70,11 @@ Prioritized by size and quick wins for efficient resolution.
 - [x] #169: (Refactor) Consolidate duplicate context patterns
   - _Description_: Eliminate duplicate React context implementations
   - _Labels_: enhancement
-- [ ] #133: SEO Optimization Strategy for Auction Platform
-  - _Description_: Implement SEO best practices for auction listings
+- [x] #133: SEO Optimization Strategy for Auction Platform
+  - _Description_: Implement SEO best practices for auction listings. Phase 1 (meta tags, structured data, technical foundation), Phase 2 (performance, semantic HTML, local SEO, breadcrumbs, analytics), and Phase 3 (FAQPage schema, public FAQ page, admin-editable FAQ, auction Event schema, start times) all complete.
+  - _Labels_: enhancement
+- [x] #59: Implement automatic error reporting and GitHub issue creation
+  - _Description_: Auto-capture frontend errors, deduplicate via fingerprint, and create/comment on GitHub issues
   - _Labels_: enhancement
 - [ ] #129: Add in AI chatbot support
   - _Description_: Integrate AI-powered chatbot for user assistance
@@ -78,6 +84,15 @@ Prioritized by size and quick wins for efficient resolution.
 
 ### Priority: Lower (Requires more planning and effort)
 
+- [x] #211: Implement automatic error reporting and GitHub issue creation (admin controls)
+  - _Description_: Admin dashboard controls for GitHub error reporting config, error report list, and manual processing trigger
+  - _Labels_: enhancement
+- [x] #199: (Refactor) Eliminate barrel index.ts files
+  - _Description_: Remove barrel re-export files and update all consumer imports to use direct paths
+  - _Labels_: enhancement, refactor
+- [x] #9: Fix useEffect re-hydration guard in AdminErrorReportingSettings
+  - _Description_: Prevent settings form from resetting while user is editing when live data updates arrive
+  - _Labels_: bug, frontend
 - [x] #163: (Refactor) Split oversized auctions/queries.ts file (729 lines)
   - _Description_: Break down large queries file into smaller, focused modules
   - _Labels_: enhancement, backend

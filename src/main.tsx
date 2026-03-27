@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "sonner";
 
 import { authClient } from "./lib/auth-client";
@@ -17,13 +18,15 @@ if (!rootElement) {
 }
 createRoot(rootElement).render(
   <StrictMode>
-    <ConvexProvider client={convex}>
-      <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-        <ErrorBoundary>
-          <App />
-          <Toaster position="top-center" richColors />
-        </ErrorBoundary>
-      </ConvexBetterAuthProvider>
-    </ConvexProvider>
+    <HelmetProvider>
+      <ConvexProvider client={convex}>
+        <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+          <ErrorBoundary>
+            <App />
+            <Toaster position="top-center" richColors />
+          </ErrorBoundary>
+        </ConvexBetterAuthProvider>
+      </ConvexProvider>
+    </HelmetProvider>
   </StrictMode>
 );

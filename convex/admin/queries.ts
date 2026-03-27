@@ -33,7 +33,9 @@ export {
   getSupportStats,
 } from "./statistics";
 
-export { getSystemConfig } from "./settings";
+export { getSystemConfig, getSeoSettings } from "./settings";
+
+export { getAllFaqItems } from "./faq";
 
 // --- Bid Monitoring ---
 

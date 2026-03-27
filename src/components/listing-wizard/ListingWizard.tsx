@@ -128,6 +128,7 @@ const ListingWizardContent = () => {
             serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
             notes: formData.conditionChecklist.notes,
           },
+          startTime: formData.startTime,
         });
       } else {
         // Just log that we're keeping it local for now
@@ -219,6 +220,7 @@ const ListingWizardContent = () => {
           serviceHistory: formData.conditionChecklist.serviceHistory ?? false,
           notes: formData.conditionChecklist.notes,
         },
+        startTime: formData.startTime,
       };
 
       const finalAuctionId = editingAuctionId ?? formData.auctionId;

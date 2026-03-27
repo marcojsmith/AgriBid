@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { ArrowLeft, Flag, FileText, Download } from "lucide-react";
+import { Flag, FileText, Download, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
+import { Helmet } from "react-helmet-async";
 
 import { Button } from "@/components/ui/button";
 import { AuctionHeader } from "@/components/AuctionHeader";
@@ -14,7 +15,17 @@ import { BiddingPanel } from "@/components/bidding/BiddingPanel";
 import { BidHistory } from "@/components/bidding/BidHistory";
 import { SellerInfo } from "@/components/SellerInfo";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { AuctionCard } from "@/components/auction/AuctionCard";
 import { useSession } from "@/lib/auth-client";
+import {
+  buildTitle,
+  buildCanonical,
+  buildAuctionDescription,
+  DEFAULT_OG_IMAGE,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/seo";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +46,35 @@ import { Textarea } from "@/components/ui/textarea";
 type FlagReason = "misleading" | "inappropriate" | "suspicious" | "other";
 
 /**
+ * Flatten an auction's images object or array into a plain string URL array.
+ *
+ * @param images - The auction images value (array or object with named fields)
+ * @returns Filtered array of resolved image URL strings
+ */
+function getAuctionImageUrls(
+  images:
+    | string[]
+    | {
+        front?: string;
+        engine?: string;
+        cabin?: string;
+        rear?: string;
+        additional?: string[];
+      }
+): string[] {
+  if (Array.isArray(images)) {
+    return images.filter((url): url is string => !!url);
+  }
+  return [
+    images.front,
+    images.engine,
+    images.cabin,
+    images.rear,
+    ...(images.additional ?? []),
+  ].filter((url): url is string => !!url);
+}
+
+/**
  * Render the auction detail page for the auction referenced by the current route `id`.
  *
  * Renders an "Invalid Auction ID" screen when `id` is undefined, a loading indicator while the auction is being fetched, an "Auction Not Found" screen when no auction exists for `id`, and the full auction UI (header, image gallery, equipment description, bidding panel, bid history and seller information) when the auction is found. Also provides UI to report (flag) a listing and to view or download a condition report when available.
@@ -52,6 +92,11 @@ export default function AuctionDetail() {
   const auction = useQuery(
     api.auctions.getAuctionById,
     id ? { auctionId: id as Id<"auctions"> } : "skip"
+  );
+
+  const relatedAuctions = useQuery(
+    api.auctions.getRelatedAuctions,
+    auction?.make ? { make: auction.make, excludeId: auction._id } : "skip"
   );
 
   const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
@@ -122,41 +167,138 @@ export default function AuctionDetail() {
     );
   }
 
+  const metaDescription = buildAuctionDescription(
+    auction.title,
+    auction.year,
+    auction.make,
+    auction.model,
+    auction.location
+  );
+  const pageTitle = buildTitle(auction.title);
+  const canonical = buildCanonical(`/auction/${id}`);
+
+  const auctionImageUrls = getAuctionImageUrls(auction.images);
+  const ogImage = auctionImageUrls.at(0) ?? DEFAULT_OG_IMAGE;
+
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: auction.title,
+    description: auction.description ?? metaDescription,
+    image: auctionImageUrls,
+    brand: auction.make ? { "@type": "Brand", name: auction.make } : undefined,
+    offers: {
+      "@type": "Offer",
+      url: canonical,
+      priceCurrency: "ZAR",
+      price: auction.currentPrice,
+      availability:
+        auction.status === "active"
+          ? "https://schema.org/InStock"
+          : "https://schema.org/SoldOut",
+      validThrough: auction.endTime
+        ? new Date(auction.endTime).toISOString()
+        : undefined,
+      seller: { "@type": "Organization", name: SITE_NAME },
+      ...(auction.location
+        ? {
+            availableAtOrFrom: {
+              "@type": "Place",
+              name: auction.location,
+              address: {
+                "@type": "PostalAddress",
+                addressCountry: "ZA",
+              },
+            },
+          }
+        : {}),
+    },
+  };
+
+  const eventSchema = auction.startTime
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        name: auction.title,
+        description: auction.description ?? metaDescription,
+        startDate: new Date(auction.startTime).toISOString(),
+        ...(auction.endTime
+          ? { endDate: new Date(auction.endTime).toISOString() }
+          : {}),
+        eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+        location: { "@type": "VirtualLocation", url: canonical },
+        organizer: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+        image: auctionImageUrls,
+      }
+    : null;
+
   return (
     <>
-      <Button variant="ghost" asChild className="mb-6 -ml-4">
-        <Link to="/" className="flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Marketplace
-        </Link>
-      </Button>
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={metaDescription} />
+        <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:type" content="product" />
+        <meta property="og:url" content={canonical} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:locale" content="en_ZA" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={ogImage} />
+        <meta
+          name="robots"
+          content={auction.status === "active" ? "index, follow" : "noindex"}
+        />
+        <script type="application/ld+json">
+          {JSON.stringify(productSchema)}
+        </script>
+        {eventSchema && (
+          <script type="application/ld+json">
+            {JSON.stringify(eventSchema)}
+          </script>
+        )}
+      </Helmet>
+
+      <Breadcrumb
+        crumbs={[{ label: "Home", href: "/" }, { label: auction.title }]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Images & Info */}
         <div className="lg:col-span-8 space-y-8">
           <AuctionHeader auction={auction} />
 
+          {auction.startTime && (
+            <div className="flex items-center gap-2 text-sm font-bold bg-primary/5 border-2 border-primary/20 rounded-xl px-4 py-3">
+              <CalendarClock className="h-4 w-4 text-primary shrink-0" />
+              <span className="uppercase tracking-wide text-xs text-primary">
+                Auction Starts:{" "}
+                {new Date(auction.startTime).toLocaleString("en-ZA", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </span>
+            </div>
+          )}
+
           <ImageGallery
-            images={
-              Array.isArray(auction.images)
-                ? auction.images.filter((url): url is string => !!url)
-                : [
-                    auction.images.front,
-                    auction.images.engine,
-                    auction.images.cabin,
-                    auction.images.rear,
-                    ...(auction.images.additional ?? []),
-                  ].filter((url): url is string => !!url)
-            }
+            images={getAuctionImageUrls(auction.images)}
             title={auction.title}
           />
 
           {/* Description Section */}
-          <div className="bg-card border-2 rounded-2xl p-8 space-y-6">
+          <section
+            aria-label="Equipment Description"
+            className="bg-card border-2 rounded-2xl p-8 space-y-6"
+          >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h3 className="text-xl font-bold uppercase tracking-tight">
+              <h2 className="text-xl font-bold uppercase tracking-tight">
                 Equipment Description
-              </h3>
+              </h2>
 
               {auction.conditionReportUrl && (
                 <div className="flex gap-2">
@@ -193,7 +335,7 @@ export default function AuctionDetail() {
                 ? auction.description
                 : "No description provided."}
             </p>
-          </div>
+          </section>
 
           {/* Flag Button (for non-owners) */}
           {!sessionLoading && session && !isOwner && (
@@ -290,21 +432,46 @@ export default function AuctionDetail() {
               </div>
             </div>
           )}
+
+          {/* Related Auctions */}
+          {relatedAuctions && relatedAuctions.length > 0 && (
+            <section aria-label={`More ${auction.make} Equipment`}>
+              <h2 className="text-lg font-black uppercase tracking-tight mb-4">
+                More {auction.make} Equipment
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {relatedAuctions.map((related) => (
+                  <AuctionCard
+                    key={related._id}
+                    auction={related}
+                    viewMode="compact"
+                    isWatched={false}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         {/* Right Column: Bidding Panel */}
         <div className="lg:col-span-4">
           <div className="lg:sticky lg:top-24 space-y-6 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto pr-2">
-            <div className="bg-card border-2 border-primary/20 rounded-2xl p-6">
+            <aside
+              aria-label="Bidding"
+              className="bg-card border-2 border-primary/20 rounded-2xl p-6"
+            >
               <BiddingPanel auction={auction} />
-            </div>
+            </aside>
 
-            <div className="bg-card border-2 rounded-2xl p-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">
+            <section
+              aria-label="Bid History"
+              className="bg-card border-2 rounded-2xl p-6"
+            >
+              <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">
                 Bid History
-              </h3>
+              </h2>
               <BidHistory auctionId={auction._id} />
-            </div>
+            </section>
 
             <SellerInfo sellerId={auction.sellerId} />
           </div>

@@ -117,6 +117,36 @@ export const PricingDurationStep = () => {
               ))}
             </div>
           </div>
+
+          <div className="space-y-2 pt-4">
+            <label
+              htmlFor="start-time"
+              className="text-xs font-black uppercase text-muted-foreground ml-1"
+            >
+              Auction Start Date &amp; Time (Optional)
+            </label>
+            <Input
+              id="start-time"
+              type="datetime-local"
+              min={new Date().toISOString().slice(0, 16)}
+              value={
+                formData.startTime
+                  ? new Date(formData.startTime).toISOString().slice(0, 16)
+                  : ""
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                updateField(
+                  "startTime",
+                  val ? new Date(val).getTime() : undefined
+                );
+              }}
+              className="h-12 rounded-xl border-2"
+            />
+            <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
+              Leave blank to start immediately upon admin approval.
+            </p>
+          </div>
         </div>
 
         <div className="bg-primary/5 border-2 border-primary/10 rounded-3xl p-6 space-y-6">

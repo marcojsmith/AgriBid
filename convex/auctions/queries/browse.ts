@@ -254,6 +254,37 @@ export const getActiveAuctions = query({
 });
 
 /**
+ * Returns up to 4 active auctions with the same make, excluding the given auction.
+ * Used for the "More from this make" related auctions section on AuctionDetail.
+ *
+ * @param ctx - Convex Query context
+ * @param args - Query arguments
+ * @param args.make - Equipment make to match
+ * @param args.excludeId - Auction ID to exclude (the current auction)
+ * @returns Array of matching auction summaries (max 4)
+ */
+export const getRelatedAuctions = query({
+  args: {
+    make: v.string(),
+    excludeId: v.id("auctions"),
+  },
+  returns: v.array(AuctionSummaryValidator),
+  handler: async (ctx, args) => {
+    const auctions = await ctx.db
+      .query("auctions")
+      .withIndex("by_status_make", (q) =>
+        q.eq("status", "active").eq("make", args.make)
+      )
+      .filter((q) => q.neq(q.field("_id"), args.excludeId))
+      .take(4);
+
+    return Promise.all(
+      auctions.map((auction) => toAuctionSummary(ctx, auction))
+    );
+  },
+});
+
+/**
  * Returns list of active equipment makes for filter dropdowns.
  *
  * @param ctx - Convex Query context

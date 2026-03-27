@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as admin_categories from "../admin/categories.js";
 import type * as admin_equipmentMetadata from "../admin/equipmentMetadata.js";
+import type * as admin_faq from "../admin/faq.js";
 import type * as admin_kyc from "../admin/kyc.js";
 import type * as admin_mutations from "../admin/mutations.js";
 import type * as admin_queries from "../admin/queries.js";
@@ -40,6 +41,7 @@ import type * as config from "../config.js";
 import type * as constants from "../constants.js";
 import type * as crons from "../crons.js";
 import type * as errors from "../errors.js";
+import type * as faq from "../faq.js";
 import type * as http from "../http.js";
 import type * as image_cache from "../image_cache.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -62,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   "admin/categories": typeof admin_categories;
   "admin/equipmentMetadata": typeof admin_equipmentMetadata;
+  "admin/faq": typeof admin_faq;
   "admin/kyc": typeof admin_kyc;
   "admin/mutations": typeof admin_mutations;
   "admin/queries": typeof admin_queries;
@@ -91,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   constants: typeof constants;
   crons: typeof crons;
   errors: typeof errors;
+  faq: typeof faq;
   http: typeof http;
   image_cache: typeof image_cache;
   "lib/auth": typeof lib_auth;

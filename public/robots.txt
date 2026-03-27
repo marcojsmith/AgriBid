@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /kyc
+Disallow: /watchlist
+Disallow: /notifications
+Disallow: /login
+Disallow: /support
+
+Sitemap: https://agribid.co.za/sitemap.xml

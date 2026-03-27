@@ -28,7 +28,15 @@ export { initializeCounters } from "./statistics";
 export {
   updateSystemConfig,
   updateGitHubErrorReportingConfig,
+  updateSeoSettings,
 } from "./settings";
+
+export {
+  createFaqItem,
+  updateFaqItem,
+  deleteFaqItem,
+  reorderFaqItems,
+} from "./faq";
 
 // --- Bid Moderation ---
 

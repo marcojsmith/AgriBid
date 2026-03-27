@@ -493,3 +493,124 @@ export const updateGitHubErrorReportingConfig = mutation({
   },
   handler: updateGitHubErrorReportingConfigHandler,
 });
+
+const SEO_KEYS = {
+  ga4MeasurementId: "seo.ga4MeasurementId",
+  searchConsoleVerification: "seo.searchConsoleVerification",
+  bingVerification: "seo.bingVerification",
+} as const;
+
+/**
+ * Query SEO and analytics settings.
+ *
+ * Public query — Layout reads these for all visitors to inject GA4/GSC/Bing scripts.
+ * Returns null for each key when not configured.
+ */
+export const getSeoSettings = query({
+  args: {},
+  returns: v.object({
+    ga4MeasurementId: v.union(v.string(), v.null()),
+    searchConsoleVerification: v.union(v.string(), v.null()),
+    bingVerification: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx) => {
+    const [ga4, gsc, bing] = await Promise.all([
+      ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", SEO_KEYS.ga4MeasurementId))
+        .unique(),
+      ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) =>
+          q.eq("key", SEO_KEYS.searchConsoleVerification)
+        )
+        .unique(),
+      ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", SEO_KEYS.bingVerification))
+        .unique(),
+    ]);
+
+    return {
+      ga4MeasurementId: ga4 && typeof ga4.value === "string" ? ga4.value : null,
+      searchConsoleVerification:
+        gsc && typeof gsc.value === "string" ? gsc.value : null,
+      bingVerification:
+        bing && typeof bing.value === "string" ? bing.value : null,
+    };
+  },
+});
+
+/**
+ * Update SEO and analytics settings.
+ *
+ * Upserts each provided key into the settings table.
+ * Passing an empty string clears the value (treated as "not set" by getSeoSettings).
+ * Only accessible to admin users.
+ */
+export const updateSeoSettings = mutation({
+  args: {
+    ga4MeasurementId: v.optional(v.string()),
+    searchConsoleVerification: v.optional(v.string()),
+    bingVerification: v.optional(v.string()),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const updates: Array<{ key: string; value: string; description: string }> =
+      [];
+
+    if (args.ga4MeasurementId !== undefined) {
+      updates.push({
+        key: SEO_KEYS.ga4MeasurementId,
+        value: args.ga4MeasurementId,
+        description: "Google Analytics 4 Measurement ID (e.g. G-XXXXXXXXXX)",
+      });
+    }
+    if (args.searchConsoleVerification !== undefined) {
+      updates.push({
+        key: SEO_KEYS.searchConsoleVerification,
+        value: args.searchConsoleVerification,
+        description: "Google Search Console HTML-tag verification token",
+      });
+    }
+    if (args.bingVerification !== undefined) {
+      updates.push({
+        key: SEO_KEYS.bingVerification,
+        value: args.bingVerification,
+        description: "Bing Webmaster Tools verification meta content",
+      });
+    }
+
+    for (const update of updates) {
+      const existing = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", update.key))
+        .unique();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          value: update.value,
+          updatedAt: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("settings", {
+          key: update.key,
+          value: update.value,
+          description: update.description,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    await logAudit(ctx, {
+      action: "UPDATE_SETTING",
+      targetId: "seo-settings",
+      targetType: "setting",
+      details: `Updated SEO settings: ${updates.map((u) => u.key).join(", ")}`,
+    });
+
+    return { success: true };
+  },
+});

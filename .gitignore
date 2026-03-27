@@ -32,6 +32,12 @@ yarn-error.log*
 # Editor
 .vscode/
 .idea/
+
+# Claude Code local settings (contains machine-specific paths)
+.claude/settings.local.json
+
+# Temporary working plan — delete once SEO implementation is complete
+seo-plan.md
 *.suo
 *.ntvs*
 *.njsproj
