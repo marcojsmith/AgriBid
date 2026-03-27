@@ -29,6 +29,9 @@ const AdminErrorReportingSettings = lazy(
   () => import("./pages/admin/AdminErrorReportingSettings")
 );
 const AdminErrorReports = lazy(() => import("./pages/admin/AdminErrorReports"));
+const AdminSEOSettings = lazy(() => import("./pages/admin/AdminSEOSettings"));
+const AdminFAQ = lazy(() => import("./pages/admin/AdminFAQ"));
+const FAQ = lazy(() => import("./pages/FAQ"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -57,6 +60,7 @@ const PageLoader = () => (
  * - "/auction/:id" → AuctionDetail
  * - "/profile/:userId" → Profile
  * - "/sell" → Sell
+ * - "/faq" → FAQ
  * - "/watchlist" → Watchlist (protected, allowedRole="any")
  * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
  * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
@@ -64,7 +68,7 @@ const PageLoader = () => (
  *   - /admin, /admin/dashboard, /admin/moderation
  *   - /admin/marketplace, /admin/auctions, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
- *   - /admin/audit, /admin/settings
+ *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")
@@ -82,6 +86,7 @@ function App() {
             <Route path="/auction/:id" element={<AuctionDetail />} />
             <Route path="/profile/:userId" element={<Profile />} />
             <Route path="/sell" element={<Sell />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route
               path="/watchlist"
               element={
@@ -215,6 +220,22 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminErrorReportingSettings />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/seo"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminSEOSettings />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/faq"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminFAQ />
                 </RoleProtectedRoute>
               }
             />

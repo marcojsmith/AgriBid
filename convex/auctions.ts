@@ -17,6 +17,7 @@ export {
   getPendingAuctions,
   getActiveAuctions,
   getActiveMakes,
+  getRelatedAuctions,
   getAuctionById,
   getAuctionBids,
   getAuctionBidCount,

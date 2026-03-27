@@ -7,12 +7,25 @@ import { cn } from "@/lib/utils";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 /**
+ * Format a Date as a local-time string suitable for datetime-local inputs (YYYY-MM-DDTHH:mm).
+ * Uses local time instead of UTC to avoid timezone-shift issues in the browser date picker.
+ *
+ * @param d - The Date to format
+ * @returns Local ISO-like date-time string (YYYY-MM-DDTHH:mm)
+ */
+function formatLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear().toString()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
  * Step 3 of the listing wizard: Pricing and Duration.
  *
  * @returns The rendered pricing and duration step.
  */
 export const PricingDurationStep = () => {
   const { formData, updateField } = useListingWizard();
+  const nowMin = formatLocalInput(new Date());
 
   const handlePriceChange =
     (field: "startingPrice" | "reservePrice") =>
@@ -116,6 +129,36 @@ export const PricingDurationStep = () => {
                 </Button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-2 pt-4">
+            <label
+              htmlFor="start-time"
+              className="text-xs font-black uppercase text-muted-foreground ml-1"
+            >
+              Auction Start Date &amp; Time (Optional)
+            </label>
+            <Input
+              id="start-time"
+              type="datetime-local"
+              min={nowMin}
+              value={
+                formData.startTime
+                  ? formatLocalInput(new Date(formData.startTime))
+                  : ""
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                updateField(
+                  "startTime",
+                  val ? new Date(val).getTime() : undefined
+                );
+              }}
+              className="h-12 rounded-xl border-2"
+            />
+            <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
+              Leave blank to start immediately upon admin approval.
+            </p>
           </div>
         </div>
 

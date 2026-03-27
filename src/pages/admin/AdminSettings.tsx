@@ -1,6 +1,13 @@
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Hammer, TrendingUp, ShieldCheck, Bug } from "lucide-react";
+import {
+  Hammer,
+  TrendingUp,
+  ShieldCheck,
+  Bug,
+  Search,
+  HelpCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -73,6 +80,18 @@ export default function AdminSettings() {
             description="Configure GitHub issue creation for unexpected errors."
             icon={<Bug />}
             action={() => navigate("/admin/error-reporting")}
+          />
+          <SettingsCard
+            title="SEO & Analytics"
+            description="Configure GA4, Search Console, and Bing verification."
+            icon={<Search />}
+            action={() => navigate("/admin/seo")}
+          />
+          <SettingsCard
+            title="FAQ Management"
+            description="Manage public FAQ questions and answers."
+            icon={<HelpCircle />}
+            action={() => navigate("/admin/faq")}
           />
         </div>
       </div>

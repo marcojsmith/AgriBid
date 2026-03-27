@@ -8,6 +8,8 @@ import { CountdownTimer } from "@/components/CountdownTimer";
 interface AuctionCardThumbnailProps {
   primaryImage: string | undefined;
   title: string;
+  make?: string;
+  model?: string;
   isCompact: boolean;
   isWatched: boolean | undefined;
   onWatchlistToggle: (e: React.MouseEvent) => Promise<void>;
@@ -21,6 +23,8 @@ interface AuctionCardThumbnailProps {
  * @param props - Component props
  * @param props.primaryImage - URL of the primary image; if undefined a placeholder is shown
  * @param props.title - Title used for the image alt text
+ * @param props.make - Equipment make, combined with model and title for richer alt text
+ * @param props.model - Equipment model, combined with make and title for richer alt text
  * @param props.isCompact - When true, render the compact layout (fixed width and inline countdown)
  * @param props.isWatched - Whether the item is currently on the user's watchlist
  * @param props.onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
@@ -31,12 +35,15 @@ interface AuctionCardThumbnailProps {
 export function AuctionCardThumbnail({
   primaryImage,
   title,
+  make,
+  model,
   isCompact,
   isWatched,
   onWatchlistToggle,
   endTime,
   isClosed,
 }: AuctionCardThumbnailProps) {
+  const imageAlt = [make, model, title].filter(Boolean).join(" — ");
   return (
     <div
       className={cn(
@@ -53,7 +60,8 @@ export function AuctionCardThumbnail({
         {primaryImage ? (
           <img
             src={primaryImage}
-            alt={title}
+            alt={imageAlt}
+            loading="lazy"
             className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
           />
         ) : (

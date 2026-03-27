@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 import { MessageSquare, Clock, CheckCircle2, HelpCircle } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { buildTitle, buildCanonical } from "@/lib/seo";
 
 /**
  * Render the Help & Support page that lets users create new support tickets and view their existing tickets.
@@ -72,8 +74,20 @@ export default function Support() {
     }
   };
 
+  const pageTitle = buildTitle("Help & Support");
+  const canonical = buildCanonical("/support");
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta
+          name="description"
+          content="Get help with AgriBid auctions, accounts, KYC verification, and equipment listings. Open a support ticket and track your requests."
+        />
+        <link rel="canonical" href={canonical} />
+      </Helmet>
+
       <div className="flex justify-between items-end">
         <div className="space-y-2">
           <h1 className="text-4xl font-black uppercase tracking-tight">
@@ -206,36 +220,36 @@ export default function Support() {
             ) : (
               <>
                 {tickets.map((ticket) => (
-              <Card
-                key={ticket._id}
-                className="p-4 border-2 hover:border-primary/40 transition-all"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <Badge
-                    variant={
-                      ticket.status === "open" ? "destructive" : "outline"
-                    }
-                    className="text-[9px] font-black uppercase"
+                  <Card
+                    key={ticket._id}
+                    className="p-4 border-2 hover:border-primary/40 transition-all"
                   >
-                    {ticket.status}
-                  </Badge>
-                  <span className="text-[9px] font-mono text-muted-foreground uppercase">
-                    {new Date(ticket.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <h3 className="font-bold text-sm mb-1">{ticket.subject}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {ticket.message}
-                </p>
-                {ticket.status === "resolved" && (
-                  <div className="mt-3 pt-3 border-t flex items-center gap-2 text-green-600">
-                    <CheckCircle2 className="h-3 w-3" />
-                    <span className="text-[10px] font-black uppercase">
-                      Resolved by Admin
-                    </span>
-                  </div>
-                )}
-              </Card>
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge
+                        variant={
+                          ticket.status === "open" ? "destructive" : "outline"
+                        }
+                        className="text-[9px] font-black uppercase"
+                      >
+                        {ticket.status}
+                      </Badge>
+                      <span className="text-[9px] font-mono text-muted-foreground uppercase">
+                        {new Date(ticket.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-sm mb-1">{ticket.subject}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {ticket.message}
+                    </p>
+                    {ticket.status === "resolved" && (
+                      <div className="mt-3 pt-3 border-t flex items-center gap-2 text-green-600">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span className="text-[10px] font-black uppercase">
+                          Resolved by Admin
+                        </span>
+                      </div>
+                    )}
+                  </Card>
                 ))}
                 {tickets.length === 0 && (
                   <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">

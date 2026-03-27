@@ -316,7 +316,9 @@ describe("AuctionCard", () => {
     renderWithRouter({
       auction: auction as unknown as AuctionWithCategory,
     });
-    const img = screen.getByAltText(mockAuction.title);
+    const img = screen.getByAltText(
+      `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
+    );
     expect(img).toHaveAttribute("src", "front.jpg");
   });
 
@@ -325,7 +327,9 @@ describe("AuctionCard", () => {
     renderWithRouter({
       auction: auction as unknown as AuctionWithCategory,
     });
-    const img = screen.getByAltText(mockAuction.title);
+    const img = screen.getByAltText(
+      `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
+    );
     expect(img).toHaveAttribute("src", "engine.jpg");
   });
 
@@ -334,7 +338,9 @@ describe("AuctionCard", () => {
     renderWithRouter({
       auction: auction as unknown as AuctionWithCategory,
     });
-    const img = screen.getByAltText(mockAuction.title);
+    const img = screen.getByAltText(
+      `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
+    );
     expect(img).toHaveAttribute("src", "cabin.jpg");
   });
 
@@ -343,7 +349,9 @@ describe("AuctionCard", () => {
     renderWithRouter({
       auction: auction as unknown as AuctionWithCategory,
     });
-    const img = screen.getByAltText(mockAuction.title);
+    const img = screen.getByAltText(
+      `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
+    );
     expect(img).toHaveAttribute("src", "rear.jpg");
   });
 
@@ -352,7 +360,9 @@ describe("AuctionCard", () => {
     renderWithRouter({
       auction: auction as unknown as AuctionWithCategory,
     });
-    const img = screen.getByAltText(mockAuction.title);
+    const img = screen.getByAltText(
+      `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
+    );
     expect(img).toHaveAttribute("src", "add1.jpg");
   });
 

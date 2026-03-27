@@ -264,6 +264,16 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 
+  // Public FAQ items — managed by admins, visible to all visitors
+  faqItems: defineTable({
+    question: v.string(),
+    answer: v.string(),
+    order: v.number(),
+    isPublished: v.boolean(),
+  })
+    .index("by_order", ["order"])
+    .index("by_published_order", ["isPublished", "order"]),
+
   // Error Reports Queue (captured errors sent to GitHub)
   errorReports: defineTable({
     fingerprint: v.string(),

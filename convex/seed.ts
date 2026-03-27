@@ -668,7 +668,57 @@ export const runSeed = mutation({
       }
     }
 
-    // 4. Update Metrics (Counters)
+    // 4. Seed Default FAQ Items
+    const defaultFaqItems = [
+      {
+        question: "How do I register to bid on AgriBid?",
+        answer:
+          "Create a free account, then complete KYC (Know Your Customer) verification under your profile. Once approved, you can bid on any active auction.",
+      },
+      {
+        question: "How does the bidding process work?",
+        answer:
+          "Each auction lists a starting price and minimum bid increment. Place your bid before the countdown timer reaches zero. The highest bid when the timer expires wins — if the reserve price has been met.",
+      },
+      {
+        question: "What is a reserve price?",
+        answer:
+          "A reserve price is the minimum amount the seller is willing to accept. If bidding does not reach the reserve, the auction closes as 'Unsold' and no sale is concluded.",
+      },
+      {
+        question: "How do I list equipment for auction?",
+        answer:
+          "Navigate to the Sell page, complete the listing form with equipment details, photos, and pricing, then submit for admin review. Approved listings go live automatically.",
+      },
+      {
+        question: "What payment methods are accepted?",
+        answer:
+          "Payment terms are agreed directly between buyer and seller after a successful auction. AgriBid facilitates the auction process; payment and collection logistics are handled between the two parties.",
+      },
+      {
+        question: "How long does KYC verification take?",
+        answer:
+          "KYC verification is typically completed within one business day. You will receive a notification once your identity has been confirmed.",
+      },
+    ];
+
+    const existingFaq = await ctx.db.query("faqItems").first();
+    if (!existingFaq) {
+      await Promise.all(
+        defaultFaqItems.map((item, index) =>
+          ctx.db.insert("faqItems", {
+            ...item,
+            order: index,
+            isPublished: true,
+          })
+        )
+      );
+      console.log(
+        `Seeded ${defaultFaqItems.length.toString()} default FAQ items.`
+      );
+    }
+
+    // 5. Update Metrics (Counters)
     // Recalculate everything to ensure consistency after seeding
 
     // Auctions

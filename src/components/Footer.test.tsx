@@ -30,4 +30,10 @@ describe("Footer", () => {
     expect(screen.getByText(/Terms of Service/i)).toBeInTheDocument();
     expect(screen.getByText(/Help Center/i)).toBeInTheDocument();
   });
+
+  it("links 'How it Works' to the /faq page", () => {
+    renderFooter();
+    const link = screen.getByRole("link", { name: /how it works/i });
+    expect(link).toHaveAttribute("href", "/faq");
+  });
 });

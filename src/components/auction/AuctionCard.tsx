@@ -157,6 +157,8 @@ export const AuctionCard = ({
             <AuctionCardThumbnail
               primaryImage={primaryImage}
               title={auction.title}
+              make={auction.make}
+              model={auction.model}
               isCompact={isCompact}
               isWatched={isWatched}
               onWatchlistToggle={handleWatchlistToggle}

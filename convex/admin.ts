@@ -34,6 +34,8 @@ export {
   getAnnouncementStats,
   getSupportStats,
   getSystemConfig,
+  getSeoSettings,
+  getAllFaqItems,
 } from "./admin/queries";
 
 // Re-export mutation functions
@@ -46,6 +48,11 @@ export {
   initializeCounters,
   updateSystemConfig,
   updateGitHubErrorReportingConfig,
+  updateSeoSettings,
+  createFaqItem,
+  updateFaqItem,
+  deleteFaqItem,
+  reorderFaqItems,
 } from "./admin/mutations";
 
 // Re-export error reporting functions

@@ -82,6 +82,7 @@ export const DEFAULT_FORM_DATA: ListingFormData = {
   startingPrice: 0,
   reservePrice: 0,
   durationDays: 7,
+  startTime: undefined,
 };
 
 /**

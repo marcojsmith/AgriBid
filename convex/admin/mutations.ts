@@ -10,7 +10,8 @@
  * Re-exports from specialized sub-modules:
  * - kyc.ts: reviewKYC
  * - statistics.ts: initializeCounters
- * - settings.ts: updateSystemConfig
+ * - settings.ts: updateSystemConfig, updateGitHubErrorReportingConfig, updateSeoSettings
+ * - faq.ts: createFaqItem, updateFaqItem, deleteFaqItem, reorderFaqItems
  */
 
 import { v } from "convex/values";
@@ -28,7 +29,15 @@ export { initializeCounters } from "./statistics";
 export {
   updateSystemConfig,
   updateGitHubErrorReportingConfig,
+  updateSeoSettings,
 } from "./settings";
+
+export {
+  createFaqItem,
+  updateFaqItem,
+  deleteFaqItem,
+  reorderFaqItems,
+} from "./faq";
 
 // --- Bid Moderation ---
 

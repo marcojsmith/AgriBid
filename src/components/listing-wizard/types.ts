@@ -65,4 +65,6 @@ export interface ListingFormData {
   reservePrice: number;
   /** Auction duration in days */
   durationDays: number;
+  /** Optional scheduled start timestamp (Unix ms). Leave undefined to start immediately on approval. */
+  startTime?: number;
 }

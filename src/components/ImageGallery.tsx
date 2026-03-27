@@ -59,6 +59,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
             <img
               src={images[activeIndex]}
               alt={`${title} - Main`}
+              loading="eager"
               className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
             />
             <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
@@ -76,6 +77,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
             <img
               src={images[activeIndex]}
               alt={`${title} - Full Screen`}
+              loading="lazy"
               className="max-w-full max-h-full object-contain"
             />
 
@@ -145,6 +147,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
               <img
                 src={image}
                 alt={`${title} thumbnail ${index + 1}`}
+                loading="lazy"
                 className="object-cover w-full h-full"
               />
               {activeIndex !== index && (
