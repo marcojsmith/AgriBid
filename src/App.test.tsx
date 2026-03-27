@@ -39,6 +39,12 @@ vi.mock("./pages/admin/AdminSupport", () => mockPage("admin-support"));
 vi.mock("./pages/admin/AdminAudit", () => mockPage("admin-audit"));
 vi.mock("./pages/admin/AdminEquipmentCatalog", () => mockPage("admin-catalog"));
 vi.mock("./pages/admin/AdminSettings", () => mockPage("admin-settings"));
+vi.mock("./pages/admin/AdminErrorReports", () =>
+  mockPage("admin-error-reports")
+);
+vi.mock("./pages/admin/AdminErrorReportingSettings", () =>
+  mockPage("admin-error-reporting-settings")
+);
 vi.mock("./pages/Profile", () => mockPage("profile"));
 vi.mock("./pages/dashboard/MyBids", () => mockPage("my-bids"));
 vi.mock("./pages/dashboard/MyListings", () => mockPage("my-listings"));
@@ -175,6 +181,20 @@ describe("App Routing", () => {
     renderApp("/admin/settings");
     expect(
       await screen.findByTestId("admin-settings-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders AdminErrorReports for /admin/error-reports", async () => {
+    renderApp("/admin/error-reports");
+    expect(
+      await screen.findByTestId("admin-error-reports-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders AdminErrorReportingSettings for /admin/error-reporting", async () => {
+    renderApp("/admin/error-reporting");
+    expect(
+      await screen.findByTestId("admin-error-reporting-settings-page")
     ).toBeInTheDocument();
   });
 

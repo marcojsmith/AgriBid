@@ -110,6 +110,16 @@ describe("AdminSettings Page", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/audit");
   });
 
+  it("navigates to error reporting page when Error Reporting card is clicked", () => {
+    (useQuery as Mock).mockReturnValue(mockAdminStats);
+    renderPage();
+
+    const card = screen.getByRole("button", { name: /Error Reporting/i });
+    fireEvent.click(card);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/error-reporting");
+  });
+
   it("opens GitHub issue and shows toast when Platform Fees card is clicked", () => {
     (useQuery as Mock).mockReturnValue(mockAdminStats);
     renderPage();

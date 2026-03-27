@@ -10,11 +10,12 @@ import { toast } from "sonner";
 import { BidConfirmation } from "@/components/BidConfirmation";
 import { Badge } from "@/components/ui/badge";
 import { CountdownTimer } from "@/components/CountdownTimer";
-import { getErrorMessage, isValidCallbackUrl } from "@/lib/utils";
+import { isValidCallbackUrl } from "@/lib/utils";
 import { useSession } from "@/lib/auth-client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 
 import { BidForm } from "./BidForm";
 
@@ -52,6 +53,12 @@ export const BiddingPanel = ({
   const [isBidding, setIsBidding] = useState(false);
 
   const placeBid = useMutation(api.auctions.mutations.bidding.placeBid);
+  const { handleError } = useErrorHandler({
+    reportToGitHub: true,
+    context: {
+      userId: session?.user?.id,
+    },
+  });
 
   const isEnded =
     auction.status !== "active" ||
@@ -202,7 +209,7 @@ export const BiddingPanel = ({
         }
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to place bid"));
+      await handleError(error, "Failed to place bid");
     } finally {
       setIsBidding(false);
       setPendingBid({ amount: 0 });

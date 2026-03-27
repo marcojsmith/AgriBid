@@ -9,7 +9,7 @@ import type { Id } from "convex/_generated/dataModel";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { useListingForm } from "@/hooks/listing-wizard/useListingForm";
 import { normalizeListingImages } from "@/lib/normalize-images";
-import { getErrorMessage } from "@/lib/utils";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { Button } from "@/components/ui/button";
 
 import type { ListingFormData } from "./types";
@@ -60,6 +60,7 @@ const ListingWizardContent = () => {
   const submitForReview = useMutation(
     api.auctions.mutations.publish.submitForReview
   );
+  const { handleError } = useErrorHandler({ reportToGitHub: true });
 
   const initializedRef = useRef(false);
   const submissionStateRef = useRef(false);
@@ -156,7 +157,7 @@ const ListingWizardContent = () => {
         step: "draft save",
         formState: { title: formData.title, make: formData.make },
       });
-      toast.error(getErrorMessage(error, "Failed to save draft"));
+      await handleError(error, "Failed to save draft");
     } finally {
       setIsSubmitting(false);
     }
@@ -250,7 +251,7 @@ const ListingWizardContent = () => {
         step: "listing submission",
         formState: { title: formData.title, make: formData.make },
       });
-      toast.error(getErrorMessage(error, "Submission failed"));
+      await handleError(error, "Submission failed");
     } finally {
       setIsSubmitting(false);
       submissionStateRef.current = false;

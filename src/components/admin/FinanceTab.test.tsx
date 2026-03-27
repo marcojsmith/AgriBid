@@ -63,13 +63,13 @@ describe("FinanceTab", () => {
   it("displays sales volume formatted", () => {
     mockUseQuery.mockReturnValue(mockStats);
     render(<FinanceTab />);
-    expect(screen.getByText("R 1,500,000")).toBeInTheDocument();
+    expect(screen.getByText(/R[,\s\u00A0]*1[,\s\u00A0]*500[,\s\u00A0]*000/)).toBeInTheDocument();
   });
 
   it("displays commission formatted", () => {
     mockUseQuery.mockReturnValue(mockStats);
     render(<FinanceTab />);
-    expect(screen.getByText("R 75,000")).toBeInTheDocument();
+    expect(screen.getByText(/R[,\s\u00A0]*75[,\s\u00A0]*000/)).toBeInTheDocument();
   });
 
   it("displays auction count", () => {
@@ -89,8 +89,8 @@ describe("FinanceTab", () => {
   it("displays sale amounts formatted", () => {
     mockUseQuery.mockReturnValue(mockStats);
     render(<FinanceTab />);
-    expect(screen.getByText("R 250,000")).toBeInTheDocument();
-    expect(screen.getByText("R 180,000")).toBeInTheDocument();
+    expect(screen.getByText(/R[,\s\u00A0]*250[,\s\u00A0]*000/)).toBeInTheDocument();
+    expect(screen.getByText(/R[,\s\u00A0]*180[,\s\u00A0]*000/)).toBeInTheDocument();
   });
 
   it("renders empty state when no recent sales", () => {

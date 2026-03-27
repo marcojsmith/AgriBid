@@ -25,6 +25,10 @@ const AdminEquipmentCatalog = lazy(
   () => import("./pages/admin/AdminEquipmentCatalog")
 );
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminErrorReportingSettings = lazy(
+  () => import("./pages/admin/AdminErrorReportingSettings")
+);
+const AdminErrorReports = lazy(() => import("./pages/admin/AdminErrorReports"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -195,6 +199,22 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminSettings />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/error-reports"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminErrorReports />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/error-reporting"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminErrorReportingSettings />
                 </RoleProtectedRoute>
               }
             />

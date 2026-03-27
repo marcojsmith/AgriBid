@@ -26,33 +26,67 @@ vi.mock("./admin_utils", () => ({
 }));
 
 describe("Support Coverage", () => {
+  interface MockQueryBuilder {
+    withIndex: ReturnType<typeof vi.fn>;
+    order: ReturnType<typeof vi.fn>;
+    paginate: ReturnType<typeof vi.fn>;
+    eq: ReturnType<typeof vi.fn>;
+    neq: ReturnType<typeof vi.fn>;
+    gte: ReturnType<typeof vi.fn>;
+    lte: ReturnType<typeof vi.fn>;
+    gt: ReturnType<typeof vi.fn>;
+    lt: ReturnType<typeof vi.fn>;
+    field: ReturnType<typeof vi.fn>;
+  }
+
   interface MockCtx {
     db: {
       insert: ReturnType<typeof vi.fn>;
-      query: ReturnType<typeof vi.fn>;
-      withIndex: ReturnType<typeof vi.fn>;
-      order: ReturnType<typeof vi.fn>;
-      paginate: ReturnType<typeof vi.fn>;
+      query: (table: string) => MockQueryBuilder;
     };
   }
 
   let mockCtx: MockCtx;
+  let queryMock: MockQueryBuilder;
 
   beforeEach(() => {
     vi.resetAllMocks();
+    const mockQ = {
+      eq: vi.fn().mockReturnThis(),
+      neq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      gt: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
+      field: vi.fn((f: string) => f),
+    };
+
+    queryMock = {
+      withIndex: vi.fn((_name: string, cb: (q: typeof mockQ) => void) => {
+        if (typeof cb === "function") cb(mockQ);
+        return queryMock;
+      }),
+      order: vi.fn().mockReturnThis(),
+      paginate: vi.fn().mockResolvedValue({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        pageStatus: null,
+        splitCursor: null,
+      }),
+      eq: vi.fn().mockReturnThis(),
+      neq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnThis(),
+      lte: vi.fn().mockReturnThis(),
+      gt: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
+      field: vi.fn((f: string) => f),
+    };
+
     mockCtx = {
       db: {
         insert: vi.fn().mockResolvedValue("t1"),
-        query: vi.fn().mockReturnThis(),
-        withIndex: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        paginate: vi.fn().mockResolvedValue({
-          page: [],
-          isDone: true,
-          continueCursor: "",
-          pageStatus: null,
-          splitCursor: null,
-        }),
+        query: vi.fn().mockReturnValue(queryMock),
       },
     };
   });
@@ -175,7 +209,7 @@ describe("Support Coverage", () => {
       } as unknown as AuthUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       const mockTickets = [{ _id: "t1", subject: "Test" }];
-      mockCtx.db.paginate.mockResolvedValue({
+      queryMock.paginate.mockResolvedValue({
         page: mockTickets,
         isDone: true,
         continueCursor: "",
@@ -278,7 +312,7 @@ describe("Support Coverage", () => {
         _id: "u1",
       } as unknown as AuthUser);
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
-      mockCtx.db.paginate.mockResolvedValue({
+      queryMock.paginate.mockResolvedValue({
         page: [{ _id: "t1", subject: "Test" }],
         isDone: true,
         continueCursor: "",
@@ -290,7 +324,7 @@ describe("Support Coverage", () => {
       await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
         paginationOpts: { numItems: 50, cursor: null },
       });
-      expect(mockCtx.db.paginate).toHaveBeenCalledWith({
+      expect(queryMock.paginate).toHaveBeenCalledWith({
         numItems: 50,
         cursor: null,
       });

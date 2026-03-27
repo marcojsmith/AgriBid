@@ -13,6 +13,11 @@
  * - equipmentMetadata.ts: Machinery make and model catalog
  */
 
+import { action } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { MutationCtx } from "./_generated/server";
+import { requireAdmin } from "./lib/auth";
+
 // Re-export specialized modules for hierarchical access
 export * as categories from "./admin/categories";
 export * as equipmentMetadata from "./admin/equipmentMetadata";
@@ -40,4 +45,32 @@ export {
   reviewKYC,
   initializeCounters,
   updateSystemConfig,
+  updateGitHubErrorReportingConfig,
 } from "./admin/mutations";
+
+// Re-export error reporting functions
+export {
+  submitErrorReport,
+  getErrorReports,
+  getErrorReportStats,
+  generateFingerprint,
+} from "./errors";
+
+/**
+ * Action to process error reports.
+ * Re-exported as a public action for admin use.
+ */
+export const processErrorReports = action({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{
+    processed: number;
+    created: number;
+    commented: number;
+    failed: number;
+  }> => {
+    await requireAdmin(ctx as unknown as MutationCtx);
+    return await ctx.runAction(internal.errors.processErrorReportsAction, {});
+  },
+});

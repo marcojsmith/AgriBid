@@ -425,6 +425,57 @@ describe("Create Mutations", () => {
       );
     });
 
+    it("should set minIncrement on update for existing draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u1",
+        status: "draft",
+      });
+
+      await saveDraftHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"auctions">,
+          title: "Updated Draft",
+          startingPrice: 20000,
+          images: { front: "img1" },
+        } as PartialDraftArgs as SaveDraftArgs
+      );
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "a1",
+        expect.objectContaining({
+          minIncrement: 500,
+          currentPrice: 20000,
+        })
+      );
+    });
+
+    it("should NOT update draft counter for existing draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u1",
+        status: "draft",
+      });
+
+      await saveDraftHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"auctions">,
+          title: "Updated Draft",
+          images: { front: "img1" },
+        } as PartialDraftArgs as SaveDraftArgs
+      );
+
+      expect(updateCounter).not.toHaveBeenCalledWith(
+        expect.anything(),
+        "auctions",
+        "draft",
+        1
+      );
+    });
+
     it("should increment draft counter for new draft", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
 

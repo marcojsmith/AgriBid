@@ -263,4 +263,48 @@ export default defineSchema({
     description: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  // Error Reports Queue (captured errors sent to GitHub)
+  errorReports: defineTable({
+    fingerprint: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    errorType: v.string(),
+    errorMessage: v.string(),
+    stackTrace: v.optional(v.string()),
+    userId: v.optional(v.string()),
+    userRole: v.optional(v.string()),
+    additionalInfo: v.optional(
+      v.record(v.string(), v.union(v.string(), v.number()))
+    ),
+    breadcrumbs: v.array(
+      v.object({
+        timestamp: v.number(),
+        type: v.string(),
+        description: v.string(),
+        metadata: v.optional(
+          v.record(v.string(), v.union(v.string(), v.number()))
+        ),
+      })
+    ),
+    metadata: v.object({
+      url: v.string(),
+      userAgent: v.string(),
+      timestamp: v.number(),
+    }),
+    githubIssueUrl: v.optional(v.string()),
+    githubIssueNumber: v.optional(v.number()),
+    instanceCount: v.number(),
+    lastOccurredAt: v.number(),
+    createdAt: v.number(),
+    errorMessageNormalized: v.optional(v.string()),
+  })
+    .index("by_fingerprint", ["fingerprint"])
+    .index("by_status", ["status"])
+    .index("by_github_issue", ["githubIssueNumber"])
+    .index("by_createdAt", ["createdAt"]),
 });

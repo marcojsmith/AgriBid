@@ -1,17 +1,30 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "../_generated/server";
-import type { QueryCtx } from "../_generated/server";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
-import { logAudit } from "../admin_utils";
+import { logAudit, decryptPII, encryptPII } from "../admin_utils";
 import * as constants from "../constants";
 
-type SettingsSchema = {
+interface SettingsSchema {
   pagination_default_limit: number;
   max_results_cap: number;
   equipment_metadata_limit: number;
   bid_history_limit: number;
-};
+  github_error_reporting_enabled: boolean;
+  github_api_token: string;
+  github_repo_owner: string;
+  github_repo_name: string;
+  github_error_labels: string;
+}
+
+interface GitHubConfig {
+  enabled: boolean;
+  token: string | null;
+  repoOwner: string | null;
+  repoName: string | null;
+  labels: string | null;
+}
 
 type SettingsKey = keyof SettingsSchema;
 
@@ -45,6 +58,160 @@ export async function getSetting<K extends SettingsKey>(
   }
 
   return defaultValue;
+}
+
+/**
+ * Fetch GitHub configuration for error reporting.
+ *
+ * @param ctx - Convex Query context
+ * @returns GitHub config object with enabled flag and settings (token is decrypted if present)
+ */
+export async function getGitHubConfig(ctx: QueryCtx): Promise<GitHubConfig> {
+  const [
+    enabledSetting,
+    tokenSetting,
+    repoOwnerSetting,
+    repoNameSetting,
+    labelsSetting,
+  ] = await Promise.all([
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_error_reporting_enabled"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_api_token"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_repo_owner"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_repo_name"))
+      .unique(),
+    ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", "github_error_labels"))
+      .unique(),
+  ]);
+
+  const enabled = enabledSetting?.value === true;
+
+  let decryptedToken: string | null = null;
+  if (tokenSetting?.value && typeof tokenSetting.value === "string") {
+    try {
+      const decrypted = await decryptPII(tokenSetting.value);
+      decryptedToken = decrypted ?? null;
+    } catch {
+      console.warn("Failed to decrypt GitHub API token");
+    }
+  }
+
+  return {
+    enabled,
+    token: decryptedToken,
+    repoOwner:
+      typeof repoOwnerSetting?.value === "string"
+        ? repoOwnerSetting.value
+        : null,
+    repoName:
+      typeof repoNameSetting?.value === "string" ? repoNameSetting.value : null,
+    labels:
+      typeof labelsSetting?.value === "string"
+        ? labelsSetting.value
+        : "bug,auto-reported",
+  };
+}
+
+/**
+ * Check if GitHub error reporting is enabled.
+ *
+ * @param ctx - Convex Query context
+ * @returns True if enabled, false otherwise
+ */
+export async function isGitHubReportingEnabled(
+  ctx: QueryCtx
+): Promise<boolean> {
+  const config = await getGitHubConfig(ctx);
+  return (
+    config.enabled &&
+    config.token !== null &&
+    config.repoOwner !== null &&
+    config.repoName !== null
+  );
+}
+
+/**
+ * Handler for getSystemConfig.
+ *
+ * @param ctx - Convex Query context
+ * @returns Full system configuration
+ */
+export async function getSystemConfigHandler(ctx: QueryCtx) {
+  await requireAdmin(ctx);
+
+  const dbSettings = await ctx.db.query("settings").collect();
+  const githubConfig = await getGitHubConfig(ctx);
+
+  const sensitiveKeys = ["github_api_token"];
+  const filteredDbSettings = dbSettings.map((setting) => {
+    if (sensitiveKeys.includes(setting.key)) {
+      return { ...setting, value: "***REDACTED***" as const };
+    }
+    return setting;
+  });
+
+  const [defaultLimit, maxResultsCap, equipmentMetadataLimit, bidHistoryLimit] =
+    await Promise.all([
+      getSetting(
+        ctx,
+        "pagination_default_limit",
+        constants.PAGINATION_DEFAULT_LIMIT
+      ),
+      getSetting(ctx, "max_results_cap", constants.MAX_RESULTS_CAP),
+      getSetting(
+        ctx,
+        "equipment_metadata_limit",
+        constants.EQUIPMENT_METADATA_LIMIT
+      ),
+      getSetting(ctx, "bid_history_limit", constants.BID_HISTORY_LIMIT),
+    ]);
+
+  return {
+    pagination: {
+      defaultLimit: {
+        current: defaultLimit,
+        default: constants.PAGINATION_DEFAULT_LIMIT,
+        key: "pagination_default_limit",
+      },
+      maxResultsCap: {
+        current: maxResultsCap,
+        default: constants.MAX_RESULTS_CAP,
+        key: "max_results_cap",
+      },
+      equipmentMetadataLimit: {
+        current: equipmentMetadataLimit,
+        default: constants.EQUIPMENT_METADATA_LIMIT,
+        key: "equipment_metadata_limit",
+      },
+      bidHistoryLimit: {
+        current: bidHistoryLimit,
+        default: constants.BID_HISTORY_LIMIT,
+        key: "bid_history_limit",
+      },
+    },
+    dbSettings: filteredDbSettings,
+    githubConfig: {
+      enabled: githubConfig.enabled,
+      tokenMasked: githubConfig.token
+        ? `****${githubConfig.token.slice(-4)}`
+        : "",
+      repoOwner: githubConfig.repoOwner,
+      repoName: githubConfig.repoName,
+      labels: githubConfig.labels ?? "bug,auto-reported",
+    },
+  };
 }
 
 /**
@@ -88,59 +255,108 @@ export const getSystemConfig = query({
         updatedAt: v.number(),
       })
     ),
+    githubConfig: v.object({
+      enabled: v.boolean(),
+      tokenMasked: v.string(),
+      repoOwner: v.union(v.string(), v.null()),
+      repoName: v.union(v.string(), v.null()),
+      labels: v.union(v.string(), v.null()),
+    }),
   }),
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-
-    const dbSettings = await ctx.db.query("settings").collect();
-
-    const [
-      defaultLimit,
-      maxResultsCap,
-      equipmentMetadataLimit,
-      bidHistoryLimit,
-    ] = await Promise.all([
-      getSetting(
-        ctx,
-        "pagination_default_limit",
-        constants.PAGINATION_DEFAULT_LIMIT
-      ),
-      getSetting(ctx, "max_results_cap", constants.MAX_RESULTS_CAP),
-      getSetting(
-        ctx,
-        "equipment_metadata_limit",
-        constants.EQUIPMENT_METADATA_LIMIT
-      ),
-      getSetting(ctx, "bid_history_limit", constants.BID_HISTORY_LIMIT),
-    ]);
-
-    return {
-      pagination: {
-        defaultLimit: {
-          current: defaultLimit,
-          default: constants.PAGINATION_DEFAULT_LIMIT,
-          key: "pagination_default_limit",
-        },
-        maxResultsCap: {
-          current: maxResultsCap,
-          default: constants.MAX_RESULTS_CAP,
-          key: "max_results_cap",
-        },
-        equipmentMetadataLimit: {
-          current: equipmentMetadataLimit,
-          default: constants.EQUIPMENT_METADATA_LIMIT,
-          key: "equipment_metadata_limit",
-        },
-        bidHistoryLimit: {
-          current: bidHistoryLimit,
-          default: constants.BID_HISTORY_LIMIT,
-          key: "bid_history_limit",
-        },
-      },
-      dbSettings,
-    };
-  },
+  handler: getSystemConfigHandler,
 });
+
+/**
+ * Handler for updateSystemConfig.
+ *
+ * @param ctx - Convex Mutation context
+ * @param args - Key, value, and optional description
+ * @param args.key - The unique identifier/key of the setting to update
+ * @param args.value - The new value for the setting
+ * @param args.description - Optional documentation for what this setting controls
+ * @returns Success object
+ */
+export async function updateSystemConfigHandler(
+  ctx: MutationCtx,
+  args: {
+    key: string;
+    value: string | number | boolean;
+    description?: string;
+  }
+) {
+  await requireAdmin(ctx);
+
+  if (args.key.startsWith("github_")) {
+    throw new Error(
+      "Use updateGitHubErrorReportingConfig for GitHub error-reporting settings"
+    );
+  }
+
+  const allowedKeys: Record<string, "string" | "number" | "boolean"> = {
+    pagination_default_limit: "number",
+    max_results_cap: "number",
+    equipment_metadata_limit: "number",
+    bid_history_limit: "number",
+  };
+
+  if (!(args.key in allowedKeys)) {
+    throw new Error(`Invalid setting key: ${args.key}`);
+  }
+
+  const expectedType = allowedKeys[args.key];
+  if (typeof args.value !== expectedType) {
+    throw new Error(
+      `Invalid type for setting ${args.key}: expected ${expectedType}`
+    );
+  }
+
+  // Numeric domain validation for limits
+  if (expectedType === "number") {
+    const val = args.value as number;
+    if (!Number.isInteger(val) || val <= 0) {
+      throw new Error(`Setting ${args.key} must be a positive integer`);
+    }
+    if (val > 5000) {
+      throw new Error(`Setting ${args.key} cannot exceed 5000`);
+    }
+  }
+
+  const finalValue: string | number | boolean = args.value;
+
+  const existing = await ctx.db
+    .query("settings")
+    .withIndex("by_key", (q) => q.eq("key", args.key))
+    .unique();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      value: finalValue,
+      description: args.description ?? existing.description,
+      updatedAt: Date.now(),
+    });
+  } else {
+    await ctx.db.insert("settings", {
+      key: args.key,
+      value: finalValue,
+      description: args.description,
+      updatedAt: Date.now(),
+    });
+  }
+
+  const sensitiveKeyPattern = /token|secret|password/i;
+  const maskedValue = sensitiveKeyPattern.test(args.key)
+    ? "***"
+    : String(args.value);
+
+  await logAudit(ctx, {
+    action: "UPDATE_SETTING",
+    targetId: args.key,
+    targetType: "setting",
+    details: `Updated ${args.key} to ${maskedValue}`,
+  });
+
+  return { success: true };
+}
 
 /**
  * Update or create a system setting.
@@ -154,65 +370,126 @@ export const updateSystemConfig = mutation({
     value: v.union(v.string(), v.number(), v.boolean()),
     description: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+  handler: updateSystemConfigHandler,
+});
 
-    const allowedKeys: Record<string, "string" | "number" | "boolean"> = {
-      pagination_default_limit: "number",
-      max_results_cap: "number",
-      equipment_metadata_limit: "number",
-      bid_history_limit: "number",
-    };
+type GitHubErrorReportingConfig = {
+  enabled: boolean;
+  token?: string;
+  repoOwner: string;
+  repoName: string;
+  labels: string;
+};
 
-    if (!(args.key in allowedKeys)) {
-      throw new Error(`Invalid setting key: ${args.key}`);
-    }
+/**
+ * Updates the GitHub error reporting configuration.
+ *
+ * @param ctx - The mutation context.
+ * @param args - The configuration arguments.
+ * @returns An object indicating success.
+ */
+export async function updateGitHubErrorReportingConfigHandler(
+  ctx: MutationCtx,
+  args: GitHubErrorReportingConfig
+): Promise<{ success: boolean }> {
+  await requireAdmin(ctx);
 
-    const expectedType = allowedKeys[args.key];
-    if (typeof args.value !== expectedType) {
+  const repoOwner = args.repoOwner.trim();
+  const repoName = args.repoName.trim();
+
+  // If enabling, validate that we have all required fields
+  if (args.enabled) {
+    if (!repoOwner || !repoName) {
       throw new Error(
-        `Invalid type for setting ${args.key}: expected ${expectedType}`
+        "Repository owner and name are required when enabling GitHub error reporting"
       );
     }
 
-    // Numeric domain validation for limits
-    if (expectedType === "number") {
-      const val = args.value as number;
-      if (!Number.isInteger(val) || val <= 0) {
-        throw new Error(`Setting ${args.key} must be a positive integer`);
-      }
-      if (val > 5000) {
-        throw new Error(`Setting ${args.key} cannot exceed 5000`);
+    // Check if a new token is provided
+    const hasNewToken =
+      args.token && !args.token.startsWith("****") && args.token.trim() !== "";
+
+    if (!hasNewToken) {
+      // No new token, check if we have an existing stored token
+      const existingTokenSetting = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", "github_api_token"))
+        .unique();
+
+      if (!existingTokenSetting || !existingTokenSetting.value) {
+        throw new Error(
+          "GitHub API token is required when enabling error reporting"
+        );
       }
     }
+  }
 
+  const settingsToUpdate: Array<{
+    key: string;
+    value: string | boolean;
+  }> = [
+    { key: "github_error_reporting_enabled", value: args.enabled },
+    { key: "github_repo_owner", value: repoOwner },
+    { key: "github_repo_name", value: repoName },
+    { key: "github_error_labels", value: args.labels.trim() },
+  ];
+
+  if (
+    args.token &&
+    !args.token.startsWith("****") &&
+    args.token.trim() !== ""
+  ) {
+    const encrypted = await encryptPII(args.token);
+    if (!encrypted) {
+      throw new Error("Failed to encrypt GitHub token. Operation aborted.");
+    }
+    settingsToUpdate.push({ key: "github_api_token", value: encrypted });
+  }
+
+  for (const setting of settingsToUpdate) {
     const existing = await ctx.db
       .query("settings")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .withIndex("by_key", (q) => q.eq("key", setting.key))
       .unique();
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        value: args.value,
-        description: args.description ?? existing.description,
+        value: setting.value,
         updatedAt: Date.now(),
       });
     } else {
       await ctx.db.insert("settings", {
-        key: args.key,
-        value: args.value,
-        description: args.description,
+        key: setting.key,
+        value: setting.value,
+        description: "",
         updatedAt: Date.now(),
       });
     }
+  }
 
-    await logAudit(ctx, {
-      action: "UPDATE_SETTING",
-      targetId: args.key,
-      targetType: "setting",
-      details: `Updated ${args.key} to ${args.value}`,
-    });
+  await logAudit(ctx, {
+    action: "UPDATE_GITHUB_ERROR_REPORTING_CONFIG",
+    targetId: "github-error-reporting",
+    targetType: "settings",
+    details: `Updated GitHub error reporting config: enabled=${args.enabled}, repo=${args.repoOwner}/${args.repoName}`,
+  });
 
-    return { success: true };
+  return { success: true };
+}
+
+/**
+ * Update GitHub error reporting configuration atomically.
+ *
+ * Updates all GitHub-related settings in a single transaction.
+ * Only accessible to admin users.
+ */
+export const updateGitHubErrorReportingConfig = mutation({
+  args: {
+    enabled: v.boolean(),
+    token: v.optional(v.string()),
+    repoOwner: v.string(),
+    repoName: v.string(),
+    labels: v.string(),
   },
+  handler: updateGitHubErrorReportingConfigHandler,
 });

@@ -67,3 +67,11 @@ export const createMockCtx = () => ({
     getMetadata: vi.fn(),
   },
 });
+
+// Mock ConvexHttpClient for use in lib/error-reporter.ts
+vi.mock("convex/browser", () => ({
+  ConvexHttpClient: class {
+    mutation = vi.fn().mockResolvedValue({ success: true });
+    query = vi.fn().mockResolvedValue({});
+  },
+}));

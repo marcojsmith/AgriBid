@@ -7,6 +7,7 @@ import {
   getNotificationArchiveHandler,
   markAsReadHandler,
   markAllReadHandler,
+  batchFetchReadCounts,
 } from "./notifications";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { AuthUser } from "./auth";
@@ -111,6 +112,114 @@ describe("Notifications Coverage", () => {
       expect(result.page[1].isRead).toBeUndefined();
     });
 
+    it("should handle pagination with cursor and custom numItems", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as AuthUser);
+
+      // Create enough items to test pagination
+      const personalNotifications = Array.from({ length: 25 }, (_, i) => ({
+        _id: `n${i}`,
+        createdAt: 100 + i * 10,
+        recipientId: "user1",
+        type: "bid" as const,
+        title: `Title ${i}`,
+        message: `Msg ${i}`,
+        isRead: false,
+      }));
+      const announcements = Array.from({ length: 25 }, (_, i) => ({
+        _id: `a${i}`,
+        createdAt: 200 + i * 10,
+        recipientId: "all",
+        type: "announcement" as const,
+        title: `Ann ${i}`,
+        message: `Ann Msg ${i}`,
+        isRead: false,
+      }));
+
+      queryMock.collect
+        .mockResolvedValueOnce(personalNotifications)
+        .mockResolvedValueOnce(announcements)
+        .mockResolvedValueOnce([]); // read receipts
+
+      const result = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 10, cursor: "20" } }
+      );
+
+      // Should return items 20-29 (sorted by createdAt descending, so indices 20-29)
+      expect(result.page).toHaveLength(10);
+      expect(result.isDone).toBe(false);
+      expect(result.continueCursor).toBe("30");
+      expect(result.totalCount).toBe(50);
+    });
+
+    it("should handle pagination when cursor exceeds data length", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as AuthUser);
+
+      queryMock.collect
+        .mockResolvedValueOnce([
+          {
+            _id: "n1",
+            createdAt: 100,
+            recipientId: "user1",
+            type: "bid" as const,
+            title: "T",
+            message: "M",
+            isRead: false,
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const result = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 10, cursor: "100" } }
+      );
+
+      expect(result.page).toHaveLength(0);
+      expect(result.isDone).toBe(true);
+      expect(result.continueCursor).toBe("");
+    });
+
+    it("should use default pagination values when not provided", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as AuthUser);
+
+      // Return more than 20 items to test default pagination
+      const notifications = Array.from({ length: 30 }, (_, i) => ({
+        _id: `n${i}`,
+        createdAt: 100 + i * 10,
+        recipientId: "user1",
+        type: "bid" as const,
+        title: `Title ${i}`,
+        message: `Msg ${i}`,
+        isRead: false,
+      }));
+
+      queryMock.collect
+        .mockResolvedValueOnce(notifications)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      // Call without paginationOpts - should use defaults
+      const result = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx,
+        {}
+      );
+
+      // Default is 20 items
+      expect(result.page).toHaveLength(20);
+      expect(result.isDone).toBe(false);
+      expect(result.totalCount).toBe(30);
+    });
+
     it("should use fallback _id if userId is missing", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
@@ -186,6 +295,57 @@ describe("Notifications Coverage", () => {
       expect(result).toHaveLength(0);
     });
 
+    it("should sort merged notifications by createdAt descending", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as AuthUser);
+
+      // Return personal notifications with different createdAt values
+      queryMock.take
+        .mockResolvedValueOnce([
+          {
+            _id: "n1",
+            createdAt: 100,
+            recipientId: "user1",
+            type: "bid" as const,
+            title: "Title 1",
+            message: "Msg 1",
+            isRead: false,
+          },
+          {
+            _id: "n2",
+            createdAt: 300,
+            recipientId: "user1",
+            type: "bid" as const,
+            title: "Title 2",
+            message: "Msg 2",
+            isRead: true,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            _id: "a1",
+            createdAt: 200,
+            recipientId: "all",
+            type: "announcement" as const,
+            title: "Ann 1",
+            message: "Ann Msg 1",
+            isRead: false,
+          },
+        ]);
+
+      const result = await getNotificationArchiveHandler(
+        mockCtx as unknown as QueryCtx,
+        {}
+      );
+      expect(result).toHaveLength(3);
+      // Should be sorted by createdAt descending: n2 (300), a1 (200), n1 (100)
+      expect(result[0]._id).toBe("n2");
+      expect(result[1]._id).toBe("a1");
+      expect(result[2]._id).toBe("n1");
+    });
+
     it("should handle userId fallback", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
@@ -210,6 +370,15 @@ describe("Notifications Coverage", () => {
       await getNotificationArchiveHandler(mockCtx as unknown as QueryCtx, {});
       expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
+    });
+
+    it("should return empty array when user is not authenticated (null)", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue(null);
+      const result = await getNotificationArchiveHandler(
+        mockCtx as unknown as QueryCtx,
+        {}
+      );
+      expect(result).toHaveLength(0);
     });
 
     it("should handle error gracefully", async () => {
@@ -373,6 +542,39 @@ describe("Notifications Coverage", () => {
 
       await markAllReadHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.patch).toHaveBeenCalledTimes(60);
+    });
+  });
+
+  describe("batchFetchReadCounts", () => {
+    it("should return empty Map for empty input array", async () => {
+      const result = await batchFetchReadCounts(
+        mockCtx as unknown as QueryCtx,
+        []
+      );
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
+      expect(mockCtx.db.query).not.toHaveBeenCalled();
+    });
+
+    it("should fetch read counts for each notification", async () => {
+      const notificationIds = [
+        "n1",
+        "n2",
+        "n3",
+      ] as unknown as Id<"notifications">[];
+      queryMock.collect
+        .mockResolvedValueOnce([{ _id: "r1" }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ _id: "r2" }, { _id: "r3" }]);
+
+      const result = await batchFetchReadCounts(
+        mockCtx as unknown as QueryCtx,
+        notificationIds
+      );
+
+      expect(result.get("n1" as Id<"notifications">)).toBe(1);
+      expect(result.get("n2" as Id<"notifications">)).toBe(0);
+      expect(result.get("n3" as Id<"notifications">)).toBe(2);
     });
   });
 });

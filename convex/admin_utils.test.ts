@@ -311,6 +311,33 @@ describe("Admin Utils", () => {
       expect(result).toBe(2);
     });
 
+    it("should use counter.verified when isVerified=true and counter exists", async () => {
+      queryMock.unique.mockResolvedValue({ verified: 10, total: 100 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        isVerified: true,
+        useCounter: true,
+      });
+      expect(result).toBe(10);
+    });
+
+    it("should calculate unverified from counter when isVerified=false and counter exists", async () => {
+      queryMock.unique.mockResolvedValue({ verified: 10, total: 100 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        isVerified: false,
+        useCounter: true,
+      });
+      expect(result).toBe(90);
+    });
+
+    it("should use counter.pending when kycStatus=pending and counter exists", async () => {
+      queryMock.unique.mockResolvedValue({ pending: 5 });
+      const result = await countUsers(mockCtx as unknown as QueryCtx, {
+        kycStatus: "pending",
+        useCounter: true,
+      });
+      expect(result).toBe(5);
+    });
+
     it("should use kycStatus index for complex filters if role is missing", async () => {
       let capturedFilter:
         | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
@@ -399,6 +426,19 @@ describe("Admin Utils", () => {
         "auditLogs",
         expect.objectContaining({
           adminId: "user1",
+        })
+      );
+    });
+
+    it("should use authUser._id when userId is undefined", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "user_id_123",
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      await logAudit(mockCtx as unknown as MutationCtx, { action: "test" });
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auditLogs",
+        expect.objectContaining({
+          adminId: "user_id_123",
         })
       );
     });

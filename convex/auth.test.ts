@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { betterAuth } from "better-auth";
 import type { GenericCtx } from "@convex-dev/better-auth";
 
-import { getAuthUser, createAuth } from "./auth";
-import { authComponent } from "./auth";
+import { getAuthUser, createAuth, authComponent } from "./auth";
 import * as config from "./config";
 import type { DataModel } from "./_generated/dataModel";
 

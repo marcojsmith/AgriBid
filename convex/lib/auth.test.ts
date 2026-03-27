@@ -13,6 +13,7 @@ import {
   requireProfile,
   requireVerified,
   requireVerifiedSeller,
+  tryRequireAdmin,
   UnauthorizedError,
   VERIFIED_REQUIRED_MESSAGE,
 } from "./auth";
@@ -389,6 +390,55 @@ describe("Auth Utilities Coverage", () => {
       expect(resolveUserId({ _id: "i1" as Id<"profiles"> } as AuthUser)).toBe(
         "i1"
       );
+    });
+  });
+
+  describe("tryRequireAdmin", () => {
+    const mockAuthUser: AuthUser = {
+      _id: "u1" as Id<"profiles">,
+      userId: "user1",
+      name: "User 1",
+      email: "u1@test.com",
+      _creationTime: 100,
+    };
+
+    it("should return authorized: true when admin", async () => {
+      mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "s1" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue(
+        mockAuthUser as unknown as Awaited<
+          ReturnType<typeof authComponent.getAuthUser>
+        >
+      );
+      queryMock.unique.mockResolvedValue({ role: "admin" } as Doc<"profiles">);
+
+      const result = await tryRequireAdmin(mockCtx as unknown as QueryCtx);
+      expect(result).toEqual({ authorized: true, user: mockAuthUser });
+    });
+
+    it("should return authorized: false with error message when UnauthorizedError", async () => {
+      mockCtx.auth.getUserIdentity.mockResolvedValue({ subject: "s1" });
+      vi.mocked(authComponent.getAuthUser).mockResolvedValue(
+        mockAuthUser as unknown as Awaited<
+          ReturnType<typeof authComponent.getAuthUser>
+        >
+      );
+      queryMock.unique.mockResolvedValue({ role: "buyer" } as Doc<"profiles">);
+
+      const result = await tryRequireAdmin(mockCtx as unknown as QueryCtx);
+      expect(result).toEqual({
+        authorized: false,
+        error: "Not authorized: Admin privileges required",
+      });
+    });
+
+    it("should return authorized: false when not authenticated", async () => {
+      mockCtx.auth.getUserIdentity.mockResolvedValue(null);
+
+      const result = await tryRequireAdmin(mockCtx as unknown as QueryCtx);
+      expect(result).toEqual({
+        authorized: false,
+        error: "Not authenticated",
+      });
     });
   });
 });

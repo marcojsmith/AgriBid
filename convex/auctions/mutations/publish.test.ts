@@ -8,9 +8,21 @@ import {
   approveAuctionHandler,
   rejectAuctionHandler,
   closeAuctionEarlyHandler,
+  submitForReview,
+  publishAuction,
+  flagAuction,
+  dismissFlag,
+  approveAuction,
+  rejectAuction,
+  closeAuctionEarly,
 } from "./publish";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
+
+vi.mock("../../_generated/server", () => ({
+  mutation: vi.fn((config) => config),
+  query: vi.fn((config) => config),
+}));
 
 // helper types for mocking
 interface MockCtxType {
@@ -30,6 +42,23 @@ interface MockCtxType {
 }
 
 let mockCtx: MockCtxType;
+const mockQ = {
+  eq: vi.fn().mockReturnThis(),
+  neq: vi.fn().mockReturnThis(),
+  gte: vi.fn().mockReturnThis(),
+  lte: vi.fn().mockReturnThis(),
+  gt: vi.fn().mockReturnThis(),
+  lt: vi.fn().mockReturnThis(),
+  field: vi.fn((f) => f),
+};
+
+const queryMock = {
+  withIndex: vi.fn((_name, cb) => {
+    if (typeof cb === "function") cb(mockQ);
+    return queryMock;
+  }),
+  collect: vi.fn().mockResolvedValue([]),
+};
 
 vi.mock("../../lib/auth", () => {
   class UnauthorizedError extends Error {
@@ -68,13 +97,14 @@ const createMockProfile = (userId: string, role: string) => ({
 describe("Publish Mutations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
     mockCtx = {
       db: {
         get: vi.fn(),
         insert: vi.fn().mockResolvedValue("id"),
         patch: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
-        query: vi.fn(),
+        query: vi.fn().mockReturnValue(queryMock),
         normalizeId: vi.fn().mockImplementation((_table, id) => id),
       },
       storage: {
@@ -99,6 +129,30 @@ describe("Publish Mutations", () => {
     vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
       authorized: true,
       user: { userId: "u1", _id: "u1" },
+    });
+  });
+
+  describe("Exports and Registration", () => {
+    it("should export all mutations with correct handlers", () => {
+      expect(submitForReview).toBeDefined();
+      expect(publishAuction).toBeDefined();
+      expect(flagAuction).toBeDefined();
+      expect(dismissFlag).toBeDefined();
+      expect(approveAuction).toBeDefined();
+      expect(rejectAuction).toBeDefined();
+      expect(closeAuctionEarly).toBeDefined();
+
+      // Basic sanity check that they point to the right handlers
+      // In Convex, mutation objects have a handler property if they are created via mutation({..., handler})
+      const getHandler = (m: unknown) => (m as { handler: unknown }).handler;
+
+      expect(getHandler(submitForReview)).toBe(publishAuctionHandler);
+      expect(getHandler(publishAuction)).toBe(publishAuctionHandler);
+      expect(getHandler(flagAuction)).toBe(flagAuctionHandler);
+      expect(getHandler(dismissFlag)).toBe(dismissFlagHandler);
+      expect(getHandler(approveAuction)).toBe(approveAuctionHandler);
+      expect(getHandler(rejectAuction)).toBe(rejectAuctionHandler);
+      expect(getHandler(closeAuctionEarly)).toBe(closeAuctionEarlyHandler);
     });
   });
 
@@ -182,10 +236,6 @@ describe("Publish Mutations", () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
       mockCtx.db.get.mockResolvedValue({ _id: "a1", sellerId: "u2" });
-      mockCtx.db.query.mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([]),
-      });
 
       const result = await flagAuctionHandler(
         mockCtx as unknown as MutationCtx,
@@ -199,6 +249,77 @@ describe("Publish Mutations", () => {
         "auctionFlags",
         expect.objectContaining({ reason: "misleading" })
       );
+    });
+
+    it("should flag auction with null status when auction status is undefined", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u2",
+        status: undefined,
+      });
+
+      const result = await flagAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"auctions">,
+          reason: "misleading",
+        }
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it("should not auto-hide when flags below threshold", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u2",
+        status: "active",
+      });
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi
+          .fn()
+          .mockResolvedValue([{ reporterId: "u3", status: "pending" }]),
+      });
+
+      const result = await flagAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"auctions">,
+          reason: "misleading",
+        }
+      );
+      expect(result.hideTriggered).toBe(false);
+      expect(mockCtx.db.patch).not.toHaveBeenCalled();
+    });
+
+    it("should auto-hide when flags reach threshold", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u2",
+        status: "active",
+      });
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([
+          { reporterId: "u3", status: "pending" },
+          { reporterId: "u4", status: "pending" },
+        ]),
+      });
+
+      const result = await flagAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"auctions">,
+          reason: "misleading",
+        }
+      );
+      expect(result.hideTriggered).toBe(true);
     });
 
     it("should throw if flagging own auction", async () => {
@@ -301,11 +422,6 @@ describe("Publish Mutations", () => {
           hiddenByFlags: true,
         }); // auction
 
-      mockCtx.db.query.mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([]), // no more pending flags
-      });
-
       const result = await dismissFlagHandler(
         mockCtx as unknown as MutationCtx,
         { flagId: "f1" as Id<"auctionFlags"> }
@@ -324,6 +440,82 @@ describe("Publish Mutations", () => {
           flagId: "f1" as Id<"auctionFlags">,
         })
       ).rejects.toThrow("Admin privileges required");
+    });
+
+    it("should not restore auction when remaining flags still above threshold", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      mockCtx.db.get
+        .mockResolvedValueOnce({
+          _id: "f1",
+          status: "pending",
+          auctionId: "a1",
+          reason: "other",
+        })
+        .mockResolvedValueOnce({
+          _id: "a1",
+          status: "pending_review",
+          hiddenByFlags: true,
+        });
+
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([
+          { reporterId: "u2", status: "pending" },
+          { reporterId: "u3", status: "pending" },
+          { reporterId: "u4", status: "pending" },
+        ]),
+      });
+
+      const result = await dismissFlagHandler(
+        mockCtx as unknown as MutationCtx,
+        { flagId: "f1" as Id<"auctionFlags"> }
+      );
+      expect(result.auctionRestored).toBe(false);
+    });
+
+    it("should not restore auction when hiddenByFlags is false", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      mockCtx.db.get
+        .mockResolvedValueOnce({
+          _id: "f1",
+          status: "pending",
+          auctionId: "a1",
+          reason: "other",
+        })
+        .mockResolvedValueOnce({
+          _id: "a1",
+          status: "pending_review",
+          hiddenByFlags: false,
+        });
+
+      const result = await dismissFlagHandler(
+        mockCtx as unknown as MutationCtx,
+        { flagId: "f1" as Id<"auctionFlags"> }
+      );
+      expect(result.auctionRestored).toBe(false);
+      expect(mockCtx.db.query).not.toHaveBeenCalled();
+    });
+
+    it("should not restore auction when status is not pending_review", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      mockCtx.db.get
+        .mockResolvedValueOnce({
+          _id: "f1",
+          status: "pending",
+          auctionId: "a1",
+          reason: "other",
+        })
+        .mockResolvedValueOnce({
+          _id: "a1",
+          status: "active",
+          hiddenByFlags: true,
+        });
+
+      const result = await dismissFlagHandler(
+        mockCtx as unknown as MutationCtx,
+        { flagId: "f1" as Id<"auctionFlags"> }
+      );
+      expect(result.auctionRestored).toBe(false);
     });
   });
 
@@ -348,6 +540,38 @@ describe("Publish Mutations", () => {
         })
       );
     });
+
+    it("should throw if duration below minimum", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+      });
+
+      await expect(
+        approveAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          durationDays: 0,
+        })
+      ).rejects.toThrow("Invalid duration");
+    });
+
+    it("should throw if duration above maximum", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+      });
+
+      await expect(
+        approveAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          durationDays: 400,
+        })
+      ).rejects.toThrow("Invalid duration");
+    });
   });
 
   describe("rejectAuctionHandler", () => {
@@ -369,6 +593,20 @@ describe("Publish Mutations", () => {
           status: "rejected",
         })
       );
+    });
+
+    it("should throw if auction not in pending_review", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "active",
+      });
+
+      await expect(
+        rejectAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Only auctions in pending_review can be rejected");
     });
   });
 
@@ -406,10 +644,6 @@ describe("Publish Mutations", () => {
         status: "active",
         reservePrice: 1000,
       });
-      mockCtx.db.query.mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([]),
-      });
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
@@ -440,6 +674,53 @@ describe("Publish Mutations", () => {
       expect(result.winnerId).toBe("u3"); // earlier timestamp
     });
 
+    it("should close as unsold when reserve not met", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "active",
+        reservePrice: 2000,
+      });
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi
+          .fn()
+          .mockResolvedValue([
+            { amount: 1500, bidderId: "u2", status: "valid", timestamp: 100 },
+          ]),
+      });
+
+      const result = await closeAuctionEarlyHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.finalStatus).toBe("unsold");
+      expect(result.winnerId).toBeUndefined();
+    });
+
+    it("should filter out voided bids when determining winner", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "active",
+        reservePrice: 1000,
+      });
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([
+          { amount: 1500, bidderId: "u2", status: "voided", timestamp: 100 },
+          { amount: 1200, bidderId: "u3", status: "valid", timestamp: 110 },
+        ]),
+      });
+
+      const result = await closeAuctionEarlyHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.finalStatus).toBe("sold");
+      expect(result.winnerId).toBe("u3");
+    });
+
     it("should return error if not authorized (via Error message)", async () => {
       vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
         authorized: false,
@@ -454,6 +735,23 @@ describe("Publish Mutations", () => {
       expect(mockCtx.db.get).not.toHaveBeenCalled();
       expect(mockCtx.db.query).not.toHaveBeenCalled();
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
+    });
+
+    it("should return error if closeAuctionEarlyHandler receives non-active auction", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "sold",
+        reservePrice: 1000,
+        title: "Test",
+      });
+
+      const result = await closeAuctionEarlyHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Auction has already been settled");
     });
   });
 });

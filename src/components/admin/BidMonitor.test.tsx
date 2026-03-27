@@ -93,8 +93,8 @@ describe("BidMonitor", () => {
   it("displays bid amounts formatted", () => {
     mockUseQuery.mockReturnValue(mockPaginatedBids);
     render(<BidMonitor />);
-    expect(screen.getByText("R 150,000")).toBeInTheDocument();
-    expect(screen.getByText("R 200,000")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*150\s*000/)).toBeInTheDocument();
+    expect(screen.getByText(/R\s*200\s*000/)).toBeInTheDocument();
   });
 
   it("displays live indicator", () => {
@@ -113,7 +113,7 @@ describe("BidMonitor", () => {
       splitCursor: null,
     });
     render(<BidMonitor />);
-    const amount = screen.getByText("R 200,000");
+    const amount = screen.getByText(/R\s*200\s*000/);
     expect(amount.closest("span")).toHaveClass("line-through");
   });
 
@@ -161,7 +161,7 @@ describe("BidMonitor", () => {
       splitCursor: null,
     });
     render(<BidMonitor />);
-    const amount = screen.getByText("R 150,000");
+    const amount = screen.getByText(/R\s*150\s*000/);
     expect(amount.closest("span")).toHaveClass("text-green-600");
   });
 
