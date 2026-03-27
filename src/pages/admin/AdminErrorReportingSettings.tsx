@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { AlertTriangle, CheckCircle, Eye, EyeOff, Shield } from "lucide-react";
@@ -6,7 +6,13 @@ import { toast } from "sonner";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,9 +42,10 @@ export default function AdminErrorReportingSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasExistingToken, setHasExistingToken] = useState(false);
   const [hasStartedTyping, setHasStartedTyping] = useState(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (settings !== undefined) {
+    if (settings !== undefined && !initializedRef.current) {
       const gc = settings.githubConfig;
       setEnabled(gc.enabled);
       const existing =
@@ -50,6 +57,7 @@ export default function AdminErrorReportingSettings() {
       setRepoOwner(gc.repoOwner ?? "");
       setRepoName(gc.repoName ?? "");
       setLabels(gc.labels ?? "");
+      initializedRef.current = true;
     }
   }, [settings]);
 
@@ -87,6 +95,7 @@ export default function AdminErrorReportingSettings() {
         labels,
       });
       toast.success("Error reporting settings saved");
+      initializedRef.current = false;
       // Form state will be updated via the useEffect when settings query refreshes
     } catch (err) {
       toast.error(
@@ -120,171 +129,160 @@ export default function AdminErrorReportingSettings() {
             </div>
           </CardHeader>
           <CardContent>
-
-          <div className="flex items-center justify-between py-4 border-t">
-            <div>
-              <p className="font-medium text-primary">
-                Enable Error Reporting
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Automatically report unexpected errors to GitHub issues
-              </p>
-            </div>
-            <Checkbox
-              id="enable-error-reporting"
-              checked={enabled}
-              onCheckedChange={(checked) => {
-                setEnabled(checked === true);
-                setHasStartedTyping(true);
-              }}
-              aria-label={
-                enabled ? "Disable error reporting" : "Enable error reporting"
-              }
-            />
-          </div>
-
-          {enabled && (
-            <div className="space-y-4 pt-4 border-t">
+            <div className="flex items-center justify-between py-4 border-t">
               <div>
-                <Label htmlFor="github-pat">
-                  GitHub Personal Access Token
-                </Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="github-pat"
-                    type={showToken ? "text" : "password"}
-                    value={displayToken}
-                    onChange={(e) => {
-                      const newValue = e.target.value;
-                      setToken(newValue);
-                      if (newValue !== savedTokenMasked) {
+                <p className="font-medium text-primary">
+                  Enable Error Reporting
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Automatically report unexpected errors to GitHub issues
+                </p>
+              </div>
+              <Checkbox
+                id="enable-error-reporting"
+                checked={enabled}
+                onCheckedChange={(checked) => {
+                  setEnabled(checked === true);
+                  setHasStartedTyping(true);
+                }}
+                aria-label={
+                  enabled ? "Disable error reporting" : "Enable error reporting"
+                }
+              />
+            </div>
+
+            {enabled && (
+              <div className="space-y-4 pt-4 border-t">
+                <div>
+                  <Label htmlFor="github-pat">
+                    GitHub Personal Access Token
+                  </Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="github-pat"
+                      type={showToken ? "text" : "password"}
+                      value={displayToken}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setToken(newValue);
+                        if (newValue !== savedTokenMasked) {
+                          setHasStartedTyping(true);
+                        }
+                      }}
+                      onPaste={() => {
                         setHasStartedTyping(true);
-                      }
-                    }}
-                    onPaste={() => {
-                      setHasStartedTyping(true);
-                    }}
-                    placeholder="ghp_xxxxxxxxxxxx"
-                    className={`pr-10 ${
-                      hasExistingToken && !showToken
-                        ? "italic text-muted-foreground"
-                        : ""
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowToken(!showToken);
-                    }}
-                    aria-label={showToken ? "Hide token" : "Show token"}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                  >
-                    {showToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {hasExistingToken
-                    ? "Token is set. Leave empty to keep, or enter new token to replace."
-                    : "Requires repo scope. Stored encrypted."}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="repo-owner">
-                    Repository Owner
-                  </Label>
-                  <Input
-                    id="repo-owner"
-                    type="text"
-                    value={repoOwner}
-                    onChange={(e) => {
-                      setRepoOwner(e.target.value);
-                      setHasStartedTyping(true);
-                    }}
-                    placeholder="username or org"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="repo-name">
-                    Repository Name
-                  </Label>
-                  <Input
-                    id="repo-name"
-                    type="text"
-                    value={repoName}
-                    onChange={(e) => {
-                      setRepoName(e.target.value);
-                      setHasStartedTyping(true);
-                    }}
-                    placeholder="AgriBid"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="issue-labels">
-                  Issue Labels
-                </Label>
-                <Input
-                  id="issue-labels"
-                  type="text"
-                  value={labels}
-                  onChange={(e) => {
-                    setLabels(e.target.value);
-                    setHasStartedTyping(true);
-                  }}
-                  placeholder="bug, auto-reported"
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Comma-separated label names to apply to new issues
-                </p>
-              </div>
-
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 flex gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-800 dark:text-amber-200">
-                    Security Note
-                  </p>
-                  <p className="text-amber-700 dark:text-amber-300 mt-0.5">
-                    Validation errors are filtered out. Only unexpected errors
-                    (runtime failures, network issues, etc.) are reported. Error
-                    messages are sanitized to remove PII.
+                      }}
+                      placeholder="ghp_xxxxxxxxxxxx"
+                      className={`pr-10 ${
+                        hasExistingToken && !showToken
+                          ? "italic text-muted-foreground"
+                          : ""
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowToken(!showToken);
+                      }}
+                      aria-label={showToken ? "Hide token" : "Show token"}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                    >
+                      {showToken ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {hasExistingToken
+                      ? "Token is set. Leave empty to keep, or enter new token to replace."
+                      : "Requires repo scope. Stored encrypted."}
                   </p>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {!enabled && (
-            <div className="bg-muted rounded-md p-4 mt-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-sm">
-                  Error reporting is disabled. Unexpected errors will not be
-                  captured.
-                </span>
-              </div>
-            </div>
-          )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="repo-owner">Repository Owner</Label>
+                    <Input
+                      id="repo-owner"
+                      type="text"
+                      value={repoOwner}
+                      onChange={(e) => {
+                        setRepoOwner(e.target.value);
+                        setHasStartedTyping(true);
+                      }}
+                      placeholder="username or org"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="repo-name">Repository Name</Label>
+                    <Input
+                      id="repo-name"
+                      type="text"
+                      value={repoName}
+                      onChange={(e) => {
+                        setRepoName(e.target.value);
+                        setHasStartedTyping(true);
+                      }}
+                      placeholder="AgriBid"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
 
-          <div className="flex justify-end pt-4 border-t">
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? "Saving..." : "Save Settings"}
-            </Button>
-          </div>
+                <div>
+                  <Label htmlFor="issue-labels">Issue Labels</Label>
+                  <Input
+                    id="issue-labels"
+                    type="text"
+                    value={labels}
+                    onChange={(e) => {
+                      setLabels(e.target.value);
+                      setHasStartedTyping(true);
+                    }}
+                    placeholder="bug, auto-reported"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Comma-separated label names to apply to new issues
+                  </p>
+                </div>
+
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 flex gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                      Security Note
+                    </p>
+                    <p className="text-amber-700 dark:text-amber-300 mt-0.5">
+                      Validation errors are filtered out. Only unexpected errors
+                      (runtime failures, network issues, etc.) are reported.
+                      Error messages are sanitized to remove PII.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!enabled && (
+              <div className="bg-muted rounded-md p-4 mt-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm">
+                    Error reporting is disabled. Unexpected errors will not be
+                    captured.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4 border-t">
+              <Button type="button" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Settings"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -309,11 +307,12 @@ export default function AdminErrorReportingSettings() {
             <CardContent>
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>
-                  Errors are processed daily at 2 AM UTC via a scheduled cron job.
+                  Errors are processed daily at 2 AM UTC via a scheduled cron
+                  job.
                 </p>
                 <p>
-                  Duplicate errors (same fingerprint within 24 hours) are grouped
-                  and added as comments to existing issues.
+                  Duplicate errors (same fingerprint within 24 hours) are
+                  grouped and added as comments to existing issues.
                 </p>
               </div>
             </CardContent>
