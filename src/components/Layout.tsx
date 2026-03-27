@@ -71,7 +71,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <meta property="og:title" content={DEFAULT_TITLE} />
         <meta property="og:description" content={DEFAULT_DESCRIPTION} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:url" content={buildCanonical(location.pathname)} />
         <meta property="og:image" content={DEFAULT_OG_IMAGE} />
         <meta property="og:locale" content="en_ZA" />
         <meta name="twitter:card" content="summary_large_image" />

@@ -62,8 +62,8 @@ export default function AdminSEOSettings() {
 
   const handleSave = async () => {
     const trimmedGa4 = ga4Id.trim();
-    if (trimmedGa4 && !/^G-[A-Z0-9]+$/i.test(trimmedGa4)) {
-      toast.error("GA4 Measurement ID must be in the format G-XXXXXXXXXX");
+    if (trimmedGa4 && !/^G-[A-Z0-9]{6,}$/i.test(trimmedGa4)) {
+      toast.error("GA4 Measurement ID must be in the format G-XXXXXXXXXX (at least 6 characters after G-)");
       return;
     }
 
