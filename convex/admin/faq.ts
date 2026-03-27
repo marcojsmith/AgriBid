@@ -37,13 +37,17 @@ export const createFaqItem = mutation({
   args: {
     question: v.string(),
     answer: v.string(),
-    order: v.number(),
     isPublished: v.boolean(),
   },
   returns: v.id("faqItems"),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return await ctx.db.insert("faqItems", args);
+    const allItems = await ctx.db.query("faqItems").collect();
+    const maxOrder = allItems.reduce(
+      (max, item) => Math.max(max, item.order),
+      -1
+    );
+    return await ctx.db.insert("faqItems", { ...args, order: maxOrder + 1 });
   },
 });
 
@@ -96,6 +100,10 @@ export const reorderFaqItems = mutation({
   returns: v.null(),
   handler: async (ctx, { orderedIds }) => {
     await requireAdmin(ctx);
+    const items = await Promise.all(orderedIds.map((id) => ctx.db.get(id)));
+    for (let i = 0; i < items.length; i++) {
+      if (!items[i]) throw new Error(`FAQ item ${orderedIds[i]} not found`);
+    }
     await Promise.all(
       orderedIds.map((id, index) => ctx.db.patch(id, { order: index }))
     );

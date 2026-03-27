@@ -20,6 +20,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +77,8 @@ export default function AdminFAQ() {
   const [editingItem, setEditingItem] = useState<FaqItem | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<FaqItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const openCreate = () => {
     setEditingItem(null);
@@ -110,7 +123,6 @@ export default function AdminFAQ() {
           question,
           answer,
           isPublished: form.isPublished,
-          order: faqItems?.length ?? 0,
         });
         toast.success("FAQ item created");
       }
@@ -122,13 +134,21 @@ export default function AdminFAQ() {
     }
   };
 
-  const handleDelete = async (item: FaqItem) => {
-    if (!window.confirm(`Delete "${item.question}"?`)) return;
+  const handleDelete = (item: FaqItem) => {
+    setDeleteTarget(item);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await deleteFaqItem({ id: item._id });
+      await deleteFaqItem({ id: deleteTarget._id });
       toast.success("FAQ item deleted");
+      setDeleteTarget(null);
     } catch (err) {
       toast.error(getErrorMessage(err, "Failed to delete FAQ item"));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -311,14 +331,12 @@ export default function AdminFAQ() {
             </div>
 
             <div className="flex items-center gap-3">
-              <input
+              <Checkbox
                 id="faq-published"
-                type="checkbox"
                 checked={form.isPublished}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, isPublished: e.target.checked }))
+                onCheckedChange={(checked) =>
+                  setForm((f) => ({ ...f, isPublished: Boolean(checked) }))
                 }
-                className="h-4 w-4 rounded border-2 accent-primary"
               />
               <Label htmlFor="faq-published" className="cursor-pointer">
                 Published (visible on /faq)
@@ -340,6 +358,33 @@ export default function AdminFAQ() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete FAQ Item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{deleteTarget?.question}&rdquo; will be permanently
+              removed. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void confirmDelete()}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

@@ -27,7 +27,7 @@ interface BreadcrumbProps {
 export const Breadcrumb = ({ crumbs }: BreadcrumbProps) => {
   const schemaItems = crumbs.map((crumb) => ({
     name: crumb.label,
-    url: crumb.href ? buildCanonical(crumb.href) : "",
+    ...(crumb.href ? { url: buildCanonical(crumb.href) } : {}),
   }));
 
   return (

@@ -87,20 +87,22 @@ export const Layout = ({ children }: LayoutProps) => {
         {seoSettings?.bingVerification && (
           <meta name="msvalidate.01" content={seoSettings.bingVerification} />
         )}
-        {seoSettings?.ga4MeasurementId && (
-          <script
-            async
-            src={`https://www.googletagmanager.com/gtag/js?id=${seoSettings.ga4MeasurementId}`}
-          />
-        )}
-        {seoSettings?.ga4MeasurementId && (
-          <script>{`
+        {seoSettings?.ga4MeasurementId &&
+          /^G-[A-Z0-9]{6,}$/i.test(seoSettings.ga4MeasurementId) && (
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${seoSettings.ga4MeasurementId}`}
+            />
+          )}
+        {seoSettings?.ga4MeasurementId &&
+          /^G-[A-Z0-9]{6,}$/i.test(seoSettings.ga4MeasurementId) && (
+            <script>{`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${seoSettings.ga4MeasurementId}');
           `}</script>
-        )}
+          )}
       </Helmet>
       <div className="min-h-screen flex flex-col bg-background text-foreground">
         {session && (

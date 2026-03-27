@@ -53,7 +53,9 @@ export function buildTitle(pageTitle: string): string {
  * @param crumbs - Ordered list of breadcrumb items with name and full URL
  * @returns A schema.org BreadcrumbList object
  */
-export function buildBreadcrumbSchema(crumbs: { name: string; url: string }[]) {
+export function buildBreadcrumbSchema(
+  crumbs: { name: string; url?: string }[]
+) {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",

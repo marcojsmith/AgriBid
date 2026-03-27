@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { getErrorMessage } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -76,11 +77,7 @@ export default function AdminSEOSettings() {
       toast.success("SEO settings saved");
       initializedRef.current = false;
     } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : String(err) || "Failed to save settings"
-      );
+      toast.error(getErrorMessage(err, "Failed to save settings"));
     } finally {
       setIsSaving(false);
     }

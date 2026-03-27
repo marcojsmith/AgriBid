@@ -60,6 +60,7 @@ const PageLoader = () => (
  * - "/auction/:id" → AuctionDetail
  * - "/profile/:userId" → Profile
  * - "/sell" → Sell
+ * - "/faq" → FAQ
  * - "/watchlist" → Watchlist (protected, allowedRole="any")
  * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
  * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
@@ -67,7 +68,7 @@ const PageLoader = () => (
  *   - /admin, /admin/dashboard, /admin/moderation
  *   - /admin/marketplace, /admin/auctions, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
- *   - /admin/audit, /admin/settings
+ *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")

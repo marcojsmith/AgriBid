@@ -10,7 +10,8 @@
  * Re-exports from specialized sub-modules:
  * - kyc.ts: getPendingKYC
  * - statistics.ts: getFinancialStats, getAdminStats, getAnnouncementStats, getSupportStats
- * - settings.ts: getSystemConfig
+ * - settings.ts: getSystemConfig, getSeoSettings
+ * - faq.ts: getAllFaqItems
  */
 
 import { v } from "convex/values";

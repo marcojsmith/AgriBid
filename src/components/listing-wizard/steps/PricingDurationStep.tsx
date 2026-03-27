@@ -7,12 +7,25 @@ import { cn } from "@/lib/utils";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 /**
+ * Format a Date as a local-time string suitable for datetime-local inputs (YYYY-MM-DDTHH:mm).
+ * Uses local time instead of UTC to avoid timezone-shift issues in the browser date picker.
+ *
+ * @param d - The Date to format
+ * @returns Local ISO-like date-time string (YYYY-MM-DDTHH:mm)
+ */
+function formatLocalInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear().toString()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
  * Step 3 of the listing wizard: Pricing and Duration.
  *
  * @returns The rendered pricing and duration step.
  */
 export const PricingDurationStep = () => {
   const { formData, updateField } = useListingWizard();
+  const nowMin = formatLocalInput(new Date());
 
   const handlePriceChange =
     (field: "startingPrice" | "reservePrice") =>
@@ -128,10 +141,10 @@ export const PricingDurationStep = () => {
             <Input
               id="start-time"
               type="datetime-local"
-              min={new Date().toISOString().slice(0, 16)}
+              min={nowMin}
               value={
                 formData.startTime
-                  ? new Date(formData.startTime).toISOString().slice(0, 16)
+                  ? formatLocalInput(new Date(formData.startTime))
                   : ""
               }
               onChange={(e) => {
