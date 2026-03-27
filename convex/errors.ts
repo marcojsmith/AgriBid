@@ -18,8 +18,12 @@ const BATCH_SIZE = 5;
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const MAX_REPORTS_PER_WINDOW = 10;
+const RATE_LIMIT_CACHE_TTL_MS = 5_000;
 
-let reportTimestamps: number[] = [];
+const rateLimitCache: { count: number; expiresAt: number } = {
+  count: 0,
+  expiresAt: 0,
+};
 
 /**
  * Generate a deterministic fingerprint for an error to enable deduplication.
@@ -90,27 +94,35 @@ function isServerValidationError(errorMessage: string): boolean {
 }
 
 /**
- * Check rate limit for error reporting.
+ * Check rate limit for error reporting using a short-lived cache backed by DB queries.
  *
+ * @param ctx - Convex context for DB queries
  * @returns True if rate limit is not exceeded
  */
-function checkRateLimit(): boolean {
+async function checkRateLimit(ctx: QueryCtx): Promise<boolean> {
   const now = Date.now();
-  reportTimestamps = reportTimestamps.filter(
-    (ts) => now - ts < RATE_LIMIT_WINDOW_MS
-  );
-  if (reportTimestamps.length >= MAX_REPORTS_PER_WINDOW) {
-    return false;
+
+  if (now < rateLimitCache.expiresAt) {
+    return rateLimitCache.count < MAX_REPORTS_PER_WINDOW;
   }
-  reportTimestamps.push(now);
-  return true;
+
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const recentReports = await ctx.db
+    .query("errorReports")
+    .withIndex("by_createdAt", (q) => q.gte("createdAt", windowStart))
+    .collect();
+
+  rateLimitCache.count = recentReports.length;
+  rateLimitCache.expiresAt = now + RATE_LIMIT_CACHE_TTL_MS;
+
+  return rateLimitCache.count < MAX_REPORTS_PER_WINDOW;
 }
 
 type BreadcrumbWithMetadata = {
   timestamp: number;
   type: string;
   description: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, string | number>;
 };
 
 function sanitizeBreadcrumbMetadata(
@@ -119,7 +131,7 @@ function sanitizeBreadcrumbMetadata(
   if (!breadcrumb.metadata) {
     return breadcrumb;
   }
-  const sanitized: Record<string, unknown> = {};
+  const sanitized: Record<string, string | number> = {};
   const allowedKeys = ["action", "path", "component", "props"];
   for (const key of allowedKeys) {
     if (breadcrumb.metadata[key] !== undefined) {
@@ -166,7 +178,7 @@ export async function submitErrorReportHandler(
       timestamp: number;
       type: string;
       description: string;
-      metadata?: Record<string, unknown>;
+      metadata?: Record<string, string | number>;
     }[];
     metadata: { url: string; userAgent: string; timestamp: number };
   }
@@ -185,7 +197,7 @@ export async function submitErrorReportHandler(
     };
   }
 
-  if (!checkRateLimit()) {
+  if (!(await checkRateLimit(ctx))) {
     return {
       success: false,
       isDuplicate: false,
@@ -311,7 +323,7 @@ function formatIssueBody(report: {
     timestamp: number;
     type: string;
     description: string;
-    metadata?: Record<string, unknown>;
+    metadata?: Record<string, string | number>;
   }[];
   metadata: { url: string; userAgent: string; timestamp: number };
   instanceCount: number;

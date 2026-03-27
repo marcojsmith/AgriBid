@@ -145,6 +145,7 @@ describe("Errors Backend", () => {
       const mockQ = {
         eq: vi.fn().mockReturnThis(),
         neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
         field: vi.fn((f) => f),
       };
       const queryMock = {
@@ -368,6 +369,7 @@ describe("Errors Backend", () => {
       const mockQ = {
         eq: vi.fn().mockReturnThis(),
         neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
         field: vi.fn((f) => f),
       };
       const queryMock = {

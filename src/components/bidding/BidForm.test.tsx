@@ -71,7 +71,9 @@ describe("BidForm", () => {
     // Set invalid max bid (below minimum)
     fireEvent.change(maxBidInput, { target: { value: "1050" } });
     expect(
-      screen.getByText(/max bid must be at least r[,.\s\u00A0\u202F]*1[,.\s\u00A0\u202F]*100/i)
+      screen.getByText(
+        /max bid must be at least r[,.\s\u00A0\u202F]*1[,.\s\u00A0\u202F]*100/i
+      )
     ).toBeInTheDocument();
 
     // Set valid max bid
@@ -96,10 +98,14 @@ describe("BidForm", () => {
 
     // Only 1100 quick bid should be available, 1200 and 1600 should be filtered
     expect(
-      screen.getByRole("button", { name: /quick bid.*1[,.\s\u00A0\u202F]*100/i })
+      screen.getByRole("button", {
+        name: /quick bid.*1[,.\s\u00A0\u202F]*100/i,
+      })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /quick bid.*1[,.\s\u00A0\u202F]*200/i })
+      screen.queryByRole("button", {
+        name: /quick bid.*1[,.\s\u00A0\u202F]*200/i,
+      })
     ).not.toBeInTheDocument();
   });
 
@@ -141,7 +147,9 @@ describe("BidForm", () => {
 
     expect(screen.getByPlaceholderText(/enter max amount/i)).toHaveValue(2000);
     expect(screen.getByText(/active/i)).toBeInTheDocument();
-    expect(screen.getByText(/current: r[,.\s\u00A0\u202F]*2[,.\s\u00A0\u202F]*000/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/current: r[,.\s\u00A0\u202F]*2[,.\s\u00A0\u202F]*000/i)
+    ).toBeInTheDocument();
 
     // Rerender with new max bid
     rerender(
@@ -171,8 +179,8 @@ describe("BidForm", () => {
     expect(
       screen.getAllByText(
         /max bid must be at least the manual amount of r[,.\s\u00A0\u202F]*1[,.\s\u00A0\u202F]*500/i
-      )[0]
-    ).toBeInTheDocument();
+      )
+    ).not.toHaveLength(0);
     expect(screen.getByRole("button", { name: /place bid/i })).toBeDisabled();
   });
 

@@ -286,6 +286,9 @@ export default defineSchema({
         timestamp: v.number(),
         type: v.string(),
         description: v.string(),
+        metadata: v.optional(
+          v.record(v.string(), v.union(v.string(), v.number()))
+        ),
       })
     ),
     metadata: v.object({

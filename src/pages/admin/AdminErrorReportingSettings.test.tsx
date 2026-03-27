@@ -122,7 +122,7 @@ describe("AdminErrorReportingSettings", () => {
     render(<AdminErrorReportingSettings />);
 
     // Toggle on
-    const toggle = screen.getByRole("switch");
+    const toggle = screen.getByRole("checkbox");
     fireEvent.click(toggle);
 
     // Enter values

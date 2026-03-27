@@ -321,17 +321,7 @@ export async function updateSystemConfigHandler(
     }
   }
 
-  // Encryption for sensitive keys
-  let finalValue: string | number | boolean = args.value;
-  if (args.key === "github_api_token" && typeof args.value === "string") {
-    const encrypted = await encryptPII(args.value);
-    if (!encrypted) {
-      throw new Error(
-        "Failed to encrypt sensitive setting. Operation aborted."
-      );
-    }
-    finalValue = encrypted;
-  }
+  const finalValue: string | number | boolean = args.value;
 
   const existing = await ctx.db
     .query("settings")
