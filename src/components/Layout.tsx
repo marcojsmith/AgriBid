@@ -15,6 +15,7 @@ import {
   SITE_NAME,
   SITE_URL,
   ORGANIZATION_SCHEMA,
+  buildCanonical,
 } from "@/lib/seo";
 
 import { Header } from "./header/Header";
@@ -64,7 +65,7 @@ export const Layout = ({ children }: LayoutProps) => {
       <Helmet>
         <title>{DEFAULT_TITLE}</title>
         <meta name="description" content={DEFAULT_DESCRIPTION} />
-        <link rel="canonical" href={SITE_URL} />
+        <link rel="canonical" href={buildCanonical(location.pathname)} />
         <link rel="alternate" hrefLang="en-ZA" href={SITE_URL} />
         <meta property="og:site_name" content={SITE_NAME} />
         <meta property="og:title" content={DEFAULT_TITLE} />
@@ -100,7 +101,7 @@ export const Layout = ({ children }: LayoutProps) => {
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${seoSettings.ga4MeasurementId}');
+            gtag('config', ${JSON.stringify(seoSettings.ga4MeasurementId)});
           `}</script>
           )}
       </Helmet>

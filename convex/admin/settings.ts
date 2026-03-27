@@ -583,6 +583,8 @@ export const updateSeoSettings = mutation({
       });
     }
 
+    if (updates.length === 0) return { success: true };
+
     for (const update of updates) {
       const existing = await ctx.db
         .query("settings")

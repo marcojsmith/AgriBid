@@ -227,6 +227,7 @@ export default function AdminFAQ() {
                     <TableCell>
                       <div className="flex flex-col gap-0.5">
                         <button
+                          type="button"
                           disabled={index === 0}
                           onClick={() => void handleMove(index, "up")}
                           className="disabled:opacity-30 hover:text-primary"
@@ -235,6 +236,7 @@ export default function AdminFAQ() {
                           <ChevronUp className="h-4 w-4" />
                         </button>
                         <button
+                          type="button"
                           disabled={index === faqItems.length - 1}
                           onClick={() => void handleMove(index, "down")}
                           className="disabled:opacity-30 hover:text-primary"

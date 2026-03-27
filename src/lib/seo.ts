@@ -1,10 +1,13 @@
 // src/lib/seo.ts
 // Centralised SEO configuration and helpers
 
-export const SITE_URL = (
-  (import.meta.env.VITE_SITE_URL as string | undefined) ??
-  "https://agribid.co.za"
-).replace(/\/+$/, "");
+const _rawSiteUrl = (
+  (import.meta.env.VITE_SITE_URL as string | undefined) ?? ""
+).trim();
+export const SITE_URL = (_rawSiteUrl || "https://agribid.co.za").replace(
+  /\/+$/,
+  ""
+);
 
 export const SITE_NAME = "AgriBid";
 

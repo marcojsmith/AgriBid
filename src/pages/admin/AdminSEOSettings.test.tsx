@@ -83,7 +83,7 @@ describe("AdminSEOSettings", () => {
     expect(screen.getByDisplayValue("bing-token")).toBeInTheDocument();
   });
 
-  it("shows error toast when GA4 ID does not start with G-", async () => {
+  it("shows error toast when GA4 ID is not in the correct format", async () => {
     mockSettings = {
       ga4MeasurementId: null,
       searchConsoleVerification: null,
@@ -99,7 +99,7 @@ describe("AdminSEOSettings", () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        "GA4 Measurement ID must start with G-"
+        "GA4 Measurement ID must be in the format G-XXXXXXXXXX"
       );
       expect(mockUpdateSeoSettings).not.toHaveBeenCalled();
     });
