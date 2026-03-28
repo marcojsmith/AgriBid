@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getSellerInfoHandler } from "./browse";
 import * as users from "../../users";
 import type { QueryCtx } from "../../_generated/server";
-import type { Doc } from "../../_generated/dataModel";
+import type { AuthUser } from "../../auth";
 
 vi.mock("../../users", () => ({
   findUserById: vi.fn(),
@@ -43,7 +43,7 @@ describe("getSellerInfoHandler", () => {
       userId: "user123",
       name: "John Dippenaar",
       createdAt: new Date("2026-01-15").getTime(),
-    } as unknown as Doc<"profiles">);
+    } as unknown as AuthUser);
 
     const mockProfileQuery = {
       withIndex: vi.fn().mockReturnThis(),
@@ -74,6 +74,11 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([{}, {}, {}]),
     };
 
+    // The mock uses queryCallCount to distinguish auction queries by call order:
+    // queryCallCount === 2 returns mockSoldAuctionsQuery (sold auctions query),
+    // other auction calls return mockAllListingsQuery.
+    // NOTE: This couples the test to the implementation's query order, so future
+    // maintainers must adjust if the implementation's query order changes.
     let queryCallCount = 0;
     mockCtx.db.query.mockImplementation((table: string) => {
       queryCallCount++;
@@ -109,7 +114,7 @@ describe("getSellerInfoHandler", () => {
       userId: "user123",
       name: "Jane Doe",
       createdAt: Date.now(),
-    } as unknown as Doc<"profiles">);
+    } as unknown as AuthUser);
 
     const mockProfileQuery = {
       withIndex: vi.fn().mockReturnThis(),
@@ -131,6 +136,8 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([]),
     };
 
+    // The mock uses queryCallCount to distinguish auction queries by call order.
+    // NOTE: This couples the test to the implementation's query order.
     let queryCallCount = 0;
     mockCtx.db.query.mockImplementation((table: string) => {
       queryCallCount++;
@@ -162,7 +169,7 @@ describe("getSellerInfoHandler", () => {
       userId: "user123",
       name: "New Seller",
       createdAt: Date.now(),
-    } as unknown as Doc<"profiles">);
+    } as unknown as AuthUser);
 
     const mockProfileQuery = {
       withIndex: vi.fn().mockReturnThis(),
@@ -188,6 +195,8 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([{}]),
     };
 
+    // The mock uses queryCallCount to distinguish auction queries by call order.
+    // NOTE: This couples the test to the implementation's query order.
     let queryCallCount = 0;
     mockCtx.db.query.mockImplementation((table: string) => {
       queryCallCount++;

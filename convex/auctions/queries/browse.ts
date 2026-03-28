@@ -384,24 +384,22 @@ export const getSellerInfoHandler = async (
     .withIndex("by_userId", (q) => q.eq("userId", sharedUserId))
     .unique();
 
-  const authId = user._id;
-
   const [soldAuctions, allListings, bidsPlaced] = await Promise.all([
     ctx.db
       .query("auctions")
       .withIndex("by_seller_status", (q) =>
-        q.eq("sellerId", authId).eq("status", "sold")
+        q.eq("sellerId", sharedUserId).eq("status", "sold")
       )
       .collect(),
     countQuery(
       ctx.db
         .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", authId))
+        .withIndex("by_seller", (q) => q.eq("sellerId", sharedUserId))
     ),
     countQuery(
       ctx.db
         .query("bids")
-        .withIndex("by_bidder", (q) => q.eq("bidderId", authId))
+        .withIndex("by_bidder", (q) => q.eq("bidderId", sharedUserId))
     ),
   ]);
 

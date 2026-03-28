@@ -65,21 +65,28 @@ const getInitials = (name?: string): string => {
   return name.substring(0, 2).toUpperCase();
 };
 
-const getActivityItems = (role: string): ActivityItem[] => {
+const formatActivityDate = (timestamp?: number): string => {
+  if (!timestamp) return "Unknown";
+  const date = new Date(timestamp);
+  return date.toLocaleDateString("en-ZA", { month: "short", year: "numeric" });
+};
+
+const getActivityItems = (role: string, createdAt?: number): ActivityItem[] => {
+  const memberSince = formatActivityDate(createdAt);
   const items: ActivityItem[] = [
     {
       id: "1",
       type: "account_created",
       title: "Account created",
       description: "Profile set up — verification pending",
-      date: "Jan 2026",
+      date: memberSince,
     },
     {
       id: "2",
       type: "verification_requested",
       title: "Verification requested",
       description: "Identity documents submitted for review",
-      date: "Jan 2026",
+      date: memberSince,
     },
   ];
   if (role === "admin") {
@@ -88,7 +95,7 @@ const getActivityItems = (role: string): ActivityItem[] => {
       type: "role_changed",
       title: "Admin role assigned",
       description: "Granted administrative access to platform",
-      date: "Jan 2026",
+      date: memberSince,
     });
   }
   return items;
@@ -202,7 +209,7 @@ export default function Profile() {
 
   const activeListings = listings.filter((l) => l.status === "active");
   const soldListings = listings.filter((l) => l.status === "sold");
-  const activityItems = getActivityItems(sellerInfo.role);
+  const activityItems = getActivityItems(sellerInfo.role, sellerInfo.createdAt);
   const trustItems = getTrustItems(sellerInfo.isVerified);
 
   return (
@@ -322,7 +329,12 @@ export default function Profile() {
           <Card className="bg-card border border-primary/10 rounded-2xl">
             <CardContent className="p-5 space-y-3">
               {isOwner && !sellerInfo.isVerified && (
-                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider text-xs h-10">
+                // TODO(#219): Implement granular verification status fields in backend
+                <Button
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider text-xs h-10"
+                  disabled
+                  title="Coming soon - see issue #219"
+                >
                   <AlertTriangle className="h-4 w-4 mr-2" />
                   Complete Verification
                 </Button>
@@ -340,16 +352,22 @@ export default function Profile() {
               )}
               {!isOwner && (
                 <>
+                  {/* TODO(#220): Implement messaging system in backend */}
                   <Button
                     variant="outline"
                     className="w-full border-2 border-border hover:border-primary/30 bg-transparent font-black uppercase tracking-wider text-xs h-10"
+                    disabled
+                    title="Coming soon - see issue #220"
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Contact Seller
                   </Button>
+                  {/* TODO(#221): Implement report functionality in backend */}
                   <Button
                     variant="ghost"
                     className="w-full text-muted-foreground hover:text-destructive font-bold uppercase tracking-wider text-xs h-10"
+                    disabled
+                    title="Coming soon - see issue #221"
                   >
                     <Flag className="h-4 w-4 mr-2" />
                     Report Profile
@@ -374,8 +392,10 @@ export default function Profile() {
                     Active Auctions
                   </h2>
                 </div>
+                {/* TODO: Create filtered listings page (e.g., /auctions?seller=${userId}) */}
                 <Link
                   to="#"
+                  onClick={(e) => e.preventDefault()}
                   className="text-xs font-bold uppercase tracking-widest text-primary hover:underline"
                 >
                   View all →
@@ -418,8 +438,10 @@ export default function Profile() {
                       Sales History
                     </h2>
                   </div>
+                  {/* TODO: Create filtered sales history page (e.g., /sales?seller=${userId}) */}
                   <Link
                     to="#"
+                    onClick={(e) => e.preventDefault()}
                     className="text-xs font-bold uppercase tracking-widest text-green-600 hover:underline"
                   >
                     View all →
