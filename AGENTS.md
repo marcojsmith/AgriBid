@@ -141,11 +141,13 @@ Consult these regularly. Keep them accurate when making changes.
 1. **Clarity** — Clear labels, tooltips, prominent key information (highest bid, time remaining).
 2. **Consistency** — Uniform styles per `conductor/product-guidelines.md`. Use theme tokens, never hardcoded colours/fonts.
 3. **Accessibility** — ARIA roles, keyboard navigation, semantic HTML.
-4. **Responsiveness** — Mobile (375×812), Tablet (768×1024), Desktop (1440×900).
+4. **Mobile-first** — Design for 375×812 first, then scale up to tablet (768×1024) and desktop (1440×900). Every layout, spacing, and component decision must work well on mobile before being enhanced for larger screens. Use Tailwind's unprefixed classes for mobile, then `sm:`, `md:`, `lg:` to progressively enhance.
 5. **Feedback** — Loading indicators, success/error messages for all user actions.
 6. **Simplicity** — No clutter. Every element must earn its place.
 7. **Components** — Use shadcn/ui. Install from the library first, customise as needed.
 8. **Verify with MCP** — Always test UI changes across breakpoints before committing.
+9. **Restraint** — Prefer flat sections with dividers over wrapping every block in a `<Card>`. Cards are for content that genuinely needs visual isolation. Avoid card-in-card patterns.
+10. **Sharpness** — Use `rounded` (4px) or `rounded-md` (6px) for UI elements. Reserve `rounded-lg` (8px) for images and avatars. Avoid `rounded-xl`, `rounded-2xl` on layout containers and buttons — they read as playful, not professional.
 
 ---
 
