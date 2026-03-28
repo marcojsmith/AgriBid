@@ -46,7 +46,7 @@ interface TrustItem {
 }
 
 const formatPrice = (price?: number): string => {
-  if (!price) return "—";
+  if (price === undefined || price === null) return "—";
   return `R ${price.toLocaleString("en-ZA")}`;
 };
 
@@ -124,15 +124,15 @@ const getTrustItems = (
       id: "phone",
       icon: Phone,
       label: "Phone",
-      value: "Verified",
-      verified: true,
+      value: "Pending",
+      verified: false,
     },
     {
       id: "email",
       icon: Mail,
       label: "Email",
-      value: "Verified",
-      verified: true,
+      value: "Pending",
+      verified: false,
     },
     {
       id: "tax",
@@ -281,7 +281,7 @@ export default function Profile() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 rounded-xl p-3 text-center">
                   <p className="text-2xl font-black text-primary">
-                    {sellerInfo.totalListings - sellerInfo.itemsSold}
+                    {sellerInfo.activeListings}
                   </p>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
                     Active
@@ -393,13 +393,9 @@ export default function Profile() {
                   </h2>
                 </div>
                 {/* TODO: Create filtered listings page (e.g., /auctions?seller=${userId}) */}
-                <Link
-                  to="#"
-                  onClick={(e) => e.preventDefault()}
-                  className="text-xs font-bold uppercase tracking-widest text-primary hover:underline"
-                >
+                <span className="text-xs font-bold uppercase tracking-widest text-primary opacity-60 cursor-default">
                   View all →
-                </Link>
+                </span>
               </div>
 
               {activeListings.length === 0 && status === "Exhausted" ? (
@@ -439,13 +435,9 @@ export default function Profile() {
                     </h2>
                   </div>
                   {/* TODO: Create filtered sales history page (e.g., /sales?seller=${userId}) */}
-                  <Link
-                    to="#"
-                    onClick={(e) => e.preventDefault()}
-                    className="text-xs font-bold uppercase tracking-widest text-green-600 hover:underline"
-                  >
+                  <span className="text-xs font-bold uppercase tracking-widest text-green-600 opacity-60 cursor-default">
                     View all →
-                  </Link>
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

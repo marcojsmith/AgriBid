@@ -384,7 +384,7 @@ export const getSellerInfoHandler = async (
     .withIndex("by_userId", (q) => q.eq("userId", sharedUserId))
     .unique();
 
-  const [soldAuctions, allListings, bidsPlaced] = await Promise.all([
+  const [soldAuctions, activeAuctions, bidsPlaced] = await Promise.all([
     ctx.db
       .query("auctions")
       .withIndex("by_seller_status", (q) =>
@@ -394,7 +394,9 @@ export const getSellerInfoHandler = async (
     countQuery(
       ctx.db
         .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", sharedUserId))
+        .withIndex("by_seller_status", (q) =>
+          q.eq("sellerId", sharedUserId).eq("status", "active")
+        )
     ),
     countQuery(
       ctx.db
@@ -404,6 +406,7 @@ export const getSellerInfoHandler = async (
   ]);
 
   const soldAuctionsCount = soldAuctions.length;
+  const activeListingsCount = activeAuctions;
   const totalSoldPrice = soldAuctions.reduce(
     (sum, auction) =>
       sum + (auction.currentPrice ?? auction.startingPrice ?? 0),
@@ -420,7 +423,8 @@ export const getSellerInfoHandler = async (
     role: profile?.role ?? "Private Seller",
     createdAt: user.createdAt,
     itemsSold: soldAuctionsCount,
-    totalListings: allListings,
+    activeListings: activeListingsCount,
+    totalListings: soldAuctionsCount + activeListingsCount,
     bio: profile?.bio,
     companyName: profile?.companyName,
     location: profile?.location,

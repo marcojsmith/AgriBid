@@ -64,9 +64,9 @@ describe("getSellerInfoHandler", () => {
         .mockResolvedValue([{ currentPrice: 485000 }, { currentPrice: 98500 }]),
     };
 
-    const mockAllListingsQuery = {
+    const mockActiveAuctionsQuery = {
       withIndex: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockResolvedValue([{}, {}, {}, {}]),
+      collect: vi.fn().mockResolvedValue([{}, {}]),
     };
 
     const mockBidsQuery = {
@@ -75,8 +75,8 @@ describe("getSellerInfoHandler", () => {
     };
 
     // The mock uses queryCallCount to distinguish auction queries by call order:
-    // queryCallCount === 2 returns mockSoldAuctionsQuery (sold auctions query),
-    // other auction calls return mockAllListingsQuery.
+    // - queryCallCount === 2 returns mockSoldAuctionsQuery (sold count)
+    // - queryCallCount === 3 returns mockActiveAuctionsQuery (active count)
     // NOTE: This couples the test to the implementation's query order, so future
     // maintainers must adjust if the implementation's query order changes.
     let queryCallCount = 0;
@@ -85,7 +85,8 @@ describe("getSellerInfoHandler", () => {
       if (table === "profiles") return mockProfileQuery;
       if (table === "auctions") {
         if (queryCallCount === 2) return mockSoldAuctionsQuery;
-        return mockAllListingsQuery;
+        if (queryCallCount === 3) return mockActiveAuctionsQuery;
+        return mockSoldAuctionsQuery;
       }
       if (table === "bids") return mockBidsQuery;
       return mockProfileQuery;
@@ -103,6 +104,7 @@ describe("getSellerInfoHandler", () => {
     expect(result?.companyName).toBe("Dippenaar Farms");
     expect(result?.location).toBe("Lichtenburg, North West");
     expect(result?.itemsSold).toBe(2);
+    expect(result?.activeListings).toBe(2);
     expect(result?.totalListings).toBe(4);
     expect(result?.bidsPlaced).toBe(3);
     expect(result?.avgSalePrice).toBe(291750);
@@ -126,7 +128,7 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([]),
     };
 
-    const mockAllListingsQuery = {
+    const mockActiveAuctionsQuery = {
       withIndex: vi.fn().mockReturnThis(),
       collect: vi.fn().mockResolvedValue([]),
     };
@@ -144,7 +146,8 @@ describe("getSellerInfoHandler", () => {
       if (table === "profiles") return mockProfileQuery;
       if (table === "auctions") {
         if (queryCallCount === 2) return mockSoldAuctionsQuery;
-        return mockAllListingsQuery;
+        if (queryCallCount === 3) return mockActiveAuctionsQuery;
+        return mockSoldAuctionsQuery;
       }
       if (table === "bids") return mockBidsQuery;
       return mockProfileQuery;
@@ -161,6 +164,8 @@ describe("getSellerInfoHandler", () => {
     expect(result?.bio).toBeUndefined();
     expect(result?.companyName).toBeUndefined();
     expect(result?.location).toBeUndefined();
+    expect(result?.activeListings).toBe(0);
+    expect(result?.totalListings).toBe(0);
   });
 
   it("should handle zero sold auctions (no avgSalePrice)", async () => {
@@ -185,7 +190,7 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([]),
     };
 
-    const mockAllListingsQuery = {
+    const mockActiveAuctionsQuery = {
       withIndex: vi.fn().mockReturnThis(),
       collect: vi.fn().mockResolvedValue([{}]),
     };
@@ -203,7 +208,8 @@ describe("getSellerInfoHandler", () => {
       if (table === "profiles") return mockProfileQuery;
       if (table === "auctions") {
         if (queryCallCount === 2) return mockSoldAuctionsQuery;
-        return mockAllListingsQuery;
+        if (queryCallCount === 3) return mockActiveAuctionsQuery;
+        return mockSoldAuctionsQuery;
       }
       if (table === "bids") return mockBidsQuery;
       return mockProfileQuery;
@@ -215,6 +221,8 @@ describe("getSellerInfoHandler", () => {
 
     expect(result).not.toBeNull();
     expect(result?.itemsSold).toBe(0);
+    expect(result?.activeListings).toBe(1);
+    expect(result?.totalListings).toBe(1);
     expect(result?.avgSalePrice).toBeUndefined();
     expect(result?.bidsPlaced).toBe(1);
   });
