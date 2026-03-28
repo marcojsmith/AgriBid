@@ -449,6 +449,7 @@ export const getSellerInfo = query({
       role: v.string(),
       createdAt: v.optional(v.number()),
       itemsSold: v.number(),
+      activeListings: v.number(),
       totalListings: v.number(),
       bio: v.optional(v.string()),
       companyName: v.optional(v.string()),
