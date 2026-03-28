@@ -198,7 +198,7 @@ export default function Profile() {
           The profile you are looking for does not exist or has been
           deactivated.
         </p>
-        <Button asChild variant="outline" className="rounded-xl border-2">
+        <Button asChild variant="outline" className="rounded-md border-2">
           <Link to="/">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Marketplace
           </Link>
@@ -213,16 +213,16 @@ export default function Profile() {
   const trustItems = getTrustItems(sellerInfo.isVerified);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
-        {/* Sidebar */}
-        <aside className="space-y-6">
-          {/* Profile Card */}
-          <Card className="bg-card border border-primary/10 rounded-2xl overflow-hidden">
-            <div className="h-20 bg-gradient-to-br from-primary to-accent" />
-            <CardContent className="p-6">
+    <div className="max-w-7xl mx-auto space-y-8 px-4 py-4 sm:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 lg:gap-8">
+        {/* Sidebar — single merged card */}
+        <aside>
+          <Card className="bg-card border border-primary/10 rounded-lg overflow-hidden">
+            {/* Profile header */}
+            <div className="h-14 sm:h-20 bg-gradient-to-br from-primary to-accent" />
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-4 -mt-10 mb-4">
-                <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center border-4 border-card shadow-md">
+                <div className="h-16 w-16 rounded-md bg-primary/10 flex items-center justify-center border-4 border-card shadow-md">
                   <span className="text-xl font-black text-primary">
                     {getInitials(sellerInfo.name)}
                   </span>
@@ -273,65 +273,63 @@ export default function Profile() {
                 </p>
               )}
             </CardContent>
-          </Card>
 
-          {/* Stats Card */}
-          <Card className="bg-card border border-primary/10 rounded-2xl">
-            <CardContent className="p-5">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-muted/50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-black text-primary">
-                    {sellerInfo.activeListings}
-                  </p>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                    Active
-                  </p>
-                </div>
-                <div className="bg-muted/50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-black text-green-600">
-                    {sellerInfo.itemsSold}
-                  </p>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                    Sold
-                  </p>
-                </div>
-                <div className="bg-muted/50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-black text-primary">
-                    {formatPrice(sellerInfo.avgSalePrice)}
-                  </p>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                    Avg Sale
-                  </p>
-                </div>
-                <div className="bg-muted/50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-black text-primary">
-                    {sellerInfo.bidsPlaced}
-                  </p>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                    Bids
-                  </p>
-                </div>
+            {/* Stats */}
+            <div className="h-px bg-border" />
+            <div className="grid grid-cols-4 divide-x divide-border">
+              <div className="p-3 text-center">
+                <p className="text-xl font-black text-primary">
+                  {sellerInfo.activeListings}
+                </p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                  Active
+                </p>
               </div>
-
-              <div className="bg-muted/50 rounded-xl p-3 mt-3 flex items-center justify-between">
-                <div>
-                  <p className="text-amber-500 tracking-widest">★★★★★</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    No reviews yet
-                  </p>
-                </div>
-                <p className="text-xl font-black text-muted-foreground">—</p>
+              <div className="p-3 text-center">
+                <p className="text-xl font-black text-green-600">
+                  {sellerInfo.itemsSold}
+                </p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                  Sold
+                </p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="p-3 text-center">
+                <p className="text-xl font-black text-primary">
+                  {formatPrice(sellerInfo.avgSalePrice)}
+                </p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                  Avg Sale
+                </p>
+              </div>
+              <div className="p-3 text-center">
+                <p className="text-xl font-black text-primary">
+                  {sellerInfo.bidsPlaced}
+                </p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                  Bids
+                </p>
+              </div>
+            </div>
 
-          {/* Action Buttons */}
-          <Card className="bg-card border border-primary/10 rounded-2xl">
-            <CardContent className="p-5 space-y-3">
+            {/* Rating row */}
+            <div className="h-px bg-border" />
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-amber-500 tracking-widest">★★★★★</p>
+                <p className="text-[10px] text-muted-foreground">
+                  No reviews yet
+                </p>
+              </div>
+              <p className="text-xl font-black text-muted-foreground">—</p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="h-px bg-border" />
+            <div className="p-4 space-y-2">
               {isOwner && !sellerInfo.isVerified && (
                 // TODO(#219): Implement granular verification status fields in backend
                 <Button
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider text-xs h-10"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider text-xs h-10 rounded-md"
                   disabled
                   title="Coming soon - see issue #219"
                 >
@@ -342,7 +340,7 @@ export default function Profile() {
               {isOwner && (
                 <Button
                   asChild
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wider text-xs h-10"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wider text-xs h-10 rounded-md"
                 >
                   <Link to="/sell">
                     <Plus className="h-4 w-4 mr-2" />
@@ -355,7 +353,7 @@ export default function Profile() {
                   {/* TODO(#220): Implement messaging system in backend */}
                   <Button
                     variant="outline"
-                    className="w-full border-2 border-border hover:border-primary/30 bg-transparent font-black uppercase tracking-wider text-xs h-10"
+                    className="w-full border-2 border-border hover:border-primary/30 bg-transparent font-black uppercase tracking-wider text-xs h-10 rounded-md"
                     disabled
                     title="Coming soon - see issue #220"
                   >
@@ -365,7 +363,7 @@ export default function Profile() {
                   {/* TODO(#221): Implement report functionality in backend */}
                   <Button
                     variant="ghost"
-                    className="w-full text-muted-foreground hover:text-destructive font-bold uppercase tracking-wider text-xs h-10"
+                    className="w-full text-muted-foreground hover:text-destructive font-bold uppercase tracking-wider text-xs h-10 rounded-md"
                     disabled
                     title="Coming soon - see issue #221"
                   >
@@ -374,20 +372,18 @@ export default function Profile() {
                   </Button>
                 </>
               )}
-            </CardContent>
+            </div>
           </Card>
         </aside>
 
         {/* Main Content */}
         <main className="space-y-6">
           {/* Active Auctions */}
-          <Card className="bg-card border border-primary/10 rounded-2xl">
-            <CardContent className="p-6">
+          <Card className="bg-card border border-primary/10 rounded-lg">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Gavel className="h-4 w-4 text-primary" />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Gavel className="h-4 w-4 text-primary" />
                   <h2 className="text-lg font-black uppercase tracking-wide text-primary">
                     Active Auctions
                   </h2>
@@ -399,7 +395,7 @@ export default function Profile() {
               </div>
 
               {activeListings.length === 0 && status === "Exhausted" ? (
-                <div className="border-2 border-dashed border-border rounded-xl p-12 text-center">
+                <div className="border-2 border-dashed border-border rounded p-12 text-center">
                   <p className="text-4xl mb-3">🚜</p>
                   <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
                     No active auctions at this time.
@@ -423,13 +419,11 @@ export default function Profile() {
 
           {/* Past Sales */}
           {soldListings.length > 0 && (
-            <Card className="bg-card border border-primary/10 rounded-2xl">
-              <CardContent className="p-6">
+            <Card className="bg-card border border-primary/10 rounded-lg">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <Award className="h-4 w-4 text-green-600" />
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Award className="h-4 w-4 text-green-600" />
                     <h2 className="text-lg font-black uppercase tracking-wide text-green-700">
                       Sales History
                     </h2>
@@ -456,100 +450,92 @@ export default function Profile() {
           )}
 
           {/* Recent Activity */}
-          <Card className="bg-card border border-primary/10 rounded-2xl">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                  <UserCheck className="h-4 w-4 text-blue-600" />
-                </div>
-                <h2 className="text-lg font-black uppercase tracking-wide text-primary">
-                  Recent Activity
-                </h2>
-              </div>
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <UserCheck className="h-4 w-4 text-blue-600" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+                Recent Activity
+              </h2>
+            </div>
 
-              <div className="space-y-0">
-                {activityItems.map((item) => (
+            <div className="space-y-0">
+              {activityItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-start gap-3 py-3 border-b border-border last:border-0"
+                >
                   <div
-                    key={item.id}
-                    className="flex items-start gap-3 py-3 border-b border-border last:border-0"
+                    className={`h-9 w-9 rounded flex items-center justify-center flex-shrink-0 ${
+                      item.type === "account_created"
+                        ? "bg-blue-500/10"
+                        : item.type === "verification_requested"
+                          ? "bg-amber-500/10"
+                          : "bg-green-500/10"
+                    }`}
                   >
-                    <div
-                      className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    <UserCheck
+                      className={`h-4 w-4 ${
                         item.type === "account_created"
-                          ? "bg-blue-500/10"
+                          ? "text-blue-600"
                           : item.type === "verification_requested"
-                            ? "bg-amber-500/10"
-                            : "bg-green-500/10"
+                            ? "text-amber-600"
+                            : "text-green-600"
                       }`}
-                    >
-                      <UserCheck
-                        className={`h-4 w-4 ${
-                          item.type === "account_created"
-                            ? "text-blue-600"
-                            : item.type === "verification_requested"
-                              ? "text-amber-600"
-                              : "text-green-600"
-                        }`}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.description}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">
-                      {item.date}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.description}
                     </p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    {item.date}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
 
           {/* Trust & Compliance */}
-          <Card className="bg-card border border-primary/10 rounded-2xl">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                </div>
-                <h2 className="text-lg font-black uppercase tracking-wide text-primary">
-                  Trust & Compliance
-                </h2>
-              </div>
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+                Trust & Compliance
+              </h2>
+            </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                {trustItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.id}
-                      className="bg-muted/50 rounded-xl p-4 text-center"
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {trustItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    className="border border-border rounded p-4 text-center"
+                  >
+                    <Icon
+                      className={`h-5 w-5 mx-auto mb-2 ${
+                        item.verified ? "text-green-600" : "text-amber-600"
+                      }`}
+                    />
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">
+                      {item.label}
+                    </p>
+                    <p
+                      className={`text-xs font-bold ${
+                        item.verified ? "text-green-600" : "text-amber-600"
+                      }`}
                     >
-                      <Icon
-                        className={`h-5 w-5 mx-auto mb-2 ${
-                          item.verified ? "text-green-600" : "text-amber-600"
-                        }`}
-                      />
-                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">
-                        {item.label}
-                      </p>
-                      <p
-                        className={`text-xs font-bold ${
-                          item.verified ? "text-green-600" : "text-amber-600"
-                        }`}
-                      >
-                        {item.value}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                      {item.value}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </main>
       </div>
 
@@ -566,7 +552,7 @@ export default function Profile() {
               loadMore(6);
             }}
             disabled={status === "LoadingMore"}
-            className="rounded-2xl border-2 px-12 font-black uppercase tracking-widest"
+            className="rounded-md border-2 px-12 font-black uppercase tracking-widest"
           >
             {status === "LoadingMore" ? (
               <>
