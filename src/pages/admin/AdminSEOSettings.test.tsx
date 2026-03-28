@@ -99,7 +99,7 @@ describe("AdminSEOSettings", () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        "GA4 Measurement ID must be in the format G-XXXXXXXXXX"
+        "GA4 Measurement ID must be in the format G-XXXXXXXXXX (at least 6 characters after G-)"
       );
       expect(mockUpdateSeoSettings).not.toHaveBeenCalled();
     });

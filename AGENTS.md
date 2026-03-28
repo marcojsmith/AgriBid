@@ -165,6 +165,16 @@ Consult these regularly. Keep them accurate when making changes.
 - Group related changes per commit. No unrelated changes in one commit.
 - Before committing: `bun run lint` → `bun run test --run` → `bun run build` must all pass.
 
+## Development Cycle
+
+Follow this sequence for every feature or fix:
+
+1. **Plan** — Define the scope, list all files to change, identify data needs. Create subissues for backend requirements.
+2. **Test** — Write or update tests _before_ building. Tests should fail initially.
+3. **Build** — Implement the changes (schema → backend → frontend).
+4. **Verify** — Run `bun run lint` → `bun run test --run` → `bun run type-check` → `bun run build`. All must pass.
+5. **Push** — Create branch, commit with descriptive message, push and open PR.
+
 ## Semantic Versioning
 
 Update `package.json` version in the **same commit/PR** as the changes.

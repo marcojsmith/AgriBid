@@ -376,7 +376,6 @@ export const getSellerInfoHandler = async (
 
   if (!user) return null;
 
-  // Use the shared userId for profile lookup
   const sharedUserId = user.userId ?? user._id;
   if (!sharedUserId) return null;
 
@@ -385,30 +384,52 @@ export const getSellerInfoHandler = async (
     .withIndex("by_userId", (q) => q.eq("userId", sharedUserId))
     .unique();
 
-  // Use the auth _id for auction queries (auctions are keyed by auth _id)
-  const authId = user._id;
-  const [soldAuctions, allListings] = await Promise.all([
+  const [soldAuctions, activeAuctions, bidsPlaced] = await Promise.all([
+    ctx.db
+      .query("auctions")
+      .withIndex("by_seller_status", (q) =>
+        q.eq("sellerId", sharedUserId).eq("status", "sold")
+      )
+      .collect(),
     countQuery(
       ctx.db
         .query("auctions")
         .withIndex("by_seller_status", (q) =>
-          q.eq("sellerId", authId).eq("status", "sold")
+          q.eq("sellerId", sharedUserId).eq("status", "active")
         )
     ),
     countQuery(
       ctx.db
-        .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", authId))
+        .query("bids")
+        .withIndex("by_bidder", (q) => q.eq("bidderId", sharedUserId))
     ),
   ]);
+
+  const soldAuctionsCount = soldAuctions.length;
+  const activeListingsCount = activeAuctions;
+  const totalSoldPrice = soldAuctions.reduce(
+    (sum, auction) =>
+      sum + (auction.currentPrice ?? auction.startingPrice ?? 0),
+    0
+  );
+  const avgSalePrice =
+    soldAuctionsCount > 0
+      ? Math.round(totalSoldPrice / soldAuctionsCount)
+      : undefined;
 
   return {
     name: user.name,
     isVerified: profile?.isVerified ?? false,
     role: profile?.role ?? "Private Seller",
     createdAt: user.createdAt,
-    itemsSold: soldAuctions,
-    totalListings: allListings,
+    itemsSold: soldAuctionsCount,
+    activeListings: activeListingsCount,
+    totalListings: soldAuctionsCount + activeListingsCount,
+    bio: profile?.bio,
+    companyName: profile?.companyName,
+    location: profile?.location,
+    bidsPlaced,
+    avgSalePrice,
   };
 };
 
@@ -429,6 +450,11 @@ export const getSellerInfo = query({
       createdAt: v.optional(v.number()),
       itemsSold: v.number(),
       totalListings: v.number(),
+      bio: v.optional(v.string()),
+      companyName: v.optional(v.string()),
+      location: v.optional(v.string()),
+      bidsPlaced: v.number(),
+      avgSalePrice: v.optional(v.number()),
     })
   ),
   handler: getSellerInfoHandler,

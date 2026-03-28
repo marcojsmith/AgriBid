@@ -1,7 +1,7 @@
-// app/src/pages/Profile.tsx
 import { useParams, Link } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
+import type { LucideIcon } from "lucide-react";
 import {
   UserCheck,
   ShieldCheck,
@@ -9,18 +9,152 @@ import {
   Gavel,
   Award,
   ArrowLeft,
+  MapPin,
+  Star,
+  AlertTriangle,
+  Plus,
+  MessageSquare,
+  Flag,
+  ShieldAlert,
+  Phone,
+  Mail,
+  CreditCard,
+  FileText,
 } from "lucide-react";
 
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/auction/AuctionCard";
 
+interface ActivityItem {
+  id: string;
+  type: "account_created" | "verification_requested" | "role_changed";
+  title: string;
+  description: string;
+  date: string;
+}
+
+interface TrustItem {
+  id: string;
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  verified: boolean;
+}
+
+const formatPrice = (price?: number): string => {
+  if (price === undefined || price === null) return "—";
+  return `R ${price.toLocaleString("en-ZA")}`;
+};
+
+const formatMemberSince = (timestamp?: number): string => {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  return date.toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
+};
+
+const getInitials = (name?: string): string => {
+  if (!name) return "??";
+  const parts = name.split(" ");
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+const formatActivityDate = (timestamp?: number): string => {
+  if (!timestamp) return "Unknown";
+  const date = new Date(timestamp);
+  return date.toLocaleDateString("en-ZA", { month: "short", year: "numeric" });
+};
+
+const getActivityItems = (role: string, createdAt?: number): ActivityItem[] => {
+  const memberSince = formatActivityDate(createdAt);
+  const items: ActivityItem[] = [
+    {
+      id: "1",
+      type: "account_created",
+      title: "Account created",
+      description: "Profile set up — verification pending",
+      date: memberSince,
+    },
+    {
+      id: "2",
+      type: "verification_requested",
+      title: "Verification requested",
+      description: "Identity documents submitted for review",
+      date: memberSince,
+    },
+  ];
+  if (role === "admin") {
+    items.push({
+      id: "3",
+      type: "role_changed",
+      title: "Admin role assigned",
+      description: "Granted administrative access to platform",
+      date: memberSince,
+    });
+  }
+  return items;
+};
+
+const getTrustItems = (
+  isVerified: boolean,
+  kycStatus?: string
+): TrustItem[] => {
+  return [
+    {
+      id: "identity",
+      icon: ShieldAlert,
+      label: "Identity",
+      value: isVerified || kycStatus === "verified" ? "Verified" : "Pending",
+      verified: isVerified || kycStatus === "verified",
+    },
+    {
+      id: "banking",
+      icon: CreditCard,
+      label: "Banking",
+      value: "Not linked",
+      verified: false,
+    },
+    {
+      id: "phone",
+      icon: Phone,
+      label: "Phone",
+      value: "Pending",
+      verified: false,
+    },
+    {
+      id: "email",
+      icon: Mail,
+      label: "Email",
+      value: "Pending",
+      verified: false,
+    },
+    {
+      id: "tax",
+      icon: FileText,
+      label: "Tax Number",
+      value: "Pending",
+      verified: false,
+    },
+    {
+      id: "rating",
+      icon: Star,
+      label: "Seller Rating",
+      value: "No reviews",
+      verified: false,
+    },
+  ];
+};
+
 /**
  * Renders the seller profile page for the route parameter `userId`.
  *
- * Shows a full-page loading indicator while data is being fetched, a user-not-found view when the seller does not exist, or the complete profile when data is available. The profile includes seller metadata, counts for active and sold items, grids of active and sold listings (with watched state), and a paginated control to load more listings. When the current user owns the profile a "Manage Verification" action is shown.
+ * Shows a full-page loading indicator while data is being fetched, a user-not-found view when the seller does not exist, or the complete profile when data is available. The profile includes a sidebar with seller metadata, stats, and action buttons, plus a main content area with active auctions, past sales, recent activity, and trust & compliance sections.
  *
  * @returns A React element containing the seller profile, a full-page loading indicator, or a user-not-found view.
  */
@@ -73,148 +207,355 @@ export default function Profile() {
     );
   }
 
-  const memberSince = new Date(
-    sellerInfo.createdAt as string | number | Date
-  ).getFullYear();
   const activeListings = listings.filter((l) => l.status === "active");
   const soldListings = listings.filter((l) => l.status === "sold");
+  const activityItems = getActivityItems(sellerInfo.role, sellerInfo.createdAt);
+  const trustItems = getTrustItems(sellerInfo.isVerified);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-12">
-      {/* Profile Header */}
-      <div className="bg-card border-4 border-primary/10 rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden shadow-2xl shadow-primary/5">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+    <div className="max-w-7xl mx-auto space-y-8 p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
+        {/* Sidebar */}
+        <aside className="space-y-6">
+          {/* Profile Card */}
+          <Card className="bg-card border border-primary/10 rounded-2xl overflow-hidden">
+            <div className="h-20 bg-gradient-to-br from-primary to-accent" />
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 -mt-10 mb-4">
+                <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center border-4 border-card shadow-md">
+                  <span className="text-xl font-black text-primary">
+                    {getInitials(sellerInfo.name)}
+                  </span>
+                </div>
+              </div>
 
-        <div className="relative flex flex-col md:flex-row gap-8 items-center md:items-start text-center md:text-left">
-          <div className="h-32 w-32 rounded-[2rem] bg-primary/10 flex items-center justify-center border-4 border-primary/5 shadow-inner">
-            <UserCheck className="h-16 w-16 text-primary" />
-          </div>
+              <h1 className="text-2xl font-black text-primary uppercase leading-none mb-2">
+                {sellerInfo.name}
+              </h1>
 
-          <div className="flex-1 space-y-4">
-            <div className="space-y-1">
-              <div className="flex flex-col md:flex-row items-center gap-3">
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight text-primary uppercase leading-none">
-                  {sellerInfo.name}
-                </h1>
-                {sellerInfo.isVerified && (
-                  <Badge className="bg-green-600 hover:bg-green-700 font-black uppercase tracking-widest px-3 py-1 flex items-center gap-1.5 h-8">
-                    <ShieldCheck className="h-4 w-4" />
-                    Verified Seller
+              <div className="flex flex-wrap gap-2 mb-3">
+                {sellerInfo.role === "admin" && (
+                  <Badge className="bg-primary text-primary-foreground font-black uppercase tracking-widest text-[10px]">
+                    Admin
                   </Badge>
                 )}
-                {isOwner && (
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="h-8 border-2 font-black uppercase text-[10px] tracking-widest rounded-lg ml-auto md:ml-0"
-                  >
-                    <Link to="/kyc">
-                      <ShieldCheck className="h-3 w-3 mr-1" />
-                      Manage Verification
-                    </Link>
-                  </Button>
+                {sellerInfo.isVerified ? (
+                  <Badge className="bg-green-600 hover:bg-green-700 font-black uppercase tracking-widest text-[10px] flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Verified
+                  </Badge>
+                ) : (
+                  <Badge className="bg-amber-500 hover:bg-amber-600 font-black uppercase tracking-widest text-[10px] flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Unverified
+                  </Badge>
                 )}
               </div>
-              <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-sm text-muted-foreground font-bold uppercase tracking-wide">
-                <span className="bg-primary/5 text-primary px-3 py-1 rounded-lg border border-primary/10">
-                  {sellerInfo.role}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" /> Joined {memberSince}
-                </span>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap justify-center md:justify-start gap-6 pt-2">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center">
-                  <Gavel className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xl font-black leading-none">
-                    {activeListings.length}
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5 mb-4">
+                <Calendar className="h-4 w-4" />
+                Member since {formatMemberSince(sellerInfo.createdAt)}
+              </p>
+
+              {sellerInfo.bio && (
+                <>
+                  <div className="h-px bg-border my-4" />
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {sellerInfo.bio}
+                  </p>
+                </>
+              )}
+
+              {sellerInfo.location && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-3">
+                  <MapPin className="h-4 w-4" />
+                  {sellerInfo.location}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Stats Card */}
+          <Card className="bg-card border border-primary/10 rounded-2xl">
+            <CardContent className="p-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-black text-primary">
+                    {sellerInfo.activeListings}
                   </p>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                    Showing Active
+                    Active
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 border-l-2 border-primary/10 pl-6">
-                <div className="h-10 w-10 rounded-xl bg-green-500/5 flex items-center justify-center">
-                  <Award className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xl font-black leading-none">
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-black text-green-600">
                     {sellerInfo.itemsSold}
                   </p>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                    Total Sold
+                    Sold
+                  </p>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-black text-primary">
+                    {formatPrice(sellerInfo.avgSalePrice)}
+                  </p>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                    Avg Sale
+                  </p>
+                </div>
+                <div className="bg-muted/50 rounded-xl p-3 text-center">
+                  <p className="text-2xl font-black text-primary">
+                    {sellerInfo.bidsPlaced}
+                  </p>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                    Bids
                   </p>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+
+              <div className="bg-muted/50 rounded-xl p-3 mt-3 flex items-center justify-between">
+                <div>
+                  <p className="text-amber-500 tracking-widest">★★★★★</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    No reviews yet
+                  </p>
+                </div>
+                <p className="text-xl font-black text-muted-foreground">—</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <Card className="bg-card border border-primary/10 rounded-2xl">
+            <CardContent className="p-5 space-y-3">
+              {isOwner && !sellerInfo.isVerified && (
+                // TODO(#219): Implement granular verification status fields in backend
+                <Button
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider text-xs h-10"
+                  disabled
+                  title="Coming soon - see issue #219"
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Complete Verification
+                </Button>
+              )}
+              {isOwner && (
+                <Button
+                  asChild
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wider text-xs h-10"
+                >
+                  <Link to="/sell">
+                    <Plus className="h-4 w-4 mr-2" />
+                    List Equipment
+                  </Link>
+                </Button>
+              )}
+              {!isOwner && (
+                <>
+                  {/* TODO(#220): Implement messaging system in backend */}
+                  <Button
+                    variant="outline"
+                    className="w-full border-2 border-border hover:border-primary/30 bg-transparent font-black uppercase tracking-wider text-xs h-10"
+                    disabled
+                    title="Coming soon - see issue #220"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Contact Seller
+                  </Button>
+                  {/* TODO(#221): Implement report functionality in backend */}
+                  <Button
+                    variant="ghost"
+                    className="w-full text-muted-foreground hover:text-destructive font-bold uppercase tracking-wider text-xs h-10"
+                    disabled
+                    title="Coming soon - see issue #221"
+                  >
+                    <Flag className="h-4 w-4 mr-2" />
+                    Report Profile
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </aside>
+
+        {/* Main Content */}
+        <main className="space-y-6">
+          {/* Active Auctions */}
+          <Card className="bg-card border border-primary/10 rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Gavel className="h-4 w-4 text-primary" />
+                  </div>
+                  <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+                    Active Auctions
+                  </h2>
+                </div>
+                {/* TODO: Create filtered listings page (e.g., /auctions?seller=${userId}) */}
+                <span className="text-xs font-bold uppercase tracking-widest text-primary opacity-60 cursor-default">
+                  View all →
+                </span>
+              </div>
+
+              {activeListings.length === 0 && status === "Exhausted" ? (
+                <div className="border-2 border-dashed border-border rounded-xl p-12 text-center">
+                  <p className="text-4xl mb-3">🚜</p>
+                  <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+                    No active auctions at this time.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {activeListings.map((auction) => (
+                    <AuctionCard
+                      key={auction._id}
+                      auction={auction}
+                      isWatched={
+                        watchedAuctionIds?.includes(auction._id) ?? false
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Past Sales */}
+          {soldListings.length > 0 && (
+            <Card className="bg-card border border-primary/10 rounded-2xl">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Award className="h-4 w-4 text-green-600" />
+                    </div>
+                    <h2 className="text-lg font-black uppercase tracking-wide text-green-700">
+                      Sales History
+                    </h2>
+                  </div>
+                  {/* TODO: Create filtered sales history page (e.g., /sales?seller=${userId}) */}
+                  <span className="text-xs font-bold uppercase tracking-widest text-green-600 opacity-60 cursor-default">
+                    View all →
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {soldListings.map((auction) => (
+                    <AuctionCard
+                      key={auction._id}
+                      auction={auction}
+                      isWatched={
+                        watchedAuctionIds?.includes(auction._id) ?? false
+                      }
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recent Activity */}
+          <Card className="bg-card border border-primary/10 rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <UserCheck className="h-4 w-4 text-blue-600" />
+                </div>
+                <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+                  Recent Activity
+                </h2>
+              </div>
+
+              <div className="space-y-0">
+                {activityItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-3 py-3 border-b border-border last:border-0"
+                  >
+                    <div
+                      className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        item.type === "account_created"
+                          ? "bg-blue-500/10"
+                          : item.type === "verification_requested"
+                            ? "bg-amber-500/10"
+                            : "bg-green-500/10"
+                      }`}
+                    >
+                      <UserCheck
+                        className={`h-4 w-4 ${
+                          item.type === "account_created"
+                            ? "text-blue-600"
+                            : item.type === "verification_requested"
+                              ? "text-amber-600"
+                              : "text-green-600"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.description}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                      {item.date}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Trust & Compliance */}
+          <Card className="bg-card border border-primary/10 rounded-2xl">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                </div>
+                <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+                  Trust & Compliance
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {trustItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-muted/50 rounded-xl p-4 text-center"
+                    >
+                      <Icon
+                        className={`h-5 w-5 mx-auto mb-2 ${
+                          item.verified ? "text-green-600" : "text-amber-600"
+                        }`}
+                      />
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">
+                        {item.label}
+                      </p>
+                      <p
+                        className={`text-xs font-bold ${
+                          item.verified ? "text-green-600" : "text-amber-600"
+                        }`}
+                      >
+                        {item.value}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
 
-      {/* Active Listings Section */}
-      <section className="space-y-8">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Gavel className="h-5 w-5 text-primary" />
-          </div>
-          <h2 className="text-3xl font-black tracking-tight text-primary uppercase">
-            Active Auctions
-          </h2>
-        </div>
-
-        {activeListings.length === 0 && status === "Exhausted" ? (
-          <div className="bg-muted/20 border-2 border-dashed rounded-[2rem] p-16 text-center">
-            <p className="text-muted-foreground font-bold uppercase tracking-widest italic">
-              No active auctions at this time.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {activeListings.map((auction) => (
-              <AuctionCard
-                key={auction._id}
-                auction={auction}
-                isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Sold History Section */}
-      {(soldListings.length > 0 || status === "LoadingMore") && (
-        <section className="space-y-8 opacity-80">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-              <Award className="h-5 w-5 text-green-600" />
-            </div>
-            <h2 className="text-3xl font-black tracking-tight text-green-700 uppercase">
-              Sales History
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {soldListings.map((auction) => (
-              <AuctionCard
-                key={auction._id}
-                auction={auction}
-                isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Pagination Control */}
+      {/* Pagination */}
       {(status === "CanLoadMore" || status === "LoadingMore") && (
-        <div className="flex flex-col items-center gap-4 pt-8">
+        <div className="flex flex-col items-center gap-4 pt-4 pb-8">
           <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
             Showing {listings.length} of {sellerInfo.totalListings} Listings
           </p>
