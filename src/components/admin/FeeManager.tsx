@@ -92,6 +92,7 @@ export function FeeManager() {
   const [deletingFeeId, setDeletingFeeId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FeeFormData>(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reorderingIndex, setReorderingIndex] = useState<number | null>(null);
 
   const allFees = fees?.allFees ?? [];
   const sortedFees = [...allFees].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -202,38 +203,46 @@ export function FeeManager() {
   };
 
   const handleMoveUp = async (index: number) => {
-    if (index === 0) return;
+    if (index === 0 || reorderingIndex !== null) return;
     const newOrder = [...sortedFees];
     [newOrder[index - 1], newOrder[index]] = [
       newOrder[index],
       newOrder[index - 1],
     ];
     try {
+      setReorderingIndex(index);
       await reorderFees({
         feeIds: newOrder.map((f) => f._id as Id<"platformFees">),
       });
+      toast.success("Fee order updated successfully");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to reorder fees"
       );
+    } finally {
+      setReorderingIndex(null);
     }
   };
 
   const handleMoveDown = async (index: number) => {
-    if (index === sortedFees.length - 1) return;
+    if (index === sortedFees.length - 1 || reorderingIndex !== null) return;
     const newOrder = [...sortedFees];
     [newOrder[index], newOrder[index + 1]] = [
       newOrder[index + 1],
       newOrder[index],
     ];
     try {
+      setReorderingIndex(index);
       await reorderFees({
         feeIds: newOrder.map((f) => f._id as Id<"platformFees">),
       });
+      toast.success("Fee order updated successfully");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to reorder fees"
       );
+    } finally {
+      setReorderingIndex(null);
     }
   };
 
@@ -302,7 +311,7 @@ export function FeeManager() {
                           size="sm"
                           className="h-6 w-6 p-0"
                           onClick={() => handleMoveUp(index)}
-                          disabled={index === 0}
+                          disabled={index === 0 || reorderingIndex !== null}
                           aria-label={`Move ${fee.name} up`}
                         >
                           <ArrowUp className="h-3 w-3" />
@@ -312,7 +321,7 @@ export function FeeManager() {
                           size="sm"
                           className="h-6 w-6 p-0"
                           onClick={() => handleMoveDown(index)}
-                          disabled={index === sortedFees.length - 1}
+                          disabled={index === sortedFees.length - 1 || reorderingIndex !== null}
                           aria-label={`Move ${fee.name} down`}
                         >
                           <ArrowDown className="h-3 w-3" />

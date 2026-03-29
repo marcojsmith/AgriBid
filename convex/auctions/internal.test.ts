@@ -557,7 +557,13 @@ describe("Internal Logic Coverage", () => {
         expect.objectContaining({
           auctionId: "a1",
           feeId: "f1",
+          feeName: expect.any(String),
           appliedTo: "seller",
+          feeType: expect.any(String),
+          rate: expect.any(Number),
+          salePrice: expect.any(Number),
+          calculatedAmount: expect.any(Number),
+          createdAt: expect.any(Number),
         })
       );
     });
