@@ -38,6 +38,13 @@ export { getSystemConfig, getSeoSettings } from "./settings";
 
 export { getAllFaqItems } from "./faq";
 
+export {
+  getPlatformFees,
+  getFeeStats,
+  getAuctionFees,
+  getAuctionFeesForUser,
+} from "./fees";
+
 // --- Bid Monitoring ---
 
 /**

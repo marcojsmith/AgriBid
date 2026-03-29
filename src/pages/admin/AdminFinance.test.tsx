@@ -42,6 +42,7 @@ vi.mock("lucide-react", () => ({
   Settings: () => <div data-testid="settings-icon" />,
   Activity: () => <div data-testid="activity-icon" />,
   Bug: () => <div data-testid="bug-icon" />,
+  Building2: () => <div data-testid="building2-icon" />,
 }));
 
 describe("AdminFinance Page", () => {
@@ -57,9 +58,10 @@ describe("AdminFinance Page", () => {
 
   const mockFinancialStats = {
     totalSalesVolume: 500000,
-    commissionRate: 0.05,
-    estimatedCommission: 25000,
     auctionCount: 42,
+    totalFeesCollected: 10000,
+    buyerFeesTotal: 6000,
+    sellerFeesTotal: 4000,
     recentSales: {
       page: [
         {
@@ -67,14 +69,14 @@ describe("AdminFinance Page", () => {
           date: 1742000000000,
           title: "Tractor X1000",
           amount: 100000,
-          estimatedCommission: 5000,
+          fees: [],
         },
         {
           id: "2",
           date: 1741900000000,
           title: "Combine Harvester",
           amount: 200000,
-          estimatedCommission: 10000,
+          fees: [],
         },
       ],
       isDone: true,
@@ -125,8 +127,11 @@ describe("AdminFinance Page", () => {
     expect(screen.getByText("Total Sales Volume")).toBeInTheDocument();
     expect(screen.getByText(/R\s*500\s*000/)).toBeInTheDocument();
 
-    expect(screen.getByText("Est. Commission (5%)")).toBeInTheDocument();
-    expect(screen.getByText(/R\s*25\s*000/)).toBeInTheDocument();
+    expect(screen.getByText("Total Fees Collected")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*10\s*000/)).toBeInTheDocument();
+
+    expect(screen.getByText("Buyer Fees")).toBeInTheDocument();
+    expect(screen.getByText("Seller Fees")).toBeInTheDocument();
 
     expect(screen.getByText("Auctions Settled")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
@@ -135,11 +140,9 @@ describe("AdminFinance Page", () => {
     expect(screen.getByText("Recent Transactions")).toBeInTheDocument();
     expect(screen.getByText("Tractor X1000")).toBeInTheDocument();
     expect(screen.getByText(/R\s*100\s*000/)).toBeInTheDocument();
-    expect(screen.getByText(/R\s*5\s*000/)).toBeInTheDocument();
 
     expect(screen.getByText("Combine Harvester")).toBeInTheDocument();
     expect(screen.getByText(/R\s*200\s*000/)).toBeInTheDocument();
-    expect(screen.getByText(/R\s*10\s*000/)).toBeInTheDocument();
   });
 
   it("renders empty state in transactions table when no sales exist", () => {

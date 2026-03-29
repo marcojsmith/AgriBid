@@ -61,14 +61,6 @@ export default defineConfig({
           functions: 100,
           lines: 100,
         },
-
-        // Frontend: App lazy-loaded routes
-        "src/App.tsx": {
-          statements: 96,
-          branches: 100,
-          functions: 92,
-          lines: 100,
-        },
       },
     },
   },

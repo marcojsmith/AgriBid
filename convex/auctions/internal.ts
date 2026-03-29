@@ -12,6 +12,113 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
 /**
+ * Calculate fees for an auction and persist them to the database.
+ * Evaluates all active platform fees and creates auctionFee records
+ * based on each fee's configuration (percentage or fixed, buyer/seller/both).
+ * Includes an idempotency guard to skip duplicate inserts.
+ *
+ * @param ctx - The mutation context for database operations.
+ * @param auction - The auction document to calculate fees for.
+ * @param salesVolume - Optional override for the sale price (e.g. actual winning amount).
+ * @returns Promise<void>
+ * @sideEffects Writes new auctionFee records to the database, emits audit log entries.
+ * @throws Error if database operations fail.
+ */
+export async function calculateAndRecordFees(
+  ctx: MutationCtx,
+  auction: Doc<"auctions">,
+  salesVolume?: number
+): Promise<void> {
+  const activeFees = await ctx.db
+    .query("platformFees")
+    .withIndex("by_active", (q) => q.eq("isActive", true))
+    .collect();
+
+  if (activeFees.length === 0) {
+    return;
+  }
+
+  const salePrice = salesVolume ?? auction.currentPrice;
+  const now = Date.now();
+  let totalFees = 0;
+
+  for (const fee of activeFees) {
+    let calculatedAmount = 0;
+
+    if (fee.feeType === "percentage") {
+      calculatedAmount = salePrice * fee.value;
+    } else {
+      calculatedAmount = fee.value;
+    }
+
+    calculatedAmount = Math.round(calculatedAmount * 100) / 100;
+
+    if (fee.appliesTo === "both" || fee.appliesTo === "seller") {
+      const existing = await ctx.db
+        .query("auctionFees")
+        .withIndex("by_auction_fee_applied", (q) =>
+          q
+            .eq("auctionId", auction._id)
+            .eq("feeId", fee._id)
+            .eq("appliedTo", "seller")
+        )
+        .first();
+
+      if (!existing) {
+        await ctx.db.insert("auctionFees", {
+          auctionId: auction._id,
+          feeId: fee._id,
+          feeName: fee.name,
+          appliedTo: "seller",
+          feeType: fee.feeType,
+          rate: fee.value,
+          salePrice,
+          calculatedAmount,
+          createdAt: now,
+        });
+        totalFees += calculatedAmount;
+      }
+    }
+
+    if (fee.appliesTo === "both" || fee.appliesTo === "buyer") {
+      const existing = await ctx.db
+        .query("auctionFees")
+        .withIndex("by_auction_fee_applied", (q) =>
+          q
+            .eq("auctionId", auction._id)
+            .eq("feeId", fee._id)
+            .eq("appliedTo", "buyer")
+        )
+        .first();
+
+      if (!existing) {
+        await ctx.db.insert("auctionFees", {
+          auctionId: auction._id,
+          feeId: fee._id,
+          feeName: fee.name,
+          appliedTo: "buyer",
+          feeType: fee.feeType,
+          rate: fee.value,
+          salePrice,
+          calculatedAmount,
+          createdAt: now,
+        });
+        totalFees += calculatedAmount;
+      }
+    }
+  }
+
+  if (totalFees > 0) {
+    await logAudit(ctx, {
+      action: "CALCULATE_FEES",
+      targetId: auction._id,
+      targetType: "auction",
+      details: `Calculated ${totalFees.toFixed(2)} in fees for auction ${auction.title}`,
+    });
+  }
+}
+
+/**
  * Internal mutation to settle auctions that have reached their end time.
  * Transitions status to 'sold' if reserve is met, or 'unsold' otherwise.
  *
@@ -67,6 +174,16 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
     if (finalStatus === "sold") {
       await updateCounter(ctx, "auctions", "soldCount", 1);
       await updateCounter(ctx, "auctions", "salesVolume", auction.currentPrice);
+      const winningBid = validBids.reduce(
+        (prev: Doc<"bids">, current: Doc<"bids">) => {
+          if (current.amount > prev.amount) return current;
+          if (current.amount === prev.amount) {
+            return current.timestamp < prev.timestamp ? current : prev;
+          }
+          return prev;
+        }
+      );
+      await calculateAndRecordFees(ctx, auction, winningBid.amount);
     }
 
     console.log(

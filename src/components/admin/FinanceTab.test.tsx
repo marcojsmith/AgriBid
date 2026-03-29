@@ -1,6 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("lucide-react", () => ({
+  DollarSign: () => <div data-testid="dollar-sign" />,
+  AlertCircle: () => <div data-testid="alert-circle" />,
+  Users: () => <div data-testid="users" />,
+  Building2: () => <div data-testid="building2" />,
+  Calendar: () => <div data-testid="calendar" />,
+}));
+
 import { FinanceTab } from "./FinanceTab";
 
 const mockStats = {
@@ -8,6 +16,10 @@ const mockStats = {
   estimatedCommission: 75000,
   commissionRate: 0.05,
   auctionCount: 150,
+  totalFeesCollected: 50000,
+  buyerFeesTotal: 30000,
+  sellerFeesTotal: 20000,
+  partialResults: false,
   recentSales: {
     page: [
       {
@@ -16,6 +28,7 @@ const mockStats = {
         title: "John Deere 8R Tractor",
         amount: 250000,
         estimatedCommission: 12500,
+        fees: [],
       },
       {
         id: "sale-2",
@@ -23,6 +36,7 @@ const mockStats = {
         title: "Case IH Combine",
         amount: 180000,
         estimatedCommission: 9000,
+        fees: [],
       },
     ],
     isDone: true,
@@ -56,20 +70,24 @@ describe("FinanceTab", () => {
     mockUseQuery.mockReturnValue(mockStats);
     render(<FinanceTab />);
     expect(screen.getByText("Total Sales Volume")).toBeInTheDocument();
-    expect(screen.getByText("Est. Commission (5%)")).toBeInTheDocument();
+    expect(screen.getByText("Total Fees Collected")).toBeInTheDocument();
     expect(screen.getByText("Auctions Settled")).toBeInTheDocument();
   });
 
   it("displays sales volume formatted", () => {
     mockUseQuery.mockReturnValue(mockStats);
     render(<FinanceTab />);
-    expect(screen.getByText(/R[,\s\u00A0]*1[,\s\u00A0]*500[,\s\u00A0]*000/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/R[,\s\u00A0]*1[,\s\u00A0]*500[,\s\u00A0]*000/)
+    ).toBeInTheDocument();
   });
 
-  it("displays commission formatted", () => {
+  it("displays fees collected formatted", () => {
     mockUseQuery.mockReturnValue(mockStats);
     render(<FinanceTab />);
-    expect(screen.getByText(/R[,\s\u00A0]*75[,\s\u00A0]*000/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/R[,\s\u00A0]*50[,\s\u00A0]*000/)
+    ).toBeInTheDocument();
   });
 
   it("displays auction count", () => {
@@ -89,8 +107,12 @@ describe("FinanceTab", () => {
   it("displays sale amounts formatted", () => {
     mockUseQuery.mockReturnValue(mockStats);
     render(<FinanceTab />);
-    expect(screen.getByText(/R[,\s\u00A0]*250[,\s\u00A0]*000/)).toBeInTheDocument();
-    expect(screen.getByText(/R[,\s\u00A0]*180[,\s\u00A0]*000/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/R[,\s\u00A0]*250[,\s\u00A0]*000/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/R[,\s\u00A0]*180[,\s\u00A0]*000/)
+    ).toBeInTheDocument();
   });
 
   it("renders empty state when no recent sales", () => {
@@ -116,6 +138,50 @@ describe("FinanceTab", () => {
     expect(screen.getByText("Date")).toBeInTheDocument();
     expect(screen.getByText("Auction Title")).toBeInTheDocument();
     expect(screen.getByText("Sale Amount")).toBeInTheDocument();
-    expect(screen.getByText("Commission")).toBeInTheDocument();
+    expect(screen.getByText("Fees")).toBeInTheDocument();
+  });
+
+  it("shows partial results warning when partialResults is true", () => {
+    mockUseQuery.mockReturnValue({ ...mockStats, partialResults: true });
+    render(<FinanceTab />);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sales volume figures are calculated/)
+    ).toBeInTheDocument();
+  });
+
+  it("renders Buyer Fees and Seller Fees stat cards", () => {
+    mockUseQuery.mockReturnValue(mockStats);
+    render(<FinanceTab />);
+    expect(screen.getByText("Buyer Fees")).toBeInTheDocument();
+    expect(screen.getByText("Seller Fees")).toBeInTheDocument();
+  });
+
+  it("displays fee breakdown inline when sale has fees", () => {
+    const statsWithFees = {
+      ...mockStats,
+      recentSales: {
+        ...mockStats.recentSales,
+        page: [
+          {
+            id: "sale-3",
+            date: Date.now(),
+            title: "Test Tractor",
+            amount: 100000,
+            estimatedCommission: 5000,
+            fees: [
+              {
+                feeName: "Seller Commission",
+                appliedTo: "seller" as const,
+                amount: 5000,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    mockUseQuery.mockReturnValue(statsWithFees);
+    render(<FinanceTab />);
+    expect(screen.getByText(/Seller Commission/)).toBeInTheDocument();
   });
 });

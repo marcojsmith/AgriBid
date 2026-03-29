@@ -12,6 +12,7 @@ import type * as admin from "../admin.js";
 import type * as admin_categories from "../admin/categories.js";
 import type * as admin_equipmentMetadata from "../admin/equipmentMetadata.js";
 import type * as admin_faq from "../admin/faq.js";
+import type * as admin_fees from "../admin/fees.js";
 import type * as admin_kyc from "../admin/kyc.js";
 import type * as admin_mutations from "../admin/mutations.js";
 import type * as admin_queries from "../admin/queries.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   "admin/categories": typeof admin_categories;
   "admin/equipmentMetadata": typeof admin_equipmentMetadata;
   "admin/faq": typeof admin_faq;
+  "admin/fees": typeof admin_fees;
   "admin/kyc": typeof admin_kyc;
   "admin/mutations": typeof admin_mutations;
   "admin/queries": typeof admin_queries;
