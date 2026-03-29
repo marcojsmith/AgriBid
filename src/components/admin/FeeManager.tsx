@@ -108,7 +108,7 @@ export function FeeManager() {
       name: fee.name,
       description: fee.description ?? "",
       feeType: fee.feeType,
-      value: fee.value,
+      value: fee.feeType === "percentage" ? fee.value * 100 : fee.value,
       appliesTo: fee.appliesTo,
       isActive: fee.isActive,
       visibleToBuyer: fee.visibleToBuyer,
@@ -233,7 +233,7 @@ export function FeeManager() {
 
   const formatFeeValue = (fee: (typeof allFees)[0]) => {
     if (fee.feeType === "percentage") {
-      return `${fee.value}%`;
+      return `${(fee.value * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
     }
     return `R ${fee.value.toLocaleString()}`;
   };

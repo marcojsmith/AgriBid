@@ -23,14 +23,11 @@ interface FeeBreakdownProps {
 
 /**
  * Displays the fee breakdown for a sold auction to the winner or seller.
- * @param auctionId.auctionId
- * @param auctionId - The ID of the auction.
- * @param userId - The ID of the user viewing the fees.
- * @param isWinner - Whether the user is the auction winner.
- * @param isSeller - Whether the user is the auction seller.
- * @param auctionId.userId
- * @param auctionId.isWinner
- * @param auctionId.isSeller
+ * @param props - The component props.
+ * @param props.auctionId - The ID of the auction.
+ * @param props.userId - The ID of the user viewing the fees.
+ * @param props.isWinner - Whether the user is the auction winner.
+ * @param props.isSeller - Whether the user is the auction seller.
  * @returns The FeeBreakdown React component or null if no fees.
  */
 export function FeeBreakdown({

@@ -69,7 +69,7 @@ const PageLoader = () => (
  *   - /admin, /admin/dashboard, /admin/moderation
  *   - /admin/marketplace, /admin/auctions, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
- *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq
+ *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq, /admin/fees
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")

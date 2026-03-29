@@ -58,8 +58,6 @@ describe("AdminFinance Page", () => {
 
   const mockFinancialStats = {
     totalSalesVolume: 500000,
-    commissionRate: 0.05,
-    estimatedCommission: 25000,
     auctionCount: 42,
     totalFeesCollected: 10000,
     buyerFeesTotal: 6000,
@@ -71,7 +69,6 @@ describe("AdminFinance Page", () => {
           date: 1742000000000,
           title: "Tractor X1000",
           amount: 100000,
-          estimatedCommission: 5000,
           fees: [],
         },
         {
@@ -79,7 +76,6 @@ describe("AdminFinance Page", () => {
           date: 1741900000000,
           title: "Combine Harvester",
           amount: 200000,
-          estimatedCommission: 10000,
           fees: [],
         },
       ],

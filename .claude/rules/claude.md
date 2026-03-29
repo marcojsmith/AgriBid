@@ -20,7 +20,7 @@ opencode is an AI coding agent installed on this machine. It can be invoked via 
    - **Constraints** — e.g. follow Convex rules, no `any` types, write tests first.
    - **Results** — a blank `## Results` section for opencode to fill in.
 3. **Run opencode** via Bash:
-   ```
+   ```bash
    opencode run "Read conductor/opencode_tasks/<task-name>.md and execute the plan exactly. Update the ## Results section when done."
    ```
 4. **Review** — read the updated task file, inspect changed files, run lint/tests/type-check. Fix anything opencode got wrong.

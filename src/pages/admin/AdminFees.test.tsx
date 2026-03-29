@@ -75,4 +75,41 @@ describe("AdminFees Page", () => {
     renderPage();
     expect(screen.getByTestId("fee-manager")).toBeInTheDocument();
   });
+
+  it("formats currency values with thousand separators and two decimal places", () => {
+    mockUseQuery.mockReturnValue({
+      totalFeesCollected: 50000,
+      buyerFeesTotal: 30000,
+      sellerFeesTotal: 20000,
+      feeBreakdown: [],
+    });
+    renderPage();
+    expect(screen.getByText("R 50 000,00")).toBeInTheDocument();
+    expect(screen.getByText("R 30 000,00")).toBeInTheDocument();
+    expect(screen.getByText("R 20 000,00")).toBeInTheDocument();
+  });
+
+  it("displays zero values correctly as R 0,00", () => {
+    mockUseQuery.mockReturnValue({
+      totalFeesCollected: 0,
+      buyerFeesTotal: 0,
+      sellerFeesTotal: 0,
+      feeBreakdown: [],
+    });
+    renderPage();
+    expect(screen.getAllByText("R 0,00")).toHaveLength(3);
+  });
+
+  it("formats large numbers with proper thousand separators", () => {
+    mockUseQuery.mockReturnValue({
+      totalFeesCollected: 1234567.89,
+      buyerFeesTotal: 800000,
+      sellerFeesTotal: 434567.89,
+      feeBreakdown: [],
+    });
+    renderPage();
+    expect(screen.getByText("R 1 234 567,89")).toBeInTheDocument();
+    expect(screen.getByText("R 800 000,00")).toBeInTheDocument();
+    expect(screen.getByText("R 434 567,89")).toBeInTheDocument();
+  });
 });

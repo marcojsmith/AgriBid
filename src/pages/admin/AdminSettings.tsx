@@ -19,7 +19,7 @@ import { SettingsCard } from "@/components/admin/SettingsCard";
  *
  * Displays a centred loading indicator while admin statistics are being fetched. Once loaded, presents four settings cards:
  * - Equipment Metadata: navigates to the internal equipment catalog management view.
- * - Platform Fees: opens the related GitHub issue and shows an info toast.
+ * - Platform Fees: routes internally to /admin/fees for fee rule management.
  * - Security Logs: navigates to the internal audit view.
  * - Error Reporting: configures GitHub issue creation for unexpected errors.
  *

@@ -15,16 +15,19 @@ import type { MutationCtx } from "../_generated/server";
  * Calculate fees for an auction and persist them to the database.
  * Evaluates all active platform fees and creates auctionFee records
  * based on each fee's configuration (percentage or fixed, buyer/seller/both).
+ * Includes an idempotency guard to skip duplicate inserts.
  *
  * @param ctx - The mutation context for database operations.
  * @param auction - The auction document to calculate fees for.
+ * @param salesVolume - Optional override for the sale price (e.g. actual winning amount).
  * @returns Promise<void>
  * @sideEffects Writes new auctionFee records to the database, emits audit log entries.
  * @throws Error if database operations fail.
  */
 export async function calculateAndRecordFees(
   ctx: MutationCtx,
-  auction: Doc<"auctions">
+  auction: Doc<"auctions">,
+  salesVolume?: number
 ): Promise<void> {
   const activeFees = await ctx.db
     .query("platformFees")
@@ -35,6 +38,7 @@ export async function calculateAndRecordFees(
     return;
   }
 
+  const salePrice = salesVolume ?? auction.currentPrice;
   const now = Date.now();
   let totalFees = 0;
 
@@ -42,7 +46,7 @@ export async function calculateAndRecordFees(
     let calculatedAmount = 0;
 
     if (fee.feeType === "percentage") {
-      calculatedAmount = auction.currentPrice * fee.value;
+      calculatedAmount = salePrice * fee.value;
     } else {
       calculatedAmount = fee.value;
     }
@@ -50,33 +54,57 @@ export async function calculateAndRecordFees(
     calculatedAmount = Math.round(calculatedAmount * 100) / 100;
 
     if (fee.appliesTo === "both" || fee.appliesTo === "seller") {
-      await ctx.db.insert("auctionFees", {
-        auctionId: auction._id,
-        feeId: fee._id,
-        feeName: fee.name,
-        appliedTo: "seller",
-        feeType: fee.feeType,
-        rate: fee.value,
-        salePrice: auction.currentPrice,
-        calculatedAmount,
-        createdAt: now,
-      });
-      totalFees += calculatedAmount;
+      const existing = await ctx.db
+        .query("auctionFees")
+        .withIndex("by_auction_fee_applied", (q) =>
+          q
+            .eq("auctionId", auction._id)
+            .eq("feeId", fee._id)
+            .eq("appliedTo", "seller")
+        )
+        .first();
+
+      if (!existing) {
+        await ctx.db.insert("auctionFees", {
+          auctionId: auction._id,
+          feeId: fee._id,
+          feeName: fee.name,
+          appliedTo: "seller",
+          feeType: fee.feeType,
+          rate: fee.value,
+          salePrice,
+          calculatedAmount,
+          createdAt: now,
+        });
+        totalFees += calculatedAmount;
+      }
     }
 
     if (fee.appliesTo === "both" || fee.appliesTo === "buyer") {
-      await ctx.db.insert("auctionFees", {
-        auctionId: auction._id,
-        feeId: fee._id,
-        feeName: fee.name,
-        appliedTo: "buyer",
-        feeType: fee.feeType,
-        rate: fee.value,
-        salePrice: auction.currentPrice,
-        calculatedAmount,
-        createdAt: now,
-      });
-      totalFees += calculatedAmount;
+      const existing = await ctx.db
+        .query("auctionFees")
+        .withIndex("by_auction_fee_applied", (q) =>
+          q
+            .eq("auctionId", auction._id)
+            .eq("feeId", fee._id)
+            .eq("appliedTo", "buyer")
+        )
+        .first();
+
+      if (!existing) {
+        await ctx.db.insert("auctionFees", {
+          auctionId: auction._id,
+          feeId: fee._id,
+          feeName: fee.name,
+          appliedTo: "buyer",
+          feeType: fee.feeType,
+          rate: fee.value,
+          salePrice,
+          calculatedAmount,
+          createdAt: now,
+        });
+        totalFees += calculatedAmount;
+      }
     }
   }
 

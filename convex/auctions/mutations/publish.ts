@@ -450,7 +450,7 @@ export const closeAuctionEarlyHandler = async (
   if (finalStatus === "sold") {
     await updateCounter(ctx, "auctions", "soldCount", 1);
     await updateCounter(ctx, "auctions", "salesVolume", winningAmount ?? 0);
-    await calculateAndRecordFees(ctx, auction);
+    await calculateAndRecordFees(ctx, auction, winningAmount);
   }
 
   const authUser = await getAuthUser(ctx);

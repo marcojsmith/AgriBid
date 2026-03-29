@@ -87,8 +87,12 @@ vi.mock("../../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-vi.mock("../internal", () => ({
+const { calculateAndRecordFees } = vi.hoisted(() => ({
   calculateAndRecordFees: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../internal", () => ({
+  calculateAndRecordFees,
 }));
 
 const createMockProfile = (userId: string, role: string) => ({

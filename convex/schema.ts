@@ -312,7 +312,8 @@ export default defineSchema({
   })
     .index("by_auction", ["auctionId"])
     .index("by_appliedTo", ["appliedTo"])
-    .index("by_feeId", ["feeId"]),
+    .index("by_feeId", ["feeId"])
+    .index("by_auction_fee_applied", ["auctionId", "feeId", "appliedTo"]),
 
   // Error Reports Queue (captured errors sent to GitHub)
   errorReports: defineTable({
