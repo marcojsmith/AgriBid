@@ -39,6 +39,13 @@ export {
   reorderFaqItems,
 } from "./faq";
 
+export {
+  createPlatformFee,
+  updatePlatformFee,
+  deletePlatformFee,
+  reorderPlatformFees,
+} from "./fees";
+
 // --- Bid Moderation ---
 
 /**

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { cleanupDraftsHandler, settleExpiredAuctionsHandler } from "./internal";
+import {
+  calculateAndRecordFees,
+  cleanupDraftsHandler,
+  settleExpiredAuctionsHandler,
+} from "./internal";
 import type { MutationCtx } from "../_generated/server";
 
 vi.mock("../admin_utils", () => ({
@@ -162,6 +166,21 @@ describe("Internal Logic Coverage", () => {
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([mockBid]),
           })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
         );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -206,6 +225,31 @@ describe("Internal Logic Coverage", () => {
         .mockReturnValueOnce(
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([highBid, lowBid]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
           })
         );
 
@@ -316,6 +360,11 @@ describe("Internal Logic Coverage", () => {
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([]),
           })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
         );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -360,6 +409,21 @@ describe("Internal Logic Coverage", () => {
         .mockReturnValueOnce(
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([laterBid, earlierBid]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
           })
         );
 
@@ -407,6 +471,101 @@ describe("Internal Logic Coverage", () => {
       await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.delete).toHaveBeenCalledWith("d1");
+    });
+  });
+
+  describe("calculateAndRecordFees idempotency", () => {
+    it("should skip insert when auctionFee record already exists", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+      };
+      const mockFee = {
+        _id: "f1",
+        name: "Seller Commission",
+        feeType: "percentage",
+        value: 0.05,
+        appliesTo: "seller",
+        isActive: true,
+      };
+      const existingAuctionFee = {
+        _id: "af1",
+        auctionId: "a1",
+        feeId: "f1",
+        appliedTo: "seller",
+      };
+
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockFee]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(existingAuctionFee),
+          })
+        );
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockAuction as never
+      );
+
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should insert auctionFee when no existing record found", async () => {
+      const mockAuction = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+      };
+      const mockFee = {
+        _id: "f1",
+        name: "Seller Commission",
+        feeType: "percentage",
+        value: 0.05,
+        appliesTo: "seller",
+        isActive: true,
+      };
+
+      mockCtx.db.query = vi
+        .fn()
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([mockFee]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
+        );
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockAuction as never
+      );
+
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "auctionFees",
+        expect.objectContaining({
+          auctionId: "a1",
+          feeId: "f1",
+          feeName: expect.any(String),
+          appliedTo: "seller",
+          feeType: expect.any(String),
+          rate: expect.any(Number),
+          salePrice: expect.any(Number),
+          calculatedAmount: expect.any(Number),
+          createdAt: expect.any(Number),
+        })
+      );
     });
   });
 });

@@ -275,6 +275,46 @@ export default defineSchema({
     .index("by_order", ["order"])
     .index("by_published_order", ["isPublished", "order"]),
 
+  // Platform Fee Configuration
+  platformFees: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    feeType: v.union(v.literal("percentage"), v.literal("fixed")),
+    value: v.number(),
+    appliesTo: v.union(
+      v.literal("buyer"),
+      v.literal("seller"),
+      v.literal("both")
+    ),
+    isActive: v.boolean(),
+    visibleToBuyer: v.boolean(),
+    visibleToSeller: v.boolean(),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_active", ["isActive"])
+    .index("by_appliesTo", ["appliesTo"])
+    .index("by_sortOrder", ["sortOrder"]),
+
+  // Auction Fee Ledger - records fees calculated at settlement
+  auctionFees: defineTable({
+    auctionId: v.id("auctions"),
+    feeId: v.id("platformFees"),
+    feeName: v.string(),
+    appliedTo: v.union(v.literal("buyer"), v.literal("seller")),
+    feeType: v.union(v.literal("percentage"), v.literal("fixed")),
+    rate: v.number(),
+    salePrice: v.number(),
+    calculatedAmount: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_auction", ["auctionId"])
+    .index("by_appliedTo", ["appliedTo"])
+    .index("by_feeId", ["feeId"])
+    .index("by_auction_fee_applied", ["auctionId", "feeId", "appliedTo"]),
+
   // Error Reports Queue (captured errors sent to GitHub)
   errorReports: defineTable({
     fingerprint: v.string(),

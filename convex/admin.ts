@@ -36,6 +36,10 @@ export {
   getSystemConfig,
   getSeoSettings,
   getAllFaqItems,
+  getPlatformFees,
+  getFeeStats,
+  getAuctionFees,
+  getAuctionFeesForUser,
 } from "./admin/queries";
 
 // Re-export mutation functions
@@ -53,6 +57,10 @@ export {
   updateFaqItem,
   deleteFaqItem,
   reorderFaqItems,
+  createPlatformFee,
+  updatePlatformFee,
+  deletePlatformFee,
+  reorderPlatformFees,
 } from "./admin/mutations";
 
 // Re-export error reporting functions

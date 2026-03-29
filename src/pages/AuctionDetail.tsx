@@ -17,6 +17,7 @@ import { SellerInfo } from "@/components/SellerInfo";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { AuctionCard } from "@/components/auction/AuctionCard";
+import { FeeBreakdown } from "@/components/auction/FeeBreakdown";
 import { useSession } from "@/lib/auth-client";
 import {
   buildTitle,
@@ -462,6 +463,18 @@ export default function AuctionDetail() {
             >
               <BiddingPanel auction={auction} />
             </aside>
+
+            {auction.status === "sold" &&
+              session?.user &&
+              (auction.winnerId === session.user.id ||
+                auction.sellerId === session.user.id) && (
+                <FeeBreakdown
+                  auctionId={auction._id}
+                  userId={session.user.id}
+                  isWinner={auction.winnerId === session.user.id}
+                  isSeller={auction.sellerId === session.user.id}
+                />
+              )}
 
             <section
               aria-label="Bid History"

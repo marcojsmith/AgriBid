@@ -31,6 +31,7 @@ const AdminErrorReportingSettings = lazy(
 const AdminErrorReports = lazy(() => import("./pages/admin/AdminErrorReports"));
 const AdminSEOSettings = lazy(() => import("./pages/admin/AdminSEOSettings"));
 const AdminFAQ = lazy(() => import("./pages/admin/AdminFAQ"));
+const AdminFees = lazy(() => import("./pages/admin/AdminFees"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
@@ -68,7 +69,7 @@ const PageLoader = () => (
  *   - /admin, /admin/dashboard, /admin/moderation
  *   - /admin/marketplace, /admin/auctions, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
- *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq
+ *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq, /admin/fees
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")
@@ -236,6 +237,14 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminFAQ />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/fees"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminFees />
                 </RoleProtectedRoute>
               }
             />
