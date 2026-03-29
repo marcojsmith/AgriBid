@@ -110,20 +110,14 @@ describe("AdminSettings Page", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/error-reporting");
   });
 
-  it("opens Platform Fees GitHub issue when card is clicked", () => {
-    vi.stubGlobal("open", vi.fn());
+  it("navigates to Platform Fees page when card is clicked", () => {
     (useQuery as Mock).mockReturnValue(mockAdminStats);
     renderPage();
 
     const card = screen.getByRole("button", { name: /Platform Fees/i });
     fireEvent.click(card);
 
-    expect(window.open).toHaveBeenCalledWith(
-      "https://github.com/marcojsmith/AgriBid/issues/56",
-      "_blank",
-      "noopener,noreferrer"
-    );
-    vi.unstubAllGlobals();
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/fees");
   });
 
   it("handles keyboard activation (Enter) on settings cards", () => {

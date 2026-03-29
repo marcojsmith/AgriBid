@@ -12,7 +12,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | -------------------------------------------------- | --------------------------------------------------------------------------- |
 | `bun run dev`                                      | Start development server                                                    |
 | `bun run type-check`                               | Type check with tsgo (4.6x faster than tsc)                                 |
-| `bun run lint`                                     | Check code for errors                                                       |
+| `bun run lint`                                     | Check code for errors on all files                                          |
 | `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file                                              |
 | `bun run test --run path/to/directory/file.ts`     | Run test for a specific file                                                |
 | `bun run test:coverage`                            | Run tests with coverage - saves to test-coverage/latest-coverage-output.txt |
