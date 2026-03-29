@@ -2,7 +2,6 @@ import { render, screen, fireEvent, createEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { useQuery } from "convex/react";
-import { toast } from "sonner";
 
 import AdminSettings from "./AdminSettings";
 
@@ -17,13 +16,6 @@ vi.mock("convex/_generated/api", () => ({
     admin: {
       getAdminStats: { name: "admin:getAdminStats" },
     },
-  },
-}));
-
-// Mocking sonner toast
-vi.mock("sonner", () => ({
-  toast: {
-    info: vi.fn(),
   },
 }));
 
@@ -50,8 +42,6 @@ describe("AdminSettings Page", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock window.open
-    window.open = vi.fn();
   });
 
   const renderPage = () => {
@@ -120,19 +110,14 @@ describe("AdminSettings Page", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/error-reporting");
   });
 
-  it("opens GitHub issue and shows toast when Platform Fees card is clicked", () => {
+  it("navigates to Platform Fees page when card is clicked", () => {
     (useQuery as Mock).mockReturnValue(mockAdminStats);
     renderPage();
 
     const card = screen.getByRole("button", { name: /Platform Fees/i });
     fireEvent.click(card);
 
-    expect(window.open).toHaveBeenCalledWith(
-      "https://github.com/marcojsmith/AgriBid/issues/56",
-      "_blank",
-      "noopener,noreferrer"
-    );
-    expect(toast.info).toHaveBeenCalledWith("Opening Platform Fees issue #56");
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/fees");
   });
 
   it("handles keyboard activation (Enter) on settings cards", () => {
@@ -172,5 +157,21 @@ describe("AdminSettings Page", () => {
 
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("navigates to SEO settings page when SEO & Analytics card is clicked", () => {
+    (useQuery as Mock).mockReturnValue(mockAdminStats);
+    renderPage();
+    const card = screen.getByRole("button", { name: /SEO & Analytics/i });
+    fireEvent.click(card);
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/seo");
+  });
+
+  it("navigates to FAQ management page when FAQ Management card is clicked", () => {
+    (useQuery as Mock).mockReturnValue(mockAdminStats);
+    renderPage();
+    const card = screen.getByRole("button", { name: /FAQ Management/i });
+    fireEvent.click(card);
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/faq");
   });
 });
