@@ -1,5 +1,5 @@
 // app/src/components/header/UserDropdown.tsx
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import {
   User,
@@ -10,6 +10,8 @@ import {
   Settings,
   ShieldAlert,
   MessageSquare,
+  ShoppingBasket,
+  Tag,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,12 +20,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { UserDataWithProfile } from "@/types/auth";
+
+const navLinks = [
+  { name: "Marketplace", href: "/", icon: ShoppingBasket },
+  { name: "Sell", href: "/sell", icon: Tag },
+] as const;
 
 interface UserDropdownProps {
   userData: UserDataWithProfile | null | undefined;
@@ -59,6 +65,8 @@ export function UserDropdown({
   role,
   onSignOut,
 }: UserDropdownProps) {
+  const location = useLocation();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -105,9 +113,27 @@ export function UserDropdown({
         align="end"
         className="w-64 rounded-2xl border-2 p-2 shadow-2xl"
       >
-        <DropdownMenuLabel className="font-black uppercase text-[10px] tracking-widest text-muted-foreground px-2 py-2">
-          Account Terminal
-        </DropdownMenuLabel>
+        {navLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive = location.pathname === link.href;
+          return (
+            <DropdownMenuItem
+              key={link.name}
+              asChild
+              className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+            >
+              <Link
+                to={link.href}
+                className={`flex items-center gap-2 w-full ${
+                  isActive ? "text-primary" : ""
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {link.name}
+              </Link>
+            </DropdownMenuItem>
+          );
+        })}
         <DropdownMenuSeparator />
 
         {!isVerified && kycStatus !== "pending" && (
