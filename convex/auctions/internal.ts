@@ -174,7 +174,16 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
     if (finalStatus === "sold") {
       await updateCounter(ctx, "auctions", "soldCount", 1);
       await updateCounter(ctx, "auctions", "salesVolume", auction.currentPrice);
-      await calculateAndRecordFees(ctx, auction);
+      const winningBid = validBids.reduce(
+        (prev: Doc<"bids">, current: Doc<"bids">) => {
+          if (current.amount > prev.amount) return current;
+          if (current.amount === prev.amount) {
+            return current.timestamp < prev.timestamp ? current : prev;
+          }
+          return prev;
+        }
+      );
+      await calculateAndRecordFees(ctx, auction, winningBid.amount);
     }
 
     console.log(

@@ -644,6 +644,11 @@ describe("Publish Mutations", () => {
       expect(result.finalStatus).toBe("sold");
       expect(result.winnerId).toBe("u2");
       expect(result.winningAmount).toBe(1500);
+      expect(calculateAndRecordFees).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({ _id: "a1" }),
+        1500
+      );
     });
 
     it("should close as unsold if no bids", async () => {
@@ -659,6 +664,7 @@ describe("Publish Mutations", () => {
         { auctionId: "a1" as Id<"auctions"> }
       );
       expect(result.finalStatus).toBe("unsold");
+      expect(calculateAndRecordFees).not.toHaveBeenCalled();
     });
 
     it("should handle same amount bids by timestamp", async () => {
@@ -705,6 +711,7 @@ describe("Publish Mutations", () => {
       );
       expect(result.finalStatus).toBe("unsold");
       expect(result.winnerId).toBeUndefined();
+      expect(calculateAndRecordFees).not.toHaveBeenCalled();
     });
 
     it("should filter out voided bids when determining winner", async () => {

@@ -148,7 +148,10 @@ export function FeeManager() {
           name: formData.name,
           description: formData.description || undefined,
           feeType: formData.feeType,
-          value: formData.value,
+          value:
+            formData.feeType === "percentage"
+              ? formData.value / 100
+              : formData.value,
           appliesTo: formData.appliesTo,
           isActive: formData.isActive,
           visibleToBuyer: formData.visibleToBuyer,
@@ -160,7 +163,10 @@ export function FeeManager() {
           name: formData.name,
           description: formData.description || undefined,
           feeType: formData.feeType,
-          value: formData.value,
+          value:
+            formData.feeType === "percentage"
+              ? formData.value / 100
+              : formData.value,
           appliesTo: formData.appliesTo,
           isActive: formData.isActive,
           visibleToBuyer: formData.visibleToBuyer,
