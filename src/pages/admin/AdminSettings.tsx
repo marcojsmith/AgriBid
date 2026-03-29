@@ -59,13 +59,7 @@ export default function AdminSettings() {
             title="Platform Fees"
             description="Configure commission rates and listing fees."
             icon={<TrendingUp />}
-            action={() =>
-              window.open(
-                "https://github.com/marcojsmith/AgriBid/issues/56",
-                "_blank",
-                "noopener,noreferrer"
-              )
-            }
+            action={() => navigate("/admin/fees")}
           />
           <SettingsCard
             title="Security Logs"
