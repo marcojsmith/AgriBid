@@ -12,6 +12,85 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
 /**
+ * Calculate fees for an auction and persist them to the database.
+ * Evaluates all active platform fees and creates auctionFee records
+ * based on each fee's configuration (percentage or fixed, buyer/seller/both).
+ *
+ * @param ctx - The mutation context for database operations.
+ * @param auction - The auction document to calculate fees for.
+ * @returns Promise<void>
+ * @sideEffects Writes new auctionFee records to the database, emits audit log entries.
+ * @throws Error if database operations fail.
+ */
+export async function calculateAndRecordFees(
+  ctx: MutationCtx,
+  auction: Doc<"auctions">
+): Promise<void> {
+  const activeFees = await ctx.db
+    .query("platformFees")
+    .withIndex("by_active", (q) => q.eq("isActive", true))
+    .collect();
+
+  if (activeFees.length === 0) {
+    return;
+  }
+
+  const now = Date.now();
+  let totalFees = 0;
+
+  for (const fee of activeFees) {
+    let calculatedAmount = 0;
+
+    if (fee.feeType === "percentage") {
+      calculatedAmount = auction.currentPrice * fee.value;
+    } else {
+      calculatedAmount = fee.value;
+    }
+
+    calculatedAmount = Math.round(calculatedAmount * 100) / 100;
+
+    if (fee.appliesTo === "both" || fee.appliesTo === "seller") {
+      await ctx.db.insert("auctionFees", {
+        auctionId: auction._id,
+        feeId: fee._id,
+        feeName: fee.name,
+        appliedTo: "seller",
+        feeType: fee.feeType,
+        rate: fee.value,
+        salePrice: auction.currentPrice,
+        calculatedAmount,
+        createdAt: now,
+      });
+      totalFees += calculatedAmount;
+    }
+
+    if (fee.appliesTo === "both" || fee.appliesTo === "buyer") {
+      await ctx.db.insert("auctionFees", {
+        auctionId: auction._id,
+        feeId: fee._id,
+        feeName: fee.name,
+        appliedTo: "buyer",
+        feeType: fee.feeType,
+        rate: fee.value,
+        salePrice: auction.currentPrice,
+        calculatedAmount,
+        createdAt: now,
+      });
+      totalFees += calculatedAmount;
+    }
+  }
+
+  if (totalFees > 0) {
+    await logAudit(ctx, {
+      action: "CALCULATE_FEES",
+      targetId: auction._id,
+      targetType: "auction",
+      details: `Calculated ${totalFees.toFixed(2)} in fees for auction ${auction.title}`,
+    });
+  }
+}
+
+/**
  * Internal mutation to settle auctions that have reached their end time.
  * Transitions status to 'sold' if reserve is met, or 'unsold' otherwise.
  *
@@ -67,6 +146,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
     if (finalStatus === "sold") {
       await updateCounter(ctx, "auctions", "soldCount", 1);
       await updateCounter(ctx, "auctions", "salesVolume", auction.currentPrice);
+      await calculateAndRecordFees(ctx, auction);
     }
 
     console.log(

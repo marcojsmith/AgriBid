@@ -8,7 +8,6 @@ import {
   type QueryCtx,
 } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
-import { COMMISSION_RATE } from "../config";
 import {
   countQuery,
   countUsers,
@@ -94,7 +93,7 @@ async function upsertCounter(
 }
 
 /**
- * Financial statistics including total sales volume and estimated commissions.
+ * Financial statistics including total sales volume and actual fees collected.
  */
 export const getFinancialStats = query({
   args: {
@@ -102,15 +101,22 @@ export const getFinancialStats = query({
   },
   returns: v.object({
     totalSalesVolume: v.number(),
-    estimatedCommission: v.number(),
-    commissionRate: v.number(),
+    totalFeesCollected: v.number(),
+    buyerFeesTotal: v.number(),
+    sellerFeesTotal: v.number(),
     recentSales: v.object({
       page: v.array(
         v.object({
           id: v.id("auctions"),
           title: v.string(),
           amount: v.number(),
-          estimatedCommission: v.number(),
+          fees: v.array(
+            v.object({
+              feeName: v.string(),
+              appliedTo: v.union(v.literal("buyer"), v.literal("seller")),
+              amount: v.number(),
+            })
+          ),
           date: v.number(),
         })
       ),
@@ -156,7 +162,44 @@ export const getFinancialStats = query({
         }
       }
 
-      const estimatedCommission = totalSalesVolume * COMMISSION_RATE;
+      const allAuctionFees = await ctx.db.query("auctionFees").collect();
+      let totalFeesCollected = 0;
+      let buyerFeesTotal = 0;
+      let sellerFeesTotal = 0;
+      const auctionFeeMap = new Map<
+        string,
+        Array<{
+          feeName: string;
+          appliedTo: "buyer" | "seller";
+          amount: number;
+        }>
+      >();
+
+      for (const fee of allAuctionFees) {
+        totalFeesCollected += fee.calculatedAmount;
+        if (fee.appliedTo === "buyer") {
+          buyerFeesTotal += fee.calculatedAmount;
+        } else if (fee.appliedTo === "seller") {
+          sellerFeesTotal += fee.calculatedAmount;
+        }
+
+        const existing = auctionFeeMap.get(fee.auctionId);
+        if (existing) {
+          existing.push({
+            feeName: fee.feeName,
+            appliedTo: fee.appliedTo,
+            amount: fee.calculatedAmount,
+          });
+        } else {
+          auctionFeeMap.set(fee.auctionId, [
+            {
+              feeName: fee.feeName,
+              appliedTo: fee.appliedTo,
+              amount: fee.calculatedAmount,
+            },
+          ]);
+        }
+      }
 
       const numItems = args.salesPaginationOpts?.numItems ?? 100;
       const cursor = args.salesPaginationOpts?.cursor ?? null;
@@ -180,7 +223,7 @@ export const getFinancialStats = query({
         id: a._id,
         title: a.title,
         amount: a.currentPrice,
-        estimatedCommission: a.currentPrice * COMMISSION_RATE,
+        fees: auctionFeeMap.get(a._id) ?? [],
         date: a.endTime ?? 0,
       }));
 
@@ -190,8 +233,9 @@ export const getFinancialStats = query({
 
       return {
         totalSalesVolume,
-        estimatedCommission,
-        commissionRate: COMMISSION_RATE,
+        totalFeesCollected,
+        buyerFeesTotal,
+        sellerFeesTotal,
         recentSales: {
           page,
           isDone,

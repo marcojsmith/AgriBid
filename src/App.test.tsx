@@ -52,6 +52,7 @@ vi.mock("./pages/KYC", () => mockPage("kyc"));
 vi.mock("./pages/Support", () => mockPage("support"));
 vi.mock("./pages/Notifications", () => mockPage("notifications"));
 vi.mock("./pages/admin/AdminMarketplace", () => mockPage("admin-marketplace"));
+vi.mock("./pages/admin/AdminFees", () => mockPage("admin-fees"));
 
 // Mock App without its own BrowserRouter so we can control it with MemoryRouter
 vi.mock("react-router-dom", async () => {
@@ -208,5 +209,10 @@ describe("App Routing", () => {
     expect(
       await screen.findByTestId("admin-marketplace-page")
     ).toBeInTheDocument();
+  });
+
+  it("renders AdminFees for /admin/fees", async () => {
+    renderApp("/admin/fees");
+    expect(await screen.findByTestId("admin-fees-page")).toBeInTheDocument();
   });
 });

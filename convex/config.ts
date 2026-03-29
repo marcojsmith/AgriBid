@@ -100,6 +100,10 @@ export function isOriginAllowed(origin: string | null | undefined): boolean {
 
 /**
  * Business Logic Constants
+ *
+ * @deprecated Use the platformFees table to configure fees instead.
+ * This constant is kept for backward compatibility with existing code
+ * and will be removed in a future version.
  */
 export const COMMISSION_RATE = (() => {
   const envVal = getEnv("COMMISSION_RATE");

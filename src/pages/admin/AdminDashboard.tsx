@@ -171,8 +171,8 @@ function AdminDashboardContent() {
               value: formatCurrency(financialStats.totalSalesVolume),
             },
             {
-              label: "Comm. Est.",
-              value: formatCurrency(financialStats.estimatedCommission),
+              label: "Fees Collected",
+              value: formatCurrency(financialStats.totalFeesCollected),
               color: "text-green-600",
             },
           ]}

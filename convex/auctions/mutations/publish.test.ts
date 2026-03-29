@@ -22,6 +22,7 @@ import type { MutationCtx } from "../../_generated/server";
 vi.mock("../../_generated/server", () => ({
   mutation: vi.fn((config) => config),
   query: vi.fn((config) => config),
+  internalMutation: vi.fn((config) => config),
 }));
 
 // helper types for mocking
@@ -84,6 +85,10 @@ vi.mock("../../admin_utils", () => ({
   updateCounter: vi.fn(),
   adjustStatusCounters: vi.fn(),
   logAudit: vi.fn(),
+}));
+
+vi.mock("../internal", () => ({
+  calculateAndRecordFees: vi.fn().mockResolvedValue(undefined),
 }));
 
 const createMockProfile = (userId: string, role: string) => ({

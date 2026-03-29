@@ -8,7 +8,6 @@ import {
   Search,
   HelpCircle,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -60,14 +59,7 @@ export default function AdminSettings() {
             title="Platform Fees"
             description="Configure commission rates and listing fees."
             icon={<TrendingUp />}
-            action={() => {
-              window.open(
-                "https://github.com/marcojsmith/AgriBid/issues/56",
-                "_blank",
-                "noopener,noreferrer"
-              );
-              toast.info("Opening Platform Fees issue #56");
-            }}
+            action={() => navigate("/admin/fees")}
           />
           <SettingsCard
             title="Security Logs"

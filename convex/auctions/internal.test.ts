@@ -162,6 +162,11 @@ describe("Internal Logic Coverage", () => {
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([mockBid]),
           })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
         );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -207,6 +212,11 @@ describe("Internal Logic Coverage", () => {
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([highBid, lowBid]),
           })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
         );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -246,6 +256,11 @@ describe("Internal Logic Coverage", () => {
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([mockBid]),
           })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
         );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -284,6 +299,11 @@ describe("Internal Logic Coverage", () => {
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([mockBid]),
           })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
+          })
         );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -310,6 +330,11 @@ describe("Internal Logic Coverage", () => {
         .mockReturnValueOnce(
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([mockAuction]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
           })
         )
         .mockReturnValueOnce(
@@ -360,6 +385,11 @@ describe("Internal Logic Coverage", () => {
         .mockReturnValueOnce(
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([laterBid, earlierBid]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            collect: vi.fn().mockResolvedValue([]),
           })
         );
 

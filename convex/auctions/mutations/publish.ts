@@ -24,6 +24,7 @@ import {
 } from "../../constants";
 import type { Id, Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
+import { calculateAndRecordFees } from "../internal";
 
 /**
  * Result type for closeAuctionEarly mutation.
@@ -449,6 +450,7 @@ export const closeAuctionEarlyHandler = async (
   if (finalStatus === "sold") {
     await updateCounter(ctx, "auctions", "soldCount", 1);
     await updateCounter(ctx, "auctions", "salesVolume", winningAmount ?? 0);
+    await calculateAndRecordFees(ctx, auction);
   }
 
   const authUser = await getAuthUser(ctx);
