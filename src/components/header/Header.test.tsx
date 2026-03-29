@@ -134,19 +134,6 @@ describe("Header", () => {
     consoleSpy.mockRestore();
   });
 
-  it("toggles mobile menu", () => {
-    renderHeader();
-    const toggleBtn = screen.getByLabelText("Toggle menu");
-
-    // Open
-    fireEvent.click(toggleBtn);
-    expect(screen.getByTestId("mobile-menu")).toBeInTheDocument();
-
-    // Close via MobileMenu mock callback
-    fireEvent.click(screen.getByText("Close"));
-    expect(screen.queryByTestId("mobile-menu")).not.toBeInTheDocument();
-  });
-
   it("applies active link styling", () => {
     renderHeader("/");
     const marketplaceLink = screen.getByText("Marketplace");

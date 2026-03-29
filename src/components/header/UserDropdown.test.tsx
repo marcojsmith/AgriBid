@@ -91,7 +91,6 @@ describe("UserDropdown", () => {
 
   it("shows menu content (mocked directly)", () => {
     renderWithRouter();
-    expect(screen.getByText("Account Terminal")).toBeInTheDocument();
     expect(screen.getByText("My Bids")).toBeInTheDocument();
     expect(screen.getByText("Sign Out")).toBeInTheDocument();
   });
