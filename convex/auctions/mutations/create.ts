@@ -70,7 +70,7 @@ export const generateUploadUrl = mutation({
  * @param args.conditionChecklist.serviceHistory - The service history of the equipment.
  * @param args.conditionChecklist.notes - Additional notes on the condition.
  * @param args.isDraft - Whether the auction is a draft.
- * @param args.startTime
+ * @param args.startTime - Optional Unix timestamp (ms) at which the auction should open for bidding. Omit to start immediately upon activation.
  * @returns Promise<Id<"auctions">>
  */
 export const createAuctionHandler = async (
@@ -246,7 +246,7 @@ export const createAuction = mutation({
  * @param args.conditionChecklist.tires - The condition of the tires.
  * @param args.conditionChecklist.serviceHistory - The service history of the equipment.
  * @param args.conditionChecklist.notes - Additional notes on the condition.
- * @param args.startTime
+ * @param args.startTime - Optional Unix timestamp (ms) at which the auction should open for bidding. Omit to start immediately upon activation.
  * @returns Promise<Id<"auctions">>
  */
 export const saveDraftHandler = async (

@@ -115,11 +115,7 @@ export function UserDropdown({
       >
         {navLinks.map((link) => {
           const Icon = link.icon;
-          const isActive =
-            link.href === "/"
-              ? location.pathname === "/"
-              : location.pathname === link.href ||
-                location.pathname.startsWith(`${link.href}/`);
+          const isActive = location.pathname === link.href;
           return (
             <DropdownMenuItem
               key={link.name}
