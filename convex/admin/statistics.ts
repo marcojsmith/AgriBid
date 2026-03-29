@@ -162,10 +162,26 @@ export const getFinancialStats = query({
         }
       }
 
-      const allAuctionFees = await ctx.db.query("auctionFees").collect();
-      let totalFeesCollected = 0;
-      let buyerFeesTotal = 0;
-      let sellerFeesTotal = 0;
+      const numItems = args.salesPaginationOpts?.numItems ?? 100;
+      const cursor = args.salesPaginationOpts?.cursor ?? null;
+      const parsed = cursor ? parseInt(cursor, 10) : 0;
+      const startIndex = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+
+      const [recentSoldAuctions, totalSoldCount, allAuctionFees] =
+        await Promise.all([
+          ctx.db
+            .query("auctions")
+            .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+            .order("desc")
+            .take(startIndex + numItems),
+          countQuery(
+            ctx.db
+              .query("auctions")
+              .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+          ),
+          ctx.db.query("auctionFees").collect(),
+        ]);
+
       const auctionFeeMap = new Map<
         string,
         Array<{
@@ -175,11 +191,13 @@ export const getFinancialStats = query({
         }>
       >();
 
+      let buyerFeesTotal = 0;
+      let sellerFeesTotal = 0;
+
       for (const fee of allAuctionFees) {
-        totalFeesCollected += fee.calculatedAmount;
         if (fee.appliedTo === "buyer") {
           buyerFeesTotal += fee.calculatedAmount;
-        } else if (fee.appliedTo === "seller") {
+        } else {
           sellerFeesTotal += fee.calculatedAmount;
         }
 
@@ -201,23 +219,7 @@ export const getFinancialStats = query({
         }
       }
 
-      const numItems = args.salesPaginationOpts?.numItems ?? 100;
-      const cursor = args.salesPaginationOpts?.cursor ?? null;
-      const parsed = cursor ? parseInt(cursor, 10) : 0;
-      const startIndex = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
-
-      const [recentSoldAuctions, totalSoldCount] = await Promise.all([
-        ctx.db
-          .query("auctions")
-          .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
-          .order("desc")
-          .take(startIndex + numItems),
-        countQuery(
-          ctx.db
-            .query("auctions")
-            .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
-        ),
-      ]);
+      const totalFeesCollected = buyerFeesTotal + sellerFeesTotal;
 
       const allSales = recentSoldAuctions.map((a) => ({
         id: a._id,
