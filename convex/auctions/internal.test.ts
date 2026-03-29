@@ -227,6 +227,16 @@ describe("Internal Logic Coverage", () => {
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([]),
           })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            first: vi.fn().mockResolvedValue(null),
+          })
         );
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
