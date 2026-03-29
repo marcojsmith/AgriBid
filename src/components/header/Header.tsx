@@ -1,9 +1,7 @@
 // app/src/components/header/Header.tsx
-import { useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Menu, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { signOut } from "@/lib/auth-client";
@@ -13,13 +11,12 @@ import { NotificationDropdown } from "@/components/NotificationDropdown";
 
 import { SearchBar } from "./SearchBar";
 import { UserDropdown } from "./UserDropdown";
-import { MobileMenu } from "./MobileMenu";
 
 /**
  * Main application header component.
  *
- * Renders the site navigation, search bar, user authentication controls,
- * and mobile menu. This component is publicly exported via the header barrel.
+ * Renders the site navigation, search bar, and user authentication controls.
+ * This component is publicly exported via the header barrel.
  *
  * @returns A JSX.Element representing the application header
  */
@@ -33,11 +30,6 @@ export const Header = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleCloseMenu = useCallback(() => {
-    setIsMenuOpen(false);
-  }, []);
 
   const navLinks: { name: string; href: string; disabled?: boolean }[] = [
     { name: "Marketplace", href: "/" },
@@ -49,11 +41,11 @@ export const Header = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast.success("Signed out successfully");
-      navigate("/");
+      void toast.success("Signed out successfully");
+      void navigate("/");
     } catch (err) {
       console.error("Sign out failed:", err);
-      toast.error("Failed to sign out. Please try again.");
+      void toast.error("Failed to sign out. Please try again.");
     }
   };
 
@@ -130,35 +122,8 @@ export const Header = () => {
               <Link to="/login">Login / Register</Link>
             </Button>
           </Unauthenticated>
-
-          {/* Mobile Menu Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden h-10 w-10 border-2 rounded-xl"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </Button>
         </div>
       </div>
-
-      <MobileMenu
-        isOpen={isMenuOpen}
-        onClose={handleCloseMenu}
-        navLinks={navLinks}
-        userData={userData}
-        isVerified={isVerified ?? false}
-        kycStatus={kycStatus}
-        role={role}
-        profileId={profileId}
-        onSignOut={handleSignOut}
-      />
     </header>
   );
 };
