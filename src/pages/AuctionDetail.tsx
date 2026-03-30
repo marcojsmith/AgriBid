@@ -100,6 +100,8 @@ export default function AuctionDetail() {
     auction?.make ? { make: auction.make, excludeId: auction._id } : "skip"
   );
 
+  const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
+
   const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
 
   const isOwner = session?.user?.id === auction?.sellerId;
@@ -446,7 +448,9 @@ export default function AuctionDetail() {
                     key={related._id}
                     auction={related}
                     viewMode="compact"
-                    isWatched={false}
+                    isWatched={
+                      watchedAuctionIds?.includes(related._id) ?? false
+                    }
                   />
                 ))}
               </div>

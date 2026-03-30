@@ -9,13 +9,13 @@ Prioritized by size and quick wins for efficient resolution.
 
 ### Priority: High
 
-- [ ] #214: bug: isWatched hardcoded to false in related auctions section of AuctionDetail
+- [x] #214: bug: isWatched hardcoded to false in related auctions section of AuctionDetail
   - _Description_: Related auction cards always show unwatched state regardless of user's watchlist
   - _Labels_: bug
 - [ ] #215: feat: Add startTime bounds validation for non-draft auction mutations
   - _Description_: Validate startTime is not in the past and not more than 1 year in the future
   - _Labels_: enhancement
-- [ ] #213: chore: Add missing @param descriptions for args.startTime in createAuction/saveDraft JSDoc
+- [x] #213: chore: Add missing @param descriptions for args.startTime in createAuction/saveDraft JSDoc
   - _Description_: Add meaningful descriptions to @param args.startTime entries in createAuctionHandler and saveDraftHandler JSDoc
   - _Labels_: None
 - [ ] #217: feat: Add og-image.png to public directory for SEO social previews
