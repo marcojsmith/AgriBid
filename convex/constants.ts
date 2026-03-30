@@ -44,6 +44,15 @@ export const AUCTION_FLAG_AUTO_HIDE_THRESHOLD = 3;
 // Maximum number of auctions that can be updated in a single bulk operation.
 export const MAX_BULK_UPDATE_SIZE = 50;
 
+/**
+ * startTime validation bounds for auction scheduling.
+ * Sellers have stricter limits than admins.
+ */
+export const STARTTIME_MAX_PAST_MS = MS_PER_MINUTE;
+export const STARTTIME_MAX_FUTURE_MS = 365 * MS_PER_DAY;
+export const STARTTIME_ADMIN_MAX_PAST_MS = 365 * MS_PER_DAY;
+export const STARTTIME_ADMIN_MAX_FUTURE_MS = 10 * 365 * MS_PER_DAY;
+
 // Duration before auction end that triggers a soft close (extension).
 export const SOFT_CLOSE_THRESHOLD_MS = 2 * MS_PER_MINUTE;
 

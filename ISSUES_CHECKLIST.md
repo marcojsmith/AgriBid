@@ -12,7 +12,7 @@ Prioritized by size and quick wins for efficient resolution.
 - [x] #214: bug: isWatched hardcoded to false in related auctions section of AuctionDetail
   - _Description_: Related auction cards always show unwatched state regardless of user's watchlist
   - _Labels_: bug
-- [ ] #215: feat: Add startTime bounds validation for non-draft auction mutations
+- [x] #215: feat: Add startTime bounds validation for non-draft auction mutations
   - _Description_: Validate startTime is not in the past and not more than 1 year in the future
   - _Labels_: enhancement
 - [x] #213: chore: Add missing @param descriptions for args.startTime in createAuction/saveDraft JSDoc

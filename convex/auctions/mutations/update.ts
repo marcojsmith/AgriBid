@@ -3,7 +3,7 @@ import { v, ConvexError } from "convex/values";
 import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { logAudit } from "../../admin_utils";
-import { validateAuctionStatus } from "../helpers";
+import { validateAuctionStatus, validateStartTimeBounds } from "../helpers";
 import {
   MAX_ADDITIONAL_IMAGES,
   AUCTION_MIN_DURATION_DAYS,
@@ -272,9 +272,7 @@ export const adminUpdateAuctionHandler = async (
       validateAuctionStatus(patched, newStatus);
     } catch (error) {
       if (error instanceof Error) {
-        throw new ConvexError(
-          `Cannot activate auction: ${error.message}`
-        );
+        throw new ConvexError(`Cannot activate auction: ${error.message}`);
       }
       throw error;
     }
@@ -305,6 +303,10 @@ export const adminUpdateAuctionHandler = async (
       args.updates.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT;
+  }
+
+  if (args.updates.startTime !== undefined && auction.status !== "draft") {
+    validateStartTimeBounds(args.updates.startTime, true);
   }
 
   await ctx.db.patch(args.auctionId, patchData);
@@ -433,6 +435,15 @@ export const bulkUpdateAuctionsHandler = async (
         newStatus !== "pending_review"
       ) {
         patchData.hiddenByFlags = false;
+      }
+
+      if (args.updates.startTime !== undefined && auction.status !== "draft") {
+        try {
+          validateStartTimeBounds(args.updates.startTime, true);
+        } catch {
+          skipped.push(id);
+          continue;
+        }
       }
 
       await ctx.db.patch(id, patchData);

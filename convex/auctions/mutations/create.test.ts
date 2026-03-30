@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
 import { updateCounter } from "../../admin_utils";
+import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from "../../constants";
 import {
   createAuctionHandler,
   saveDraftHandler,
@@ -217,6 +218,62 @@ describe("Create Mutations", () => {
           durationDays: 366,
         })
       ).rejects.toThrow("Invalid duration");
+    });
+
+    it("should reject startTime 2 min in the past for non-draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+      const pastTime = Date.now() - 2 * MS_PER_MINUTE;
+      await expect(
+        createAuctionHandler(mockCtx as unknown as MutationCtx, {
+          ...validArgs,
+          isDraft: false,
+          startTime: pastTime,
+        })
+      ).rejects.toThrow("cannot be more than 1 minute in the past");
+    });
+
+    it("should reject startTime 2 years in the future for non-draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+      const futureTime = Date.now() + 2 * 365 * MS_PER_DAY;
+      await expect(
+        createAuctionHandler(mockCtx as unknown as MutationCtx, {
+          ...validArgs,
+          isDraft: false,
+          startTime: futureTime,
+        })
+      ).rejects.toThrow("cannot be more than 1 year in the future");
+    });
+
+    it("should accept startTime 30 days in the future for non-draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+      const futureTime = Date.now() + 30 * MS_PER_DAY;
+      const result = await createAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          ...validArgs,
+          isDraft: false,
+          startTime: futureTime,
+        }
+      );
+      expect(result).toBeDefined();
+    });
+
+    it("should allow past startTime for draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+      const pastTime = Date.now() - MS_PER_HOUR;
+      const result = await createAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          ...validArgs,
+          isDraft: true,
+          startTime: pastTime,
+        }
+      );
+      expect(result).toBeDefined();
     });
   });
 
@@ -493,6 +550,30 @@ describe("Create Mutations", () => {
         "draft",
         1
       );
+    });
+
+    it("should reject startTime 2 min in the past on pending_review", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u1",
+        status: "pending_review",
+        title: "Test Auction",
+        description: "Test Description",
+        startingPrice: 1000,
+        reservePrice: 2000,
+        images: { front: "img1" },
+      } as Doc<"auctions">);
+      const pastTime = Date.now() - 2 * MS_PER_MINUTE;
+      await expect(
+        saveDraftHandler(
+          mockCtx as unknown as MutationCtx,
+          {
+            auctionId: "a1" as Id<"auctions">,
+            startTime: pastTime,
+          } as PartialDraftArgs as SaveDraftArgs
+        )
+      ).rejects.toThrow("cannot be more than 1 minute in the past");
     });
   });
 
