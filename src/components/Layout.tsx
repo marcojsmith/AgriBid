@@ -14,7 +14,6 @@ import {
   DEFAULT_OG_IMAGE,
   SITE_NAME,
   SITE_URL,
-  ORGANIZATION_SCHEMA,
   buildCanonical,
 } from "@/lib/seo";
 
@@ -43,6 +42,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const isAdminPage = location.pathname.startsWith("/admin");
 
   const seoSettings = useQuery(api.admin.getSeoSettings);
+  const businessInfo = useQuery(api.admin.getBusinessInfo);
 
   // Intentional empty dependency array: this effect runs on every render
   // to keep syncUserRef.current updated with the latest syncUser function reference,
@@ -75,9 +75,34 @@ export const Layout = ({ children }: LayoutProps) => {
         <meta property="og:image" content={DEFAULT_OG_IMAGE} />
         <meta property="og:locale" content="en_ZA" />
         <meta name="twitter:card" content="summary_large_image" />
-        <script type="application/ld+json">
-          {JSON.stringify(ORGANIZATION_SCHEMA)}
-        </script>
+        {businessInfo?.businessName && (
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: businessInfo.businessName ?? SITE_NAME,
+              url: businessInfo.website ?? SITE_URL,
+              logo: businessInfo.logoUrl ?? `${SITE_URL}/logo.png`,
+              description:
+                businessInfo.businessDescription ?? DEFAULT_DESCRIPTION,
+              address: {
+                "@type": "PostalAddress",
+                streetAddress: businessInfo.streetAddress ?? "123 Harvest Road",
+                addressLocality:
+                  businessInfo.addressLocality ?? "Agricultural Hub",
+                addressCountry: businessInfo.addressCountry ?? "ZA",
+                postalCode: businessInfo.postalCode ?? "4500",
+              },
+              contactPoint: {
+                "@type": "ContactPoint",
+                telephone: businessInfo.telephone ?? "+27-11-555-0123",
+                email: businessInfo.email ?? undefined,
+                contactType: "customer service",
+              },
+              sameAs: businessInfo.sameAs ?? [],
+            })}
+          </script>
+        )}
         {/* Dynamic analytics/verification — configured via Admin > SEO & Analytics */}
         {seoSettings?.searchConsoleVerification && (
           <meta

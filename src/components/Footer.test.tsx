@@ -1,10 +1,22 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
+vi.mock("convex/react", () => ({
+  useQuery: vi.fn(),
+}));
+import { useQuery } from "convex/react";
 
 import { Footer } from "./Footer";
 
+const mockUseQuery = useQuery as Mock;
+
 describe("Footer", () => {
+  beforeEach(() => {
+    mockUseQuery.mockReturnValue({
+      businessName: "AgriBid",
+    });
+  });
+
   const renderFooter = () =>
     render(
       <BrowserRouter>

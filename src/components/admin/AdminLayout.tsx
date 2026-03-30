@@ -17,6 +17,7 @@ import {
   Settings,
   Activity,
   Bug,
+  Building2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const SIDEBAR_ITEMS = [
   { label: "Equipment", icon: LayoutGrid, path: "/admin/equipment-catalog" },
   { label: "Audit", icon: FileText, path: "/admin/audit" },
   { label: "System", icon: Settings, path: "/admin/settings" },
+  { label: "Business Info", icon: Building2, path: "/admin/business-info" },
   { label: "Error Reports", icon: Bug, path: "/admin/error-reports" },
 ];
 

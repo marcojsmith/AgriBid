@@ -7,6 +7,8 @@ import {
   updateSystemConfigHandler,
   updateGitHubErrorReportingConfigHandler,
   getSetting,
+  getBusinessInfoHandler,
+  updateBusinessInfoHandler,
 } from "./settings";
 import * as adminUtils from "../admin_utils";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -384,6 +386,203 @@ describe("Settings Config", () => {
       });
       const result = await getSystemConfigHandler(ctx as unknown as QueryCtx);
       expect(result.githubConfig.tokenMasked).toBe("");
+    });
+  });
+
+  describe("getBusinessInfoHandler", () => {
+    it("returns all nulls when no business keys are set", async () => {
+      const ctx = createMockCtx({});
+      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+
+      expect(result.businessName).toBeNull();
+      expect(result.businessDescription).toBeNull();
+      expect(result.streetAddress).toBeNull();
+      expect(result.addressLocality).toBeNull();
+      expect(result.addressCountry).toBeNull();
+      expect(result.postalCode).toBeNull();
+      expect(result.telephone).toBeNull();
+      expect(result.email).toBeNull();
+      expect(result.website).toBeNull();
+      expect(result.logoUrl).toBeNull();
+      expect(result.sameAs).toBeNull();
+    });
+
+    it("returns stored values for all fields", async () => {
+      const ctx = createMockCtx({
+        "business.name": "AgriBid",
+        "business.description": "Auction platform",
+        "business.streetAddress": "123 Main St",
+        "business.addressLocality": "Cape Town",
+        "business.addressCountry": "ZA",
+        "business.postalCode": "8001",
+        "business.telephone": "+27-21-555-0123",
+        "business.email": "info@agribid.co.za",
+        "business.website": "https://agribid.co.za",
+        "business.logoUrl": "https://agribid.co.za/logo.png",
+        "business.sameAs":
+          '["https://facebook.com/agribid","https://twitter.com/agribid"]',
+      });
+      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+
+      expect(result.businessName).toBe("AgriBid");
+      expect(result.businessDescription).toBe("Auction platform");
+      expect(result.streetAddress).toBe("123 Main St");
+      expect(result.addressLocality).toBe("Cape Town");
+      expect(result.addressCountry).toBe("ZA");
+      expect(result.postalCode).toBe("8001");
+      expect(result.telephone).toBe("+27-21-555-0123");
+      expect(result.email).toBe("info@agribid.co.za");
+      expect(result.website).toBe("https://agribid.co.za");
+      expect(result.logoUrl).toBe("https://agribid.co.za/logo.png");
+      expect(result.sameAs).toEqual([
+        "https://facebook.com/agribid",
+        "https://twitter.com/agribid",
+      ]);
+    });
+
+    it("handles invalid JSON in sameAs gracefully", async () => {
+      const ctx = createMockCtx({
+        "business.sameAs": "not valid json",
+      });
+      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+
+      expect(result.sameAs).toEqual([]);
+    });
+
+    it("handles non-array JSON in sameAs gracefully", async () => {
+      const ctx = createMockCtx({
+        "business.sameAs": '"just a string"',
+      });
+      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+
+      expect(result.sameAs).toEqual([]);
+    });
+  });
+
+  describe("updateBusinessInfo", () => {
+    it("throws when called by non-admin", async () => {
+      vi.mocked(auth.requireAdmin).mockRejectedValueOnce(
+        new Error("Not admin")
+      );
+      const ctx = createMockCtx({});
+
+      await expect(
+        updateBusinessInfoHandler(ctx as unknown as MutationCtx, {
+          businessName: "Test",
+        })
+      ).rejects.toThrow("Not admin");
+
+      vi.mocked(auth.requireAdmin).mockReset();
+    });
+
+    it("saves and retrieves all fields correctly", async () => {
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn(() => ({
+            unique: vi.fn().mockResolvedValue(null),
+          })),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updateBusinessInfoHandler(ctx, {
+        businessName: "AgriBid",
+        businessDescription: "Auction platform",
+        streetAddress: "123 Main St",
+        addressLocality: "Cape Town",
+        addressCountry: "ZA",
+        postalCode: "8001",
+        telephone: "+27-21-555-0123",
+        email: "info@agribid.co.za",
+        website: "https://agribid.co.za",
+        logoUrl: "https://agribid.co.za/logo.png",
+        sameAs: ["https://facebook.com/agribid"],
+      });
+
+      expect(auth.requireAdmin).toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalledTimes(11);
+
+      const businessNameCall = mockDb.insert.mock.calls.find(
+        (call) => call[1].key === "business.name"
+      );
+      expect(businessNameCall).toBeDefined();
+      expect(businessNameCall?.[1].value).toBe("AgriBid");
+
+      const sameAsCall = mockDb.insert.mock.calls.find(
+        (call) => call[1].key === "business.sameAs"
+      );
+      expect(sameAsCall).toBeDefined();
+      expect(sameAsCall?.[1].value).toBe('["https://facebook.com/agribid"]');
+    });
+
+    it("logs audit with correct arguments on success", async () => {
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn(() => ({
+            unique: vi.fn().mockResolvedValue(null),
+          })),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updateBusinessInfoHandler(ctx, {
+        businessName: "Test Business",
+      });
+
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(ctx, {
+        action: "UPDATE_SETTING",
+        targetId: "business-info",
+        targetType: "setting",
+        details: expect.stringContaining("business.name"),
+      });
+    });
+
+    it("patches existing setting if it already exists", async () => {
+      const existingSetting = {
+        _id: "s1",
+        key: "business.name",
+        value: "Old Name",
+      };
+      let currentKey = "";
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn((_idx, cb) => {
+            const q = {
+              eq: vi.fn((_field, val) => {
+                currentKey = val as string;
+                return q;
+              }),
+            };
+            if (cb) (cb as (q: unknown) => void)(q);
+            return {
+              unique: vi.fn().mockImplementation(() => {
+                return Promise.resolve(
+                  currentKey === "business.name" ? existingSetting : null
+                );
+              }),
+            };
+          }),
+        }),
+        patch: vi.fn().mockResolvedValue(undefined),
+        insert: vi.fn().mockResolvedValue("new_id"),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updateBusinessInfoHandler(ctx, {
+        businessName: "New Name",
+      });
+
+      expect(mockDb.patch).toHaveBeenCalledWith(
+        "s1",
+        expect.objectContaining({
+          value: "New Name",
+        })
+      );
+      expect(mockDb.insert).not.toHaveBeenCalled();
     });
   });
 });

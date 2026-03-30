@@ -30,6 +30,7 @@ const AdminErrorReportingSettings = lazy(
 );
 const AdminErrorReports = lazy(() => import("./pages/admin/AdminErrorReports"));
 const AdminSEOSettings = lazy(() => import("./pages/admin/AdminSEOSettings"));
+const AdminBusinessInfo = lazy(() => import("./pages/admin/AdminBusinessInfo"));
 const AdminFAQ = lazy(() => import("./pages/admin/AdminFAQ"));
 const AdminFees = lazy(() => import("./pages/admin/AdminFees"));
 const FAQ = lazy(() => import("./pages/FAQ"));
@@ -229,6 +230,14 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminSEOSettings />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/business-info"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminBusinessInfo />
                 </RoleProtectedRoute>
               }
             />

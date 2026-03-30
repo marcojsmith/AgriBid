@@ -10,7 +10,7 @@
  * Re-exports from specialized sub-modules:
  * - kyc.ts: reviewKYC
  * - statistics.ts: initializeCounters
- * - settings.ts: updateSystemConfig, updateGitHubErrorReportingConfig, updateSeoSettings
+ * - settings.ts: updateSystemConfig, updateGitHubErrorReportingConfig, updateSeoSettings, updateBusinessInfo
  * - faq.ts: createFaqItem, updateFaqItem, deleteFaqItem, reorderFaqItems
  */
 
@@ -30,6 +30,7 @@ export {
   updateSystemConfig,
   updateGitHubErrorReportingConfig,
   updateSeoSettings,
+  updateBusinessInfo,
 } from "./settings";
 
 export {
