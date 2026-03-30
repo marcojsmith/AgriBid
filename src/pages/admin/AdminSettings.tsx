@@ -7,6 +7,7 @@ import {
   Bug,
   Search,
   HelpCircle,
+  Building2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -78,6 +79,12 @@ export default function AdminSettings() {
             description="Configure GA4, Search Console, and Bing verification."
             icon={<Search />}
             action={() => navigate("/admin/seo")}
+          />
+          <SettingsCard
+            title="Business Info"
+            description="Organization details used for SEO structured data (JSON-LD)"
+            icon={<Building2 />}
+            action={() => navigate("/admin/business-info")}
           />
           <SettingsCard
             title="FAQ Management"

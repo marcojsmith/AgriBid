@@ -30,6 +30,7 @@ export {
   updateSystemConfig,
   updateGitHubErrorReportingConfig,
   updateSeoSettings,
+  updateBusinessInfo,
 } from "./settings";
 
 export {

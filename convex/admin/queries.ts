@@ -34,7 +34,7 @@ export {
   getSupportStats,
 } from "./statistics";
 
-export { getSystemConfig, getSeoSettings } from "./settings";
+export { getSystemConfig, getSeoSettings, getBusinessInfo } from "./settings";
 
 export { getAllFaqItems } from "./faq";
 

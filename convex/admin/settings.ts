@@ -500,6 +500,20 @@ const SEO_KEYS = {
   bingVerification: "seo.bingVerification",
 } as const;
 
+const BUSINESS_KEYS = {
+  businessName: "business.name",
+  businessDescription: "business.description",
+  streetAddress: "business.streetAddress",
+  addressLocality: "business.addressLocality",
+  addressCountry: "business.addressCountry",
+  postalCode: "business.postalCode",
+  telephone: "business.telephone",
+  email: "business.email",
+  website: "business.website",
+  logoUrl: "business.logoUrl",
+  sameAs: "business.sameAs",
+} as const;
+
 /**
  * Query SEO and analytics settings.
  *
@@ -615,4 +629,245 @@ export const updateSeoSettings = mutation({
 
     return { success: true };
   },
+});
+
+/**
+ * Handler for getBusinessInfo query.
+ *
+ * @param ctx - Convex Query context
+ * @returns Business info object with all fields or nulls
+ */
+export async function getBusinessInfoHandler(ctx: QueryCtx) {
+  const keys = Object.values(BUSINESS_KEYS);
+  const settings = await Promise.all(
+    keys.map((key) =>
+      ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .unique()
+    )
+  );
+
+  const getValue = (index: number): string | null => {
+    const setting = settings[index];
+    return setting && typeof setting.value === "string" ? setting.value : null;
+  };
+
+  const sameAsSetting = settings[keys.indexOf(BUSINESS_KEYS.sameAs)];
+  let sameAs: string[] | null = null;
+  if (sameAsSetting && typeof sameAsSetting.value === "string") {
+    try {
+      const parsed = JSON.parse(sameAsSetting.value);
+      if (Array.isArray(parsed)) {
+        sameAs = parsed.filter(
+          (item): item is string => typeof item === "string"
+        );
+      } else {
+        sameAs = [];
+      }
+    } catch {
+      sameAs = [];
+    }
+  }
+
+  return {
+    businessName: getValue(keys.indexOf(BUSINESS_KEYS.businessName)),
+    businessDescription: getValue(
+      keys.indexOf(BUSINESS_KEYS.businessDescription)
+    ),
+    streetAddress: getValue(keys.indexOf(BUSINESS_KEYS.streetAddress)),
+    addressLocality: getValue(keys.indexOf(BUSINESS_KEYS.addressLocality)),
+    addressCountry: getValue(keys.indexOf(BUSINESS_KEYS.addressCountry)),
+    postalCode: getValue(keys.indexOf(BUSINESS_KEYS.postalCode)),
+    telephone: getValue(keys.indexOf(BUSINESS_KEYS.telephone)),
+    email: getValue(keys.indexOf(BUSINESS_KEYS.email)),
+    website: getValue(keys.indexOf(BUSINESS_KEYS.website)),
+    logoUrl: getValue(keys.indexOf(BUSINESS_KEYS.logoUrl)),
+    sameAs,
+  };
+}
+
+export const getBusinessInfo = query({
+  args: {},
+  returns: v.object({
+    businessName: v.union(v.string(), v.null()),
+    businessDescription: v.union(v.string(), v.null()),
+    streetAddress: v.union(v.string(), v.null()),
+    addressLocality: v.union(v.string(), v.null()),
+    addressCountry: v.union(v.string(), v.null()),
+    postalCode: v.union(v.string(), v.null()),
+    telephone: v.union(v.string(), v.null()),
+    email: v.union(v.string(), v.null()),
+    website: v.union(v.string(), v.null()),
+    logoUrl: v.union(v.string(), v.null()),
+    sameAs: v.union(v.array(v.string()), v.null()),
+  }),
+  handler: getBusinessInfoHandler,
+});
+
+/**
+ * Handler for updateBusinessInfo mutation.
+ * @param ctx - Convex Mutation context
+ * @param args - Business info fields to update
+ * @param args.businessName - Organization name
+ * @param args.businessDescription - Organization description
+ * @param args.streetAddress - Street address
+ * @param args.addressLocality - City/locality
+ * @param args.addressCountry - Country code
+ * @param args.postalCode - Postal code
+ * @param args.telephone - Contact phone number
+ * @param args.email - Contact email
+ * @param args.website - Website URL
+ * @param args.logoUrl - Logo URL
+ * @param args.sameAs - Social media links array
+ * @returns Success object
+ */
+export async function updateBusinessInfoHandler(
+  ctx: MutationCtx,
+  args: {
+    businessName?: string;
+    businessDescription?: string;
+    streetAddress?: string;
+    addressLocality?: string;
+    addressCountry?: string;
+    postalCode?: string;
+    telephone?: string;
+    email?: string;
+    website?: string;
+    logoUrl?: string;
+    sameAs?: string[];
+  }
+) {
+  await requireAdmin(ctx);
+
+  const updates: Array<{ key: string; value: string; description: string }> =
+    [];
+
+  if (args.businessName !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.businessName,
+      value: args.businessName,
+      description: "Organization name for SEO structured data",
+    });
+  }
+  if (args.businessDescription !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.businessDescription,
+      value: args.businessDescription,
+      description: "Organization description for SEO structured data",
+    });
+  }
+  if (args.streetAddress !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.streetAddress,
+      value: args.streetAddress,
+      description: "Street address for SEO structured data",
+    });
+  }
+  if (args.addressLocality !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.addressLocality,
+      value: args.addressLocality,
+      description: "City/locality for SEO structured data",
+    });
+  }
+  if (args.addressCountry !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.addressCountry,
+      value: args.addressCountry,
+      description: "Country code for SEO structured data (e.g. ZA)",
+    });
+  }
+  if (args.postalCode !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.postalCode,
+      value: args.postalCode,
+      description: "Postal code for SEO structured data",
+    });
+  }
+  if (args.telephone !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.telephone,
+      value: args.telephone,
+      description: "Contact phone number for SEO structured data",
+    });
+  }
+  if (args.email !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.email,
+      value: args.email,
+      description: "Contact email for SEO structured data",
+    });
+  }
+  if (args.website !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.website,
+      value: args.website,
+      description: "Website URL for SEO structured data",
+    });
+  }
+  if (args.logoUrl !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.logoUrl,
+      value: args.logoUrl,
+      description: "Logo URL for SEO structured data",
+    });
+  }
+  if (args.sameAs !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.sameAs,
+      value: JSON.stringify(args.sameAs),
+      description: "Social media links as JSON array for SEO structured data",
+    });
+  }
+
+  if (updates.length === 0) return { success: true };
+
+  for (const update of updates) {
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", update.key))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: update.value,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("settings", {
+        key: update.key,
+        value: update.value,
+        description: update.description,
+        updatedAt: Date.now(),
+      });
+    }
+  }
+
+  await logAudit(ctx, {
+    action: "UPDATE_SETTING",
+    targetId: "business-info",
+    targetType: "setting",
+    details: `Updated business info: ${updates.map((u) => u.key).join(", ")}`,
+  });
+
+  return { success: true };
+}
+
+export const updateBusinessInfo = mutation({
+  args: {
+    businessName: v.optional(v.string()),
+    businessDescription: v.optional(v.string()),
+    streetAddress: v.optional(v.string()),
+    addressLocality: v.optional(v.string()),
+    addressCountry: v.optional(v.string()),
+    postalCode: v.optional(v.string()),
+    telephone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    website: v.optional(v.string()),
+    logoUrl: v.optional(v.string()),
+    sameAs: v.optional(v.array(v.string())),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: updateBusinessInfoHandler,
 });
