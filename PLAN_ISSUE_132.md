@@ -138,7 +138,7 @@ Follow the `SEO_KEYS` pattern: define a `BUSINESS_KEYS` const object mapping fie
 
 ## Related Issues
 
-- #216: Admin page to manage organisation business details for SEO structured data (closely related — same feature)
+- #216: Admin page to manage organization business details for SEO structured data (closely related — same feature)
 
 ## Notes
 

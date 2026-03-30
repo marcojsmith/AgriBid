@@ -20,6 +20,20 @@ type BusinessInfo = {
   sameAs: string[] | null;
 };
 
+const blankBusinessInfo: BusinessInfo = {
+  businessName: null,
+  businessDescription: null,
+  streetAddress: null,
+  addressLocality: null,
+  addressCountry: null,
+  postalCode: null,
+  telephone: null,
+  email: null,
+  website: null,
+  logoUrl: null,
+  sameAs: null,
+};
+
 let mockBusinessInfo: BusinessInfo | undefined;
 const mockUpdateBusinessInfo = vi.fn();
 
@@ -67,19 +81,7 @@ describe("AdminBusinessInfo", () => {
   });
 
   it("renders all form fields when business info is loaded", () => {
-    mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
-      sameAs: null,
-    };
+    mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     render(<AdminBusinessInfo />);
 
@@ -136,19 +138,7 @@ describe("AdminBusinessInfo", () => {
   });
 
   it("shows error toast when website is not a valid URL", async () => {
-    mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
-      sameAs: null,
-    };
+    mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     render(<AdminBusinessInfo />);
 
@@ -164,19 +154,7 @@ describe("AdminBusinessInfo", () => {
   });
 
   it("shows error toast when telephone format is invalid", async () => {
-    mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
-      sameAs: null,
-    };
+    mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     render(<AdminBusinessInfo />);
 
@@ -194,19 +172,7 @@ describe("AdminBusinessInfo", () => {
   });
 
   it("shows error toast when email format is invalid", async () => {
-    mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
-      sameAs: null,
-    };
+    mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     render(<AdminBusinessInfo />);
 
@@ -224,19 +190,7 @@ describe("AdminBusinessInfo", () => {
   });
 
   it("shows error toast when sameAs contains invalid URL", async () => {
-    mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
-      sameAs: null,
-    };
+    mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     render(<AdminBusinessInfo />);
 
@@ -292,19 +246,7 @@ describe("AdminBusinessInfo", () => {
   });
 
   it("shows loading state while mutation is in flight", async () => {
-    mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
-      sameAs: null,
-    };
+    mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
 
     let resolveMutation: (value: unknown) => void;
@@ -331,19 +273,7 @@ describe("AdminBusinessInfo", () => {
   });
 
   it("shows error toast when save fails", async () => {
-    mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
-      sameAs: null,
-    };
+    mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     mockUpdateBusinessInfo.mockRejectedValue(new Error("Network error"));
     render(<AdminBusinessInfo />);
@@ -357,16 +287,7 @@ describe("AdminBusinessInfo", () => {
 
   it("handles empty sameAs textarea correctly", async () => {
     mockBusinessInfo = {
-      businessName: null,
-      businessDescription: null,
-      streetAddress: null,
-      addressLocality: null,
-      addressCountry: null,
-      postalCode: null,
-      telephone: null,
-      email: null,
-      website: null,
-      logoUrl: null,
+      ...blankBusinessInfo,
       sameAs: ["https://facebook.com/agribid"],
     };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);

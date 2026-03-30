@@ -118,10 +118,13 @@ export default function AdminBusinessInfo() {
     }
 
     const sameAsUrls = trimmedSameAs
-      ? trimmedSameAs.split("\n").filter((url) => url.trim() !== "")
+      ? trimmedSameAs
+          .split("\n")
+          .map((url) => url.trim())
+          .filter((url) => url !== "")
       : [];
     for (const url of sameAsUrls) {
-      if (!validateUrl(url.trim())) {
+      if (!validateUrl(url)) {
         toast.error(`Invalid URL in social links: ${url}`);
         return;
       }
