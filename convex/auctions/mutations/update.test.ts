@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
+import { MS_PER_DAY } from "../../constants";
 import {
   updateAuctionHandler,
   adminUpdateAuctionHandler,
@@ -355,6 +356,44 @@ describe("Update Mutations", () => {
         })
       ).rejects.toThrow("Auction not found");
     });
+
+    it("should reject startTime 2 years in the past for non-draft", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
+      const pastTime = Date.now() - 2 * 365 * MS_PER_DAY;
+      await expect(
+        adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          updates: { startTime: pastTime },
+        })
+      ).rejects.toThrow("cannot be more than 1 year in the past");
+    });
+
+    it("should reject startTime 11 years in the future for non-draft", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
+      const futureTime = Date.now() + 11 * 365 * MS_PER_DAY;
+      await expect(
+        adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          updates: { startTime: futureTime },
+        })
+      ).rejects.toThrow("cannot be more than 10 years in the future");
+    });
+
+    it("should accept startTime 5 years in the future for non-draft", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
+      const futureTime = Date.now() + 5 * 365 * MS_PER_DAY;
+      const result = await adminUpdateAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"auctions">,
+          updates: { startTime: futureTime },
+        }
+      );
+      expect(result.success).toBe(true);
+    });
   });
 
   describe("bulkUpdateAuctionsHandler", () => {
@@ -399,6 +438,26 @@ describe("Update Mutations", () => {
           updates: { status: "active" },
         })
       ).rejects.toThrow("Bulk update exceeds limit");
+    });
+
+    it("should skip auctions with invalid startTime in bulk update", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        title: "Test",
+        sellerId: "u1",
+      });
+      const pastTime = Date.now() - 2 * 365 * MS_PER_DAY;
+      const result = await bulkUpdateAuctionsHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionIds: ["a1" as Id<"auctions">],
+          updates: { startTime: pastTime },
+        }
+      );
+      expect(result.skipped).toContain("a1");
+      expect(result.updated).not.toContain("a1");
     });
   });
 

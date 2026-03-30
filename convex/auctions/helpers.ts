@@ -1,9 +1,15 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
 import { findUserById } from "../users";
+import {
+  STARTTIME_MAX_PAST_MS,
+  STARTTIME_MAX_FUTURE_MS,
+  STARTTIME_ADMIN_MAX_PAST_MS,
+  STARTTIME_ADMIN_MAX_FUTURE_MS,
+} from "../constants";
 
 export interface RawImages {
   front?: string;
@@ -312,6 +318,42 @@ export function validateAuctionStatus(
   if (newStatus === "active" && !auction.endTime) {
     throw new Error(
       "Cannot set status to 'active' without endTime. Use approveAuction or provide endTime in the update."
+    );
+  }
+}
+
+/**
+ * Validates startTime bounds for auction scheduling.
+ * Sellers have stricter limits than admins.
+ *
+ * @param startTime - Unix timestamp (ms) to validate
+ * @param isAdminAction - Whether this is an admin action (broader limits)
+ */
+export function validateStartTimeBounds(
+  startTime: number,
+  isAdminAction: boolean
+): void {
+  const now = Date.now();
+  const maxPast = isAdminAction
+    ? STARTTIME_ADMIN_MAX_PAST_MS
+    : STARTTIME_MAX_PAST_MS;
+  const maxFuture = isAdminAction
+    ? STARTTIME_ADMIN_MAX_FUTURE_MS
+    : STARTTIME_MAX_FUTURE_MS;
+
+  if (startTime < now - maxPast) {
+    throw new ConvexError(
+      isAdminAction
+        ? "startTime cannot be more than 1 year in the past"
+        : "startTime cannot be more than 1 minute in the past"
+    );
+  }
+
+  if (startTime > now + maxFuture) {
+    throw new ConvexError(
+      isAdminAction
+        ? "startTime cannot be more than 10 years in the future"
+        : "startTime cannot be more than 1 year in the future"
     );
   }
 }

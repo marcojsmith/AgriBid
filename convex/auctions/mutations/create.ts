@@ -14,6 +14,7 @@ import {
   assertEditable,
   type AuctionValidationInput,
 } from "./helpers";
+import { validateStartTimeBounds } from "../helpers";
 import {
   MAX_ADDITIONAL_IMAGES,
   AUCTION_MIN_DURATION_DAYS,
@@ -153,6 +154,10 @@ export const createAuctionHandler = async (
       images,
     };
     validateAuctionBeforePublish(validationInput);
+  }
+
+  if (startTime !== undefined && !isDraft) {
+    validateStartTimeBounds(startTime, false);
   }
 
   const auctionId = await ctx.db.insert("auctions", {
@@ -347,6 +352,9 @@ export const saveDraftHandler = async (
       patchData.durationDays = durationDays;
     }
     if (startTime !== undefined) {
+      if (existing.status !== "draft") {
+        validateStartTimeBounds(startTime, false);
+      }
       patchData.startTime = startTime;
     }
     if (restArgs.startingPrice !== undefined) {
