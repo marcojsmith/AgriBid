@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "convex/react";
+import { api } from "convex/_generated/api";
 import {
   ShieldCheck,
   HelpCircle,
@@ -11,10 +13,29 @@ import {
 
 /**
  * Footer component for the application.
+ * Displays business info from admin settings.
  *
  * @returns The rendered footer.
  */
 export const Footer = () => {
+  const businessInfo = useQuery(api.admin.getBusinessInfo);
+
+  const businessName = businessInfo?.businessName || "AgriBid";
+  const streetAddress = businessInfo?.streetAddress || "";
+  const addressLocality = businessInfo?.addressLocality || "";
+  const addressCountry = businessInfo?.addressCountry || "";
+  const postalCode = businessInfo?.postalCode || "";
+  const telephone = businessInfo?.telephone || "";
+
+  const addressParts = [
+    streetAddress,
+    addressLocality,
+    addressCountry,
+    postalCode,
+  ]
+    .filter((part) => part)
+    .join(", ");
+
   const footerSections = [
     {
       title: "Platform",
@@ -41,7 +62,7 @@ export const Footer = () => {
           {/* Brand Column */}
           <div className="space-y-6">
             <div className="font-black text-3xl tracking-tighter text-primary">
-              AGRIBID
+              {businessName.toUpperCase()}
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed uppercase font-bold tracking-wide">
               The national marketplace for heavy machinery. Built for farmers,
@@ -102,25 +123,37 @@ export const Footer = () => {
               Headquarters
             </h3>
             <ul className="space-y-4">
-              <li className="flex items-start gap-3 text-xs font-bold uppercase text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>
-                  123 Harvest Road
-                  <br />
-                  Agricultural Hub, ZA 4500
-                </span>
-              </li>
-              <li className="flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground">
-                <Phone className="h-3.5 w-3.5" />
-                <span>+27 (0) 11 555 0123</span>
-              </li>
+              {addressParts && (
+                <li className="flex items-start gap-3 text-xs font-bold uppercase text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressParts)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-primary transition-colors"
+                  >
+                    {addressParts}
+                  </a>
+                </li>
+              )}
+              {telephone && (
+                <li className="flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5" />
+                  <a
+                    href={`tel:${telephone.replace(/[^0-9+]/g, "")}`}
+                    className="hover:text-primary transition-colors"
+                  >
+                    {telephone}
+                  </a>
+                </li>
+              )}
             </ul>
           </div>
         </div>
 
         <div className="mt-16 pt-8 border-t border-muted flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            © {new Date().getFullYear()} AGRIBID. All rights reserved.
+            © {new Date().getFullYear()} {businessName}. All rights reserved.
           </p>
           <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
             <a href="#" className="hover:text-primary transition-colors">
