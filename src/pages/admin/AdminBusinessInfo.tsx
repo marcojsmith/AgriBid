@@ -74,8 +74,8 @@ export default function AdminBusinessInfo() {
   const validateUrl = (url: string): boolean => {
     if (!url) return true;
     try {
-      new URL(url);
-      return true;
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
     } catch {
       return false;
     }
@@ -94,6 +94,8 @@ export default function AdminBusinessInfo() {
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
+
     const trimmedWebsite = website.trim();
     const trimmedLogoUrl = logoUrl.trim();
     const trimmedTelephone = telephone.trim();
