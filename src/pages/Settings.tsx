@@ -90,14 +90,40 @@ export default function Settings() {
 
   const isSeller = myProfile?.profile?.role === "seller";
 
-  const update = (fields: Parameters<typeof updateMyPreferences>[0]) => {
-    if (!session) return;
+  let isSaving = false;
+
+  const update = (
+    fieldsOrUpdater:
+      | Parameters<typeof updateMyPreferences>[0]
+      | ((
+          current: NonNullable<typeof preferences>
+        ) => Parameters<typeof updateMyPreferences>[0])
+  ) => {
+    if (!session) {
+      toast.error("Not signed in");
+      return;
+    }
+
+    if (isSaving) {
+      return;
+    }
+
+    isSaving = true;
+
+    const fields =
+      typeof fieldsOrUpdater === "function"
+        ? fieldsOrUpdater(preferences!)
+        : fieldsOrUpdater;
+
     updateMyPreferences(fields)
       .then(() => {
         toast.success("Setting saved");
       })
       .catch(() => {
         toast.error("Failed to save setting");
+      })
+      .finally(() => {
+        isSaving = false;
       });
   };
 
