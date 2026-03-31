@@ -177,6 +177,10 @@ export default function AdminBusinessInfo() {
           <CardContent className="space-y-6">
             <div className="space-y-2 pt-4 border-t">
               <Label htmlFor="business-name">Organization Name</Label>
+              <p className="text-xs text-muted-foreground">
+                This name is displayed across the platform as the application
+                name.
+              </p>
               <Input
                 id="business-name"
                 type="text"

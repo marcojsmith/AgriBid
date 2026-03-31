@@ -4,6 +4,7 @@ import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 
+import { useBranding } from "@/hooks/useBranding";
 import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { UserDropdown } from "./UserDropdown";
  * @returns A JSX.Element representing the application header
  */
 export const Header = () => {
+  const branding = useBranding();
   const userData = useQuery(api.users.getMyProfile);
   const isLoadingProfile = userData === undefined;
   const profileId = userData?.profile?.userId;
@@ -57,7 +59,7 @@ export const Header = () => {
             to="/"
             className="font-black text-2xl tracking-tighter text-primary"
           >
-            AGRIBID
+            {branding?.appName.toUpperCase()}
           </Link>
 
           <nav

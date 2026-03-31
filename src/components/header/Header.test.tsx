@@ -71,6 +71,14 @@ vi.mock("@/components/NotificationDropdown", () => ({
   ),
 }));
 
+vi.mock("@/contexts/BrandingProvider", () => ({
+  BrandingProvider: ({ children }: React.PropsWithChildren) => <>{children}</>,
+}));
+
+vi.mock("@/hooks/useBranding", () => ({
+  useBranding: () => ({ appName: "AgriBid" }),
+}));
+
 describe("Header", () => {
   beforeEach(() => {
     vi.clearAllMocks();
