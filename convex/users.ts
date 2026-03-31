@@ -12,6 +12,7 @@ import {
   requireAuth,
   resolveUserId,
   requireAdmin,
+  getAuthenticatedUserId,
 } from "./lib/auth";
 import type { Id, Doc } from "./_generated/dataModel";
 import { components } from "./_generated/api";
@@ -45,6 +46,7 @@ export const ProfileValidator = v.object({
   bio: v.optional(v.string()),
   phoneNumber: v.optional(v.string()),
   companyName: v.optional(v.string()),
+  location: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -703,4 +705,51 @@ export const deleteMyKYCDocument = mutation({
   args: { storageId: v.id("_storage") },
   returns: v.object({ success: v.boolean() }),
   handler: deleteMyKYCDocumentHandler,
+});
+
+/**
+ * Update the authenticated user's profile fields (bio, location, companyName).
+ * Throws ConvexError if no profile exists.
+ * @param ctx - Mutation context.
+ * @param args - Fields to update.
+ * @param args.bio
+ * @param args.location
+ * @param args.companyName
+ * @returns null on success.
+ */
+export const updateMyProfileHandler = async (
+  ctx: MutationCtx,
+  args: { bio?: string; location?: string; companyName?: string }
+): Promise<null> => {
+  const userId = await getAuthenticatedUserId(ctx);
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+
+  if (!profile) {
+    throw new ConvexError("Profile not found");
+  }
+
+  await ctx.db.patch(profile._id, {
+    ...args,
+    updatedAt: Date.now(),
+  });
+
+  return null;
+};
+
+/**
+ * Update the authenticated user's profile fields (bio, location, companyName).
+ * Throws ConvexError if no profile exists.
+ */
+export const updateMyProfile = mutation({
+  args: {
+    bio: v.optional(v.string()),
+    location: v.optional(v.string()),
+    companyName: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: updateMyProfileHandler,
 });

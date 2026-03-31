@@ -74,6 +74,12 @@ const sampleFaqs: FaqItem[] = [
   },
 ];
 
+const threeFaqs: FaqItem[] = [
+  sampleFaqs[0],
+  sampleFaqs[1],
+  { ...sampleFaqs[0], _id: "faq3" as Id<"faqItems"> },
+];
+
 describe("AdminFAQ", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -212,5 +218,142 @@ describe("AdminFAQ", () => {
 
     expect(screen.getByText("Edit FAQ Item")).toBeInTheDocument();
     expect(screen.getByDisplayValue("How do I register?")).toBeInTheDocument();
+  });
+
+  it("move up button is disabled for first item", () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    render(<AdminFAQ />);
+
+    const moveUpButtons = screen.getAllByRole("button", { name: /move up/i });
+    expect(moveUpButtons[0]).toBeDisabled();
+  });
+
+  it("move down button is disabled for last item", () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    render(<AdminFAQ />);
+
+    const moveDownButtons = screen.getAllByRole("button", {
+      name: /move down/i,
+    });
+    expect(moveDownButtons[moveDownButtons.length - 1]).toBeDisabled();
+  });
+
+  it("calls reorderFaqItems when move down is clicked", async () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    mockReorderFaqItems.mockResolvedValue(null);
+    render(<AdminFAQ />);
+
+    const moveDownButtons = screen.getAllByRole("button", {
+      name: /move down/i,
+    });
+    fireEvent.click(moveDownButtons[0]);
+
+    await waitFor(() => {
+      expect(mockReorderFaqItems).toHaveBeenCalledWith({
+        orderedIds: ["faq2", "faq1"],
+      });
+    });
+  });
+
+  it("move up button enabled for non-first item", () => {
+    mockFaqItems = threeFaqs;
+    (useQuery as Mock).mockReturnValue(threeFaqs);
+    render(<AdminFAQ />);
+
+    const moveUpButtons = screen.getAllByRole("button", { name: /move up/i });
+    expect(moveUpButtons[1]).not.toBeDisabled();
+  });
+
+  it("move down button enabled for non-last item", () => {
+    mockFaqItems = threeFaqs;
+    (useQuery as Mock).mockReturnValue(threeFaqs);
+    render(<AdminFAQ />);
+
+    const moveDownButtons = screen.getAllByRole("button", {
+      name: /move down/i,
+    });
+    expect(moveDownButtons[1]).not.toBeDisabled();
+  });
+
+  it("shows error toast when create fails", async () => {
+    mockFaqItems = [];
+    (useQuery as Mock).mockReturnValue([]);
+    mockCreateFaqItem.mockRejectedValue(new Error("Database error"));
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getByRole("button", { name: /new faq item/i }));
+    fireEvent.change(screen.getByLabelText(/question/i), {
+      target: { value: "Test Question" },
+    });
+    fireEvent.change(screen.getByLabelText(/answer/i), {
+      target: { value: "Test Answer" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Database error");
+    });
+  });
+
+  it("shows error toast when toggle publish fails", async () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    mockUpdateFaqItem.mockRejectedValue(new Error("Update failed"));
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getByText("Published"));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Update failed");
+    });
+  });
+
+  it("shows error toast when delete fails", async () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    mockDeleteFaqItem.mockRejectedValue(new Error("Delete failed"));
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /delete/i })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Delete failed");
+    });
+  });
+
+  it("shows error toast when reorder fails", async () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    mockReorderFaqItems.mockRejectedValue(new Error("Reorder failed"));
+    render(<AdminFAQ />);
+
+    const moveDownButtons = screen.getAllByRole("button", {
+      name: /move down/i,
+    });
+    fireEvent.click(moveDownButtons[0]);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Reorder failed");
+    });
+  });
+
+  it("shows error toast when save with empty answer", async () => {
+    mockFaqItems = [];
+    (useQuery as Mock).mockReturnValue([]);
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getByRole("button", { name: /new faq item/i }));
+    fireEvent.change(screen.getByLabelText(/question/i), {
+      target: { value: "Test Question" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Answer is required");
+    });
   });
 });

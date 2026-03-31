@@ -1,8 +1,10 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { X, Filter, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
+
+import { useSession } from "@/lib/auth-client";
 
 import { Button } from "./ui/button";
 import {
@@ -46,11 +48,21 @@ interface LocalFilters {
 export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMakes = useQuery(api.auctions.getActiveMakes) ?? [];
+  const { data: session } = useSession();
+  const preferences = useQuery(
+    api.userPreferences.getMyPreferences,
+    session ? {} : "skip"
+  );
+  const updateMyPreferences = useMutation(
+    api.userPreferences.updateMyPreferences
+  );
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 30 }, (_, i) =>
     (currentYear - i).toString()
   );
+
+  const prefsAppliedRef = useRef<boolean | null>(null);
 
   // Local state for debounced inputs
   const [localFilters, setLocalFilters] = useState<LocalFilters>(() => ({
@@ -62,6 +74,44 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     maxPrice: searchParams.get("maxPrice") ?? "",
     maxHours: searchParams.get("maxHours") ?? "",
   }));
+
+  // Apply saved preferences once when they arrive
+  useLayoutEffect(() => {
+    if (preferences && prefsAppliedRef.current == null) {
+      prefsAppliedRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalFilters((prev) => ({
+        status:
+          searchParams.get("status") !== null
+            ? prev.status
+            : (preferences.defaultStatusFilter ?? prev.status),
+        make:
+          searchParams.get("make") !== null
+            ? prev.make
+            : (preferences.defaultMake ?? prev.make),
+        minYear:
+          searchParams.get("minYear") !== null
+            ? prev.minYear
+            : (preferences.defaultMinYear?.toString() ?? prev.minYear),
+        maxYear:
+          searchParams.get("maxYear") !== null
+            ? prev.maxYear
+            : (preferences.defaultMaxYear?.toString() ?? prev.maxYear),
+        minPrice:
+          searchParams.get("minPrice") !== null
+            ? prev.minPrice
+            : (preferences.defaultMinPrice?.toString() ?? prev.minPrice),
+        maxPrice:
+          searchParams.get("maxPrice") !== null
+            ? prev.maxPrice
+            : (preferences.defaultMaxPrice?.toString() ?? prev.maxPrice),
+        maxHours:
+          searchParams.get("maxHours") !== null
+            ? prev.maxHours
+            : (preferences.defaultMaxHours?.toString() ?? prev.maxHours),
+      }));
+    }
+  }, [preferences, searchParams]);
 
   const updateParam = (key: keyof LocalFilters, value: string) => {
     setLocalFilters((prev) => ({ ...prev, [key]: value }));
@@ -86,6 +136,47 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     if (q) newParams.set("q", q);
     setSearchParams(newParams);
     if (onClose) onClose();
+  };
+
+  const saveDefaults = () => {
+    if (!session) return;
+    void updateMyPreferences({
+      defaultStatusFilter:
+        localFilters.status === "active" ||
+        localFilters.status === "closed" ||
+        localFilters.status === "all"
+          ? (localFilters.status as "active" | "closed" | "all")
+          : undefined,
+      defaultMake: localFilters.make || undefined,
+      defaultMinYear: localFilters.minYear
+        ? parseInt(localFilters.minYear, 10)
+        : undefined,
+      defaultMaxYear: localFilters.maxYear
+        ? parseInt(localFilters.maxYear, 10)
+        : undefined,
+      defaultMinPrice: localFilters.minPrice
+        ? parseInt(localFilters.minPrice, 10)
+        : undefined,
+      defaultMaxPrice: localFilters.maxPrice
+        ? parseInt(localFilters.maxPrice, 10)
+        : undefined,
+      defaultMaxHours: localFilters.maxHours
+        ? parseInt(localFilters.maxHours, 10)
+        : undefined,
+    });
+  };
+
+  const clearDefaults = () => {
+    if (!session) return;
+    void updateMyPreferences({
+      defaultStatusFilter: undefined,
+      defaultMake: undefined,
+      defaultMinYear: undefined,
+      defaultMaxYear: undefined,
+      defaultMinPrice: undefined,
+      defaultMaxPrice: undefined,
+      defaultMaxHours: undefined,
+    });
   };
 
   const { status, ...otherFilters } = localFilters;
@@ -298,22 +389,42 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         </div>
       </div>
 
-      <div className="p-6 border-t bg-muted/10 grid grid-cols-2 gap-3">
-        <Button
-          variant="outline"
-          onClick={clearFilters}
-          className="h-12 rounded-xl font-black uppercase tracking-tight border-2 gap-2"
-          disabled={!hasFilters}
-        >
-          <RotateCcw className="h-4 w-4" />
-          Reset
-        </Button>
-        <Button
-          onClick={applyFilters}
-          className="h-12 rounded-xl font-black uppercase tracking-tight shadow-lg shadow-primary/20"
-        >
-          Apply Filters
-        </Button>
+      <div className="p-6 border-t bg-muted/10 space-y-3">
+        {session && (
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              onClick={saveDefaults}
+              className="h-10 rounded-xl font-black uppercase tracking-tight border-2 text-xs"
+            >
+              Save Defaults
+            </Button>
+            <Button
+              variant="outline"
+              onClick={clearDefaults}
+              className="h-10 rounded-xl font-black uppercase tracking-tight border-2 text-xs"
+            >
+              Clear Defaults
+            </Button>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant="outline"
+            onClick={clearFilters}
+            className="h-12 rounded-xl font-black uppercase tracking-tight border-2 gap-2"
+            disabled={!hasFilters}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Reset
+          </Button>
+          <Button
+            onClick={applyFilters}
+            className="h-12 rounded-xl font-black uppercase tracking-tight shadow-lg shadow-primary/20"
+          >
+            Apply Filters
+          </Button>
+        </div>
       </div>
     </div>
   );

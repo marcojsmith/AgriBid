@@ -243,6 +243,36 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_updatedAt", ["updatedAt"]),
 
+  userPreferences: defineTable({
+    userId: v.string(),
+    viewMode: v.optional(v.union(v.literal("compact"), v.literal("detailed"))),
+    sidebarOpen: v.optional(v.boolean()),
+    defaultStatusFilter: v.optional(
+      v.union(v.literal("active"), v.literal("closed"), v.literal("all"))
+    ),
+    defaultMake: v.optional(v.string()),
+    defaultMinYear: v.optional(v.number()),
+    defaultMaxYear: v.optional(v.number()),
+    defaultMaxHours: v.optional(v.number()),
+    defaultMinPrice: v.optional(v.number()),
+    defaultMaxPrice: v.optional(v.number()),
+    biddingRequireConfirmation: v.optional(v.boolean()),
+    biddingProxyBidDefault: v.optional(v.boolean()),
+    notificationsBidOutbid: v.optional(v.boolean()),
+    notificationsWatchlistEnding: v.optional(
+      v.union(
+        v.literal("disabled"),
+        v.literal("1h"),
+        v.literal("3h"),
+        v.literal("24h")
+      )
+    ),
+    notificationsAuctionWon: v.optional(v.boolean()),
+    notificationsSellerAuctionApproved: v.optional(v.boolean()),
+    notificationsEmailEnabled: v.optional(v.boolean()),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
   counters: defineTable({
     name: v.string(), // e.g., "auctions", "profiles", "support", "announcements"
     total: v.number(),
