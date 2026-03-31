@@ -55,6 +55,47 @@ const getDefaultFilters = (): LocalFilters => ({
 });
 
 /**
+ * Validates and normalizes filter values from URL parameters.
+ * Enforces the same rules as Home.tsx:
+ * - Only accepts allowed status values (active, closed, all)
+ * - Parses numeric params with parseInt and treats non-finite/NaN as empty strings
+ * - Trims and validates strings like make
+ * - Falls back to empty/default values when a param is invalid
+ *
+ * @param params - The URLSearchParams to parse
+ * @returns A normalized LocalFilters object
+ */
+const parseUrlFilters = (params: URLSearchParams): LocalFilters => {
+  // Validate status - only allow known values
+  const rawStatus = params.get("status");
+  const status =
+    rawStatus === "active" || rawStatus === "closed" || rawStatus === "all"
+      ? rawStatus
+      : "active";
+
+  // Validate and trim make
+  const make = (params.get("make") ?? "").trim();
+
+  // Parse numeric fields - only accept finite integers
+  const parseFiniteInt = (key: string): string => {
+    const val = params.get(key);
+    if (val === null) return "";
+    const parsed = parseInt(val, 10);
+    return Number.isFinite(parsed) ? parsed.toString() : "";
+  };
+
+  return {
+    status,
+    make,
+    minYear: parseFiniteInt("minYear"),
+    maxYear: parseFiniteInt("maxYear"),
+    minPrice: parseFiniteInt("minPrice"),
+    maxPrice: parseFiniteInt("maxPrice"),
+    maxHours: parseFiniteInt("maxHours"),
+  };
+};
+
+/**
  * Sidebar component for filtering auctions.
  *
  * @param props - Component props.
@@ -82,6 +123,8 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   // Tracks whether the next searchParams change was triggered locally (filter
   // change or reset) so the external-navigation sync effect can skip it.
   const isLocalUpdateRef = useRef<boolean>(true);
+  // Track the current user ID to detect user switches
+  const lastUserIdRef = useRef<string | undefined>(session?.user?.id);
 
   // Always-current reference to searchParams used inside the local→URL effect
   // to avoid adding searchParams to its dependency array (which would cause it
@@ -95,15 +138,8 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const searchParamsString = searchParams.toString();
 
   // Initialize localFilters from search params only (preferences handled in effect)
-  const getInitialFilters = (): LocalFilters => ({
-    status: searchParams.get("status") ?? "active",
-    make: searchParams.get("make") ?? "",
-    minYear: searchParams.get("minYear") ?? "",
-    maxYear: searchParams.get("maxYear") ?? "",
-    minPrice: searchParams.get("minPrice") ?? "",
-    maxPrice: searchParams.get("maxPrice") ?? "",
-    maxHours: searchParams.get("maxHours") ?? "",
-  });
+  // Use the normalizer to ensure valid initial state
+  const getInitialFilters = (): LocalFilters => parseUrlFilters(searchParams);
 
   // Local state for debounced inputs
   const [localFilters, setLocalFilters] =
@@ -136,17 +172,21 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       isLocalUpdateRef.current = false;
       return;
     }
+    // Use the normalizer to ensure valid state from URL
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLocalFilters({
-      status: searchParams.get("status") ?? "active",
-      make: searchParams.get("make") ?? "",
-      minYear: searchParams.get("minYear") ?? "",
-      maxYear: searchParams.get("maxYear") ?? "",
-      minPrice: searchParams.get("minPrice") ?? "",
-      maxPrice: searchParams.get("maxPrice") ?? "",
-      maxHours: searchParams.get("maxHours") ?? "",
-    });
+    setLocalFilters(parseUrlFilters(searchParams));
   }, [searchParams]);
+
+  // Reset preferences state when user changes
+  useEffect(() => {
+    const currentUserId = session?.user?.id;
+    if (currentUserId !== lastUserIdRef.current) {
+      lastUserIdRef.current = currentUserId;
+      // Reset the applied flag so preferences are re-applied for the new user
+      prefsAppliedRef.current = false;
+      isLocalUpdateRef.current = false;
+    }
+  }, [session?.user?.id]);
 
   // Apply saved preferences once when they arrive (only if not yet applied).
   // Uses searchParamsRef to avoid stale closures; searchParamsString ensures
@@ -155,27 +195,33 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     if (preferences && !prefsAppliedRef.current) {
       prefsAppliedRef.current = true;
       const params = searchParamsRef.current;
+
+      // Parse and normalize URL filters first
+      const urlFilters = parseUrlFilters(params);
+
+      // Apply preferences as defaults only when URL params are not present
+      // Validate preference values using the same rules
+      const validateStatus = (val: string | undefined): string => {
+        return val === "active" || val === "closed" || val === "all"
+          ? val
+          : "active";
+      };
+
+      const validateNumber = (val: number | undefined): string => {
+        return val !== undefined && Number.isFinite(val) ? val.toString() : "";
+      };
+
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalFilters({
-        status:
-          params.get("status") ?? preferences.defaultStatusFilter ?? "active",
-        make: params.get("make") ?? preferences.defaultMake ?? "",
-        minYear:
-          params.get("minYear") ?? preferences.defaultMinYear?.toString() ?? "",
-        maxYear:
-          params.get("maxYear") ?? preferences.defaultMaxYear?.toString() ?? "",
-        minPrice:
-          params.get("minPrice") ??
-          preferences.defaultMinPrice?.toString() ??
-          "",
-        maxPrice:
-          params.get("maxPrice") ??
-          preferences.defaultMaxPrice?.toString() ??
-          "",
-        maxHours:
-          params.get("maxHours") ??
-          preferences.defaultMaxHours?.toString() ??
-          "",
+        status: urlFilters.status !== "active"
+          ? urlFilters.status
+          : validateStatus(preferences.defaultStatusFilter),
+        make: urlFilters.make || (preferences.defaultMake ?? "").trim(),
+        minYear: urlFilters.minYear || validateNumber(preferences.defaultMinYear),
+        maxYear: urlFilters.maxYear || validateNumber(preferences.defaultMaxYear),
+        minPrice: urlFilters.minPrice || validateNumber(preferences.defaultMinPrice),
+        maxPrice: urlFilters.maxPrice || validateNumber(preferences.defaultMaxPrice),
+        maxHours: urlFilters.maxHours || validateNumber(preferences.defaultMaxHours),
       });
     }
   }, [preferences, searchParamsString]);
@@ -198,6 +244,13 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const saveDefaults = async () => {
     if (!session) return;
     try {
+      // Use the same validation logic when saving
+      const validateAndParseInt = (val: string): number | undefined => {
+        if (!val) return undefined;
+        const parsed = parseInt(val, 10);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      };
+
       await updateMyPreferences({
         defaultStatusFilter:
           localFilters.status === "active" ||
@@ -205,22 +258,12 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           localFilters.status === "all"
             ? (localFilters.status as "active" | "closed" | "all")
             : undefined,
-        defaultMake: localFilters.make || undefined,
-        defaultMinYear: localFilters.minYear
-          ? parseInt(localFilters.minYear, 10)
-          : undefined,
-        defaultMaxYear: localFilters.maxYear
-          ? parseInt(localFilters.maxYear, 10)
-          : undefined,
-        defaultMinPrice: localFilters.minPrice
-          ? parseInt(localFilters.minPrice, 10)
-          : undefined,
-        defaultMaxPrice: localFilters.maxPrice
-          ? parseInt(localFilters.maxPrice, 10)
-          : undefined,
-        defaultMaxHours: localFilters.maxHours
-          ? parseInt(localFilters.maxHours, 10)
-          : undefined,
+        defaultMake: localFilters.make.trim() || undefined,
+        defaultMinYear: validateAndParseInt(localFilters.minYear),
+        defaultMaxYear: validateAndParseInt(localFilters.maxYear),
+        defaultMinPrice: validateAndParseInt(localFilters.minPrice),
+        defaultMaxPrice: validateAndParseInt(localFilters.maxPrice),
+        defaultMaxHours: validateAndParseInt(localFilters.maxHours),
       });
       toast.success("Default filters saved");
     } catch {
