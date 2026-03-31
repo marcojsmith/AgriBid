@@ -37,6 +37,16 @@ vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(),
 }));
 
+vi.mock("@/hooks/useBranding", () => ({
+  useBranding: () => ({ appName: "AgriBid" }),
+}));
+
+vi.mock("@/contexts/BrandingProvider", () => ({
+  BrandingProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}));
+
 describe("Layout", () => {
   const mockUseQuery = convexReact.useQuery as ReturnType<typeof vi.fn>;
   const mockUseMutation = convexReact.useMutation as ReturnType<typeof vi.fn>;

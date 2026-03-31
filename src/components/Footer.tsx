@@ -11,6 +11,8 @@ import {
   MapPin,
 } from "lucide-react";
 
+import { useBranding } from "@/hooks/useBranding";
+
 /**
  * Footer component for the application.
  * Displays business info from admin settings.
@@ -18,9 +20,10 @@ import {
  * @returns The rendered footer.
  */
 export const Footer = () => {
+  const branding = useBranding();
   const businessInfo = useQuery(api.admin.getBusinessInfo);
 
-  const businessName = businessInfo?.businessName || "AgriBid";
+  const businessName = branding?.appName ?? "AgriBid";
   const streetAddress = businessInfo?.streetAddress || "";
   const addressLocality = businessInfo?.addressLocality || "";
   const addressCountry = businessInfo?.addressCountry || "";

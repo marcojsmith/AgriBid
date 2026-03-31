@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 
+import { useBranding } from "@/hooks/useBranding";
 import { useSession, signIn, signUp } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { LoadingPage } from "@/components/LoadingIndicator";
  * @returns The Login page JSX element
  */
 export default function Login() {
+  const branding = useBranding();
   const { data: session, isPending } = useSession();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
@@ -43,7 +45,7 @@ export default function Login() {
     >
       <div className="text-center">
         <h2 className="text-3xl font-black text-primary mb-2 uppercase tracking-tight">
-          AgriBid Access
+          {branding?.appName ?? "AgriBid"} Access
         </h2>
         <p className="text-muted-foreground text-sm uppercase tracking-widest">
           {authMode === "signin"
@@ -170,7 +172,7 @@ export default function Login() {
           {authMode === "signin"
             ? signInLoading
               ? "Signing in..."
-              : "Sign In to AgriBid"
+              : `Sign In to ${branding?.appName ?? "AgriBid"}`
             : signUpLoading
               ? "Creating account..."
               : "Create Verified Account"}

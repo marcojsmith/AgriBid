@@ -7,7 +7,7 @@ import {
   Bug,
   Search,
   HelpCircle,
-  Building2,
+  Palette,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -51,6 +51,12 @@ export default function AdminSettings() {
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <SettingsCard
+            title="Branding"
+            description="Configure application name and identity."
+            icon={<Palette />}
+            action={() => navigate("/admin/business-info")}
+          />
+          <SettingsCard
             title="Equipment Metadata"
             description="Manage makes, models, and categories."
             icon={<Hammer />}
@@ -79,12 +85,6 @@ export default function AdminSettings() {
             description="Configure GA4, Search Console, and Bing verification."
             icon={<Search />}
             action={() => navigate("/admin/seo")}
-          />
-          <SettingsCard
-            title="Business Info"
-            description="Organization details used for SEO structured data (JSON-LD)"
-            icon={<Building2 />}
-            action={() => navigate("/admin/business-info")}
           />
           <SettingsCard
             title="FAQ Management"

@@ -17,6 +17,10 @@ vi.mock("@/lib/auth-client", () => ({
   },
 }));
 
+vi.mock("@/hooks/useBranding", () => ({
+  useBranding: () => ({ appName: "AgriBid" }),
+}));
+
 describe("Login Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
