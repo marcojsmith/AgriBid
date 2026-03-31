@@ -35,7 +35,7 @@ export const AuctionCardSkeleton = ({
           <div
             className={cn(
               "bg-muted relative overflow-hidden flex items-center justify-center",
-              isCompact ? "aspect-[4/3] h-full border-r" : "aspect-video"
+              isCompact ? "aspect-[4/3] border-r" : "aspect-video"
             )}
           >
             <span className={isCompact ? "text-2xl" : "text-4xl"}>🚜</span>

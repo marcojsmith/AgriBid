@@ -87,7 +87,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   // to avoid adding searchParams to its dependency array (which would cause it
   // to fire on external navigations and overwrite the URL with stale filters).
   const searchParamsRef = useRef(searchParams);
-  searchParamsRef.current = searchParams;
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  }, [searchParams]);
 
   // Stable string representation used as a dep for the preferences effect.
   const searchParamsString = searchParams.toString();
@@ -134,6 +136,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       isLocalUpdateRef.current = false;
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalFilters({
       status: searchParams.get("status") ?? "active",
       make: searchParams.get("make") ?? "",
@@ -146,40 +149,35 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   }, [searchParams]);
 
   // Apply saved preferences once when they arrive (only if not yet applied).
-  // searchParamsString in deps ensures a fresh searchParams closure is used
-  // when the effect fires after preferences load.
+  // Uses searchParamsRef to avoid stale closures; searchParamsString ensures
+  // the effect re-fires when the URL changes after preferences load.
   useLayoutEffect(() => {
     if (preferences && !prefsAppliedRef.current) {
       prefsAppliedRef.current = true;
+      const params = searchParamsRef.current;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalFilters({
         status:
-          searchParams.get("status") ??
-          preferences.defaultStatusFilter ??
-          "active",
-        make: searchParams.get("make") ?? preferences.defaultMake ?? "",
+          params.get("status") ?? preferences.defaultStatusFilter ?? "active",
+        make: params.get("make") ?? preferences.defaultMake ?? "",
         minYear:
-          searchParams.get("minYear") ??
-          preferences.defaultMinYear?.toString() ??
-          "",
+          params.get("minYear") ?? preferences.defaultMinYear?.toString() ?? "",
         maxYear:
-          searchParams.get("maxYear") ??
-          preferences.defaultMaxYear?.toString() ??
-          "",
+          params.get("maxYear") ?? preferences.defaultMaxYear?.toString() ?? "",
         minPrice:
-          searchParams.get("minPrice") ??
+          params.get("minPrice") ??
           preferences.defaultMinPrice?.toString() ??
           "",
         maxPrice:
-          searchParams.get("maxPrice") ??
+          params.get("maxPrice") ??
           preferences.defaultMaxPrice?.toString() ??
           "",
         maxHours:
-          searchParams.get("maxHours") ??
+          params.get("maxHours") ??
           preferences.defaultMaxHours?.toString() ??
           "",
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferences, searchParamsString]);
 
   const updateParam = (key: keyof LocalFilters, value: string) => {
@@ -233,14 +231,6 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   const clearDefaults = async () => {
     if (!session) return;
     try {
-      prefsAppliedRef.current = true;
-      isLocalUpdateRef.current = true;
-      const defaultFilters = getDefaultFilters();
-      setLocalFilters(defaultFilters);
-      const newParams = new URLSearchParams();
-      const q = searchParams.get("q");
-      if (q) newParams.set("q", q);
-      setSearchParams(newParams);
       await updateMyPreferences({
         defaultStatusFilter: undefined,
         defaultMake: undefined,
@@ -250,6 +240,14 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         defaultMaxPrice: undefined,
         defaultMaxHours: undefined,
       });
+      prefsAppliedRef.current = true;
+      isLocalUpdateRef.current = true;
+      const defaultFilters = getDefaultFilters();
+      setLocalFilters(defaultFilters);
+      const newParams = new URLSearchParams();
+      const q = searchParams.get("q");
+      if (q) newParams.set("q", q);
+      setSearchParams(newParams);
       toast.success("Default filters cleared");
     } catch {
       toast.error("Failed to clear default filters");

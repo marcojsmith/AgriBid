@@ -21,7 +21,8 @@ vi.mock("./Footer", () => ({
 
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(() => {
-    return [];
+    // Default return; individual tests override via mockUseQuery
+    return undefined;
   }),
   useMutation: vi.fn(),
   Authenticated: ({ children }: { children: React.ReactNode }) => (
@@ -79,7 +80,7 @@ describe("Layout", () => {
     );
     mockUseMutation.mockReturnValue(
       typedMutationMock<ReturnType<typeof convexReact.useMutation>>(
-        mockSyncUser.mockRejectedValue(new Error("Sync Fail"))
+        mockSyncUser
       )
     );
 

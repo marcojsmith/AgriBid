@@ -50,9 +50,9 @@ Review this file for the current test coverage report or run `bun run test:cover
 When you come across this error, you need to reread the file and try again to apply the change. This is a safety mechanism to prevent you from making changes based on stale code context. Always read the entire file for full context before making any changes.
 
 ```text
-File C:\Users\marco\OneDrive\Documents\Projects\AgriBid\src\pages\Settings.tsx has been modified since it was last read.
-Last modification: 2026-03-31T07:13:11.162Z
-Last read: 2026-03-31T07:13:10.874Z
+File <file path> has been modified since it was last read.
+Last modification: <timestamp>
+Last read: <timestamp>
 Please read the file again before modifying it.
 ```
 

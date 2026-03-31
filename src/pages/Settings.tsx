@@ -48,6 +48,12 @@ function ToggleSwitch({
         aria-label={label}
         aria-checked={checked}
         onClick={onChange}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onChange();
+          }
+        }}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
           checked ? "bg-primary" : "bg-input"
         }`}

@@ -77,7 +77,7 @@ const sampleFaqs: FaqItem[] = [
 const threeFaqs: FaqItem[] = [
   sampleFaqs[0],
   sampleFaqs[1],
-  { ...sampleFaqs[0], _id: "faq3" as Id<"faqItems"> },
+  { ...sampleFaqs[0], _id: "faq3" as Id<"faqItems">, order: 2 },
 ];
 
 describe("AdminFAQ", () => {

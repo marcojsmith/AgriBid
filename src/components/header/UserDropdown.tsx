@@ -227,7 +227,7 @@ export function UserDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           asChild
-          className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+          className="rounded-md font-bold uppercase text-[10px] tracking-wide h-10"
         >
           <Link to="/settings" className="flex items-center gap-2 w-full">
             <Settings className="h-4 w-4" />
