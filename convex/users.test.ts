@@ -12,6 +12,7 @@ import {
   getMyKYCDetailsHandler,
   deleteMyKYCDocumentHandler,
   findUserById,
+  updateMyProfileHandler,
 } from "./users";
 import * as auth from "./lib/auth";
 import * as adminUtils from "./admin_utils";
@@ -24,6 +25,7 @@ vi.mock("./lib/auth", () => ({
   requireAuth: vi.fn(),
   resolveUserId: vi.fn(),
   requireAdmin: vi.fn(),
+  getAuthenticatedUserId: vi.fn(),
 }));
 
 const mockAdminUser: AuthUser = {
@@ -894,6 +896,58 @@ describe("Users Coverage", () => {
       expect(result).toEqual({ success: true });
       expect(spy).toHaveBeenCalled();
       spy.mockRestore();
+    });
+  });
+
+  describe("updateMyProfileHandler", () => {
+    it("patches profile with provided fields", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
+      queryMock.unique.mockResolvedValue({ _id: "p1" as Id<"profiles"> });
+
+      const result = await updateMyProfileHandler(
+        mockCtx as unknown as MutationCtx,
+        { bio: "New bio", location: "Cape Town", companyName: "Farm Co" }
+      );
+
+      expect(result).toBeNull();
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({
+          bio: "New bio",
+          location: "Cape Town",
+          companyName: "Farm Co",
+        })
+      );
+    });
+
+    it("throws ConvexError when profile not found", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
+      queryMock.unique.mockResolvedValue(null);
+
+      await expect(
+        updateMyProfileHandler(mockCtx as unknown as MutationCtx, {
+          bio: "Bio",
+        })
+      ).rejects.toThrow(ConvexError);
+    });
+
+    it("patches with only provided fields (partial update)", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
+      queryMock.unique.mockResolvedValue({ _id: "p1" as Id<"profiles"> });
+
+      await updateMyProfileHandler(mockCtx as unknown as MutationCtx, {
+        location: "Pretoria",
+      });
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ location: "Pretoria" })
+      );
+      const patchArgs = mockCtx.db.patch.mock.calls[0][1] as Record<
+        string,
+        unknown
+      >;
+      expect(patchArgs.bio).toBeUndefined();
     });
   });
 });

@@ -34,15 +34,17 @@ export const AuctionCardSkeleton = ({
         >
           <div
             className={cn(
-              "bg-muted relative overflow-hidden",
+              "bg-muted relative overflow-hidden flex items-center justify-center",
               isCompact ? "aspect-[4/3] border-r" : "aspect-video"
             )}
-          />
+          >
+            <span className={isCompact ? "text-2xl" : "text-4xl"}>🚜</span>
+          </div>
 
           {/* Timer area placeholder - Under Image (Compact) */}
           {isCompact && (
-            <div className="h-12 border-t border-r bg-muted/30 flex items-center justify-center px-4">
-              <div className="h-4 bg-muted rounded w-full" />
+            <div className="h-12 border-t border-r bg-muted/30 flex items-center justify-center">
+              <div className="h-5 bg-muted rounded w-16" />
             </div>
           )}
         </div>

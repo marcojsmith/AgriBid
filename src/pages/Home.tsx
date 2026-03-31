@@ -1,6 +1,6 @@
 // app/src/pages/Home.tsx
-import { useState } from "react";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useState, useRef, useLayoutEffect } from "react";
+import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, ChevronDown } from "lucide-react";
@@ -34,9 +34,18 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
  * @returns The JSX element for the Home page
  */
 export default function Home() {
-  const { isPending } = useSession();
+  const { data: session, isPending } = useSession();
   const [searchParams] = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const preferences = useQuery(
+    api.userPreferences.getMyPreferences,
+    session ? {} : "skip"
+  );
+  const updateMyPreferences = useMutation(
+    api.userPreferences.updateMyPreferences
+  );
+
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(false);
 
@@ -44,9 +53,30 @@ export default function Home() {
   const [manualViewMode, setManualViewMode] = useState<
     "compact" | "detailed" | null
   >(null);
+  const prefsAppliedRef = useRef<boolean | null>(null);
 
-  // Derive viewMode from isMobile, but respect manual override
-  const viewMode = manualViewMode ?? (isMobile ? "compact" : "detailed");
+  // Apply saved preferences once when they arrive
+  useLayoutEffect(() => {
+    if (preferences && prefsAppliedRef.current == null) {
+      prefsAppliedRef.current = true;
+      if (preferences.viewMode != null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setManualViewMode(preferences.viewMode);
+      }
+      if (preferences.sidebarOpen != null) {
+        setIsDesktopSidebarOpen(preferences.sidebarOpen);
+      }
+    }
+  }, [preferences]);
+
+  // Derive viewMode from isMobile, but respect manual override and saved preferences
+  const viewMode =
+    manualViewMode ??
+    (session
+      ? (preferences?.viewMode ?? (isMobile ? "compact" : "detailed"))
+      : isMobile
+        ? "compact"
+        : "detailed");
 
   // Extract filter params
   let searchQuery = searchParams.get("q") ?? undefined;
@@ -63,7 +93,10 @@ export default function Home() {
   };
 
   const rawStatus = searchParams.get("status");
-  const statusFilter = isValidStatus(rawStatus) ? rawStatus : "active";
+  // Apply saved status from preferences as default when no status in URL
+  const statusFilter = isValidStatus(rawStatus)
+    ? rawStatus
+    : (preferences?.defaultStatusFilter ?? "active");
 
   const parseFiniteInt = (key: string) => {
     const val = searchParams.get(key);
@@ -159,7 +192,7 @@ export default function Home() {
           )}
         >
           <div className="h-full w-80">
-            <FilterSidebar key={searchParams.toString()} />
+            <FilterSidebar />
           </div>
         </aside>
 
@@ -180,7 +213,6 @@ export default function Home() {
             {/* Sidebar Container */}
             <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80 z-20">
               <FilterSidebar
-                key={searchParams.toString()}
                 onClose={() => {
                   setIsMobileFilterOpen(false);
                 }}
@@ -223,7 +255,9 @@ export default function Home() {
               <Button
                 variant={isDesktopSidebarOpen ? "default" : "outline"}
                 onClick={() => {
-                  setIsDesktopSidebarOpen(!isDesktopSidebarOpen);
+                  const next = !isDesktopSidebarOpen;
+                  setIsDesktopSidebarOpen(next);
+                  if (session) void updateMyPreferences({ sidebarOpen: next });
                 }}
                 className="hidden lg:flex h-10 px-4 rounded-xl border-2 gap-2 font-bold uppercase text-xs"
               >
@@ -238,6 +272,8 @@ export default function Home() {
                   size="sm"
                   onClick={() => {
                     setManualViewMode("detailed");
+                    if (session)
+                      void updateMyPreferences({ viewMode: "detailed" });
                   }}
                   className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
                 >
@@ -248,6 +284,8 @@ export default function Home() {
                   size="sm"
                   onClick={() => {
                     setManualViewMode("compact");
+                    if (session)
+                      void updateMyPreferences({ viewMode: "compact" });
                   }}
                   className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
                 >

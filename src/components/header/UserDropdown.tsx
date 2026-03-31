@@ -12,6 +12,7 @@ import {
   MessageSquare,
   ShoppingBasket,
   Tag,
+  ClipboardList,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -220,8 +221,17 @@ export function UserDropdown({
             to="/dashboard/listings"
             className="flex items-center gap-2 w-full"
           >
-            <Settings className="h-4 w-4" />
+            <ClipboardList className="h-4 w-4" />
             My Listings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          asChild
+          className="rounded-md font-bold uppercase text-[10px] tracking-wide h-10"
+        >
+          <Link to="/settings" className="flex items-center gap-2 w-full">
+            <Settings className="h-4 w-4" />
+            Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
