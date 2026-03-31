@@ -42,6 +42,7 @@ const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
 const KYC = lazy(() => import("./pages/KYC"));
 const Support = lazy(() => import("./pages/Support"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 /**
  * Global loading fallback for lazy-loaded routes.
@@ -74,6 +75,7 @@ const PageLoader = () => (
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")
+ * - "/settings" → Settings (protected, allowedRole="any")
  *
  * @returns The root JSX element containing the BrowserRouter, layout and route definitions
  */
@@ -278,6 +280,14 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <Notifications />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <RoleProtectedRoute allowedRole="any">
+                  <Settings />
                 </RoleProtectedRoute>
               }
             />

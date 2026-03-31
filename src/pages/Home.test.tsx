@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 
 import { useSession } from "@/lib/auth-client";
 
@@ -10,6 +10,7 @@ import Home from "./Home";
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   usePaginatedQuery: vi.fn(),
+  useMutation: vi.fn(() => vi.fn()),
 }));
 
 vi.mock("@/lib/auth-client", () => ({
@@ -410,6 +411,96 @@ describe("Home Page Full Coverage", () => {
     (useQuery as Mock).mockReturnValue(undefined);
     renderHome();
     expect(screen.getAllByTestId("auction-card")).toHaveLength(2);
+  });
+
+  it("applies saved viewMode preference on load", async () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    });
+    // First useQuery call → preferences, second → watchedAuctionIds
+    (useQuery as Mock)
+      .mockReturnValueOnce({ viewMode: "compact", sidebarOpen: false })
+      .mockReturnValueOnce(["1"]);
+
+    renderHome();
+
+    await act(async () => {});
+
+    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
+  });
+
+  it("applies saved sidebarOpen preference on load", async () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    });
+    (useQuery as Mock)
+      .mockReturnValueOnce({ viewMode: "detailed", sidebarOpen: true })
+      .mockReturnValueOnce(["1"]);
+
+    renderHome();
+
+    await act(async () => {});
+
+    expect(screen.getByText(/Hide Filters/i)).toBeInTheDocument();
+  });
+
+  it("fires updateMyPreferences when authenticated user toggles view mode", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    });
+    (useQuery as Mock).mockReturnValue(null);
+
+    renderHome();
+    fireEvent.click(screen.getByText(/Compact/i));
+
+    expect(mockMutate).toHaveBeenCalledWith({ viewMode: "compact" });
+  });
+
+  it("fires updateMyPreferences when authenticated user toggles sidebar", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    });
+    (useQuery as Mock).mockReturnValue(null);
+
+    renderHome();
+    fireEvent.click(screen.getByText(/Show Filters/i));
+
+    expect(mockMutate).toHaveBeenCalledWith({ sidebarOpen: true });
+  });
+
+  it("does not fire updateMyPreferences when unauthenticated user toggles view mode", () => {
+    const mockMutate = vi.fn();
+    (useMutation as Mock).mockReturnValue(mockMutate);
+    (useSession as Mock).mockReturnValue({ data: null, isPending: false });
+    (useQuery as Mock).mockReturnValue(null);
+
+    renderHome();
+    fireEvent.click(screen.getByText(/Compact/i));
+
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("fires updateMyPreferences when authenticated user clicks Detailed", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    });
+    (useQuery as Mock).mockReturnValue(null);
+
+    renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "Detailed" }));
+
+    expect(mockMutate).toHaveBeenCalledWith({ viewMode: "detailed" });
   });
 
   it("applies compact grid classes in loading state", () => {

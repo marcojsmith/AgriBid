@@ -1,7 +1,8 @@
 # Development Notes
 
-## Current Status (2026-03-01)
+## Current Status (2026-03-30)
 
+- **User Preferences Storage**: Implemented persistent user preferences (Issue #118). The system stores view mode, sidebar state, filter defaults, bidding preferences, and notification settings in Convex database. Profile editing for bio, location, and companyName is now available.
 - **Proxy Bidding**: Fully implemented (backend & frontend). Auto-incrementing logic verified.
 - **Admin Portal**: Route-based refactor complete. KPIs and moderation flows are isolated to local route state.
 - **Performance**: Image caching, paginated queries, and context-based state management implemented.

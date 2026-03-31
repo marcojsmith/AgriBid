@@ -29,7 +29,7 @@ Prioritized by size and quick wins for efficient resolution.
 - [ ] #171: (Linting) Enhance ESLint with stricter rules
   - _Description_: Upgrade ESLint configuration to use stricter TypeScript rules. **Status (2026-03-19)**: Unresolved. Enabling `strictTypeChecked` and `stylisticTypeChecked` currently yields 1,463 problems (593 errors, 870 warnings).
   - _Labels_: None
-- [ ] #118: Remember user settings
+- [x] #118: Remember user settings
   - _Description_: Implement persistence for user preferences/settings
   - _Labels_: None
 - [ ] #218: [Backend] Add location field to profiles table
