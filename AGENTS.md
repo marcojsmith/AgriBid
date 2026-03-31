@@ -39,6 +39,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 - If you spot something important — an incorrect import, a structural issue, a potential improvement — raise it, even if unrelated to the current task.
 - Never make assumptions. Review code and ask for clarification when unsure.
 - Document noteworthy discoveries in `codebase_notes.md`.
+- **critical:** Read files before editing. Files will be reformatted using Prettier on save — a pre-commit hook validates that the file was read first, and if you edit a file before reading it, an error will be raised.
 
 ## Test coverage
 

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 
 import Profile from "./Profile";
 
@@ -15,6 +15,7 @@ interface AuctionCardProps {
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   usePaginatedQuery: vi.fn(),
+  useMutation: vi.fn(() => vi.fn()),
 }));
 
 const { mockApi } = vi.hoisted(() => ({
@@ -275,6 +276,342 @@ describe("Profile Page", () => {
     renderProfile();
     expect(
       screen.queryByText(/Lichtenburg, North West Province/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Edit button only for profile owner", () => {
+    renderProfile("user1");
+    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+  });
+
+  it("does not show Edit button for non-owner", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile)
+        return { userId: "other", _id: "other" };
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+    renderProfile("user1");
+    expect(
+      screen.queryByRole("button", { name: /edit/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens edit form when Edit button is clicked", () => {
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    expect(screen.getByLabelText(/bio/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/location/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/company name/i)).toBeInTheDocument();
+  });
+
+  it("cancels editing and restores view mode", () => {
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    expect(screen.getByLabelText(/bio/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.queryByLabelText(/bio/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+  });
+
+  it("calls updateMyProfile and closes form on save", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    fireEvent.change(screen.getByLabelText(/bio/i), {
+      target: { value: "New bio text" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    });
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ bio: "New bio text" })
+    );
+    expect(screen.queryByLabelText(/bio/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Saving... while mutation is in-flight", async () => {
+    let resolvePromise: () => void;
+    const pendingPromise = new Promise<void>((resolve) => {
+      resolvePromise = resolve;
+    });
+    (useMutation as Mock).mockReturnValue(() => pendingPromise);
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    // Click save — mutation is pending
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(screen.getByText("Saving...")).toBeInTheDocument();
+
+    // Resolve the mutation
+    await act(async () => {
+      resolvePromise!();
+    });
+
+    expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
+  });
+
+  it("submits undefined for empty trimmed fields", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    // Leave all fields empty
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    });
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      bio: undefined,
+      location: undefined,
+      companyName: undefined,
+    });
+  });
+
+  it("logs error and stays in edit mode when save fails", async () => {
+    const mockMutate = vi.fn().mockRejectedValue(new Error("Network error"));
+    (useMutation as Mock).mockReturnValue(mockMutate);
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    });
+
+    expect(spy).toHaveBeenCalled();
+    // Edit form should still be open after failure
+    expect(screen.getByLabelText(/bio/i)).toBeInTheDocument();
+    spy.mockRestore();
+  });
+
+  it("updates location and companyName fields in edit form", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    fireEvent.change(screen.getByLabelText(/location/i), {
+      target: { value: "Durban, KZN" },
+    });
+    fireEvent.change(screen.getByLabelText(/company name/i), {
+      target: { value: "Sunrise Farms" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    });
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: "Durban, KZN",
+        companyName: "Sunrise Farms",
+      })
+    );
+  });
+
+  it("shows admin activity item when user has admin role", () => {
+    const adminSellerInfo = {
+      ...mockSellerInfo,
+      name: "Admin User",
+      role: "admin",
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return adminSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
+        return ["auction1"];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Admin role assigned")).toBeInTheDocument();
+  });
+
+  it("handles single-word name for getInitials", () => {
+    const shortNameSellerInfo = {
+      ...mockSellerInfo,
+      name: "Bob",
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return shortNameSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
+        return ["auction1"];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Bob")).toBeInTheDocument();
+  });
+
+  it("shows verification requested activity for non-admin user", () => {
+    renderProfile("user1");
+
+    expect(screen.getByText("Verification requested")).toBeInTheDocument();
+  });
+
+  it("shows Complete Verification button for unverified owner", () => {
+    const unverifiedSellerInfo = {
+      ...mockSellerInfo,
+      isVerified: false,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return unverifiedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(
+      screen.getByRole("button", { name: /complete verification/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+  });
+
+  it("shows — for Avg Sale when avgSalePrice is undefined", () => {
+    const noAvgSellerInfo = {
+      ...mockSellerInfo,
+      avgSalePrice: undefined,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return noAvgSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Avg Sale")).toBeInTheDocument();
+  });
+
+  it("renders ?? initials when name is undefined", () => {
+    const noNameSellerInfo = {
+      ...mockSellerInfo,
+      name: undefined,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return noNameSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("??")).toBeInTheDocument();
+  });
+
+  it("shows Unknown date for activity when createdAt is undefined", () => {
+    const noDateSellerInfo = {
+      ...mockSellerInfo,
+      createdAt: undefined,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return noDateSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows unverified badge for unverified seller", () => {
+    const unverifiedSellerInfo = {
+      ...mockSellerInfo,
+      isVerified: false,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return unverifiedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+  });
+
+  it("shows Admin badge for admin role", () => {
+    const adminSellerInfo = {
+      ...mockSellerInfo,
+      role: "admin",
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return adminSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Admin")).toBeInTheDocument();
+  });
+
+  it("does not show Complete Verification button for verified owner", () => {
+    renderProfile("user1");
+
+    expect(
+      screen.queryByRole("button", { name: /complete verification/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders loading indicator during LoadingMore pagination", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockListings,
+      status: "LoadingMore",
+      loadMore: vi.fn(),
+    });
+
+    renderProfile();
+
+    const loadingElements = screen.getAllByText("Loading...");
+    expect(loadingElements.length).toBeGreaterThan(0);
+  });
+
+  it("does not show Complete Verification button for non-owner", () => {
+    const unverifiedSellerInfo = {
+      ...mockSellerInfo,
+      isVerified: false,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile)
+        return { ...mockMyProfile, userId: "other", _id: "other" };
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return unverifiedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(
+      screen.queryByRole("button", { name: /complete verification/i })
     ).not.toBeInTheDocument();
   });
 });

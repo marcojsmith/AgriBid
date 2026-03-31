@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
-import { useMutation } from "convex/react";
+import * as convexReact from "convex/react";
 
 import { useSession } from "@/lib/auth-client";
 
@@ -11,7 +11,6 @@ function typedMutationMock<T>(_val: unknown): T {
   return _val as T;
 }
 
-// Mock Header and Footer to isolate Layout testing
 vi.mock("./header/Header", () => ({
   Header: () => <header data-testid="mock-header">Header</header>,
 }));
@@ -20,9 +19,10 @@ vi.mock("./Footer", () => ({
   Footer: () => <footer data-testid="mock-footer">Footer</footer>,
 }));
 
-// Mock Convex hooks for NotificationListener inside Layout
 vi.mock("convex/react", () => ({
-  useQuery: vi.fn(() => []),
+  useQuery: vi.fn(() => {
+    return [];
+  }),
   useMutation: vi.fn(),
   Authenticated: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
@@ -32,26 +32,30 @@ vi.mock("convex/react", () => ({
   ),
 }));
 
-// Mock auth client for NotificationListener
 vi.mock("@/lib/auth-client", () => ({
   useSession: vi.fn(),
 }));
 
 describe("Layout", () => {
+  const mockUseQuery = convexReact.useQuery as ReturnType<typeof vi.fn>;
+  const mockUseMutation = convexReact.useMutation as ReturnType<typeof vi.fn>;
+  const mockUseSession = useSession as ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useSession).mockReturnValue({
+    mockUseSession.mockReturnValue({
       data: null,
       isPending: false,
     } as unknown as ReturnType<typeof useSession>);
-    vi.mocked(useMutation).mockReturnValue(
-      typedMutationMock<ReturnType<typeof useMutation>>(
+    mockUseMutation.mockReturnValue(
+      typedMutationMock<ReturnType<typeof convexReact.useMutation>>(
         vi.fn().mockResolvedValue({})
       )
     );
   });
 
   it("renders children and includes Header and Footer", () => {
+    mockUseQuery.mockReturnValue(undefined);
     render(
       <BrowserRouter>
         <Layout>
@@ -67,20 +71,21 @@ describe("Layout", () => {
 
   it("handles syncUser failure", async () => {
     const mockSyncUser = vi.fn().mockRejectedValue(new Error("Sync Fail"));
-    vi.mocked(useSession).mockReturnValue(
+    mockUseSession.mockReturnValue(
       typedMutationMock<ReturnType<typeof useSession>>({
         data: { user: { id: "user1" } },
         isPending: false,
       })
     );
-    vi.mocked(useMutation).mockReturnValue(
-      typedMutationMock<ReturnType<typeof useMutation>>(
+    mockUseMutation.mockReturnValue(
+      typedMutationMock<ReturnType<typeof convexReact.useMutation>>(
         mockSyncUser.mockRejectedValue(new Error("Sync Fail"))
       )
     );
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
+    mockUseQuery.mockReturnValue(undefined);
     render(
       <BrowserRouter>
         <Layout>

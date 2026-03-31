@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -20,7 +20,11 @@ import {
   Mail,
   CreditCard,
   FileText,
+  Pencil,
+  X,
+  Check,
 } from "lucide-react";
+import { useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +32,8 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { Button } from "@/components/ui/button";
 import { AuctionCard } from "@/components/auction/AuctionCard";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ActivityItem {
   id: string;
@@ -166,6 +172,31 @@ export default function Profile() {
     !isProfileLoading &&
     (myProfile?.userId === userId || myProfile?._id === userId);
 
+  const updateMyProfile = useMutation(api.users.updateMyProfile);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    bio: myProfile?.profile?.bio ?? "",
+    location: myProfile?.profile?.location ?? "",
+    companyName: myProfile?.profile?.companyName ?? "",
+  });
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      await updateMyProfile({
+        bio: editForm.bio || undefined,
+        location: editForm.location || undefined,
+        companyName: editForm.companyName || undefined,
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const sellerInfo = useQuery(api.auctions.getSellerInfo, {
     sellerId: userId ?? "",
   });
@@ -229,9 +260,29 @@ export default function Profile() {
                 </div>
               </div>
 
-              <h1 className="text-2xl font-black text-primary uppercase leading-none mb-2">
-                {sellerInfo.name}
-              </h1>
+              <div className="flex items-start justify-between">
+                <h1 className="text-2xl font-black text-primary uppercase leading-none mb-2">
+                  {sellerInfo.name}
+                </h1>
+                {isOwner && !isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditForm({
+                        bio: myProfile?.profile?.bio ?? "",
+                        location: myProfile?.profile?.location ?? "",
+                        companyName: myProfile?.profile?.companyName ?? "",
+                      });
+                      setIsEditing(true);
+                    }}
+                    className="h-8 px-2 rounded-md font-bold uppercase text-xs"
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                )}
+              </div>
 
               <div className="flex flex-wrap gap-2 mb-3">
                 {sellerInfo.role === "admin" && (
@@ -257,20 +308,122 @@ export default function Profile() {
                 Member since {formatMemberSince(sellerInfo.createdAt)}
               </p>
 
-              {sellerInfo.bio && (
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div>
+                    <label
+                      htmlFor="profile-bio"
+                      className="text-[10px] font-black uppercase text-muted-foreground tracking-widest"
+                    >
+                      Bio
+                    </label>
+                    <Textarea
+                      id="profile-bio"
+                      value={editForm.bio}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, bio: e.target.value })
+                      }
+                      placeholder="Tell us about yourself..."
+                      className="mt-1 min-h-[80px] rounded-xl border-2 font-bold text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="profile-location"
+                      className="text-[10px] font-black uppercase text-muted-foreground tracking-widest"
+                    >
+                      Location
+                    </label>
+                    <Input
+                      id="profile-location"
+                      value={editForm.location}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, location: e.target.value })
+                      }
+                      placeholder="City, Province"
+                      className="mt-1 rounded-xl border-2 font-bold text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="profile-company-name"
+                      className="text-[10px] font-black uppercase text-muted-foreground tracking-widest"
+                    >
+                      Company Name
+                    </label>
+                    <Input
+                      id="profile-company-name"
+                      value={editForm.companyName}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          companyName: e.target.value,
+                        })
+                      }
+                      placeholder="Your company name"
+                      className="mt-1 rounded-xl border-2 font-bold text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      onClick={handleSaveProfile}
+                      disabled={isSaving}
+                      className="flex-1 h-9 rounded-xl font-black uppercase text-xs"
+                    >
+                      {isSaving ? (
+                        <>
+                          <span className="animate-pulse">Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Save
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditForm({
+                          bio: myProfile?.profile?.bio ?? "",
+                          location: myProfile?.profile?.location ?? "",
+                          companyName: myProfile?.profile?.companyName ?? "",
+                        });
+                        setIsEditing(false);
+                      }}
+                      disabled={isSaving}
+                      className="flex-1 h-9 rounded-xl font-black uppercase text-xs border-2"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
                 <>
-                  <div className="h-px bg-border my-4" />
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {sellerInfo.bio}
-                  </p>
-                </>
-              )}
+                  {sellerInfo.bio && (
+                    <>
+                      <div className="h-px bg-border my-4" />
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {sellerInfo.bio}
+                      </p>
+                    </>
+                  )}
 
-              {sellerInfo.location && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-3">
-                  <MapPin className="h-4 w-4" />
-                  {sellerInfo.location}
-                </p>
+                  {sellerInfo.location && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-3">
+                      <MapPin className="h-4 w-4" />
+                      {sellerInfo.location}
+                    </p>
+                  )}
+
+                  {sellerInfo.companyName && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-3">
+                      <MapPin className="h-4 w-4" />
+                      {sellerInfo.companyName}
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
 

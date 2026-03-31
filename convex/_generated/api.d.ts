@@ -52,6 +52,7 @@ import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
+import type * as userPreferences from "../userPreferences.js";
 import type * as users from "../users.js";
 import type * as watchlist from "../watchlist.js";
 
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   seed: typeof seed;
   support: typeof support;
+  userPreferences: typeof userPreferences;
   users: typeof users;
   watchlist: typeof watchlist;
 }>;
