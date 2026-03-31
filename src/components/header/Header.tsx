@@ -59,7 +59,7 @@ export const Header = () => {
             to="/"
             className="font-black text-2xl tracking-tighter text-primary"
           >
-            {branding?.appName.toUpperCase()}
+            {(branding?.appName ?? 'APP').toUpperCase()}
           </Link>
 
           <nav
