@@ -248,13 +248,15 @@ function getValidatedAutoBid(
  * @param bidderId - The ID of the bidder.
  * @param bidAmount - The amount of the new bid.
  * @returns Result of the proxy bid resolution or null if no proxies are active.
+ *   When a proxy displaces the manual bidder, also returns `previousLeaderId`
+ *   so the caller can send an outbid notification.
  */
 async function resolveProxyBids(
   ctx: MutationCtx,
   auctionId: Id<"auctions">,
   bidderId: string,
   bidAmount: number
-): Promise<HandleNewBidResult | null> {
+): Promise<(HandleNewBidResult & { previousLeaderId?: string | null }) | null> {
   const auction = await ctx.db.get(auctionId);
   if (!auction) {
     console.warn(
@@ -318,6 +320,7 @@ async function resolveProxyBids(
         isProxyBid: true,
         nextBidAmount: null,
         proxyBidActive: false,
+        previousLeaderId: bidderId,
       };
     }
   }
@@ -365,6 +368,7 @@ async function resolveProxyBids(
         nextBidAmount: nextBidAmountResult,
         proxyBidActive: highestProxy.maxBid > validatedAmount,
         confirmedMaxBid: highestProxy.maxBid,
+        previousLeaderId: secondHighestProxy.bidderId,
       };
     }
   }
@@ -428,29 +432,59 @@ export async function handleNewBid(
     bidderId,
     bidAmount
   );
-  if (proxyResult) return proxyResult;
 
   // Outbid notification (in-app + push if enabled) — runs after proxy resolution
   // so we only notify if the previous winner was not restored by a counter proxy bid
-  if (previousWinnerId && previousWinnerId !== bidderId) {
-    const resolvedAuction = await ctx.db.get(auctionId);
-    if (resolvedAuction && resolvedAuction.winnerId !== previousWinnerId) {
-      const prefs = await ctx.db
-        .query("userPreferences")
-        .withIndex("by_userId", (q) => q.eq("userId", previousWinnerId))
-        .unique();
-      const shouldNotifyInApp = prefs?.notificationsOutbid?.inApp ?? true;
-      if (shouldNotifyInApp) {
-        await ctx.runMutation(internal.notifications.notifyUser, {
-          recipientId: previousWinnerId,
-          type: "warning",
-          title: "You've been outbid",
-          message: `Someone placed a higher bid on "${auction.title}". Bid now to stay in the lead.`,
-          link: `/auctions/${auction._id}`,
-          event: "outbid",
-        });
-      }
+  const resolvedAuction = await ctx.db.get(auctionId);
+
+  // Helper to send outbid notification safely.
+  // inApp preference is checked inside notifyUser.
+  const sendOutbidNotification = async (recipientId: string) => {
+    try {
+      await ctx.runMutation(internal.notifications.notifyUser, {
+        recipientId,
+        type: "warning",
+        title: "You've been outbid",
+        message: `Someone placed a higher bid on "${auction.title}". Bid now to stay in the lead.`,
+        link: `/auctions/${auction._id}`,
+        event: "outbid",
+      });
+    } catch (err) {
+      console.error("Failed to send outbid notification:", err);
     }
+  };
+
+  // Notify the previous winner if they were displaced
+  if (previousWinnerId && previousWinnerId !== bidderId) {
+    if (resolvedAuction && resolvedAuction.winnerId !== previousWinnerId) {
+      await sendOutbidNotification(previousWinnerId);
+    }
+  }
+
+  // Notify any displaced leader from proxy resolution.
+  // In Case A, displacedId === bidderId (the manual bidder was just outbid by
+  // an existing proxy), so we must NOT exclude bidderId here.
+  if (proxyResult?.previousLeaderId) {
+    const displacedId = proxyResult.previousLeaderId;
+    if (
+      displacedId !== previousWinnerId &&
+      resolvedAuction &&
+      resolvedAuction.winnerId !== displacedId
+    ) {
+      await sendOutbidNotification(displacedId);
+    }
+  }
+
+  // If proxy resolution produced a result, return it
+  if (proxyResult) {
+    // Strip internal previousLeaderId before returning to caller
+    return {
+      success: proxyResult.success,
+      bidAmount: proxyResult.bidAmount,
+      isProxyBid: proxyResult.isProxyBid,
+      nextBidAmount: proxyResult.nextBidAmount,
+      proxyBidActive: proxyResult.proxyBidActive,
+    } satisfies HandleNewBidResult;
   }
 
   let finalNextBid: number | null = null;

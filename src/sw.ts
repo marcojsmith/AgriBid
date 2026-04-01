@@ -14,6 +14,7 @@ interface PushNotificationData {
   data?: {
     url?: string;
     unreadCount?: number;
+    auctionId?: string;
   };
 }
 
@@ -46,7 +47,7 @@ self.addEventListener("push", (event) => {
     icon: payload.icon ?? "/icons/icon-192x192.png",
     badge: payload.badge ?? "/icons/badge-72x72.png",
     data: payload.data,
-    tag: "agribid-notification",
+    tag: `auction-${payload.data?.auctionId ?? "general"}`,
   };
 
   event.waitUntil(
@@ -76,10 +77,11 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const urlToOpen = new URL(
-    (event.notification.data?.url as string) || "/dashboard",
-    self.location.origin
-  ).href;
+  const rawUrl = event.notification.data?.url as unknown;
+  const urlToOpen =
+    typeof rawUrl === "string" && rawUrl.trim() !== ""
+      ? new URL(rawUrl, self.location.origin).href
+      : new URL("/dashboard", self.location.origin).href;
 
   event.waitUntil(
     (async () => {
@@ -117,8 +119,8 @@ self.addEventListener("notificationclick", (event) => {
 
 /**
  * Handles push subscription changes (rotation).
- * The actual backend sync is deferred to the useProfile hook on next app open
- * because Convex is not accessible from the service worker.
+ * Subscribes with the same applicationServerKey and notifies an active
+ * client window so it can sync the new subscription to Convex.
  */
 self.addEventListener("pushsubscriptionchange", (event) => {
   event.waitUntil(
@@ -133,9 +135,22 @@ self.addEventListener("pushsubscriptionchange", (event) => {
         subscribeOptions.applicationServerKey =
           oldSubscription.options.applicationServerKey;
       }
-      await self.registration.pushManager.subscribe(subscribeOptions);
+      const newSubscription =
+        await self.registration.pushManager.subscribe(subscribeOptions);
 
-      // Backend sync happens on next app load via the push subscription sync effect
+      const json = newSubscription.toJSON();
+      const clients = await self.clients.matchAll({ type: "window" });
+      for (const client of clients) {
+        client.postMessage({
+          type: "PUSH_SUBSCRIPTION_CHANGED",
+          subscription: {
+            endpoint: json.endpoint,
+            expirationTime: json.expirationTime ?? null,
+            keys: json.keys,
+          },
+        });
+        break;
+      }
     })()
   );
 });

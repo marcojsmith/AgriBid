@@ -23,6 +23,7 @@ vi.mock("./_generated/api", () => ({
     },
     watchlistNotifications: {
       notifyWatchlistEndingSoon: "notifyWatchlistEndingSoon",
+      cleanupOldNotificationLogs: "cleanupOldNotificationLogs",
     },
   },
 }));
@@ -60,8 +61,13 @@ describe("Crons Coverage", () => {
     expect(crons.interval).toHaveBeenCalledWith(
       "notify watchlist ending soon",
       { minutes: 15 },
-      "notifyWatchlistEndingSoon",
-      {}
+      "notifyWatchlistEndingSoon"
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "cleanup notification logs",
+      { hours: 24 },
+      "cleanupOldNotificationLogs"
     );
   });
 });

@@ -4,8 +4,34 @@ import { BrowserRouter } from "react-router-dom";
 import * as convexReact from "convex/react";
 
 import { useSession } from "@/lib/auth-client";
+import { useBranding } from "@/hooks/useBranding";
 
 import { Layout } from "./Layout";
+
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    admin: {
+      getBusinessInfo: { name: "admin:getBusinessInfo" },
+      getSeoSettings: { name: "admin:getSeoSettings" },
+    },
+    users: {
+      syncUser: { name: "users:syncUser" },
+    },
+    auctions: {
+      getMyBids: { name: "auctions:getMyBids" },
+    },
+    watchlist: {
+      getWatchedAuctions: { name: "watchlist:getWatchedAuctions" },
+    },
+    presence: {
+      getUserPresence: { name: "presence:getUserPresence" },
+      updatePresence: { name: "presence:updatePresence" },
+      heartbeat: { name: "presence:heartbeat" },
+    },
+  },
+}));
+
+vi.mock("convex/_generated/api", () => ({ api: mockApi }));
 
 function typedMutationMock<T>(_val: unknown): T {
   return _val as T;
@@ -38,7 +64,7 @@ vi.mock("@/lib/auth-client", () => ({
 }));
 
 vi.mock("@/hooks/useBranding", () => ({
-  useBranding: () => ({ appName: "AgriBid" }),
+  useBranding: vi.fn(() => ({ appName: "AgriBid" })),
 }));
 
 vi.mock("@/contexts/BrandingProvider", () => ({
@@ -51,6 +77,7 @@ describe("Layout", () => {
   const mockUseQuery = convexReact.useQuery as ReturnType<typeof vi.fn>;
   const mockUseMutation = convexReact.useMutation as ReturnType<typeof vi.fn>;
   const mockUseSession = useSession as ReturnType<typeof vi.fn>;
+  const mockUseBranding = useBranding as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -114,5 +141,73 @@ describe("Layout", () => {
     });
 
     consoleSpy.mockRestore();
+  });
+
+  it("renders JSON-LD schema when businessInfo has businessName", () => {
+    mockUseQuery.mockImplementation((query) => {
+      if (query === mockApi.admin.getBusinessInfo) {
+        return {
+          businessName: "AgriBid Test Farm",
+          website: null,
+          logoUrl: null,
+          businessDescription: null,
+          streetAddress: null,
+          addressLocality: null,
+          addressCountry: null,
+          postalCode: null,
+          telephone: null,
+          email: null,
+          sameAs: null,
+        };
+      }
+      return undefined;
+    });
+    render(
+      <BrowserRouter>
+        <Layout>
+          <div>Content</div>
+        </Layout>
+      </BrowserRouter>
+    );
+    expect(
+      document.querySelector('script[type="application/ld+json"]')
+    ).toBeTruthy();
+  });
+
+  it("renders SEO verification meta tags when seoSettings are provided", () => {
+    mockUseQuery.mockImplementation((query) => {
+      if (query === mockApi.admin.getSeoSettings) {
+        return {
+          searchConsoleVerification: "abc123verify",
+          bingVerification: "bing456verify",
+          ga4MeasurementId: "G-ABCDEF1234",
+        };
+      }
+      return undefined;
+    });
+    render(
+      <BrowserRouter>
+        <Layout>
+          <div>Content</div>
+        </Layout>
+      </BrowserRouter>
+    );
+    expect(
+      document.querySelector('meta[name="google-site-verification"]')
+    ).toBeTruthy();
+    expect(document.querySelector('meta[name="msvalidate.01"]')).toBeTruthy();
+  });
+
+  it("uses SITE_NAME when appName is null", () => {
+    mockUseBranding.mockReturnValue({ appName: null });
+    mockUseQuery.mockReturnValue(undefined);
+    render(
+      <BrowserRouter>
+        <Layout>
+          <div>Content</div>
+        </Layout>
+      </BrowserRouter>
+    );
+    expect(screen.getByTestId("mock-header")).toBeInTheDocument();
   });
 });

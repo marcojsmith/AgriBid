@@ -37,6 +37,22 @@ const preferenceFields = {
       whatsapp: v.boolean(),
     })
   ),
+  notificationsAuctionLost: v.optional(
+    v.object({
+      inApp: v.boolean(),
+      push: v.boolean(),
+      email: v.boolean(),
+      whatsapp: v.boolean(),
+    })
+  ),
+  notificationsReserveNotMet: v.optional(
+    v.object({
+      inApp: v.boolean(),
+      push: v.boolean(),
+      email: v.boolean(),
+      whatsapp: v.boolean(),
+    })
+  ),
   notificationsWatchlistEnding: v.optional(
     v.object({
       inApp: v.boolean(),

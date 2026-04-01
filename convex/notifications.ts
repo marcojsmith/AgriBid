@@ -436,52 +436,22 @@ export const getUnreadCount = query({
       )
       .collect();
 
+    // Batch-fetch all read receipts for this user in one query
+    const userReceipts = await ctx.db
+      .query("readReceipts")
+      .withIndex("by_user_notification", (q) => q.eq("userId", userId))
+      .collect();
+
+    const readNotificationIds = new Set(
+      userReceipts.map((r) => r.notificationId)
+    );
+
     let unreadAnnouncements = 0;
     for (const ann of announcements) {
-      const receipt = await ctx.db
-        .query("readReceipts")
-        .withIndex("by_user_notification", (q) =>
-          q.eq("userId", userId).eq("notificationId", ann._id)
-        )
-        .unique();
-      if (!receipt) unreadAnnouncements++;
+      if (!readNotificationIds.has(ann._id)) unreadAnnouncements++;
     }
 
     return personalUnread.length + unreadAnnouncements;
-  },
-});
-
-/**
- * Internal mutation to create a notification.
- *
- * @param ctx - Mutation context
- * @param args - Notification details
- * @returns The ID of the created notification
- */
-export const createNotification = internalMutation({
-  args: {
-    recipientId: v.string(),
-    type: v.union(
-      v.literal("info"),
-      v.literal("success"),
-      v.literal("warning"),
-      v.literal("error")
-    ),
-    title: v.string(),
-    message: v.string(),
-    link: v.optional(v.string()),
-  },
-  returns: v.id("notifications"),
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("notifications", {
-      recipientId: args.recipientId,
-      type: args.type,
-      title: args.title,
-      message: args.message,
-      link: args.link,
-      isRead: false,
-      createdAt: Date.now(),
-    });
   },
 });
 
@@ -519,14 +489,49 @@ export const notifyUser = internalMutation({
       )
     ),
   },
-  returns: v.id("notifications"),
+  returns: v.union(v.id("notifications"), v.null()),
   handler: async (ctx, args) => {
+    // Check the user's inApp preference for the event type; default to true.
+    // Broadcast notifications (recipientId === "all") bypass this check.
+    if (args.event && args.recipientId !== "all") {
+      const prefs = await ctx.db
+        .query("userPreferences")
+        .withIndex("by_userId", (q) => q.eq("userId", args.recipientId))
+        .unique();
+
+      const eventToPrefField: Record<
+        string,
+        | "notificationsOutbid"
+        | "notificationsAuctionWon"
+        | "notificationsAuctionLost"
+        | "notificationsReserveNotMet"
+        | "notificationsWatchlistEnding"
+        | "notificationsListingApproved"
+      > = {
+        outbid: "notificationsOutbid",
+        auctionWon: "notificationsAuctionWon",
+        auctionLost: "notificationsAuctionLost",
+        reserveNotMet: "notificationsReserveNotMet",
+        watchlistEnding: "notificationsWatchlistEnding",
+        listingApproved: "notificationsListingApproved",
+      };
+      const prefField = eventToPrefField[args.event];
+      if (prefField && prefs) {
+        const pref = prefs[prefField];
+        if (pref !== undefined && pref !== null && pref.inApp === false)
+          return null;
+      }
+    }
+
     const notificationId = await ctx.db.insert("notifications", {
       recipientId: args.recipientId,
       type: args.type,
       title: args.title,
       message: args.message,
       link: args.link,
+      // Broadcast notifications (recipientId === "all") never have isRead: true
+      // set directly — they use readReceipts instead. The field is always false
+      // here but kept for index consistency.
       isRead: false,
       createdAt: Date.now(),
     });
@@ -551,7 +556,10 @@ export const notifyUser = internalMutation({
           });
         }
       } catch (err) {
-        console.error("Failed to schedule push notification:", err);
+        console.error(
+          "Failed to schedule push notification:",
+          err instanceof Error ? err.message : String(err)
+        );
       }
     }
 

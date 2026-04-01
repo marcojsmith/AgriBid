@@ -1,12 +1,17 @@
 // app/src/App.tsx
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useCallback, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useMutation } from "convex/react";
+import { api } from "convex/_generated/api";
+
+import { useSession } from "@/lib/auth-client";
 
 import { Layout } from "./components/Layout";
-import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 import { LoadingIndicator } from "./components/LoadingIndicator";
 import { RegisterSW } from "./components/RegisterSW";
+import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 import { clearBadge } from "./lib/pushNotifications";
+import type { PushSubscriptionData } from "./lib/pushNotifications";
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));
@@ -82,6 +87,9 @@ const PageLoader = () => (
  * @returns The root JSX element containing the BrowserRouter, layout and route definitions
  */
 function App() {
+  const { data: session } = useSession();
+  const updatePushSub = useMutation(api.users.updatePushSubscription);
+
   // Clear PWA badge on mount and when the app regains visibility
   useEffect(() => {
     void clearBadge();
@@ -91,6 +99,34 @@ function App() {
     document.addEventListener("visibilitychange", handler);
     return () => document.removeEventListener("visibilitychange", handler);
   }, []);
+
+  // Listen for push subscription changes from the service worker
+  const handleSWMessage = useCallback(
+    (event: MessageEvent) => {
+      if (event.data?.type === "PUSH_SUBSCRIPTION_CHANGED") {
+        if (!session) return;
+        const sub = event.data.subscription as PushSubscriptionData | undefined;
+        if (sub?.endpoint && sub?.keys) {
+          void updatePushSub({
+            pushNotificationsEnabled: true,
+            pushSubscription: {
+              endpoint: sub.endpoint,
+              expirationTime: sub.expirationTime,
+              keys: sub.keys,
+            },
+          });
+        }
+      }
+    },
+    [session, updatePushSub]
+  );
+
+  useEffect(() => {
+    navigator.serviceWorker?.addEventListener("message", handleSWMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", handleSWMessage);
+    };
+  }, [handleSWMessage]);
 
   return (
     <BrowserRouter>

@@ -45,7 +45,13 @@ type SubmitErrorReportArgs = {
   stackTrace?: string;
   userId?: string;
   userRole?: string;
-  breadcrumbs: { timestamp: number; type: string; description: string }[];
+  additionalInfo?: Record<string, string | number>;
+  breadcrumbs: {
+    timestamp: number;
+    type: string;
+    description: string;
+    metadata?: Record<string, string | number>;
+  }[];
   metadata: { url: string; userAgent: string; timestamp: number };
 };
 
@@ -196,6 +202,81 @@ describe("Error Reporter", () => {
         "Clicked good button"
       );
       expect(errorClassifier.shouldReportError).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("sanitizeAdditionalInfo via reportError", () => {
+    it("should filter disallowed keys and return undefined additionalInfo", async () => {
+      await reportError(new Error("test"), {
+        additionalInfo: { secretKey: "value" },
+      });
+
+      const args = getMockCallArgs(mockMutation);
+      expect(args.additionalInfo).toBeUndefined();
+    });
+
+    it("should filter non-string/non-number values and return undefined additionalInfo", async () => {
+      await reportError(new Error("test"), {
+        additionalInfo: { component: true },
+      });
+
+      const args = getMockCallArgs(mockMutation);
+      expect(args.additionalInfo).toBeUndefined();
+    });
+
+    it("should allow numeric values in additionalInfo", async () => {
+      await reportError(new Error("test"), {
+        additionalInfo: { component: "MyComp", action: 42 },
+      });
+
+      const args = getMockCallArgs(mockMutation);
+      expect(args.additionalInfo).toEqual({ component: "MyComp", action: 42 });
+    });
+
+    it("should handle error.stack being undefined", async () => {
+      const e = new Error("test");
+      e.stack = undefined;
+      const result = await reportError(e);
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.stackTrace).toBe("");
+    });
+
+    it("should handle breadcrumbs with metadata containing numeric values", async () => {
+      vi.mocked(activityTracker.getBreadcrumbs).mockReturnValueOnce([
+        {
+          timestamp: 1,
+          type: "custom" as const,
+          description: "test",
+          metadata: { component: "X", action: 1 },
+        },
+      ]);
+
+      const result = await reportError(new Error("x"));
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.breadcrumbs[0].metadata).toEqual({
+        component: "X",
+        action: 1,
+      });
+    });
+
+    it("should handle breadcrumbs without metadata", async () => {
+      vi.mocked(activityTracker.getBreadcrumbs).mockReturnValueOnce([
+        {
+          timestamp: 1,
+          type: "custom" as const,
+          description: "test",
+        },
+      ]);
+
+      const result = await reportError(new Error("x"));
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.breadcrumbs[0].metadata).toBeUndefined();
     });
   });
 });

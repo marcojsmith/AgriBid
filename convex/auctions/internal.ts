@@ -215,7 +215,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
           .query("userPreferences")
           .withIndex("by_userId", (q) => q.eq("userId", loserId))
           .unique();
-        if (loserPrefs?.notificationsAuctionWon?.inApp ?? true) {
+        if (loserPrefs?.notificationsAuctionLost?.inApp ?? true) {
           await ctx.runMutation(internal.notifications.notifyUser, {
             recipientId: loserId,
             type: "info",
@@ -238,7 +238,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
           .query("userPreferences")
           .withIndex("by_userId", (q) => q.eq("userId", bidderId))
           .unique();
-        if (prefs?.notificationsAuctionWon?.inApp ?? true) {
+        if (prefs?.notificationsReserveNotMet?.inApp ?? true) {
           await ctx.runMutation(internal.notifications.notifyUser, {
             recipientId: bidderId,
             type: "info",

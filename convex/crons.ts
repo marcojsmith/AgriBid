@@ -40,11 +40,23 @@ crons.daily(
   internal.errors.processErrorReportsAction
 );
 
+/**
+ * Periodically notify users whose watchlisted auctions are ending soon.
+ * Runs every 15 minutes to check auctions within each user's configured alert window.
+ */
 crons.interval(
   "notify watchlist ending soon",
   { minutes: 15 },
-  internal.watchlistNotifications.notifyWatchlistEndingSoon,
-  {}
+  internal.watchlistNotifications.notifyWatchlistEndingSoon
+);
+
+/**
+ * Daily job to remove notificationLog entries older than 7 days.
+ */
+crons.interval(
+  "cleanup notification logs",
+  { hours: 24 },
+  internal.watchlistNotifications.cleanupOldNotificationLogs
 );
 
 export default crons;

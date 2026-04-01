@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id, Doc } from "./_generated/dataModel";
 
 const WINDOW_MS: Record<string, number> = {
   "1h": 60 * 60 * 1000,
@@ -10,9 +11,16 @@ const WINDOW_MS: Record<string, number> = {
   "24h": 24 * 60 * 60 * 1000,
 };
 
+const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 /**
  * Sends watchlist-ending-soon notifications to users whose watched auctions
  * are approaching their end time, respecting per-user window preferences.
+ *
+ * Note: The userPreferences and notificationLog fetches below follow an N+1
+ * pattern (one query per user). This is a known scaling limitation — Convex
+ * does not support batch-get-by-multiple-IDs, so sequential indexed lookups
+ * are the idiomatic approach.
  *
  * @param ctx - Convex mutation context
  * @returns null
@@ -34,22 +42,60 @@ export const notifyWatchlistEndingSoonHandler = async (
     )
     .collect();
 
+  if (endingSoon.length === 0) return null;
+
+  // Collect all watcher userIds across all auctions
+  const allWatcherUserIds = new Set<string>();
+  const auctionWatchersMap = new Map<Id<"auctions">, string[]>();
+
+  for (const auction of endingSoon) {
+    const watchers = await ctx.db
+      .query("watchlist")
+      .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+      .collect();
+
+    const watcherIds = watchers.map((w) => w.userId);
+    auctionWatchersMap.set(auction._id, watcherIds);
+    for (const id of watcherIds) {
+      allWatcherUserIds.add(id);
+    }
+  }
+
+  // Fetch all userPreferences for watchers (N+1 — known scaling limitation,
+  // see function comment above).
+  const userIds = [...allWatcherUserIds];
+  const prefsMap = new Map<string, Doc<"userPreferences"> | null>();
+  for (const userId of userIds) {
+    const prefs = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    prefsMap.set(userId, prefs);
+  }
+
+  // Fetch notificationLog entries within the last 24 hours for deduplication.
+  // This avoids notifying the same user about the same auction more than once
+  // per day, regardless of how often the cron runs.
+  const dedupWindowStart = now - DEDUP_WINDOW_MS;
+  const notificationLogMap = new Map<string, Set<Id<"auctions">>>();
+  for (const userId of userIds) {
+    const logs = await ctx.db
+      .query("notificationLog")
+      .withIndex("by_user_auction", (q) => q.eq("userId", userId))
+      .filter((q) => q.gte(q.field("notifiedAt"), dedupWindowStart))
+      .collect();
+    const auctionIds = new Set(logs.map((l) => l.auctionId));
+    notificationLogMap.set(userId, auctionIds);
+  }
+
   for (const auction of endingSoon) {
     if (!auction.endTime) continue;
     const timeLeft = auction.endTime - now;
 
-    // Find all watchers of this auction (no by_auction index, use filter)
-    const watchers = await ctx.db
-      .query("watchlist")
-      .withIndex("by_user_auction")
-      .filter((q) => q.eq(q.field("auctionId"), auction._id))
-      .collect();
+    const watchers = auctionWatchersMap.get(auction._id) ?? [];
 
-    for (const watcher of watchers) {
-      const prefs = await ctx.db
-        .query("userPreferences")
-        .withIndex("by_userId", (q) => q.eq("userId", watcher.userId))
-        .unique();
+    for (const watcherUserId of watchers) {
+      const prefs = prefsMap.get(watcherUserId);
 
       const windowPref = prefs?.notificationsWatchlistEnding?.window ?? "1h";
       const inApp = prefs?.notificationsWatchlistEnding?.inApp ?? true;
@@ -62,32 +108,32 @@ export const notifyWatchlistEndingSoonHandler = async (
       // Only notify if the auction is within the user's configured window
       if (timeLeft > windowMs) continue;
 
-      // Avoid duplicate notifications within the same window
-      const alreadyNotified = await ctx.db
-        .query("notifications")
-        .withIndex("by_recipient_createdAt", (q) =>
-          q.eq("recipientId", watcher.userId).gt("createdAt", now - windowMs)
-        )
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("title"), "Watchlist auction ending soon"),
-            q.eq(q.field("link"), `/auctions/${auction._id}`)
-          )
-        )
-        .first();
-
+      // Avoid duplicate notifications using notificationLog (last 24h window)
+      const alreadyNotified = notificationLogMap
+        .get(watcherUserId)
+        ?.has(auction._id);
       if (alreadyNotified) continue;
 
-      const hoursLeft = Math.round(timeLeft / (60 * 60 * 1000));
-      const timeLabel = hoursLeft >= 1 ? `${hoursLeft.toString()}h` : "soon";
+      const minutesLeft = Math.ceil(timeLeft / (60 * 1000));
+      const timeLabel =
+        minutesLeft >= 60
+          ? `${Math.ceil(minutesLeft / 60).toString()}h`
+          : `${minutesLeft.toString()}m`;
 
       await ctx.runMutation(internal.notifications.notifyUser, {
-        recipientId: watcher.userId,
+        recipientId: watcherUserId,
         type: "warning",
         title: "Watchlist auction ending soon",
         message: `"${auction.title}" ends in ~${timeLabel}. Don't miss your chance to bid.`,
         link: `/auctions/${auction._id}`,
         event: "watchlistEnding",
+      });
+
+      // Log the notification for deduplication
+      await ctx.db.insert("notificationLog", {
+        userId: watcherUserId,
+        auctionId: auction._id,
+        notifiedAt: now,
       });
     }
   }
@@ -105,4 +151,24 @@ export const notifyWatchlistEndingSoon = internalMutation({
   args: {},
   returns: v.null(),
   handler: notifyWatchlistEndingSoonHandler,
+});
+
+/**
+ * Deletes notificationLog rows older than 7 days to prevent unbounded growth.
+ * Intended to run daily via a cron job.
+ */
+export const cleanupOldNotificationLogs = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const old = await ctx.db
+      .query("notificationLog")
+      .withIndex("by_notifiedAt", (q) => q.lt("notifiedAt", cutoff))
+      .collect();
+    for (const row of old) {
+      await ctx.db.delete(row._id);
+    }
+    return null;
+  },
 });

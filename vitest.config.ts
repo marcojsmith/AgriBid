@@ -68,6 +68,10 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "convex/_generated": path.resolve(__dirname, "./convex/_generated"),
+      "virtual:pwa-register/react": path.resolve(
+        __dirname,
+        "./src/test/__mocks__/virtual-pwa-register.ts"
+      ),
     },
   },
 });

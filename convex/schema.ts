@@ -234,7 +234,8 @@ export default defineSchema({
     auctionId: v.id("auctions"),
   })
     .index("by_user", ["userId"])
-    .index("by_user_auction", ["userId", "auctionId"]),
+    .index("by_user_auction", ["userId", "auctionId"])
+    .index("by_auction", ["auctionId"]),
 
   presence: defineTable({
     userId: v.string(),
@@ -288,6 +289,22 @@ export default defineSchema({
         ),
       })
     ),
+    notificationsAuctionLost: v.optional(
+      v.object({
+        inApp: v.boolean(),
+        push: v.boolean(),
+        email: v.boolean(),
+        whatsapp: v.boolean(),
+      })
+    ),
+    notificationsReserveNotMet: v.optional(
+      v.object({
+        inApp: v.boolean(),
+        push: v.boolean(),
+        email: v.boolean(),
+        whatsapp: v.boolean(),
+      })
+    ),
     notificationsListingApproved: v.optional(
       v.object({
         inApp: v.boolean(),
@@ -326,6 +343,15 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_endpoint", ["endpoint"]),
+
+  // Notification log for deduplication (cron job tracking)
+  notificationLog: defineTable({
+    userId: v.string(),
+    auctionId: v.id("auctions"),
+    notifiedAt: v.number(),
+  })
+    .index("by_user_auction", ["userId", "auctionId"])
+    .index("by_notifiedAt", ["notifiedAt"]),
 
   // Application Settings (Global configuration for limits, pagination, etc.)
   settings: defineTable({

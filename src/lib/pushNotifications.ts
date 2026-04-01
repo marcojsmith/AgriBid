@@ -1,5 +1,5 @@
 /** Shape of a push subscription as returned by PushManager.subscribe(). */
-export interface PushSubscriptionJSON {
+export interface PushSubscriptionData {
   endpoint: string;
   expirationTime: number | null;
   keys: {
@@ -44,7 +44,7 @@ export function isPushSupported(): boolean {
  * @returns The subscription as PushSubscriptionJSON
  * @throws If permission is denied or subscription fails
  */
-export async function subscribeUserToPush(): Promise<PushSubscriptionJSON> {
+export async function subscribeUserToPush(): Promise<PushSubscriptionData> {
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
     throw new Error("Notification permission was denied");
@@ -78,7 +78,7 @@ export async function subscribeUserToPush(): Promise<PushSubscriptionJSON> {
 
   return {
     endpoint: json.endpoint ?? subscription.endpoint,
-    expirationTime: json.expirationTime as number | null,
+    expirationTime: json.expirationTime ?? null,
     keys: {
       p256dh: json.keys.p256dh,
       auth: json.keys.auth,

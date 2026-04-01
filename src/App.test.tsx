@@ -2,6 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
+import type { Mock } from "vitest";
+
+import { useSession } from "@/lib/auth-client";
 
 // Mock RegisterSW to avoid virtual:pwa-register/react resolution in tests
 vi.mock("./components/RegisterSW", () => ({
@@ -20,6 +23,15 @@ vi.mock("./components/RoleProtectedRoute", () => ({
   RoleProtectedRoute: ({ children }: { children: ReactNode }) => (
     <div data-testid="protected">{children}</div>
   ),
+}));
+
+vi.mock("@/lib/auth-client", () => ({
+  useSession: vi.fn(() => ({ data: { user: { id: "u1" } } })),
+}));
+
+vi.mock("./lib/pushNotifications", () => ({
+  clearBadge: vi.fn().mockResolvedValue(undefined),
+  isPushSupported: vi.fn().mockReturnValue(false),
 }));
 
 // Mock the pages
@@ -68,14 +80,17 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+const mockUpdatePushSub = vi.fn().mockResolvedValue(undefined);
+
 // Mock Convex
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(() => []),
   usePaginatedQuery: vi.fn(() => ({ results: [], status: "Exhausted" })),
-  useMutation: () => vi.fn(),
+  useMutation: () => mockUpdatePushSub,
 }));
 
 import App from "./App";
+import * as pushNotifications from "./lib/pushNotifications";
 
 describe("App Routing", () => {
   beforeEach(() => {
@@ -219,5 +234,139 @@ describe("App Routing", () => {
   it("renders AdminFees for /admin/fees", async () => {
     renderApp("/admin/fees");
     expect(await screen.findByTestId("admin-fees-page")).toBeInTheDocument();
+  });
+
+  it("calls clearBadge when page becomes visible", async () => {
+    renderApp("/");
+    await screen.findByTestId("home-page");
+    vi.mocked(pushNotifications.clearBadge).mockClear();
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      writable: true,
+      configurable: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(pushNotifications.clearBadge).toHaveBeenCalled();
+  });
+
+  it("does not call clearBadge when page becomes hidden", async () => {
+    renderApp("/");
+    await screen.findByTestId("home-page");
+    vi.mocked(pushNotifications.clearBadge).mockClear();
+    Object.defineProperty(document, "visibilityState", {
+      value: "hidden",
+      writable: true,
+      configurable: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(pushNotifications.clearBadge).not.toHaveBeenCalled();
+  });
+});
+
+describe("SW message handling", () => {
+  let mockSW: EventTarget & {
+    addEventListener: ReturnType<typeof vi.fn>;
+    removeEventListener: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdatePushSub.mockClear();
+    (useSession as Mock).mockReturnValue({ data: { user: { id: "u1" } } });
+    mockSW = Object.assign(new EventTarget(), {
+      addEventListener: vi.fn(
+        (type: string, listener: EventListenerOrEventListenerObject) => {
+          EventTarget.prototype.addEventListener.call(mockSW, type, listener);
+        }
+      ),
+      removeEventListener: vi.fn(
+        (type: string, listener: EventListenerOrEventListenerObject) => {
+          EventTarget.prototype.removeEventListener.call(
+            mockSW,
+            type,
+            listener
+          );
+        }
+      ),
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: mockSW,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  const renderApp = (path: string) =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>
+    );
+
+  it("ignores SW messages with non-PUSH type", async () => {
+    renderApp("/");
+    await screen.findByTestId("home-page");
+    mockSW.dispatchEvent(
+      new MessageEvent("message", { data: { type: "OTHER" } })
+    );
+    expect(mockUpdatePushSub).not.toHaveBeenCalled();
+  });
+
+  it("returns early without calling mutation when session is null", async () => {
+    (useSession as Mock).mockReturnValue({ data: null });
+    renderApp("/");
+    await screen.findByTestId("home-page");
+    mockSW.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          type: "PUSH_SUBSCRIPTION_CHANGED",
+          subscription: {
+            endpoint: "https://x.com",
+            expirationTime: null,
+            keys: { p256dh: "a", auth: "b" },
+          },
+        },
+      })
+    );
+    expect(mockUpdatePushSub).not.toHaveBeenCalled();
+  });
+
+  it("calls updatePushSub when session exists and subscription is complete", async () => {
+    renderApp("/");
+    await screen.findByTestId("home-page");
+    mockSW.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          type: "PUSH_SUBSCRIPTION_CHANGED",
+          subscription: {
+            endpoint: "https://x.com",
+            expirationTime: null,
+            keys: { p256dh: "a", auth: "b" },
+          },
+        },
+      })
+    );
+    expect(mockUpdatePushSub).toHaveBeenCalledWith({
+      pushNotificationsEnabled: true,
+      pushSubscription: {
+        endpoint: "https://x.com",
+        expirationTime: null,
+        keys: { p256dh: "a", auth: "b" },
+      },
+    });
+  });
+
+  it("does not call updatePushSub when subscription has no keys", async () => {
+    renderApp("/");
+    await screen.findByTestId("home-page");
+    mockSW.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          type: "PUSH_SUBSCRIPTION_CHANGED",
+          subscription: { endpoint: "https://x.com", expirationTime: null },
+        },
+      })
+    );
+    expect(mockUpdatePushSub).not.toHaveBeenCalled();
   });
 });

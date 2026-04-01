@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import React from "react";
 
 import { useSession } from "@/lib/auth-client";
+import * as pushNotifications from "@/lib/pushNotifications";
 
 import Settings from "./Settings";
 
@@ -118,6 +119,12 @@ vi.mock("@/components/ui/select", () => {
     ),
   };
 });
+
+vi.mock("@/lib/pushNotifications", () => ({
+  isPushSupported: vi.fn().mockReturnValue(false),
+  subscribeUserToPush: vi.fn(),
+  unsubscribeUserFromPush: vi.fn().mockResolvedValue(true),
+}));
 
 vi.mock("@/components/LoadingIndicator", () => ({
   LoadingPage: ({ message }: { message: string }) => <div>{message}</div>,
@@ -266,6 +273,22 @@ describe("Settings Page", () => {
       screen.getByRole("switch", { name: "Show Filter Sidebar by Default" })
     );
     expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("toggles notification row in-app switch on Enter key press", () => {
+    renderSettings();
+    const outbidInApp = screen.getByRole("switch", {
+      name: "Outbid Alerts in-app",
+    });
+    fireEvent.keyDown(outbidInApp, { key: "Enter" });
+    expect(mockMutate).toHaveBeenCalledWith({
+      notificationsOutbid: {
+        inApp: false,
+        push: false,
+        email: false,
+        whatsapp: false,
+      },
+    });
   });
 
   it("toggles switch on Enter key press", () => {
@@ -453,5 +476,242 @@ describe("Settings Page", () => {
     });
     renderSettings();
     expect(screen.getByText("Settings")).toBeInTheDocument();
+  });
+
+  it("shows error toast when push toggle clicked with no session", () => {
+    vi.mocked(pushNotifications.isPushSupported).mockReturnValue(true);
+    (useSession as Mock).mockReturnValue({ data: null });
+    renderSettings();
+    fireEvent.click(screen.getByRole("switch", { name: "Outbid Alerts push" }));
+    expect(toast.error).toHaveBeenCalledWith("Not signed in");
+  });
+
+  it("enables push notifications successfully", async () => {
+    vi.mocked(pushNotifications.isPushSupported).mockReturnValue(true);
+    vi.mocked(pushNotifications.subscribeUserToPush).mockResolvedValue({
+      endpoint: "https://example.com",
+      expirationTime: null,
+      keys: { p256dh: "abc", auth: "def" },
+    });
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.userPreferences.getMyPreferences)
+        return {
+          notificationsOutbid: {
+            inApp: true,
+            push: false,
+            email: false,
+            whatsapp: false,
+          },
+        };
+      if (apiPath === mockApi.users.getMyProfile)
+        return { profile: { role: "buyer" } };
+      return null;
+    });
+    renderSettings();
+    fireEvent.click(screen.getByRole("switch", { name: "Outbid Alerts push" }));
+    await vi.waitFor(() => {
+      expect(pushNotifications.subscribeUserToPush).toHaveBeenCalled();
+      expect(mockMutate).toHaveBeenCalledWith({
+        pushNotificationsEnabled: true,
+        pushSubscription: {
+          endpoint: "https://example.com",
+          expirationTime: null,
+          keys: { p256dh: "abc", auth: "def" },
+        },
+      });
+      expect(toast.success).toHaveBeenCalledWith("Push notifications enabled");
+    });
+  });
+
+  it("shows error toast when push enable fails", async () => {
+    vi.mocked(pushNotifications.isPushSupported).mockReturnValue(true);
+    vi.mocked(pushNotifications.subscribeUserToPush).mockRejectedValue(
+      new Error("Permission denied")
+    );
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.userPreferences.getMyPreferences)
+        return {
+          notificationsOutbid: {
+            inApp: true,
+            push: false,
+            email: false,
+            whatsapp: false,
+          },
+        };
+      if (apiPath === mockApi.users.getMyProfile)
+        return { profile: { role: "buyer" } };
+      return null;
+    });
+    renderSettings();
+    fireEvent.click(screen.getByRole("switch", { name: "Outbid Alerts push" }));
+    await vi.waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Permission denied");
+    });
+  });
+
+  it("disables push notifications and unsubscribes when no remaining push", async () => {
+    vi.mocked(pushNotifications.isPushSupported).mockReturnValue(true);
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.userPreferences.getMyPreferences)
+        return {
+          notificationsOutbid: {
+            inApp: true,
+            push: true,
+            email: false,
+            whatsapp: false,
+          },
+        };
+      if (apiPath === mockApi.users.getMyProfile)
+        return { profile: { role: "buyer" } };
+      return null;
+    });
+    renderSettings();
+    fireEvent.click(screen.getByRole("switch", { name: "Outbid Alerts push" }));
+    await vi.waitFor(() => {
+      expect(pushNotifications.unsubscribeUserFromPush).toHaveBeenCalled();
+      expect(mockMutate).toHaveBeenCalledWith({
+        pushNotificationsEnabled: false,
+      });
+      expect(toast.success).toHaveBeenCalledWith("Push notifications disabled");
+    });
+  });
+
+  it("disables push but does not unsubscribe when remaining push exists", async () => {
+    vi.mocked(pushNotifications.isPushSupported).mockReturnValue(true);
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.userPreferences.getMyPreferences)
+        return {
+          notificationsOutbid: {
+            inApp: true,
+            push: true,
+            email: false,
+            whatsapp: false,
+          },
+          notificationsAuctionWon: {
+            inApp: true,
+            push: true,
+            email: false,
+            whatsapp: false,
+          },
+        };
+      if (apiPath === mockApi.users.getMyProfile)
+        return { profile: { role: "buyer" } };
+      return null;
+    });
+    renderSettings();
+    fireEvent.click(screen.getByRole("switch", { name: "Outbid Alerts push" }));
+    await vi.waitFor(() => {
+      expect(pushNotifications.unsubscribeUserFromPush).not.toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith("Push notifications disabled");
+    });
+  });
+
+  it("toggles Auction Lost Notifications in-app switch", () => {
+    renderSettings();
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Auction Lost Notifications in-app" })
+    );
+    expect(mockMutate).toHaveBeenCalledWith({
+      notificationsAuctionLost: {
+        inApp: false,
+        push: false,
+        email: false,
+        whatsapp: false,
+      },
+    });
+  });
+
+  it("toggles Reserve Not Met Notifications in-app switch", () => {
+    renderSettings();
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Reserve Not Met Notifications in-app",
+      })
+    );
+    expect(mockMutate).toHaveBeenCalledWith({
+      notificationsReserveNotMet: {
+        inApp: false,
+        push: false,
+        email: false,
+        whatsapp: false,
+      },
+    });
+  });
+
+  it("enables push for watchlist ending when pref is null", async () => {
+    vi.mocked(pushNotifications.isPushSupported).mockReturnValue(true);
+    vi.mocked(pushNotifications.subscribeUserToPush).mockResolvedValue({
+      endpoint: "https://example.com",
+      expirationTime: null,
+      keys: { p256dh: "abc", auth: "def" },
+    });
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.userPreferences.getMyPreferences)
+        return { notificationsWatchlistEnding: null };
+      if (apiPath === mockApi.users.getMyProfile)
+        return { profile: { role: "buyer" } };
+      return null;
+    });
+    renderSettings();
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Watchlist Ending Alerts push" })
+    );
+    await vi.waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Push notifications enabled");
+    });
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notificationsWatchlistEnding: expect.objectContaining({ push: true }),
+      })
+    );
+  });
+
+  it("shows fallback message when push disable throws non-Error", async () => {
+    vi.mocked(pushNotifications.isPushSupported).mockReturnValue(true);
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.userPreferences.getMyPreferences)
+        return {
+          notificationsOutbid: {
+            inApp: true,
+            push: true,
+            email: false,
+            whatsapp: false,
+          },
+        };
+      if (apiPath === mockApi.users.getMyProfile)
+        return { profile: { role: "buyer" } };
+      return null;
+    });
+    // Make updateMyPreferences reject with a non-Error value
+    mockMutate.mockRejectedValueOnce("network failure");
+    renderSettings();
+    fireEvent.click(screen.getByRole("switch", { name: "Outbid Alerts push" }));
+    await vi.waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Failed to disable push notifications"
+      );
+    });
+  });
+
+  it("does not call mutation again if a save is already in progress", async () => {
+    let resolveFirst!: () => void;
+    mockMutate.mockReturnValueOnce(
+      new Promise<void>((res) => {
+        resolveFirst = res;
+      })
+    );
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+    // First click — stalls
+    fireEvent.click(sidebarSwitch);
+    // Second click — should be ignored because isSavingRef.current is true
+    fireEvent.click(sidebarSwitch);
+    // Only one call should have been made
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+    // Resolve to clean up
+    resolveFirst();
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalled());
   });
 });

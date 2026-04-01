@@ -11,8 +11,8 @@ import {
 const EVENT_TO_PREFERENCE_FIELD = {
   outbid: "notificationsOutbid",
   auctionWon: "notificationsAuctionWon",
-  auctionLost: "notificationsAuctionWon",
-  reserveNotMet: "notificationsAuctionWon",
+  auctionLost: "notificationsAuctionLost",
+  reserveNotMet: "notificationsReserveNotMet",
   watchlistEnding: "notificationsWatchlistEnding",
   listingApproved: "notificationsListingApproved",
 } as const;
@@ -21,7 +21,7 @@ type NotificationEventType = keyof typeof EVENT_TO_PREFERENCE_FIELD;
 
 /**
  * Gets the user's push preference for a specific notification event type.
- * Defaults to `true` (push enabled) when no preference is stored.
+ * Defaults to `false` (push disabled) when no preference is stored.
  *
  * @param ctx - Convex query context
  * @param userId - The user ID to check
@@ -51,8 +51,17 @@ export const getNotificationPreference = internalQuery({
       .unique();
 
     const prefKey = EVENT_TO_PREFERENCE_FIELD[args.eventType];
-    const pref = prefs?.[prefKey] as { push: boolean } | undefined;
-    return { push: pref?.push ?? true };
+    // Each preference field is an optional object with a `push` boolean.
+    // We read the field dynamically but all mapped fields share this shape.
+    const prefValue = prefs?.[prefKey];
+    const push =
+      prefValue !== null &&
+      typeof prefValue === "object" &&
+      "push" in prefValue &&
+      typeof prefValue.push === "boolean"
+        ? prefValue.push
+        : false;
+    return { push };
   },
 });
 
@@ -84,21 +93,6 @@ export const getSubscriptionsForUser = internalQuery({
       .query("pushSubscriptions")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .collect();
-  },
-});
-
-/**
- * Gets all user IDs that have push notifications enabled globally.
- *
- * @param ctx - Convex query context
- * @returns Array of user IDs with push enabled
- */
-export const getUserIdsWithPushEnabled = internalQuery({
-  args: {},
-  returns: v.array(v.string()),
-  handler: async (ctx: QueryCtx) => {
-    const subs = await ctx.db.query("pushSubscriptions").collect();
-    return [...new Set(subs.map((s) => s.userId))];
   },
 });
 

@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 
 import { useSession } from "@/lib/auth-client";
 import { LoadingPage } from "@/components/LoadingIndicator";
@@ -18,6 +18,40 @@ import {
   subscribeUserToPush,
   unsubscribeUserFromPush,
 } from "@/lib/pushNotifications";
+
+type PrefKey =
+  | "notificationsOutbid"
+  | "notificationsAuctionWon"
+  | "notificationsWatchlistEnding"
+  | "notificationsListingApproved"
+  | "notificationsAuctionLost"
+  | "notificationsReserveNotMet";
+
+type NotificationPref = {
+  inApp: boolean;
+  push: boolean;
+  email: boolean;
+  whatsapp: boolean;
+};
+
+type WatchlistPref = NotificationPref & {
+  window: "disabled" | "1h" | "3h" | "24h";
+};
+
+const DEFAULT_NOTIFICATION_PREF: NotificationPref = {
+  inApp: true,
+  push: false,
+  email: false,
+  whatsapp: false,
+};
+
+const DEFAULT_WATCHLIST_PREF: WatchlistPref = {
+  inApp: true,
+  push: false,
+  email: false,
+  whatsapp: false,
+  window: "1h",
+};
 
 /**
  * Reusable toggle switch button.
@@ -75,6 +109,97 @@ function ToggleSwitch({
 }
 
 /**
+ * Renders a notification preference row with in-app and push toggles.
+ *
+ * @param props - Component props
+ * @param props.label - Display label for the notification type
+ * @param props.description - Subtitle description
+ * @param props.prefKey - Preference field key
+ * @param props.inAppChecked - Whether in-app is enabled
+ * @param props.pushChecked - Whether push is enabled
+ * @param props.onInAppToggle - Handler for in-app toggle
+ * @param props.onPushToggle - Handler for push toggle
+ * @param props.pushSupported - Whether push is supported in browser
+ * @param props.isEnablingPush - Whether push enable is in progress
+ * @returns JSX for the notification toggle row
+ */
+function NotificationToggleRow({
+  label,
+  description,
+  prefKey,
+  inAppChecked,
+  pushChecked,
+  onInAppToggle,
+  onPushToggle,
+  pushSupported,
+  isEnablingPush,
+}: {
+  label: string;
+  description: string;
+  prefKey: PrefKey;
+  inAppChecked: boolean;
+  pushChecked: boolean;
+  onInAppToggle: () => void;
+  onPushToggle: (key: PrefKey) => void;
+  pushSupported: boolean;
+  isEnablingPush: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <Label className="text-sm font-bold">{label}</Label>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          role="switch"
+          aria-label={`${label} in-app`}
+          aria-checked={inAppChecked}
+          onClick={onInAppToggle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onInAppToggle();
+            }
+          }}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+            inAppChecked ? "bg-primary" : "bg-input"
+          }`}
+          title="In-app"
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+              inAppChecked ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+        {pushSupported && (
+          <button
+            type="button"
+            role="switch"
+            aria-label={`${label} push`}
+            aria-checked={pushChecked}
+            onClick={() => onPushToggle(prefKey)}
+            disabled={isEnablingPush}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${
+              pushChecked ? "bg-blue-600" : "bg-input"
+            }`}
+            title="Push"
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
+                pushChecked ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * User settings page for managing persistent preferences.
  *
  * Allows authenticated users to configure display, bidding, and notification preferences.
@@ -101,158 +226,153 @@ export default function Settings() {
   const isSeller = myProfile?.profile?.role === "seller";
 
   /**
+   * Builds the updated preference object for a given key and push state.
+   *
+   * @param prefs - Current preferences
+   * @param prefKey - The preference field to update
+   * @param pushValue - The new push value
+   * @returns The updated preference object
+   */
+  const buildUpdatedPref = useCallback(
+    (
+      prefs: NonNullable<typeof preferences>,
+      prefKey: PrefKey,
+      pushValue: boolean
+    ): Parameters<typeof updateMyPreferences>[0] => {
+      if (prefKey === "notificationsWatchlistEnding") {
+        const current: WatchlistPref =
+          prefs.notificationsWatchlistEnding ?? DEFAULT_WATCHLIST_PREF;
+        return {
+          notificationsWatchlistEnding: {
+            ...current,
+            window: current.window ?? "1h",
+            push: pushValue,
+          },
+        };
+      }
+      const current: NotificationPref =
+        (prefs[prefKey] as NotificationPref | undefined) ??
+        DEFAULT_NOTIFICATION_PREF;
+      return { [prefKey]: { ...current, push: pushValue } };
+    },
+    [updateMyPreferences]
+  );
+
+  /**
    * Toggles push notifications for a specific notification type.
    * When enabling: requests browser permission, subscribes, saves to backend.
    * When disabling: updates preference, removes subscription if no push types left.
    *
    * @param prefKey - The notification preference field to toggle push for
    */
-  const togglePush = async (
-    prefKey:
-      | "notificationsOutbid"
-      | "notificationsAuctionWon"
-      | "notificationsWatchlistEnding"
-      | "notificationsListingApproved"
-  ) => {
-    if (!session) {
-      toast.error("Not signed in");
-      return;
-    }
+  const togglePush = useCallback(
+    async (prefKey: PrefKey) => {
+      if (!session) {
+        toast.error("Not signed in");
+        return;
+      }
+      if (!preferences) return;
 
-    const current = preferences?.[prefKey] ?? {
-      inApp: true,
-      push: false,
-      email: false,
-      whatsapp: false,
-    };
-    const isEnabling = !current.push;
+      const current = preferences[prefKey] ?? {
+        inApp: true,
+        push: false,
+        email: false,
+        whatsapp: false,
+      };
+      const isEnabling = !current.push;
 
-    if (isEnabling) {
-      setIsEnablingPush(true);
-      try {
-        const subscription = await subscribeUserToPush();
-        await updatePushSub({
-          pushNotificationsEnabled: true,
-          pushSubscription: subscription,
+      if (isEnabling) {
+        setIsEnablingPush(true);
+        try {
+          const subscription = await subscribeUserToPush();
+          await updatePushSub({
+            pushNotificationsEnabled: true,
+            pushSubscription: subscription,
+          });
+          await updateMyPreferences(
+            buildUpdatedPref(preferences, prefKey, true)
+          );
+          toast.success("Push notifications enabled");
+        } catch (err) {
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : "Failed to enable push notifications"
+          );
+        } finally {
+          setIsEnablingPush(false);
+        }
+      } else {
+        try {
+          await updateMyPreferences(
+            buildUpdatedPref(preferences, prefKey, false)
+          );
+
+          // Build the intended new state to check remaining push
+          const newPrefs = {
+            ...preferences,
+            [prefKey]: buildUpdatedPref(preferences, prefKey, false),
+          };
+          const remainingPush =
+            newPrefs.notificationsOutbid?.push ||
+            newPrefs.notificationsAuctionWon?.push ||
+            newPrefs.notificationsWatchlistEnding?.push ||
+            newPrefs.notificationsListingApproved?.push;
+
+          if (!remainingPush) {
+            await unsubscribeUserFromPush();
+            await updatePushSub({ pushNotificationsEnabled: false });
+          }
+          toast.success("Push notifications disabled");
+        } catch (err) {
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : "Failed to disable push notifications"
+          );
+        }
+      }
+    },
+    [session, preferences, updatePushSub, updateMyPreferences, buildUpdatedPref]
+  );
+
+  const update = useCallback(
+    (
+      fieldsOrUpdater:
+        | Parameters<typeof updateMyPreferences>[0]
+        | ((
+            current: NonNullable<typeof preferences>
+          ) => Parameters<typeof updateMyPreferences>[0])
+    ) => {
+      if (!session) {
+        toast.error("Not signed in");
+        return;
+      }
+
+      if (isSavingRef.current) {
+        return;
+      }
+
+      isSavingRef.current = true;
+
+      const fields =
+        typeof fieldsOrUpdater === "function"
+          ? fieldsOrUpdater(preferences!)
+          : fieldsOrUpdater;
+
+      updateMyPreferences(fields)
+        .then(() => {
+          toast.success("Setting saved");
+        })
+        .catch(() => {
+          toast.error("Failed to save setting");
+        })
+        .finally(() => {
+          isSavingRef.current = false;
         });
-        if (prefKey === "notificationsOutbid") {
-          await updateMyPreferences({
-            notificationsOutbid: { ...current, push: true },
-          });
-        } else if (prefKey === "notificationsAuctionWon") {
-          await updateMyPreferences({
-            notificationsAuctionWon: { ...current, push: true },
-          });
-        } else if (prefKey === "notificationsWatchlistEnding") {
-          await updateMyPreferences({
-            notificationsWatchlistEnding: {
-              ...current,
-              window: (preferences?.notificationsWatchlistEnding?.window ??
-                "1h") as "disabled" | "1h" | "3h" | "24h",
-              push: true,
-            },
-          });
-        } else {
-          await updateMyPreferences({
-            notificationsListingApproved: { ...current, push: true },
-          });
-        }
-        toast.success("Push notifications enabled");
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Failed to enable push notifications"
-        );
-      } finally {
-        setIsEnablingPush(false);
-      }
-    } else {
-      try {
-        if (prefKey === "notificationsOutbid") {
-          await updateMyPreferences({
-            notificationsOutbid: { ...current, push: false },
-          });
-        } else if (prefKey === "notificationsAuctionWon") {
-          await updateMyPreferences({
-            notificationsAuctionWon: { ...current, push: false },
-          });
-        } else if (prefKey === "notificationsWatchlistEnding") {
-          await updateMyPreferences({
-            notificationsWatchlistEnding: {
-              ...current,
-              window: (preferences?.notificationsWatchlistEnding?.window ??
-                "1h") as "disabled" | "1h" | "3h" | "24h",
-              push: false,
-            },
-          });
-        } else {
-          await updateMyPreferences({
-            notificationsListingApproved: { ...current, push: false },
-          });
-        }
-
-        // Check if any push types remain enabled
-        const prefs = preferences;
-        const remainingPush =
-          (prefKey !== "notificationsOutbid" &&
-            (prefs?.notificationsOutbid?.push ?? false)) ||
-          (prefKey !== "notificationsAuctionWon" &&
-            (prefs?.notificationsAuctionWon?.push ?? false)) ||
-          (prefKey !== "notificationsWatchlistEnding" &&
-            (prefs?.notificationsWatchlistEnding?.push ?? false)) ||
-          (prefKey !== "notificationsListingApproved" &&
-            (prefs?.notificationsListingApproved?.push ?? false));
-
-        if (!remainingPush) {
-          await unsubscribeUserFromPush();
-          await updatePushSub({ pushNotificationsEnabled: false });
-        }
-        toast.success("Push notifications disabled");
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Failed to disable push notifications"
-        );
-      }
-    }
-  };
-
-  const update = (
-    fieldsOrUpdater:
-      | Parameters<typeof updateMyPreferences>[0]
-      | ((
-          current: NonNullable<typeof preferences>
-        ) => Parameters<typeof updateMyPreferences>[0])
-  ) => {
-    if (!session) {
-      toast.error("Not signed in");
-      return;
-    }
-
-    if (isSavingRef.current) {
-      return;
-    }
-
-    isSavingRef.current = true;
-
-    const fields =
-      typeof fieldsOrUpdater === "function"
-        ? fieldsOrUpdater(preferences!)
-        : fieldsOrUpdater;
-
-    updateMyPreferences(fields)
-      .then(() => {
-        toast.success("Setting saved");
-      })
-      .catch(() => {
-        toast.error("Failed to save setting");
-      })
-      .finally(() => {
-        isSavingRef.current = false;
-      });
-  };
+    },
+    [session, preferences, updateMyPreferences]
+  );
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 space-y-10">
@@ -292,188 +412,61 @@ export default function Settings() {
               </span>
             </div>
           )}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-bold">Outbid Alerts</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                When someone outbids you
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                role="switch"
-                aria-label="Outbid Alerts in-app"
-                aria-checked={preferences?.notificationsOutbid?.inApp ?? true}
-                onClick={() => {
-                  const current = preferences?.notificationsOutbid ?? {
-                    inApp: true,
-                    push: false,
-                    email: false,
-                    whatsapp: false,
-                  };
-                  update({
-                    notificationsOutbid: {
-                      ...current,
-                      inApp: !current.inApp,
-                    },
-                  });
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    const current = preferences?.notificationsOutbid ?? {
-                      inApp: true,
-                      push: false,
-                      email: false,
-                      whatsapp: false,
-                    };
-                    update({
-                      notificationsOutbid: {
-                        ...current,
-                        inApp: !current.inApp,
-                      },
-                    });
-                  }
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  (preferences?.notificationsOutbid?.inApp ?? true)
-                    ? "bg-primary"
-                    : "bg-input"
-                }`}
-                title="In-app"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                    (preferences?.notificationsOutbid?.inApp ?? true)
-                      ? "translate-x-6"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
-              {pushSupported && (
-                <button
-                  type="button"
-                  role="switch"
-                  aria-label="Outbid Alerts push"
-                  aria-checked={preferences?.notificationsOutbid?.push ?? false}
-                  onClick={() => void togglePush("notificationsOutbid")}
-                  disabled={isEnablingPush}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${
-                    (preferences?.notificationsOutbid?.push ?? false)
-                      ? "bg-blue-600"
-                      : "bg-input"
-                  }`}
-                  title="Push"
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                      (preferences?.notificationsOutbid?.push ?? false)
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
-                  />
-                </button>
-              )}
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-bold">
-                Watchlist Ending Alerts
-              </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                When watched auctions are ending soon
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                role="switch"
-                aria-label="Watchlist Ending Alerts in-app"
-                aria-checked={
-                  preferences?.notificationsWatchlistEnding?.inApp ?? true
-                }
-                onClick={() => {
-                  const current = preferences?.notificationsWatchlistEnding ?? {
-                    inApp: true,
-                    push: false,
-                    email: false,
-                    whatsapp: false,
-                    window: "1h" as const,
-                  };
-                  update({
-                    notificationsWatchlistEnding: {
-                      ...current,
-                      inApp: !current.inApp,
-                    },
-                  });
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    const current =
-                      preferences?.notificationsWatchlistEnding ?? {
-                        inApp: true,
-                        push: false,
-                        email: false,
-                        whatsapp: false,
-                        window: "1h" as const,
-                      };
-                    update({
-                      notificationsWatchlistEnding: {
-                        ...current,
-                        inApp: !current.inApp,
-                      },
-                    });
-                  }
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  (preferences?.notificationsWatchlistEnding?.inApp ?? true)
-                    ? "bg-primary"
-                    : "bg-input"
-                }`}
-                title="In-app"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                    (preferences?.notificationsWatchlistEnding?.inApp ?? true)
-                      ? "translate-x-6"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
-              {pushSupported && (
-                <button
-                  type="button"
-                  role="switch"
-                  aria-label="Watchlist Ending Alerts push"
-                  aria-checked={
-                    preferences?.notificationsWatchlistEnding?.push ?? false
-                  }
-                  onClick={() =>
-                    void togglePush("notificationsWatchlistEnding")
-                  }
-                  disabled={isEnablingPush}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${
-                    (preferences?.notificationsWatchlistEnding?.push ?? false)
-                      ? "bg-blue-600"
-                      : "bg-input"
-                  }`}
-                  title="Push"
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                      (preferences?.notificationsWatchlistEnding?.push ?? false)
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
-                  />
-                </button>
-              )}
-            </div>
-          </div>
+          <NotificationToggleRow
+            label="Outbid Alerts"
+            description="When someone outbids you"
+            prefKey="notificationsOutbid"
+            inAppChecked={preferences?.notificationsOutbid?.inApp ?? true}
+            pushChecked={preferences?.notificationsOutbid?.push ?? false}
+            onInAppToggle={() => {
+              const current = preferences?.notificationsOutbid ?? {
+                inApp: true,
+                push: false,
+                email: false,
+                whatsapp: false,
+              };
+              update({
+                notificationsOutbid: {
+                  ...current,
+                  inApp: !current.inApp,
+                },
+              });
+            }}
+            onPushToggle={togglePush}
+            pushSupported={pushSupported}
+            isEnablingPush={isEnablingPush}
+          />
+
+          <NotificationToggleRow
+            label="Watchlist Ending Alerts"
+            description="When watched auctions are ending soon"
+            prefKey="notificationsWatchlistEnding"
+            inAppChecked={
+              preferences?.notificationsWatchlistEnding?.inApp ?? true
+            }
+            pushChecked={
+              preferences?.notificationsWatchlistEnding?.push ?? false
+            }
+            onInAppToggle={() => {
+              const current = preferences?.notificationsWatchlistEnding ?? {
+                inApp: true,
+                push: false,
+                email: false,
+                whatsapp: false,
+                window: "1h" as const,
+              };
+              update({
+                notificationsWatchlistEnding: {
+                  ...current,
+                  inApp: !current.inApp,
+                },
+              });
+            }}
+            onPushToggle={togglePush}
+            pushSupported={pushSupported}
+            isEnablingPush={isEnablingPush}
+          />
 
           <div className="flex items-center justify-between">
             <Label className="text-sm font-bold">
@@ -498,7 +491,7 @@ export default function Settings() {
                 })
               }
             >
-              <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
+              <SelectTrigger className="w-48 h-10 rounded-md border-2 font-bold">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -509,195 +502,112 @@ export default function Settings() {
             </Select>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm font-bold">
-                Auction Won Notifications
-              </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                When you win or an auction ends
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                role="switch"
-                aria-label="Auction Won Notifications in-app"
-                aria-checked={
-                  preferences?.notificationsAuctionWon?.inApp ?? true
-                }
-                onClick={() => {
-                  const current = preferences?.notificationsAuctionWon ?? {
-                    inApp: true,
-                    push: false,
-                    email: false,
-                    whatsapp: false,
-                  };
-                  update({
-                    notificationsAuctionWon: {
-                      ...current,
-                      inApp: !current.inApp,
-                    },
-                  });
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    const current = preferences?.notificationsAuctionWon ?? {
-                      inApp: true,
-                      push: false,
-                      email: false,
-                      whatsapp: false,
-                    };
-                    update({
-                      notificationsAuctionWon: {
-                        ...current,
-                        inApp: !current.inApp,
-                      },
-                    });
-                  }
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  (preferences?.notificationsAuctionWon?.inApp ?? true)
-                    ? "bg-primary"
-                    : "bg-input"
-                }`}
-                title="In-app"
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                    (preferences?.notificationsAuctionWon?.inApp ?? true)
-                      ? "translate-x-6"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
-              {pushSupported && (
-                <button
-                  type="button"
-                  role="switch"
-                  aria-label="Auction Won Notifications push"
-                  aria-checked={
-                    preferences?.notificationsAuctionWon?.push ?? false
-                  }
-                  onClick={() => void togglePush("notificationsAuctionWon")}
-                  disabled={isEnablingPush}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${
-                    (preferences?.notificationsAuctionWon?.push ?? false)
-                      ? "bg-blue-600"
-                      : "bg-input"
-                  }`}
-                  title="Push"
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                      (preferences?.notificationsAuctionWon?.push ?? false)
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
-                  />
-                </button>
-              )}
-            </div>
-          </div>
+          <NotificationToggleRow
+            label="Auction Won Notifications"
+            description="When you win or an auction ends"
+            prefKey="notificationsAuctionWon"
+            inAppChecked={preferences?.notificationsAuctionWon?.inApp ?? true}
+            pushChecked={preferences?.notificationsAuctionWon?.push ?? false}
+            onInAppToggle={() => {
+              const current = preferences?.notificationsAuctionWon ?? {
+                inApp: true,
+                push: false,
+                email: false,
+                whatsapp: false,
+              };
+              update({
+                notificationsAuctionWon: {
+                  ...current,
+                  inApp: !current.inApp,
+                },
+              });
+            }}
+            onPushToggle={togglePush}
+            pushSupported={pushSupported}
+            isEnablingPush={isEnablingPush}
+          />
+
+          <NotificationToggleRow
+            label="Auction Lost Notifications"
+            description="When an auction you bid on ends and you did not win"
+            prefKey="notificationsAuctionLost"
+            inAppChecked={preferences?.notificationsAuctionLost?.inApp ?? true}
+            pushChecked={preferences?.notificationsAuctionLost?.push ?? false}
+            onInAppToggle={() => {
+              const current = preferences?.notificationsAuctionLost ?? {
+                inApp: true,
+                push: false,
+                email: false,
+                whatsapp: false,
+              };
+              update({
+                notificationsAuctionLost: {
+                  ...current,
+                  inApp: !current.inApp,
+                },
+              });
+            }}
+            onPushToggle={togglePush}
+            pushSupported={pushSupported}
+            isEnablingPush={isEnablingPush}
+          />
+
+          <NotificationToggleRow
+            label="Reserve Not Met Notifications"
+            description="When your auction closes without meeting the reserve price"
+            prefKey="notificationsReserveNotMet"
+            inAppChecked={
+              preferences?.notificationsReserveNotMet?.inApp ?? true
+            }
+            pushChecked={preferences?.notificationsReserveNotMet?.push ?? false}
+            onInAppToggle={() => {
+              const current = preferences?.notificationsReserveNotMet ?? {
+                inApp: true,
+                push: false,
+                email: false,
+                whatsapp: false,
+              };
+              update({
+                notificationsReserveNotMet: {
+                  ...current,
+                  inApp: !current.inApp,
+                },
+              });
+            }}
+            onPushToggle={togglePush}
+            pushSupported={pushSupported}
+            isEnablingPush={isEnablingPush}
+          />
 
           {isSeller && (
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-bold">
-                  Auction Approval Notifications
-                </Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  When your auction listing is approved
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-label="Auction Approval Notifications in-app"
-                  aria-checked={
-                    preferences?.notificationsListingApproved?.inApp ?? true
-                  }
-                  onClick={() => {
-                    const current =
-                      preferences?.notificationsListingApproved ?? {
-                        inApp: true,
-                        push: false,
-                        email: false,
-                        whatsapp: false,
-                      };
-                    update({
-                      notificationsListingApproved: {
-                        ...current,
-                        inApp: !current.inApp,
-                      },
-                    });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      const current =
-                        preferences?.notificationsListingApproved ?? {
-                          inApp: true,
-                          push: false,
-                          email: false,
-                          whatsapp: false,
-                        };
-                      update({
-                        notificationsListingApproved: {
-                          ...current,
-                          inApp: !current.inApp,
-                        },
-                      });
-                    }
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                    (preferences?.notificationsListingApproved?.inApp ?? true)
-                      ? "bg-primary"
-                      : "bg-input"
-                  }`}
-                  title="In-app"
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                      (preferences?.notificationsListingApproved?.inApp ?? true)
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
-                  />
-                </button>
-                {pushSupported && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-label="Auction Approval Notifications push"
-                    aria-checked={
-                      preferences?.notificationsListingApproved?.push ?? false
-                    }
-                    onClick={() =>
-                      void togglePush("notificationsListingApproved")
-                    }
-                    disabled={isEnablingPush}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${
-                      (preferences?.notificationsListingApproved?.push ?? false)
-                        ? "bg-blue-600"
-                        : "bg-input"
-                    }`}
-                    title="Push"
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-background transition-transform ${
-                        (preferences?.notificationsListingApproved?.push ??
-                        false)
-                          ? "translate-x-6"
-                          : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                )}
-              </div>
-            </div>
+            <NotificationToggleRow
+              label="Auction Approval Notifications"
+              description="When your auction listing is approved"
+              prefKey="notificationsListingApproved"
+              inAppChecked={
+                preferences?.notificationsListingApproved?.inApp ?? true
+              }
+              pushChecked={
+                preferences?.notificationsListingApproved?.push ?? false
+              }
+              onInAppToggle={() => {
+                const current = preferences?.notificationsListingApproved ?? {
+                  inApp: true,
+                  push: false,
+                  email: false,
+                  whatsapp: false,
+                };
+                update({
+                  notificationsListingApproved: {
+                    ...current,
+                    inApp: !current.inApp,
+                  },
+                });
+              }}
+              onPushToggle={togglePush}
+              pushSupported={pushSupported}
+              isEnablingPush={isEnablingPush}
+            />
           )}
         </div>
       </section>
@@ -716,7 +626,7 @@ export default function Settings() {
               update({ viewMode: value })
             }
           >
-            <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
+            <SelectTrigger className="w-48 h-10 rounded-md border-2 font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -750,7 +660,7 @@ export default function Settings() {
               update({ defaultStatusFilter: value })
             }
           >
-            <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
+            <SelectTrigger className="w-48 h-10 rounded-md border-2 font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

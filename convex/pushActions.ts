@@ -31,24 +31,24 @@ export const sendPushToUser = internalAction({
     url: v.optional(v.string()),
   },
   returns: v.null(),
-  handler: async (
-    ctx: ActionCtx,
-    args: {
-      userId: string;
-      title: string;
-      body: string;
-      icon?: string;
-      url?: string;
+  handler: async (ctx: ActionCtx, args) => {
+    const publicKey = process.env.VITE_VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    const contactEmail = process.env.VAPID_CONTACT_EMAIL;
+
+    if (!publicKey || !privateKey || !contactEmail) {
+      throw new Error(
+        "Missing VAPID environment variables. Set VITE_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, and VAPID_CONTACT_EMAIL."
+      );
     }
-  ) => {
+    webpush.setVapidDetails(`mailto:${contactEmail}`, publicKey, privateKey);
+
     const subscriptions = await ctx.runQuery(
       internal.pushQueries.getSubscriptionsForUser,
       { userId: args.userId }
     );
 
     if (subscriptions.length === 0) return null;
-
-    configureVAPID();
 
     const payload: PushPayload = {
       title: args.title,
@@ -93,57 +93,3 @@ export const sendPushToUser = internalAction({
     return null;
   },
 });
-
-/**
- * Batch-send push notifications to multiple users.
- * Useful for broadcast notifications.
- *
- * @param userIds - List of user IDs to send to
- * @param payload - Notification content
- */
-export const sendPushToUsers = internalAction({
-  args: {
-    userIds: v.array(v.string()),
-    title: v.string(),
-    body: v.string(),
-    icon: v.optional(v.string()),
-    url: v.optional(v.string()),
-  },
-  returns: v.null(),
-  handler: async (
-    ctx: ActionCtx,
-    args: {
-      userIds: string[];
-      title: string;
-      body: string;
-      icon?: string;
-      url?: string;
-    }
-  ) => {
-    for (const userId of args.userIds) {
-      await ctx.runAction(internal.pushActions.sendPushToUser, {
-        userId,
-        title: args.title,
-        body: args.body,
-        icon: args.icon,
-        url: args.url,
-      });
-    }
-    return null;
-  },
-});
-
-/** Configures VAPID details from environment variables. */
-function configureVAPID(): void {
-  const publicKey = process.env.VITE_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const contactEmail = process.env.VAPID_CONTACT_EMAIL;
-
-  if (!publicKey || !privateKey || !contactEmail) {
-    throw new Error(
-      "Missing VAPID environment variables. Set VITE_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, and VAPID_CONTACT_EMAIL."
-    );
-  }
-
-  webpush.setVapidDetails(`mailto:${contactEmail}`, publicKey, privateKey);
-}
