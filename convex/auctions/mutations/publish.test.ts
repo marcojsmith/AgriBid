@@ -40,6 +40,7 @@ interface MockCtxType {
     delete: ReturnType<typeof vi.fn>;
     getUrl: ReturnType<typeof vi.fn>;
   };
+  runMutation: ReturnType<typeof vi.fn>;
 }
 
 let mockCtx: MockCtxType;
@@ -59,6 +60,9 @@ const queryMock = {
     return queryMock;
   }),
   collect: vi.fn().mockResolvedValue([]),
+  unique: vi.fn().mockResolvedValue(null),
+  first: vi.fn().mockResolvedValue(null),
+  order: vi.fn().mockReturnThis(),
 };
 
 vi.mock("../../lib/auth", () => {
@@ -121,6 +125,7 @@ describe("Publish Mutations", () => {
         delete: vi.fn().mockResolvedValue(undefined),
         getUrl: vi.fn().mockResolvedValue("url"),
       },
+      runMutation: vi.fn().mockResolvedValue("mock-notification-id"),
     };
 
     // Default auth mocks
@@ -292,6 +297,9 @@ describe("Publish Mutations", () => {
         collect: vi
           .fn()
           .mockResolvedValue([{ reporterId: "u3", status: "pending" }]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await flagAuctionHandler(
@@ -319,6 +327,9 @@ describe("Publish Mutations", () => {
           { reporterId: "u3", status: "pending" },
           { reporterId: "u4", status: "pending" },
         ]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await flagAuctionHandler(
@@ -352,6 +363,9 @@ describe("Publish Mutations", () => {
         collect: vi
           .fn()
           .mockResolvedValue([{ reporterId: userId, status: "pending" }]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
       await expect(
         flagAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -375,6 +389,9 @@ describe("Publish Mutations", () => {
           { reporterId: "u3", status: "pending" },
           { reporterId: "u4", status: "pending" },
         ]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await flagAuctionHandler(
@@ -473,6 +490,9 @@ describe("Publish Mutations", () => {
           { reporterId: "u3", status: "pending" },
           { reporterId: "u4", status: "pending" },
         ]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await dismissFlagHandler(
@@ -581,6 +601,131 @@ describe("Publish Mutations", () => {
         })
       ).rejects.toThrow("Invalid duration");
     });
+
+    it("should send notification when seller has no preferences (default enabled)", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+        sellerId: "seller1",
+        title: "Test Auction",
+      });
+      queryMock.unique.mockResolvedValue(null);
+
+      const result = await approveAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.success).toBe(true);
+      expect(mockCtx.runMutation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          recipientId: "seller1",
+          type: "success",
+          title: "Listing approved",
+        })
+      );
+    });
+
+    it("should send notification when seller preferences have no listingApproved field", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+        sellerId: "seller1",
+        title: "Test Auction",
+      });
+      queryMock.unique.mockResolvedValue({
+        _id: "pref1",
+        userId: "seller1",
+        notificationsOutbid: {
+          inApp: true,
+          push: false,
+          email: false,
+          whatsapp: false,
+        },
+      });
+
+      const result = await approveAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.success).toBe(true);
+      expect(mockCtx.runMutation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          recipientId: "seller1",
+        })
+      );
+    });
+
+    it("should send notification when seller has listingApproved inApp enabled", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+        sellerId: "seller1",
+        title: "Test Auction",
+      });
+      queryMock.unique.mockResolvedValue({
+        _id: "pref1",
+        userId: "seller1",
+        notificationsListingApproved: {
+          inApp: true,
+          push: false,
+          email: false,
+          whatsapp: false,
+        },
+      });
+
+      const result = await approveAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.success).toBe(true);
+      expect(mockCtx.runMutation).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          recipientId: "seller1",
+          message:
+            'Your listing "Test Auction" has been approved and is now live.',
+        })
+      );
+    });
+
+    it("should not send notification when seller has listingApproved inApp disabled", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+        sellerId: "seller1",
+        title: "Test Auction",
+      });
+      queryMock.unique.mockResolvedValue({
+        _id: "pref1",
+        userId: "seller1",
+        notificationsListingApproved: {
+          inApp: false,
+          push: false,
+          email: false,
+          whatsapp: false,
+        },
+      });
+
+      const result = await approveAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "notifications",
+        expect.anything()
+      );
+    });
   });
 
   describe("rejectAuctionHandler", () => {
@@ -634,6 +779,9 @@ describe("Publish Mutations", () => {
           { amount: 1500, bidderId: "u2", status: "valid", timestamp: 100 },
           { amount: 1200, bidderId: "u3", status: "valid", timestamp: 110 },
         ]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await closeAuctionEarlyHandler(
@@ -680,6 +828,9 @@ describe("Publish Mutations", () => {
           { amount: 1500, bidderId: "u2", status: "valid", timestamp: 120 },
           { amount: 1500, bidderId: "u3", status: "valid", timestamp: 110 },
         ]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await closeAuctionEarlyHandler(
@@ -703,6 +854,9 @@ describe("Publish Mutations", () => {
           .mockResolvedValue([
             { amount: 1500, bidderId: "u2", status: "valid", timestamp: 100 },
           ]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await closeAuctionEarlyHandler(
@@ -727,6 +881,9 @@ describe("Publish Mutations", () => {
           { amount: 1500, bidderId: "u2", status: "voided", timestamp: 100 },
           { amount: 1200, bidderId: "u3", status: "valid", timestamp: 110 },
         ]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await closeAuctionEarlyHandler(

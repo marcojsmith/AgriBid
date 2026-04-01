@@ -258,18 +258,44 @@ export default defineSchema({
     defaultMaxPrice: v.optional(v.number()),
     biddingRequireConfirmation: v.optional(v.boolean()),
     biddingProxyBidDefault: v.optional(v.boolean()),
-    notificationsBidOutbid: v.optional(v.boolean()),
-    notificationsWatchlistEnding: v.optional(
-      v.union(
-        v.literal("disabled"),
-        v.literal("1h"),
-        v.literal("3h"),
-        v.literal("24h")
-      )
+    notificationsOutbid: v.optional(
+      v.object({
+        inApp: v.boolean(),
+        push: v.boolean(),
+        email: v.boolean(),
+        whatsapp: v.boolean(),
+      })
     ),
-    notificationsAuctionWon: v.optional(v.boolean()),
-    notificationsSellerAuctionApproved: v.optional(v.boolean()),
-    notificationsEmailEnabled: v.optional(v.boolean()),
+    notificationsAuctionWon: v.optional(
+      v.object({
+        inApp: v.boolean(),
+        push: v.boolean(),
+        email: v.boolean(),
+        whatsapp: v.boolean(),
+      })
+    ),
+    notificationsWatchlistEnding: v.optional(
+      v.object({
+        inApp: v.boolean(),
+        push: v.boolean(),
+        email: v.boolean(),
+        whatsapp: v.boolean(),
+        window: v.union(
+          v.literal("disabled"),
+          v.literal("1h"),
+          v.literal("3h"),
+          v.literal("24h")
+        ),
+      })
+    ),
+    notificationsListingApproved: v.optional(
+      v.object({
+        inApp: v.boolean(),
+        push: v.boolean(),
+        email: v.boolean(),
+        whatsapp: v.boolean(),
+      })
+    ),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),
 
@@ -286,6 +312,20 @@ export default defineSchema({
     salesVolume: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
+
+  // Push notification subscriptions (multi-device, one row per browser subscription)
+  pushSubscriptions: defineTable({
+    userId: v.string(),
+    endpoint: v.string(),
+    expirationTime: v.union(v.number(), v.null()),
+    keys: v.object({
+      p256dh: v.string(),
+      auth: v.string(),
+    }),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
 
   // Application Settings (Global configuration for limits, pagination, etc.)
   settings: defineTable({

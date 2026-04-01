@@ -50,11 +50,14 @@ import type * as lib_encryption from "../lib/encryption.js";
 import type * as lib_storage from "../lib/storage.js";
 import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
+import type * as pushActions from "../pushActions.js";
+import type * as pushQueries from "../pushQueries.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as users from "../users.js";
 import type * as watchlist from "../watchlist.js";
+import type * as watchlistNotifications from "../watchlistNotifications.js";
 
 import type {
   ApiFromModules,
@@ -105,11 +108,14 @@ declare const fullApi: ApiFromModules<{
   "lib/storage": typeof lib_storage;
   notifications: typeof notifications;
   presence: typeof presence;
+  pushActions: typeof pushActions;
+  pushQueries: typeof pushQueries;
   seed: typeof seed;
   support: typeof support;
   userPreferences: typeof userPreferences;
   users: typeof users;
   watchlist: typeof watchlist;
+  watchlistNotifications: typeof watchlistNotifications;
 }>;
 
 /**

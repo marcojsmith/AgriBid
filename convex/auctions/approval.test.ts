@@ -52,10 +52,20 @@ describe("auction approval mutations", () => {
         insert: vi.fn(),
         replace: vi.fn(),
         delete: vi.fn(),
-        query: vi.fn(),
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn().mockReturnThis(),
+          filter: vi.fn().mockReturnThis(),
+          collect: vi.fn().mockResolvedValue([]),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
+        }),
         system: {},
         normalizeId: vi.fn((_table: string, id: string) => id),
       },
+      runMutation: vi.fn().mockResolvedValue(undefined),
+      runQuery: vi.fn().mockResolvedValue(undefined),
+      runAction: vi.fn().mockResolvedValue(undefined),
     } as unknown as MockCtx;
   };
 

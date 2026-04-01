@@ -25,6 +25,7 @@ type MockCtxType = {
   auth: {
     getUserIdentity: ReturnType<typeof vi.fn>;
   };
+  runMutation: ReturnType<typeof vi.fn>;
 };
 
 interface IndexQuery {
@@ -83,6 +84,7 @@ describe("Internal Logic Coverage", () => {
       auth: {
         getUserIdentity: vi.fn().mockResolvedValue(null),
       },
+      runMutation: vi.fn().mockResolvedValue("mock-notification-id"),
     };
   });
 
@@ -289,6 +291,11 @@ describe("Internal Logic Coverage", () => {
         .mockReturnValueOnce(
           Object.assign(mockQuery(), {
             collect: vi.fn().mockResolvedValue([mockBid]),
+          })
+        )
+        .mockReturnValueOnce(
+          Object.assign(mockQuery(), {
+            unique: vi.fn().mockResolvedValue(null),
           })
         );
 

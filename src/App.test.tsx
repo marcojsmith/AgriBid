@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 
+// Mock RegisterSW to avoid virtual:pwa-register/react resolution in tests
+vi.mock("./components/RegisterSW", () => ({
+  RegisterSW: () => null,
+}));
+
 // Mock Layout to avoid sidebar/header complexity
 vi.mock("./components/Layout", () => ({
   Layout: ({ children }: { children: ReactNode }) => (

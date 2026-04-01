@@ -25,6 +25,7 @@ import {
 import type { Id, Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { calculateAndRecordFees } from "../internal";
+import { internal } from "../../_generated/api";
 
 /**
  * Result type for closeAuctionEarly mutation.
@@ -319,6 +320,21 @@ export const approveAuctionHandler = async (
 
   await updateCounter(ctx, "auctions", "pending", -1);
   await updateCounter(ctx, "auctions", "active", 1);
+
+  const sellerPrefs = await ctx.db
+    .query("userPreferences")
+    .withIndex("by_userId", (q) => q.eq("userId", auction.sellerId))
+    .unique();
+  if (sellerPrefs?.notificationsListingApproved?.inApp ?? true) {
+    await ctx.runMutation(internal.notifications.notifyUser, {
+      recipientId: auction.sellerId,
+      type: "success",
+      title: "Listing approved",
+      message: `Your listing "${auction.title}" has been approved and is now live.`,
+      link: "/dashboard/my-listings",
+      event: "listingApproved",
+    });
+  }
 
   return { success: true };
 };

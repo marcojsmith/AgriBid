@@ -10,6 +10,7 @@ import {
 } from "../constants";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 
 /**
  * Calculate fees for an auction and persist them to the database.
@@ -184,6 +185,70 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
         }
       );
       await calculateAndRecordFees(ctx, auction, winningBid.amount);
+    }
+
+    // Notify winner
+    if (finalStatus === "sold" && winnerId) {
+      const winnerPrefs = await ctx.db
+        .query("userPreferences")
+        .withIndex("by_userId", (q) => q.eq("userId", winnerId))
+        .unique();
+      if (winnerPrefs?.notificationsAuctionWon?.inApp ?? true) {
+        await ctx.runMutation(internal.notifications.notifyUser, {
+          recipientId: winnerId,
+          type: "success",
+          title: "You won the auction!",
+          message: `Congratulations! You won "${auction.title}" for ${new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", minimumFractionDigits: 2 }).format(auction.currentPrice)}.`,
+          link: "/dashboard/my-bids",
+          event: "auctionWon",
+        });
+      }
+    }
+
+    // Notify losing bidders (unique bidders who are not the winner)
+    if (finalStatus === "sold" && winnerId) {
+      const allBidderIds = [
+        ...new Set(validBids.map((b: Doc<"bids">) => b.bidderId)),
+      ].filter((id: string) => id !== winnerId);
+      for (const loserId of allBidderIds) {
+        const loserPrefs = await ctx.db
+          .query("userPreferences")
+          .withIndex("by_userId", (q) => q.eq("userId", loserId))
+          .unique();
+        if (loserPrefs?.notificationsAuctionWon?.inApp ?? true) {
+          await ctx.runMutation(internal.notifications.notifyUser, {
+            recipientId: loserId,
+            type: "info",
+            title: "Auction ended",
+            message: `The auction for "${auction.title}" has ended. Unfortunately you didn't win this one.`,
+            link: "/dashboard/my-bids",
+            event: "auctionLost",
+          });
+        }
+      }
+    }
+
+    // Notify bidders for unsold auctions (reserve not met)
+    if (finalStatus === "unsold" && validBids.length > 0) {
+      const bidderIds = [
+        ...new Set(validBids.map((b: Doc<"bids">) => b.bidderId)),
+      ];
+      for (const bidderId of bidderIds) {
+        const prefs = await ctx.db
+          .query("userPreferences")
+          .withIndex("by_userId", (q) => q.eq("userId", bidderId))
+          .unique();
+        if (prefs?.notificationsAuctionWon?.inApp ?? true) {
+          await ctx.runMutation(internal.notifications.notifyUser, {
+            recipientId: bidderId,
+            type: "info",
+            title: "Auction ended — reserve not met",
+            message: `The auction for "${auction.title}" ended without reaching the reserve price.`,
+            link: "/dashboard/my-bids",
+            event: "reserveNotMet",
+          });
+        }
+      }
     }
 
     console.log(

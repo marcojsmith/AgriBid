@@ -4,11 +4,13 @@ import { paginationOptsValidator } from "convex/server";
 import {
   mutation,
   query,
+  internalMutation,
   type QueryCtx,
   type MutationCtx,
 } from "./_generated/server";
 import { getAuthUser, requireAuth, resolveUserId } from "./lib/auth";
 import type { Doc, Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 /**
  * Fetches read receipt counts for multiple notifications in parallel using indexed queries.
@@ -399,4 +401,160 @@ export const markAllRead = mutation({
   args: {},
   returns: v.null(),
   handler: markAllReadHandler,
+});
+
+/**
+ * Gets the count of unread notifications for the current user.
+ * Includes both personal notifications and broadcast announcements
+ * without a read receipt.
+ *
+ * @param ctx - Query context
+ * @returns The number of unread notifications
+ */
+export const getUnreadCount = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const authUser = await getAuthUser(ctx);
+    if (!authUser) return 0;
+    const userId = resolveUserId(authUser);
+    if (!userId) return 0;
+
+    // Count unread personal notifications
+    const personalUnread = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_isRead_createdAt", (q) =>
+        q.eq("recipientId", userId).eq("isRead", false)
+      )
+      .collect();
+
+    // Count broadcast announcements without a read receipt from this user
+    const announcements = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_isRead_createdAt", (q) =>
+        q.eq("recipientId", "all").eq("isRead", false)
+      )
+      .collect();
+
+    let unreadAnnouncements = 0;
+    for (const ann of announcements) {
+      const receipt = await ctx.db
+        .query("readReceipts")
+        .withIndex("by_user_notification", (q) =>
+          q.eq("userId", userId).eq("notificationId", ann._id)
+        )
+        .unique();
+      if (!receipt) unreadAnnouncements++;
+    }
+
+    return personalUnread.length + unreadAnnouncements;
+  },
+});
+
+/**
+ * Internal mutation to create a notification.
+ *
+ * @param ctx - Mutation context
+ * @param args - Notification details
+ * @returns The ID of the created notification
+ */
+export const createNotification = internalMutation({
+  args: {
+    recipientId: v.string(),
+    type: v.union(
+      v.literal("info"),
+      v.literal("success"),
+      v.literal("warning"),
+      v.literal("error")
+    ),
+    title: v.string(),
+    message: v.string(),
+    link: v.optional(v.string()),
+  },
+  returns: v.id("notifications"),
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("notifications", {
+      recipientId: args.recipientId,
+      type: args.type,
+      title: args.title,
+      message: args.message,
+      link: args.link,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Notifies a user via in-app notification and optionally sends a push
+ * notification if the user has push enabled for the event type.
+ *
+ * This is the preferred function for creating notifications, as it
+ * respects user channel preferences and handles push delivery.
+ *
+ * @param ctx - Mutation context
+ * @param args - Notification details with optional event type
+ * @returns The ID of the created notification
+ */
+export const notifyUser = internalMutation({
+  args: {
+    recipientId: v.string(),
+    type: v.union(
+      v.literal("info"),
+      v.literal("success"),
+      v.literal("warning"),
+      v.literal("error")
+    ),
+    title: v.string(),
+    message: v.string(),
+    link: v.optional(v.string()),
+    event: v.optional(
+      v.union(
+        v.literal("outbid"),
+        v.literal("auctionWon"),
+        v.literal("auctionLost"),
+        v.literal("reserveNotMet"),
+        v.literal("watchlistEnding"),
+        v.literal("listingApproved")
+      )
+    ),
+  },
+  returns: v.id("notifications"),
+  handler: async (ctx, args) => {
+    const notificationId = await ctx.db.insert("notifications", {
+      recipientId: args.recipientId,
+      type: args.type,
+      title: args.title,
+      message: args.message,
+      link: args.link,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+
+    // Send push notification if event type is specified
+    if (args.event) {
+      try {
+        const pref = await ctx.runQuery(
+          internal.pushQueries.getNotificationPreference,
+          {
+            userId: args.recipientId,
+            eventType: args.event,
+          }
+        );
+
+        if (pref.push) {
+          await ctx.scheduler.runAfter(0, internal.pushActions.sendPushToUser, {
+            userId: args.recipientId,
+            title: args.title,
+            body: args.message,
+            url: args.link,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to schedule push notification:", err);
+      }
+    }
+
+    return notificationId;
+  },
 });

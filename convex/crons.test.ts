@@ -21,6 +21,9 @@ vi.mock("./_generated/api", () => ({
     errors: {
       processErrorReportsAction: "processErrorReportsAction",
     },
+    watchlistNotifications: {
+      notifyWatchlistEndingSoon: "notifyWatchlistEndingSoon",
+    },
   },
 }));
 
@@ -52,6 +55,13 @@ describe("Crons Coverage", () => {
       "process error reports",
       { hourUTC: 2, minuteUTC: 0 },
       "processErrorReportsAction"
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "notify watchlist ending soon",
+      { minutes: 15 },
+      "notifyWatchlistEndingSoon",
+      {}
     );
   });
 });

@@ -753,3 +753,72 @@ export const updateMyProfile = mutation({
   returns: v.null(),
   handler: updateMyProfileHandler,
 });
+
+/**
+ * Registers or removes a push subscription for the current user.
+ * Called when the user enables/disables push notifications in settings,
+ * or when the browser subscription rotates.
+ *
+ * @param ctx - Mutation context
+ * @param args - Push subscription data or null to remove
+ * @returns null
+ */
+export const updatePushSubscription = mutation({
+  args: {
+    pushNotificationsEnabled: v.boolean(),
+    pushSubscription: v.optional(
+      v.object({
+        endpoint: v.string(),
+        expirationTime: v.union(v.number(), v.null()),
+        keys: v.object({
+          p256dh: v.string(),
+          auth: v.string(),
+        }),
+      })
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+
+    if (args.pushNotificationsEnabled && args.pushSubscription) {
+      // Upsert the subscription
+      const existing = await ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_endpoint", (q) =>
+          q.eq("endpoint", args.pushSubscription!.endpoint)
+        )
+        .unique();
+
+      if (existing) {
+        if (existing.userId !== userId) {
+          throw new ConvexError("Push subscription belongs to another user");
+        }
+        await ctx.db.patch(existing._id, {
+          keys: args.pushSubscription.keys,
+          expirationTime: args.pushSubscription.expirationTime,
+        });
+      } else {
+        await ctx.db.insert("pushSubscriptions", {
+          userId,
+          endpoint: args.pushSubscription.endpoint,
+          expirationTime: args.pushSubscription.expirationTime,
+          keys: args.pushSubscription.keys,
+          createdAt: Date.now(),
+        });
+      }
+    } else if (!args.pushNotificationsEnabled) {
+      // Remove all subscriptions for this user
+      const subs = await ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect();
+
+      for (const sub of subs) {
+        await ctx.db.delete(sub._id);
+      }
+    }
+
+    return null;
+  },
+});

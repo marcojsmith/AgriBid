@@ -20,10 +20,14 @@ describe("Internal Mutations Branch Coverage", () => {
       patch: ReturnType<typeof vi.fn>;
       delete: ReturnType<typeof vi.fn>;
       get: ReturnType<typeof vi.fn>;
+      insert: ReturnType<typeof vi.fn>;
     };
     storage: {
       delete: ReturnType<typeof vi.fn>;
     };
+    runMutation: ReturnType<typeof vi.fn>;
+    runQuery: ReturnType<typeof vi.fn>;
+    runAction: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -42,14 +46,21 @@ describe("Internal Mutations Branch Coverage", () => {
             };
           }),
           collect: vi.fn().mockResolvedValue([]),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         })),
         patch: vi.fn(),
         delete: vi.fn(),
         get: vi.fn(),
+        insert: vi.fn(),
       },
       storage: {
         delete: vi.fn(),
       },
+      runMutation: vi.fn().mockResolvedValue(undefined),
+      runQuery: vi.fn().mockResolvedValue(undefined),
+      runAction: vi.fn().mockResolvedValue(undefined),
     };
   });
 
@@ -81,10 +92,16 @@ describe("Internal Mutations Branch Coverage", () => {
           withIndex: vi.fn().mockReturnThis(),
           filter: vi.fn().mockReturnThis(),
           collect: vi.fn().mockResolvedValue([auction]),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         })
         .mockReturnValueOnce({
           withIndex: vi.fn().mockReturnThis(),
           collect: vi.fn().mockResolvedValue(bids),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         });
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -115,10 +132,16 @@ describe("Internal Mutations Branch Coverage", () => {
           withIndex: vi.fn().mockReturnThis(),
           filter: vi.fn().mockReturnThis(),
           collect: vi.fn().mockResolvedValue([auction]),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         })
         .mockReturnValueOnce({
           withIndex: vi.fn().mockReturnThis(),
           collect: vi.fn().mockResolvedValue(bids),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         });
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -149,10 +172,16 @@ describe("Internal Mutations Branch Coverage", () => {
           withIndex: vi.fn().mockReturnThis(),
           filter: vi.fn().mockReturnThis(),
           collect: vi.fn().mockResolvedValue([auction]),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         })
         .mockReturnValueOnce({
           withIndex: vi.fn().mockReturnThis(),
           collect: vi.fn().mockResolvedValue(bids),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         });
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
@@ -174,6 +203,9 @@ describe("Internal Mutations Branch Coverage", () => {
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue([auction]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await cleanupDraftsHandler(
@@ -191,6 +223,9 @@ describe("Internal Mutations Branch Coverage", () => {
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue([auction]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await cleanupDraftsHandler(
@@ -208,6 +243,9 @@ describe("Internal Mutations Branch Coverage", () => {
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue([auction]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       const result = await cleanupDraftsHandler(
@@ -226,6 +264,9 @@ describe("Internal Mutations Branch Coverage", () => {
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue([auction]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
@@ -242,6 +283,9 @@ describe("Internal Mutations Branch Coverage", () => {
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue([auction]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       mockCtx.storage.delete.mockRejectedValue(new Error("Storage fail"));
@@ -264,6 +308,9 @@ describe("Internal Mutations Branch Coverage", () => {
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue([auction]),
+        unique: vi.fn().mockResolvedValue(null),
+        first: vi.fn().mockResolvedValue(null),
+        order: vi.fn().mockReturnThis(),
       });
 
       mockCtx.db.delete.mockRejectedValue(new Error("DB fail"));

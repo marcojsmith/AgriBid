@@ -47,6 +47,9 @@ describe("settleExpiredAuctions mutation", () => {
           collect: vi
             .fn()
             .mockResolvedValue(table === "auctions" ? expiredAuctions : bids),
+          unique: vi.fn().mockResolvedValue(null),
+          first: vi.fn().mockResolvedValue(null),
+          order: vi.fn().mockReturnThis(),
         })),
         patch: vi.fn(),
         get: vi.fn(),
@@ -59,9 +62,9 @@ describe("settleExpiredAuctions mutation", () => {
       auth: {},
       storage: {},
       scheduler: {},
-      runMutation: {},
-      runQuery: {},
-      runAction: {},
+      runMutation: vi.fn().mockResolvedValue(undefined),
+      runQuery: vi.fn().mockResolvedValue(undefined),
+      runAction: vi.fn().mockResolvedValue(undefined),
     } as unknown as MockCtxType;
   };
 

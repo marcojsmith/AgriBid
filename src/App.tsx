@@ -1,10 +1,12 @@
 // app/src/App.tsx
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 import { LoadingIndicator } from "./components/LoadingIndicator";
+import { RegisterSW } from "./components/RegisterSW";
+import { clearBadge } from "./lib/pushNotifications";
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));
@@ -80,8 +82,19 @@ const PageLoader = () => (
  * @returns The root JSX element containing the BrowserRouter, layout and route definitions
  */
 function App() {
+  // Clear PWA badge on mount and when the app regains visibility
+  useEffect(() => {
+    void clearBadge();
+    const handler = () => {
+      if (document.visibilityState === "visible") void clearBadge();
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, []);
+
   return (
     <BrowserRouter>
+      <RegisterSW />
       <Layout>
         <Suspense fallback={<PageLoader />}>
           <Routes>

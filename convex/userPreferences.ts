@@ -21,18 +21,44 @@ const preferenceFields = {
   defaultMaxPrice: v.optional(v.number()),
   biddingRequireConfirmation: v.optional(v.boolean()),
   biddingProxyBidDefault: v.optional(v.boolean()),
-  notificationsBidOutbid: v.optional(v.boolean()),
-  notificationsWatchlistEnding: v.optional(
-    v.union(
-      v.literal("disabled"),
-      v.literal("1h"),
-      v.literal("3h"),
-      v.literal("24h")
-    )
+  notificationsOutbid: v.optional(
+    v.object({
+      inApp: v.boolean(),
+      push: v.boolean(),
+      email: v.boolean(),
+      whatsapp: v.boolean(),
+    })
   ),
-  notificationsAuctionWon: v.optional(v.boolean()),
-  notificationsSellerAuctionApproved: v.optional(v.boolean()),
-  notificationsEmailEnabled: v.optional(v.boolean()),
+  notificationsAuctionWon: v.optional(
+    v.object({
+      inApp: v.boolean(),
+      push: v.boolean(),
+      email: v.boolean(),
+      whatsapp: v.boolean(),
+    })
+  ),
+  notificationsWatchlistEnding: v.optional(
+    v.object({
+      inApp: v.boolean(),
+      push: v.boolean(),
+      email: v.boolean(),
+      whatsapp: v.boolean(),
+      window: v.union(
+        v.literal("disabled"),
+        v.literal("1h"),
+        v.literal("3h"),
+        v.literal("24h")
+      ),
+    })
+  ),
+  notificationsListingApproved: v.optional(
+    v.object({
+      inApp: v.boolean(),
+      push: v.boolean(),
+      email: v.boolean(),
+      whatsapp: v.boolean(),
+    })
+  ),
 };
 
 /**

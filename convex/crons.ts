@@ -40,4 +40,11 @@ crons.daily(
   internal.errors.processErrorReportsAction
 );
 
+crons.interval(
+  "notify watchlist ending soon",
+  { minutes: 15 },
+  internal.watchlistNotifications.notifyWatchlistEndingSoon,
+  {}
+);
+
 export default crons;

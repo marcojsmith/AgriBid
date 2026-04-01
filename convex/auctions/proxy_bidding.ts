@@ -11,6 +11,7 @@ import {
 } from "../constants";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import { internal } from "../_generated/api";
 
 const AUTO_BID_TIMESTAMP_OFFSET = 1; // Ensure auto-bid is chronologically after the manual bid
 
@@ -391,6 +392,9 @@ export async function handleNewBid(
   const auction = await ctx.db.get(auctionId);
   if (!auction) throw new Error("Auction not found");
 
+  // Capture the current winner before placing the bid (for outbid notification)
+  const previousWinnerId = auction.winnerId;
+
   // 1. Validation
   await validateBid(ctx, auction, bidAmount, maxBid);
   const minIncrement = getMinIncrement(auction);
@@ -425,6 +429,29 @@ export async function handleNewBid(
     bidAmount
   );
   if (proxyResult) return proxyResult;
+
+  // Outbid notification (in-app + push if enabled) — runs after proxy resolution
+  // so we only notify if the previous winner was not restored by a counter proxy bid
+  if (previousWinnerId && previousWinnerId !== bidderId) {
+    const resolvedAuction = await ctx.db.get(auctionId);
+    if (resolvedAuction && resolvedAuction.winnerId !== previousWinnerId) {
+      const prefs = await ctx.db
+        .query("userPreferences")
+        .withIndex("by_userId", (q) => q.eq("userId", previousWinnerId))
+        .unique();
+      const shouldNotifyInApp = prefs?.notificationsOutbid?.inApp ?? true;
+      if (shouldNotifyInApp) {
+        await ctx.runMutation(internal.notifications.notifyUser, {
+          recipientId: previousWinnerId,
+          type: "warning",
+          title: "You've been outbid",
+          message: `Someone placed a higher bid on "${auction.title}". Bid now to stay in the lead.`,
+          link: `/auctions/${auction._id}`,
+          event: "outbid",
+        });
+      }
+    }
+  }
 
   let finalNextBid: number | null = null;
   if (maxBid !== undefined && maxBid > bidAmount) {
