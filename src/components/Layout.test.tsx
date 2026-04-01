@@ -5,6 +5,7 @@ import * as convexReact from "convex/react";
 
 import { useSession } from "@/lib/auth-client";
 import { useBranding } from "@/hooks/useBranding";
+import { SITE_NAME } from "@/lib/seo";
 
 import { Layout } from "./Layout";
 
@@ -208,6 +209,8 @@ describe("Layout", () => {
         </Layout>
       </BrowserRouter>
     );
-    expect(screen.getByTestId("mock-header")).toBeInTheDocument();
+    expect(
+      document.querySelector('meta[property="og:site_name"]')
+    ).toHaveAttribute("content", SITE_NAME);
   });
 });

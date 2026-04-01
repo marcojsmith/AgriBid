@@ -47,7 +47,7 @@ self.addEventListener("push", (event) => {
     icon: payload.icon ?? "/icons/icon-192x192.png",
     badge: payload.badge ?? "/icons/badge-72x72.png",
     data: payload.data,
-    tag: `auction-${payload.data?.auctionId ?? "general"}`,
+    tag: `auction-${payload.data?.auctionId?.trim() || "general"}`,
   };
 
   event.waitUntil(

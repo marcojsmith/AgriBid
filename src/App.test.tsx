@@ -240,6 +240,10 @@ describe("App Routing", () => {
     renderApp("/");
     await screen.findByTestId("home-page");
     vi.mocked(pushNotifications.clearBadge).mockClear();
+    const originalVisibility = Object.getOwnPropertyDescriptor(
+      document,
+      "visibilityState"
+    );
     Object.defineProperty(document, "visibilityState", {
       value: "visible",
       writable: true,
@@ -247,12 +251,21 @@ describe("App Routing", () => {
     });
     document.dispatchEvent(new Event("visibilitychange"));
     expect(pushNotifications.clearBadge).toHaveBeenCalled();
+    if (originalVisibility) {
+      Object.defineProperty(document, "visibilityState", originalVisibility);
+    } else {
+      delete (document as unknown as Record<string, unknown>).visibilityState;
+    }
   });
 
   it("does not call clearBadge when page becomes hidden", async () => {
     renderApp("/");
     await screen.findByTestId("home-page");
     vi.mocked(pushNotifications.clearBadge).mockClear();
+    const originalVisibility = Object.getOwnPropertyDescriptor(
+      document,
+      "visibilityState"
+    );
     Object.defineProperty(document, "visibilityState", {
       value: "hidden",
       writable: true,
@@ -260,6 +273,11 @@ describe("App Routing", () => {
     });
     document.dispatchEvent(new Event("visibilitychange"));
     expect(pushNotifications.clearBadge).not.toHaveBeenCalled();
+    if (originalVisibility) {
+      Object.defineProperty(document, "visibilityState", originalVisibility);
+    } else {
+      delete (document as unknown as Record<string, unknown>).visibilityState;
+    }
   });
 });
 
@@ -268,6 +286,7 @@ describe("SW message handling", () => {
     addEventListener: ReturnType<typeof vi.fn>;
     removeEventListener: ReturnType<typeof vi.fn>;
   };
+  let originalSW: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -289,11 +308,20 @@ describe("SW message handling", () => {
         }
       ),
     });
+    originalSW = Object.getOwnPropertyDescriptor(navigator, "serviceWorker");
     Object.defineProperty(navigator, "serviceWorker", {
       value: mockSW,
       writable: true,
       configurable: true,
     });
+  });
+
+  afterEach(() => {
+    if (originalSW) {
+      Object.defineProperty(navigator, "serviceWorker", originalSW);
+    } else {
+      delete (navigator as unknown as Record<string, unknown>).serviceWorker;
+    }
   });
 
   const renderApp = (path: string) =>
