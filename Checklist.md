@@ -1,5 +1,10 @@
 # AgriBid - Development Checklist
 
+> **Note (2026-09):** Kept as a historical build log. The "Better Auth Integration"
+> section below reflects the initial implementation; the app has since migrated to
+> **Clerk** for authentication. See `docs/security/authentication.md` and
+> `docs/data-flow/authentication.md` for the current, accurate auth architecture.
+
 ## Project Setup & Infrastructure
 
 ### Initial Setup

@@ -28,32 +28,42 @@ For consistency, this project follows these naming rules:
 
 > This document is the authoritative source for naming conventions; other project documents should mirror it.
 
-## Authentication & Security (Better Auth + Convex)
+## Authentication & Security (Clerk + Convex)
 
 ### Configuration Source of Truth
 
-- **`app/convex/config.ts`**: Centralizes configuration like `ALLOWED_ORIGINS`.
-- **`app/convex/auth.ts`**: The main Better Auth configuration for the Convex backend.
-- **`app/convex/auth.config.ts`**: Used for OIDC validation by the Convex runtime.
+- **`convex/config.ts`**: Centralizes configuration like `ALLOWED_ORIGINS`.
+- **`convex/auth.config.ts`**: Verifies the Clerk-issued JWT natively — reads the issuer
+  domain from `CLERK_JWT_ISSUER_DOMAIN` (set per Convex deployment via `bunx convex env
+set`, never in a `.env` file). Kept free of imports from other `convex/` modules — see
+  the comment in the file for why (Convex's bundler treats every env var read in this
+  file's transitive import graph as required to deploy auth).
+- **`convex/lib/auth.ts`**: Maps the verified identity (`ctx.auth.getUserIdentity()`) to
+  the app's `AuthUser` shape and provides `requireAuth`/`requireAdmin`/etc.
+- There is no `convex/auth.ts` and no auth HTTP routes in `convex/http.ts` — Clerk owns
+  sign-up/sign-in/session/OAuth entirely; Convex only verifies the resulting JWT.
 
 ### CORS Implementation
 
-- The CORS logic is manually implemented in `app/convex/http.ts` to ensure strict origin matching and prevent credential leakage.
+- The CORS logic is manually implemented in `convex/http.ts` (`getCorsHeaders`/
+  `addCorsHeaders`) to ensure strict origin matching and prevent credential leakage. As
+  of the Clerk migration these helpers have no production consumer (the `httpRouter` in
+  `http.ts` registers no routes) — kept intentionally for any future Clerk webhook/CORS
+  routes.
 - `ALLOWED_ORIGINS` is parsed from an environment variable with a fallback to `http://localhost:5173`.
-- **Wildcard Support**: Origins can use a suffix pattern (e.g., `.vercel.app`) to match all subdomains. The `isOriginAllowed()` function in `app/convex/config.ts` handles exact matches, wildcard suffix matching, and hostname-based comparison.
+- **Wildcard Support**: Origins can use a suffix pattern (e.g., `.vercel.app`) to match all subdomains. The `isOriginAllowed()` function in `convex/config.ts` handles exact matches, wildcard suffix matching, and hostname-based comparison.
 - If an origin is not in the allowed list, the `Access-Control-Allow-Origin` header is omitted entirely.
-
-### OIDC Discovery Rewrite
-
-- Standard OIDC clients expect the discovery document at `/.well-known/openid-configuration`.
-- The Better Auth Convex plugin serves this internally at `/api/auth/convex/.well-known/openid-configuration`.
-- `app/convex/http.ts` implements a rewrite handler that maps root-level `.well-known` requests to the plugin's internal paths, ensuring compatibility with the Convex runtime's OIDC validation.
 
 ### Environment Variables
 
-- **`CONVEX_SITE_URL`**: Critical for both backend (Better Auth baseURL) and OIDC validation (domain).
+- **`CLERK_JWT_ISSUER_DOMAIN`**: Set per Convex deployment (`bunx convex env set
+CLERK_JWT_ISSUER_DOMAIN <domain>`) to the Clerk instance's issuer domain — dev and
+  prod deployments point at different Clerk instances (Development vs. Production) and
+  must not be mixed.
+- **`VITE_CLERK_PUBLISHABLE_KEY`**: Frontend build-time env var (Vite), read by
+  `src/main.tsx`'s `ClerkProvider`. Must match the same Clerk instance as
+  `CLERK_JWT_ISSUER_DOMAIN` for the environment being built.
 - **`ALLOWED_ORIGINS`**: Comma-separated list of frontend URLs for CORS.
-- **`BETTER_AUTH_SECRET`**: Required by Better Auth for signing tokens.
 - **`PII_ENCRYPTION_KEY`**: A 32-character string used for AES-256-GCM encryption of sensitive user data (e.g., ID numbers).
 
 ## PII Protection & Encryption
@@ -64,10 +74,6 @@ Sensitive user data, such as `firstName`, `lastName`, `phoneNumber`, `kycEmail`,
 - **Key Validation**: The `PII_ENCRYPTION_KEY` must be exactly 32 bytes. In production, the system throws a critical error if the key is missing or invalid.
 - **Data Integrity**: Decryption includes authentication tag validation. Legacy plaintext values are handled gracefully during the transition period.
 - **Administrative Access**: Decryption only occurs within specific admin mutations (e.g., `getProfileForKYC`) which are auditable and restricted by role.
-
-## Backend Utility Helpers
-
-- **`findUserById`**: A shared helper in `app/convex/users.ts` that handles looking up a user by either their Convex `_id` or the shared `userId` string. This ensures consistency across different data models (Better Auth vs. App Profiles).
 
 ## Administrative Audit Logging
 

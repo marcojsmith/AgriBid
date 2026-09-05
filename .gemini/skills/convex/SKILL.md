@@ -20,10 +20,11 @@ To ensure successful automated deployments, follow these dashboard and codebase 
 
 ### Handling Preview Deployments (Dynamic URLs)
 
-Vercel Previews create fresh Convex backends. To make them work with Better Auth:
+Vercel Previews create fresh Convex backends. To make them work with Clerk-based auth
+(see `convex/auth.config.ts`):
 
-1. **Convex Project Defaults**: In Convex Dashboard > Project Settings > Environment Variables, set `BETTER_AUTH_SECRET` as a **Project Default**. This ensures fresh preview backends inherit the secret.
-2. **Dynamic Base URL**: In `convex/auth.ts`, use `process.env.CONVEX_SITE_URL` for the `baseURL`.
+1. **Convex Project Defaults**: In Convex Dashboard > Project Settings > Environment Variables, set `CLERK_JWT_ISSUER_DOMAIN` as a **Project Default** (pointing at Clerk's Development instance). This ensures fresh preview backends inherit it without a manual `convex env set` per preview.
+2. **Frontend Publishable Key**: Set `VITE_CLERK_PUBLISHABLE_KEY` as a Vercel Preview environment variable, matching the same Clerk Development instance.
 3. **Vite Config**: Use `VERCEL_URL` as a fallback for the frontend site URL to handle dynamic branch deployments.
 
 ```typescript
@@ -91,4 +92,4 @@ The `convex/` directory MUST be included in your `include` array for `tsc` to fi
 
 - **Backend Sync**: Always use `bunx convex deploy` in the CI/CD build command rather than a separate step to ensure the frontend is built against the correct backend version.
 - **Gitignore**: Always ignore `convex/_generated/`. Do not commit these files.
-- **Auth Proxying**: If using Better Auth or similar, ensure the Vite proxy is configured to point to your Convex Site URL during local development.
+- **Auth**: This project uses Clerk (JWT verified natively by Convex via `convex/auth.config.ts`) — no auth HTTP routes or Vite proxy are needed for authentication.

@@ -2,6 +2,11 @@
 
 ## Project Specification Document
 
+> **Note (2026-09):** This is the original project spec, kept as a historical record.
+> References to **Better Auth** below reflect the initial implementation; the app has
+> since migrated to **Clerk** for authentication. See `docs/security/authentication.md`
+> and `docs/data-flow/authentication.md` for the current, accurate auth architecture.
+
 ---
 
 ## 1. Executive Summary

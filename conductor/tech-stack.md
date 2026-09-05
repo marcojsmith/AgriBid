@@ -10,7 +10,7 @@
 ## Backend & Database
 
 - **Platform**: [Convex](https://www.convex.dev/) (Real-time backend, database, and file storage)
-- **Authentication**: [Better Auth](https://www.better-auth.com/) (integrated with Convex)
+- **Authentication**: [Clerk](https://clerk.com/) (Email/Password + Google; JWT verified natively by Convex)
 
 ## Tooling & Infrastructure
 
