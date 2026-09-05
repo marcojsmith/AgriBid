@@ -569,10 +569,12 @@ export default function Profile() {
                     Active Auctions
                   </h2>
                 </div>
-                {/* TODO: Create filtered listings page (e.g., /auctions?seller=${userId}) */}
-                <span className="text-xs font-bold uppercase tracking-widest text-primary opacity-60 cursor-default">
+                <Link
+                  to={`/sellers/${userId}/listings`}
+                  className="text-xs font-bold uppercase tracking-widest text-primary hover:underline"
+                >
                   View all →
-                </span>
+                </Link>
               </div>
 
               {activeListings.length === 0 && status === "Exhausted" ? (
@@ -609,10 +611,12 @@ export default function Profile() {
                       Sales History
                     </h2>
                   </div>
-                  {/* TODO: Create filtered sales history page (e.g., /sales?seller=${userId}) */}
-                  <span className="text-xs font-bold uppercase tracking-widest text-green-600 opacity-60 cursor-default">
+                  <Link
+                    to={`/sellers/${userId}/listings/sold`}
+                    className="text-xs font-bold uppercase tracking-widest text-green-600 hover:underline"
+                  >
                     View all →
-                  </span>
+                  </Link>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
