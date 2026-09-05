@@ -4,39 +4,41 @@ This document describes the authentication system architecture and data flows in
 
 ## Architecture Overview
 
-AgriBid uses **Better Auth** integrated with **Convex** for authentication and authorization.
+AgriBid uses **Clerk** for authentication (sign-up, sign-in, sessions, OAuth) and
+**Convex** for authorization and application data. Clerk issues a JWT to the browser;
+Convex verifies that JWT natively (via `convex/auth.config.ts`) and never sees a
+password or session cookie — there is no custom auth HTTP layer in this app.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (React)                         │
 │                                                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │  Login Page  │    │ Signup Form  │    │ Auth Context │   │
+│  │ Clerk <SignIn│    │ ClerkProvider│    │ useAuth /    │   │
+│  │  /SignUp>    │    │ (main.tsx)   │    │ useUser      │   │
 │  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘   │
 └─────────┼───────────────────┼───────────────────┼───────────┘
           │                   │                   │
           ▼                   ▼                   ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  Convex HTTP Layer                          │
-│                  (app/convex/http.ts)                       │
-│                  auth route handlers                         │
+│                  Clerk (hosted)                              │
+│         Session management, password hashing, OAuth          │
+│                Issues a signed JWT per session                │
 └─────────────────────────┬───────────────────────────────────┘
-                          │
+                          │ JWT attached to every Convex call
+                          │ via ConvexProviderWithClerk
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   Better Auth Server                        │
-│                   (Convex Component)                        │
-│                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌────────────┐  │
-│  │   Session    │    │    User      │    │   OAuth    │  │
-│  │   Manager    │    │   Manager    │    │  Provider  │  │
-│  └──────────────┘    └──────────────┘    └────────────┘  │
+│              Convex JWT Verification                        │
+│              (convex/auth.config.ts)                         │
+│    Verifies the JWT against the Clerk issuer domain           │
+│    (CLERK_JWT_ISSUER_DOMAIN env var, per deployment)           │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │               Application Profiles Layer                   │
-│               (app/convex/lib/auth.ts)                      │
+│               (convex/lib/auth.ts)                           │
 │                                                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌────────────┐  │
 │  │ requireAuth  │    │ requireAdmin  │    │ requireVer │  │
@@ -55,83 +57,56 @@ AgriBid uses **Better Auth** integrated with **Convex** for authentication and a
 
 ## Authentication Flow
 
-### 1. User Registration
+### 1. Sign-up / Sign-in
+
+Clerk's embedded `<SignIn>` component (`src/pages/Login.tsx`) handles registration,
+login, and Google OAuth entirely — there is no custom form or backend endpoint for any
+of it.
 
 ```text
-User → Login Page → Sign Up Form
+User → Login Page → Clerk <SignIn>
               │
               ▼
-        Better Auth
-        (email/password)
+        Clerk (hosted)
+        (email/password or Google)
               │
               ▼
-        Create Session
+        Issues session + JWT
               │
               ▼
-        Create Profile
+        ClerkProvider makes JWT
+        available to Convex client
+              │
+              ▼
+        First authenticated Convex
+        call → syncUser mutation
+        creates/updates profile
         (default role: buyer)
               │
               ▼
-        Redirect to Home
+        Redirect to callback URL
 ```
 
 **Steps:**
 
-1. User fills registration form (email, password, name)
-2. Better Auth creates auth user and hashes password
-3. Profile is created with default role (buyer)
-4. Session established via cookie/token
-5. Redirect to home page with authenticated state
+1. User interacts with Clerk's `<SignIn>` UI (email/password or "Continue with Google").
+2. Clerk validates credentials / completes the OAuth flow and issues a session + JWT.
+   AgriBid's code never touches a password or an OAuth token directly.
+3. `ConvexProviderWithClerk` (in `src/main.tsx`) attaches the current Clerk JWT to every
+   Convex request.
+4. `Layout.tsx` calls the `syncUser` mutation whenever the signed-in user's id changes;
+   `syncUserHandler` (`convex/users.ts`) creates the `profiles` row on first login
+   (default role `buyer`, `isVerified: false`) or patches `name`/`email` on subsequent
+   logins.
+5. User is redirected to the (validated) `callbackUrl` query param, or `/` if absent or
+   unsafe.
 
-### 2. User Login
+### 2. OAuth Login (Google)
 
-```text
-User → Login Page → Email/Password
-              │
-              ▼
-        Better Auth
-        (validate credentials)
-              │
-              ├──────────────────┐
-              │                  │
-              ▼                  ▼
-        Success             Failure
-              │                  │
-              ▼                  ▼
-        Create Session    Show Error
-              │
-              ▼
-        Check/Create
-        Profile
-              │
-              ▼
-        Redirect to Home
-```
-
-### 3. OAuth Login (Google)
-
-```text
-User → Login Page → Click Google OAuth
-              │
-              ▼
-        Google OAuth Flow
-              │
-              ▼
-        Callback with token
-              │
-              ▼
-        Better Auth
-        (exchange code for user)
-              │
-              ▼
-        Create/Update Profile
-              │
-              ▼
-        Create Session
-              │
-              ▼
-        Redirect to Home
-```
+Google sign-in is configured entirely inside the Clerk dashboard (per Clerk instance —
+dev and prod are configured separately) and requires no app code. Clerk performs the
+full OAuth 2.0 flow and hands the frontend the same JWT/session as an email/password
+login; the rest of the flow (steps 3-5 above) is identical.
 
 ---
 
@@ -140,19 +115,21 @@ User → Login Page → Click Google OAuth
 ### Role-Based Access Control (RBAC)
 
 ```text
-Request → Auth Middleware
+Request → Convex function
               │
               ▼
-        Get Current User
+        ctx.auth.getUserIdentity()
+        (Convex verifies the Clerk JWT)
               │
               ├──────────────────┐
               │                  │
               ▼                  ▼
-        User Exists       No User
+        Identity Exists    No Identity
               │                  │
               ▼                  ▼
-        Check Role         Redirect
-              │              to Login
+        Look up profile    requireAuth() throws
+        by userId          "Not authenticated"
+        Check role
               │
         ┌─────┴─────┐
         │           │
@@ -160,49 +137,55 @@ Request → Auth Middleware
     Authorized   Unauthorized
         │           │
         ▼           ▼
-    Allow Access  Show 403
+    Allow Access  Throw / 403
 ```
 
 ### Authorization Utilities
 
-Located in `app/convex/lib/auth.ts`:
+Located in `convex/lib/auth.ts`:
 
-| Function                    | Purpose                           | Access Level   |
-| --------------------------- | --------------------------------- | -------------- |
-| `getAuthUser()`             | Get current authenticated user    | Public         |
-| `getCallerRole()`           | Get user's role from profile      | Public         |
-| `requireAuth()`             | Ensure user is authenticated      | Authenticated  |
-| `requireProfile()`          | Ensure authenticated with profile | Authenticated  |
-| `requireAdmin()`            | Ensure user is admin              | Admin only     |
-| `requireVerified()`         | Ensure profile is KYC verified    | Verified users |
-| `getAuthenticatedProfile()` | Get auth user + profile           | Public         |
+| Function                    | Purpose                                                 | Access Level     |
+| --------------------------- | ------------------------------------------------------- | ---------------- |
+| `getAuthUser()`             | Map the verified Clerk identity to `AuthUser`           | Public           |
+| `getCallerRole()`           | Get user's role from profile                            | Public           |
+| `requireAuth()`             | Ensure user is authenticated                            | Authenticated    |
+| `requireProfile()`          | Ensure authenticated with profile                       | Authenticated    |
+| `requireAdmin()`            | Ensure user is admin                                    | Admin only       |
+| `requireVerified()`         | Ensure profile is KYC verified                          | Verified users   |
+| `requireVerifiedSeller()`   | Ensure profile is KYC-verified seller (or admin)        | Verified sellers |
+| `getAuthenticatedProfile()` | Get auth user + profile (alias: `getAuthWithProfile()`) | Public           |
 
 ---
 
 ## Session Management
 
-### Session Token Flow
+Session issuance, storage, and expiry are entirely owned by Clerk — AgriBid's frontend
+and Convex backend never see or manage a session cookie directly.
 
 ```text
-Browser                        Convex Server
-   │                                  │
-   │──── Login Request ──────────────▶│
-   │                                  │
-   │◀─── Set-Cookie (session) ───────│
-   │                                  │
-   │──── Authenticated Request ─────▶│
-   │    (Cookie: session_token)       │
-   │                                  │
-   │◀─── Response + Data ─────────────│
-   │                                  │
+Browser                  Clerk (hosted)              Convex Server
+   │                          │                             │
+   │──── Sign in ────────────▶│                             │
+   │◀─── Session + JWT ───────│                             │
+   │                          │                             │
+   │──── Convex call with current JWT ────────────────────▶│
+   │      (ConvexProviderWithClerk attaches it)              │
+   │                          │      Verifies JWT against    │
+   │                          │      CLERK_JWT_ISSUER_DOMAIN │
+   │◀─── Response + Data ──────────────────────────────────│
 ```
 
 ### Session Validation
 
-- Sessions stored server-side by Better Auth
-- Session token passed via HTTP-only cookie
-- Convex validates session on each authenticated request
-- Expired sessions trigger re-authentication
+- Clerk manages session lifetime, refresh, and revocation client-side.
+- `ConvexProviderWithClerk` (`convex/react-clerk`) automatically refreshes and attaches
+  the current JWT to every Convex request.
+- Convex verifies the JWT's signature and issuer on every request against the domain
+  configured in `convex/auth.config.ts` (read from the `CLERK_JWT_ISSUER_DOMAIN`
+  environment variable, set per Convex deployment — dev and prod point at different
+  Clerk instances).
+- An expired or invalid JWT simply results in `ctx.auth.getUserIdentity()` returning
+  `null`; Clerk's client SDK handles re-authentication.
 
 ---
 
@@ -211,11 +194,16 @@ Browser                        Convex Server
 ### First Login Profile Creation
 
 ```text
-User logs in via Better Auth
+User authenticates via Clerk
            │
            ▼
+    syncUser mutation runs
+    (triggered from Layout.tsx
+     whenever the Clerk user id
+     changes)
+           │
     Check if profile exists
-    (by userId)
+    (by userId, the Clerk subject)
            │
      ┌─────┴─────┐
      │           │
@@ -223,15 +211,13 @@ User logs in via Better Auth
   Exists      Not Exists
      │           │
      ▼           ▼
-  Continue    Create Profile
-                │
-                ▼
-         Default Role: buyer
-         isVerified: false
-                │
-                ▼
-         Redirect to
-         profile completion
+  Patch       Create Profile
+  name/email     │
+  if changed     ▼
+             Default Role: buyer
+             isVerified: false
+             name/email from
+             Clerk identity
 ```
 
 ---
@@ -242,23 +228,20 @@ User logs in via Better Auth
 
 ```typescript
 // RoleProtectedRoute component
-// Located: app/src/components/RoleProtectedRoute.tsx
+// Located: src/components/RoleProtectedRoute.tsx
+// Uses useSession() (a thin Clerk wrapper — see src/lib/auth-client.ts)
+// plus the Convex getMyProfile query, not Clerk state directly, so role
+// checks always reflect the application's profile/role data.
 
-function RoleProtectedRoute({
-  children,
-  allowedRoles
-}) {
-  const { profile } = useUserProfile();
+const { data: session, isPending } = useSession();
+const userData = useQuery(api.users.getMyProfile);
 
-  if (!profile) {
-    return <Navigate to="/login" />;
-  }
+if (!session) {
+  return <Navigate to="/login" />;
+}
 
-  if (allowedRoles && !allowedRoles.includes(profile.role)) {
-    return <Navigate to="/" />;
-  }
-
-  return children;
+if (allowedRole !== "any" && userData?.profile?.role !== allowedRole) {
+  // Renders an "Unauthorized" state
 }
 ```
 
@@ -284,43 +267,39 @@ export const adminAction = internalMutation({
 
 ### Open Redirect Protection
 
-- All auth redirects validated against allowed domains
-- Prevents malicious redirect after login
-- Implementation in `app/convex/auth.config.ts`
+- The post-login `callbackUrl` query param is validated by `isValidCallbackUrl()`
+  (`src/lib/utils.ts`) before use: it must be a same-origin relative path starting with
+  a single `/` (rejects `//host`, `https://host`, etc.). Anything invalid falls back to
+  `/`.
+- Implemented in `src/pages/Login.tsx` and `src/hooks/useAuthRedirect.ts`.
 
 ### Password Requirements
 
-- Minimum 8 characters
-- Password hashing via bcrypt (Better Auth)
-- No plaintext password storage
+- Password policy, hashing, and storage are entirely managed by Clerk — AgriBid never
+  receives or stores a password. Configure password requirements in the Clerk
+  dashboard.
 
 ### Rate Limiting
 
-- Convex handles rate limiting at infrastructure level
-- Max 10 bids per user per minute (application level)
+- Convex handles rate limiting at infrastructure level.
+- Max 10 bids per user per minute (application level).
 
 ---
 
 ## Data Storage
 
-### Auth User (Better Auth)
+### Identity (Clerk)
 
-```text
-Table: users (internal)
-- id: string
-- email: string
-- name: string
-- emailVerified: boolean
-- image: string (optional)
-- createdAt: timestamp
-- updatedAt: timestamp
-```
+User identity (email, name, password hash, OAuth linkage, sessions) is stored entirely
+by Clerk, outside the Convex database. AgriBid never persists a password.
 
 ### Application Profile (AgriBid)
 
 ```text
 Table: profiles
-- userId: string (links to auth user)
+- userId: string (Clerk subject / user id)
+- name: string (optional, synced from Clerk on login)
+- email: string (optional, synced from Clerk on login)
 - role: "buyer" | "seller" | "admin"
 - isVerified: boolean
 - kycStatus: "pending" | "verified" | "rejected"
@@ -331,4 +310,4 @@ Table: profiles
 
 ---
 
-_Last Updated: 2026-03-02_
+_Last Updated: 2026-09-05 (migrated from Better Auth to Clerk)_

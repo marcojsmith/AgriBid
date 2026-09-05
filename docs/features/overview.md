@@ -42,7 +42,7 @@ AgriBid is a real-time, high-integrity auction platform purpose-built for the **
 | Frontend   | React + Vite + TypeScript | User interface                 |
 | Styling    | Tailwind CSS + Shadcn/UI  | Design system                  |
 | Backend    | Convex                    | Real-time database & functions |
-| Auth       | Better Auth               | User authentication            |
+| Auth       | Clerk                     | User authentication            |
 | Deployment | Vercel                    | Hosting & CDN                  |
 
 ---
