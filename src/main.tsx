@@ -5,6 +5,7 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/react";
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
@@ -27,6 +28,7 @@ createRoot(rootElement).render(
           <ErrorBoundary>
             <App />
             <Toaster position="top-center" richColors />
+            <Analytics />
           </ErrorBoundary>
         </ConvexProviderWithClerk>
       </ClerkProvider>
