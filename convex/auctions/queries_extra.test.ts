@@ -8,7 +8,6 @@ import {
   getMyBidsHandler,
 } from "./queries";
 import type { QueryCtx } from "../_generated/server";
-import { findUserById } from "../users";
 import type { Doc, Id } from "../_generated/dataModel";
 
 vi.mock("../_generated/server", () => ({
@@ -22,12 +21,6 @@ vi.mock("../lib/auth", () => ({
   resolveUserId: vi.fn(),
   requireAdmin: vi.fn(),
   getAuthenticatedProfile: vi.fn(),
-}));
-
-vi.mock("../auth", () => ({
-  authComponent: {
-    getAuthUser: vi.fn(),
-  },
 }));
 
 vi.mock("./helpers", () => {
@@ -45,10 +38,6 @@ vi.mock("./helpers", () => {
   };
 });
 
-vi.mock("../users", () => ({
-  findUserById: vi.fn(),
-}));
-
 vi.mock("../admin_utils", () => ({
   countQuery: vi.fn().mockResolvedValue(10),
 }));
@@ -61,6 +50,7 @@ interface MockQuery {
   take: Mock;
   collect: Mock;
   paginate: Mock;
+  unique: Mock;
   [Symbol.asyncIterator]: Mock;
 }
 
@@ -93,6 +83,7 @@ describe("Queries Extra Coverage", () => {
       take: vi.fn().mockReturnThis(),
       collect: vi.fn().mockResolvedValue([]),
       paginate: vi.fn().mockReturnThis(),
+      unique: vi.fn().mockResolvedValue(null),
       [Symbol.asyncIterator]: vi.fn(() => {
         let index = 0;
         let items: unknown[] = [];
@@ -220,7 +211,7 @@ describe("Queries Extra Coverage", () => {
     vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
       profile: { role: "admin" },
     } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
-    vi.mocked(findUserById).mockResolvedValue(null);
+    vi.mocked(queryMock.unique).mockResolvedValue(null);
 
     const result = await getAuctionBidsHandler(mockCtx as unknown as QueryCtx, {
       auctionId: "a1" as Id<"auctions">,

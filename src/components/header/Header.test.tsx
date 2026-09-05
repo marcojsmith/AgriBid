@@ -10,8 +10,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { toast } from "sonner";
-
-import { signOut } from "@/lib/auth-client";
+import { useClerk } from "@clerk/clerk-react";
 
 import { Header } from "./Header";
 
@@ -26,9 +25,9 @@ vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
 }));
 
-// Mock auth-client
-vi.mock("@/lib/auth-client", () => ({
-  signOut: vi.fn(),
+// Mock Clerk
+vi.mock("@clerk/clerk-react", () => ({
+  useClerk: vi.fn(),
 }));
 
 // Mock sonner
@@ -54,25 +53,10 @@ vi.mock("./UserDropdown", () => ({
   ),
 }));
 
-vi.mock("./MobileMenu", () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  MobileMenu: ({ isOpen, onClose, onSignOut }: any) =>
-    isOpen ? (
-      <div data-testid="mobile-menu">
-        <button onClick={onClose}>Close</button>
-        <button onClick={onSignOut}>Mobile Sign Out</button>
-      </div>
-    ) : null,
-}));
-
 vi.mock("@/components/NotificationDropdown", () => ({
   NotificationDropdown: () => (
     <div data-testid="notifications">Notifications</div>
   ),
-}));
-
-vi.mock("@/contexts/BrandingProvider", () => ({
-  BrandingProvider: ({ children }: React.PropsWithChildren) => <>{children}</>,
 }));
 
 vi.mock("@/hooks/useBranding", () => ({
@@ -80,8 +64,11 @@ vi.mock("@/hooks/useBranding", () => ({
 }));
 
 describe("Header", () => {
+  const mockSignOut = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    (useClerk as Mock).mockReturnValue({ signOut: mockSignOut });
     (useQuery as Mock).mockReturnValue({
       profile: {
         userId: "u1",
@@ -110,7 +97,7 @@ describe("Header", () => {
   });
 
   it("handles successful sign out", async () => {
-    (signOut as Mock).mockResolvedValue(undefined);
+    mockSignOut.mockResolvedValue(undefined);
     renderHeader();
 
     // Trigger sign out from mock UserDropdown
@@ -119,14 +106,14 @@ describe("Header", () => {
     });
 
     await waitFor(() => {
-      expect(signOut).toHaveBeenCalled();
+      expect(mockSignOut).toHaveBeenCalledWith({ redirectUrl: "/" });
       expect(toast.success).toHaveBeenCalledWith("Signed out successfully");
     });
   });
 
   it("handles sign out failure", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    (signOut as Mock).mockRejectedValue(new Error("Fail"));
+    mockSignOut.mockRejectedValue(new Error("Fail"));
     renderHeader();
 
     await act(async () => {

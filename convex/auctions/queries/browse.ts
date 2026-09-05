@@ -10,7 +10,6 @@ import {
   AuctionDetailValidator,
 } from "../helpers";
 import { getAuthenticatedProfile } from "../../lib/auth";
-import { findUserById } from "../../users";
 import { countQuery } from "../../admin_utils";
 import { MAX_RESULTS_CAP } from "../../constants";
 
@@ -372,36 +371,33 @@ export const getSellerInfoHandler = async (
   ctx: QueryCtx,
   args: { sellerId: string }
 ) => {
-  const user = await findUserById(ctx, args.sellerId);
-
-  if (!user) return null;
-
-  const sharedUserId = user.userId ?? user._id;
-  if (!sharedUserId) return null;
+  const sellerId = args.sellerId;
 
   const profile = await ctx.db
     .query("profiles")
-    .withIndex("by_userId", (q) => q.eq("userId", sharedUserId))
+    .withIndex("by_userId", (q) => q.eq("userId", sellerId))
     .unique();
+
+  if (!profile) return null;
 
   const [soldAuctions, activeAuctions, bidsPlaced] = await Promise.all([
     ctx.db
       .query("auctions")
       .withIndex("by_seller_status", (q) =>
-        q.eq("sellerId", sharedUserId).eq("status", "sold")
+        q.eq("sellerId", sellerId).eq("status", "sold")
       )
       .collect(),
     countQuery(
       ctx.db
         .query("auctions")
         .withIndex("by_seller_status", (q) =>
-          q.eq("sellerId", sharedUserId).eq("status", "active")
+          q.eq("sellerId", sellerId).eq("status", "active")
         )
     ),
     countQuery(
       ctx.db
         .query("bids")
-        .withIndex("by_bidder", (q) => q.eq("bidderId", sharedUserId))
+        .withIndex("by_bidder", (q) => q.eq("bidderId", sellerId))
     ),
   ]);
 
@@ -418,16 +414,16 @@ export const getSellerInfoHandler = async (
       : undefined;
 
   return {
-    name: user.name,
-    isVerified: profile?.isVerified ?? false,
-    role: profile?.role ?? "Private Seller",
-    createdAt: user.createdAt,
+    name: profile.name,
+    isVerified: profile.isVerified,
+    role: profile.role,
+    createdAt: profile.createdAt,
     itemsSold: soldAuctionsCount,
     activeListings: activeListingsCount,
     totalListings: soldAuctionsCount + activeListingsCount,
-    bio: profile?.bio,
-    companyName: profile?.companyName,
-    location: profile?.location,
+    bio: profile.bio,
+    companyName: profile.companyName,
+    location: profile.location,
     bidsPlaced,
     avgSalePrice,
   };

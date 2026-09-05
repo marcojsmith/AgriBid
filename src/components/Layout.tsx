@@ -4,11 +4,11 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { useAuth, useUser } from "@clerk/clerk-react";
 
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import { BrandingProvider } from "@/contexts/BrandingProvider";
 import { useBranding } from "@/hooks/useBranding";
-import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_TITLE,
@@ -128,9 +128,10 @@ const LayoutHelmet = ({
  * @returns The rendered application layout
  */
 export const Layout = ({ children }: LayoutProps) => {
-  const { data: session } = useSession();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const syncUser = useMutation(api.users.syncUser);
-  const userId = session?.user?.id;
+  const userId = user?.id;
   const syncUserRef = useRef(syncUser);
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith("/admin");
@@ -162,7 +163,7 @@ export const Layout = ({ children }: LayoutProps) => {
           seoSettings={seoSettings}
         />
         <div className="min-h-screen flex flex-col bg-background text-foreground">
-          {session && (
+          {isSignedIn && (
             <>
               <NotificationListener />
               <PresenceListener />

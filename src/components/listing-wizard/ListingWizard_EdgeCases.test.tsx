@@ -1,10 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("./context/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
+
+vi.mock("@/lib/auth-client", () => ({
+  useSession: vi.fn(),
+}));
+
+import { useSession } from "@/lib/auth-client";
 
 import { ListingWizard } from "./ListingWizard";
 import { useListingWizard } from "./context/useListingWizard";
@@ -74,6 +80,7 @@ describe("ListingWizard Edge Cases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    (useSession as Mock).mockReturnValue({ data: null, isPending: false });
   });
 
   it("renders null for invalid step index (line 317)", () => {

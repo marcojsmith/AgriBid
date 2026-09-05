@@ -17,21 +17,6 @@ vi.mock("../image_cache", () => ({
   }),
 }));
 
-// Mock the users module
-vi.mock("../users", () => ({
-  findUserById: vi.fn((_ctx: unknown, userId: string) => {
-    if (userId === "seller_123") {
-      return Promise.resolve({
-        _id: "seller_123",
-        email: "seller@example.com",
-        name: "Test Seller",
-        createdAt: Date.now(),
-      });
-    }
-    return Promise.resolve(null);
-  }),
-}));
-
 describe("resolveImageUrls", () => {
   let mockStorage: QueryCtx["storage"];
 
@@ -283,11 +268,16 @@ describe("toAuctionDetail", () => {
 
   const setupMockCtx = (
     category: unknown = null,
-    isAuthenticated: boolean = false
+    isAuthenticated: boolean = false,
+    sellerProfile: unknown = null
   ) => {
     return {
       db: {
         get: vi.fn().mockResolvedValue(category),
+        query: vi.fn(() => ({
+          withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(sellerProfile),
+        })),
       },
       auth: {
         getUserIdentity: vi
@@ -297,6 +287,13 @@ describe("toAuctionDetail", () => {
       storage: {},
     } as unknown as QueryCtx;
   };
+
+  const createMockSellerProfile = () => ({
+    _id: "seller_123",
+    userId: "seller_123",
+    name: "Test Seller",
+    email: "seller@example.com",
+  });
 
   const createMockAuction = (): Doc<"auctions"> => ({
     _id: "auction_123" as Id<"auctions">,
@@ -339,7 +336,7 @@ describe("toAuctionDetail", () => {
 
   it("should transform auction to detail format with seller email for authenticated users", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
-    mockCtx = setupMockCtx(category, true);
+    mockCtx = setupMockCtx(category, true, createMockSellerProfile());
     const auction = createMockAuction();
 
     const result = await toAuctionDetail(mockCtx, auction);
@@ -353,7 +350,7 @@ describe("toAuctionDetail", () => {
 
   it("should not include seller email for unauthenticated users", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
-    mockCtx = setupMockCtx(category, false);
+    mockCtx = setupMockCtx(category, false, createMockSellerProfile());
     const auction = createMockAuction();
 
     const result = await toAuctionDetail(mockCtx, auction);
@@ -362,12 +359,12 @@ describe("toAuctionDetail", () => {
   });
 
   it("should handle seller found but missing email", async () => {
-    const { findUserById } = await import("../users");
-    vi.mocked(findUserById).mockResolvedValue({
-      _id: "seller_123",
-    } as unknown as { _id: string; email?: string });
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
-    mockCtx = setupMockCtx(category, true);
+    mockCtx = setupMockCtx(category, true, {
+      _id: "seller_123",
+      userId: "seller_123",
+      name: "Test Seller",
+    });
     const auction = createMockAuction();
 
     const result = await toAuctionDetail(mockCtx, auction);

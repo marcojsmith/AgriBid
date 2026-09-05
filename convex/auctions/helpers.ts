@@ -3,7 +3,6 @@ import { ConvexError, v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
-import { findUserById } from "../users";
 import {
   STARTTIME_MAX_PAST_MS,
   STARTTIME_MAX_FUTURE_MS,
@@ -266,8 +265,11 @@ export const AuctionDetailValidator = v.object({
  * sellerEmail may be undefined if no seller is found.
  */
 export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
-  const [seller, category, identity] = await Promise.all([
-    findUserById(ctx, auction.sellerId),
+  const [sellerProfile, category, identity] = await Promise.all([
+    ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", auction.sellerId))
+      .unique(),
     auction.categoryId ? ctx.db.get(auction.categoryId) : null,
     ctx.auth.getUserIdentity(),
   ]);
@@ -294,7 +296,9 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     endTime: auction.endTime,
     status: auction.status,
     sellerId: auction.sellerId,
-    sellerEmail: isAuthenticated ? (seller?.email ?? undefined) : undefined,
+    sellerEmail: isAuthenticated
+      ? (sellerProfile?.email ?? undefined)
+      : undefined,
     winnerId: auction.winnerId,
     isExtended: auction.isExtended,
     seedId: auction.seedId,

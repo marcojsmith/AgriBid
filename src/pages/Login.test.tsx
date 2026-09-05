@@ -1,30 +1,30 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { useAuth, SignIn } from "@clerk/clerk-react";
 
-import { useSession, signIn, signUp } from "@/lib/auth-client";
+import { useBranding } from "@/hooks/useBranding";
 
 import Login from "./Login";
 
-// Mock auth-client
-vi.mock("@/lib/auth-client", () => ({
-  useSession: vi.fn(),
-  signIn: {
-    email: vi.fn(),
-  },
-  signUp: {
-    email: vi.fn(),
-  },
+vi.mock("@clerk/clerk-react", () => ({
+  useAuth: vi.fn(),
+  SignIn: vi.fn(() => <div data-testid="clerk-sign-in" />),
 }));
 
 vi.mock("@/hooks/useBranding", () => ({
-  useBranding: () => ({ appName: "AgriBid" }),
+  useBranding: vi.fn(),
 }));
 
 describe("Login Page", () => {
+  const mockUseAuth = useAuth as Mock;
+  const mockUseBranding = useBranding as Mock;
+  const mockSignIn = SignIn as unknown as Mock;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSession as Mock).mockReturnValue({ data: null, isPending: false });
+    mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true });
+    mockUseBranding.mockReturnValue({ appName: "AgriBid" });
   });
 
   const renderComponent = (initialEntries = ["/login"]) =>
@@ -38,305 +38,58 @@ describe("Login Page", () => {
       </MemoryRouter>
     );
 
-  it("renders sign in form by default", () => {
+  it("renders the heading and Clerk SignIn component when signed out", () => {
     renderComponent();
-    expect(screen.getByText("Sign In to AgriBid")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("name@farm.com")).toBeInTheDocument();
-    expect(screen.getByLabelText("Secure Password")).toBeInTheDocument();
+    expect(screen.getByText("AgriBid Access")).toBeInTheDocument();
+    expect(
+      screen.getByText("Real-Time Bidding for Serious Farmers")
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("clerk-sign-in")).toBeInTheDocument();
   });
 
-  it("switches to registration mode", () => {
+  it("shows loading state while auth is loading", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: false });
     renderComponent();
-    const switchButton = screen.getByText("Switch to Registration");
-    fireEvent.click(switchButton);
-
-    expect(screen.getByText("Create Verified Account")).toBeInTheDocument();
-    expect(screen.getByLabelText("Create Secure Password")).toBeInTheDocument();
-    expect(screen.getByText("Switch to Sign In")).toBeInTheDocument();
+    expect(screen.getByText("Authenticating...")).toBeInTheDocument();
+    expect(screen.queryByTestId("clerk-sign-in")).not.toBeInTheDocument();
   });
 
-  it("handles successful sign in", async () => {
-    (signIn.email as Mock).mockResolvedValue({ error: null });
-    renderComponent();
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Secure Password"), {
-      target: { value: "password123" },
-    });
-
-    fireEvent.click(screen.getByText("Sign In to AgriBid"));
-
-    await waitFor(() => {
-      expect(signIn.email).toHaveBeenCalledWith({
-        email: "test@example.com",
-        password: "password123",
-        callbackURL: "/",
-      });
-    });
-  });
-
-  it("handles sign in failure with error message", async () => {
-    (signIn.email as Mock).mockResolvedValue({
-      error: { message: "Invalid credentials" },
-    });
-    renderComponent();
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Secure Password"), {
-      target: { value: "wrong" },
-    });
-
-    fireEvent.click(screen.getByText("Sign In to AgriBid"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
-    });
-  });
-
-  it("handles sign in catch block error", async () => {
-    (signIn.email as Mock).mockRejectedValue(new Error("Network failed"));
-    renderComponent();
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Secure Password"), {
-      target: { value: "password" },
-    });
-
-    fireEvent.click(screen.getByText("Sign In to AgriBid"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Network failed")).toBeInTheDocument();
-    });
-  });
-
-  it("handles successful sign up", async () => {
-    (signUp.email as Mock).mockResolvedValue({ error: null });
-    renderComponent();
-
-    // Switch to signup
-    fireEvent.click(screen.getByText("Switch to Registration"));
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "john.doe@farm.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
-      target: { value: "password123" },
-    });
-
-    fireEvent.click(screen.getByText("Create Verified Account"));
-
-    await waitFor(() => {
-      expect(signUp.email).toHaveBeenCalledWith({
-        email: "john.doe@farm.com",
-        password: "password123",
-        name: "John Doe",
-        callbackURL: "/",
-      });
-    });
-  });
-
-  it("handles sign up failure", async () => {
-    (signUp.email as Mock).mockResolvedValue({
-      error: { message: "Email already exists" },
-    });
-    renderComponent();
-
-    fireEvent.click(screen.getByText("Switch to Registration"));
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "existing@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
-      target: { value: "password" },
-    });
-
-    fireEvent.click(screen.getByText("Create Verified Account"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Email already exists")).toBeInTheDocument();
-    });
-  });
-
-  it("redirects if session exists", () => {
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "1" } },
-      isPending: false,
-    });
+  it("redirects to root when signed in without callbackUrl", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
     renderComponent();
     expect(screen.getByText("Home Page")).toBeInTheDocument();
   });
 
-  it("redirects to callbackUrl if provided and session exists", () => {
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "1" } },
-      isPending: false,
-    });
+  it("redirects to callbackUrl when signed in with a valid callbackUrl", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
     renderComponent(["/login?callbackUrl=/dashboard"]);
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
   });
 
-  it("shows loading state when session is pending", () => {
-    (useSession as Mock).mockReturnValue({ data: null, isPending: true });
-    renderComponent();
-    expect(screen.getByText("Authenticating...")).toBeInTheDocument();
-  });
-
-  it("handles sign up with default name if email has no prefix", async () => {
-    (signUp.email as Mock).mockResolvedValue({ error: null });
-    renderComponent();
-    fireEvent.click(screen.getByText("Switch to Registration"));
-
-    // emailPrefix = email.split("@")[0] || "User"
-    // name = emailPrefix.replace(/[._-]+/g, " ").trim().split(/\s+/)...join(" ") || "User"
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: ".@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
-      target: { value: "password" },
-    });
-
-    fireEvent.click(screen.getByText("Create Verified Account"));
-
-    await waitFor(() => {
-      expect(signUp.email).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "User",
-        })
-      );
-    });
-  });
-
-  it("handles sign up name cleaning with complex email prefix", async () => {
-    (signUp.email as Mock).mockResolvedValue({ error: null });
-    renderComponent();
-    fireEvent.click(screen.getByText("Switch to Registration"));
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "john_doe.middle-name@farm.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
-      target: { value: "password" },
-    });
-
-    fireEvent.click(screen.getByText("Create Verified Account"));
-
-    await waitFor(() => {
-      expect(signUp.email).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "John Doe Middle Name",
-        })
-      );
-    });
-  });
-
-  it("handles sign up catch block error", async () => {
-    (signUp.email as Mock).mockRejectedValue(new Error("Signup failed"));
-    renderComponent();
-    fireEvent.click(screen.getByText("Switch to Registration"));
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
-      target: { value: "password" },
-    });
-
-    fireEvent.click(screen.getByText("Create Verified Account"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Signup failed")).toBeInTheDocument();
-    });
-  });
-
-  it("handles invalid callbackUrl by defaulting to root", () => {
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "1" } },
-      isPending: false,
-    });
+  it("redirects to root when callbackUrl is invalid", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
     renderComponent(["/login?callbackUrl=http://evil.com"]);
     expect(screen.getByText("Home Page")).toBeInTheDocument();
   });
 
-  it("uses default sign in error message if message is missing", async () => {
-    (signIn.email as Mock).mockResolvedValue({
-      error: { message: "" },
-    });
-    renderComponent();
+  it("passes hash routing and callback URLs to the Clerk SignIn component", () => {
+    renderComponent(["/login?callbackUrl=/dashboard"]);
 
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Secure Password"), {
-      target: { value: "password" },
-    });
-    fireEvent.click(screen.getByText("Sign In to AgriBid"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Sign in failed")).toBeInTheDocument();
+    const signInProps = mockSignIn.mock.calls[0][0] as {
+      routing: string;
+      fallbackRedirectUrl: string;
+      signUpFallbackRedirectUrl: string;
+    };
+    expect(signInProps).toMatchObject({
+      routing: "hash",
+      fallbackRedirectUrl: "/dashboard",
+      signUpFallbackRedirectUrl: "/dashboard",
     });
   });
 
-  it("handles sign in catch block with non-Error object", async () => {
-    (signIn.email as Mock).mockRejectedValue("not an error object");
+  it("falls back to the AgriBid app name when branding is absent", () => {
+    mockUseBranding.mockReturnValue(undefined);
     renderComponent();
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Secure Password"), {
-      target: { value: "password" },
-    });
-    fireEvent.click(screen.getByText("Sign In to AgriBid"));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Sign in failed. Please try again.")
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("uses default sign up error message if message is missing", async () => {
-    (signUp.email as Mock).mockResolvedValue({
-      error: { message: "" },
-    });
-    renderComponent();
-    fireEvent.click(screen.getByText("Switch to Registration"));
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
-      target: { value: "password" },
-    });
-    fireEvent.click(screen.getByText("Create Verified Account"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Registration failed")).toBeInTheDocument();
-    });
-  });
-
-  it("handles sign up catch block with non-Error object", async () => {
-    (signUp.email as Mock).mockRejectedValue("string error");
-    renderComponent();
-    fireEvent.click(screen.getByText("Switch to Registration"));
-
-    fireEvent.change(screen.getByPlaceholderText("name@farm.com"), {
-      target: { value: "test@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText("Create Secure Password"), {
-      target: { value: "password" },
-    });
-    fireEvent.click(screen.getByText("Create Verified Account"));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Registration failed. Please try again.")
-      ).toBeInTheDocument();
-    });
+    expect(screen.getByText("AgriBid Access")).toBeInTheDocument();
   });
 });

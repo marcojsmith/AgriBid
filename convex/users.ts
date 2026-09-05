@@ -15,7 +15,6 @@ import {
   getAuthenticatedUserId,
 } from "./lib/auth";
 import type { Id, Doc } from "./_generated/dataModel";
-import { components } from "./_generated/api";
 import {
   logAudit,
   encryptPII,
@@ -32,6 +31,8 @@ export const ProfileValidator = v.object({
   _id: v.id("profiles"),
   _creationTime: v.number(),
   userId: v.string(),
+  name: v.optional(v.string()),
+  email: v.optional(v.string()),
   role: v.union(v.literal("buyer"), v.literal("seller"), v.literal("admin")),
   isVerified: v.boolean(),
   kycStatus: v.optional(
@@ -66,10 +67,7 @@ export const UserProfileValidator = v.object({
 /**
  * Validator for profile with decrypted PII (used in getProfileForKYC).
  */
-export const ProfileForKYCValidator = ProfileValidator.extend({
-  name: v.optional(v.string()),
-  email: v.optional(v.string()),
-});
+export const ProfileForKYCValidator = ProfileValidator;
 
 /**
  * Validator for KYC details (used in getMyKYCDetails).
@@ -85,38 +83,6 @@ export const KYCDetailsValidator = v.object({
 });
 
 /**
- * Helper to find a user by ID, checking both internal _id and shared userId.
- *
- * @param ctx - Convex Query or Mutation context
- * @param id - The user ID to find
- * @returns The user document or null if not found.
- */
-export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
-  if (!id) return null;
-
-  // 1. Try finding by userId (shared identifier used in profiles and mocks)
-  let user = await ctx.runQuery(components.auth.adapter.findOne, {
-    model: "user",
-    where: [{ field: "userId", operator: "eq", value: id }],
-  });
-
-  // 2. Try finding by internal Convex _id
-  if (!user) {
-    try {
-      user = await ctx.runQuery(components.auth.adapter.findOne, {
-        model: "user",
-        where: [{ field: "_id", operator: "eq", value: id }],
-      });
-    } catch {
-      // If id is not a valid Convex ID format, findOne will throw.
-      // We catch this and return null as the user was not found.
-      return null;
-    }
-  }
-  return user;
-}
-
-/**
  * Handler for synchronizing user with profile.
  * @param ctx
  * @returns Promise<null | { success: boolean }>
@@ -124,8 +90,6 @@ export async function findUserById(ctx: QueryCtx | MutationCtx, id: string) {
 export const syncUserHandler = async (ctx: MutationCtx) => {
   try {
     const authUser = await requireAuth(ctx);
-
-    // Use userId if set (mocks), otherwise fall back to primary id
     const linkId = resolveUserId(authUser);
     if (!linkId) return null;
 
@@ -134,21 +98,33 @@ export const syncUserHandler = async (ctx: MutationCtx) => {
       .withIndex("by_userId", (q) => q.eq("userId", linkId))
       .unique();
 
+    const now = Date.now();
+    // Only persist name/email when the Clerk identity actually provides a
+    // non-empty value, so a missing/null claim (e.g. a transient identity-token
+    // gap) can't wipe an already-stored value.
+    const identityFields: { name?: string; email?: string } = {};
+    if (authUser.name) identityFields.name = authUser.name;
+    if (authUser.email) identityFields.email = authUser.email;
+
     if (!existingProfile) {
-      const now = Date.now();
       await ctx.db.insert("profiles", {
         userId: linkId,
-        role: "buyer", // Default role
+        ...identityFields,
+        role: "buyer",
         isVerified: false,
         createdAt: now,
         updatedAt: now,
       });
       await updateCounter(ctx, "profiles", "total", 1);
+    } else {
+      await ctx.db.patch(existingProfile._id, {
+        ...identityFields,
+        updatedAt: now,
+      });
     }
 
     return { success: true };
   } catch (err) {
-    // Log errors that aren't just unauthenticated states
     if (err instanceof Error && !err.message.includes("Unauthenticated")) {
       console.error("Error in syncUser:", err);
     }
@@ -252,7 +228,6 @@ export const listAllProfilesHandler = async (
   // Parallelize user lookups and map presence from the pre-fetched map
   const page = await Promise.all(
     profiles.page.map(async (p: Doc<"profiles">) => {
-      const user = await findUserById(ctx, p.userId);
       const presence = presenceMap.get(p.userId);
 
       const isOnline = presence
@@ -266,8 +241,8 @@ export const listAllProfilesHandler = async (
         role: p.role,
         isVerified: p.isVerified,
         kycStatus: p.kycStatus,
-        name: user?.name,
-        email: user?.email,
+        name: p.name,
+        email: p.email,
         createdAt: p.createdAt,
         isOnline,
       };
@@ -332,8 +307,6 @@ export const getProfileForKYCHandler = async (
 
   if (!profile) return null;
 
-  const user = await findUserById(ctx, userId);
-
   const [
     decIdNumber,
     decFirstName,
@@ -363,8 +336,8 @@ export const getProfileForKYCHandler = async (
 
   return {
     ...profile,
-    name: user?.name,
-    email: user?.email,
+    name: profile.name,
+    email: profile.email,
     firstName: decFirstName,
     lastName: decLastName,
     phoneNumber: decPhone,

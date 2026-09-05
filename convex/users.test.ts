@@ -11,14 +11,13 @@ import {
   submitKYCHandler,
   getMyKYCDetailsHandler,
   deleteMyKYCDocumentHandler,
-  findUserById,
   updateMyProfileHandler,
 } from "./users";
 import * as auth from "./lib/auth";
 import * as adminUtils from "./admin_utils";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import type { AuthUser } from "./auth";
+import type { AuthUser } from "./lib/auth";
 
 vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),
@@ -121,57 +120,6 @@ describe("Users Coverage", () => {
     };
   });
 
-  describe("findUserById", () => {
-    it("should return null if no id is provided", async () => {
-      const result = await findUserById(mockCtx as unknown as QueryCtx, "");
-      expect(result).toBeNull();
-    });
-
-    it("should find user by userId index", async () => {
-      mockCtx.runQuery.mockResolvedValueOnce({ name: "Test User" });
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "user123"
-      );
-      expect(result).toEqual({ name: "Test User" });
-      expect(mockCtx.runQuery).toHaveBeenCalled();
-    });
-
-    it("should find user by _id if userId fails", async () => {
-      mockCtx.runQuery
-        .mockResolvedValueOnce(null) // userId find fails
-        .mockResolvedValueOnce({ name: "Internal User" }); // _id find succeeds
-
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "id123"
-      );
-      expect(result).toEqual({ name: "Internal User" });
-      expect(mockCtx.runQuery).toHaveBeenCalledTimes(2);
-    });
-
-    it("should return null if all searches fail", async () => {
-      mockCtx.runQuery.mockResolvedValue(null);
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "id123"
-      );
-      expect(result).toBeNull();
-    });
-
-    it("should return null if _id search throws (invalid format)", async () => {
-      mockCtx.runQuery
-        .mockResolvedValueOnce(null)
-        .mockRejectedValueOnce(new Error("Invalid ID"));
-
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "not-a-convex-id"
-      );
-      expect(result).toBeNull();
-    });
-  });
-
   describe("syncUserHandler", () => {
     it("should create a profile if it doesn't exist", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
@@ -209,6 +157,56 @@ describe("Users Coverage", () => {
 
       expect(result).toEqual({ success: true });
       expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should preserve stored name/email when Clerk claims are missing", async () => {
+      const dateSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+        userId: "user123",
+        name: null,
+        email: null,
+      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        name: "Old Name",
+        email: "old@example.com",
+      });
+
+      const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
+
+      expect(result).toEqual({ success: true });
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("p1", {
+        updatedAt: 1_700_000_000_000,
+      });
+      dateSpy.mockRestore();
+    });
+
+    it("should patch name/email when the Clerk identity provides them", async () => {
+      const dateSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+        userId: "user123",
+        name: "New Name",
+        email: "new@example.com",
+      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        name: "Old Name",
+        email: "old@example.com",
+      });
+
+      const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
+
+      expect(result).toEqual({ success: true });
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("p1", {
+        name: "New Name",
+        email: "new@example.com",
+        updatedAt: 1_700_000_000_000,
+      });
+      dateSpy.mockRestore();
     });
 
     it("should return null if auth fails", async () => {

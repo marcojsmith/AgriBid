@@ -1,11 +1,11 @@
 // app/src/components/header/Header.tsx
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
+import { useClerk } from "@clerk/clerk-react";
 
 import { useBranding } from "@/hooks/useBranding";
-import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
@@ -22,6 +22,7 @@ import { UserDropdown } from "./UserDropdown";
  * @returns A JSX.Element representing the application header
  */
 export const Header = () => {
+  const { signOut } = useClerk();
   const branding = useBranding();
   const userData = useQuery(api.users.getMyProfile);
   const isLoadingProfile = userData === undefined;
@@ -31,7 +32,6 @@ export const Header = () => {
   const kycStatus = userData?.profile?.kycStatus;
 
   const location = useLocation();
-  const navigate = useNavigate();
 
   const navLinks: { name: string; href: string; disabled?: boolean }[] = [
     { name: "Marketplace", href: "/" },
@@ -42,9 +42,8 @@ export const Header = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await signOut({ redirectUrl: "/" });
       void toast.success("Signed out successfully");
-      void navigate("/");
     } catch (err) {
       console.error("Sign out failed:", err);
       void toast.error("Failed to sign out. Please try again.");
@@ -59,7 +58,7 @@ export const Header = () => {
             to="/"
             className="font-black text-2xl tracking-tighter text-primary"
           >
-            {(branding?.appName ?? 'APP').toUpperCase()}
+            {(branding?.appName ?? "APP").toUpperCase()}
           </Link>
 
           <nav

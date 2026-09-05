@@ -139,6 +139,8 @@ export default defineSchema({
   // Application Profiles (Links Auth User to App Metadata)
   profiles: defineTable({
     userId: v.string(),
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
     role: v.union(v.literal("buyer"), v.literal("seller"), v.literal("admin")),
     isVerified: v.boolean(),
     kycStatus: v.optional(

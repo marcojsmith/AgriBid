@@ -5,7 +5,6 @@ import { mutation } from "./_generated/server";
 import { MS_PER_DAY } from "./constants";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { components } from "./_generated/api";
 import { getCallerRole } from "./lib/auth";
 import { updateCounter } from "./admin_utils";
 
@@ -17,18 +16,6 @@ type SeedTableNames =
   | "equipmentMetadata"
   | "equipmentCategories"
   | "counters";
-
-interface DeleteManyResult {
-  count: number;
-  isDone: boolean;
-  continueCursor?: string | null;
-}
-
-interface AuthUser {
-  _id: string;
-  userId?: string;
-  email: string;
-}
 
 const MOCK_IMAGE_URLS = {
   JD_FRONT:
@@ -173,54 +160,8 @@ export const runSeed = mutation({
         );
       }
 
-      /* 
-      // DISABLED: Do not wipe auth tables as we cannot seed passwords correctly via mutations.
-      // Clear Auth Component tables
-      const authModels = [
-        "user",
-        "account",
-        "session",
-        "verification",
-      ] as const;
-      for (const model of authModels) {
-        let isDone = false;
-        let cursor: string | null = null;
-        while (!isDone) {
-          const result = (await ctx.runMutation(
-            components.auth.adapter.deleteMany,
-            {
-              input: {
-                model,
-                where: [], // Clear all
-              },
-              paginationOpts: { cursor, numItems: BATCH_SIZE },
-            }
-          )) as DeleteManyResult;
-
-          // Runtime guard for unexpected result shapes
-          if (
-            typeof result?.isDone !== "boolean" ||
-            (result.continueCursor !== null &&
-              result.continueCursor !== undefined &&
-              typeof result.continueCursor !== "string")
-          ) {
-            console.error(
-              `Unexpected response from deleteMany for ${model}:`,
-              result
-            );
-            isDone = true;
-            break;
-          }
-
-          isDone = result.isDone;
-          cursor = result.continueCursor ?? null;
-
-          // Safety: If no cursor is returned and it's not marked done, assume done
-          if (!cursor) isDone = true;
-        }
-        console.log(`Requested wipe of auth model: ${model}`);
-      }
-      */
+      // Note: Clerk manages user/session/account data externally — there is
+      // no Convex-side auth table to wipe here anymore.
     }
 
     // 0. Seed Categories
@@ -462,57 +403,47 @@ export const runSeed = mutation({
     }
 
     // 2. Create Mock Seller User Profile (Idempotent)
+    // Note: with Clerk, a profile only exists once its owner has signed in at
+    // least once (syncUser creates it on first login) — this seed step only
+    // promotes an already-synced profile matching the mock email, it cannot
+    // provision a brand-new Clerk identity.
     const mockSellerEmail = "mock-seller@farm.com";
 
-    const seller = (await ctx.runQuery(components.auth.adapter.findOne, {
-      model: "user",
-      where: [{ field: "email", operator: "eq", value: mockSellerEmail }],
-    })) as AuthUser | null;
+    const sellerProfile = await ctx.db
+      .query("profiles")
+      .filter((q) => q.eq(q.field("email"), mockSellerEmail))
+      .first();
 
-    let sellerId = "mock-seller"; // fallback if seller not found
+    if (!sellerProfile) {
+      throw new Error(
+        `Mock seller profile not found. Sign in as ${mockSellerEmail} via Clerk first, then re-run the seed.`
+      );
+    }
 
-    if (seller) {
-      sellerId = seller.userId ?? seller._id;
-      const existingSellerProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", sellerId))
-        .first();
+    const sellerId: string = sellerProfile.userId;
 
-      if (!existingSellerProfile) {
-        await ctx.db.insert("profiles", {
-          userId: sellerId,
-          role: "seller",
-          isVerified: true,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-      }
+    if (sellerProfile.role !== "seller") {
+      await ctx.db.patch(sellerProfile._id, {
+        role: "seller",
+        isVerified: true,
+        updatedAt: Date.now(),
+      });
     }
 
     // 2.5. Create Mock Admin User Profile (Idempotent)
     const mockAdminEmail = "admin@agribid.com";
 
-    const admin = (await ctx.runQuery(components.auth.adapter.findOne, {
-      model: "user",
-      where: [{ field: "email", operator: "eq", value: mockAdminEmail }],
-    })) as AuthUser | null;
+    const adminProfile = await ctx.db
+      .query("profiles")
+      .filter((q) => q.eq(q.field("email"), mockAdminEmail))
+      .first();
 
-    if (admin) {
-      const adminId = admin.userId ?? admin._id;
-      const existingAdminProfile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", adminId))
-        .first();
-
-      if (!existingAdminProfile) {
-        await ctx.db.insert("profiles", {
-          userId: adminId,
-          role: "admin",
-          isVerified: true,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-      }
+    if (adminProfile && adminProfile.role !== "admin") {
+      await ctx.db.patch(adminProfile._id, {
+        role: "admin",
+        isVerified: true,
+        updatedAt: Date.now(),
+      });
     }
 
     // 3. Seed Mock Auctions
@@ -846,8 +777,6 @@ export const clearAllData = mutation({
       "equipmentMetadata",
     ];
 
-    const authModels = ["user", "session", "account", "verification"] as const;
-
     let totalDeleted = 0;
 
     // Clear App Tables
@@ -862,50 +791,8 @@ export const clearAllData = mutation({
       totalDeleted += deletedCount;
     }
 
-    // Clear Auth Tables via component adapter
-    for (const model of authModels) {
-      let isDone = false;
-      let cursor: string | null = null;
-      while (!isDone) {
-        const result = (await ctx.runMutation(
-          components.auth.adapter.deleteMany,
-          {
-            input: {
-              model,
-              where: [],
-            },
-            paginationOpts: { cursor, numItems: BATCH_SIZE },
-          }
-        )) as DeleteManyResult;
-
-        // Runtime guard for unexpected result shapes
-        if (
-          result == null ||
-          typeof result !== "object" ||
-          typeof result.isDone !== "boolean" ||
-          (result.continueCursor !== null &&
-            result.continueCursor !== undefined &&
-            typeof result.continueCursor !== "string")
-        ) {
-          console.error(
-            `Unexpected response from deleteMany for ${model}:`,
-            result
-          );
-          isDone = true;
-          break;
-        }
-
-        const count = result.count;
-        totalDeleted += count;
-        isDone = result.isDone;
-        cursor = result.continueCursor ?? null;
-
-        if (!cursor) isDone = true;
-        console.log(
-          `Wiped batch of auth model: ${model} (${count.toString()} deleted)`
-        );
-      }
-    }
+    // Note: Clerk manages user/session/account data externally — there is no
+    // Convex-side auth table to wipe here anymore.
 
     return totalDeleted;
   },
