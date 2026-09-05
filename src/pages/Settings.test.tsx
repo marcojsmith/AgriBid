@@ -1,7 +1,8 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 import React from "react";
 
 import { useSession } from "@/lib/auth-client";
@@ -11,6 +12,14 @@ import Settings from "./Settings";
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   useMutation: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    info: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/auth-client", () => ({
@@ -217,6 +226,31 @@ describe("Settings Page", () => {
       screen.getByRole("switch", { name: "Show Filter Sidebar by Default" })
     );
     expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("shows a toast and skips save when a save is already in progress", async () => {
+    const pendingSave: { resolve: (() => void) | null } = { resolve: null };
+    mockMutate.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          pendingSave.resolve = resolve;
+        })
+    );
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+
+    fireEvent.click(sidebarSwitch);
+    fireEvent.click(sidebarSwitch);
+
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+    expect(toast.info).toHaveBeenCalledWith("Save already in progress");
+
+    pendingSave.resolve?.();
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith("Setting saved")
+    );
   });
 
   it("reflects saved preferences in switch aria-checked", () => {

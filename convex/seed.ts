@@ -414,9 +414,15 @@ export const runSeed = mutation({
       .filter((q) => q.eq(q.field("email"), mockSellerEmail))
       .first();
 
-    const sellerId = sellerProfile?.userId ?? "mock-seller"; // fallback if seller not found
+    if (!sellerProfile) {
+      throw new Error(
+        `Mock seller profile not found. Sign in as ${mockSellerEmail} via Clerk first, then re-run the seed.`
+      );
+    }
 
-    if (sellerProfile && sellerProfile.role !== "seller") {
+    const sellerId: string = sellerProfile.userId;
+
+    if (sellerProfile.role !== "seller") {
       await ctx.db.patch(sellerProfile._id, {
         role: "seller",
         isVerified: true,

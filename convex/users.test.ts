@@ -159,6 +159,56 @@ describe("Users Coverage", () => {
       expect(mockCtx.db.insert).not.toHaveBeenCalled();
     });
 
+    it("should preserve stored name/email when Clerk claims are missing", async () => {
+      const dateSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+        userId: "user123",
+        name: null,
+        email: null,
+      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        name: "Old Name",
+        email: "old@example.com",
+      });
+
+      const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
+
+      expect(result).toEqual({ success: true });
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("p1", {
+        updatedAt: 1_700_000_000_000,
+      });
+      dateSpy.mockRestore();
+    });
+
+    it("should patch name/email when the Clerk identity provides them", async () => {
+      const dateSpy = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+      vi.mocked(auth.requireAuth).mockResolvedValue({
+        _id: "u1",
+        userId: "user123",
+        name: "New Name",
+        email: "new@example.com",
+      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        name: "Old Name",
+        email: "old@example.com",
+      });
+
+      const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
+
+      expect(result).toEqual({ success: true });
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("p1", {
+        name: "New Name",
+        email: "new@example.com",
+        updatedAt: 1_700_000_000_000,
+      });
+      dateSpy.mockRestore();
+    });
+
     it("should return null if auth fails", async () => {
       vi.mocked(auth.requireAuth).mockRejectedValue(
         new Error("Unauthenticated")

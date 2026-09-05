@@ -42,8 +42,8 @@ export default function Login() {
       </div>
       <SignIn
         routing="hash"
-        afterSignInUrl={callbackURL}
-        afterSignUpUrl={callbackURL}
+        fallbackRedirectUrl={callbackURL}
+        signUpFallbackRedirectUrl={callbackURL}
       />
     </div>
   );

@@ -105,6 +105,7 @@ export default function Settings() {
     }
 
     if (isSavingRef.current) {
+      toast.info("Save already in progress");
       return;
     }
 

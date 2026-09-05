@@ -99,11 +99,17 @@ export const syncUserHandler = async (ctx: MutationCtx) => {
       .unique();
 
     const now = Date.now();
+    // Only persist name/email when the Clerk identity actually provides a
+    // non-empty value, so a missing/null claim (e.g. a transient identity-token
+    // gap) can't wipe an already-stored value.
+    const identityFields: { name?: string; email?: string } = {};
+    if (authUser.name) identityFields.name = authUser.name;
+    if (authUser.email) identityFields.email = authUser.email;
+
     if (!existingProfile) {
       await ctx.db.insert("profiles", {
         userId: linkId,
-        name: authUser.name ?? undefined,
-        email: authUser.email ?? undefined,
+        ...identityFields,
         role: "buyer",
         isVerified: false,
         createdAt: now,
@@ -112,8 +118,7 @@ export const syncUserHandler = async (ctx: MutationCtx) => {
       await updateCounter(ctx, "profiles", "total", 1);
     } else {
       await ctx.db.patch(existingProfile._id, {
-        name: authUser.name ?? undefined,
-        email: authUser.email ?? undefined,
+        ...identityFields,
         updatedAt: now,
       });
     }

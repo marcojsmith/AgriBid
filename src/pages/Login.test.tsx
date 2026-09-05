@@ -77,13 +77,13 @@ describe("Login Page", () => {
 
     const signInProps = mockSignIn.mock.calls[0][0] as {
       routing: string;
-      afterSignInUrl: string;
-      afterSignUpUrl: string;
+      fallbackRedirectUrl: string;
+      signUpFallbackRedirectUrl: string;
     };
     expect(signInProps).toMatchObject({
       routing: "hash",
-      afterSignInUrl: "/dashboard",
-      afterSignUpUrl: "/dashboard",
+      fallbackRedirectUrl: "/dashboard",
+      signUpFallbackRedirectUrl: "/dashboard",
     });
   });
 
