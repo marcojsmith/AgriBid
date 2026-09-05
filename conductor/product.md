@@ -22,7 +22,7 @@ Auction platform for WeBuyTractors
 - **Real-time Bidding Engine**: High-performance bidding with sub-200ms latency, reactive price updates, and "soft-close" logic to prevent last-second sniping.
 - **Listing Creation & Management**: A high-integrity listing wizard for heavy machinery with draft persistence, automated metadata lookups, guided condition checklists, and pricing intelligence. Sellers can manage drafts and publish listings from their dashboard.
 - **Auction Dashboard**: A real-time grid view for monitoring active auctions, tracking countdown timers, managing a personal equipment watchlist, and a grouped "My Bids" summary for tracking bidding status and financial exposure.
-- **Secure Authentication**: Robust user management via Better Auth, supporting email/password and future OAuth integrations.
+- **Secure Authentication**: Robust user management via Clerk, supporting email/password and Google OAuth.
 
 ## Visual Identity & Brand Messaging
 

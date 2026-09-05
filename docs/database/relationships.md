@@ -6,9 +6,10 @@ This document describes the relationships between tables in the AgriBid database
 
 ```text
 ┌─────────────────┐       ┌─────────────────┐
-│     users       │       │    profiles     │
-│  (Better Auth)  │◄──────│                 │
-│                 │ 1:1   │ userId          │
+│  Clerk Identity │       │    profiles     │
+│  (external —    │◄──────│                 │
+│   not a Convex  │  N/A  │ userId          │
+│   table)        │       │ (Clerk subject) │
 └─────────────────┘       └────────┬────────┘
                                    │
                   ┌────────────────┼────────────────┐
@@ -51,16 +52,23 @@ This document describes the relationships between tables in the AgriBid database
 
 ## Relationship Details
 
-### users (Better Auth) → profiles
+### Clerk Identity → profiles
 
-**Relationship:** One-to-One (optional)
+**Relationship:** One-to-One (optional), but the "one" side lives outside Convex.
 
-The `profiles` table extends the Better Auth user with application-specific data. Each auth user may have at most one profile.
+Identity (credentials, sessions, OAuth linkage) is owned entirely by Clerk — there is no
+corresponding `users` table in the Convex database. `profiles.userId` stores the
+Clerk-issued subject (`identity.subject` from `ctx.auth.getUserIdentity()`) as a plain
+string, linking each profile to its Clerk identity without Convex ever storing
+credentials. `profiles.name`/`profiles.email` are denormalized copies of the Clerk
+identity's `name`/`email` claims, synced on every login via the `syncUser` mutation —
+they are cached display data, not the source of truth for identity.
 
-- **Auth Side:** `users.id` → profiles via `userId` field
-- **Profile Side:** Each profile has exactly one associated auth user
+- **Identity side (Clerk, external):** the JWT `subject` claim
+- **Profile side:** `profiles.userId` (unique index), plus cached `name`/`email`
 
-**Cardinality:** 1 : 0..1
+**Cardinality:** 1 (Clerk identity) : 0..1 (profile) — a profile is only created once
+the corresponding Clerk user has signed in at least once.
 
 ---
 

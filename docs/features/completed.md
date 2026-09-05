@@ -187,20 +187,21 @@ This document lists all features that have been implemented in the AgriBid platf
 ### Email/Password Authentication
 
 - **Status**: ✅ Complete
-- **Description**: Traditional registration and login
-- **Location**: `app/src/pages/Login.tsx`, Better Auth
+- **Description**: Registration and login via Clerk's hosted `<SignIn>` component
+- **Location**: `src/pages/Login.tsx`, Clerk
 
 ### Google OAuth
 
 - **Status**: ✅ Complete
 - **Description**: Login with Google account
-- **Location**: Better Auth configuration
+- **Location**: Clerk dashboard configuration
 
 ### Session Management
 
 - **Status**: ✅ Complete
-- **Description**: Server-side session handling with cookies
-- **Location**: Better Auth + Convex
+- **Description**: Session handling owned by Clerk; Convex verifies the resulting JWT
+  natively (no session cookie or auth HTTP layer in this app)
+- **Location**: Clerk + `convex/auth.config.ts`
 
 ---
 

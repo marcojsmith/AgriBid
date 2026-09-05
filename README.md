@@ -71,7 +71,7 @@ In a market where machinery often costs between $50k and $500k, trust is everyth
 
 - **Frontend**: [React 19](https://react.dev/) (Vite) + [TypeScript 5.9](https://www.typescriptlang.org/)
 - **Backend & Database**: [Convex](https://www.convex.dev/) (Reactive Queries, ACID Transactions, Cron Jobs, File Storage)
-- **Authentication**: [Better Auth](https://www.better-auth.com/) (RBAC, OIDC, Multi-tenant ready)
+- **Authentication**: [Clerk](https://clerk.com/) (Email/Password + Google, JWT verified natively by Convex)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn/UI](https://ui.shadcn.com/)
 - **Testing**: [Vitest](https://vitest.dev/) (Unit & Integration)
 - **Deployment**: [Vercel](https://vercel.com/)
@@ -124,7 +124,12 @@ AgriBid/
    Create a `.env.local` file (see `.env.example`):
    ```bash
    VITE_CONVEX_URL=your_convex_url
-   BETTER_AUTH_SECRET=your_auth_secret
+   VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+   ```
+   Then set the JWT issuer domain server-side on your Convex deployment (not in
+   `.env.local` — Convex reads this from its own deployment environment):
+   ```bash
+   bunx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-instance.clerk.accounts.dev
    ```
 3. **Launch Backend**:
    ```bash
