@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
@@ -83,14 +84,13 @@ export default function Settings() {
   const updateMyPreferences = useMutation(
     api.userPreferences.updateMyPreferences
   );
+  const isSavingRef = useRef(false);
 
   if (preferences === undefined || myProfile === undefined) {
     return <LoadingPage message="Loading settings..." />;
   }
 
   const isSeller = myProfile?.profile?.role === "seller";
-
-  let isSaving = false;
 
   const update = (
     fieldsOrUpdater:
@@ -104,11 +104,11 @@ export default function Settings() {
       return;
     }
 
-    if (isSaving) {
+    if (isSavingRef.current) {
       return;
     }
 
-    isSaving = true;
+    isSavingRef.current = true;
 
     const fields =
       typeof fieldsOrUpdater === "function"
@@ -123,7 +123,7 @@ export default function Settings() {
         toast.error("Failed to save setting");
       })
       .finally(() => {
-        isSaving = false;
+        isSavingRef.current = false;
       });
   };
 

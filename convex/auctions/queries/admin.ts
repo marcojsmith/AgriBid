@@ -10,7 +10,6 @@ import {
 import type { Doc, Id } from "../../_generated/dataModel";
 import { toAuctionSummary } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
-import { findUserById } from "../../users";
 import { countQuery } from "../../admin_utils";
 
 /**
@@ -129,8 +128,11 @@ export const getAuctionFlagsHandler = async (
 
   await Promise.all(
     uniqueReporterIds.map(async (reporterId) => {
-      const user = await findUserById(ctx, reporterId);
-      reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      const profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", reporterId))
+        .unique();
+      reporterNames.set(reporterId, profile?.name ?? "Unknown User");
     })
   );
 
@@ -203,8 +205,11 @@ export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
       auctionTitles.set(auctionId, auction?.title ?? "Unknown Auction");
     }),
     ...uniqueReporterIds.map(async (reporterId) => {
-      const user = await findUserById(ctx, reporterId);
-      reporterNames.set(reporterId, user?.name ?? "Unknown User");
+      const profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", reporterId))
+        .unique();
+      reporterNames.set(reporterId, profile?.name ?? "Unknown User");
     }),
   ]);
 

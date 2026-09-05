@@ -1,11 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "sonner";
 
-import { authClient } from "./lib/auth-client";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
 import App from "./App";
@@ -16,17 +16,20 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
+
 createRoot(rootElement).render(
   <StrictMode>
     <HelmetProvider>
-      <ConvexProvider client={convex}>
-        <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+      <ClerkProvider
+        publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      >
+        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <ErrorBoundary>
             <App />
             <Toaster position="top-center" richColors />
           </ErrorBoundary>
-        </ConvexBetterAuthProvider>
-      </ConvexProvider>
+        </ConvexProviderWithClerk>
+      </ClerkProvider>
     </HelmetProvider>
   </StrictMode>
 );

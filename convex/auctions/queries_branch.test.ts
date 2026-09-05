@@ -11,8 +11,7 @@ import {
 } from "./queries";
 import type { StatusFilter } from "./queries/shared";
 import type { Id, Doc } from "../_generated/dataModel";
-import type { AuthUser } from "../auth";
-import { findUserById } from "../users";
+import type { AuthUser } from "../lib/auth";
 import { countQuery } from "../admin_utils";
 import * as auth from "../lib/auth";
 import type { QueryCtx } from "../_generated/server";
@@ -39,12 +38,6 @@ vi.mock("./helpers", () => ({
   BidValidator: v.any(),
 }));
 
-vi.mock("../auth", () => ({
-  authComponent: {
-    getAuthUser: vi.fn(),
-  },
-}));
-
 vi.mock("../lib/auth", () => ({
   getAuthUser: vi.fn(),
   requireAuth: vi.fn(),
@@ -55,10 +48,6 @@ vi.mock("../lib/auth", () => ({
 
 vi.mock("../admin_utils", () => ({
   countQuery: vi.fn(),
-}));
-
-vi.mock("../users", () => ({
-  findUserById: vi.fn(),
 }));
 
 interface MockQuery {
@@ -437,13 +426,11 @@ describe("Queries Branch Coverage Expansion", () => {
           updatedAt: Date.now(),
         } as AuthUser,
       } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
-      vi.mocked(findUserById).mockResolvedValue({
+      vi.mocked(queryMock.unique).mockResolvedValue({
         _id: longBidderId,
+        userId: longBidderId,
         name: "Real Name",
-        emailVerified: true,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
 
       const result = await getAuctionBidsHandler(mockCtx, {
         auctionId: "a1" as Id<"auctions">,
@@ -472,7 +459,7 @@ describe("Queries Branch Coverage Expansion", () => {
           updatedAt: Date.now(),
         } as AuthUser,
       } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
-      vi.mocked(findUserById).mockResolvedValue(null);
+      vi.mocked(queryMock.unique).mockResolvedValue(null);
 
       const result = await getAuctionBidsHandler(mockCtx, {
         auctionId: "a1" as Id<"auctions">,
@@ -596,7 +583,7 @@ describe("Queries Branch Coverage Expansion", () => {
       queryMock.collect.mockResolvedValue([
         { _id: "f1", reporterId: "r1", auctionId: "a1" },
       ]);
-      vi.mocked(findUserById).mockResolvedValue(null);
+      vi.mocked(queryMock.unique).mockResolvedValue(null);
 
       const result = await getAuctionFlagsHandler(mockCtx, {
         auctionId: "a1" as Id<"auctions">,
@@ -612,7 +599,7 @@ describe("Queries Branch Coverage Expansion", () => {
         { _id: "f1", reporterId: "r1", auctionId: "a1", status: "pending" },
       ]);
       dbGetMock.mockResolvedValue(null); // Missing auction
-      vi.mocked(findUserById).mockResolvedValue(null); // Missing user
+      vi.mocked(queryMock.unique).mockResolvedValue(null); // Missing reporter profile
 
       const result = await getAllPendingFlagsHandler(mockCtx);
       expect(result[0].auctionTitle).toBe("Unknown Auction");
@@ -777,19 +764,55 @@ describe("Queries Branch Coverage Expansion", () => {
   });
 
   describe("getAuctionBidsHandler branches", () => {
+    it("should not treat unauthenticated caller as seller when auction is missing", async () => {
+      // Regression: isSeller used to be `auction?.sellerId === auth?.userId`,
+      // which evaluated true (undefined === undefined) when the auction doc
+      // was missing and the caller was unauthenticated, leaking bidder names.
+      vi.mocked(queryMock.paginate).mockResolvedValue({
+        page: [{ _id: "b1", bidderId: "u1", auctionId: "a1" }],
+        isDone: true,
+        continueCursor: "",
+      });
+      vi.mocked(dbGetMock).mockResolvedValue(null);
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue(null);
+      vi.mocked(queryMock.unique).mockResolvedValue({
+        _id: "u1" as unknown as Id<"profiles">,
+        userId: "u1",
+        name: "Real Name",
+      });
+
+      const result = await getAuctionBidsHandler(mockCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+
+      // isSeller must be false here: the real name must stay hidden.
+      expect(result.page[0].bidderName).toBe("Bidder");
+    });
+
     it("should handle user found but with no name (line 546)", async () => {
       vi.mocked(queryMock.paginate).mockResolvedValue({
         page: [{ _id: "b1", bidderId: "u1", auctionId: "a1" }],
         isDone: true,
         continueCursor: "",
       });
-      vi.mocked(findUserById).mockResolvedValue({
+      vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
+        userId: "admin1",
+        profile: { role: "admin" } as unknown as Doc<"profiles">,
+        authUser: {
+          _id: "admin1",
+          userId: "admin1",
+          name: "Admin User",
+          _creationTime: Date.now(),
+          emailVerified: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        } as AuthUser,
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
+      vi.mocked(queryMock.unique).mockResolvedValue({
         _id: "u1" as unknown as Id<"profiles">,
-        name: null,
-        emailVerified: true,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof findUserById>>);
+        userId: "u1",
+      });
       const result = await getAuctionBidsHandler(mockCtx, {
         auctionId: "a1" as Id<"auctions">,
         paginationOpts: { numItems: 10, cursor: null },
@@ -816,13 +839,11 @@ describe("Queries Branch Coverage Expansion", () => {
           updatedAt: Date.now(),
         } as AuthUser,
       } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
-      vi.mocked(findUserById).mockResolvedValue({
-        _id: "u1",
+      vi.mocked(queryMock.unique).mockResolvedValue({
+        _id: "u1" as unknown as Id<"profiles">,
+        userId: "u1",
         name: "Real Name",
-        emailVerified: true,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
 
       const mapGetSpy = vi
         .spyOn(Map.prototype, "get")

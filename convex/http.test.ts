@@ -1,175 +1,107 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import {
-  getCorsHeaders,
-  addCorsHeaders,
-  optionsHandler,
-  authHandler,
-  wellKnownHandler,
-} from "./http";
-import * as config from "./config";
-import * as auth from "./auth";
-import type { ActionCtx } from "./_generated/server";
-
-vi.mock("./_generated/server", () => ({
-  httpAction: vi.fn((h) => h),
-}));
-
 vi.mock("./config", () => ({
   isOriginAllowed: vi.fn(),
 }));
 
-vi.mock("./auth", () => ({
-  createAuth: vi.fn(),
-}));
+import { isOriginAllowed } from "./config";
+import { getCorsHeaders, addCorsHeaders } from "./http";
 
-describe("HTTP Coverage", () => {
+const mockIsOriginAllowed = vi.mocked(isOriginAllowed);
+
+describe("getCorsHeaders", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    mockIsOriginAllowed.mockReset();
   });
 
-  describe("getCorsHeaders", () => {
-    it("should return basic headers if origin not allowed", () => {
-      vi.mocked(config.isOriginAllowed).mockReturnValue(false);
-      const request = new Request("https://test.com", {
-        headers: { Origin: "https://malicious.com" },
-      });
-      const headers = getCorsHeaders(request);
-      expect(headers["Access-Control-Allow-Origin"]).toBeUndefined();
-      expect(headers["Vary"]).toBe("Origin");
+  it("includes Access-Control-Allow-Origin when the origin is allowed", () => {
+    mockIsOriginAllowed.mockReturnValue(true);
+    const request = new Request("https://example.com", {
+      headers: { Origin: "https://allowed.example.com" },
     });
 
-    it("should include Allow-Origin if origin is allowed", () => {
-      vi.mocked(config.isOriginAllowed).mockReturnValue(true);
-      const origin = "https://allowed.com";
-      const request = new Request("https://test.com", {
-        headers: { Origin: origin },
-      });
-      const headers = getCorsHeaders(request);
-      expect(headers["Access-Control-Allow-Origin"]).toBe(origin);
-    });
+    const headers = getCorsHeaders(request);
+
+    expect(mockIsOriginAllowed).toHaveBeenCalledWith(
+      "https://allowed.example.com"
+    );
+    expect(headers["Access-Control-Allow-Origin"]).toBe(
+      "https://allowed.example.com"
+    );
+    expect(headers["Access-Control-Allow-Methods"]).toBe(
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    expect(headers["Access-Control-Allow-Headers"]).toBe(
+      "Content-Type, Authorization, Cookie, X-Requested-With"
+    );
+    expect(headers["Access-Control-Allow-Credentials"]).toBe("true");
+    expect(headers.Vary).toBe("Origin");
   });
 
-  describe("addCorsHeaders", () => {
-    it("should merge CORS headers into response", () => {
-      vi.mocked(config.isOriginAllowed).mockReturnValue(true);
-      const origin = "https://allowed.com";
-      const request = new Request("https://test.com", {
-        headers: { Origin: origin },
-      });
-      const response = new Response("ok", {
-        headers: { "X-Test": "val" },
-      });
-
-      const newResponse = addCorsHeaders(response, request);
-      expect(newResponse.headers.get("Access-Control-Allow-Origin")).toBe(
-        origin
-      );
-      expect(newResponse.headers.get("X-Test")).toBe("val");
+  it("omits Access-Control-Allow-Origin when the origin is disallowed", () => {
+    mockIsOriginAllowed.mockReturnValue(false);
+    const request = new Request("https://example.com", {
+      headers: { Origin: "https://evil.example.com" },
     });
+
+    const headers = getCorsHeaders(request);
+
+    expect(mockIsOriginAllowed).toHaveBeenCalledWith(
+      "https://evil.example.com"
+    );
+    expect(headers["Access-Control-Allow-Origin"]).toBeUndefined();
   });
 
-  describe("optionsHandler", () => {
-    it("should return 204 with CORS headers", async () => {
-      vi.mocked(config.isOriginAllowed).mockReturnValue(true);
-      const origin = "https://allowed.com";
-      const request = new Request("https://test.com", {
-        method: "OPTIONS",
-        headers: { Origin: origin },
-      });
+  it("checks the empty string when the Origin header is missing", () => {
+    mockIsOriginAllowed.mockReturnValue(false);
+    const request = new Request("https://example.com");
 
-      const response = await (
-        optionsHandler as unknown as (...args: unknown[]) => Promise<Response>
-      )({} as unknown as ActionCtx, request);
-      expect(response.status).toBe(204);
-      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(origin);
-    });
+    getCorsHeaders(request);
+
+    expect(mockIsOriginAllowed).toHaveBeenCalledWith("");
+  });
+});
+
+describe("addCorsHeaders", () => {
+  beforeEach(() => {
+    mockIsOriginAllowed.mockReset();
   });
 
-  describe("authHandler", () => {
-    it("should forward to better-auth and add CORS", async () => {
-      const mockAuth = {
-        handler: vi.fn().mockResolvedValue(new Response("auth-ok")),
-      };
-      vi.mocked(auth.createAuth).mockReturnValue(
-        mockAuth as unknown as ReturnType<typeof auth.createAuth>
-      );
-      vi.mocked(config.isOriginAllowed).mockReturnValue(true);
-
-      const request = new Request("https://test.com/api/auth/signin", {
-        headers: { Origin: "https://allowed.com" },
-      });
-
-      const response = await (
-        authHandler as unknown as (...args: unknown[]) => Promise<Response>
-      )({} as unknown as ActionCtx, request);
-      expect(mockAuth.handler).toHaveBeenCalledWith(request);
-      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-        "https://allowed.com"
-      );
+  it("merges CORS headers onto the response while preserving status and body", async () => {
+    mockIsOriginAllowed.mockReturnValue(true);
+    const request = new Request("https://example.com", {
+      headers: { Origin: "https://allowed.example.com" },
     });
+    const response = new Response("hello", {
+      status: 201,
+      statusText: "Created",
+      headers: { "X-Custom": "value" },
+    });
+
+    const result = addCorsHeaders(response, request);
+
+    expect(result.status).toBe(201);
+    expect(result.statusText).toBe("Created");
+    expect(await result.text()).toBe("hello");
+    expect(result.headers.get("X-Custom")).toBe("value");
+    expect(result.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://allowed.example.com"
+    );
   });
 
-  describe("wellKnownHandler", () => {
-    it("should rewrite openid-configuration path", async () => {
-      const mockAuth = {
-        handler: vi.fn().mockResolvedValue(new Response("ok")),
-      };
-      vi.mocked(auth.createAuth).mockReturnValue(
-        mockAuth as unknown as ReturnType<typeof auth.createAuth>
-      );
-
-      const request = new Request(
-        "https://test.com/.well-known/openid-configuration"
-      );
-      await (
-        wellKnownHandler as unknown as (...args: unknown[]) => Promise<Response>
-      )({} as unknown as ActionCtx, request);
-
-      const rewrittenRequest = mockAuth.handler.mock.calls[0][0];
-      expect(rewrittenRequest.url).toContain(
-        "/api/auth/convex/.well-known/openid-configuration"
-      );
+  it("overrides any existing Access-Control-Allow-Origin with the computed value", () => {
+    mockIsOriginAllowed.mockReturnValue(true);
+    const request = new Request("https://example.com", {
+      headers: { Origin: "https://allowed.example.com" },
+    });
+    const response = new Response(null, {
+      headers: { "Access-Control-Allow-Origin": "https://stale.example.com" },
     });
 
-    it("should rewrite jwks path", async () => {
-      const mockAuth = {
-        handler: vi.fn().mockResolvedValue(new Response("ok")),
-      };
-      vi.mocked(auth.createAuth).mockReturnValue(
-        mockAuth as unknown as ReturnType<typeof auth.createAuth>
-      );
+    const result = addCorsHeaders(response, request);
 
-      const request = new Request("https://test.com/.well-known/jwks");
-      await (
-        wellKnownHandler as unknown as (...args: unknown[]) => Promise<Response>
-      )({} as unknown as ActionCtx, request);
-
-      const rewrittenRequest = mockAuth.handler.mock.calls[0][0];
-      expect(rewrittenRequest.url).toContain("/api/auth/convex/jwks");
-    });
-
-    it("should handle non-GET requests with body", async () => {
-      const mockAuth = {
-        handler: vi.fn().mockResolvedValue(new Response("ok")),
-      };
-      vi.mocked(auth.createAuth).mockReturnValue(
-        mockAuth as unknown as ReturnType<typeof auth.createAuth>
-      );
-
-      const body = JSON.stringify({ test: true });
-      const request = new Request("https://test.com/.well-known/test", {
-        method: "POST",
-        body,
-      });
-      await (
-        wellKnownHandler as unknown as (...args: unknown[]) => Promise<Response>
-      )({} as unknown as ActionCtx, request);
-
-      const rewrittenRequest = mockAuth.handler.mock.calls[0][0];
-      expect(rewrittenRequest.method).toBe("POST");
-      const rewrittenBody = await rewrittenRequest.text();
-      expect(rewrittenBody).toBe(body);
-    });
+    expect(result.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://allowed.example.com"
+    );
   });
 });

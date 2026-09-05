@@ -14,7 +14,7 @@ import {
 import * as auth from "./lib/auth";
 import * as encryption from "./lib/encryption";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import type { AuthUser } from "./auth";
+import type { AuthUser } from "./lib/auth";
 
 vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),

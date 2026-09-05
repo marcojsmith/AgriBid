@@ -11,14 +11,13 @@ import {
   submitKYCHandler,
   getMyKYCDetailsHandler,
   deleteMyKYCDocumentHandler,
-  findUserById,
   updateMyProfileHandler,
 } from "./users";
 import * as auth from "./lib/auth";
 import * as adminUtils from "./admin_utils";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import type { AuthUser } from "./auth";
+import type { AuthUser } from "./lib/auth";
 
 vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),
@@ -119,57 +118,6 @@ describe("Users Coverage", () => {
       },
       runQuery: vi.fn().mockResolvedValue(null),
     };
-  });
-
-  describe("findUserById", () => {
-    it("should return null if no id is provided", async () => {
-      const result = await findUserById(mockCtx as unknown as QueryCtx, "");
-      expect(result).toBeNull();
-    });
-
-    it("should find user by userId index", async () => {
-      mockCtx.runQuery.mockResolvedValueOnce({ name: "Test User" });
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "user123"
-      );
-      expect(result).toEqual({ name: "Test User" });
-      expect(mockCtx.runQuery).toHaveBeenCalled();
-    });
-
-    it("should find user by _id if userId fails", async () => {
-      mockCtx.runQuery
-        .mockResolvedValueOnce(null) // userId find fails
-        .mockResolvedValueOnce({ name: "Internal User" }); // _id find succeeds
-
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "id123"
-      );
-      expect(result).toEqual({ name: "Internal User" });
-      expect(mockCtx.runQuery).toHaveBeenCalledTimes(2);
-    });
-
-    it("should return null if all searches fail", async () => {
-      mockCtx.runQuery.mockResolvedValue(null);
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "id123"
-      );
-      expect(result).toBeNull();
-    });
-
-    it("should return null if _id search throws (invalid format)", async () => {
-      mockCtx.runQuery
-        .mockResolvedValueOnce(null)
-        .mockRejectedValueOnce(new Error("Invalid ID"));
-
-      const result = await findUserById(
-        mockCtx as unknown as QueryCtx,
-        "not-a-convex-id"
-      );
-      expect(result).toBeNull();
-    });
   });
 
   describe("syncUserHandler", () => {

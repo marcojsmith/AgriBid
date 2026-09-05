@@ -8,7 +8,7 @@ import {
 } from "./presence";
 import * as auth from "./lib/auth";
 import type { QueryCtx } from "./_generated/server";
-import type { AuthUser } from "./auth";
+import type { AuthUser } from "./lib/auth";
 
 vi.mock("./_generated/server", () => ({
   query: vi.fn((q) => q),

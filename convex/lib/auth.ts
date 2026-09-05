@@ -8,8 +8,14 @@
 import { ConvexError } from "convex/values";
 
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { authComponent } from "../auth";
-import type { AuthUser } from "../auth";
+
+export type AuthUser = {
+  _id: string;
+  userId?: string | null;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+};
 
 /**
  * Error message for non-verified users attempting restricted actions.
@@ -37,100 +43,20 @@ export class UnauthorizedError extends Error {
  * @param ctx - Query or Mutation context used to resolve the current user
  * @returns The authenticated user object, or `null` if no user is authenticated
  */
-export async function getAuthUser(ctx: QueryCtx | MutationCtx): Promise<{
-  userId?: string | null;
-  _id: string;
-  email?: string | null;
-  name?: string | null;
-  image?: string | null;
-  _creationTime?: number;
-} | null> {
+export async function getAuthUser(
+  ctx: QueryCtx | MutationCtx
+): Promise<AuthUser | null> {
   try {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    // Better Auth's Convex plugin uses the subject to link accounts.
-    // If subject is missing, we can't resolve the user via the component.
-    if (!identity.subject) {
-      return null;
-    }
-
-    // Attempt to get user via the component first
-    try {
-      const user = await authComponent.getAuthUser(ctx);
-      if (user) return user;
-    } catch (err) {
-      // If the component fails with a validation error (likely due to internal query building),
-      // we try a manual fallback lookup using the subject.
-      if (
-        err instanceof Error &&
-        err.message.includes("ArgumentValidationError")
-      ) {
-        // Try to find the user in the 'user' table using the subject as _id
-        // The component uses the subject as the primary key if it's a valid ID.
-        try {
-          // 1. Try direct db.get (only works if subject is a valid Convex ID for some table)
-          let userRecord: Record<string, unknown> | null = null;
-          try {
-            // We use a safe cast for db.get parameter
-            const doc = await ctx.db.get(identity.subject as never);
-            if (doc) {
-              userRecord = doc as Record<string, unknown>;
-            }
-          } catch {
-            // Not a valid ID format for db.get
-          }
-
-          // 2. Try adapter lookup by _id if db.get didn't work or return a record
-          if (!userRecord) {
-            // Accessing internal adapter properties for emergency fallback
-            // Using unknown cast to bypass lint while maintaining some structural safety
-            const adapterObj = authComponent as unknown as {
-              adapter: { findOne: string };
-            };
-            const contextObj = ctx as unknown as {
-              runQuery: (
-                fn: string,
-                args: Record<string, unknown>
-              ) => Promise<Record<string, unknown> | null>;
-            };
-
-            userRecord = await contextObj.runQuery(adapterObj.adapter.findOne, {
-              model: "user",
-              where: [
-                { field: "_id", operator: "eq", value: identity.subject },
-              ],
-            });
-          }
-
-          if (userRecord) {
-            return {
-              _id: (userRecord._id as string) ?? identity.subject,
-              userId:
-                (userRecord.userId as string | undefined) ??
-                (userRecord._id as string) ??
-                identity.subject,
-              email: userRecord.email as string | undefined,
-              name: userRecord.name as string | undefined,
-              image: userRecord.image as string | undefined,
-              _creationTime: userRecord._creationTime as number | undefined,
-            };
-          }
-        } catch {
-          // Fallback failed, continue to standard error handling
-        }
-      }
-
-      if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-        console.error("getAuthUser fallback lookup failed:", err);
-      }
-    }
-
-    return null;
-  } catch (err) {
-    console.error("Critical error in getAuthUser wrapper:", err);
+    if (!identity) return null;
+    return {
+      _id: identity.subject,
+      userId: identity.subject,
+      email: identity.email ?? null,
+      name: identity.name ?? null,
+      image: identity.pictureUrl ?? null,
+    };
+  } catch {
     return null;
   }
 }

@@ -10,7 +10,7 @@ import {
   batchFetchReadCounts,
 } from "./notifications";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import type { AuthUser } from "./auth";
+import type { AuthUser } from "./lib/auth";
 import type { Id } from "./_generated/dataModel";
 
 vi.mock("./lib/auth", () => ({

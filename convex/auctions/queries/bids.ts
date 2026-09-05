@@ -12,7 +12,6 @@ import {
 } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { BidValidator, toAuctionSummary } from "../helpers";
-import { findUserById } from "../../users";
 import { countQuery } from "../../admin_utils";
 import { getAuthenticatedProfile } from "../../lib/auth";
 
@@ -58,7 +57,9 @@ export const getAuctionBidsHandler = async (
   const auction = await ctx.db.get(args.auctionId);
   const auth = await getAuthenticatedProfile(ctx);
   const isAdmin = auth?.profile?.role === "admin";
-  const isSeller = auction?.sellerId === auth?.userId;
+  // Guard against undefined === undefined: a missing auction doc combined
+  // with an unauthenticated caller must never mark the caller as the seller.
+  const isSeller = Boolean(auction && auth && auction.sellerId === auth.userId);
 
   await Promise.all(
     uniqueBidderIds.map(async (bidderId) => {
@@ -74,10 +75,13 @@ export const getAuctionBidsHandler = async (
         return;
       }
 
-      const user = await findUserById(ctx, bidderId);
+      const profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", bidderId))
+        .unique();
 
-      if (user) {
-        bidderNames.set(mapKey, user.name ?? "Anonymous");
+      if (profile) {
+        bidderNames.set(mapKey, profile.name ?? "Anonymous");
       } else {
         bidderNames.set(mapKey, "Anonymous");
       }

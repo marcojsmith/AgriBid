@@ -10,7 +10,7 @@ import {
   getMyProxyBid,
 } from "./proxy_bidding";
 import { getAuthUser } from "../lib/auth";
-import type { AuthUser } from "../auth";
+import type { AuthUser } from "../lib/auth";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 

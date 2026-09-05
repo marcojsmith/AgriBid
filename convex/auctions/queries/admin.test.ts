@@ -2,16 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { getAuctionFlagsHandler, getAllPendingFlagsHandler } from "./admin";
 import * as auth from "../../lib/auth";
-import * as users from "../../users";
 import type { QueryCtx } from "../../_generated/server";
 import type { Doc, Id } from "../../_generated/dataModel";
 
 vi.mock("../../lib/auth", () => ({
   requireAdmin: vi.fn(),
-}));
-
-vi.mock("../../users", () => ({
-  findUserById: vi.fn(),
 }));
 
 vi.mock("../../admin_utils", () => ({
@@ -37,6 +32,26 @@ describe("Admin Queries - Auction Flags", () => {
   });
 
   describe("getAuctionFlagsHandler", () => {
+    const setupDbMocks = (
+      mockFlags: Doc<"auctionFlags">[],
+      reporterProfile: unknown
+    ) => {
+      const mockFlagsQuery = {
+        withIndex: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue(mockFlags),
+      };
+      const mockProfileQuery = {
+        withIndex: vi.fn().mockReturnThis(),
+        unique: vi.fn().mockResolvedValue(reporterProfile),
+      };
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "profiles") return mockProfileQuery;
+        return mockFlagsQuery;
+      });
+      return mockProfileQuery;
+    };
+
     it("should return flags with reporter name when reporter found", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "u1" });
 
@@ -51,14 +66,9 @@ describe("Admin Queries - Auction Flags", () => {
         },
       ] as Doc<"auctionFlags">[];
 
-      const mockQuery = {
-        withIndex: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(mockFlags),
-      };
-      mockCtx.db.query.mockReturnValue(mockQuery);
-
-      vi.mocked(users.findUserById).mockResolvedValue({
+      setupDbMocks(mockFlags, {
+        _id: "p2",
+        userId: "u2",
         name: "John Doe",
       } as unknown as Doc<"profiles">);
 
@@ -85,14 +95,7 @@ describe("Admin Queries - Auction Flags", () => {
         },
       ] as Doc<"auctionFlags">[];
 
-      const mockQuery = {
-        withIndex: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(mockFlags),
-      };
-      mockCtx.db.query.mockReturnValue(mockQuery);
-
-      vi.mocked(users.findUserById).mockResolvedValue(null);
+      setupDbMocks(mockFlags, null);
 
       const result = await getAuctionFlagsHandler(
         mockCtx as unknown as QueryCtx,
@@ -117,16 +120,10 @@ describe("Admin Queries - Auction Flags", () => {
         },
       ] as Doc<"auctionFlags">[];
 
-      const mockQuery = {
-        withIndex: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(mockFlags),
-      };
-      mockCtx.db.query.mockReturnValue(mockQuery);
-
-      vi.mocked(users.findUserById).mockResolvedValue(
-        {} as unknown as Doc<"profiles">
-      );
+      setupDbMocks(mockFlags, {
+        _id: "p2",
+        userId: "u2",
+      } as unknown as Doc<"profiles">);
 
       const result = await getAuctionFlagsHandler(
         mockCtx as unknown as QueryCtx,
@@ -159,14 +156,9 @@ describe("Admin Queries - Auction Flags", () => {
         },
       ] as Doc<"auctionFlags">[];
 
-      const mockQuery = {
-        withIndex: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(mockFlags),
-      };
-      mockCtx.db.query.mockReturnValue(mockQuery);
-
-      vi.mocked(users.findUserById).mockResolvedValue({
+      const mockProfileQuery = setupDbMocks(mockFlags, {
+        _id: "p2",
+        userId: "u2",
         name: "Reporter Name",
       } as unknown as Doc<"profiles">);
 
@@ -178,7 +170,7 @@ describe("Admin Queries - Auction Flags", () => {
       expect(result).toHaveLength(2);
       expect(result[0].reporterName).toBe("Reporter Name");
       expect(result[1].reporterName).toBe("Reporter Name");
-      expect(users.findUserById).toHaveBeenCalledTimes(1);
+      expect(mockProfileQuery.unique).toHaveBeenCalledTimes(1);
     });
 
     it("should throw unauthorized error when user is not admin", async () => {
@@ -216,12 +208,21 @@ describe("Admin Queries - Auction Flags", () => {
         order: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue(mockFlags),
       };
-      mockCtx.db.query.mockReturnValue(mockQuery);
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "profiles") {
+          return {
+            withIndex: vi.fn().mockReturnThis(),
+            unique: vi.fn().mockResolvedValue({
+              _id: "p2",
+              userId: "u2",
+              name: "Reporter Name",
+            } as unknown as Doc<"profiles">),
+          };
+        }
+        return mockQuery;
+      });
 
       mockCtx.db.get.mockResolvedValue({ title: "Test Auction" });
-      vi.mocked(users.findUserById).mockResolvedValue({
-        name: "Reporter Name",
-      } as unknown as Doc<"profiles">);
 
       const result = await getAllPendingFlagsHandler(
         mockCtx as unknown as QueryCtx
@@ -251,12 +252,21 @@ describe("Admin Queries - Auction Flags", () => {
         order: vi.fn().mockReturnThis(),
         collect: vi.fn().mockResolvedValue(mockFlags),
       };
-      mockCtx.db.query.mockReturnValue(mockQuery);
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "profiles") {
+          return {
+            withIndex: vi.fn().mockReturnThis(),
+            unique: vi.fn().mockResolvedValue({
+              _id: "p2",
+              userId: "u2",
+              name: "Reporter Name",
+            } as unknown as Doc<"profiles">),
+          };
+        }
+        return mockQuery;
+      });
 
       mockCtx.db.get.mockResolvedValue(null);
-      vi.mocked(users.findUserById).mockResolvedValue({
-        name: "Reporter Name",
-      } as unknown as Doc<"profiles">);
 
       const result = await getAllPendingFlagsHandler(
         mockCtx as unknown as QueryCtx

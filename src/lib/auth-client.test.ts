@@ -1,35 +1,90 @@
-import { describe, it, expect, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { useAuth, useUser } from "@clerk/clerk-react";
 
-import { authClient } from "./auth-client";
+import { useSession } from "./auth-client";
 
-describe("authClient", () => {
-  it("should be initialized", () => {
-    expect(authClient).toBeDefined();
+vi.mock("@clerk/clerk-react", () => ({
+  useAuth: vi.fn(),
+  useUser: vi.fn(),
+}));
+
+describe("useSession (Clerk compatibility shim)", () => {
+  const mockUseAuth = useAuth as Mock;
+  const mockUseUser = useUser as Mock;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("should export authentication methods", () => {
-    expect(typeof authClient.signIn).toBe("function");
-    expect(typeof authClient.signUp).toBe("function");
-    expect(typeof authClient.signOut).toBe("function");
-    expect(typeof authClient.useSession).toBe("function");
+  it("maps a fully-populated Clerk user to the session shape", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
+    mockUseUser.mockReturnValue({
+      user: {
+        id: "user_2abc",
+        primaryEmailAddress: { emailAddress: "farm@example.com" },
+        fullName: "Farm Er",
+      },
+    });
+
+    const { result } = renderHook(() => useSession());
+
+    expect(result.current).toEqual({
+      data: {
+        user: {
+          id: "user_2abc",
+          email: "farm@example.com",
+          name: "Farm Er",
+        },
+      },
+      isPending: false,
+    });
   });
 
-  it("should fallback to window.location.origin if VITE_CONVEX_SITE_URL is not set", async () => {
-    // Cast to any to bypass TS read-only error for the test environment modification
-    const originalUrl = import.meta.env.VITE_CONVEX_SITE_URL;
-    delete (import.meta.env as Record<string, string | undefined>)
-      .VITE_CONVEX_SITE_URL;
+  it("maps missing optional Clerk fields to null", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
+    mockUseUser.mockReturnValue({ user: { id: "user_2abc" } });
 
-    // We must isolate the import to force re-evaluation of auth-client.ts
-    vi.resetModules();
-    const { authClient: testClient } = await import("./auth-client");
-    expect(testClient).toBeDefined();
+    const { result } = renderHook(() => useSession());
 
-    // Restore the original URL
-    if (originalUrl) {
-      (
-        import.meta.env as Record<string, string | undefined>
-      ).VITE_CONVEX_SITE_URL = originalUrl;
-    }
+    expect(result.current).toEqual({
+      data: { user: { id: "user_2abc", email: null, name: null } },
+      isPending: false,
+    });
+  });
+
+  it("returns null data when signed out even if a user object exists", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true });
+    mockUseUser.mockReturnValue({
+      user: {
+        id: "user_2abc",
+        primaryEmailAddress: { emailAddress: "farm@example.com" },
+        fullName: "Farm Er",
+      },
+    });
+
+    const { result } = renderHook(() => useSession());
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.isPending).toBe(false);
+  });
+
+  it("returns null data when Clerk has no user object", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
+    mockUseUser.mockReturnValue({ user: undefined });
+
+    const { result } = renderHook(() => useSession());
+
+    expect(result.current.data).toBeNull();
+  });
+
+  it("is pending while Clerk auth is loading", () => {
+    mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: false });
+    mockUseUser.mockReturnValue({ user: undefined });
+
+    const { result } = renderHook(() => useSession());
+
+    expect(result.current.data).toBeNull();
+    expect(result.current.isPending).toBe(true);
   });
 });

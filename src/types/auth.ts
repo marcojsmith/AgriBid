@@ -1,8 +1,12 @@
-// app/src/types/auth.ts
-import type { authClient } from "@/lib/auth-client";
+export type User = {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+};
 
-export type Session = typeof authClient.$Infer.Session;
-export type User = typeof authClient.$Infer.Session.user;
+export type Session = {
+  user: User;
+};
 
 /**
  * Shared type for users with role and verification metadata.

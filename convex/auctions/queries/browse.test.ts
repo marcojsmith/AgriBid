@@ -1,13 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { getSellerInfoHandler } from "./browse";
-import * as users from "../../users";
 import type { QueryCtx } from "../../_generated/server";
-import type { AuthUser } from "../../auth";
-
-vi.mock("../../users", () => ({
-  findUserById: vi.fn(),
-}));
 
 describe("getSellerInfoHandler", () => {
   let mockCtx: {
@@ -28,7 +22,11 @@ describe("getSellerInfoHandler", () => {
   });
 
   it("should return null when user is not found", async () => {
-    vi.mocked(users.findUserById).mockResolvedValue(null);
+    const mockProfileQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      unique: vi.fn().mockResolvedValue(null),
+    };
+    mockCtx.db.query.mockReturnValue(mockProfileQuery);
 
     const result = await getSellerInfoHandler(mockCtx as unknown as QueryCtx, {
       sellerId: "nonexistent",
@@ -38,17 +36,12 @@ describe("getSellerInfoHandler", () => {
   });
 
   it("should return seller info with all profile fields", async () => {
-    vi.mocked(users.findUserById).mockResolvedValue({
-      _id: "auth123",
-      userId: "user123",
-      name: "John Dippenaar",
-      createdAt: new Date("2026-01-15").getTime(),
-    } as unknown as AuthUser);
-
     const mockProfileQuery = {
       withIndex: vi.fn().mockReturnThis(),
       unique: vi.fn().mockResolvedValue({
         userId: "user123",
+        name: "John Dippenaar",
+        createdAt: new Date("2026-01-15").getTime(),
         role: "seller",
         isVerified: true,
         bio: "Commercial farmer",
@@ -110,17 +103,15 @@ describe("getSellerInfoHandler", () => {
     expect(result?.avgSalePrice).toBe(291750);
   });
 
-  it("should handle missing profile gracefully", async () => {
-    vi.mocked(users.findUserById).mockResolvedValue({
-      _id: "auth123",
-      userId: "user123",
-      name: "Jane Doe",
-      createdAt: Date.now(),
-    } as unknown as AuthUser);
-
+  it("should handle profile with missing optional fields gracefully", async () => {
     const mockProfileQuery = {
       withIndex: vi.fn().mockReturnThis(),
-      unique: vi.fn().mockResolvedValue(null),
+      unique: vi.fn().mockResolvedValue({
+        userId: "user123",
+        role: "buyer",
+        isVerified: false,
+        createdAt: Date.now(),
+      }),
     };
 
     const mockSoldAuctionsQuery = {
@@ -158,9 +149,9 @@ describe("getSellerInfoHandler", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result?.name).toBe("Jane Doe");
+    expect(result?.name).toBeUndefined();
     expect(result?.isVerified).toBe(false);
-    expect(result?.role).toBe("Private Seller");
+    expect(result?.role).toBe("buyer");
     expect(result?.bio).toBeUndefined();
     expect(result?.companyName).toBeUndefined();
     expect(result?.location).toBeUndefined();
@@ -169,13 +160,6 @@ describe("getSellerInfoHandler", () => {
   });
 
   it("should handle zero sold auctions (no avgSalePrice)", async () => {
-    vi.mocked(users.findUserById).mockResolvedValue({
-      _id: "auth123",
-      userId: "user123",
-      name: "New Seller",
-      createdAt: Date.now(),
-    } as unknown as AuthUser);
-
     const mockProfileQuery = {
       withIndex: vi.fn().mockReturnThis(),
       unique: vi.fn().mockResolvedValue({
