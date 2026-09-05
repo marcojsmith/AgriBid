@@ -160,6 +160,10 @@ export default defineSchema({
     phoneNumber: v.optional(v.string()), // Encrypted PII
     companyName: v.optional(v.string()),
     location: v.optional(v.string()),
+    emailVerified: v.optional(v.boolean()),
+    phoneVerified: v.optional(v.boolean()),
+    bankingVerified: v.optional(v.boolean()),
+    taxNumberVerified: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

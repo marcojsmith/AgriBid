@@ -44,9 +44,14 @@ describe("getSellerInfoHandler", () => {
         createdAt: new Date("2026-01-15").getTime(),
         role: "seller",
         isVerified: true,
+        kycStatus: "verified",
         bio: "Commercial farmer",
         companyName: "Dippenaar Farms",
         location: "Lichtenburg, North West",
+        emailVerified: true,
+        phoneVerified: false,
+        bankingVerified: true,
+        taxNumberVerified: false,
       }),
     };
 
@@ -96,6 +101,11 @@ describe("getSellerInfoHandler", () => {
     expect(result?.bio).toBe("Commercial farmer");
     expect(result?.companyName).toBe("Dippenaar Farms");
     expect(result?.location).toBe("Lichtenburg, North West");
+    expect(result?.kycStatus).toBe("verified");
+    expect(result?.emailVerified).toBe(true);
+    expect(result?.phoneVerified).toBe(false);
+    expect(result?.bankingVerified).toBe(true);
+    expect(result?.taxNumberVerified).toBe(false);
     expect(result?.itemsSold).toBe(2);
     expect(result?.activeListings).toBe(2);
     expect(result?.totalListings).toBe(4);
@@ -155,6 +165,11 @@ describe("getSellerInfoHandler", () => {
     expect(result?.bio).toBeUndefined();
     expect(result?.companyName).toBeUndefined();
     expect(result?.location).toBeUndefined();
+    expect(result?.kycStatus).toBeUndefined();
+    expect(result?.emailVerified).toBeUndefined();
+    expect(result?.phoneVerified).toBeUndefined();
+    expect(result?.bankingVerified).toBeUndefined();
+    expect(result?.taxNumberVerified).toBeUndefined();
     expect(result?.activeListings).toBe(0);
     expect(result?.totalListings).toBe(0);
   });

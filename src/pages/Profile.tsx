@@ -52,6 +52,13 @@ interface TrustItem {
   verified: boolean;
 }
 
+interface VerificationStatus {
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  bankingVerified?: boolean;
+  taxNumberVerified?: boolean;
+}
+
 const formatPrice = (price?: number): string => {
   if (price === undefined || price === null) return "—";
   return `R ${price.toLocaleString("en-ZA")}`;
@@ -110,8 +117,11 @@ const getActivityItems = (role: string, createdAt?: number): ActivityItem[] => {
 
 const getTrustItems = (
   isVerified: boolean,
-  kycStatus?: string
+  kycStatus?: string,
+  verification?: VerificationStatus
 ): TrustItem[] => {
+  const { emailVerified, phoneVerified, bankingVerified, taxNumberVerified } =
+    verification ?? {};
   return [
     {
       id: "identity",
@@ -124,29 +134,29 @@ const getTrustItems = (
       id: "banking",
       icon: CreditCard,
       label: "Banking",
-      value: "Not linked",
-      verified: false,
+      value: bankingVerified ? "Linked" : "Not linked",
+      verified: bankingVerified ?? false,
     },
     {
       id: "phone",
       icon: Phone,
       label: "Phone",
-      value: "Pending",
-      verified: false,
+      value: phoneVerified ? "Verified" : "Pending",
+      verified: phoneVerified ?? false,
     },
     {
       id: "email",
       icon: Mail,
       label: "Email",
-      value: "Pending",
-      verified: false,
+      value: emailVerified ? "Verified" : "Pending",
+      verified: emailVerified ?? false,
     },
     {
       id: "tax",
       icon: FileText,
       label: "Tax Number",
-      value: "Pending",
-      verified: false,
+      value: taxNumberVerified ? "Verified" : "Pending",
+      verified: taxNumberVerified ?? false,
     },
     {
       id: "rating",
@@ -247,7 +257,16 @@ export default function Profile() {
   const activeListings = listings.filter((l) => l.status === "active");
   const soldListings = listings.filter((l) => l.status === "sold");
   const activityItems = getActivityItems(sellerInfo.role, sellerInfo.createdAt);
-  const trustItems = getTrustItems(sellerInfo.isVerified);
+  const trustItems = getTrustItems(
+    sellerInfo.isVerified,
+    sellerInfo.kycStatus,
+    {
+      emailVerified: sellerInfo.emailVerified,
+      phoneVerified: sellerInfo.phoneVerified,
+      bankingVerified: sellerInfo.bankingVerified,
+      taxNumberVerified: sellerInfo.taxNumberVerified,
+    }
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 px-4 py-4 sm:p-6">

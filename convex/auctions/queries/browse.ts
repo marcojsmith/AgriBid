@@ -416,6 +416,7 @@ export const getSellerInfoHandler = async (
   return {
     name: profile.name,
     isVerified: profile.isVerified,
+    kycStatus: profile.kycStatus,
     role: profile.role,
     createdAt: profile.createdAt,
     itemsSold: soldAuctionsCount,
@@ -424,6 +425,10 @@ export const getSellerInfoHandler = async (
     bio: profile.bio,
     companyName: profile.companyName,
     location: profile.location,
+    emailVerified: profile.emailVerified,
+    phoneVerified: profile.phoneVerified,
+    bankingVerified: profile.bankingVerified,
+    taxNumberVerified: profile.taxNumberVerified,
     bidsPlaced,
     avgSalePrice,
   };
@@ -442,6 +447,13 @@ export const getSellerInfo = query({
     v.object({
       name: v.optional(v.string()),
       isVerified: v.boolean(),
+      kycStatus: v.optional(
+        v.union(
+          v.literal("pending"),
+          v.literal("verified"),
+          v.literal("rejected")
+        )
+      ),
       role: v.string(),
       createdAt: v.optional(v.number()),
       itemsSold: v.number(),
@@ -450,6 +462,10 @@ export const getSellerInfo = query({
       bio: v.optional(v.string()),
       companyName: v.optional(v.string()),
       location: v.optional(v.string()),
+      emailVerified: v.optional(v.boolean()),
+      phoneVerified: v.optional(v.boolean()),
+      bankingVerified: v.optional(v.boolean()),
+      taxNumberVerified: v.optional(v.boolean()),
       bidsPlaced: v.number(),
       avgSalePrice: v.optional(v.number()),
     })

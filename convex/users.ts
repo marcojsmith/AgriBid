@@ -48,6 +48,10 @@ export const ProfileValidator = v.object({
   phoneNumber: v.optional(v.string()),
   companyName: v.optional(v.string()),
   location: v.optional(v.string()),
+  emailVerified: v.optional(v.boolean()),
+  phoneVerified: v.optional(v.boolean()),
+  bankingVerified: v.optional(v.boolean()),
+  taxNumberVerified: v.optional(v.boolean()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -391,6 +395,8 @@ export const verifyUserHandler = async (
   if (!profile.isVerified) {
     await ctx.db.patch(profile._id, {
       isVerified: true,
+      // KYC submission includes the user's email, so approval verifies it.
+      ...(profile.kycEmail ? { emailVerified: true } : {}),
       updatedAt: now,
     });
 

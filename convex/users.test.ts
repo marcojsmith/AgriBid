@@ -480,6 +480,59 @@ describe("Users Coverage", () => {
       expect(adminUtils.logAudit).toHaveBeenCalled();
     });
 
+    it("should set emailVerified when kycEmail is present", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        userId: "admin1",
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        userId: "user123",
+        isVerified: false,
+        kycStatus: "verified",
+        kycEmail: "enc_john@example.com",
+      });
+
+      await verifyUserHandler(mockCtx as unknown as MutationCtx, {
+        userId: "user123",
+      });
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ isVerified: true, emailVerified: true })
+      );
+    });
+
+    it("should not set emailVerified when kycEmail is absent", async () => {
+      const now = 1_700_000_000_000;
+      const dateSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+      vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        userId: "admin1",
+      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        userId: "user123",
+        isVerified: false,
+        kycStatus: "verified",
+      });
+
+      await verifyUserHandler(mockCtx as unknown as MutationCtx, {
+        userId: "user123",
+      });
+
+      dateSpy.mockRestore();
+      expect(mockCtx.db.patch).toHaveBeenCalledTimes(1);
+      const [, patchArgs] = vi.mocked(mockCtx.db.patch).mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(patchArgs).toStrictEqual({
+        isVerified: true,
+        updatedAt: now,
+      });
+    });
+
     it("should handle admin with no userId (fallback to _id)", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
       vi.mocked(auth.getAuthUser).mockResolvedValue({
