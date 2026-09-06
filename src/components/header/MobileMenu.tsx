@@ -1,11 +1,13 @@
 // app/src/components/header/MobileMenu.tsx
 import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Authenticated, Unauthenticated } from "convex/react";
+import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { api } from "convex/_generated/api";
 import {
   User,
   LogOut,
   LayoutDashboard,
+  Mail,
   Settings,
   ShieldAlert,
 } from "lucide-react";
@@ -26,6 +28,53 @@ interface MobileMenuProps {
   role: string | undefined;
   profileId: string | undefined;
   onSignOut: () => Promise<void>;
+}
+
+/**
+ * Renders the "Messages" navigation tile with a badge showing how many of the
+ * caller's conversations contain unread messages.
+ *
+ * Lives in its own component so the `useQuery` subscription only runs when the
+ * enclosing `<Authenticated>` boundary renders it — `MobileMenu` itself mounts
+ * regardless of auth state.
+ *
+ * @param props - Component props
+ * @param props.onClose - Callback invoked when the tile's link is clicked
+ * @returns The Messages tile button JSX
+ */
+function MessagesTile({ onClose }: { onClose: () => void }) {
+  const unreadMessageCount = useQuery(api.messages.getUnreadConversationCount);
+
+  return (
+    <Button
+      variant="outline"
+      className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl"
+      asChild
+    >
+      <Link
+        to="/messages"
+        onClick={onClose}
+        aria-label={
+          unreadMessageCount
+            ? `Messages, ${unreadMessageCount} unread`
+            : undefined
+        }
+      >
+        <span className="relative flex">
+          <Mail className="h-3.5 w-3.5" />
+          {unreadMessageCount ? (
+            <span
+              className="absolute -top-1.5 -right-2 h-4 min-w-4 px-1 rounded-full bg-primary text-[9px] font-black text-primary-foreground flex items-center justify-center border-2 border-background animate-in zoom-in"
+              aria-hidden="true"
+            >
+              {unreadMessageCount}
+            </span>
+          ) : null}
+        </span>
+        Messages
+      </Link>
+    </Button>
+  );
 }
 
 /**
@@ -251,6 +300,7 @@ export function MobileMenu({
                     My Listings
                   </Link>
                 </Button>
+                <MessagesTile onClose={onClose} />
               </div>
               <Button
                 variant="destructive"

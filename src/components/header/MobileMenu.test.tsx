@@ -6,8 +6,9 @@ import {
   waitFor,
   act,
 } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter } from "react-router-dom";
+import { useQuery } from "convex/react";
 
 import type { UserDataWithProfile } from "@/types/auth";
 
@@ -21,6 +22,15 @@ vi.mock("convex/react", () => ({
   Unauthenticated: ({ children }: React.PropsWithChildren) => (
     <div data-testid="unauthenticated">{children}</div>
   ),
+  useQuery: vi.fn(),
+}));
+
+vi.mock("convex/_generated/api", () => ({
+  api: {
+    messages: {
+      getUnreadConversationCount: "messages:getUnreadConversationCount",
+    },
+  },
 }));
 
 // Mock SearchBar to simplify
@@ -38,6 +48,7 @@ describe("MobileMenu", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    (useQuery as Mock).mockReturnValue(0);
 
     // Mock offsetParent for visibility check in focus trap
     Object.defineProperty(HTMLElement.prototype, "offsetParent", {
@@ -122,6 +133,56 @@ describe("MobileMenu", () => {
     );
 
     expect(screen.getByText("Admin")).toBeInTheDocument();
+  });
+
+  it("should show the Messages tile linking to /messages", () => {
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    const messagesLink = screen.getByRole("link", { name: "Messages" });
+    expect(messagesLink).toHaveAttribute("href", "/messages");
+  });
+
+  it("should show the unread-conversations badge on the Messages tile when the count is above zero", () => {
+    (useQuery as Mock).mockReturnValue(2);
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Messages, 2 unread" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+  });
+
+  it("should hide the unread-conversations badge when there is nothing unread", () => {
+    (useQuery as Mock).mockReturnValue(0);
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("link", { name: "Messages" })).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Messages, 0 unread")
+    ).not.toBeInTheDocument();
+  });
+
+  it("should call onClose when the Messages tile is clicked", () => {
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "Messages" }));
+    expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
   it("should show verification CTA for unverified users", () => {

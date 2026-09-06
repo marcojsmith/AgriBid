@@ -379,6 +379,63 @@ export const getConversations = query({
 });
 
 /**
+ * Handler for counting how many of the caller's conversations (as buyer or
+ * seller) contain at least one unread message from the other participant.
+ *
+ * A single Convex query cannot span two indexes, so — mirroring
+ * `getConversationsHandler` — the buyer-side and seller-side lists are fetched
+ * independently (capped per side) and merged. Each conversation's unread
+ * messages come from the `by_conversation_read` index; only messages sent by
+ * the other participant count, because the caller's own sent messages stay
+ * `isRead: false` until the recipient reads them.
+ *
+ * @param ctx - Convex Query context
+ * @returns The number of conversations with at least one unread message
+ */
+export const getUnreadConversationCountHandler = async (
+  ctx: QueryCtx
+): Promise<number> => {
+  const callerId = await getAuthenticatedUserId(ctx);
+
+  const [buyerSide, sellerSide] = await Promise.all([
+    ctx.db
+      .query("conversations")
+      .withIndex("by_buyer", (q) => q.eq("buyerId", callerId))
+      .take(MAX_CONVERSATIONS_FETCHED_PER_SIDE),
+    ctx.db
+      .query("conversations")
+      .withIndex("by_seller", (q) => q.eq("sellerId", callerId))
+      .take(MAX_CONVERSATIONS_FETCHED_PER_SIDE),
+  ]);
+
+  const conversations = [...buyerSide, ...sellerSide];
+
+  const hasUnread = await Promise.all(
+    conversations.map(async (conversation) => {
+      const unread = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation_read", (q) =>
+          q.eq("conversationId", conversation._id).eq("isRead", false)
+        )
+        .collect();
+      return unread.some((message) => message.senderId !== callerId);
+    })
+  );
+
+  return hasUnread.reduce((count, has) => (has ? count + 1 : count), 0);
+};
+
+/**
+ * Query: Count the caller's conversations (as buyer or seller) that have at
+ * least one unread message from the other participant. Args: none
+ */
+export const getUnreadConversationCount = query({
+  args: {},
+  returns: v.number(),
+  handler: getUnreadConversationCountHandler,
+});
+
+/**
  * Handler for a paginated page of messages in a conversation the caller
  * participates in, newest first (matching getSellerReviews). Each message
  * carries an `isMine` flag so the client can align sent vs received messages.

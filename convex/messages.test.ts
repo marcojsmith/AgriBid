@@ -7,6 +7,7 @@ import {
   getConversationsHandler,
   getMessagesHandler,
   markReadHandler,
+  getUnreadConversationCountHandler,
 } from "./messages";
 import * as auth from "./lib/auth";
 import { MS_PER_MINUTE } from "./constants";
@@ -781,5 +782,156 @@ describe("markRead mutation", () => {
         conversationId: "conv123" as Id<"conversations">,
       })
     ).rejects.toThrow("You are not a participant in this conversation");
+  });
+});
+
+describe("getUnreadConversationCount query", () => {
+  let mockCtx: MockQueryCtx;
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  /** Chainable stand-in for Convex's index filter builder. */
+  type MockIndexFilter = {
+    eq: (field: string, value: string | boolean) => MockIndexFilter;
+  };
+
+  const setupCtx = (
+    buyerSideConversations: unknown[],
+    sellerSideConversations: unknown[],
+    unreadByConversation: Map<string, unknown[]>
+  ) => {
+    const conversationsQuery = {
+      withIndex: vi.fn((indexName: string) => {
+        if (indexName === "by_buyer") {
+          return { take: vi.fn().mockResolvedValue(buyerSideConversations) };
+        }
+        return { take: vi.fn().mockResolvedValue(sellerSideConversations) };
+      }),
+    };
+
+    // The handler runs one by_conversation_read lookup per conversation, so
+    // the returned chain is bound to the conversationId captured from the
+    // filter builder instead of a mockResolvedValueOnce queue.
+    const messagesQuery = {
+      withIndex: vi.fn(
+        (_indexName: string, buildFilter: (q: MockIndexFilter) => unknown) => {
+          let conversationId = "";
+          const mockFilter: MockIndexFilter = {
+            eq: (field, value) => {
+              if (field === "conversationId" && typeof value === "string") {
+                conversationId = value;
+              }
+              return mockFilter;
+            },
+          };
+          buildFilter(mockFilter);
+          return {
+            collect: vi
+              .fn()
+              .mockResolvedValue(
+                unreadByConversation.get(conversationId) ?? []
+              ),
+          };
+        }
+      ),
+    };
+
+    mockCtx = setupMockCtx({
+      conversations: conversationsQuery,
+      messages: messagesQuery,
+    }) as unknown as MockQueryCtx;
+    return { conversationsQuery, messagesQuery };
+  };
+
+  it("should count conversations with unread messages from the other participant across both sides", async () => {
+    const { conversationsQuery, messagesQuery } = setupCtx(
+      [
+        {
+          _id: "conv_as_buyer",
+          buyerId: "user_me",
+          sellerId: "user_seller",
+          lastMessageAt: 2000,
+          createdAt: 100,
+        },
+      ],
+      [
+        {
+          _id: "conv_as_seller",
+          buyerId: "user_buyer",
+          sellerId: "user_me",
+          lastMessageAt: 1000,
+          createdAt: 200,
+        },
+      ],
+      new Map<string, unknown[]>([
+        // Multiple unread in one conversation still count that conversation once.
+        [
+          "conv_as_buyer",
+          [
+            { senderId: "user_seller", isRead: false },
+            { senderId: "user_me", isRead: false },
+          ],
+        ],
+        ["conv_as_seller", [{ senderId: "user_buyer", isRead: false }]],
+      ])
+    );
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_me");
+
+    const result = await getUnreadConversationCountHandler(
+      mockCtx as unknown as QueryCtx
+    );
+
+    expect(result).toBe(2);
+    expect(conversationsQuery.withIndex).toHaveBeenCalledWith(
+      "by_buyer",
+      expect.any(Function)
+    );
+    expect(conversationsQuery.withIndex).toHaveBeenCalledWith(
+      "by_seller",
+      expect.any(Function)
+    );
+    expect(messagesQuery.withIndex).toHaveBeenCalledWith(
+      "by_conversation_read",
+      expect.any(Function)
+    );
+  });
+
+  it("should ignore unread messages sent by the caller", async () => {
+    setupCtx(
+      [
+        {
+          _id: "conv1",
+          buyerId: "user_me",
+          sellerId: "user_seller",
+          lastMessageAt: 1000,
+          createdAt: 100,
+        },
+      ],
+      [],
+      new Map<string, unknown[]>([
+        ["conv1", [{ senderId: "user_me", isRead: false }]],
+      ])
+    );
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_me");
+
+    const result = await getUnreadConversationCountHandler(
+      mockCtx as unknown as QueryCtx
+    );
+
+    expect(result).toBe(0);
+  });
+
+  it("should return 0 when the caller has no conversations", async () => {
+    const { messagesQuery } = setupCtx([], [], new Map());
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_me");
+
+    const result = await getUnreadConversationCountHandler(
+      mockCtx as unknown as QueryCtx
+    );
+
+    expect(result).toBe(0);
+    expect(messagesQuery.withIndex).not.toHaveBeenCalled();
   });
 });
