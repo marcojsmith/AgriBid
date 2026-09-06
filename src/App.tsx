@@ -37,6 +37,7 @@ const FAQ = lazy(() => import("./pages/FAQ"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
 const Profile = lazy(() => import("./pages/Profile"));
+const SellerListings = lazy(() => import("./pages/SellerListings"));
 const MyBids = lazy(() => import("./pages/dashboard/MyBids"));
 const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
 const KYC = lazy(() => import("./pages/KYC"));
@@ -62,6 +63,8 @@ const PageLoader = () => (
  * - "/login" → Login
  * - "/auction/:id" → AuctionDetail
  * - "/profile/:userId" → Profile
+ * - "/sellers/:userId/listings" → SellerListings (active auctions)
+ * - "/sellers/:userId/listings/sold" → SellerListings (past sales)
  * - "/sell" → Sell
  * - "/faq" → FAQ
  * - "/watchlist" → Watchlist (protected, allowedRole="any")
@@ -89,6 +92,14 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/auction/:id" element={<AuctionDetail />} />
             <Route path="/profile/:userId" element={<Profile />} />
+            <Route
+              path="/sellers/:userId/listings"
+              element={<SellerListings status="active" />}
+            />
+            <Route
+              path="/sellers/:userId/listings/sold"
+              element={<SellerListings status="sold" />}
+            />
             <Route path="/sell" element={<Sell />} />
             <Route path="/faq" element={<FAQ />} />
             <Route

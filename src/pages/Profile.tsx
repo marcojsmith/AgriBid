@@ -569,10 +569,12 @@ export default function Profile() {
                     Active Auctions
                   </h2>
                 </div>
-                {/* TODO: Create filtered listings page (e.g., /auctions?seller=${userId}) */}
-                <span className="text-xs font-bold uppercase tracking-widest text-primary opacity-60 cursor-default">
+                <Link
+                  to={`/sellers/${userId}/listings`}
+                  className="text-xs font-bold uppercase tracking-widest text-primary hover:underline"
+                >
                   View all →
-                </span>
+                </Link>
               </div>
 
               {activeListings.length === 0 && status === "Exhausted" ? (
@@ -599,7 +601,7 @@ export default function Profile() {
           </Card>
 
           {/* Past Sales */}
-          {soldListings.length > 0 && (
+          {sellerInfo.itemsSold > 0 && (
             <Card className="bg-card border border-primary/10 rounded-lg">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -609,23 +611,33 @@ export default function Profile() {
                       Sales History
                     </h2>
                   </div>
-                  {/* TODO: Create filtered sales history page (e.g., /sales?seller=${userId}) */}
-                  <span className="text-xs font-bold uppercase tracking-widest text-green-600 opacity-60 cursor-default">
+                  <Link
+                    to={`/sellers/${userId}/listings/sold`}
+                    className="text-xs font-bold uppercase tracking-widest text-green-600 hover:underline"
+                  >
                     View all →
-                  </span>
+                  </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {soldListings.map((auction) => (
-                    <AuctionCard
-                      key={auction._id}
-                      auction={auction}
-                      isWatched={
-                        watchedAuctionIds?.includes(auction._id) ?? false
-                      }
-                    />
-                  ))}
-                </div>
+                {soldListings.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {soldListings.map((auction) => (
+                      <AuctionCard
+                        key={auction._id}
+                        auction={auction}
+                        isWatched={
+                          watchedAuctionIds?.includes(auction._id) ?? false
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-border rounded p-8 text-center">
+                    <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+                      View all sold listings →
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

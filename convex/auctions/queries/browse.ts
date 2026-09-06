@@ -474,11 +474,15 @@ export const getSellerInfo = query({
 });
 
 /**
- * Returns paginated listings for a specific seller with active and sold auctions.
+ * Returns paginated listings for a specific seller.
+ * When `statusFilter` is provided, only listings with that status are returned
+ * (via the `by_seller_status` index); otherwise both active and sold listings
+ * are returned (via the `by_seller` index with an in-memory status filter).
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
  * @param args.userId - The seller's user ID
+ * @param args.statusFilter - Optional status to filter by ("active" or "sold")
  * @param args.paginationOpts - Pagination options
  * @returns Paginated seller listings
  */
@@ -486,29 +490,31 @@ export const getSellerListingsHandler = async (
   ctx: QueryCtx,
   args: {
     userId: string;
+    statusFilter?: "active" | "sold";
     paginationOpts: PaginationOptions;
   }
 ) => {
-  const listingsQuery = ctx.db
-    .query("auctions")
-    .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
-    .filter((q) =>
-      q.or(q.eq(q.field("status"), "active"), q.eq(q.field("status"), "sold"))
-    );
+  const { userId, statusFilter, paginationOpts } = args;
+
+  const getListingsQuery = () => {
+    if (statusFilter !== undefined) {
+      return ctx.db
+        .query("auctions")
+        .withIndex("by_seller_status", (q) =>
+          q.eq("sellerId", userId).eq("status", statusFilter)
+        );
+    }
+    return ctx.db
+      .query("auctions")
+      .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+      .filter((q) =>
+        q.or(q.eq(q.field("status"), "active"), q.eq(q.field("status"), "sold"))
+      );
+  };
 
   const [results, totalCount] = await Promise.all([
-    listingsQuery.paginate(args.paginationOpts),
-    countQuery(
-      ctx.db
-        .query("auctions")
-        .withIndex("by_seller", (q) => q.eq("sellerId", args.userId))
-        .filter((q) =>
-          q.or(
-            q.eq(q.field("status"), "active"),
-            q.eq(q.field("status"), "sold")
-          )
-        )
-    ),
+    getListingsQuery().paginate(paginationOpts),
+    countQuery(getListingsQuery()),
   ]);
 
   const page = await Promise.all(
@@ -526,12 +532,16 @@ export const getSellerListingsHandler = async (
 
 /**
  * Query: Get paginated seller listings.
- * Args: userId, paginationOpts
+ * Args: userId, statusFilter (optional), paginationOpts
  *
  * @returns Paginated listings
  */
 export const getSellerListings = query({
-  args: { userId: v.string(), paginationOpts: paginationOptsValidator },
+  args: {
+    userId: v.string(),
+    statusFilter: v.optional(v.union(v.literal("active"), v.literal("sold"))),
+    paginationOpts: paginationOptsValidator,
+  },
   returns: v.object({
     page: v.array(AuctionSummaryValidator),
     isDone: v.boolean(),
