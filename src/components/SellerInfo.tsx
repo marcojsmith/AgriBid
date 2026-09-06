@@ -1,6 +1,8 @@
 // app/src/components/SellerInfo.tsx
-import { useQuery } from "convex/react";
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
+import type { Id } from "convex/_generated/dataModel";
 import {
   UserCheck,
   ShieldCheck,
@@ -8,13 +10,27 @@ import {
   Calendar,
   TrendingUp,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface SellerInfoProps {
   sellerId: string;
+  /** Optional auction the conversation is about, linked to the message. */
+  auctionId?: Id<"auctions">;
+  /** True when the viewer is the seller; the Message button stays disabled. */
+  isOwnListing?: boolean;
 }
 
 /**
@@ -22,10 +38,49 @@ interface SellerInfoProps {
  *
  * @param props - Component props.
  * @param props.sellerId - The ID of the seller to display information for.
+ * @param props.auctionId - Optional auction ID used to link a started conversation to the auction.
+ * @param props.isOwnListing - True when the viewer is the seller themselves; disables the Message button instead of offering an action that would fail server-side.
  * @returns The rendered seller info card.
  */
-export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
+export const SellerInfo = ({
+  sellerId,
+  auctionId,
+  isOwnListing = false,
+}: SellerInfoProps) => {
   const seller = useQuery(api.auctions.getSellerInfo, { sellerId });
+
+  const navigate = useNavigate();
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  const startConversation = useMutation(api.messages.startConversation);
+
+  const handleSendMessage = async () => {
+    if (message.trim().length === 0) {
+      toast.error("Please enter a message");
+      return;
+    }
+
+    setIsSendingMessage(true);
+    try {
+      const conversationId = await startConversation({
+        recipientId: sellerId,
+        initialMessage: message,
+        auctionId,
+      });
+      toast.success("Message sent");
+      setMessageDialogOpen(false);
+      setMessage("");
+      void navigate(`/messages/${conversationId}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send message"
+      );
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
 
   if (seller === undefined) {
     return (
@@ -90,15 +145,68 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="outline"
-          disabled
-          className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
-          aria-label={`Message ${seller.name} (Not implemented)`}
-        >
-          <Mail className="h-4 w-4" />
-          Message
-        </Button>
+        <Dialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              disabled={isOwnListing}
+              title={isOwnListing ? "This is your own listing" : undefined}
+              className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
+              aria-label={
+                isOwnListing
+                  ? "This is your own listing"
+                  : `Message ${seller.name}`
+              }
+            >
+              <Mail className="h-4 w-4" />
+              Message
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Message Seller</DialogTitle>
+              <DialogDescription>
+                Send a message to start a conversation
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="seller-message" className="text-sm font-medium">
+                  Message
+                </label>
+                <Textarea
+                  id="seller-message"
+                  name="seller-message"
+                  placeholder="Ask about availability, condition, or delivery..."
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                  }}
+                  rows={4}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setMessageDialogOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSendMessage} disabled={isSendingMessage}>
+                  {isSendingMessage ? (
+                    <>
+                      <span className="animate-pulse">Sending...</span>
+                    </>
+                  ) : (
+                    "Send Message"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         <Button
           variant="secondary"
           className="h-11 font-bold rounded-xl border-2 border-transparent hover:border-muted-foreground/20 transition-all"
