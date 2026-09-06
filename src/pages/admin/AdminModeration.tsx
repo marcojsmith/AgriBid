@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Check, AlertTriangle, Flag, ExternalLink, X } from "lucide-react";
+import {
+  Check,
+  AlertTriangle,
+  Flag,
+  ExternalLink,
+  X,
+  UserX,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import type { Id } from "convex/_generated/dataModel";
@@ -44,6 +51,25 @@ interface PendingFlag {
   createdAt: number;
 }
 
+interface PendingProfileFlag {
+  _id: Id<"profileFlags">;
+  _creationTime: number;
+  reportedUserId: string;
+  reporterId: string;
+  reason:
+    | "fake_account"
+    | "fraudulent_listings"
+    | "abusive_behaviour"
+    | "identity_misrepresentation"
+    | "other";
+  details?: string;
+  status: "pending" | "reviewed" | "dismissed";
+  adminNotes?: string;
+  reporterName: string;
+  reportedUserName: string;
+  createdAt: number;
+}
+
 /**
  * Creates a handler for auction actions with consistent error handling.
  * @param mutation - The mutation function to call
@@ -78,11 +104,19 @@ function createAuctionActionHandler(
 export default function AdminModeration() {
   const navigate = useNavigate();
   const [selectedFlag, setSelectedFlag] = useState<PendingFlag | null>(null);
+  const [selectedProfileFlag, setSelectedProfileFlag] =
+    useState<PendingProfileFlag | null>(null);
+  const [profileFlagStatus, setProfileFlagStatus] = useState<
+    "reviewed" | "dismissed"
+  >("reviewed");
   const [dismissReason, setDismissReason] = useState("");
   const [showDismissDialog, setShowDismissDialog] = useState(false);
 
   const pendingAuctions = useQuery(api.auctions.getPendingAuctions);
   const allPendingFlags = useQuery(api.auctions.getAllPendingFlags);
+  const allPendingProfileFlags = useQuery(
+    api.profileFlags.getAllPendingProfileFlags
+  );
 
   const approveAuctionMutation = useMutation(
     api.auctions.mutations.publish.approveAuction
@@ -92,6 +126,9 @@ export default function AdminModeration() {
   );
   const dismissFlagMutation = useMutation(
     api.auctions.mutations.publish.dismissFlag
+  );
+  const reviewProfileFlagMutation = useMutation(
+    api.profileFlags.reviewProfileFlag
   );
 
   const handleApprove = createAuctionActionHandler(
@@ -131,13 +168,48 @@ export default function AdminModeration() {
     setShowDismissDialog(true);
   };
 
+  const openProfileFlagDialog = (
+    flag: PendingProfileFlag,
+    status: "reviewed" | "dismissed"
+  ) => {
+    setDismissReason("");
+    setSelectedProfileFlag(flag);
+    setProfileFlagStatus(status);
+    setShowDismissDialog(true);
+  };
+
+  const handleReviewProfileFlag = async () => {
+    if (!selectedProfileFlag) return;
+    try {
+      await reviewProfileFlagMutation({
+        flagId: selectedProfileFlag._id,
+        status: profileFlagStatus,
+        adminNotes: dismissReason || undefined,
+      });
+      toast.success(
+        profileFlagStatus === "dismissed"
+          ? "Report dismissed"
+          : "Report marked as reviewed"
+      );
+      handleCloseDismissDialog();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update report status");
+    }
+  };
+
   const handleCloseDismissDialog = () => {
     setShowDismissDialog(false);
     setSelectedFlag(null);
+    setSelectedProfileFlag(null);
     setDismissReason("");
   };
 
-  if (pendingAuctions === undefined || allPendingFlags === undefined) {
+  if (
+    pendingAuctions === undefined ||
+    allPendingFlags === undefined ||
+    allPendingProfileFlags === undefined
+  ) {
     return (
       <AdminLayout
         title="Moderation Queue"
@@ -151,6 +223,7 @@ export default function AdminModeration() {
   }
 
   const flaggedAuctionsCount = allPendingFlags.length;
+  const reportedProfilesCount = allPendingProfileFlags.length;
 
   return (
     <AdminLayout
@@ -227,6 +300,69 @@ export default function AdminModeration() {
           </div>
         )}
 
+        {/* Reported Profiles Section */}
+        {reportedProfilesCount > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <UserX className="h-5 w-5 text-destructive" />
+              <h2 className="text-xl font-bold">Reported Profiles</h2>
+              <Badge variant="destructive" className="ml-2">
+                {reportedProfilesCount}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allPendingProfileFlags.map((flag) => (
+                <Card key={flag._id} className="border-destructive/50">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="text-base">
+                          {flag.reportedUserName}
+                        </CardTitle>
+                        <CardDescription>
+                          Reported by {flag.reporterName}
+                        </CardDescription>
+                      </div>
+                      <Badge variant="outline">{flag.reason}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {flag.details && (
+                      <p className="text-sm text-muted-foreground">
+                        {flag.details}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Reported on{" "}
+                      {new Date(flag.createdAt).toLocaleDateString()}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openProfileFlagDialog(flag, "reviewed")}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Mark Reviewed
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openProfileFlagDialog(flag, "dismissed")}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Dismiss Report
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Pending Auctions Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -249,19 +385,21 @@ export default function AdminModeration() {
             ))}
           </div>
 
-          {pendingAuctions.length === 0 && flaggedAuctionsCount === 0 && (
-            <div className="py-20 bg-muted/30 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center text-center px-4">
-              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4">
-                <Check className="h-8 w-8" />
+          {pendingAuctions.length === 0 &&
+            flaggedAuctionsCount === 0 &&
+            reportedProfilesCount === 0 && (
+              <div className="py-20 bg-muted/30 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center text-center px-4">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+                  <Check className="h-8 w-8" />
+                </div>
+                <h3 className="text-lg font-black uppercase tracking-tight">
+                  Queue is Clear
+                </h3>
+                <p className="text-muted-foreground text-sm max-w-[250px] mt-1">
+                  All pending auctions have been reviewed. Good work!
+                </p>
               </div>
-              <h3 className="text-lg font-black uppercase tracking-tight">
-                Queue is Clear
-              </h3>
-              <p className="text-muted-foreground text-sm max-w-[250px] mt-1">
-                All pending auctions have been reviewed. Good work!
-              </p>
-            </div>
-          )}
+            )}
         </div>
       </div>
 
@@ -272,23 +410,43 @@ export default function AdminModeration() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Dismiss Flag</AlertDialogTitle>
+            <AlertDialogTitle>
+              {selectedProfileFlag ? "Review Profile Report" : "Dismiss Flag"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to dismiss this flag?
-              {selectedFlag && selectedFlag.auctionTitle && (
-                <span className="block mt-2">
-                  Auction: <strong>{selectedFlag.auctionTitle}</strong>
-                </span>
+              {selectedProfileFlag ? (
+                <>
+                  Choose an outcome for this profile report.
+                  <span className="block mt-2">
+                    Profile:{" "}
+                    <strong>{selectedProfileFlag.reportedUserName}</strong>
+                  </span>
+                </>
+              ) : (
+                <>
+                  Are you sure you want to dismiss this flag?
+                  {selectedFlag && selectedFlag.auctionTitle && (
+                    <span className="block mt-2">
+                      Auction: <strong>{selectedFlag.auctionTitle}</strong>
+                    </span>
+                  )}
+                </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2">
             <label htmlFor="dismiss-reason" className="text-sm font-medium">
-              Reason for dismissal (optional)
+              {selectedProfileFlag
+                ? "Admin notes (optional)"
+                : "Reason for dismissal (optional)"}
             </label>
             <Textarea
               id="dismiss-reason"
-              placeholder="Explain why this flag is being dismissed..."
+              placeholder={
+                selectedProfileFlag
+                  ? "Add any notes about this report..."
+                  : "Explain why this flag is being dismissed..."
+              }
               value={dismissReason}
               onChange={(e) => setDismissReason(e.target.value)}
               rows={3}
@@ -298,8 +456,18 @@ export default function AdminModeration() {
             <AlertDialogCancel onClick={handleCloseDismissDialog}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDismissFlag}>
-              Dismiss Flag
+            <AlertDialogAction
+              onClick={
+                selectedProfileFlag
+                  ? handleReviewProfileFlag
+                  : handleDismissFlag
+              }
+            >
+              {selectedProfileFlag
+                ? profileFlagStatus === "dismissed"
+                  ? "Dismiss Report"
+                  : "Mark Reviewed"
+                : "Dismiss Flag"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -115,6 +115,31 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_auction_status", ["auctionId", "status"]),
 
+  // Profile reporting system for community moderation
+  profileFlags: defineTable({
+    reportedUserId: v.string(),
+    reporterId: v.string(),
+    reason: v.union(
+      v.literal("fake_account"),
+      v.literal("fraudulent_listings"),
+      v.literal("abusive_behaviour"),
+      v.literal("identity_misrepresentation"),
+      v.literal("other")
+    ),
+    details: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewed"),
+      v.literal("dismissed")
+    ),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_reported_user", ["reportedUserId"])
+    .index("by_reporter", ["reporterId"])
+    .index("by_status", ["status"])
+    .index("by_reported_status", ["reportedUserId", "status"]),
+
   // Seller reviews left by auction winners
   reviews: defineTable({
     auctionId: v.id("auctions"),
