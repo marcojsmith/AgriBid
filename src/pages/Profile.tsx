@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { LucideIcon } from "lucide-react";
@@ -252,6 +252,40 @@ export default function Profile() {
       toast.error(
         error instanceof Error ? error.message : "Failed to report profile"
       );
+    }
+  };
+
+  const navigate = useNavigate();
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [contactMessage, setContactMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  const startConversation = useMutation(api.messages.startConversation);
+
+  const handleContactSeller = async () => {
+    if (contactMessage.trim().length === 0) {
+      toast.error("Please enter a message");
+      return;
+    }
+    if (!userId) return;
+
+    setIsSendingMessage(true);
+    try {
+      const conversationId = await startConversation({
+        recipientId: userId,
+        initialMessage: contactMessage,
+        auctionId: undefined,
+      });
+      toast.success("Message sent");
+      setContactDialogOpen(false);
+      setContactMessage("");
+      void navigate(`/messages/${conversationId}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send message"
+      );
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -618,16 +652,72 @@ export default function Profile() {
               )}
               {!isOwner && (
                 <>
-                  {/* TODO(#220): Implement messaging system in backend */}
-                  <Button
-                    variant="outline"
-                    className="w-full border-2 border-border hover:border-primary/30 bg-transparent font-black uppercase tracking-wider text-xs h-10 rounded-md"
-                    disabled
-                    title="Coming soon - see issue #220"
+                  <Dialog
+                    open={contactDialogOpen}
+                    onOpenChange={setContactDialogOpen}
                   >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Contact Seller
-                  </Button>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full border-2 border-border hover:border-primary/30 bg-transparent font-black uppercase tracking-wider text-xs h-10 rounded-md"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Contact Seller
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Contact Seller</DialogTitle>
+                        <DialogDescription>
+                          Send a message to start a conversation
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="contact-message"
+                            className="text-sm font-medium"
+                          >
+                            Message
+                          </label>
+                          <Textarea
+                            id="contact-message"
+                            name="contact-message"
+                            placeholder="Ask about availability, condition, or delivery..."
+                            value={contactMessage}
+                            onChange={(e) => {
+                              setContactMessage(e.target.value);
+                            }}
+                            rows={4}
+                          />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setContactDialogOpen(false);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleContactSeller}
+                            disabled={isSendingMessage}
+                          >
+                            {isSendingMessage ? (
+                              <>
+                                <span className="animate-pulse">
+                                  Sending...
+                                </span>
+                              </>
+                            ) : (
+                              "Send Message"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                   <Dialog
                     open={reportDialogOpen}
                     onOpenChange={setReportDialogOpen}
