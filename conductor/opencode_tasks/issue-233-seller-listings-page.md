@@ -166,7 +166,8 @@ than adding a new import if already present; add it if not.
 - `src/pages/Profile.tsx` — both dead "View all →" spans (and their TODO comments) replaced with `Link`s to
   `/sellers/${userId}/listings` (text-primary) and `/sellers/${userId}/listings/sold` (text-green-600, matching Sales
   History styling), using the already-imported `Link`. **The "Contact Seller"/"Report Profile" buttons and their TODOs
-  (#220/#221) are untouched** — confirmed via `git diff` (the diff for this file contains only the two link hunks).
+  (#231/#232 — the in-code TODO comments themselves say #220/#221, but both linked issues note that's a
+  mislabelling) are untouched** — confirmed via `git diff` (the diff for this file contains only the two link hunks).
 - `convex/auctions/queries/browse.test.ts` — added a `getSellerListingsHandler` describe block covering: no
   `statusFilter` (asserts `by_seller` index + in-memory `q.or` status filter used, mixed results returned),
   `statusFilter: "active"` and `statusFilter: "sold"` (assert `by_seller_status` index used with the right status eq and

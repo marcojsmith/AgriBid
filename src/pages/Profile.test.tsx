@@ -180,6 +180,25 @@ describe("Profile Page", () => {
     expect(screen.getByText(/Sold Baler/i)).toBeInTheDocument();
   });
 
+  it("still shows Sales History and its View all link when itemsSold > 0 but no sold listings are on the current page", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "a1",
+          title: "Active Tractor",
+          status: "active",
+          sellerId: "user1",
+        },
+      ],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderProfile();
+    expect(screen.getByText("Sales History")).toBeInTheDocument();
+    expect(screen.getByText(/View all sold listings/i)).toBeInTheDocument();
+  });
+
   it("renders empty active listings state when no active auctions", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
       results: [{ _id: "a1", title: "Auction 1", status: "sold" }],

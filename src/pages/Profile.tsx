@@ -601,7 +601,7 @@ export default function Profile() {
           </Card>
 
           {/* Past Sales */}
-          {soldListings.length > 0 && (
+          {sellerInfo.itemsSold > 0 && (
             <Card className="bg-card border border-primary/10 rounded-lg">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -619,17 +619,25 @@ export default function Profile() {
                   </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {soldListings.map((auction) => (
-                    <AuctionCard
-                      key={auction._id}
-                      auction={auction}
-                      isWatched={
-                        watchedAuctionIds?.includes(auction._id) ?? false
-                      }
-                    />
-                  ))}
-                </div>
+                {soldListings.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {soldListings.map((auction) => (
+                      <AuctionCard
+                        key={auction._id}
+                        auction={auction}
+                        isWatched={
+                          watchedAuctionIds?.includes(auction._id) ?? false
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-border rounded p-8 text-center">
+                    <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+                      View all sold listings →
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
