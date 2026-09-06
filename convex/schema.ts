@@ -34,6 +34,7 @@ export default defineSchema({
     minIncrement: v.number(),
     startTime: v.optional(v.number()),
     endTime: v.optional(v.number()),
+    settledAt: v.optional(v.number()), // When the auction was settled (sold/unsold)
     durationDays: v.optional(v.number()),
     sellerId: v.string(),
     status: v.union(
@@ -121,6 +122,7 @@ export default defineSchema({
     revieweeId: v.string(), // seller userId
     rating: v.number(), // integer 1-5, validated in the mutation handler
     comment: v.optional(v.string()),
+    response: v.optional(v.object({ text: v.string(), createdAt: v.number() })), // Seller's single response to the review
     createdAt: v.number(),
   })
     .index("by_reviewee", ["revieweeId"])

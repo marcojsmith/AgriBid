@@ -3,6 +3,7 @@ import { ConvexError } from "convex/values";
 
 import {
   submitReviewHandler,
+  respondToReviewHandler,
   getSellerReviewsHandler,
   getSellerRatingSummary,
 } from "./reviews";
@@ -14,9 +15,12 @@ vi.mock("./lib/auth", () => ({
   getAuthenticatedUserId: vi.fn(),
 }));
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 type MockDb = {
   get: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
+  patch: ReturnType<typeof vi.fn>;
   query: ReturnType<typeof vi.fn>;
 };
 
@@ -39,6 +43,7 @@ describe("submitReview mutation", () => {
     const mockDb: MockDb = {
       get: vi.fn(),
       insert: vi.fn(),
+      patch: vi.fn(),
       query: vi.fn(() => mockQuery),
     };
     return {
@@ -56,6 +61,7 @@ describe("submitReview mutation", () => {
       sellerId,
       winnerId,
       status: "sold",
+      settledAt: Date.now() - 8 * DAY_MS,
     };
 
     const mockQuery = {
@@ -198,6 +204,277 @@ describe("submitReview mutation", () => {
       })
     ).rejects.toThrow("You have already reviewed this auction");
   });
+
+  it("should reject a review within the 7-day cooldown after settlement", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const winnerId = "user_winner";
+
+    const auctionDoc = {
+      _id: auctionId,
+      sellerId: "user_seller",
+      winnerId,
+      status: "sold",
+      settledAt: Date.now() - 1 * DAY_MS,
+    };
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
+
+    await expect(
+      submitReviewHandler(mockCtx as unknown as MutationCtx, {
+        auctionId,
+        rating: 5,
+      })
+    ).rejects.toThrow(
+      "Reviews can be left starting 7 days after the sale completes."
+    );
+  });
+
+  it("should accept a review at exactly 7 days after settlement", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const winnerId = "user_winner";
+
+    const auctionDoc = {
+      _id: auctionId,
+      sellerId: "user_seller",
+      winnerId,
+      status: "sold",
+      settledAt: Date.now() - 7 * DAY_MS,
+    };
+
+    const mockQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      unique: vi.fn().mockResolvedValue(null), // No existing review
+    };
+
+    mockCtx = setupMockCtx(mockQuery);
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
+
+    const result = await submitReviewHandler(
+      mockCtx as unknown as MutationCtx,
+      { auctionId, rating: 4 }
+    );
+
+    expect(result.success).toBe(true);
+    expect(mockCtx.db.insert).toHaveBeenCalled();
+  });
+
+  it("should accept a review just over 7 days after settlement", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const winnerId = "user_winner";
+
+    const auctionDoc = {
+      _id: auctionId,
+      sellerId: "user_seller",
+      winnerId,
+      status: "sold",
+      settledAt: Date.now() - 7 * DAY_MS - 60_000,
+    };
+
+    const mockQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      unique: vi.fn().mockResolvedValue(null), // No existing review
+    };
+
+    mockCtx = setupMockCtx(mockQuery);
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
+
+    const result = await submitReviewHandler(
+      mockCtx as unknown as MutationCtx,
+      { auctionId, rating: 5 }
+    );
+
+    expect(result.success).toBe(true);
+  });
+
+  it("should reject within the cooldown when only endTime exists (legacy auction)", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const winnerId = "user_winner";
+
+    const auctionDoc = {
+      _id: auctionId,
+      sellerId: "user_seller",
+      winnerId,
+      status: "sold",
+      endTime: Date.now() - 2 * DAY_MS,
+    };
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
+
+    await expect(
+      submitReviewHandler(mockCtx as unknown as MutationCtx, {
+        auctionId,
+        rating: 5,
+      })
+    ).rejects.toThrow(
+      "Reviews can be left starting 7 days after the sale completes."
+    );
+  });
+
+  it("should allow a review for a sold auction with no settlement timestamp", async () => {
+    const auctionId = "auction123" as Id<"auctions">;
+    const winnerId = "user_winner";
+
+    const auctionDoc = {
+      _id: auctionId,
+      sellerId: "user_seller",
+      winnerId,
+      status: "sold",
+    };
+
+    const mockQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      unique: vi.fn().mockResolvedValue(null), // No existing review
+    };
+
+    mockCtx = setupMockCtx(mockQuery);
+    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
+
+    const result = await submitReviewHandler(
+      mockCtx as unknown as MutationCtx,
+      { auctionId, rating: 5 }
+    );
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("respondToReview mutation", () => {
+  let mockCtx: MockMutationCtx;
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  const setupMockCtx = () => {
+    const mockDb: MockDb = {
+      get: vi.fn(),
+      insert: vi.fn(),
+      patch: vi.fn(),
+      query: vi.fn(),
+    };
+    return {
+      db: mockDb,
+    } as unknown as MockMutationCtx;
+  };
+
+  it("should allow the reviewed seller to respond to a review", async () => {
+    const reviewId = "review123" as Id<"reviews">;
+
+    const reviewDoc = {
+      _id: reviewId,
+      reviewerId: "user_buyer",
+      revieweeId: "user_seller",
+      rating: 4,
+      response: undefined,
+    };
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue(reviewDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_seller");
+
+    const result = await respondToReviewHandler(
+      mockCtx as unknown as MutationCtx,
+      { reviewId, text: "Thank you for the purchase!" }
+    );
+
+    expect(result.success).toBe(true);
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(reviewId, {
+      response: {
+        text: "Thank you for the purchase!",
+        createdAt: expect.any(Number) as number,
+      },
+    });
+  });
+
+  it("should throw if review not found", async () => {
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue(null);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_seller");
+
+    await expect(
+      respondToReviewHandler(mockCtx as unknown as MutationCtx, {
+        reviewId: "nonexistent" as Id<"reviews">,
+        text: "Thanks",
+      })
+    ).rejects.toThrow("Review not found");
+  });
+
+  it("should reject a caller who is not the reviewed seller", async () => {
+    const reviewId = "review123" as Id<"reviews">;
+
+    const reviewDoc = {
+      _id: reviewId,
+      reviewerId: "user_buyer",
+      revieweeId: "user_seller",
+      rating: 4,
+    };
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue(reviewDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_other");
+
+    await expect(
+      respondToReviewHandler(mockCtx as unknown as MutationCtx, {
+        reviewId,
+        text: "Thanks",
+      })
+    ).rejects.toThrow("Only the reviewed seller can respond to this review");
+  });
+
+  it("should reject a second response to the same review", async () => {
+    const reviewId = "review123" as Id<"reviews">;
+
+    const reviewDoc = {
+      _id: reviewId,
+      reviewerId: "user_buyer",
+      revieweeId: "user_seller",
+      rating: 4,
+      response: { text: "Already replied", createdAt: 1000 },
+    };
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue(reviewDoc);
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_seller");
+
+    await expect(
+      respondToReviewHandler(mockCtx as unknown as MutationCtx, {
+        reviewId,
+        text: "Another reply",
+      })
+    ).rejects.toThrow("This review has already been responded to");
+  });
+
+  it.each(["", "   "])(
+    "should reject blank or whitespace-only response text %s",
+    async (text) => {
+      const reviewId = "review123" as Id<"reviews">;
+
+      const reviewDoc = {
+        _id: reviewId,
+        reviewerId: "user_buyer",
+        revieweeId: "user_seller",
+        rating: 4,
+      };
+
+      mockCtx = setupMockCtx();
+      mockCtx.db.get.mockResolvedValue(reviewDoc);
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_seller");
+
+      await expect(
+        respondToReviewHandler(mockCtx as unknown as MutationCtx, {
+          reviewId,
+          text,
+        })
+      ).rejects.toThrow("Response text cannot be empty");
+    }
+  );
 });
 
 describe("getSellerReviews query", () => {
@@ -211,6 +488,7 @@ describe("getSellerReviews query", () => {
     const mockDb: MockDb = {
       get: vi.fn(),
       insert: vi.fn(),
+      patch: vi.fn(),
       query: vi.fn(),
     };
     return {
@@ -229,6 +507,7 @@ describe("getSellerReviews query", () => {
         rating: 5,
         comment: "Excellent",
         createdAt: 1000,
+        response: { text: "Thank you!", createdAt: 1500 },
       },
       {
         _id: "review2",
@@ -284,8 +563,10 @@ describe("getSellerReviews query", () => {
       comment: "Excellent",
       createdAt: 1000,
       reviewerName: "Buyer One",
+      response: { text: "Thank you!", createdAt: 1500 },
     });
     expect(result.page[1]?.reviewerName).toBe("Buyer Two");
+    expect(result.page[1]?.response).toBeUndefined();
     expect(result.isDone).toBe(true);
     expect(result.continueCursor).toBe("");
   });
@@ -373,6 +654,7 @@ describe("getSellerRatingSummary", () => {
     const mockDb: MockDb = {
       get: vi.fn(),
       insert: vi.fn(),
+      patch: vi.fn(),
       query: vi.fn(() => mockQuery),
     };
     return {

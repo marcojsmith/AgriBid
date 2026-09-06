@@ -12,6 +12,9 @@ import {
 import { getAuthenticatedUserId } from "./lib/auth";
 import type { Id } from "./_generated/dataModel";
 
+/** Cooldown after auction settlement before a review can be left (7 days). */
+const REVIEW_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * Computes the average rating and review count for a seller.
  *
@@ -40,7 +43,8 @@ export async function getSellerRatingSummary(
 
 /**
  * Handler for submitting a review for a completed auction.
- * Only the auction winner may review, and only once per auction.
+ * Only the auction winner may review, and only once per auction, no
+ * earlier than 7 days after the auction was settled.
  *
  * @param ctx - Mutation context
  * @param args - Arguments including auctionId, rating, and optional comment
@@ -72,6 +76,13 @@ export const submitReviewHandler = async (
     throw new ConvexError("Auction is not completed");
   }
 
+  const settledAt = auction.settledAt ?? auction.endTime;
+  if (settledAt !== undefined && Date.now() - settledAt < REVIEW_COOLDOWN_MS) {
+    throw new ConvexError(
+      "Reviews can be left starting 7 days after the sale completes."
+    );
+  }
+
   if (!Number.isInteger(args.rating) || args.rating < 1 || args.rating > 5) {
     throw new ConvexError("Rating must be an integer between 1 and 5");
   }
@@ -101,7 +112,8 @@ export const submitReviewHandler = async (
 
 /**
  * Submit a review for a completed auction.
- * Only the auction winner can review, once per auction.
+ * Only the auction winner can review, once per auction, and only from
+ * 7 days after the auction was settled.
  */
 export const submitReview = mutation({
   args: {
@@ -114,8 +126,63 @@ export const submitReview = mutation({
 });
 
 /**
+ * Handler for a seller responding to a review left about them.
+ * Only the reviewed seller may respond, once per review, with non-empty text.
+ *
+ * @param ctx - Mutation context
+ * @param args - Arguments including reviewId and response text
+ * @param args.reviewId - The ID of the review to respond to
+ * @param args.text - The response text (must be non-blank)
+ * @returns Object with success boolean
+ */
+export const respondToReviewHandler = async (
+  ctx: MutationCtx,
+  args: { reviewId: Id<"reviews">; text: string }
+) => {
+  const userId = await getAuthenticatedUserId(ctx);
+
+  const review = await ctx.db.get(args.reviewId);
+  if (!review) {
+    throw new ConvexError("Review not found");
+  }
+
+  if (review.revieweeId !== userId) {
+    throw new ConvexError(
+      "Only the reviewed seller can respond to this review"
+    );
+  }
+
+  if (review.response) {
+    throw new ConvexError("This review has already been responded to");
+  }
+
+  if (args.text.trim().length === 0) {
+    throw new ConvexError("Response text cannot be empty");
+  }
+
+  await ctx.db.patch(args.reviewId, {
+    response: { text: args.text, createdAt: Date.now() },
+  });
+
+  return { success: true };
+};
+
+/**
+ * Respond to a review as the reviewed seller.
+ * One response per review; responses cannot be edited or removed.
+ */
+export const respondToReview = mutation({
+  args: {
+    reviewId: v.id("reviews"),
+    text: v.string(),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: respondToReviewHandler,
+});
+
+/**
  * Returns a paginated page of reviews for a seller, newest first,
- * with the reviewer's display name attached when available.
+ * with the reviewer's display name and the seller's response (if any) attached.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
@@ -148,6 +215,7 @@ export const getSellerReviewsHandler = async (
         auctionId: review.auctionId,
         rating: review.rating,
         comment: review.comment,
+        response: review.response,
         createdAt: review.createdAt,
         reviewerName: reviewerProfile?.name,
       };
@@ -180,6 +248,9 @@ export const getSellerReviews = query({
         auctionId: v.id("auctions"),
         rating: v.number(),
         comment: v.optional(v.string()),
+        response: v.optional(
+          v.object({ text: v.string(), createdAt: v.number() })
+        ),
         createdAt: v.number(),
         reviewerName: v.optional(v.string()),
       })
