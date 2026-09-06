@@ -174,6 +174,9 @@ const { mockApi } = vi.hoisted(() => ({
     profileFlags: {
       reportProfile: { name: "profileFlags:reportProfile" },
     },
+    messages: {
+      startConversation: { name: "messages:startConversation" },
+    },
   },
 }));
 
@@ -417,6 +420,9 @@ describe("Profile Page", () => {
 
     renderProfile("user1");
     expect(screen.getByText("Contact Seller")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /contact seller/i })
+    ).toBeEnabled();
     const reportButton = screen.getByRole("button", {
       name: /report profile/i,
     });
@@ -536,6 +542,137 @@ describe("Profile Page", () => {
         );
       });
       expect(screen.getByText("Report this Profile")).toBeInTheDocument();
+    });
+  });
+
+  describe("Contact Seller dialog", () => {
+    const setupNonOwner = () => {
+      (useQuery as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.users.getMyProfile)
+          return { ...mockMyProfile, userId: "other", _id: "other" };
+        if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+        if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+        return null;
+      });
+    };
+
+    const renderProfileWithMessagesRoute = () => {
+      return render(
+        <MemoryRouter initialEntries={["/profile/user1"]}>
+          <Routes>
+            <Route path="/profile/:userId" element={<Profile />} />
+            <Route
+              path="/messages/:conversationId"
+              element={<div data-testid="messages-thread">Thread</div>}
+            />
+          </Routes>
+        </MemoryRouter>
+      );
+    };
+
+    const openContactDialog = () => {
+      setupNonOwner();
+      renderProfileWithMessagesRoute();
+      fireEvent.click(screen.getByRole("button", { name: /contact seller/i }));
+      expect(
+        screen.getByText("Send a message to start a conversation")
+      ).toBeInTheDocument();
+    };
+
+    it("opens the contact dialog with a message field and send button", () => {
+      openContactDialog();
+
+      expect(screen.getByLabelText(/^message$/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /send message/i })
+      ).toBeInTheDocument();
+    });
+
+    it("closes the dialog on cancel", () => {
+      openContactDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+      expect(screen.queryByTestId("dialog-content")).not.toBeInTheDocument();
+    });
+
+    it("shows an error toast when submitting without a message", () => {
+      openContactDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      expect(toast.error).toHaveBeenCalledWith("Please enter a message");
+    });
+
+    it("starts a conversation and navigates to the thread on success", async () => {
+      const mockStartConversation = vi.fn().mockResolvedValue("conv_new_123");
+      (useMutation as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.messages.startConversation) {
+          return mockStartConversation;
+        }
+        return vi.fn();
+      });
+
+      openContactDialog();
+
+      fireEvent.change(screen.getByLabelText(/^message$/i), {
+        target: { value: "Hi, is the tractor still available?" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      await waitFor(() => {
+        expect(mockStartConversation).toHaveBeenCalledWith({
+          recipientId: "user1",
+          initialMessage: "Hi, is the tractor still available?",
+          auctionId: undefined,
+        });
+        expect(toast.success).toHaveBeenCalledWith("Message sent");
+        expect(screen.getByTestId("messages-thread")).toBeInTheDocument();
+      });
+    });
+
+    it("trims whitespace-only messages to empty and rejects submission", () => {
+      const mockStartConversation = vi.fn();
+      (useMutation as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.messages.startConversation) {
+          return mockStartConversation;
+        }
+        return vi.fn();
+      });
+
+      openContactDialog();
+
+      fireEvent.change(screen.getByLabelText(/^message$/i), {
+        target: { value: "   " },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      expect(toast.error).toHaveBeenCalledWith("Please enter a message");
+      expect(mockStartConversation).not.toHaveBeenCalled();
+    });
+
+    it("shows an error toast and stays on the profile when the mutation fails", async () => {
+      const mockStartConversation = vi
+        .fn()
+        .mockRejectedValue(new Error("You cannot message yourself"));
+      (useMutation as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.messages.startConversation) {
+          return mockStartConversation;
+        }
+        return vi.fn();
+      });
+
+      openContactDialog();
+
+      fireEvent.change(screen.getByLabelText(/^message$/i), {
+        target: { value: "Hello" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("You cannot message yourself");
+      });
+      expect(screen.queryByTestId("messages-thread")).not.toBeInTheDocument();
     });
   });
 

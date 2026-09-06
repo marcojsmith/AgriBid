@@ -275,6 +275,32 @@ export default defineSchema({
     .index("by_user_notification", ["userId", "notificationId"])
     .index("by_notification", ["notificationId"]),
 
+  // Two-party buyer/seller messaging (issue #231). Every conversation is
+  // strictly two-party, so participants are modelled as scalar buyerId/sellerId
+  // fields (each indexed) rather than an array of participant ids — Convex
+  // array-field indexes cannot do a "contains this user" lookup.
+  conversations: defineTable({
+    buyerId: v.string(),
+    sellerId: v.string(),
+    auctionId: v.optional(v.id("auctions")),
+    lastMessageAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_buyer", ["buyerId", "lastMessageAt"])
+    .index("by_seller", ["sellerId", "lastMessageAt"])
+    .index("by_buyer_seller", ["buyerId", "sellerId"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    senderId: v.string(),
+    content: v.string(),
+    isRead: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_conversation_read", ["conversationId", "isRead"])
+    .index("by_sender", ["senderId", "createdAt"]),
+
   watchlist: defineTable({
     userId: v.string(),
     auctionId: v.id("auctions"),

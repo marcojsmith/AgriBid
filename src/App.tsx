@@ -43,6 +43,7 @@ const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
 const KYC = lazy(() => import("./pages/KYC"));
 const Support = lazy(() => import("./pages/Support"));
 const Notifications = lazy(() => import("./pages/Notifications"));
+const Messages = lazy(() => import("./pages/Messages"));
 const Settings = lazy(() => import("./pages/Settings"));
 
 /**
@@ -78,6 +79,8 @@ const PageLoader = () => (
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")
+ * - "/messages" → Messages inbox (protected, allowedRole="any")
+ * - "/messages/:conversationId" → Messages thread view (protected, allowedRole="any")
  * - "/settings" → Settings (protected, allowedRole="any")
  *
  * @returns The root JSX element containing the BrowserRouter, layout and route definitions
@@ -291,6 +294,22 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="any">
                   <Notifications />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <RoleProtectedRoute allowedRole="any">
+                  <Messages />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages/:conversationId"
+              element={
+                <RoleProtectedRoute allowedRole="any">
+                  <Messages />
                 </RoleProtectedRoute>
               }
             />
