@@ -12,6 +12,28 @@ interface AuctionCardProps {
   isWatched: boolean;
 }
 
+interface SellerInfo {
+  _id: string;
+  name?: string;
+  isVerified: boolean;
+  kycStatus?: "pending" | "verified" | "rejected";
+  role: string;
+  createdAt?: number;
+  itemsSold: number;
+  totalListings: number;
+  bio?: string;
+  companyName?: string;
+  location?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  bankingVerified?: boolean;
+  taxNumberVerified?: boolean;
+  bidsPlaced: number;
+  avgSalePrice?: number;
+  avgRating?: number;
+  reviewCount: number;
+}
+
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   usePaginatedQuery: vi.fn(),
@@ -26,6 +48,9 @@ const { mockApi } = vi.hoisted(() => ({
     auctions: {
       getSellerInfo: { name: "auctions:getSellerInfo" },
       getSellerListings: { name: "auctions:getSellerListings" },
+    },
+    reviews: {
+      getSellerReviews: { name: "reviews:getSellerReviews" },
     },
     watchlist: {
       getWatchedAuctionIds: { name: "watchlist:getWatchedAuctionIds" },
@@ -46,7 +71,7 @@ vi.mock("@/components/auction/AuctionCard", () => ({
 }));
 
 describe("Profile Page", () => {
-  const mockSellerInfo = {
+  const mockSellerInfo: SellerInfo = {
     _id: "user1",
     name: "John Dippenaar",
     isVerified: true,
@@ -64,6 +89,8 @@ describe("Profile Page", () => {
     taxNumberVerified: false,
     bidsPlaced: 24,
     avgSalePrice: 485000,
+    avgRating: undefined,
+    reviewCount: 0,
   };
 
   const mockMyProfile = {
@@ -76,6 +103,28 @@ describe("Profile Page", () => {
     { _id: "auction2", title: "Sold Baler", status: "sold" },
   ];
 
+  const mockReviews = [
+    {
+      _id: "review1",
+      auctionId: "auction2",
+      rating: 5,
+      comment: "Great seller, smooth transaction.",
+      createdAt: new Date("2026-02-10").getTime(),
+      reviewerName: "Alice Bezuidenhout",
+      response: {
+        text: "Thank you for the smooth sale!",
+        createdAt: new Date("2026-02-12").getTime(),
+      },
+    },
+    {
+      _id: "review2",
+      auctionId: "auction3",
+      rating: 4,
+      comment: "Tractor as described.",
+      createdAt: new Date("2026-01-20").getTime(),
+    },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
     (useQuery as Mock).mockImplementation((apiPath) => {
@@ -86,10 +135,18 @@ describe("Profile Page", () => {
       return null;
     });
 
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: mockListings,
-      status: "Exhausted",
-      loadMore: vi.fn(),
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.auctions.getSellerListings) {
+        return {
+          results: mockListings,
+          status: "Exhausted",
+          loadMore: vi.fn(),
+        };
+      }
+      if (apiPath === mockApi.reviews.getSellerReviews) {
+        return { results: [], status: "Exhausted", loadMore: vi.fn() };
+      }
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
     });
   });
 
@@ -151,6 +208,85 @@ describe("Profile Page", () => {
     expect(screen.getByText("No reviews yet")).toBeInTheDocument();
   });
 
+  it("renders amber stars and review count when reviews exist", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("★★★★☆")).toBeInTheDocument();
+    expect(screen.getByText("2 reviews")).toBeInTheDocument();
+    expect(screen.queryByText("No reviews yet")).not.toBeInTheDocument();
+  });
+
+  it("renders singular review label for a single review", () => {
+    const singleReviewSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 5,
+      reviewCount: 1,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return singleReviewSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("★★★★★")).toBeInTheDocument();
+    expect(screen.getByText("1 review")).toBeInTheDocument();
+  });
+
+  it("renders Seller Rating trust item with average and count when reviewed", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4.5,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("4.5 (2)")).toBeInTheDocument();
+  });
+
+  it("renders verified Seller Rating trust item when reviewed", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    const ratingLabel = screen.getByText("Seller Rating");
+    const ratingItem = ratingLabel.parentElement;
+    expect(ratingItem).not.toBeNull();
+    expect(ratingItem).toHaveTextContent("4.0 (2)");
+  });
+
   it("shows non-owner buttons for non-owner", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile)
@@ -178,6 +314,68 @@ describe("Profile Page", () => {
     renderProfile();
     expect(screen.getByText("Sales History")).toBeInTheDocument();
     expect(screen.getByText(/Sold Baler/i)).toBeInTheDocument();
+  });
+
+  const setupReviewsSection = (
+    reviews = mockReviews,
+    sellerInfo: SellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4.5,
+      reviewCount: 2,
+    }
+  ) => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return sellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.auctions.getSellerListings) {
+        return {
+          results: mockListings,
+          status: "Exhausted",
+          loadMore: vi.fn(),
+        };
+      }
+      if (apiPath === mockApi.reviews.getSellerReviews) {
+        return { results: reviews, status: "Exhausted", loadMore: vi.fn() };
+      }
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
+    });
+  };
+
+  it("renders the Reviews section with reviewer names, ratings, and comments", () => {
+    setupReviewsSection();
+    renderProfile();
+
+    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("Alice Bezuidenhout")).toBeInTheDocument();
+    expect(screen.getByText("Anonymous")).toBeInTheDocument();
+    expect(
+      screen.getByText("Great seller, smooth transaction.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Tractor as described.")).toBeInTheDocument();
+    expect(screen.getByText("Feb 2026")).toBeInTheDocument();
+  });
+
+  it("renders the seller response underneath a reviewed review", () => {
+    setupReviewsSection();
+    renderProfile();
+
+    expect(screen.getByText("Seller response")).toBeInTheDocument();
+    expect(
+      screen.getByText("Thank you for the smooth sale!")
+    ).toBeInTheDocument();
+  });
+
+  it("renders the Reviews empty state when the seller has no reviews", () => {
+    setupReviewsSection([], mockSellerInfo);
+    renderProfile();
+
+    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("No reviews yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Seller response")).not.toBeInTheDocument();
   });
 
   it("still shows Sales History and its View all link when itemsSold > 0 but no sold listings are on the current page", () => {
