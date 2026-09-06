@@ -47,6 +47,7 @@ import type * as image_cache from "../image_cache.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_encryption from "../lib/encryption.js";
 import type * as lib_storage from "../lib/storage.js";
+import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
 import type * as profileFlags from "../profileFlags.js";
@@ -103,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/encryption": typeof lib_encryption;
   "lib/storage": typeof lib_storage;
+  messages: typeof messages;
   notifications: typeof notifications;
   presence: typeof presence;
   profileFlags: typeof profileFlags;
