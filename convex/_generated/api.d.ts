@@ -54,6 +54,7 @@ import type * as profileFlags from "../profileFlags.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
+import type * as userActivity from "../userActivity.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as users from "../users.js";
 import type * as watchlist from "../watchlist.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   reviews: typeof reviews;
   seed: typeof seed;
   support: typeof support;
+  userActivity: typeof userActivity;
   userPreferences: typeof userPreferences;
   users: typeof users;
   watchlist: typeof watchlist;

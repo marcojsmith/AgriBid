@@ -275,6 +275,29 @@ export default defineSchema({
     .index("by_user_notification", ["userId", "notificationId"])
     .index("by_notification", ["notificationId"]),
 
+  // Per-user activity feed entries rendered in the profile "Recent Activity"
+  // section (issue #220). KYC and role-change entries are private: they are
+  // only returned to the profile owner (see convex/userActivity.ts).
+  userActivity: defineTable({
+    userId: v.string(),
+    type: v.union(
+      v.literal("account_created"),
+      v.literal("verification_requested"),
+      v.literal("verification_approved"),
+      v.literal("verification_rejected"),
+      v.literal("role_changed"),
+      v.literal("listing_created"),
+      v.literal("listing_sold"),
+      v.literal("bid_placed"),
+      v.literal("bid_won")
+    ),
+    description: v.optional(v.string()),
+    relatedId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
+
   // Two-party buyer/seller messaging (issue #231). Every conversation is
   // strictly two-party, so participants are modelled as scalar buyerId/sellerId
   // fields (each indexed) rather than an array of participant ids — Convex

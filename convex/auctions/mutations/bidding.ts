@@ -4,6 +4,7 @@ import { mutation } from "../../_generated/server";
 import type { MutationCtx } from "../../_generated/server";
 import type { Id } from "../../_generated/dataModel";
 import { requireVerified } from "../../lib/auth";
+import { logActivity } from "../../userActivity";
 import { handleNewBid } from "../proxy_bidding";
 
 /**
@@ -48,6 +49,15 @@ export const placeBidHandler = async (
     args.amount,
     args.maxBid
   );
+
+  // handleNewBid throws on any validation failure, so a resolved result
+  // always represents a recorded bid and is safe to log.
+  await logActivity(ctx, {
+    userId,
+    type: "bid_placed",
+    description: `Bid placed: R${args.amount.toLocaleString("en-ZA")}`,
+    relatedId: args.auctionId,
+  });
 
   return {
     success: result.success,

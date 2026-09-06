@@ -221,4 +221,105 @@ Run these yourself and record actual results in the Results section — do not a
 
 ## Results
 
-<!-- opencode: fill this in when done -->
+**Status: complete.** All instructions implemented; opencode's implementation run was
+interrupted by a sandbox permission denial partway through its own final eslint
+baseline comparison (it was trying to write scratch files to `%TEMP%` from a `/tmp`
+path, which this sandbox blocks) before it could fill in this section — the
+orchestrator (Claude) finished verification directly and a follow-up opencode run
+fixed 17 `no-unsafe-assignment` warnings the first pass had introduced (see below).
+
+### Files changed
+
+- `convex/schema.ts` — added `userActivity` table (9-literal `type` union,
+  `by_userId`/`by_userId_createdAt` indexes), placed near `notifications`.
+- `convex/userActivity.ts` (new) — `logActivity` (plain async helper, not a
+  registered mutation, per the Convex-rules-driven deviation from the issue's own
+  `internalMutation` proposal), `getSellerActivityHandler`/`getSellerActivity`
+  (filters out `verification_requested`/`verification_approved`/
+  `verification_rejected`/`role_changed` for non-owner viewers, computed
+  server-side from the authenticated caller; over-fetches to `MAX_ACTIVITY_SCAN`
+  for non-owners so filtering doesn't under-return a `limit`-sized page).
+- Instrumented 7 call sites with `logActivity`, each additive-only (verified via
+  diff — no business logic, guard, or return-shape changes):
+  - `convex/users.ts`: `syncUserHandler` (`account_created`, new-profile branch
+    only), `submitKYCHandler` (`verification_requested`, every submission),
+    `promoteToAdminHandler` (`role_changed`, non-no-op branch only),
+    `verifyUserHandler` (`verification_approved`, bonus — the rarely-used manual
+    override path).
+  - `convex/admin/kyc.ts`: `reviewKYC` (`verification_approved`/
+    `verification_rejected` in the respective branches — the actual approve/reject
+    flow).
+  - `convex/auctions/mutations/create.ts`: `createAuctionHandler`
+    (`listing_created`, only when `status !== "draft"`).
+  - `convex/auctions/mutations/publish.ts`: `publishAuctionHandler`
+    (`listing_created` for the draft→pending_review path — mutually exclusive with
+    the create-time log, since an auction only ever takes one of these two paths).
+  - `convex/auctions/internal.ts`: new shared
+    `logAuctionSettlementActivity(ctx, auction, finalStatus, winnerId)` helper
+    (`listing_sold` for the seller, `bid_won` for the winner), called from both
+    `settleExpiredAuctionsHandler` and (via `publish.ts`)
+    `closeAuctionEarlyHandler` — avoids duplicating the sold/won logging logic
+    across the two parallel settlement paths.
+  - `convex/auctions/mutations/bidding.ts`: `placeBidHandler` (`bid_placed`, after
+    a successful `handleNewBid` call).
+  - `convex/admin_debug.ts` (dev-only promotion tool) — confirmed untouched, as
+    instructed.
+- `src/pages/Profile.tsx` — replaced `getActivityItems`/`ActivityItem` with a real
+  `useQuery(api.userActivity.getSellerActivity, { userId, limit: 10 })`; added an
+  `ACTIVITY_META` lookup table covering all 9 activity types (icon/color/title per
+  type, widening the old 3-type switch); loading state via `LoadingIndicator`,
+  empty state ("No activity yet") matching this page's existing empty-state style,
+  populated state rendering `item.description ?? meta.title` and
+  `formatActivityDate(item.createdAt)` (reusing the existing helper, not a new one).
+- Tests: extended `convex/users.test.ts`, `convex/auctions/internal.test.ts`,
+  `convex/auctions/mutations/create.test.ts`, `convex/auctions/mutations/publish.test.ts`,
+  `convex/auctions/mutations/bidding.test.ts` for each instrumented call site;
+  new `convex/admin/kyc.test.ts` (this file had no prior test coverage at all) and
+  `convex/userActivity.ts`'s own `convex/userActivity.test.ts` (owner vs non-owner
+  filtering, `limit`, empty array); `src/pages/Profile.test.tsx` updated for the
+  query-driven feed (loading/empty/populated, multiple activity types rendering).
+- `package.json`: `0.14.2` → `0.15.0` (minor, new feature).
+
+### Verification results (all independently confirmed by the orchestrator)
+
+1. **Type checks** — `bunx tsgo -p tsconfig.json --noEmit`, `bunx tsgo -p
+convex/tsconfig.json --noEmit`, and `bun run type-check` all pass, zero errors.
+2. **`npx convex dev --once`** — deploys cleanly: "Convex functions ready! (6.72s)",
+   new `userActivity` table included.
+3. **`bun run test --run`** (full suite) — **173 test files / 2156 tests, all
+   passing** (final run, after the eslint follow-up fix below).
+4. **`bunx eslint`** — 0 errors throughout. The first implementation pass introduced
+   10+ (actually 17, once precisely counted) new `no-unsafe-assignment` warnings,
+   all from `createdAt: expect.any(Number)` in the new `userActivity`-insert
+   assertions missing this repo's established `expect.any(Number) as number` cast
+   convention (already documented in `codebase_notes.md`, and already correctly
+   applied in `convex/admin/kyc.test.ts`/`convex/userActivity.test.ts` by the same
+   pass — just missed in 5 other test files). A follow-up opencode run fixed all
+   17 occurrences across `convex/users.test.ts`, `convex/auctions/internal.test.ts`,
+   `convex/auctions/mutations/bidding.test.ts`,
+   `convex/auctions/mutations/create.test.ts`,
+   `convex/auctions/mutations/publish.test.ts` (some were `expect.any(String)`/
+   `expect.stringContaining` needing `as string`, not just `as number` — verified
+   in the final diff). Final baseline comparison (path-scoped `git stash` on the 18
+   pre-existing touched files): **53 warnings now vs 60 at HEAD** — net fewer, not
+   more, since the cast fix also cleaned up warning noise the diff touched. The 3
+   new files (`convex/userActivity.ts`, `convex/userActivity.test.ts`,
+   `convex/admin/kyc.test.ts`) are fully clean (0 warnings).
+5. **Diff confirmation** — every instrumented mutation's diff is a pure addition
+   (a `logActivity`/`logAuctionSettlementActivity` call inserted, nothing removed
+   or restructured); `convex/admin_debug.ts` untouched; no auction/bidding/KYC
+   guard conditions, thresholds, or return shapes changed.
+
+### Process note (for whoever reads this later)
+
+The implementing opencode run's own sandbox rejected a permission request to write
+scratch comparison files under `%TEMP%\*` (using a `/tmp` path, which doesn't
+resolve there on this Windows machine) partway through its final eslint baseline
+check, and the run ended without filling in this section or flagging the 17 new
+warnings it had introduced. The orchestrator caught this independently (per its own
+"don't trust an agent's self-report at face value" verification step) by re-running
+the full baseline comparison itself, found the real regression, and dispatched a
+second, narrowly-scoped opencode run to fix it. Worth noting for future large
+multi-file instrumentation tasks: run the eslint baseline check incrementally
+per-file as each file is edited, rather than once at the very end — it would have
+caught this immediately instead of needing a second pass.

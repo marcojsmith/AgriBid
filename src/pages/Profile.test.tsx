@@ -161,6 +161,9 @@ const { mockApi } = vi.hoisted(() => ({
     users: {
       getMyProfile: { name: "users:getMyProfile" },
     },
+    userActivity: {
+      getSellerActivity: { name: "userActivity:getSellerActivity" },
+    },
     auctions: {
       getSellerInfo: { name: "auctions:getSellerInfo" },
       getSellerListings: { name: "auctions:getSellerListings" },
@@ -252,6 +255,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) return [];
       if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
         return ["auction1"];
       return null;
@@ -286,6 +290,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return undefined;
       if (apiPath === mockApi.auctions.getSellerInfo) return undefined;
+      if (apiPath === mockApi.userActivity.getSellerActivity) return undefined;
       return null;
     });
     (usePaginatedQuery as Mock).mockReturnValue({
@@ -785,10 +790,158 @@ describe("Profile Page", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders Recent Activity section placeholder", () => {
+  it("renders the Recent Activity empty state when there is no activity", () => {
     renderProfile();
     expect(screen.getByText("Recent Activity")).toBeInTheDocument();
+    expect(screen.getByText("No activity yet")).toBeInTheDocument();
+  });
+
+  it("shows a loading indicator in Recent Activity while the query is loading", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) return undefined;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+    const statusIndicators = screen.getAllByRole("status");
+    expect(statusIndicators.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders activity items from the getSellerActivity query", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "account_created",
+            description: "Account created",
+            relatedId: undefined,
+            createdAt: new Date("2026-01-15").getTime(),
+          },
+          {
+            _id: "act2",
+            _creationTime: 1001,
+            type: "listing_created",
+            description: "Listing created: John Deere 6120M",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-01").getTime(),
+          },
+          {
+            _id: "act3",
+            _creationTime: 1002,
+            type: "listing_sold",
+            description: "Listing sold for R450 000",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-10").getTime(),
+          },
+          {
+            _id: "act4",
+            _creationTime: 1003,
+            type: "bid_placed",
+            description: "Bid placed: R120 000",
+            relatedId: "auction2",
+            createdAt: new Date("2026-02-12").getTime(),
+          },
+          {
+            _id: "act5",
+            _creationTime: 1004,
+            type: "bid_won",
+            description: "Won auction for R450 000",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-14").getTime(),
+          },
+        ];
+      }
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
     expect(screen.getByText("Account created")).toBeInTheDocument();
+    expect(
+      screen.getByText("Listing created: John Deere 6120M")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Listing sold for R450 000")).toBeInTheDocument();
+    expect(screen.getByText("Bid placed: R120 000")).toBeInTheDocument();
+    expect(screen.getByText("Won auction for R450 000")).toBeInTheDocument();
+    expect(screen.queryByText("No activity yet")).not.toBeInTheDocument();
+  });
+
+  it("renders verification activity entries when returned by the query", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "verification_requested",
+            description: "Identity documents submitted for review",
+            relatedId: undefined,
+            createdAt: new Date("2026-01-20").getTime(),
+          },
+          {
+            _id: "act2",
+            _creationTime: 1001,
+            type: "verification_approved",
+            description: "Verification approved",
+            relatedId: undefined,
+            createdAt: new Date("2026-01-25").getTime(),
+          },
+        ];
+      }
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(
+      screen.getByText("Identity documents submitted for review")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Verification approved")).toBeInTheDocument();
+  });
+
+  it("falls back to the type title when an activity entry has no description", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "role_changed",
+            description: undefined,
+            relatedId: undefined,
+            createdAt: new Date("2026-01-20").getTime(),
+          },
+        ];
+      }
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("Role changed")).toBeInTheDocument();
+  });
+
+  it("queries the activity feed for the profile owner with a limit of 10", () => {
+    renderProfile("user1");
+
+    expect(useQuery).toHaveBeenCalledWith(
+      mockApi.userActivity.getSellerActivity,
+      { userId: "user1", limit: 10 }
+    );
   });
 
   it("renders Trust & Compliance section placeholder", () => {
@@ -1090,25 +1243,6 @@ describe("Profile Page", () => {
     );
   });
 
-  it("shows admin activity item when user has admin role", () => {
-    const adminSellerInfo = {
-      ...mockSellerInfo,
-      name: "Admin User",
-      role: "admin",
-    };
-    (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
-      if (apiPath === mockApi.auctions.getSellerInfo) return adminSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
-        return ["auction1"];
-      return null;
-    });
-
-    renderProfile("user1");
-
-    expect(screen.getByText("Admin role assigned")).toBeInTheDocument();
-  });
-
   it("handles single-word name for getInitials", () => {
     const shortNameSellerInfo = {
       ...mockSellerInfo,
@@ -1126,12 +1260,6 @@ describe("Profile Page", () => {
     renderProfile("user1");
 
     expect(screen.getByText("Bob")).toBeInTheDocument();
-  });
-
-  it("shows verification requested activity for non-admin user", () => {
-    renderProfile("user1");
-
-    expect(screen.getByText("Verification requested")).toBeInTheDocument();
   });
 
   it("shows Complete Verification button for unverified owner", () => {
@@ -1189,21 +1317,29 @@ describe("Profile Page", () => {
     expect(screen.getByText("??")).toBeInTheDocument();
   });
 
-  it("shows Unknown date for activity when createdAt is undefined", () => {
-    const noDateSellerInfo = {
-      ...mockSellerInfo,
-      createdAt: undefined,
-    };
+  it("renders formatted dates for activity entries", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
-      if (apiPath === mockApi.auctions.getSellerInfo) return noDateSellerInfo;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "listing_sold",
+            description: "Listing sold for R450 000",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-10").getTime(),
+          },
+        ];
+      }
       if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
       return null;
     });
 
-    renderProfile("user1");
+    renderProfile();
 
-    expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Feb 2026")).toBeInTheDocument();
   });
 
   it("shows unverified badge for unverified seller", () => {

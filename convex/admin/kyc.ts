@@ -10,6 +10,7 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
+import { logActivity } from "../userActivity";
 
 /**
  * Query pending KYC submissions for admin review.
@@ -128,6 +129,12 @@ export const reviewKYC = mutation({
         isRead: false,
         createdAt: Date.now(),
       });
+
+      await logActivity(ctx, {
+        userId: args.userId,
+        type: "verification_approved",
+        description: "Verification approved",
+      });
     } else {
       const reason = args.reason?.trim();
       if (!reason) {
@@ -158,6 +165,12 @@ export const reviewKYC = mutation({
         link: "/kyc",
         isRead: false,
         createdAt: Date.now(),
+      });
+
+      await logActivity(ctx, {
+        userId: args.userId,
+        type: "verification_rejected",
+        description: `Verification rejected: ${reason}`,
       });
     }
 
