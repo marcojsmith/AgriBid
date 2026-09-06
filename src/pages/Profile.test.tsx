@@ -151,6 +151,85 @@ describe("Profile Page", () => {
     expect(screen.getByText("No reviews yet")).toBeInTheDocument();
   });
 
+  it("renders amber stars and review count when reviews exist", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("★★★★☆")).toBeInTheDocument();
+    expect(screen.getByText("2 reviews")).toBeInTheDocument();
+    expect(screen.queryByText("No reviews yet")).not.toBeInTheDocument();
+  });
+
+  it("renders singular review label for a single review", () => {
+    const singleReviewSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 5,
+      reviewCount: 1,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return singleReviewSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("★★★★★")).toBeInTheDocument();
+    expect(screen.getByText("1 review")).toBeInTheDocument();
+  });
+
+  it("renders Seller Rating trust item with average and count when reviewed", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4.5,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("4.5 (2)")).toBeInTheDocument();
+  });
+
+  it("renders verified Seller Rating trust item when reviewed", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    const ratingLabel = screen.getByText("Seller Rating");
+    const ratingItem = ratingLabel.parentElement;
+    expect(ratingItem).not.toBeNull();
+    expect(ratingItem).toHaveTextContent("4.0 (2)");
+  });
+
   it("shows non-owner buttons for non-owner", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile)

@@ -59,6 +59,11 @@ interface VerificationStatus {
   taxNumberVerified?: boolean;
 }
 
+interface SellerRating {
+  avgRating?: number;
+  reviewCount: number;
+}
+
 const formatPrice = (price?: number): string => {
   if (price === undefined || price === null) return "—";
   return `R ${price.toLocaleString("en-ZA")}`;
@@ -118,7 +123,8 @@ const getActivityItems = (role: string, createdAt?: number): ActivityItem[] => {
 const getTrustItems = (
   isVerified: boolean,
   kycStatus?: string,
-  verification?: VerificationStatus
+  verification?: VerificationStatus,
+  rating?: SellerRating
 ): TrustItem[] => {
   const { emailVerified, phoneVerified, bankingVerified, taxNumberVerified } =
     verification ?? {};
@@ -162,8 +168,11 @@ const getTrustItems = (
       id: "rating",
       icon: Star,
       label: "Seller Rating",
-      value: "No reviews",
-      verified: false,
+      value:
+        rating?.avgRating !== undefined
+          ? `${rating.avgRating.toFixed(1)} (${rating.reviewCount})`
+          : "No reviews",
+      verified: (rating?.reviewCount ?? 0) > 0,
     },
   ];
 };
@@ -265,6 +274,10 @@ export default function Profile() {
       phoneVerified: sellerInfo.phoneVerified,
       bankingVerified: sellerInfo.bankingVerified,
       taxNumberVerified: sellerInfo.taxNumberVerified,
+    },
+    {
+      avgRating: sellerInfo.avgRating,
+      reviewCount: sellerInfo.reviewCount,
     }
   );
 
@@ -496,9 +509,20 @@ export default function Profile() {
             <div className="h-px bg-border" />
             <div className="px-4 py-3 flex items-center justify-between">
               <div>
-                <p className="text-amber-500 tracking-widest">★★★★★</p>
+                {sellerInfo.avgRating !== undefined ? (
+                  <p className="text-amber-500 tracking-widest">
+                    {"★".repeat(Math.round(sellerInfo.avgRating))}
+                    {"☆".repeat(5 - Math.round(sellerInfo.avgRating))}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground tracking-widest">★★★★★</p>
+                )}
                 <p className="text-[10px] text-muted-foreground">
-                  No reviews yet
+                  {sellerInfo.reviewCount > 0
+                    ? `${sellerInfo.reviewCount} review${
+                        sellerInfo.reviewCount === 1 ? "" : "s"
+                      }`
+                    : "No reviews yet"}
                 </p>
               </div>
               <p className="text-xl font-black text-muted-foreground">—</p>

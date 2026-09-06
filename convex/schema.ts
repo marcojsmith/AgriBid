@@ -114,6 +114,19 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_auction_status", ["auctionId", "status"]),
 
+  // Seller reviews left by auction winners
+  reviews: defineTable({
+    auctionId: v.id("auctions"),
+    reviewerId: v.string(), // buyer userId (the auction winner)
+    revieweeId: v.string(), // seller userId
+    rating: v.number(), // integer 1-5, validated in the mutation handler
+    comment: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_reviewee", ["revieweeId"])
+    .index("by_reviewee_createdAt", ["revieweeId", "createdAt"])
+    .index("by_auction_reviewer", ["auctionId", "reviewerId"]),
+
   bids: defineTable({
     auctionId: v.id("auctions"),
     bidderId: v.string(),
