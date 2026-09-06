@@ -50,6 +50,7 @@ describe("Profile Page", () => {
     _id: "user1",
     name: "John Dippenaar",
     isVerified: true,
+    kycStatus: "verified",
     role: "seller",
     createdAt: new Date("2026-01-15").getTime(),
     itemsSold: 10,
@@ -57,6 +58,10 @@ describe("Profile Page", () => {
     bio: "Commercial farmer specialising in dryland maize production.",
     companyName: "Dippenaar Farms",
     location: "Lichtenburg, North West Province",
+    emailVerified: false,
+    phoneVerified: false,
+    bankingVerified: false,
+    taxNumberVerified: false,
     bidsPlaced: 24,
     avgSalePrice: 485000,
   };
@@ -175,6 +180,25 @@ describe("Profile Page", () => {
     expect(screen.getByText(/Sold Baler/i)).toBeInTheDocument();
   });
 
+  it("still shows Sales History and its View all link when itemsSold > 0 but no sold listings are on the current page", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "a1",
+          title: "Active Tractor",
+          status: "active",
+          sellerId: "user1",
+        },
+      ],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderProfile();
+    expect(screen.getByText("Sales History")).toBeInTheDocument();
+    expect(screen.getByText(/View all sold listings/i)).toBeInTheDocument();
+  });
+
   it("renders empty active listings state when no active auctions", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
       results: [{ _id: "a1", title: "Auction 1", status: "sold" }],
@@ -198,6 +222,77 @@ describe("Profile Page", () => {
     renderProfile();
     expect(screen.getByText("Trust & Compliance")).toBeInTheDocument();
     expect(screen.getByText("Identity")).toBeInTheDocument();
+  });
+
+  it("renders Linked and no Pending values when granular fields are verified", () => {
+    const verifiedSellerInfo = {
+      ...mockSellerInfo,
+      emailVerified: true,
+      phoneVerified: true,
+      bankingVerified: true,
+      taxNumberVerified: true,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return verifiedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Linked")).toBeInTheDocument();
+    expect(screen.queryByText("Not linked")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pending")).not.toBeInTheDocument();
+  });
+
+  it("renders Pending and Not linked when granular fields are unverified", () => {
+    const unverifiedFieldsSellerInfo = {
+      ...mockSellerInfo,
+      emailVerified: false,
+      phoneVerified: false,
+      bankingVerified: false,
+      taxNumberVerified: false,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return unverifiedFieldsSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Not linked")).toBeInTheDocument();
+    expect(screen.getAllByText("Pending")).toHaveLength(3);
+    expect(screen.getByText("No reviews")).toBeInTheDocument();
+  });
+
+  it("renders granular trust values independently per field", () => {
+    const mixedSellerInfo = {
+      ...mockSellerInfo,
+      isVerified: false,
+      kycStatus: undefined,
+      emailVerified: true,
+      phoneVerified: false,
+      bankingVerified: undefined,
+      taxNumberVerified: undefined,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mixedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    // Only Email is verified (identity badge shows "Unverified")
+    expect(screen.getAllByText("Verified")).toHaveLength(1);
+    // Identity, Phone and Tax Number are all pending
+    expect(screen.getAllByText("Pending")).toHaveLength(3);
+    expect(screen.getByText("Not linked")).toBeInTheDocument();
   });
 
   it("renders user-not-found view when seller does not exist", () => {
