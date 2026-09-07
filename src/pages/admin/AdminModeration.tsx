@@ -94,12 +94,9 @@ function createAuctionActionHandler(
 }
 
 /**
- * Renders the admin moderation page for reviewing and actioning pending auction listings.
+ * Renders the admin moderation queue for pending auctions, flagged listings, and reported profiles.
  *
- * @returns The AdminLayout React element containing:
- * - a centred loading state while pending auctions are being fetched,
- * - a responsive grid of ModerationCard items with approve, reject and view handlers when data is available,
- * - an empty-state banner when there are no pending auctions.
+ * @returns The moderation page with loading, review, action, and empty-queue states.
  */
 export default function AdminModeration() {
   const navigate = useNavigate();
