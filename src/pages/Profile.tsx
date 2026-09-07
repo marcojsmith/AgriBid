@@ -201,11 +201,11 @@ const getTrustItems = (
 };
 
 /**
- * Renders the seller profile page for the route parameter `userId`.
+ * Renders a seller profile with account details, listings, reviews, activity, and trust information.
  *
- * Shows a full-page loading indicator while data is being fetched, a user-not-found view when the seller does not exist, or the complete profile when data is available. The profile includes a sidebar with seller metadata, stats, and action buttons, plus a main content area with active auctions, past sales, recent activity, and trust & compliance sections.
+ * Displays loading and user-not-found states when applicable, and provides profile editing for the profile owner or reporting controls for other users.
  *
- * @returns A React element containing the seller profile, a full-page loading indicator, or a user-not-found view.
+ * @returns The seller profile, loading state, or user-not-found view.
  */
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
