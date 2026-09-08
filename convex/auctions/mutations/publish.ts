@@ -443,6 +443,7 @@ export const closeAuctionEarlyHandler = async (
   await ctx.db.patch(auction._id, {
     status: finalStatus,
     winnerId,
+    settledAt: Date.now(),
   });
 
   await updateCounter(ctx, "auctions", "active", -1);

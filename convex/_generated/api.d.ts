@@ -49,6 +49,7 @@ import type * as lib_encryption from "../lib/encryption.js";
 import type * as lib_storage from "../lib/storage.js";
 import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
+import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
 import type * as userPreferences from "../userPreferences.js";
@@ -103,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   "lib/storage": typeof lib_storage;
   notifications: typeof notifications;
   presence: typeof presence;
+  reviews: typeof reviews;
   seed: typeof seed;
   support: typeof support;
   userPreferences: typeof userPreferences;

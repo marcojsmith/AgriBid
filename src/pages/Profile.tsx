@@ -59,6 +59,11 @@ interface VerificationStatus {
   taxNumberVerified?: boolean;
 }
 
+interface SellerRating {
+  avgRating?: number;
+  reviewCount: number;
+}
+
 const formatPrice = (price?: number): string => {
   if (price === undefined || price === null) return "—";
   return `R ${price.toLocaleString("en-ZA")}`;
@@ -118,7 +123,8 @@ const getActivityItems = (role: string, createdAt?: number): ActivityItem[] => {
 const getTrustItems = (
   isVerified: boolean,
   kycStatus?: string,
-  verification?: VerificationStatus
+  verification?: VerificationStatus,
+  rating?: SellerRating
 ): TrustItem[] => {
   const { emailVerified, phoneVerified, bankingVerified, taxNumberVerified } =
     verification ?? {};
@@ -162,8 +168,11 @@ const getTrustItems = (
       id: "rating",
       icon: Star,
       label: "Seller Rating",
-      value: "No reviews",
-      verified: false,
+      value:
+        rating?.avgRating !== undefined
+          ? `${rating.avgRating.toFixed(1)} (${rating.reviewCount})`
+          : "No reviews",
+      verified: (rating?.reviewCount ?? 0) > 0,
     },
   ];
 };
@@ -229,6 +238,16 @@ export default function Profile() {
     { initialNumItems: 6 }
   );
 
+  const {
+    results: sellerReviews,
+    status: reviewsStatus,
+    loadMore: loadMoreReviews,
+  } = usePaginatedQuery(
+    api.reviews.getSellerReviews,
+    { sellerId: userId ?? "" },
+    { initialNumItems: 5 }
+  );
+
   if (sellerInfo === undefined || status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
@@ -265,6 +284,10 @@ export default function Profile() {
       phoneVerified: sellerInfo.phoneVerified,
       bankingVerified: sellerInfo.bankingVerified,
       taxNumberVerified: sellerInfo.taxNumberVerified,
+    },
+    {
+      avgRating: sellerInfo.avgRating,
+      reviewCount: sellerInfo.reviewCount,
     }
   );
 
@@ -496,9 +519,20 @@ export default function Profile() {
             <div className="h-px bg-border" />
             <div className="px-4 py-3 flex items-center justify-between">
               <div>
-                <p className="text-amber-500 tracking-widest">★★★★★</p>
+                {sellerInfo.avgRating !== undefined ? (
+                  <p className="text-amber-500 tracking-widest">
+                    {"★".repeat(Math.round(sellerInfo.avgRating))}
+                    {"☆".repeat(5 - Math.round(sellerInfo.avgRating))}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground tracking-widest">★★★★★</p>
+                )}
                 <p className="text-[10px] text-muted-foreground">
-                  No reviews yet
+                  {sellerInfo.reviewCount > 0
+                    ? `${sellerInfo.reviewCount} review${
+                        sellerInfo.reviewCount === 1 ? "" : "s"
+                      }`
+                    : "No reviews yet"}
                 </p>
               </div>
               <p className="text-xl font-black text-muted-foreground">—</p>
@@ -641,6 +675,93 @@ export default function Profile() {
               </CardContent>
             </Card>
           )}
+
+          {/* Reviews */}
+          <Card className="bg-card border border-primary/10 rounded-lg">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Star className="h-4 w-4 text-amber-500" />
+                <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+                  Reviews
+                </h2>
+              </div>
+
+              {sellerInfo.reviewCount > 0 ? (
+                reviewsStatus === "LoadingFirstPage" ? (
+                  <LoadingIndicator />
+                ) : (
+                  <div>
+                    {sellerReviews.map((review) => (
+                      <div
+                        key={review._id}
+                        className="py-4 border-b border-border last:border-0 first:pt-0"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-foreground">
+                            {review.reviewerName ?? "Anonymous"}
+                          </p>
+                          <p className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatActivityDate(review.createdAt)}
+                          </p>
+                        </div>
+                        <p
+                          className="text-amber-500 tracking-widest mt-1"
+                          aria-label={`Rated ${review.rating} out of 5 stars`}
+                        >
+                          {"★".repeat(Math.round(review.rating))}
+                          {"☆".repeat(5 - Math.round(review.rating))}
+                        </p>
+                        {review.comment && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {review.comment}
+                          </p>
+                        )}
+                        {review.response && (
+                          <div className="mt-3 ml-3 border-l-2 border-primary/20 pl-3">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                              Seller response
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {review.response.text}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {(reviewsStatus === "CanLoadMore" ||
+                      reviewsStatus === "LoadingMore") && (
+                      <div className="pt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            loadMoreReviews(5);
+                          }}
+                          disabled={reviewsStatus === "LoadingMore"}
+                          className="rounded-md border-2 font-black uppercase tracking-widest text-xs"
+                        >
+                          {reviewsStatus === "LoadingMore" ? (
+                            <>
+                              <LoadingIndicator size="sm" className="mr-2" />
+                              Loading...
+                            </>
+                          ) : (
+                            "Load More Reviews"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                <div className="border-2 border-dashed border-border rounded p-8 text-center">
+                  <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+                    No reviews yet.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Recent Activity */}
           <section>

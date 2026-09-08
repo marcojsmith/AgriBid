@@ -167,6 +167,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
     await ctx.db.patch(auction._id, {
       status: finalStatus,
       winnerId,
+      settledAt: now,
     });
 
     await updateCounter(ctx, "auctions", "active", -1);
