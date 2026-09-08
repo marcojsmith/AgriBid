@@ -50,6 +50,10 @@ vi.mock("convex/_generated/api", () => ({
         },
       },
     },
+    profileFlags: {
+      getAllPendingProfileFlags: "profileFlags:getAllPendingProfileFlags",
+      reviewProfileFlag: "profileFlags:reviewProfileFlag",
+    },
     admin: {
       getAdminStats: "admin:getAdminStats",
     },
@@ -106,10 +110,25 @@ const mockPendingFlags = [
   },
 ];
 
+const mockPendingProfileFlags = [
+  {
+    _id: "pf1",
+    reportedUserId: "u_reported",
+    reporterId: "u_reporter",
+    reportedUserName: "Barend Smit",
+    reporterName: "Alice Reporter",
+    reason: "fake_account",
+    details: "This account is impersonating a known dealer.",
+    status: "pending",
+    createdAt: Date.now(),
+  },
+];
+
 describe("AdminModeration Page", () => {
   const mockApproveMutation = vi.fn();
   const mockRejectMutation = vi.fn();
   const mockDismissFlagMutation = vi.fn();
+  const mockReviewProfileFlagMutation = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -118,6 +137,8 @@ describe("AdminModeration Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === "auctions:getPendingAuctions") return mockPendingAuctions;
       if (apiPath === "auctions:getAllPendingFlags") return mockPendingFlags;
+      if (apiPath === "profileFlags:getAllPendingProfileFlags")
+        return mockPendingProfileFlags;
       if (apiPath === "admin:getAdminStats")
         return { totalUsers: 100, pendingReview: 5, liveUsers: 10 };
       return undefined;
@@ -130,6 +151,8 @@ describe("AdminModeration Page", () => {
         return mockRejectMutation;
       if (apiPath === "auctions/mutations/publish:dismissFlag")
         return mockDismissFlagMutation;
+      if (apiPath === "profileFlags:reviewProfileFlag")
+        return mockReviewProfileFlagMutation;
       return vi.fn();
     });
   });
@@ -157,6 +180,7 @@ describe("AdminModeration Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === "auctions:getPendingAuctions") return [];
       if (apiPath === "auctions:getAllPendingFlags") return [];
+      if (apiPath === "profileFlags:getAllPendingProfileFlags") return [];
       if (apiPath === "admin:getAdminStats")
         return { totalUsers: 100, pendingReview: 0, liveUsers: 10 };
       return undefined;
@@ -173,7 +197,7 @@ describe("AdminModeration Page", () => {
     expect(screen.getByText("Tractor 2024")).toBeInTheDocument();
     expect(screen.getByText("Old Plow")).toBeInTheDocument();
     expect(screen.getByText("Flagged Harvester")).toBeInTheDocument();
-    expect(screen.getByText(/Alice Reporter/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Alice Reporter/).length).toBeGreaterThan(0);
 
     // Check condition items for Tractor 2024
     const tractorCard = screen.getByText("Tractor 2024").closest(".group");
@@ -410,6 +434,113 @@ describe("AdminModeration Page", () => {
     // The badge should be rendered with the unknown reason text
     await waitFor(() => {
       expect(screen.getByText("unknown_reason")).toBeInTheDocument();
+    });
+  });
+
+  describe("Reported Profiles section", () => {
+    it("renders reported profile cards with reported user, reporter and reason", () => {
+      renderPage();
+
+      expect(screen.getByText("Reported Profiles")).toBeInTheDocument();
+      expect(screen.getByText("Barend Smit")).toBeInTheDocument();
+      expect(screen.getAllByText(/Alice Reporter/).length).toBeGreaterThan(0);
+      expect(screen.getByText("fake_account")).toBeInTheDocument();
+      expect(
+        screen.getByText("This account is impersonating a known dealer.")
+      ).toBeInTheDocument();
+    });
+
+    it("marks a profile report as reviewed", async () => {
+      mockReviewProfileFlagMutation.mockResolvedValue({ success: true });
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: /mark reviewed/i }));
+
+      const dialog = await screen.findByRole("alertdialog");
+      expect(
+        within(dialog).getByRole("heading", { name: "Review Profile Report" })
+      ).toBeInTheDocument();
+      expect(within(dialog).getByText("Barend Smit")).toBeInTheDocument();
+
+      const confirmButton = within(dialog).getByRole("button", {
+        name: "Mark Reviewed",
+      });
+      fireEvent.click(confirmButton);
+
+      expect(mockReviewProfileFlagMutation).toHaveBeenCalledWith({
+        flagId: "pf1",
+        status: "reviewed",
+        adminNotes: undefined,
+      });
+      await waitFor(() => {
+        expect(toast.success).toHaveBeenCalledWith("Report marked as reviewed");
+      });
+    });
+
+    it("dismisses a profile report with admin notes", async () => {
+      mockReviewProfileFlagMutation.mockResolvedValue({ success: true });
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: /dismiss report/i }));
+
+      const dialog = await screen.findByRole("alertdialog");
+      const notesInput = within(dialog).getByPlaceholderText(
+        /Add any notes about this report/i
+      );
+      fireEvent.change(notesInput, {
+        target: { value: "No violation found" },
+      });
+
+      const confirmButton = within(dialog).getByRole("button", {
+        name: "Dismiss Report",
+      });
+      fireEvent.click(confirmButton);
+
+      expect(mockReviewProfileFlagMutation).toHaveBeenCalledWith({
+        flagId: "pf1",
+        status: "dismissed",
+        adminNotes: "No violation found",
+      });
+      await waitFor(() => {
+        expect(toast.success).toHaveBeenCalledWith("Report dismissed");
+      });
+    });
+
+    it("shows an error toast when updating a profile report fails", async () => {
+      mockReviewProfileFlagMutation.mockRejectedValue(
+        new Error("Update failed")
+      );
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: /mark reviewed/i }));
+
+      const dialog = await screen.findByRole("alertdialog");
+      const confirmButton = within(dialog).getByRole("button", {
+        name: "Mark Reviewed",
+      });
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "Failed to update report status"
+        );
+      });
+    });
+
+    it("closes the profile report dialog on cancel", async () => {
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: /mark reviewed/i }));
+
+      const dialog = await screen.findByRole("alertdialog");
+      const cancelButton = within(dialog).getByRole("button", {
+        name: /cancel/i,
+      });
+      fireEvent.click(cancelButton);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      });
     });
   });
 });

@@ -1,7 +1,15 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import React from "react";
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 
 import Profile from "./Profile";
 
@@ -40,6 +48,114 @@ vi.mock("convex/react", () => ({
   useMutation: vi.fn(() => vi.fn()),
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+// Mock Dialog component (same pattern as AuctionDetail.test.tsx)
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (o: boolean) => void;
+  }) => (
+    <div data-testid="dialog-root">
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(
+            child as React.ReactElement<{
+              open?: boolean;
+              onOpenChange?: (o: boolean) => void;
+            }>,
+            {
+              open,
+              onOpenChange,
+            }
+          );
+        }
+        return child;
+      })}
+    </div>
+  ),
+  DialogTrigger: ({
+    children,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    onOpenChange?: (o: boolean) => void;
+  }) => (
+    <div
+      onClick={() => onOpenChange && onOpenChange(true)}
+      data-testid="dialog-trigger"
+    >
+      {children}
+    </div>
+  ),
+  DialogContent: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+  }) => (open ? <div data-testid="dialog-content">{children}</div> : null),
+  DialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <h2>{children}</h2>
+  ),
+  DialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <p>{children}</p>
+  ),
+  DialogFooter: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
+// Mock Select to be a simple native select for easier testing
+vi.mock("@/components/ui/select", () => ({
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: React.ReactNode;
+    value?: string;
+    onValueChange: (v: string) => void;
+  }) => (
+    <select
+      data-testid="mock-select"
+      value={value}
+      onChange={(e) => onValueChange(e.target.value)}
+    >
+      {children}
+    </select>
+  ),
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  SelectValue: ({ placeholder }: { placeholder?: string }) => (
+    <option value="">{placeholder}</option>
+  ),
+  SelectContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  SelectItem: ({
+    value,
+    children,
+  }: {
+    value: string;
+    children: React.ReactNode;
+  }) => <option value={value}>{children}</option>,
+}));
+
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
     users: {
@@ -54,6 +170,9 @@ const { mockApi } = vi.hoisted(() => ({
     },
     watchlist: {
       getWatchedAuctionIds: { name: "watchlist:getWatchedAuctionIds" },
+    },
+    profileFlags: {
+      reportProfile: { name: "profileFlags:reportProfile" },
     },
   },
 }));
@@ -298,7 +417,126 @@ describe("Profile Page", () => {
 
     renderProfile("user1");
     expect(screen.getByText("Contact Seller")).toBeInTheDocument();
-    expect(screen.getByText("Report Profile")).toBeInTheDocument();
+    const reportButton = screen.getByRole("button", {
+      name: /report profile/i,
+    });
+    expect(reportButton).toBeInTheDocument();
+    expect(reportButton).toBeEnabled();
+  });
+
+  describe("Report Profile dialog", () => {
+    const setupNonOwner = () => {
+      (useQuery as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.users.getMyProfile)
+          return { ...mockMyProfile, userId: "other", _id: "other" };
+        if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+        if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+        return null;
+      });
+    };
+
+    const openReportDialog = () => {
+      setupNonOwner();
+      renderProfile("user1");
+      fireEvent.click(screen.getByRole("button", { name: /report profile/i }));
+      expect(screen.getByText("Report this Profile")).toBeInTheDocument();
+    };
+
+    it("opens the report dialog with reason select and details field", () => {
+      openReportDialog();
+
+      expect(screen.getByTestId("mock-select")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Provide more context/i)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /submit report/i })
+      ).toBeInTheDocument();
+    });
+
+    it("closes the dialog on cancel", () => {
+      openReportDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+      expect(screen.queryByText("Report this Profile")).not.toBeInTheDocument();
+    });
+
+    it("shows an error toast when submitting without a reason", () => {
+      openReportDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      expect(toast.error).toHaveBeenCalledWith(
+        "Please select a reason for reporting"
+      );
+    });
+
+    it("submits the report with reason and details, shows success toast, and closes the dialog", async () => {
+      const mockReportProfile = vi.fn().mockResolvedValue({ success: true });
+      (useMutation as Mock).mockReturnValue(mockReportProfile);
+
+      openReportDialog();
+
+      fireEvent.change(screen.getByTestId("mock-select"), {
+        target: { value: "fake_account" },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/Provide more context/i), {
+        target: { value: "Suspicious seller" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      await waitFor(() => {
+        expect(mockReportProfile).toHaveBeenCalledWith({
+          reportedUserId: "user1",
+          reason: "fake_account",
+          details: "Suspicious seller",
+        });
+        expect(toast.success).toHaveBeenCalledWith("Thank you for your report");
+      });
+      expect(screen.queryByText("Report this Profile")).not.toBeInTheDocument();
+    });
+
+    it("submits undefined details when the details field is blank", async () => {
+      const mockReportProfile = vi.fn().mockResolvedValue({ success: true });
+      (useMutation as Mock).mockReturnValue(mockReportProfile);
+
+      openReportDialog();
+
+      fireEvent.change(screen.getByTestId("mock-select"), {
+        target: { value: "abusive_behaviour" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      await waitFor(() => {
+        expect(mockReportProfile).toHaveBeenCalledWith({
+          reportedUserId: "user1",
+          reason: "abusive_behaviour",
+          details: undefined,
+        });
+      });
+    });
+
+    it("shows an error toast and keeps the dialog open when submission fails", async () => {
+      const mockReportProfile = vi
+        .fn()
+        .mockRejectedValue(new Error("You have already reported this profile"));
+      (useMutation as Mock).mockReturnValue(mockReportProfile);
+
+      openReportDialog();
+
+      fireEvent.change(screen.getByTestId("mock-select"), {
+        target: { value: "other" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "You have already reported this profile"
+        );
+      });
+      expect(screen.getByText("Report this Profile")).toBeInTheDocument();
+    });
   });
 
   it("renders Active Auctions section with cards", () => {
