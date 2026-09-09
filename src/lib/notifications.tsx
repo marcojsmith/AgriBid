@@ -32,17 +32,17 @@ export function getNotificationIcon(type: string) {
 export async function handleNotificationClick(
   notificationId: Id<"notifications">,
   link: string | undefined,
-  navigate: (p: string) => void,
+  navigate: (p: string) => void | Promise<void>,
   markReadFn: (args: {
     notificationId: Id<"notifications">;
   }) => Promise<unknown>
 ) {
   try {
     await markReadFn({ notificationId });
-    if (link) navigate(link);
+    if (link) void navigate(link);
   } catch (err) {
     console.error("Failed to mark notification as read:", err);
     // If marking read fails, we still navigate if requested, but swallow error to prevent UI crash
-    if (link) navigate(link);
+    if (link) void navigate(link);
   }
 }

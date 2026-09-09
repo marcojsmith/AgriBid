@@ -139,9 +139,12 @@ describe("AdminUsers Page", () => {
       .mockResolvedValue(mockKycDetails);
 
     (useMutation as Mock).mockImplementation((apiPath) => {
-      const mutation =
-        mockMutations[apiPath as unknown as string] ||
-        vi.fn().mockResolvedValue(undefined);
+      // Lookup is typed as possibly-undefined: unregistered api paths fall
+      // through to a fresh no-op mock below.
+      const registered = mockMutations[apiPath as unknown as string] as
+        | ReturnType<typeof vi.fn>
+        | undefined;
+      const mutation = registered ?? vi.fn().mockResolvedValue(undefined);
       return Object.assign(mutation, { withOptimisticUpdate: vi.fn() });
     });
   });
@@ -181,7 +184,7 @@ describe("AdminUsers Page", () => {
     expect(screen.getAllByText("admin")).toHaveLength(1);
   });
 
-  it("filters users by search input", async () => {
+  it("filters users by search input", () => {
     renderPage();
 
     const searchInput = screen.getByPlaceholderText("Search Users...");
@@ -334,7 +337,7 @@ describe("AdminUsers Page", () => {
     });
   });
 
-  it("handles load more users", async () => {
+  it("handles load more users", () => {
     renderPage();
 
     const loadMoreButton = screen.getByRole("button", {
@@ -345,7 +348,7 @@ describe("AdminUsers Page", () => {
     expect(mockLoadMore).toHaveBeenCalledWith(50);
   });
 
-  it("shows no users found message", async () => {
+  it("shows no users found message", () => {
     renderPage();
 
     const searchInput = screen.getByPlaceholderText("Search Users...");
@@ -504,7 +507,7 @@ describe("AdminUsers Page", () => {
     });
   });
 
-  it("prevents double verification requests", async () => {
+  it("prevents double verification requests", () => {
     renderPage();
     const verifyButtons = screen.getAllByRole("button", { name: "Verify" });
 

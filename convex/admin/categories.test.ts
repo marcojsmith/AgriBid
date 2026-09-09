@@ -47,7 +47,7 @@ describe("Categories Backend", () => {
 
   it("should create a new category when called by admin", async () => {
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -75,7 +75,7 @@ describe("Categories Backend", () => {
 
   it("should throw an error if a duplicate category name exists", async () => {
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -112,7 +112,7 @@ describe("Categories Backend", () => {
 
   it("should reject non-admin requests", async () => {
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -133,7 +133,7 @@ describe("Categories Backend", () => {
 
   it("should reactivate an inactive category if it exists", async () => {
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -183,7 +183,7 @@ describe("updateCategory", () => {
 
   it("should update category name successfully", async () => {
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -212,7 +212,7 @@ describe("updateCategory", () => {
 
   it("should throw error if category not found", async () => {
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -239,7 +239,7 @@ describe("updateCategory", () => {
       isActive: true,
     };
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -266,7 +266,7 @@ describe("updateCategory", () => {
       isActive: true,
     };
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -297,7 +297,7 @@ describe("updateCategory", () => {
       isActive: true,
     };
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -323,7 +323,7 @@ describe("updateCategory", () => {
 
   it("should reject non-admin users", async () => {
     const mockQuery: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return mockQuery;
       }),
@@ -380,11 +380,11 @@ describe("deleteCategory", () => {
 
   const createChainedQuery = (firstResult: unknown) => {
     const queryObj: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return queryObj;
       }),
-      filter: vi.fn((cb) => {
+      filter: vi.fn((cb?: (q: unknown) => unknown) => {
         if (cb)
           cb({
             eq: vi.fn().mockReturnThis(),
@@ -875,7 +875,7 @@ describe("getCategories", () => {
 
   it("should return only active categories by default", async () => {
     const mockQuery: MockQuery = {
-      filter: vi.fn((cb) => {
+      filter: vi.fn((cb?: (q: unknown) => unknown) => {
         if (cb)
           cb({
             eq: vi.fn().mockReturnThis(),

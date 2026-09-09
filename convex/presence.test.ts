@@ -11,9 +11,9 @@ import type { QueryCtx } from "./_generated/server";
 import type { AuthUser } from "./lib/auth";
 
 vi.mock("./_generated/server", () => ({
-  query: vi.fn((q) => q),
-  mutation: vi.fn((m) => m),
-  internalMutation: vi.fn((m) => m),
+  query: vi.fn((q: unknown) => q),
+  mutation: vi.fn((m: unknown) => m),
+  internalMutation: vi.fn((m: unknown) => m),
 }));
 
 vi.mock("./lib/auth", () => ({
@@ -44,7 +44,7 @@ describe("Presence Coverage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn((_index, cb) => {
+      withIndex: vi.fn((_index: string, cb?: (q: unknown) => unknown) => {
         if (cb) {
           cb({
             eq: vi.fn().mockReturnThis(),
@@ -106,7 +106,7 @@ describe("Presence Coverage", () => {
         "presence",
         expect.objectContaining({
           userId: "user1",
-          updatedAt: expect.any(Number),
+          updatedAt: expect.any(Number) as unknown,
         })
       );
     });
@@ -127,7 +127,7 @@ describe("Presence Coverage", () => {
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "p1",
         expect.objectContaining({
-          updatedAt: expect.any(Number),
+          updatedAt: expect.any(Number) as unknown,
         })
       );
     });

@@ -56,7 +56,7 @@ export const BiddingPanel = ({
   const { handleError } = useErrorHandler({
     reportToGitHub: true,
     context: {
-      userId: session?.user?.id,
+      userId: session?.user.id,
     },
   });
 
@@ -75,7 +75,7 @@ export const BiddingPanel = ({
   const kycStatus = isProfileLoading ? undefined : userData?.profile?.kycStatus;
 
   if (auction.status !== "active") {
-    const isWon = session?.user?.id === auction.winnerId;
+    const isWon = session?.user.id === auction.winnerId;
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
@@ -152,7 +152,7 @@ export const BiddingPanel = ({
       const callbackUrl = isValidCallbackUrl(rawUrl)
         ? encodeURIComponent(rawUrl)
         : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
+      void navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
 
@@ -163,7 +163,7 @@ export const BiddingPanel = ({
 
     if (!isVerified) {
       toast.error("Account verification required to place bids");
-      navigate("/kyc");
+      void navigate("/kyc");
       return;
     }
 

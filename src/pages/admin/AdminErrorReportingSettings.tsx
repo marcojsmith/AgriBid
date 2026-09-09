@@ -56,7 +56,7 @@ export default function AdminErrorReportingSettings() {
       setHasStartedTyping(false);
       setRepoOwner(gc.repoOwner ?? "");
       setRepoName(gc.repoName ?? "");
-      setLabels(gc.labels ?? "");
+      setLabels(gc.labels);
       initializedRef.current = true;
     }
   }, [settings]);

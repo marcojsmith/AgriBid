@@ -2,7 +2,7 @@
 
 /**
  * Utility to get an environment variable in the Convex runtime.
- * @param key
+ * @param key - The name of the environment variable
  * @returns The value of the environment variable or undefined if not set.
  */
 export function getEnv(key: string): string | undefined {
@@ -11,12 +11,13 @@ export function getEnv(key: string): string | undefined {
       process: { env: Record<string, string | undefined> };
     }
   ).process.env;
-  return env[key];
+  const { [key]: value } = env;
+  return value;
 }
 
 /**
  * Utility to get an environment variable or throw if it's missing.
- * @param key
+ * @param key - The name of the environment variable
  * @returns The value of the environment variable.
  */
 export function requireEnv(key: string): string {

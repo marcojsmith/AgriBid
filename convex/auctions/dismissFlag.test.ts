@@ -64,14 +64,16 @@ describe("dismissFlag mutation", () => {
     };
 
     mockCtx = setupMockCtx(mockQuery);
-    vi.mocked(mockCtx.db.get).mockImplementation(async (id: unknown) => {
+    vi.mocked(mockCtx.db.get).mockImplementation((id: unknown) => {
       if (id === flagId)
-        return flagDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>;
+        return Promise.resolve(
+          flagDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+        );
       if (id === auctionId)
-        return auctionDoc as unknown as Awaited<
-          ReturnType<typeof mockCtx.db.get>
-        >;
-      return null;
+        return Promise.resolve(
+          auctionDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+        );
+      return Promise.resolve(null);
     });
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");

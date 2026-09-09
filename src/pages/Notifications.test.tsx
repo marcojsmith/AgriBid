@@ -73,7 +73,7 @@ describe("Notifications Page", () => {
     vi.clearAllMocks();
     (useQuery as Mock).mockImplementation((apiPath: unknown) => {
       const apiObj = apiPath as Record<string, unknown>;
-      const name = typeof apiObj?.name === "string" ? apiObj.name : undefined;
+      const name = typeof apiObj.name === "string" ? apiObj.name : undefined;
       const pathName =
         typeof name === "string"
           ? name
@@ -86,7 +86,7 @@ describe("Notifications Page", () => {
     });
     (useMutation as Mock).mockImplementation((apiPath: unknown) => {
       const apiObj = apiPath as Record<string, unknown>;
-      const name = typeof apiObj?.name === "string" ? apiObj.name : undefined;
+      const name = typeof apiObj.name === "string" ? apiObj.name : undefined;
       const pathName =
         typeof name === "string"
           ? name
@@ -116,7 +116,7 @@ describe("Notifications Page", () => {
   it("renders empty state", () => {
     (useQuery as Mock).mockImplementation((apiPath: unknown) => {
       const apiObj = apiPath as Record<string, unknown>;
-      const name = typeof apiObj?.name === "string" ? apiObj.name : undefined;
+      const name = typeof apiObj.name === "string" ? apiObj.name : undefined;
       const pathName =
         typeof name === "string"
           ? name
@@ -148,8 +148,9 @@ describe("Notifications Page", () => {
     renderNotifications();
 
     const markAllBtn = screen.getByText("Mark all as read");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(markAllBtn);
+      return Promise.resolve();
     });
 
     expect(mockMarkAllRead).toHaveBeenCalled();
@@ -166,8 +167,9 @@ describe("Notifications Page", () => {
     const notification = screen
       .getByText("New Bid")
       .closest("div[class*='group']");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(notification!);
+      return Promise.resolve();
     });
 
     expect(handleNotificationClick).toHaveBeenCalledWith(
@@ -183,8 +185,9 @@ describe("Notifications Page", () => {
     renderNotifications();
 
     const markAllBtn = screen.getByText("Mark all as read");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(markAllBtn);
+      return Promise.resolve();
     });
 
     await waitFor(() => {
@@ -203,8 +206,9 @@ describe("Notifications Page", () => {
     const notification = screen
       .getByText("New Bid")
       .closest("div[class*='group']");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(notification!);
+      return Promise.resolve();
     });
 
     await waitFor(() => {
@@ -219,8 +223,9 @@ describe("Notifications Page", () => {
     renderNotifications();
 
     const markAllBtn = screen.getByText("Mark all as read");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(markAllBtn);
+      return Promise.resolve();
     });
 
     await waitFor(() => {
@@ -239,8 +244,9 @@ describe("Notifications Page", () => {
     const notification = screen
       .getByText("New Bid")
       .closest("div[class*='group']");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(notification!);
+      return Promise.resolve();
     });
 
     await waitFor(() => {

@@ -20,6 +20,7 @@ describe("Internal Mutations Branch Coverage", () => {
       patch: ReturnType<typeof vi.fn>;
       delete: ReturnType<typeof vi.fn>;
       get: ReturnType<typeof vi.fn>;
+      insert: ReturnType<typeof vi.fn>;
     };
     storage: {
       delete: ReturnType<typeof vi.fn>;
@@ -32,7 +33,7 @@ describe("Internal Mutations Branch Coverage", () => {
       db: {
         query: vi.fn(() => ({
           withIndex: vi.fn().mockReturnThis(),
-          filter: vi.fn((cb) => {
+          filter: vi.fn((cb: (q: unknown) => void) => {
             cb({
               lte: vi.fn(),
               field: vi.fn(),
@@ -46,6 +47,7 @@ describe("Internal Mutations Branch Coverage", () => {
         patch: vi.fn(),
         delete: vi.fn(),
         get: vi.fn(),
+        insert: vi.fn(),
       },
       storage: {
         delete: vi.fn(),

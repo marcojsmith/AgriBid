@@ -111,7 +111,7 @@ describe("RoleProtectedRoute", () => {
     expect(screen.getByText(/Verifying permissions/i)).toBeInTheDocument();
   });
 
-  it("handles when userData is undefined and has timed out", async () => {
+  it("handles when userData is undefined and has timed out", () => {
     vi.useFakeTimers();
     (useSession as Mock).mockReturnValue({
       data: { user: {} },
@@ -135,7 +135,7 @@ describe("RoleProtectedRoute", () => {
     vi.useRealTimers();
   });
 
-  it("shows error state after timeout", async () => {
+  it("shows error state after timeout", () => {
     vi.useFakeTimers();
     // To trigger the timeout effect, session must be present, userData undefined, and isAuthPending false
     (useSession as Mock).mockReturnValue({
@@ -183,8 +183,9 @@ describe("RoleProtectedRoute", () => {
     });
 
     const retryBtn = screen.getByRole("button", { name: /Retry Connection/i });
-    await act(async () => {
+    await act(() => {
       retryBtn.click();
+      return Promise.resolve();
     });
 
     expect(mockSyncUser).toHaveBeenCalled();
@@ -298,8 +299,9 @@ describe("RoleProtectedRoute", () => {
     unmount();
 
     // Now fail the syncUser mutation
-    await act(async () => {
+    await act(() => {
       rejectPromise!(new Error("Sync failed after unmount"));
+      return Promise.resolve();
     });
 
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -309,7 +311,7 @@ describe("RoleProtectedRoute", () => {
     consoleSpy.mockRestore();
   });
 
-  it("does not start timeout if already timed out", async () => {
+  it("does not start timeout if already timed out", () => {
     vi.useFakeTimers();
     (useSession as Mock).mockReturnValue({
       data: { user: {} },

@@ -36,8 +36,10 @@ const mockAdminUser: AuthUser = {
 
 vi.mock("./admin_utils", () => ({
   logAudit: vi.fn(),
-  encryptPII: vi.fn((val) => Promise.resolve(`enc_${val}`)),
-  decryptPII: vi.fn((val) => Promise.resolve(val?.replace("enc_", "") ?? "")),
+  encryptPII: vi.fn((val: string | undefined) => Promise.resolve(`enc_${val}`)),
+  decryptPII: vi.fn((val: string | undefined) =>
+    Promise.resolve(val?.replace("enc_", "") ?? "")
+  ),
   updateCounter: vi.fn(),
   countQuery: vi.fn().mockResolvedValue(0),
 }));
@@ -77,11 +79,11 @@ describe("Users Coverage", () => {
     vi.resetAllMocks();
 
     const q: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return q;
       }),
-      filter: vi.fn((cb) => {
+      filter: vi.fn((cb?: (q: unknown) => unknown) => {
         if (cb)
           cb({
             eq: vi.fn().mockReturnThis(),
@@ -138,6 +140,15 @@ describe("Users Coverage", () => {
           isVerified: false,
         })
       );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "user123",
+          type: "account_created",
+          description: "Account created",
+          createdAt: expect.any(Number) as number,
+        })
+      );
       expect(adminUtils.updateCounter).toHaveBeenCalledWith(
         mockCtx as unknown as MutationCtx,
         "profiles",
@@ -157,6 +168,10 @@ describe("Users Coverage", () => {
 
       expect(result).toEqual({ success: true });
       expect(mockCtx.db.insert).not.toHaveBeenCalled();
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "userActivity",
+        expect.anything()
+      );
     });
 
     it("should preserve stored name/email when Clerk claims are missing", async () => {
@@ -471,6 +486,15 @@ describe("Users Coverage", () => {
         "p1",
         expect.objectContaining({ isVerified: true })
       );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "user123",
+          type: "verification_approved",
+          description: "Verification approved",
+          createdAt: expect.any(Number) as number,
+        })
+      );
       expect(adminUtils.updateCounter).toHaveBeenCalledWith(
         mockCtx as unknown as MutationCtx,
         "profiles",
@@ -612,6 +636,7 @@ describe("Users Coverage", () => {
       });
 
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
       expect(adminUtils.updateCounter).not.toHaveBeenCalled();
     });
   });
@@ -635,6 +660,15 @@ describe("Users Coverage", () => {
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "p1",
         expect.objectContaining({ role: "admin" })
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "user123",
+          type: "role_changed",
+          description: "Promoted to admin",
+          createdAt: expect.any(Number) as number,
+        })
       );
       expect(adminUtils.logAudit).toHaveBeenCalled();
     });
@@ -670,6 +704,10 @@ describe("Users Coverage", () => {
       );
       expect(result).toEqual({ success: true });
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "userActivity",
+        expect.anything()
+      );
     });
   });
 
@@ -702,6 +740,15 @@ describe("Users Coverage", () => {
         expect.objectContaining({
           kycStatus: "pending",
           firstName: "enc_John",
+        })
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "user123",
+          type: "verification_requested",
+          description: "Identity documents submitted for review",
+          createdAt: expect.any(Number) as number,
         })
       );
       expect(adminUtils.updateCounter).toHaveBeenCalledWith(
@@ -755,7 +802,7 @@ describe("Users Coverage", () => {
       ).rejects.toThrow("Profile not found");
     });
 
-    it("should not increment counter if already pending", async () => {
+    it("should not increment counter if already pending, but still log the resubmission", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
       } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
@@ -768,6 +815,13 @@ describe("Users Coverage", () => {
       );
 
       expect(adminUtils.updateCounter).not.toHaveBeenCalled();
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "user123",
+          type: "verification_requested",
+        })
+      );
     });
   });
 

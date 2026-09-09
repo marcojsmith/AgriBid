@@ -102,7 +102,7 @@ function base64ToArrayBuffer(base64: string): Uint8Array {
  * @throws Error when encryption fails (message prefixed with `encryptPII failed:`).
  */
 export async function encryptPII(
-  value: string | undefined
+  value: string | null | undefined
 ): Promise<string | undefined> {
   if (value === undefined || value === null) return undefined;
 
@@ -146,7 +146,7 @@ export async function encryptPII(
  * @throws Error when decryption is attempted but fails (for example authentication/tag mismatch or key errors).
  */
 export async function decryptPII(
-  encrypted: string | undefined
+  encrypted: string | null | undefined
 ): Promise<string | undefined> {
   if (encrypted === undefined || encrypted === null) return undefined;
 
@@ -160,6 +160,8 @@ export async function decryptPII(
 
   // Stricter Base64 validation to avoid misclassifying plaintext (e.g. "john.doe")
   // Ensures non-zero length, multiple of 4, and correct padding.
+  // ReDoS-safe: the repeated group consumes exactly 4 chars per iteration with
+  // no nested quantifiers, so backtracking cannot grow super-linearly.
   const base64Regex =
     /^(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 

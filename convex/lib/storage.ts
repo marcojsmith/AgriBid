@@ -7,12 +7,12 @@ import type { Doc, Id } from "../_generated/dataModel";
 
 /**
  * Normalizes images object to ensure additional array exists.
- * @param images
- * @param images.front
- * @param images.engine
- * @param images.cabin
- * @param images.rear
- * @param images.additional
+ * @param images - The images object to normalize
+ * @param images.front - Optional storage ID of the front image
+ * @param images.engine - Optional storage ID of the engine image
+ * @param images.cabin - Optional storage ID of the cabin image
+ * @param images.rear - Optional storage ID of the rear image
+ * @param images.additional - Optional array of additional image storage IDs
  * @returns The normalized images object.
  */
 export function normalizeImages(images: {
@@ -50,12 +50,18 @@ export async function deleteAuctionImages(
   ctx: MutationCtx,
   images: AuctionImages | Doc<"auctions">["images"]
 ): Promise<void> {
+  // Legacy documents may hold null/undefined despite the declared parameter type.
+  const legacyImages = images as
+    | AuctionImages
+    | Doc<"auctions">["images"]
+    | null
+    | undefined;
   let storageIds: string[] = [];
 
-  if (Array.isArray(images)) {
-    storageIds = (images as string[]).filter(Boolean);
-  } else if (images && typeof images === "object") {
-    const imagesObj = images as AuctionImages;
+  if (legacyImages != null && Array.isArray(legacyImages)) {
+    storageIds = (legacyImages as string[]).filter(Boolean);
+  } else if (legacyImages != null && typeof legacyImages === "object") {
+    const imagesObj = legacyImages as AuctionImages;
     storageIds = [
       imagesObj.front,
       imagesObj.engine,

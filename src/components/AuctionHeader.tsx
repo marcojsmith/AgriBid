@@ -36,10 +36,10 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   const [isToggling, setIsToggling] = useState(false);
 
   const isWinner =
-    !!session?.user?.id &&
+    !!session?.user.id &&
     !!auction.winnerId &&
     session.user.id === auction.winnerId;
-  const isSeller = !!session?.user?.id && session.user.id === auction.sellerId;
+  const isSeller = !!session?.user.id && session.user.id === auction.sellerId;
 
   const handleWatchlistToggle = async () => {
     if (sessionIsPending || isWatched === undefined || isToggling) return;
@@ -50,7 +50,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       const callbackUrl = isValidCallbackUrl(rawUrl)
         ? encodeURIComponent(rawUrl)
         : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
+      void navigate(`/login?callbackUrl=${callbackUrl}`);
       return;
     }
 

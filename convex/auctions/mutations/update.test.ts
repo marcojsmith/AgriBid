@@ -63,7 +63,9 @@ describe("Update Mutations", () => {
         patch: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
         query: vi.fn(),
-        normalizeId: vi.fn().mockImplementation((_table, id) => id),
+        normalizeId: vi
+          .fn()
+          .mockImplementation((_table: string, id: string) => id),
       },
       storage: {
         generateUploadUrl: vi.fn().mockResolvedValue("url"),
@@ -145,7 +147,7 @@ describe("Update Mutations", () => {
           images: expect.objectContaining({
             front: "img1",
             additional: ["img2"],
-          }),
+          }) as unknown as Record<string, unknown>,
         })
       );
     });
@@ -431,7 +433,7 @@ describe("Update Mutations", () => {
 
     it("should throw if bulk update size exceeded", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      const ids = Array(51).fill("a1" as Id<"auctions">);
+      const ids = Array(51).fill("a1" as Id<"auctions">) as Id<"auctions">[];
       await expect(
         bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, {
           auctionIds: ids,

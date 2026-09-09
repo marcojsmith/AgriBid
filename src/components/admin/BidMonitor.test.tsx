@@ -231,7 +231,9 @@ describe("BidMonitor", () => {
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        paginationOpts: expect.objectContaining({ cursor: "cursor-2" }),
+        paginationOpts: expect.objectContaining({
+          cursor: "cursor-2",
+        }) as Record<string, unknown>,
       })
     );
 
@@ -243,7 +245,9 @@ describe("BidMonitor", () => {
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        paginationOpts: expect.objectContaining({ cursor: null }),
+        paginationOpts: expect.objectContaining({
+          cursor: null,
+        }) as Record<string, unknown>,
       })
     );
   });

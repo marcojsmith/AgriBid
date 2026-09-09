@@ -275,7 +275,7 @@ describe("AdminSupport Page", () => {
     expect(confirmButton).toBeDisabled();
   });
 
-  it("validates resolution message", async () => {
+  it("validates resolution message", () => {
     (useQuery as Mock).mockImplementation((queryApi) => {
       if (
         queryApi === api.admin.getAdminStats ||
@@ -452,8 +452,9 @@ describe("AdminSupport Page", () => {
       within(row as HTMLElement).getByRole("status", { hidden: true })
     ).toBeInTheDocument();
 
-    await act(async () => {
+    await act(() => {
       resolvePromise({ success: true });
+      return Promise.resolve();
     });
   });
 });

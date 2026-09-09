@@ -1,7 +1,8 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
+import { useQuery } from "convex/react";
 import { toast } from "sonner";
 
 import { UserDropdown } from "./UserDropdown";
@@ -9,6 +10,18 @@ import { UserDropdown } from "./UserDropdown";
 vi.mock("sonner", () => ({
   toast: {
     error: vi.fn(),
+  },
+}));
+
+vi.mock("convex/react", () => ({
+  useQuery: vi.fn(),
+}));
+
+vi.mock("convex/_generated/api", () => ({
+  api: {
+    messages: {
+      getUnreadConversationCount: "messages:getUnreadConversationCount",
+    },
   },
 }));
 
@@ -49,6 +62,7 @@ describe("UserDropdown", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    (useQuery as Mock).mockReturnValue(0);
   });
 
   const renderWithRouter = (props = defaultProps) => {
@@ -95,6 +109,30 @@ describe("UserDropdown", () => {
     expect(screen.getByText("Sign Out")).toBeInTheDocument();
   });
 
+  it("renders the Messages link to /messages", () => {
+    renderWithRouter();
+    const messagesLink = screen.getByRole("link", { name: "Messages" });
+    expect(messagesLink).toHaveAttribute("href", "/messages");
+  });
+
+  it("shows the unread-conversations badge when the count is above zero", () => {
+    (useQuery as Mock).mockReturnValue(3);
+    renderWithRouter();
+    expect(
+      screen.getByRole("link", { name: "Messages, 3 unread" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("hides the unread-conversations badge when there is nothing unread", () => {
+    (useQuery as Mock).mockReturnValue(0);
+    renderWithRouter();
+    expect(screen.getByRole("link", { name: "Messages" })).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Messages, 0 unread")
+    ).not.toBeInTheDocument();
+  });
+
   it("shows Admin Dashboard link for admin role", () => {
     renderWithRouter({ ...defaultProps, role: "admin" });
     expect(screen.getByText("Admin Dashboard")).toBeInTheDocument();
@@ -109,7 +147,7 @@ describe("UserDropdown", () => {
     expect(screen.getByText("Identity Required")).toBeInTheDocument();
   });
 
-  it("calls onSignOut when Sign Out is clicked", async () => {
+  it("calls onSignOut when Sign Out is clicked", () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     renderWithRouter({ ...defaultProps, onSignOut });
 

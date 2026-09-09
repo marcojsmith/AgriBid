@@ -60,7 +60,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
     setFailedUrls((prev) => new Set(prev).add(url));
   };
 
-  if (!images || images.length === 0) {
+  if (images.length === 0) {
     return (
       <div className="aspect-[16/10] bg-muted rounded-lg flex items-center justify-center border overflow-hidden">
         <ImagePlaceholder />
@@ -68,7 +68,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
     );
   }
 
-  const activeImage = images[activeIndex];
+  const activeImage = images.at(activeIndex) ?? images[0];
   const nextImage = () => setActiveIndex((prev) => (prev + 1) % images.length);
   const prevImage = () =>
     setActiveIndex((prev) => (prev - 1 + images.length) % images.length);

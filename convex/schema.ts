@@ -34,6 +34,7 @@ export default defineSchema({
     minIncrement: v.number(),
     startTime: v.optional(v.number()),
     endTime: v.optional(v.number()),
+    settledAt: v.optional(v.number()), // When the auction was settled (sold/unsold)
     durationDays: v.optional(v.number()),
     sellerId: v.string(),
     status: v.union(
@@ -113,6 +114,45 @@ export default defineSchema({
     .index("by_reporter", ["reporterId"])
     .index("by_status", ["status"])
     .index("by_auction_status", ["auctionId", "status"]),
+
+  // Profile reporting system for community moderation
+  profileFlags: defineTable({
+    reportedUserId: v.string(),
+    reporterId: v.string(),
+    reason: v.union(
+      v.literal("fake_account"),
+      v.literal("fraudulent_listings"),
+      v.literal("abusive_behaviour"),
+      v.literal("identity_misrepresentation"),
+      v.literal("other")
+    ),
+    details: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewed"),
+      v.literal("dismissed")
+    ),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_reported_user", ["reportedUserId"])
+    .index("by_reporter", ["reporterId"])
+    .index("by_status", ["status"])
+    .index("by_reported_status", ["reportedUserId", "status"]),
+
+  // Seller reviews left by auction winners
+  reviews: defineTable({
+    auctionId: v.id("auctions"),
+    reviewerId: v.string(), // buyer userId (the auction winner)
+    revieweeId: v.string(), // seller userId
+    rating: v.number(), // integer 1-5, validated in the mutation handler
+    comment: v.optional(v.string()),
+    response: v.optional(v.object({ text: v.string(), createdAt: v.number() })), // Seller's single response to the review
+    createdAt: v.number(),
+  })
+    .index("by_reviewee", ["revieweeId"])
+    .index("by_reviewee_createdAt", ["revieweeId", "createdAt"])
+    .index("by_auction_reviewer", ["auctionId", "reviewerId"]),
 
   bids: defineTable({
     auctionId: v.id("auctions"),
@@ -234,6 +274,55 @@ export default defineSchema({
   })
     .index("by_user_notification", ["userId", "notificationId"])
     .index("by_notification", ["notificationId"]),
+
+  // Per-user activity feed entries rendered in the profile "Recent Activity"
+  // section (issue #220). KYC and role-change entries are private: they are
+  // only returned to the profile owner (see convex/userActivity.ts).
+  userActivity: defineTable({
+    userId: v.string(),
+    type: v.union(
+      v.literal("account_created"),
+      v.literal("verification_requested"),
+      v.literal("verification_approved"),
+      v.literal("verification_rejected"),
+      v.literal("role_changed"),
+      v.literal("listing_created"),
+      v.literal("listing_sold"),
+      v.literal("bid_placed"),
+      v.literal("bid_won")
+    ),
+    description: v.optional(v.string()),
+    relatedId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
+
+  // Two-party buyer/seller messaging (issue #231). Every conversation is
+  // strictly two-party, so participants are modelled as scalar buyerId/sellerId
+  // fields (each indexed) rather than an array of participant ids — Convex
+  // array-field indexes cannot do a "contains this user" lookup.
+  conversations: defineTable({
+    buyerId: v.string(),
+    sellerId: v.string(),
+    auctionId: v.optional(v.id("auctions")),
+    lastMessageAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_buyer", ["buyerId", "lastMessageAt"])
+    .index("by_seller", ["sellerId", "lastMessageAt"])
+    .index("by_buyer_seller", ["buyerId", "sellerId"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    senderId: v.string(),
+    content: v.string(),
+    isRead: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_conversation", ["conversationId", "createdAt"])
+    .index("by_conversation_read", ["conversationId", "isRead"])
+    .index("by_sender", ["senderId", "createdAt"]),
 
   watchlist: defineTable({
     userId: v.string(),

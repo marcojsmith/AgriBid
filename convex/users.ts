@@ -22,6 +22,7 @@ import {
   updateCounter,
   countQuery,
 } from "./admin_utils";
+import { logActivity } from "./userActivity";
 import { PRESENCE_HEARTBEAT_THRESHOLD } from "./presence";
 
 /**
@@ -88,7 +89,7 @@ export const KYCDetailsValidator = v.object({
 
 /**
  * Handler for synchronizing user with profile.
- * @param ctx
+ * @param ctx - Convex mutation context
  * @returns Promise<null | { success: boolean }>
  */
 export const syncUserHandler = async (ctx: MutationCtx) => {
@@ -120,6 +121,11 @@ export const syncUserHandler = async (ctx: MutationCtx) => {
         updatedAt: now,
       });
       await updateCounter(ctx, "profiles", "total", 1);
+      await logActivity(ctx, {
+        userId: linkId,
+        type: "account_created",
+        description: "Account created",
+      });
     } else {
       await ctx.db.patch(existingProfile._id, {
         ...identityFields,
@@ -147,7 +153,7 @@ export const syncUser = mutation({
 
 /**
  * Handler for getting current user's profile.
- * @param ctx
+ * @param ctx - Convex query context
  * @returns Promise<null | UserProfile>
  */
 export const getMyProfileHandler = async (ctx: QueryCtx) => {
@@ -189,9 +195,9 @@ export const getMyProfile = query({
 
 /**
  * Handler for listing all profiles (admin).
- * @param ctx
- * @param args
- * @param args.paginationOpts
+ * @param ctx - Convex query context
+ * @param args - Query arguments
+ * @param args.paginationOpts - Convex pagination options
  * @returns Promise<PaginatedUserProfiles>
  */
 export const listAllProfilesHandler = async (
@@ -229,29 +235,27 @@ export const listAllProfilesHandler = async (
       .map((presence) => [presence.userId, presence])
   );
 
-  // Parallelize user lookups and map presence from the pre-fetched map
-  const page = await Promise.all(
-    profiles.page.map(async (p: Doc<"profiles">) => {
-      const presence = presenceMap.get(p.userId);
+  // Map presence from the pre-fetched map
+  const page = profiles.page.map((p: Doc<"profiles">) => {
+    const presence = presenceMap.get(p.userId);
 
-      const isOnline = presence
-        ? now - presence.updatedAt < PRESENCE_HEARTBEAT_THRESHOLD
-        : false;
+    const isOnline = presence
+      ? now - presence.updatedAt < PRESENCE_HEARTBEAT_THRESHOLD
+      : false;
 
-      return {
-        _id: p._id,
-        _creationTime: p._creationTime,
-        userId: p.userId,
-        role: p.role,
-        isVerified: p.isVerified,
-        kycStatus: p.kycStatus,
-        name: p.name,
-        email: p.email,
-        createdAt: p.createdAt,
-        isOnline,
-      };
-    })
-  );
+    return {
+      _id: p._id,
+      _creationTime: p._creationTime,
+      userId: p.userId,
+      role: p.role,
+      isVerified: p.isVerified,
+      kycStatus: p.kycStatus,
+      name: p.name,
+      email: p.email,
+      createdAt: p.createdAt,
+      isOnline,
+    };
+  });
 
   return {
     ...profiles,
@@ -293,9 +297,9 @@ export const listAllProfiles = query({
 
 /**
  * Handler for fetching profile for KYC (admin).
- * @param ctx
- * @param root0
- * @param root0.userId
+ * @param ctx - Convex mutation context
+ * @param root0 - Destructured handler arguments
+ * @param root0.userId - The user id of the profile to fetch
  * @returns Promise<null | ProfileForKYC>
  */
 export const getProfileForKYCHandler = async (
@@ -362,9 +366,9 @@ export const getProfileForKYC = mutation({
 
 /**
  * Handler for verifying user (admin).
- * @param ctx
- * @param root0
- * @param root0.userId
+ * @param ctx - Convex mutation context
+ * @param root0 - Destructured handler arguments
+ * @param root0.userId - The user id of the profile to verify
  * @returns Promise<{ success: boolean }>
  */
 export const verifyUserHandler = async (
@@ -401,6 +405,12 @@ export const verifyUserHandler = async (
     });
 
     await updateCounter(ctx, "profiles", "verified", 1);
+
+    await logActivity(ctx, {
+      userId,
+      type: "verification_approved",
+      description: "Verification approved",
+    });
   }
 
   await logAudit(ctx, {
@@ -423,9 +433,9 @@ export const verifyUser = mutation({
 
 /**
  * Handler for promoting user to admin (admin).
- * @param ctx
- * @param root0
- * @param root0.userId
+ * @param ctx - Convex mutation context
+ * @param root0 - Destructured handler arguments
+ * @param root0.userId - The user id of the profile to promote
  * @returns Promise<{ success: boolean }>
  */
 export const promoteToAdminHandler = async (
@@ -453,6 +463,12 @@ export const promoteToAdminHandler = async (
     updatedAt: now,
   });
 
+  await logActivity(ctx, {
+    userId,
+    type: "role_changed",
+    description: "Promoted to admin",
+  });
+
   await logAudit(ctx, {
     action: "PROMOTE_ADMIN",
     targetId: userId,
@@ -473,14 +489,14 @@ export const promoteToAdmin = mutation({
 
 /**
  * Handler for submitting KYC documents.
- * @param ctx
- * @param args
- * @param args.documents
- * @param args.firstName
- * @param args.lastName
- * @param args.phoneNumber
- * @param args.idNumber
- * @param args.email
+ * @param ctx - Convex mutation context
+ * @param args - KYC submission details
+ * @param args.documents - Storage IDs of the uploaded KYC documents
+ * @param args.firstName - User's first name
+ * @param args.lastName - User's last name
+ * @param args.phoneNumber - User's phone number
+ * @param args.idNumber - User's national ID number
+ * @param args.email - User's KYC contact email
  * @returns Promise<{ success: boolean }>
  */
 export const submitKYCHandler = async (
@@ -539,6 +555,14 @@ export const submitKYCHandler = async (
     await updateCounter(ctx, "profiles", "pending", 1);
   }
 
+  // Every submission gets a fresh activity entry so a rejected-then-resubmitted
+  // user's feed reflects the new review request.
+  await logActivity(ctx, {
+    userId,
+    type: "verification_requested",
+    description: "Identity documents submitted for review",
+  });
+
   return { success: true };
 };
 
@@ -560,7 +584,7 @@ export const submitKYC = mutation({
 
 /**
  * Handler for getting user's own KYC details.
- * @param ctx
+ * @param ctx - Convex query context
  * @returns Promise<null | KYCDetails>
  */
 export const getMyKYCDetailsHandler = async (ctx: QueryCtx) => {
@@ -627,9 +651,9 @@ export const getMyKYCDetails = query({
 
 /**
  * Handler for deleting a KYC document.
- * @param ctx
- * @param root0
- * @param root0.storageId
+ * @param ctx - Convex mutation context
+ * @param root0 - Destructured handler arguments
+ * @param root0.storageId - Storage ID of the KYC document to delete
  * @returns Promise<{ success: boolean }>
  */
 export const deleteMyKYCDocumentHandler = async (
@@ -691,9 +715,9 @@ export const deleteMyKYCDocument = mutation({
  * Throws ConvexError if no profile exists.
  * @param ctx - Mutation context.
  * @param args - Fields to update.
- * @param args.bio
- * @param args.location
- * @param args.companyName
+ * @param args.bio - Optional short biography for the profile.
+ * @param args.location - Optional location of the user.
+ * @param args.companyName - Optional company name of the user.
  * @returns null on success.
  */
 export const updateMyProfileHandler = async (

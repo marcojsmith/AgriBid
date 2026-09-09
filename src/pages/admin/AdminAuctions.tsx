@@ -165,7 +165,10 @@ export default function AdminAuctions() {
   };
 
   const filteredAuctions = useMemo(() => {
-    return ((allAuctions ?? []) as AuctionWithCategory[]).filter(
+    // `results` is typed non-nullable but the loading-state path feeds
+    // `undefined`, so the empty-array fallback is kept intentionally.
+    const auctions = allAuctions as AuctionWithCategory[] | undefined;
+    return (auctions ?? []).filter(
       (a) =>
         a.title.toLowerCase().includes(auctionSearch.toLowerCase()) ||
         a.make.toLowerCase().includes(auctionSearch.toLowerCase()) ||

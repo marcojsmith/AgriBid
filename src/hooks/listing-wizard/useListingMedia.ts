@@ -44,8 +44,8 @@ export function useListingMedia() {
     file: File
   ) => {
     const blobUrl = URL.createObjectURL(file);
-    setPreviews((prev: Record<string, string>) => {
-      const currentPreview = prev[slotId];
+    setPreviews((prev: Record<string, string | undefined>) => {
+      const { [slotId]: currentPreview } = prev;
       if (currentPreview?.startsWith("blob:")) {
         URL.revokeObjectURL(currentPreview);
       }
@@ -78,7 +78,7 @@ export function useListingMedia() {
     } catch (error) {
       console.error("Upload failed", error);
       toast.error(getErrorMessage(error, "Image upload failed"));
-      setPreviews((prev: Record<string, string>) => {
+      setPreviews((prev: Record<string, string | undefined>) => {
         return Object.fromEntries(
           Object.entries(prev).filter(([key]) => key !== slotId)
         );
@@ -117,7 +117,7 @@ export function useListingMedia() {
         if (!result.ok) throw new Error("Upload failed");
         const { storageId } = (await result.json()) as UploadResponse;
 
-        setPreviews((prev: Record<string, string>) => ({
+        setPreviews((prev: Record<string, string | undefined>) => ({
           ...prev,
           [storageId]: blobUrl,
         }));
@@ -158,10 +158,10 @@ export function useListingMedia() {
       previewKey = Reflect.get(formData.images.additional, index);
     }
 
-    const previewUrl = previewKey ? previews[previewKey] : undefined;
+    const { [previewKey]: previewUrl } = previews;
     if (previewUrl?.startsWith("blob:")) {
       URL.revokeObjectURL(previewUrl);
-      setPreviews((prev: Record<string, string>) => {
+      setPreviews((prev: Record<string, string | undefined>) => {
         return Object.fromEntries(
           Object.entries(prev).filter(([key]) => key !== previewKey)
         );

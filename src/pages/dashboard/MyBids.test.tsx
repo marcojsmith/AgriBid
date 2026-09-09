@@ -261,24 +261,27 @@ describe("MyBids Page", () => {
     expect(screen.getByText("Won Auction")).toBeInTheDocument();
 
     // Click "Winning" filter
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByText("Winning", { selector: "button" }));
+      return Promise.resolve();
     });
     expect(screen.getByText("Winning Auction")).toBeInTheDocument();
     expect(screen.queryByText("Outbid Auction")).not.toBeInTheDocument();
     expect(screen.queryByText("Won Auction")).not.toBeInTheDocument();
 
     // Click "Outbid" filter
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByText("Outbid", { selector: "button" }));
+      return Promise.resolve();
     });
     expect(screen.queryByText("Winning Auction")).not.toBeInTheDocument();
     expect(screen.getByText("Outbid Auction")).toBeInTheDocument();
     expect(screen.queryByText("Won Auction")).not.toBeInTheDocument();
 
     // Click "Ended" filter
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByText("Ended", { selector: "button" }));
+      return Promise.resolve();
     });
     expect(screen.queryByText("Winning Auction")).not.toBeInTheDocument();
     expect(screen.queryByText("Outbid Auction")).not.toBeInTheDocument();
@@ -289,8 +292,9 @@ describe("MyBids Page", () => {
     renderMyBids();
 
     const select = screen.getByLabelText("Sort bids");
-    await act(async () => {
+    await act(() => {
       fireEvent.change(select, { target: { value: "bid" } });
+      return Promise.resolve();
     });
 
     // Get all auction titles after sorting
@@ -308,8 +312,9 @@ describe("MyBids Page", () => {
     renderMyBids();
 
     const select = screen.getByLabelText("Sort bids");
-    await act(async () => {
+    await act(() => {
       fireEvent.change(select, { target: { value: "recent" } });
+      return Promise.resolve();
     });
 
     // Get all auction titles after sorting
@@ -461,11 +466,12 @@ describe("MyBids Page", () => {
     // Re-render to apply new mock
     renderMyBids();
 
-    await act(async () => {
+    await act(() => {
       const endedFilter = screen
         .getAllByText("Ended")
         .find((el) => el.tagName === "BUTTON");
       fireEvent.click(endedFilter!);
+      return Promise.resolve();
     });
 
     expect(

@@ -29,7 +29,7 @@ export function AuditTab() {
   const result = useQuery(api.admin.getAuditLogs, {
     paginationOpts: {
       numItems: 50,
-      cursor: cursorHistory[currentCursorIndex] ?? null,
+      cursor: cursorHistory.at(currentCursorIndex) ?? null,
     },
   });
 
@@ -149,7 +149,7 @@ export function AuditTab() {
                 size="sm"
                 className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={() => {
-                  if (result?.continueCursor) {
+                  if (result.continueCursor) {
                     const newHistory = [
                       ...cursorHistory.slice(0, currentCursorIndex + 1),
                       result.continueCursor,

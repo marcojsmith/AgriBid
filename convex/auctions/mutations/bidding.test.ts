@@ -186,6 +186,33 @@ describe("Bidding Coverage", () => {
         "bids",
         expect.any(Object)
       );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "u2",
+          type: "bid_placed",
+          description: expect.stringContaining("Bid placed: R") as string,
+          relatedId: "a1",
+          createdAt: expect.any(Number) as number,
+        })
+      );
+    });
+
+    it("should not log activity if the auction is not found", async () => {
+      const userId = "u1";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockCtx.db.get.mockResolvedValue(null);
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          amount: 100,
+        })
+      ).rejects.toThrow("Auction not found");
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
     });
   });
 

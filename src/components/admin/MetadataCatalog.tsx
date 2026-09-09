@@ -71,14 +71,14 @@ interface MetadataCatalogProps {
  * Component for displaying and managing the equipment metadata catalog.
  * Provides an accordion view of manufacturers and their models, with actions to add, edit, and deactivate.
  *
- * @param props - Component props
- * @param props.metadata
- * @param props.categories
- * @param props.addMake
- * @param props.updateMake
- * @param props.deleteMake
- * @param props.addModel
- * @param props.removeModel
+ * @param root0 - Component props
+ * @param root0.metadata - Equipment metadata records (makes with their models and resolved category names) shown in the accordion
+ * @param root0.categories - Equipment categories selectable when adding or editing a make
+ * @param root0.addMake - Mutation to create a new make with an initial model and category
+ * @param root0.updateMake - Mutation to update a make's name, category, models, or active status
+ * @param root0.deleteMake - Mutation to deactivate a make, called with its id
+ * @param root0.addModel - Mutation to add a model to an existing make
+ * @param root0.removeModel - Mutation to remove a model from an existing make
  * @returns The rendered metadata catalog interface
  */
 export function MetadataCatalog({

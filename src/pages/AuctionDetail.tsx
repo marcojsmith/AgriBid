@@ -105,7 +105,7 @@ export default function AuctionDetail() {
 
   const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
 
-  const isOwner = session?.user?.id === auction?.sellerId;
+  const isOwner = session?.user.id === auction?.sellerId;
 
   const handleFlagAuction = async () => {
     if (!flagReason) {
@@ -490,7 +490,11 @@ export default function AuctionDetail() {
               <BidHistory auctionId={auction._id} />
             </section>
 
-            <SellerInfo sellerId={auction.sellerId} />
+            <SellerInfo
+              sellerId={auction.sellerId}
+              auctionId={auction._id}
+              isOwnListing={isOwner}
+            />
           </div>
         </div>
       </div>

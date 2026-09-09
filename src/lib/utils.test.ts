@@ -10,7 +10,8 @@ describe("cn", () => {
   });
 
   it("handles conditional classes", () => {
-    const isBar = false;
+    // Annotated as boolean so the conditional-class branch of `cn` is exercised
+    const isBar = false as boolean;
     const result = cn("foo", isBar && "bar", "baz");
     expect(result).toBe("foo baz");
   });

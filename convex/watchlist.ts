@@ -15,9 +15,9 @@ import type { Id, Doc } from "./_generated/dataModel";
 
 /**
  * Handler for toggling an auction in the user's watchlist.
- * @param ctx
- * @param args
- * @param args.auctionId
+ * @param ctx - Convex mutation context
+ * @param args - Handler arguments
+ * @param args.auctionId - ID of the auction to toggle
  * @returns Promise<boolean>
  */
 export const toggleWatchlistHandler = async (
@@ -58,9 +58,9 @@ export const toggleWatchlist = mutation({
 
 /**
  * Handler for checking if an auction is watched.
- * @param ctx
- * @param args
- * @param args.auctionId
+ * @param ctx - Convex query context
+ * @param args - Handler arguments
+ * @param args.auctionId - ID of the auction to check
  * @returns Promise<boolean>
  */
 export const isWatchedHandler = async (
@@ -100,9 +100,9 @@ export const isWatched = query({
 
 /**
  * Handler for getting watched auctions.
- * @param ctx
- * @param args
- * @param args.paginationOpts
+ * @param ctx - Convex query context
+ * @param args - Handler arguments
+ * @param args.paginationOpts - Convex pagination options
  * @returns Promise<PaginatedAuctions>
  */
 export const getWatchedAuctionsHandler = async (
@@ -177,7 +177,7 @@ export const getWatchedAuctions = query({
 
 /**
  * Handler for getting watched auction IDs.
- * @param ctx
+ * @param ctx - Convex query context
  * @returns Promise<Id<"auctions">[]>
  */
 export const getWatchedAuctionIdsHandler = async (ctx: QueryCtx) => {

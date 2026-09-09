@@ -113,13 +113,14 @@ export function validateAuctionBeforePublish(
 
   const hasImages = Array.isArray(auction.images)
     ? auction.images.length > 0
-    : typeof auction.images === "object" && auction.images !== null
-      ? isNonEmpty(auction.images.front) ||
-        isNonEmpty(auction.images.engine) ||
-        isNonEmpty(auction.images.cabin) ||
-        isNonEmpty(auction.images.rear) ||
-        isNonEmpty(auction.images.additional)
-      : false;
+    : Boolean(
+        auction.images &&
+        (isNonEmpty(auction.images.front) ||
+          isNonEmpty(auction.images.engine) ||
+          isNonEmpty(auction.images.cabin) ||
+          isNonEmpty(auction.images.rear) ||
+          isNonEmpty(auction.images.additional))
+      );
 
   if (!hasImages) {
     throw new ConvexError("At least one image is required before submitting");

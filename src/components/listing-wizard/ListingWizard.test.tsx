@@ -387,7 +387,7 @@ describe("ListingWizard Full Coverage", () => {
     expect(mockCreateAuction).not.toHaveBeenCalled();
   });
 
-  it("initializes with saved step from localStorage", async () => {
+  it("initializes with saved step from localStorage", () => {
     localStorage.setItem(
       "agribid_listing_draft",
       JSON.stringify({ title: "Saved" })

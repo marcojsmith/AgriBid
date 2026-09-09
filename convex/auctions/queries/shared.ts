@@ -84,7 +84,6 @@ export async function calculateUserBidStats(
     .query("bids")
     .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
     .filter((q) => q.neq(q.field("status"), "voided"))) {
-
     const stats = auctionStatsMap.get(bid.auctionId) ?? {
       lastBidTimestamp: 0,
       highestBid: 0,
@@ -110,21 +109,26 @@ export async function calculateUserBidStats(
 
   // Only load auctions that the user has bid on, in chunks to avoid overwhelming the database
   const CHUNK_SIZE = 100;
-  const fullAuctions: (Doc<"auctions"> | null)[] = [];
+  const auctionEntries: Array<{
+    id: Id<"auctions">;
+    auction: Doc<"auctions"> | null;
+  }> = [];
 
   for (let i = 0; i < auctionIds.length; i += CHUNK_SIZE) {
     const chunk = auctionIds.slice(i, i + CHUNK_SIZE);
-    const chunkResults = await Promise.all(chunk.map((id) => ctx.db.get(id)));
-    fullAuctions.push(...chunkResults);
+    const chunkEntries = await Promise.all(
+      chunk.map(async (id) => ({ id, auction: await ctx.db.get(id) }))
+    );
+    auctionEntries.push(...chunkEntries);
   }
 
   const auctionsMap = new Map<string, Doc<"auctions"> | null>();
 
-  fullAuctions.forEach((auction: Doc<"auctions"> | null, index: number) => {
-    auctionsMap.set(auctionIds[index], auction);
-    if (!auction) return;
-    const stats = auctionStatsMap.get(auctionIds[index]);
-    if (!stats) return;
+  for (const { id, auction } of auctionEntries) {
+    auctionsMap.set(id, auction);
+    if (!auction) continue;
+    const stats = auctionStatsMap.get(id);
+    if (!stats) continue;
 
     if (auction.status === "active") {
       globalStats.totalActive++;
@@ -138,7 +142,7 @@ export async function calculateUserBidStats(
         globalStats.outbidCount++;
       }
     }
-  });
+  }
 
   return { globalStats, auctionStatsMap, auctionsMap };
 }

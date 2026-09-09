@@ -28,8 +28,8 @@ vi.mock("../admin_utils", () => ({
 }));
 
 vi.mock("../_generated/server", () => ({
-  query: vi.fn((q) => q),
-  mutation: vi.fn((m) => m),
+  query: vi.fn((q: unknown) => q),
+  mutation: vi.fn((m: unknown) => m),
 }));
 
 vi.mock("../presence", () => ({
@@ -80,7 +80,7 @@ describe("Admin Statistics", () => {
         if (cb && typeof cb === "function") cb(mockQ);
         return queryMock;
       }),
-      filter: vi.fn((cb) => {
+      filter: vi.fn((cb?: (q: unknown) => void) => {
         if (typeof cb === "function") cb(mockQ);
         return queryMock;
       }),
@@ -190,7 +190,7 @@ describe("Admin Statistics", () => {
     const auctionsInsert = insertCalls.find(
       (call: unknown[]) =>
         call[0] === "counters" &&
-        (call[1] as { name?: string })?.name === "auctions"
+        (call[1] as { name?: string } | undefined)?.name === "auctions"
     );
     expect(auctionsInsert).toBeDefined();
     const insertedData = auctionsInsert?.[1] as {
