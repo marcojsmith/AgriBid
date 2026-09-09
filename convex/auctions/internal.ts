@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { internalMutation } from "../_generated/server";
 import { updateCounter, logAudit } from "../admin_utils";
+import { logActivity } from "../userActivity";
 import { deleteAuctionImages } from "../lib/storage";
 import {
   DRAFT_RETENTION_MS,
@@ -21,7 +22,7 @@ import type { MutationCtx } from "../_generated/server";
  * @param auction - The auction document to calculate fees for.
  * @param salesVolume - Optional override for the sale price (e.g. actual winning amount).
  * @returns Promise<void>
- * @sideEffects Writes new auctionFee records to the database, emits audit log entries.
+ * Side effects: writes new auctionFee records to the database, emits audit log entries.
  * @throws Error if database operations fail.
  */
 export async function calculateAndRecordFees(
@@ -119,6 +120,43 @@ export async function calculateAndRecordFees(
 }
 
 /**
+ * Log activity-feed entries for a settled auction.
+ *
+ * Records `listing_sold` for the seller when the auction sold, and `bid_won`
+ * for the winner when there is one. Shared by both settlement paths (manual
+ * early closure and expiry settlement) so they stay consistent.
+ *
+ * @param ctx - The mutation context.
+ * @param auction - The settled auction document (pre-patch snapshot).
+ * @param finalStatus - The settlement outcome ("sold" or "unsold").
+ * @param winnerId - The winning bidder's user ID, when the auction sold.
+ */
+export async function logAuctionSettlementActivity(
+  ctx: MutationCtx,
+  auction: Doc<"auctions">,
+  finalStatus: "sold" | "unsold",
+  winnerId?: string
+): Promise<void> {
+  if (finalStatus === "sold") {
+    await logActivity(ctx, {
+      userId: auction.sellerId,
+      type: "listing_sold",
+      description: `Listing sold for R${auction.currentPrice.toLocaleString("en-ZA")}`,
+      relatedId: auction._id,
+    });
+  }
+
+  if (winnerId !== undefined) {
+    await logActivity(ctx, {
+      userId: winnerId,
+      type: "bid_won",
+      description: `Won auction for R${auction.currentPrice.toLocaleString("en-ZA")}`,
+      relatedId: auction._id,
+    });
+  }
+}
+
+/**
  * Internal mutation to settle auctions that have reached their end time.
  * Transitions status to 'sold' if reserve is met, or 'unsold' otherwise.
  *
@@ -167,6 +205,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
     await ctx.db.patch(auction._id, {
       status: finalStatus,
       winnerId,
+      settledAt: now,
     });
 
     await updateCounter(ctx, "auctions", "active", -1);
@@ -185,6 +224,8 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
       );
       await calculateAndRecordFees(ctx, auction, winningBid.amount);
     }
+
+    await logAuctionSettlementActivity(ctx, auction, finalStatus, winnerId);
 
     console.log(
       `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`

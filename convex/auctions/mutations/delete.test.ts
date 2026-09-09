@@ -61,7 +61,9 @@ describe("Delete Mutations", () => {
         patch: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
         query: vi.fn(),
-        normalizeId: vi.fn().mockImplementation((_table, id) => id),
+        normalizeId: vi
+          .fn()
+          .mockImplementation((_table: string, id: string) => id),
       },
       storage: {
         generateUploadUrl: vi.fn().mockResolvedValue("url"),

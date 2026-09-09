@@ -32,7 +32,7 @@ vi.mock("../lib/auth", () => ({
   getAuthenticatedUserId: vi.fn(),
   assertOwnership: vi.fn(),
   getAuthUser: vi.fn().mockResolvedValue({ id: "user123" }),
-  resolveUserId: vi.fn((user) => user.id),
+  resolveUserId: vi.fn((user: { id: string }) => user.id),
 }));
 
 describe("deleteDraft mutation", () => {

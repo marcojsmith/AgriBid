@@ -209,7 +209,7 @@ describe("MetadataCatalog Full Coverage", () => {
     );
   };
 
-  it("should render the list of makes and handle 'Never' updated", async () => {
+  it("should render the list of makes and handle 'Never' updated", () => {
     renderCatalog();
     expect(screen.getByText("John Deere")).toBeInTheDocument();
     expect(screen.getAllByText("Case IH")[0]).toBeInTheDocument();
@@ -222,7 +222,7 @@ describe("MetadataCatalog Full Coverage", () => {
   });
 
   describe("Add Make Flow", () => {
-    it("should show error if fields are missing", async () => {
+    it("should show error if fields are missing", () => {
       renderCatalog();
       fireEvent.click(screen.getByText("Add Make"));
 
@@ -250,11 +250,12 @@ describe("MetadataCatalog Full Coverage", () => {
         target: { value: "1050 Vario" },
       });
 
-      await act(async () => {
+      await act(() => {
         const submitBtn = screen
           .getAllByRole("button", { name: "Add Make" })
           .pop()!;
         fireEvent.click(submitBtn);
+        return Promise.resolve();
       });
 
       expect(mockAddMake).toHaveBeenCalledWith({
@@ -282,8 +283,9 @@ describe("MetadataCatalog Full Coverage", () => {
         target: { value: "cat2" },
       });
 
-      await act(async () => {
+      await act(() => {
         fireEvent.click(screen.getByText("Save Changes"));
+        return Promise.resolve();
       });
 
       expect(mockUpdateMake).toHaveBeenCalledWith(
@@ -301,8 +303,9 @@ describe("MetadataCatalog Full Coverage", () => {
       mockDeleteMake.mockResolvedValue({});
       renderCatalog();
 
-      await act(async () => {
+      await act(() => {
         fireEvent.click(screen.getByText("Deactivate"));
+        return Promise.resolve();
       });
       expect(mockDeleteMake).toHaveBeenCalledWith({ id: "m1" });
       expect(toast.success).toHaveBeenCalledWith("Manufacturer deactivated");
@@ -316,8 +319,9 @@ describe("MetadataCatalog Full Coverage", () => {
       };
       renderCatalog([mockMetadata[0], itemWithCat]);
 
-      await act(async () => {
+      await act(() => {
         fireEvent.click(screen.getByText("Reactivate"));
+        return Promise.resolve();
       });
       expect(mockUpdateMake).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -328,7 +332,7 @@ describe("MetadataCatalog Full Coverage", () => {
       expect(toast.success).toHaveBeenCalledWith("Manufacturer reactivated");
     });
 
-    it("should show error if categoryId missing on reactivation", async () => {
+    it("should show error if categoryId missing on reactivation", () => {
       const itemNoCat = {
         ...mockMetadata[1],
         categoryId: undefined as unknown as Id<"equipmentCategories">,
@@ -349,8 +353,9 @@ describe("MetadataCatalog Full Coverage", () => {
       const input = screen.getByLabelText(/Model Name/i);
       fireEvent.change(input, { target: { value: "NewModel" } });
 
-      await act(async () => {
+      await act(() => {
         fireEvent.keyDown(input, { key: "Enter" });
+        return Promise.resolve();
       });
 
       expect(mockAddModel).toHaveBeenCalledWith({
@@ -379,12 +384,13 @@ describe("MetadataCatalog Full Coverage", () => {
       const input = screen.getByLabelText(/Model Name/i);
       fireEvent.change(input, { target: { value: "NewModel" } });
 
-      await act(async () => {
+      await act(() => {
         const dialog = screen.getByTestId("dialog-content");
         const submitBtn = within(dialog).getByRole("button", {
           name: "Add Model",
         });
         fireEvent.click(submitBtn);
+        return Promise.resolve();
       });
 
       expect(toast.error).toHaveBeenCalledWith("Add failed");
@@ -398,14 +404,15 @@ describe("MetadataCatalog Full Coverage", () => {
       const input = screen.getByLabelText(/Model Name/i);
       fireEvent.change(input, { target: { value: "NewModel" } });
 
-      await act(async () => {
+      await act(() => {
         fireEvent.keyDown(input, { key: "Enter" });
+        return Promise.resolve();
       });
 
       expect(toast.error).toHaveBeenCalledWith("Enter fail");
     });
 
-    it("should handle empty model name", async () => {
+    it("should handle empty model name", () => {
       renderCatalog();
       fireEvent.click(screen.getAllByText("Add Model")[0]);
       const dialog = screen.getByTestId("dialog-content");
@@ -416,7 +423,7 @@ describe("MetadataCatalog Full Coverage", () => {
       expect(toast.error).toHaveBeenCalledWith("Model name is required");
     });
 
-    it("should close dialog on cancel in AddModelDialog", async () => {
+    it("should close dialog on cancel in AddModelDialog", () => {
       renderCatalog();
       fireEvent.click(screen.getAllByText("Add Model")[0]);
       const dialog = screen.getByTestId("dialog-content");
@@ -432,8 +439,9 @@ describe("MetadataCatalog Full Coverage", () => {
       renderCatalog();
 
       fireEvent.click(screen.getAllByText("Edit")[0]);
-      await act(async () => {
+      await act(() => {
         fireEvent.click(screen.getByText("Save Changes"));
+        return Promise.resolve();
       });
 
       expect(toast.error).toHaveBeenCalledWith("Update fail");
@@ -444,8 +452,9 @@ describe("MetadataCatalog Full Coverage", () => {
       renderCatalog();
 
       fireEvent.click(screen.getAllByText("Edit")[0]);
-      await act(async () => {
+      await act(() => {
         fireEvent.click(screen.getByText("Save Changes"));
+        return Promise.resolve();
       });
 
       expect(toast.error).toHaveBeenCalledWith("Failed to update");
@@ -466,11 +475,12 @@ describe("MetadataCatalog Full Coverage", () => {
         target: { value: "M" },
       });
 
-      await act(async () => {
+      await act(() => {
         const submitBtn = screen
           .getAllByRole("button", { name: "Add Make" })
           .pop()!;
         fireEvent.click(submitBtn);
+        return Promise.resolve();
       });
 
       expect(toast.error).toHaveBeenCalledWith("Add make fail");
@@ -489,11 +499,12 @@ describe("MetadataCatalog Full Coverage", () => {
       fireEvent.change(screen.getByLabelText(/Initial Model/i), {
         target: { value: "M" },
       });
-      await act(async () => {
+      await act(() => {
         const submitBtn = screen
           .getAllByRole("button", { name: "Add Make" })
           .pop()!;
         fireEvent.click(submitBtn);
+        return Promise.resolve();
       });
       expect(toast.error).toHaveBeenCalledWith("Failed to add make");
     });
@@ -501,8 +512,9 @@ describe("MetadataCatalog Full Coverage", () => {
     it("should handle deactivate failure", async () => {
       mockDeleteMake.mockRejectedValue(new Error("Deactivate fail"));
       renderCatalog();
-      await act(async () => {
+      await act(() => {
         fireEvent.click(screen.getByText("Deactivate"));
+        return Promise.resolve();
       });
       expect(toast.error).toHaveBeenCalledWith("Deactivate fail");
     });
@@ -514,8 +526,9 @@ describe("MetadataCatalog Full Coverage", () => {
         categoryId: "cat1" as Id<"equipmentCategories">,
       };
       renderCatalog([mockMetadata[0], itemWithCat]);
-      await act(async () => {
+      await act(() => {
         fireEvent.click(screen.getByText("Reactivate"));
+        return Promise.resolve();
       });
       expect(toast.error).toHaveBeenCalledWith("Reactivate fail");
     });
@@ -524,15 +537,16 @@ describe("MetadataCatalog Full Coverage", () => {
       mockRemoveModel.mockRejectedValue("Fail");
       renderCatalog();
       const removeBtn = screen.getByLabelText(/Remove model 8R 410/i);
-      await act(async () => {
+      await act(() => {
         fireEvent.click(removeBtn);
+        return Promise.resolve();
       });
       expect(toast.error).toHaveBeenCalledWith("Failed to remove model");
     });
   });
 
   describe("Validation and Cancel Buttons", () => {
-    it("should validate EditMakeDialog fields", async () => {
+    it("should validate EditMakeDialog fields", () => {
       renderCatalog();
       fireEvent.click(screen.getAllByText("Edit")[0]);
 

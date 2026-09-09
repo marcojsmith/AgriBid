@@ -48,7 +48,7 @@ describe("Admin Utils", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn((_index, cb) => {
+      withIndex: vi.fn((_index: string, cb?: (q: unknown) => unknown) => {
         if (cb) {
           cb({
             eq: vi.fn().mockReturnThis(),
@@ -74,16 +74,16 @@ describe("Admin Utils", () => {
   });
 
   describe("Re-exports", () => {
-    it("should export encryption and auth functions", () => {
+    it("should export encryption and auth functions", async () => {
       expect(encryptPII).toBeDefined();
       expect(decryptPII).toBeDefined();
       expect(resolveUserId).toBeDefined();
 
       // Call them to ensure they are the ones from the libs
-      encryptPII("test");
+      await encryptPII("test");
       expect(encryption.encryptPII).toHaveBeenCalledWith("test");
 
-      decryptPII("test");
+      await decryptPII("test");
       expect(encryption.decryptPII).toHaveBeenCalledWith("test");
 
       resolveUserId({} as unknown as AuthUser);
@@ -96,10 +96,15 @@ describe("Admin Utils", () => {
       let capturedFilter:
         | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
         | undefined;
-      queryMock.withIndex.mockImplementation((_index, filter) => {
-        capturedFilter = filter;
-        return queryMock;
-      });
+      queryMock.withIndex.mockImplementation(
+        (
+          _index: string,
+          filter?: (q: { eq: (f: string, v: unknown) => unknown }) => unknown
+        ) => {
+          capturedFilter = filter;
+          return queryMock;
+        }
+      );
 
       await getCounter(mockCtx as unknown as QueryCtx, "test");
 
@@ -193,10 +198,15 @@ describe("Admin Utils", () => {
       let capturedFilter:
         | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
         | undefined;
-      queryMock.withIndex.mockImplementation((_index, filter) => {
-        capturedFilter = filter;
-        return queryMock;
-      });
+      queryMock.withIndex.mockImplementation(
+        (
+          _index: string,
+          filter?: (q: { eq: (f: string, v: unknown) => unknown }) => unknown
+        ) => {
+          capturedFilter = filter;
+          return queryMock;
+        }
+      );
       queryMock.count?.mockResolvedValue(5);
 
       await countUsers(mockCtx as unknown as QueryCtx, { role: "admin" });
@@ -274,10 +284,15 @@ describe("Admin Utils", () => {
       let capturedFilter:
         | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
         | undefined;
-      queryMock.withIndex.mockImplementation((_index, filter) => {
-        capturedFilter = filter;
-        return queryMock;
-      });
+      queryMock.withIndex.mockImplementation(
+        (
+          _index: string,
+          filter?: (q: { eq: (f: string, v: unknown) => unknown }) => unknown
+        ) => {
+          capturedFilter = filter;
+          return queryMock;
+        }
+      );
       queryMock.collect.mockResolvedValue([
         { role: "buyer", isVerified: true, kycStatus: "verified" },
         { role: "seller", isVerified: true, kycStatus: "verified" },
@@ -342,10 +357,15 @@ describe("Admin Utils", () => {
       let capturedFilter:
         | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
         | undefined;
-      queryMock.withIndex.mockImplementation((_index, filter) => {
-        capturedFilter = filter;
-        return queryMock;
-      });
+      queryMock.withIndex.mockImplementation(
+        (
+          _index: string,
+          filter?: (q: { eq: (f: string, v: unknown) => unknown }) => unknown
+        ) => {
+          capturedFilter = filter;
+          return queryMock;
+        }
+      );
       queryMock.collect.mockResolvedValue([
         { kycStatus: "pending", isVerified: false },
         { kycStatus: "pending", isVerified: true },
@@ -366,10 +386,15 @@ describe("Admin Utils", () => {
       let capturedFilter:
         | ((q: { eq: (f: string, v: unknown) => unknown }) => unknown)
         | undefined;
-      queryMock.withIndex.mockImplementation((_index, filter) => {
-        capturedFilter = filter;
-        return queryMock;
-      });
+      queryMock.withIndex.mockImplementation(
+        (
+          _index: string,
+          filter?: (q: { eq: (f: string, v: unknown) => unknown }) => unknown
+        ) => {
+          capturedFilter = filter;
+          return queryMock;
+        }
+      );
       queryMock.collect.mockResolvedValue([
         { role: "admin", isVerified: true },
         { role: "admin", isVerified: false },

@@ -47,15 +47,15 @@ const createMockQuery = (
     lte: vi.fn().mockReturnThis(),
     gt: vi.fn().mockReturnThis(),
     lt: vi.fn().mockReturnThis(),
-    field: vi.fn((f) => f),
+    field: vi.fn((f: string) => f),
   };
 
   const query: QueryMock = {
-    withIndex: vi.fn((cb) => {
+    withIndex: vi.fn((cb?: (q: unknown) => void) => {
       if (typeof cb === "function") cb(mockQ);
       return query;
     }),
-    filter: vi.fn((cb) => {
+    filter: vi.fn((cb?: (q: unknown) => void) => {
       if (typeof cb === "function") cb(mockQ);
       return query;
     }),

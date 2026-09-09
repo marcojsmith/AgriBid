@@ -72,7 +72,7 @@ export async function sumQuery<T extends Record<string, unknown>>(
   let count = 0;
 
   for (const item of results) {
-    const val = item[field];
+    const { [field]: val } = item;
     if (typeof val === "number") {
       sum += val;
       count++;
@@ -126,7 +126,7 @@ export async function countUsers(
       const counter = await getCounter(ctx, "profiles");
       if (counter) {
         if (options.isVerified) return counter.verified ?? 0;
-        return (counter.total ?? 0) - (counter.verified ?? 0);
+        return counter.total - (counter.verified ?? 0);
       }
     }
     return await countQuery(
@@ -213,8 +213,8 @@ export async function countUsers(
 /**
  * Create an audit log entry for the currently authenticated admin or system process.
  *
- * @param ctx
- * @param args
+ * @param ctx - Convex mutation context
+ * @param args - The audit log entry fields
  * @param args.action - Short identifier of the action performed (for example `delete_user` or `update_settings`)
  * @param args.targetId - Optional identifier of the resource affected by the action
  * @param args.targetType - Optional type or category of the resource (for example `user` or `project`)
@@ -267,7 +267,7 @@ export { encryptPII, decryptPII, resolveUserId };
 /**
  * Increment, decrement, or set a named counter's numeric field and persist the change.
  *
- * @param ctx
+ * @param ctx - Convex mutation context
  * @param name - The identifier of the counter (for example `auctions`, `profiles`, `support`, `announcements`)
  * @param field - The counter field to adjust (for example `total`, `active`, `pending`, `verified`, `open`, `resolved`)
  * @param delta - The amount to change the field by (or the absolute value if absolute is true)
@@ -283,7 +283,8 @@ export async function updateCounter(
   const counter = await getCounter(ctx, name);
 
   if (counter) {
-    const currentValue = (counter[field] as number | undefined) ?? 0;
+    const { [field]: rawValue } = counter;
+    const currentValue = rawValue ?? 0;
     const newValue = absolute ? delta : currentValue + delta;
 
     if (newValue < 0) {

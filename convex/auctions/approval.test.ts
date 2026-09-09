@@ -88,8 +88,8 @@ describe("auction approval mutations", () => {
         auctionId,
         expect.objectContaining({
           status: "active",
-          startTime: expect.any(Number),
-          endTime: expect.any(Number),
+          startTime: expect.any(Number) as number,
+          endTime: expect.any(Number) as number,
           hiddenByFlags: false,
         })
       );

@@ -18,7 +18,7 @@ vi.mock("./lib/auth", () => ({
 }));
 
 vi.mock("./auctions", () => ({
-  toAuctionSummary: vi.fn((_ctx, a) =>
+  toAuctionSummary: vi.fn((_ctx: unknown, a: { _id: unknown }) =>
     Promise.resolve({ _id: a._id, title: "Auction" })
   ),
   AuctionSummaryValidator: { fields: {} },
@@ -46,7 +46,7 @@ describe("Watchlist Coverage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn((_index, cb) => {
+      withIndex: vi.fn((_index: string, cb?: (q: unknown) => unknown) => {
         if (cb) {
           cb({
             eq: vi.fn().mockReturnThis(),

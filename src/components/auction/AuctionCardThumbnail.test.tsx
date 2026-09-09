@@ -33,7 +33,7 @@ describe("AuctionCardThumbnail", () => {
     expect(button).toBeInTheDocument();
   });
 
-  it("calls onWatchlistToggle when button clicked", async () => {
+  it("calls onWatchlistToggle when button clicked", () => {
     const mockToggle = vi.fn().mockResolvedValue(undefined);
     render(
       <AuctionCardThumbnail {...defaultProps} onWatchlistToggle={mockToggle} />

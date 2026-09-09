@@ -18,13 +18,6 @@ const PHONE_REGEX = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\b\d{10}\b/g;
 const ID_REGEX =
   /\b[a-zA-Z]{2,}\d{8,}\b|\b[0-9a-f]{24}\b|\buuid:[0-9a-f-]{36}\b/gi;
 
-const ALLOWED_ADDITIONAL_INFO_KEYS = [
-  "component",
-  "action",
-  "userAction",
-  "additionalDetails",
-];
-
 /**
  * Sanitize a string by removing potential PII.
  *
@@ -50,18 +43,23 @@ function sanitizeAdditionalInfo(
 ): Record<string, string | number> | undefined {
   if (!additionalInfo) return undefined;
 
-  const sanitized: Record<string, string | number> = {};
-  for (const key of ALLOWED_ADDITIONAL_INFO_KEYS) {
-    if (additionalInfo[key] !== undefined) {
-      const value = additionalInfo[key];
-      if (typeof value === "string") {
-        sanitized[key] = sanitizeString(value);
-      } else if (typeof value === "number") {
-        sanitized[key] = value;
-      }
+  // Restrict to the explicitly allowed keys to avoid leaking unknown fields.
+  const allowedInfo: Record<string, unknown> = {
+    component: additionalInfo.component,
+    action: additionalInfo.action,
+    userAction: additionalInfo.userAction,
+    additionalDetails: additionalInfo.additionalDetails,
+  };
+
+  const sanitized = new Map<string, string | number>();
+  for (const [key, value] of Object.entries(allowedInfo)) {
+    if (typeof value === "string") {
+      sanitized.set(key, sanitizeString(value));
+    } else if (typeof value === "number") {
+      sanitized.set(key, value);
     }
   }
-  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+  return sanitized.size > 0 ? Object.fromEntries(sanitized) : undefined;
 }
 
 interface ErrorReportContext {

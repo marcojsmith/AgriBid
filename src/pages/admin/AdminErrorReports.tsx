@@ -15,6 +15,12 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 type ErrorStatus = "pending" | "processing" | "completed" | "failed";
 
+type StatusConfig = {
+  label: string;
+  icon: typeof AlertTriangle;
+  color: string;
+};
+
 interface ErrorReport {
   _id: string;
   _creationTime: number;
@@ -30,10 +36,7 @@ interface ErrorReport {
   githubIssueNumber?: number;
 }
 
-const STATUS_CONFIG: Record<
-  ErrorStatus,
-  { label: string; icon: typeof AlertTriangle; color: string }
-> = {
+const STATUS_CONFIG: Record<ErrorStatus, StatusConfig> = {
   pending: {
     label: "Pending",
     icon: Clock,
@@ -171,8 +174,9 @@ export default function AdminErrorReports() {
               >
                 All
               </button>
-              {(Object.keys(STATUS_CONFIG) as ErrorStatus[]).map((status) => {
-                const config = STATUS_CONFIG[status];
+              {(
+                Object.entries(STATUS_CONFIG) as [ErrorStatus, StatusConfig][]
+              ).map(([status, config]) => {
                 return (
                   <button
                     key={status}
@@ -230,9 +234,11 @@ export default function AdminErrorReports() {
                   </tr>
                 ) : (
                   reports.reports.map((report: ErrorReport) => {
-                    const config =
-                      STATUS_CONFIG[report.status as ErrorStatus] ??
-                      STATUS_CONFIG.pending;
+                    // Defensive fallback for statuses outside STATUS_CONFIG.
+                    const statusConfig = STATUS_CONFIG[
+                      report.status as ErrorStatus
+                    ] as StatusConfig | undefined;
+                    const config = statusConfig ?? STATUS_CONFIG.pending;
                     return (
                       <tr
                         key={report._id}

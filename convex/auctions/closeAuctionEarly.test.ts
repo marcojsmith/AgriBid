@@ -82,6 +82,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };
@@ -116,6 +118,7 @@ describe("closeAuctionEarly mutation", () => {
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "sold",
       winnerId: bidderId,
+      settledAt: expect.any(Number) as number,
     });
     expect(adminUtils.updateCounter).toHaveBeenCalledWith(
       mockCtx as unknown as MutationCtx,
@@ -159,6 +162,7 @@ describe("closeAuctionEarly mutation", () => {
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "unsold",
       winnerId: undefined,
+      settledAt: expect.any(Number) as number,
     });
   });
 
@@ -204,6 +208,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };
@@ -280,6 +286,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };
@@ -313,6 +321,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };

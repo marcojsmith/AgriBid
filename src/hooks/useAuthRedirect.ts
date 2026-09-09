@@ -33,7 +33,7 @@ export function useAuthRedirect() {
       const callbackUrl = isValidCallbackUrl(rawUrl)
         ? encodeURIComponent(rawUrl)
         : "/";
-      navigate(`/login?callbackUrl=${callbackUrl}`);
+      void navigate(`/login?callbackUrl=${callbackUrl}`);
       return false;
     }
     return true;

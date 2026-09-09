@@ -6,10 +6,9 @@ import { Check, X } from "lucide-react";
  *
  * Displays a green check and "Pass" when `value` is `true`, a destructive X and "Fail" when `value` is `false`, or a muted dash and "N/A" when `value` is `undefined`.
  *
- * @param label.label
- * @param label - The condition label shown above the status
- * @param value - Optional boolean indicating condition state: `true` = pass, `false` = fail, `undefined` = unavailable
- * @param label.value
+ * @param root0 - Component props
+ * @param root0.label - The condition label shown above the status
+ * @param root0.value - Optional boolean indicating condition state: `true` = pass, `false` = fail, `undefined` = unavailable
  * @returns A JSX element representing the labeled condition indicator
  */
 export function ConditionItem({

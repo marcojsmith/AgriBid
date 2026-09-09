@@ -8,6 +8,7 @@ import {
 } from "../../lib/auth";
 import { normalizeImages } from "../../lib/storage";
 import { updateCounter } from "../../admin_utils";
+import { logActivity } from "../../userActivity";
 import {
   validateAuctionBeforePublish,
   assertOwnership,
@@ -181,6 +182,18 @@ export const createAuctionHandler = async (
     await updateCounter(ctx, "auctions", "draft", 1);
   }
 
+  // A draft isn't a real "listing" event yet — only log when the auction is
+  // actually submitted for review at creation time. Drafts that are submitted
+  // later get their `listing_created` entry from publishAuctionHandler.
+  if (status !== "draft") {
+    await logActivity(ctx, {
+      userId,
+      type: "listing_created",
+      description: `Listing created: ${args.title}`,
+      relatedId: auctionId,
+    });
+  }
+
   return auctionId;
 };
 
@@ -338,13 +351,11 @@ export const saveDraftHandler = async (
       validateAuctionBeforePublish(mergedState);
     }
 
-    const patchData: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(restArgs)) {
-      if (key === "images" || value === undefined) {
-        continue;
-      }
-      patchData[key] = value;
-    }
+    const patchData: Record<string, unknown> = Object.fromEntries(
+      (Object.entries(restArgs) as Array<[string, unknown]>).filter(
+        ([key, value]) => key !== "images" && value !== undefined
+      )
+    );
     if (images !== undefined) {
       patchData.images = images;
     }

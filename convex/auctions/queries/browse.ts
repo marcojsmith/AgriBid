@@ -11,6 +11,7 @@ import {
 } from "../helpers";
 import { getAuthenticatedProfile } from "../../lib/auth";
 import { countQuery } from "../../admin_utils";
+import { getSellerRatingSummary } from "../../reviews";
 import { MAX_RESULTS_CAP } from "../../constants";
 
 type StatusFilter = "active" | "closed" | "all";
@@ -55,10 +56,7 @@ function matchesAuctionFilter(
     return false;
   if (args.maxPrice !== undefined && auction.currentPrice > args.maxPrice)
     return false;
-  if (
-    args.maxHours !== undefined &&
-    (auction.operatingHours ?? 0) > args.maxHours
-  )
+  if (args.maxHours !== undefined && auction.operatingHours > args.maxHours)
     return false;
   return true;
 }
@@ -380,32 +378,33 @@ export const getSellerInfoHandler = async (
 
   if (!profile) return null;
 
-  const [soldAuctions, activeAuctions, bidsPlaced] = await Promise.all([
-    ctx.db
-      .query("auctions")
-      .withIndex("by_seller_status", (q) =>
-        q.eq("sellerId", sellerId).eq("status", "sold")
-      )
-      .collect(),
-    countQuery(
+  const [soldAuctions, activeAuctions, bidsPlaced, { avgRating, reviewCount }] =
+    await Promise.all([
       ctx.db
         .query("auctions")
         .withIndex("by_seller_status", (q) =>
-          q.eq("sellerId", sellerId).eq("status", "active")
+          q.eq("sellerId", sellerId).eq("status", "sold")
         )
-    ),
-    countQuery(
-      ctx.db
-        .query("bids")
-        .withIndex("by_bidder", (q) => q.eq("bidderId", sellerId))
-    ),
-  ]);
+        .collect(),
+      countQuery(
+        ctx.db
+          .query("auctions")
+          .withIndex("by_seller_status", (q) =>
+            q.eq("sellerId", sellerId).eq("status", "active")
+          )
+      ),
+      countQuery(
+        ctx.db
+          .query("bids")
+          .withIndex("by_bidder", (q) => q.eq("bidderId", sellerId))
+      ),
+      getSellerRatingSummary(ctx, sellerId),
+    ]);
 
   const soldAuctionsCount = soldAuctions.length;
   const activeListingsCount = activeAuctions;
   const totalSoldPrice = soldAuctions.reduce(
-    (sum, auction) =>
-      sum + (auction.currentPrice ?? auction.startingPrice ?? 0),
+    (sum, auction) => sum + auction.currentPrice,
     0
   );
   const avgSalePrice =
@@ -431,6 +430,8 @@ export const getSellerInfoHandler = async (
     taxNumberVerified: profile.taxNumberVerified,
     bidsPlaced,
     avgSalePrice,
+    avgRating,
+    reviewCount,
   };
 };
 
@@ -468,6 +469,8 @@ export const getSellerInfo = query({
       taxNumberVerified: v.optional(v.boolean()),
       bidsPlaced: v.number(),
       avgSalePrice: v.optional(v.number()),
+      avgRating: v.optional(v.number()),
+      reviewCount: v.number(),
     })
   ),
   handler: getSellerInfoHandler,

@@ -17,17 +17,17 @@ export function LoadingIndicator({
   className,
   size = "md",
 }: LoadingIndicatorProps) {
-  const sizeClasses = {
-    sm: "h-6 w-6 border-b-2",
-    md: "h-12 w-12 border-b-2",
-    lg: "h-16 w-16 border-b-4",
-  };
+  const sizeClasses = new Map<"sm" | "md" | "lg", string>([
+    ["sm", "h-6 w-6 border-b-2"],
+    ["md", "h-12 w-12 border-b-2"],
+    ["lg", "h-16 w-16 border-b-4"],
+  ]);
 
   return (
     <div
       className={cn(
         "animate-spin rounded-full border-primary",
-        sizeClasses[size],
+        sizeClasses.get(size),
         className
       )}
       role="status"

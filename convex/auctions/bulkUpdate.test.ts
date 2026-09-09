@@ -64,7 +64,7 @@ describe("bulkUpdateAuctions mutation", () => {
     const auction2 = { _id: id2, status: "pending_review" };
 
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockImplementation(async (id: Id<"auctions">) => {
+    mockCtx.db.get.mockImplementation((id: Id<"auctions">) => {
       if (id === id1) return auction1;
       if (id === id2) return auction2;
       return null;

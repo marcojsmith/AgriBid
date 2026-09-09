@@ -7,7 +7,7 @@ import type { Id } from "../_generated/dataModel";
 vi.mock("../lib/auth", () => ({
   requireAdmin: vi.fn(),
   getAuthUser: vi.fn().mockResolvedValue({ id: "admin123" }),
-  resolveUserId: vi.fn((user) => user.id),
+  resolveUserId: vi.fn((user: { id: string }) => user.id),
 }));
 
 vi.mock("../admin_utils", () => ({

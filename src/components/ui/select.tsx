@@ -148,8 +148,8 @@ function SelectLabel({
  * The element forwards all native Radix Select item props and merges provided className with the component's base styles.
  *
  * @param props - Component props.
- * @param props.className
- * @param props.children
+ * @param props.className - Optional additional CSS classes to merge with the item's base styles.
+ * @param props.children - Content rendered inside the item (typically a label or node).
  * @returns A Radix Select item element containing the provided children and a right-aligned check indicator when selected.
  */
 function SelectItem({
@@ -228,7 +228,7 @@ function SelectScrollUpButton({
  * Renders the scroll-down control used inside the Select content.
  *
  * @param props - Component props.
- * @param props.className
+ * @param props.className - Additional CSS class names appended to the button's default classes.
  * @returns The Select scroll-down button element containing a `ChevronDownIcon`.
  */
 function SelectScrollDownButton({

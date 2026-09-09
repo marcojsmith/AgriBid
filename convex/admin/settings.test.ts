@@ -30,6 +30,12 @@ vi.mock("../admin_utils", () => ({
     .mockImplementation((val: string) => Promise.resolve(`encrypted_${val}`)),
 }));
 
+/** Shape of the second argument passed to mockDb.insert for setting rows. */
+interface InsertedSettingArgs {
+  key: string;
+  value: unknown;
+}
+
 describe("Settings Config", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,6 +43,7 @@ describe("Settings Config", () => {
 
   const createMockCtx = (settingsMap: Record<string, unknown>) => {
     let currentKey = "";
+    const settings = new Map(Object.entries(settingsMap));
     const mockDb = {
       query: vi.fn().mockReturnValue({
         withIndex: vi.fn((_idx, cb) => {
@@ -49,7 +56,7 @@ describe("Settings Config", () => {
           if (cb) (cb as (q: unknown) => void)(q);
           return {
             unique: vi.fn().mockImplementation(() => {
-              const value = settingsMap[currentKey];
+              const value = settings.get(currentKey);
               return Promise.resolve(value !== undefined ? { value } : null);
             }),
             collect: vi.fn().mockImplementation(() => {
@@ -336,7 +343,11 @@ describe("Settings Config", () => {
 
       expect(adminUtils.encryptPII).not.toHaveBeenCalled();
       // Should not insert a new token key
-      const tokenInsert = mockDb.insert.mock.calls.find(
+      const insertCalls = mockDb.insert.mock.calls as [
+        string,
+        InsertedSettingArgs,
+      ][];
+      const tokenInsert = insertCalls.find(
         (call) => call[1].key === "github_api_token"
       );
       expect(tokenInsert).toBeUndefined();
@@ -504,13 +515,17 @@ describe("Settings Config", () => {
       expect(auth.requireAdmin).toHaveBeenCalled();
       expect(mockDb.insert).toHaveBeenCalledTimes(11);
 
-      const businessNameCall = mockDb.insert.mock.calls.find(
+      const insertCalls = mockDb.insert.mock.calls as [
+        string,
+        InsertedSettingArgs,
+      ][];
+      const businessNameCall = insertCalls.find(
         (call) => call[1].key === "business.name"
       );
       expect(businessNameCall).toBeDefined();
       expect(businessNameCall?.[1].value).toBe("AgriBid");
 
-      const sameAsCall = mockDb.insert.mock.calls.find(
+      const sameAsCall = insertCalls.find(
         (call) => call[1].key === "business.sameAs"
       );
       expect(sameAsCall).toBeDefined();
@@ -537,7 +552,7 @@ describe("Settings Config", () => {
         action: "UPDATE_SETTING",
         targetId: "business-info",
         targetType: "setting",
-        details: expect.stringContaining("business.name"),
+        details: expect.stringContaining("business.name") as unknown,
       });
     });
 

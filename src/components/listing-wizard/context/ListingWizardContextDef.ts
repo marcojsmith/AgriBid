@@ -7,7 +7,8 @@ export interface ListingWizardContextType {
   currentStep: number;
   isSubmitting: boolean;
   isSuccess: boolean;
-  previews: Record<string, string>;
+  /** Preview URLs keyed by slot ID or storage ID; absent keys have no preview yet. */
+  previews: Record<string, string | undefined>;
   draftSaved: boolean;
   updateField: <K extends keyof ListingFormData>(
     field: K,
@@ -22,8 +23,10 @@ export interface ListingWizardContextType {
   setIsSuccess: (isSuccess: boolean) => void;
   setPreviews: (
     previews:
-      | Record<string, string>
-      | ((prev: Record<string, string>) => Record<string, string>)
+      | Record<string, string | undefined>
+      | ((
+          prev: Record<string, string | undefined>
+        ) => Record<string, string | undefined>)
   ) => void;
   setFormData: (
     data: ListingFormData | ((prev: ListingFormData) => ListingFormData)

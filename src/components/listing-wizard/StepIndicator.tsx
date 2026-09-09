@@ -21,7 +21,7 @@ export const StepIndicator = () => {
             Step {currentStep + 1} of {STEPS.length}
           </p>
           <h2 className="text-2xl font-bold tracking-tight">
-            {STEPS[currentStep]}
+            {STEPS.at(currentStep)}
           </h2>
         </div>
         <div

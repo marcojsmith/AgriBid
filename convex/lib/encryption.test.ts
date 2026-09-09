@@ -1,5 +1,22 @@
 import { describe, it, expect, vi } from "vitest";
 
+/** Minimal typed shape of the dynamically imported encryption module. */
+type EncryptionModule = {
+  encryptPII: (value: string | null | undefined) => Promise<string | undefined>;
+  decryptPII: (value: string | null | undefined) => Promise<string | undefined>;
+};
+
+/**
+ * Dynamically imports a fresh copy of the encryption module. The query string
+ * forces Vitest to re-evaluate the module instead of reusing the cache.
+ *
+ * @returns The encryption module functions.
+ */
+async function loadEncryptionModule(): Promise<EncryptionModule> {
+  // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
+  return (await import("./encryption?final")) as EncryptionModule;
+}
+
 describe("Encryption Utilities Global Scope Coverage", () => {
   it("should throw if in production and key is missing", async () => {
     vi.stubEnv("APP_ENV", "production");
@@ -53,8 +70,7 @@ describe("Encryption Utilities Global Scope Coverage", () => {
 
 describe("Encryption Utilities Functionality", () => {
   it("should encrypt and decrypt a string successfully", async () => {
-    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
-    const { encryptPII, decryptPII } = await import("./encryption?final");
+    const { encryptPII, decryptPII } = await loadEncryptionModule();
     const plaintext = "sensitive information 123";
     const encrypted = await encryptPII(plaintext);
     expect(encrypted).toBeDefined();
@@ -64,8 +80,7 @@ describe("Encryption Utilities Functionality", () => {
   });
 
   it("should handle null and undefined inputs", async () => {
-    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
-    const { encryptPII, decryptPII } = await import("./encryption?final");
+    const { encryptPII, decryptPII } = await loadEncryptionModule();
     expect(await encryptPII(undefined)).toBeUndefined();
     expect(await encryptPII(null)).toBeUndefined();
     expect(await decryptPII(undefined)).toBeUndefined();
@@ -73,8 +88,7 @@ describe("Encryption Utilities Functionality", () => {
   });
 
   it("should passthrough non-encrypted strings (legacy)", async () => {
-    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
-    const { decryptPII } = await import("./encryption?final");
+    const { decryptPII } = await loadEncryptionModule();
     const legacy = "plain.text";
     expect(await decryptPII(legacy)).toBe(legacy);
 
@@ -83,8 +97,7 @@ describe("Encryption Utilities Functionality", () => {
   });
 
   it("should throw error if encryption fails", async () => {
-    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
-    const { encryptPII } = await import("./encryption?final");
+    const { encryptPII } = await loadEncryptionModule();
     const originalEncrypt = crypto.subtle.encrypt;
     crypto.subtle.encrypt = vi
       .fn()
@@ -99,8 +112,7 @@ describe("Encryption Utilities Functionality", () => {
   });
 
   it("should throw error if decryption fails on apparently encrypted data", async () => {
-    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
-    const { decryptPII } = await import("./encryption?final");
+    const { decryptPII } = await loadEncryptionModule();
     const iv = btoa("123456789012");
     const data = btoa("corrupted-data-with-enough-length");
     const encrypted = `${iv}.${data}`;
@@ -112,8 +124,7 @@ describe("Encryption Utilities Functionality", () => {
   });
 
   it("should handle non-Error throws in encryptPII", async () => {
-    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
-    const { encryptPII } = await import("./encryption?final");
+    const { encryptPII } = await loadEncryptionModule();
     const originalEncrypt = crypto.subtle.encrypt;
     crypto.subtle.encrypt = vi
       .fn()
@@ -127,8 +138,7 @@ describe("Encryption Utilities Functionality", () => {
   });
 
   it("should handle non-Error throws in decryptPII", async () => {
-    // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
-    const { decryptPII } = await import("./encryption?final");
+    const { decryptPII } = await loadEncryptionModule();
     const iv = btoa("123456789012");
     const data = btoa("some-data");
     const encrypted = `${iv}.${data}`;

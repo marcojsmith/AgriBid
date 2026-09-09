@@ -9,9 +9,7 @@ import { cn } from "@/lib/utils";
  *
  * @param props - Component props.
  * @param props.className - Additional CSS class names to apply to the root element
- * @param orientation - Layout orientation; `"horizontal"` or `"vertical"`. Defaults to `"horizontal"`.
- * @param className.orientation
- * @param props.orientation
+ * @param props.orientation - Layout orientation; `"horizontal"` or `"vertical"`. Defaults to `"horizontal"`.
  * @returns The configured Tabs root element
  */
 function Tabs({
@@ -53,9 +51,7 @@ const tabsListVariants = cva(
  *
  * @param props - Component props.
  * @param props.className - Additional class names to append to the computed list classes
- * @param variant - Visual variant for the list; `"default"` or `"line"` (defaults to `"default"`)
- * @param className.variant
- * @param props.variant
+ * @param props.variant - Visual variant for the list; `"default"` or `"line"` (defaults to `"default"`)
  * @returns A TabsPrimitive.List element with `data-slot="tabs-list"`, `data-variant`, and the composed className
  */
 function TabsList({

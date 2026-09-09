@@ -46,7 +46,7 @@ export interface PlatformFee extends Doc<"platformFees"> {
  * @property salePrice - The final sale price of the auction
  * @property calculatedAmount - The calculated fee amount
  * @property createdAt - When this fee was calculated
- * @remarks When a PlatformFee has appliesTo="both", two AuctionFee records are created (one for buyer, one for seller)
+ * When a PlatformFee has appliesTo="both", two AuctionFee records are created (one for buyer, one for seller)
  */
 export interface AuctionFee extends Doc<"auctionFees"> {
   auctionId: Id<"auctions">;
@@ -70,7 +70,7 @@ export interface AuctionFee extends Doc<"auctionFees"> {
  * @property isActive - Initial active status
  * @property visibleToBuyer - Initial buyer visibility
  * @property visibleToSeller - Initial seller visibility
- * @remarks System-managed fields (sortOrder, createdAt, updatedAt) are computed automatically
+ * System-managed fields (sortOrder, createdAt, updatedAt) are computed automatically
  */
 export interface CreateFeeInput {
   name: string;
