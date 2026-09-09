@@ -424,7 +424,7 @@ export default function Messages() {
 
       <Card className="border-2 overflow-hidden bg-card/50">
         {conversationId ? (
-          <ConversationErrorBoundary>
+          <ConversationErrorBoundary key={conversationId}>
             <ConversationThread
               conversationId={conversationId as Id<"conversations">}
             />

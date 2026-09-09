@@ -57,10 +57,76 @@ async function requireParticipant(
 }
 
 /**
+ * Shared message-insertion path used by both `sendMessage` and
+ * `startConversation`: enforces the per-sender rate limit, inserts the
+ * message, bumps the conversation's `lastMessageAt`, and inserts a
+ * notification row for the recipient.
+ *
+ * @param ctx - Mutation context
+ * @param conversationId - The conversation the message belongs to
+ * @param senderId - The authenticated sender's user ID
+ * @param recipientId - The other participant's user ID
+ * @param content - The pre-trimmed, non-blank message content
+ * @throws ConvexError("You are sending messages too quickly...") when the sender already posted MESSAGE_RATE_LIMIT_MAX messages within the rate-limit window
+ */
+async function insertMessageAndNotify(
+  ctx: MutationCtx,
+  conversationId: Id<"conversations">,
+  senderId: string,
+  recipientId: string,
+  content: string
+): Promise<void> {
+  const windowStart = Date.now() - MESSAGE_RATE_LIMIT_WINDOW_MS;
+  const recentMessages = await ctx.db
+    .query("messages")
+    .withIndex("by_sender", (q) =>
+      q.eq("senderId", senderId).gte("createdAt", windowStart)
+    )
+    .collect();
+
+  if (recentMessages.length >= MESSAGE_RATE_LIMIT_MAX) {
+    throw new ConvexError(
+      "You are sending messages too quickly. Please wait a moment before trying again."
+    );
+  }
+
+  const now = Date.now();
+
+  await ctx.db.insert("messages", {
+    conversationId,
+    senderId,
+    content,
+    isRead: false,
+    createdAt: now,
+  });
+
+  await ctx.db.patch(conversationId, { lastMessageAt: now });
+
+  const senderProfile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", senderId))
+    .unique();
+
+  await ctx.db.insert("notifications", {
+    recipientId,
+    type: "info",
+    title: "New message",
+    message: senderProfile?.name
+      ? `You have a new message from ${senderProfile.name}`
+      : "You have a new message",
+    link: `/messages/${conversationId}`,
+    isRead: false,
+    createdAt: now,
+  });
+}
+
+/**
  * Handler for starting (or reusing) a conversation with another user.
  * The caller is the buyer/initiator. If a conversation already exists between
- * the two users (in either direction) it is reused, otherwise a new one is
- * created; the initial message is inserted either way.
+ * the two users (in either direction) it is reused (re-pointed at a newly
+ * supplied `auctionId`, if any), otherwise a new one is created; the initial
+ * message is inserted either way via the shared rate-limited, notifying
+ * `insertMessageAndNotify` path.
  *
  * @param ctx - Mutation context
  * @param args - Arguments for starting a conversation
@@ -68,6 +134,7 @@ async function requireParticipant(
  * @param args.initialMessage - The first message content (must be non-blank)
  * @param args.auctionId - Optional auction the conversation is about
  * @returns The conversation ID
+ * @throws ConvexError when the sender exceeds the per-minute message rate limit
  */
 export const startConversationHandler = async (
   ctx: MutationCtx,
@@ -120,7 +187,12 @@ export const startConversationHandler = async (
   let conversationId: Id<"conversations">;
   if (existing) {
     conversationId = existing._id;
-    await ctx.db.patch(conversationId, { lastMessageAt: now });
+    // Re-point the reused thread at the newly supplied auction (if any)
+    // without ever clearing an existing auctionId with an explicit undefined.
+    await ctx.db.patch(conversationId, {
+      lastMessageAt: now,
+      ...(args.auctionId ? { auctionId: args.auctionId } : {}),
+    });
   } else {
     conversationId = await ctx.db.insert("conversations", {
       buyerId,
@@ -131,13 +203,13 @@ export const startConversationHandler = async (
     });
   }
 
-  await ctx.db.insert("messages", {
+  await insertMessageAndNotify(
+    ctx,
     conversationId,
-    senderId: buyerId,
-    content: args.initialMessage.trim(),
-    isRead: false,
-    createdAt: now,
-  });
+    buyerId,
+    args.recipientId,
+    args.initialMessage.trim()
+  );
 
   return conversationId;
 };
@@ -145,7 +217,8 @@ export const startConversationHandler = async (
 /**
  * Start (or reuse) a conversation with a seller and send the initial message.
  * The caller is the buyer/initiator; existing conversations between the two
- * users (in either direction) are reused.
+ * users (in either direction) are reused. Rate limited to 10 messages per
+ * minute per sender; notifies the recipient.
  */
 export const startConversation = mutation({
   args: {
@@ -185,52 +258,18 @@ export const sendMessageHandler = async (
     throw new ConvexError("Message cannot be empty");
   }
 
-  const windowStart = Date.now() - MESSAGE_RATE_LIMIT_WINDOW_MS;
-  const recentMessages = await ctx.db
-    .query("messages")
-    .withIndex("by_sender", (q) =>
-      q.eq("senderId", senderId).gte("createdAt", windowStart)
-    )
-    .collect();
-
-  if (recentMessages.length >= MESSAGE_RATE_LIMIT_MAX) {
-    throw new ConvexError(
-      "You are sending messages too quickly. Please wait a moment before trying again."
-    );
-  }
-
-  const now = Date.now();
   const recipientId =
     conversation.buyerId === senderId
       ? conversation.sellerId
       : conversation.buyerId;
 
-  await ctx.db.insert("messages", {
-    conversationId: args.conversationId,
+  await insertMessageAndNotify(
+    ctx,
+    args.conversationId,
     senderId,
-    content: args.content.trim(),
-    isRead: false,
-    createdAt: now,
-  });
-
-  await ctx.db.patch(args.conversationId, { lastMessageAt: now });
-
-  const senderProfile = await ctx.db
-    .query("profiles")
-    .withIndex("by_userId", (q) => q.eq("userId", senderId))
-    .unique();
-
-  await ctx.db.insert("notifications", {
     recipientId,
-    type: "info",
-    title: "New message",
-    message: senderProfile?.name
-      ? `You have a new message from ${senderProfile.name}`
-      : "You have a new message",
-    link: `/messages/${args.conversationId}`,
-    isRead: false,
-    createdAt: now,
-  });
+    args.content.trim()
+  );
 
   return { success: true };
 };
@@ -384,10 +423,10 @@ export const getConversations = query({
  *
  * A single Convex query cannot span two indexes, so — mirroring
  * `getConversationsHandler` — the buyer-side and seller-side lists are fetched
- * independently (capped per side) and merged. Each conversation's unread
- * messages come from the `by_conversation_read` index; only messages sent by
- * the other participant count, because the caller's own sent messages stay
- * `isRead: false` until the recipient reads them.
+ * independently (capped per side, newest first) and merged. Each conversation's
+ * unread messages come from the `by_conversation_read` index; only messages
+ * sent by the other participant count, because the caller's own sent messages
+ * stay `isRead: false` until the recipient reads them.
  *
  * @param ctx - Convex Query context
  * @returns The number of conversations with at least one unread message
@@ -401,10 +440,12 @@ export const getUnreadConversationCountHandler = async (
     ctx.db
       .query("conversations")
       .withIndex("by_buyer", (q) => q.eq("buyerId", callerId))
+      .order("desc")
       .take(MAX_CONVERSATIONS_FETCHED_PER_SIDE),
     ctx.db
       .query("conversations")
       .withIndex("by_seller", (q) => q.eq("sellerId", callerId))
+      .order("desc")
       .take(MAX_CONVERSATIONS_FETCHED_PER_SIDE),
   ]);
 

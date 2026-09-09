@@ -48,7 +48,7 @@ function MessagesTile({ onClose }: { onClose: () => void }) {
   return (
     <Button
       variant="outline"
-      className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl"
+      className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-md"
       asChild
     >
       <Link

@@ -61,10 +61,12 @@ describe("startConversation mutation", () => {
     recipientProfile = { userId: "user_seller", name: "Seph Seller" },
     existingConversation = null,
     newConversationId = "conv123",
+    recentMessages = [],
   }: {
     recipientProfile?: unknown;
     existingConversation?: unknown;
     newConversationId?: string;
+    recentMessages?: Array<{ createdAt: number }>;
   } = {}) => {
     const profilesQuery = {
       withIndex: vi.fn().mockReturnThis(),
@@ -74,14 +76,19 @@ describe("startConversation mutation", () => {
       withIndex: vi.fn().mockReturnThis(),
       unique: vi.fn().mockResolvedValue(existingConversation),
     };
+    const messagesQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue(recentMessages),
+    };
     mockCtx = setupMockCtx({
       profiles: profilesQuery,
       conversations: conversationsQuery,
+      messages: messagesQuery,
     }) as MockMutationCtx;
     mockCtx.db.insert
       .mockResolvedValueOnce(newConversationId)
       .mockResolvedValue("msg1");
-    return { profilesQuery, conversationsQuery };
+    return { profilesQuery, conversationsQuery, messagesQuery };
   };
 
   it("should create a new conversation and insert the initial message", async () => {
@@ -186,6 +193,110 @@ describe("startConversation mutation", () => {
     expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
       "conversations",
       expect.anything()
+    );
+  });
+
+  it("should patch the reused conversation with the newly supplied auctionId", async () => {
+    const existing = {
+      _id: "conv_existing",
+      buyerId: "user_buyer",
+      sellerId: "user_seller",
+      auctionId: "auction_old",
+      lastMessageAt: 1000,
+    };
+    setupCtx({ existingConversation: existing });
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_buyer");
+
+    await startConversationHandler(mockCtx as unknown as MutationCtx, {
+      recipientId: "user_seller",
+      initialMessage: "Now asking about a different auction",
+      auctionId: "auction_new" as Id<"auctions">,
+    });
+
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "conv_existing",
+      expect.objectContaining({
+        auctionId: "auction_new",
+        lastMessageAt: expect.any(Number) as number,
+      })
+    );
+  });
+
+  it("should never patch an auctionId onto the reused conversation when none is supplied", async () => {
+    const existing = {
+      _id: "conv_existing",
+      buyerId: "user_buyer",
+      sellerId: "user_seller",
+      auctionId: "auction_old",
+      lastMessageAt: 1000,
+    };
+    setupCtx({ existingConversation: existing });
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_buyer");
+
+    await startConversationHandler(mockCtx as unknown as MutationCtx, {
+      recipientId: "user_seller",
+      initialMessage: "No auction context this time",
+    });
+
+    const patchPayloads = mockCtx.db.patch.mock.calls.map(
+      (call) => call[1] as Record<string, unknown>
+    );
+    expect(patchPayloads.length).toBeGreaterThan(0);
+    for (const payload of patchPayloads) {
+      // An explicit undefined must never be written (it would clear the
+      // conversation's existing auctionId).
+      expect(payload).not.toHaveProperty("auctionId");
+    }
+  });
+
+  it("should insert a notification for the recipient when starting a conversation", async () => {
+    setupCtx();
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_buyer");
+
+    await startConversationHandler(mockCtx as unknown as MutationCtx, {
+      recipientId: "user_seller",
+      initialMessage: "Hi, is the tractor still available?",
+    });
+
+    expect(mockCtx.db.insert).toHaveBeenCalledWith(
+      "notifications",
+      expect.objectContaining({
+        recipientId: "user_seller",
+        type: "info",
+        title: "New message",
+        link: "/messages/conv123",
+        isRead: false,
+      })
+    );
+  });
+
+  it("should reject repeated startConversation calls against the same recipient once the rate limit is hit", async () => {
+    const { messagesQuery } = setupCtx();
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_buyer");
+
+    // Mirror the database: every inserted message counts toward the sender's
+    // rate-limit window on the next call.
+    const insertedMessages: Array<{ createdAt: number }> = [];
+    mockCtx.db.insert.mockImplementation((table: string) => {
+      if (table === "messages") {
+        insertedMessages.push({ createdAt: Date.now() });
+      }
+      return table === "conversations" ? "conv123" : "msg1";
+    });
+    messagesQuery.collect.mockImplementation(() => [...insertedMessages]);
+
+    const call = () =>
+      startConversationHandler(mockCtx as unknown as MutationCtx, {
+        recipientId: "user_seller",
+        initialMessage: "Message from the buyer",
+      });
+
+    // 10 messages per minute are allowed; each call inserts exactly one.
+    for (let i = 0; i < 10; i++) {
+      await expect(call()).resolves.toBe("conv123");
+    }
+    await expect(call()).rejects.toThrow(
+      "You are sending messages too quickly. Please wait a moment before trying again."
     );
   });
 
@@ -802,12 +913,20 @@ describe("getUnreadConversationCount query", () => {
     sellerSideConversations: unknown[],
     unreadByConversation: Map<string, unknown[]>
   ) => {
+    const buyerChain = {
+      order: vi.fn().mockReturnThis(),
+      take: vi.fn().mockResolvedValue(buyerSideConversations),
+    };
+    const sellerChain = {
+      order: vi.fn().mockReturnThis(),
+      take: vi.fn().mockResolvedValue(sellerSideConversations),
+    };
     const conversationsQuery = {
       withIndex: vi.fn((indexName: string) => {
         if (indexName === "by_buyer") {
-          return { take: vi.fn().mockResolvedValue(buyerSideConversations) };
+          return buyerChain;
         }
-        return { take: vi.fn().mockResolvedValue(sellerSideConversations) };
+        return sellerChain;
       }),
     };
 
@@ -842,41 +961,42 @@ describe("getUnreadConversationCount query", () => {
       conversations: conversationsQuery,
       messages: messagesQuery,
     }) as unknown as MockQueryCtx;
-    return { conversationsQuery, messagesQuery };
+    return { conversationsQuery, messagesQuery, buyerChain, sellerChain };
   };
 
   it("should count conversations with unread messages from the other participant across both sides", async () => {
-    const { conversationsQuery, messagesQuery } = setupCtx(
-      [
-        {
-          _id: "conv_as_buyer",
-          buyerId: "user_me",
-          sellerId: "user_seller",
-          lastMessageAt: 2000,
-          createdAt: 100,
-        },
-      ],
-      [
-        {
-          _id: "conv_as_seller",
-          buyerId: "user_buyer",
-          sellerId: "user_me",
-          lastMessageAt: 1000,
-          createdAt: 200,
-        },
-      ],
-      new Map<string, unknown[]>([
-        // Multiple unread in one conversation still count that conversation once.
+    const { conversationsQuery, messagesQuery, buyerChain, sellerChain } =
+      setupCtx(
         [
-          "conv_as_buyer",
-          [
-            { senderId: "user_seller", isRead: false },
-            { senderId: "user_me", isRead: false },
-          ],
+          {
+            _id: "conv_as_buyer",
+            buyerId: "user_me",
+            sellerId: "user_seller",
+            lastMessageAt: 2000,
+            createdAt: 100,
+          },
         ],
-        ["conv_as_seller", [{ senderId: "user_buyer", isRead: false }]],
-      ])
-    );
+        [
+          {
+            _id: "conv_as_seller",
+            buyerId: "user_buyer",
+            sellerId: "user_me",
+            lastMessageAt: 1000,
+            createdAt: 200,
+          },
+        ],
+        new Map<string, unknown[]>([
+          // Multiple unread in one conversation still count that conversation once.
+          [
+            "conv_as_buyer",
+            [
+              { senderId: "user_seller", isRead: false },
+              { senderId: "user_me", isRead: false },
+            ],
+          ],
+          ["conv_as_seller", [{ senderId: "user_buyer", isRead: false }]],
+        ])
+      );
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_me");
 
     const result = await getUnreadConversationCountHandler(
@@ -892,6 +1012,10 @@ describe("getUnreadConversationCount query", () => {
       "by_seller",
       expect.any(Function)
     );
+    // Newest conversations per side must be fetched (matching
+    // getConversationsHandler), not the oldest 100.
+    expect(buyerChain.order).toHaveBeenCalledWith("desc");
+    expect(sellerChain.order).toHaveBeenCalledWith("desc");
     expect(messagesQuery.withIndex).toHaveBeenCalledWith(
       "by_conversation_read",
       expect.any(Function)

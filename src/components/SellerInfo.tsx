@@ -151,7 +151,7 @@ export const SellerInfo = ({
               variant="outline"
               disabled={isOwnListing}
               title={isOwnListing ? "This is your own listing" : undefined}
-              className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
+              className="h-11 font-bold rounded-md border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
               aria-label={
                 isOwnListing
                   ? "This is your own listing"
