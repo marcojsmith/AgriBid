@@ -48,7 +48,7 @@ export const PricingDurationStep = () => {
           <div className="space-y-2">
             <label
               htmlFor="starting-price"
-              className="text-xs font-black uppercase text-muted-foreground ml-1"
+              className="text-xs font-semibold text-muted-foreground ml-1"
             >
               Starting Price (R)
             </label>
@@ -63,10 +63,10 @@ export const PricingDurationStep = () => {
                 min="0"
                 value={formData.startingPrice || ""}
                 onChange={handlePriceChange("startingPrice")}
-                className="h-14 pl-10 text-xl font-black rounded-xl border-2"
+                className="h-14 pl-10 text-xl font-bold rounded-md border"
               />
             </div>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
+            <p className="text-[10px] text-muted-foreground font-medium px-1">
               The price at which bidding will begin.
             </p>
           </div>
@@ -74,7 +74,7 @@ export const PricingDurationStep = () => {
           <div className="space-y-2">
             <label
               htmlFor="reserve-price"
-              className="text-xs font-black uppercase text-muted-foreground ml-1"
+              className="text-xs font-semibold text-muted-foreground ml-1"
             >
               Reserve Price (R)
             </label>
@@ -90,7 +90,7 @@ export const PricingDurationStep = () => {
                 value={formData.reservePrice || ""}
                 onChange={handlePriceChange("reservePrice")}
                 className={cn(
-                  "h-14 pl-10 text-xl font-black rounded-xl border-2",
+                  "h-14 pl-10 text-xl font-bold rounded-md border",
                   formData.reservePrice !== 0 &&
                     formData.reservePrice < formData.startingPrice
                     ? "border-destructive focus-visible:ring-destructive"
@@ -100,17 +100,17 @@ export const PricingDurationStep = () => {
             </div>
             {formData.reservePrice !== 0 &&
               formData.reservePrice < formData.startingPrice && (
-                <p className="text-[10px] text-destructive font-black uppercase px-1 mt-1">
+                <p className="text-xs text-destructive font-semibold px-1 mt-1">
                   Reserve price cannot be lower than the starting price.
                 </p>
               )}
-            <p className="text-[10px] text-muted-foreground font-medium uppercase px-1 mt-1">
+            <p className="text-[10px] text-muted-foreground font-medium px-1 mt-1">
               The minimum price you are willing to accept.
             </p>
           </div>
 
           <div className="space-y-2 pt-4">
-            <label className="text-xs font-black uppercase text-muted-foreground ml-1">
+            <label className="text-xs font-semibold text-muted-foreground ml-1">
               Auction Duration
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -123,7 +123,7 @@ export const PricingDurationStep = () => {
                   onClick={() => {
                     updateField("durationDays", days);
                   }}
-                  className="h-12 font-black rounded-xl border-2"
+                  className="h-12 font-semibold rounded-md border"
                 >
                   {days} DAYS
                 </Button>
@@ -134,7 +134,7 @@ export const PricingDurationStep = () => {
           <div className="space-y-2 pt-4">
             <label
               htmlFor="start-time"
-              className="text-xs font-black uppercase text-muted-foreground ml-1"
+              className="text-xs font-semibold text-muted-foreground ml-1"
             >
               Auction Start Date &amp; Time (Optional)
             </label>
@@ -154,28 +154,26 @@ export const PricingDurationStep = () => {
                   val ? new Date(val).getTime() : undefined
                 );
               }}
-              className="h-12 rounded-xl border-2"
+              className="h-12 rounded-md border"
             />
-            <p className="text-[10px] text-muted-foreground font-medium uppercase px-1">
+            <p className="text-[10px] text-muted-foreground font-medium px-1">
               Leave blank to start immediately upon admin approval.
             </p>
           </div>
         </div>
 
-        <div className="bg-primary/5 border-2 border-primary/10 rounded-3xl p-6 space-y-6">
+        <div className="bg-primary/5 border border-primary/10 rounded-lg p-6 space-y-6">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            <h3 className="font-black uppercase tracking-tight">
-              Pricing Strategy
-            </h3>
+            <h3 className="font-semibold tracking-tight">Pricing Strategy</h3>
           </div>
 
           <div className="space-y-4">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground font-bold uppercase text-[10px]">
+              <span className="text-muted-foreground font-bold text-xs">
                 Market Confidence (Illustrative)
               </span>
-              <Badge className="bg-green-500 hover:bg-green-600 font-black uppercase text-[10px]">
+              <Badge className="bg-success hover:bg-success/90 text-success-foreground font-semibold text-xs">
                 High
               </Badge>
             </div>
@@ -197,7 +195,7 @@ export const PricingDurationStep = () => {
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <Info className="h-4 w-4 text-primary" />
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-primary">
+              <p className="text-xs font-bold text-primary">
                 Our recommendation: Set a lower starting price to encourage a
                 "bidding war" early in the auction.
               </p>

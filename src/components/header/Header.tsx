@@ -56,14 +56,14 @@ export const Header = () => {
         <div className="flex items-center gap-8 shrink-0">
           <Link
             to="/"
-            className="font-black text-2xl tracking-tighter text-primary"
+            className="font-bold text-2xl tracking-tight text-primary"
           >
-            {(branding?.appName ?? "APP").toUpperCase()}
+            {branding?.appName ?? "AgriBid"}
           </Link>
 
           <nav
             aria-label="Main navigation"
-            className="hidden lg:flex gap-6 text-sm font-bold uppercase tracking-wider"
+            className="hidden lg:flex gap-6 text-sm font-medium"
           >
             {navLinks.map((link) =>
               link.disabled ? (
@@ -118,7 +118,7 @@ export const Header = () => {
             <Button
               size="sm"
               asChild
-              className="font-bold uppercase text-[10px] tracking-widest rounded-xl h-10 px-6 shadow-lg shadow-primary/20"
+              className="font-semibold text-xs rounded-md h-10 px-6 shadow-lg shadow-primary/20"
             >
               <Link to="/login">Login / Register</Link>
             </Button>

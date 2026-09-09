@@ -37,9 +37,9 @@ export const ConditionChecklistStep = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="bg-warning/10 border-2 border-warning/20 p-4 rounded-xl flex items-start gap-3">
+      <div className="bg-warning/10 border border-warning/20 p-4 rounded-md flex items-start gap-3">
         <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
-        <p className="text-[11px] text-warning font-black uppercase tracking-wide leading-relaxed">
+        <p className="text-[11px] text-warning font-semibold leading-relaxed">
           Honesty ensures the highest final bid. Buyers value transparency above
           all else.
         </p>
@@ -49,13 +49,13 @@ export const ConditionChecklistStep = () => {
         {checklistItems.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between p-4 rounded-2xl border-2 bg-card"
+            className="flex items-center justify-between p-4 rounded-lg border bg-card"
           >
             <div className="space-y-0.5">
-              <p className="font-black text-sm uppercase tracking-tight">
+              <p className="font-semibold text-sm tracking-tight">
                 {item.label}
               </p>
-              <p className="text-xs text-muted-foreground font-medium uppercase">
+              <p className="text-xs text-muted-foreground font-medium">
                 {item.desc}
               </p>
             </div>
@@ -100,7 +100,7 @@ export const ConditionChecklistStep = () => {
       <div className="space-y-2">
         <label
           htmlFor="condition-notes"
-          className="text-xs font-black uppercase text-muted-foreground ml-1"
+          className="text-xs font-semibold text-muted-foreground ml-1"
         >
           Additional Condition Notes
         </label>
@@ -111,7 +111,7 @@ export const ConditionChecklistStep = () => {
             updateChecklist("notes", e.target.value);
           }}
           placeholder="Mention any recent repairs, known issues, or upgrades..."
-          className="w-full min-h-[120px] p-4 rounded-xl border-2 bg-background focus:border-primary outline-none transition-colors text-sm"
+          className="w-full min-h-[120px] p-4 rounded-md border bg-background focus:border-primary outline-none transition-colors text-sm"
         />
       </div>
     </div>

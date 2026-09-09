@@ -34,9 +34,7 @@ export const TechnicalSpecsStep = () => {
     return (
       <div className="h-[300px] flex flex-col items-center justify-center gap-4 text-muted-foreground animate-in fade-in duration-500">
         <LoadingIndicator />
-        <p className="text-xs font-black uppercase tracking-widest">
-          Fetching Specifications...
-        </p>
+        <p className="text-xs font-semibold">Fetching Specifications...</p>
       </div>
     );
   }
@@ -62,7 +60,7 @@ export const TechnicalSpecsStep = () => {
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
       {/* Category Selection */}
       <div className="space-y-4">
-        <label className="text-xs font-black uppercase text-muted-foreground ml-1">
+        <label className="text-xs font-semibold text-muted-foreground ml-1">
           Select Category
         </label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -75,7 +73,7 @@ export const TechnicalSpecsStep = () => {
                 updateField("make", "");
                 updateField("model", "");
               }}
-              className="h-12 font-bold rounded-xl border-2 transition-all"
+              className="h-12 font-bold rounded-md border transition-all"
             >
               {cat.name}
               {formData.categoryId === cat._id && (
@@ -89,7 +87,7 @@ export const TechnicalSpecsStep = () => {
       {/* Make Selection */}
       {formData.categoryId && (
         <div className="space-y-4 pt-4 border-t border-dashed">
-          <label className="text-xs font-black uppercase text-muted-foreground ml-1">
+          <label className="text-xs font-semibold text-muted-foreground ml-1">
             Select Manufacturer
           </label>
           {uniqueMakes.length > 0 ? (
@@ -102,7 +100,7 @@ export const TechnicalSpecsStep = () => {
                     updateField("make", make);
                     updateField("model", "");
                   }}
-                  className="h-12 font-bold rounded-xl border-2 transition-all"
+                  className="h-12 font-bold rounded-md border transition-all"
                 >
                   {make}
                   {formData.make === make && <Check className="ml-2 h-4 w-4" />}
@@ -110,7 +108,7 @@ export const TechnicalSpecsStep = () => {
               ))}
             </div>
           ) : (
-            <div className="bg-muted/20 p-8 rounded-2xl text-center border-2 border-dashed">
+            <div className="bg-muted/20 p-8 rounded-lg text-center border border-dashed">
               <p className="text-muted-foreground font-medium">
                 No manufacturers found for this category
               </p>
@@ -126,7 +124,7 @@ export const TechnicalSpecsStep = () => {
                   loadMore(EQUIPMENT_METADATA_LIMIT);
                 }}
                 disabled={status === "LoadingMore"}
-                className="text-[10px] font-black uppercase tracking-widest"
+                className="text-xs font-semibold"
               >
                 {status === "LoadingMore" ? (
                   <>
@@ -148,7 +146,7 @@ export const TechnicalSpecsStep = () => {
       {/* Model Selection */}
       {formData.make && (
         <div className="space-y-4 pt-4 border-t border-dashed">
-          <label className="text-xs font-black uppercase text-muted-foreground ml-1">
+          <label className="text-xs font-semibold text-muted-foreground ml-1">
             Select Model
           </label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -159,7 +157,7 @@ export const TechnicalSpecsStep = () => {
                 onClick={() => {
                   updateField("model", model);
                 }}
-                className="h-12 font-bold rounded-xl border-2 transition-all"
+                className="h-12 font-bold rounded-md border transition-all"
               >
                 {model}
                 {formData.model === model && <Check className="ml-2 h-4 w-4" />}
@@ -170,7 +168,7 @@ export const TechnicalSpecsStep = () => {
       )}
 
       {!formData.categoryId && (
-        <div className="bg-muted/30 rounded-2xl p-12 text-center border-2 border-dashed">
+        <div className="bg-muted/30 rounded-lg p-12 text-center border border-dashed">
           <LayoutGrid className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
           <p className="text-muted-foreground font-medium">
             Select a category to view available equipment catalog

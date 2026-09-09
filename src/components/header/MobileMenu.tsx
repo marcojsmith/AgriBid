@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   ShieldAlert,
+  Heart,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -143,7 +144,7 @@ export function MobileMenu({
               to={link.href}
               onClick={onClose}
               className={cn(
-                "text-lg font-black uppercase tracking-tight p-4 rounded-2xl bg-muted/30 border-2 border-transparent hover:border-primary/20 transition-all",
+                "text-lg font-semibold p-4 rounded-lg bg-muted/30 border border-transparent hover:border-primary/20 transition-all",
                 location.pathname === link.href
                   ? "text-primary border-primary/20"
                   : "text-muted-foreground"
@@ -157,17 +158,17 @@ export function MobileMenu({
         <div className="pt-6 border-t">
           <Authenticated>
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-2 bg-muted/20 rounded-2xl">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 transition-all">
+              <div className="flex items-center gap-3 p-2 bg-muted/20 rounded-lg">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 transition-all">
                   <User className="h-6 w-6 text-primary" />
                 </div>
                 <div>
                   {userData ? (
                     <>
-                      <p className="text-sm font-black uppercase leading-none">
+                      <p className="text-sm font-semibold leading-none">
                         {userData.name}
                       </p>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                      <p className="text-xs font-medium text-muted-foreground mt-1">
                         {isVerified ? "Verified Member" : "Unverified"}
                       </p>
                     </>
@@ -182,7 +183,7 @@ export function MobileMenu({
 
               {!isVerified && kycStatus !== "pending" && (
                 <Button
-                  className="w-full bg-orange-500 hover:bg-orange-600 font-black uppercase text-xs h-12 rounded-xl gap-2"
+                  className="w-full bg-warning hover:bg-warning/90 text-warning-foreground font-semibold text-xs h-12 rounded-md gap-2"
                   asChild
                 >
                   <Link to="/kyc" onClick={onClose}>
@@ -196,7 +197,7 @@ export function MobileMenu({
                 {role === "admin" && (
                   <Button
                     variant="outline"
-                    className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl border-primary/20 text-primary"
+                    className="justify-start gap-2 font-semibold text-xs h-12 rounded-md border-primary/20 text-primary"
                     asChild
                   >
                     <Link to="/admin" onClick={onClose}>
@@ -208,7 +209,7 @@ export function MobileMenu({
                 {profileId ? (
                   <Button
                     variant="outline"
-                    className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl"
+                    className="justify-start gap-2 font-semibold text-xs h-12 rounded-md"
                     asChild
                   >
                     <Link to={`/profile/${profileId}`} onClick={onClose}>
@@ -220,7 +221,7 @@ export function MobileMenu({
                   <Button
                     variant="outline"
                     disabled
-                    className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl opacity-50"
+                    className="justify-start gap-2 font-semibold text-xs h-12 rounded-md opacity-50"
                     aria-busy={true}
                     aria-label="Profile syncing"
                   >
@@ -230,7 +231,7 @@ export function MobileMenu({
                 )}
                 <Button
                   variant="outline"
-                  className="justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl"
+                  className="justify-start gap-2 font-semibold text-xs h-12 rounded-md"
                   asChild
                 >
                   <Link to="/dashboard/bids" onClick={onClose}>
@@ -240,9 +241,19 @@ export function MobileMenu({
                 </Button>
                 <Button
                   variant="outline"
+                  className="justify-start gap-2 font-semibold text-xs h-12 rounded-md"
+                  asChild
+                >
+                  <Link to="/watchlist" onClick={onClose}>
+                    <Heart className="h-3.5 w-3.5" />
+                    Watchlist
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
                   className={cn(
-                    "justify-start gap-2 font-bold uppercase text-[10px] h-12 rounded-xl",
-                    role !== "admin" && "col-span-2"
+                    "justify-start gap-2 font-semibold text-xs h-12 rounded-md",
+                    role === "admin" && "col-span-2"
                   )}
                   asChild
                 >
@@ -254,7 +265,7 @@ export function MobileMenu({
               </div>
               <Button
                 variant="destructive"
-                className="w-full font-black uppercase text-xs tracking-widest h-14 rounded-xl shadow-lg shadow-destructive/10"
+                className="w-full font-semibold text-xs h-14 rounded-md shadow-lg shadow-destructive/10"
                 onClick={async () => {
                   try {
                     await onSignOut();
@@ -272,7 +283,7 @@ export function MobileMenu({
 
           <Unauthenticated>
             <Button
-              className="w-full h-16 text-lg font-black uppercase tracking-tight rounded-2xl shadow-xl shadow-primary/20"
+              className="w-full h-16 text-lg font-bold rounded-lg shadow-xl shadow-primary/20"
               asChild
             >
               <Link to="/login" onClick={onClose}>

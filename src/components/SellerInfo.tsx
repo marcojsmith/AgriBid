@@ -29,7 +29,7 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
 
   if (seller === undefined) {
     return (
-      <div className="bg-card border-2 rounded-2xl p-6 shadow-sm">
+      <div className="bg-card border rounded-lg p-6 shadow-sm">
         <div className="animate-pulse flex items-center gap-4">
           <div className="h-12 w-12 rounded-full bg-muted" />
           <div className="space-y-2">
@@ -43,7 +43,7 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
 
   if (seller === null) {
     return (
-      <div className="bg-muted/20 border-2 border-dashed rounded-2xl p-6 text-center">
+      <div className="bg-muted/20 border border-dashed rounded-lg p-6 text-center">
         <p className="text-sm font-medium text-muted-foreground italic">
           Seller information unavailable
         </p>
@@ -54,15 +54,15 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
   const memberSince = new Date(seller.createdAt).getFullYear();
 
   return (
-    <div className="bg-card border-2 rounded-2xl p-6 space-y-6 shadow-sm">
+    <div className="bg-card border rounded-lg p-6 space-y-6 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="flex gap-4">
-          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center border-2 border-primary/5">
+          <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/5">
             <UserCheck className="h-8 w-8 text-primary" />
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-xl font-black uppercase tracking-tight">
+              <h3 className="text-xl font-semibold tracking-tight">
                 {seller.name}
               </h3>
               {seller.isVerified && (
@@ -72,15 +72,15 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant="outline"
-                className="text-[10px] font-black uppercase tracking-wider py-0 px-2 h-5 border-primary/20 bg-primary/5 text-primary"
+                className="text-xs font-semibold py-0 px-2 h-5 border-primary/20 bg-primary/5 text-primary"
               >
                 {seller.role}
               </Badge>
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold uppercase">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground font-bold">
                 <Calendar className="h-3 w-3" />
                 Member since {memberSince}
               </div>
-              <div className="flex items-center gap-1 text-[10px] text-primary font-black uppercase">
+              <div className="flex items-center gap-1 text-xs text-primary font-semibold">
                 <TrendingUp className="h-3 w-3" />
                 {seller.itemsSold} Items Sold
               </div>
@@ -93,7 +93,7 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
         <Button
           variant="outline"
           disabled
-          className="h-11 font-bold rounded-xl border-2 hover:bg-primary/5 hover:border-primary transition-all gap-2"
+          className="h-11 font-bold rounded-md border hover:bg-primary/5 hover:border-primary transition-all gap-2"
           aria-label={`Message ${seller.name} (Not implemented)`}
         >
           <Mail className="h-4 w-4" />
@@ -101,7 +101,7 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
         </Button>
         <Button
           variant="secondary"
-          className="h-11 font-bold rounded-xl border-2 border-transparent hover:border-muted-foreground/20 transition-all"
+          className="h-11 font-bold rounded-md border border-transparent hover:border-muted-foreground/20 transition-all"
           aria-label={`View ${seller.name}'s profile`}
           asChild
         >
@@ -110,9 +110,9 @@ export const SellerInfo = ({ sellerId }: SellerInfoProps) => {
       </div>
 
       {seller.isVerified && (
-        <div className="bg-success/10 border border-success/20 rounded-xl p-3 flex items-start gap-3">
+        <div className="bg-success/10 border border-success/20 rounded-md p-3 flex items-start gap-3">
           <ShieldCheck className="h-4 w-4 text-success mt-0.5" />
-          <p className="text-[10px] text-success font-bold leading-relaxed uppercase tracking-wide">
+          <p className="text-xs text-success font-bold leading-relaxed">
             This seller has completed our{" "}
             <strong className="text-success-foreground bg-success px-1 rounded-sm">
               High-Integrity Verification

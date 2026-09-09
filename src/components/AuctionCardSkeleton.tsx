@@ -21,7 +21,7 @@ export const AuctionCardSkeleton = ({
     <Card
       aria-hidden="true"
       className={cn(
-        "overflow-hidden border-2 bg-card h-full shadow-none animate-pulse rounded-lg"
+        "overflow-hidden border bg-card h-full shadow-none animate-pulse rounded-lg"
       )}
     >
       <div className={cn("flex h-full", isCompact ? "flex-row" : "flex-col")}>
@@ -113,7 +113,7 @@ export const AuctionCardSkeleton = ({
             <div
               className={cn(
                 "flex-1 bg-muted",
-                isCompact ? "h-8 rounded-lg" : "h-11 rounded-xl"
+                isCompact ? "h-8 rounded-lg" : "h-11 rounded-md"
               )}
             />
           </div>

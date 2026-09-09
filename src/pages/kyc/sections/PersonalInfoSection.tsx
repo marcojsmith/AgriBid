@@ -29,26 +29,24 @@ export function PersonalInfoSection({
   errors,
 }: PersonalInfoSectionProps) {
   return (
-    <Card className="p-6 border-2 space-y-6">
+    <Card className="p-6 border space-y-6">
       <div className="flex items-center gap-2 pb-2 border-b">
         <User className="h-5 w-5 text-primary" />
-        <h2 className="font-black uppercase text-sm tracking-widest">
-          Personal Information
-        </h2>
+        <h2 className="font-bold text-sm">Personal Information</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label
             htmlFor="firstName"
-            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+            className="text-xs font-semibold text-muted-foreground"
           >
             First Names
           </Label>
           <Input
             id="firstName"
             placeholder="Enter all names as per ID"
-            className={`h-12 border-2 rounded-xl ${errors?.firstName ? "border-destructive" : ""}`}
+            className={`h-12 border rounded-md ${errors?.firstName ? "border-destructive" : ""}`}
             value={formData.firstName}
             onChange={(e) => {
               updateField("firstName", e.target.value);
@@ -59,7 +57,7 @@ export function PersonalInfoSection({
           {errors?.firstName && (
             <p
               id="firstName-error"
-              className="text-[10px] text-destructive font-black uppercase px-1"
+              className="text-xs text-destructive font-semibold px-1"
             >
               {errors.firstName}
             </p>
@@ -68,21 +66,21 @@ export function PersonalInfoSection({
         <div className="space-y-2">
           <Label
             htmlFor="lastName"
-            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+            className="text-xs font-semibold text-muted-foreground"
           >
             Last Name
           </Label>
           <Input
             id="lastName"
             placeholder="Surname"
-            className={`h-12 border-2 rounded-xl ${errors?.lastName ? "border-destructive" : ""}`}
+            className={`h-12 border rounded-md ${errors?.lastName ? "border-destructive" : ""}`}
             value={formData.lastName}
             onChange={(e) => {
               updateField("lastName", e.target.value);
             }}
           />
           {errors?.lastName && (
-            <p className="text-[10px] text-destructive font-black uppercase px-1">
+            <p className="text-xs text-destructive font-semibold px-1">
               {errors.lastName}
             </p>
           )}
@@ -93,7 +91,7 @@ export function PersonalInfoSection({
         <div className="space-y-2">
           <Label
             htmlFor="idNumber"
-            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+            className="text-xs font-semibold text-muted-foreground"
           >
             ID / Passport Number
           </Label>
@@ -102,7 +100,7 @@ export function PersonalInfoSection({
             <Input
               id="idNumber"
               placeholder="National ID Number"
-              className={`h-12 pl-10 border-2 rounded-xl ${errors?.idNumber ? "border-destructive" : ""}`}
+              className={`h-12 pl-10 border rounded-md ${errors?.idNumber ? "border-destructive" : ""}`}
               value={formData.idNumber}
               onChange={(e) => {
                 updateField("idNumber", e.target.value);
@@ -110,7 +108,7 @@ export function PersonalInfoSection({
             />
           </div>
           {errors?.idNumber && (
-            <p className="text-[10px] text-destructive font-black uppercase px-1">
+            <p className="text-xs text-destructive font-semibold px-1">
               {errors.idNumber}
             </p>
           )}
@@ -118,7 +116,7 @@ export function PersonalInfoSection({
         <div className="space-y-2">
           <Label
             htmlFor="phoneNumber"
-            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+            className="text-xs font-semibold text-muted-foreground"
           >
             Cell Phone Number
           </Label>
@@ -128,7 +126,7 @@ export function PersonalInfoSection({
               id="phoneNumber"
               type="tel"
               placeholder="+27..."
-              className={`h-12 pl-10 border-2 rounded-xl ${errors?.phoneNumber ? "border-destructive" : ""}`}
+              className={`h-12 pl-10 border rounded-md ${errors?.phoneNumber ? "border-destructive" : ""}`}
               value={formData.phoneNumber}
               onChange={(e) => {
                 updateField("phoneNumber", e.target.value);
@@ -136,7 +134,7 @@ export function PersonalInfoSection({
             />
           </div>
           {errors?.phoneNumber && (
-            <p className="text-[10px] text-destructive font-black uppercase px-1">
+            <p className="text-xs text-destructive font-semibold px-1">
               {errors.phoneNumber}
             </p>
           )}
@@ -147,7 +145,7 @@ export function PersonalInfoSection({
         <div className="space-y-2">
           <Label
             htmlFor="email"
-            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+            className="text-xs font-semibold text-muted-foreground"
           >
             Email Address
           </Label>
@@ -157,7 +155,7 @@ export function PersonalInfoSection({
               id="email"
               type="email"
               placeholder="verify@example.com"
-              className={`h-12 pl-10 border-2 rounded-xl ${errors?.email ? "border-destructive" : ""}`}
+              className={`h-12 pl-10 border rounded-md ${errors?.email ? "border-destructive" : ""}`}
               value={formData.email}
               onChange={(e) => {
                 updateField("email", e.target.value);
@@ -165,7 +163,7 @@ export function PersonalInfoSection({
             />
           </div>
           {errors?.email && (
-            <p className="text-[10px] text-destructive font-black uppercase px-1">
+            <p className="text-xs text-destructive font-semibold px-1">
               {errors.email}
             </p>
           )}
@@ -173,7 +171,7 @@ export function PersonalInfoSection({
         <div className="space-y-2">
           <Label
             htmlFor="confirmEmail"
-            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+            className="text-xs font-semibold text-muted-foreground"
           >
             Confirm Email
           </Label>
@@ -183,7 +181,7 @@ export function PersonalInfoSection({
               id="confirmEmail"
               type="email"
               placeholder="Repeat email address"
-              className={`h-12 pl-10 border-2 rounded-xl ${errors?.confirmEmail ? "border-destructive" : ""}`}
+              className={`h-12 pl-10 border rounded-md ${errors?.confirmEmail ? "border-destructive" : ""}`}
               value={formData.confirmEmail}
               onChange={(e) => {
                 updateField("confirmEmail", e.target.value);
@@ -195,7 +193,7 @@ export function PersonalInfoSection({
           {errors?.confirmEmail && (
             <p
               id="confirmEmail-error"
-              className="text-[10px] text-destructive font-black uppercase px-1"
+              className="text-xs text-destructive font-semibold px-1"
             >
               {errors.confirmEmail}
             </p>

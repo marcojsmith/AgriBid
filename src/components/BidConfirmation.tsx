@@ -68,55 +68,55 @@ export const BidConfirmation = ({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
-      <AlertDialogContent className="max-w-md rounded-2xl border-2">
+      <AlertDialogContent className="max-w-md rounded-lg border">
         <AlertDialogHeader className="flex flex-col items-center text-center space-y-4">
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
             <Gavel className="h-8 w-8 text-primary" />
           </div>
           <div className="space-y-2">
-            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tight">
+            <AlertDialogTitle className="text-2xl font-bold">
               Confirm your bid
             </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-medium">
               You are about to place a bid for
             </AlertDialogDescription>
           </div>
-          <div className="bg-primary/5 border-2 border-primary/20 w-full py-8 rounded-2xl flex flex-col items-center shadow-inner">
+          <div className="bg-primary/5 border border-primary/20 w-full py-8 rounded-lg flex flex-col items-center shadow-inner">
             <div className="text-center mb-4">
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">
                 Current Bid Amount
               </p>
-              <span className="text-5xl font-black text-primary tracking-tight">
+              <span className="text-5xl font-bold text-primary tracking-tight">
                 R {formattedAmount}
               </span>
             </div>
 
             {formattedMaxAmount != null && (
               <div className="w-full flex flex-col items-center mt-2">
-                <div className="w-32 border-t-2 border-primary/10 mb-4" />
+                <div className="w-32 border-t border-primary/10 mb-4" />
                 <div className="text-center">
-                  <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">
                     Auto-bid Limit (Proxy)
                   </p>
-                  <span className="text-2xl font-black text-primary/60 tracking-tight">
+                  <span className="text-2xl font-bold text-primary/60 tracking-tight">
                     R {formattedMaxAmount}
                   </span>
                 </div>
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest px-4">
+          <p className="text-xs text-muted-foreground font-medium px-4">
             By confirming, you agree to purchase this equipment at this price if
             you are the winning bidder.
           </p>
         </AlertDialogHeader>
         <AlertDialogFooter className="grid grid-cols-2 gap-3 sm:space-x-0 mt-4">
-          <AlertDialogCancel className="h-12 font-bold rounded-xl border-2">
+          <AlertDialogCancel className="h-12 font-semibold rounded-md border">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            className="h-12 font-black rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+            className="h-12 font-bold rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/20"
           >
             Confirm Bid
           </AlertDialogAction>
