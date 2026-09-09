@@ -29,6 +29,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { getErrorMessage } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { ProfileSkeleton } from "@/components/ProfileSkeleton";
@@ -281,9 +282,7 @@ export default function Profile() {
       setContactMessage("");
       void navigate(`/messages/${conversationId}`);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to send message"
-      );
+      toast.error(getErrorMessage(error, "Failed to send message"));
     } finally {
       setIsSendingMessage(false);
     }
