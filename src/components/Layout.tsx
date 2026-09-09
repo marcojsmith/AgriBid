@@ -68,7 +68,7 @@ const LayoutHelmet = ({
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Organization",
-            name: businessInfo.businessName ?? SITE_NAME,
+            name: businessInfo.businessName,
             url: businessInfo.website ?? SITE_URL,
             logo: businessInfo.logoUrl ?? `${SITE_URL}/logo.png`,
             description:

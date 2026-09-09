@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 
 /**
+ * Returns the window.matchMedia function, or undefined when unavailable
+ * (SSR or environments without matchMedia support).
+ *
+ * @returns The matchMedia function, or undefined if unavailable
+ */
+const getMatchMedia = (): ((query: string) => MediaQueryList) | undefined => {
+  if (typeof window === "undefined") return undefined;
+  return window.matchMedia;
+};
+
+/**
  * Custom hook to detect media query matches.
  *
  * Initialises synchronously to avoid layout jumps.
@@ -9,15 +20,15 @@ import { useState, useEffect } from "react";
  */
 export function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => {
-    if (typeof window !== "undefined" && window.matchMedia) {
-      return window.matchMedia(query).matches;
-    }
-    return false;
+    const matchMedia = getMatchMedia();
+    if (!matchMedia) return false;
+    return matchMedia(query).matches;
   });
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const media = window.matchMedia(query);
+    const matchMedia = getMatchMedia();
+    if (!matchMedia) return;
+    const media = matchMedia(query);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: syncs matches state immediately when query prop changes
     setMatches(media.matches);
     const listener = () => {

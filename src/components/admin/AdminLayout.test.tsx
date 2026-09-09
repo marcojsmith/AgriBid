@@ -2,6 +2,8 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 
+import type * as UseAdminStatsModule from "@/hooks/useAdminStats";
+
 import { AdminLayout } from "./AdminLayout";
 
 vi.mock("convex/react", () => ({
@@ -26,7 +28,7 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("@/hooks/useAdminStats", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/hooks/useAdminStats")>();
+  const actual = await importOriginal<typeof UseAdminStatsModule>();
   return {
     ...actual,
     useAdminStats: mockUseAdminStats,

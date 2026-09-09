@@ -377,7 +377,7 @@ describe("CategoryManager", () => {
     });
   });
 
-  it("should not delete a category if confirm is cancelled", async () => {
+  it("should not delete a category if confirm is cancelled", () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(

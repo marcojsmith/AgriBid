@@ -87,9 +87,9 @@ describe("AuctionCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useMutation as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef?._path === "auctions/mutations/bidding:placeBid")
+      if (apiRef._path === "auctions/mutations/bidding:placeBid")
         return mockPlaceBid;
-      if (apiRef?._path === "watchlist:toggleWatchlist")
+      if (apiRef._path === "watchlist:toggleWatchlist")
         return mockToggleWatchlist;
       return vi.fn();
     });
@@ -276,7 +276,7 @@ describe("AuctionCard", () => {
     });
   });
 
-  it("handles price update during bid confirmation", async () => {
+  it("handles price update during bid confirmation", () => {
     const { rerender } = renderWithRouter();
 
     // Open confirmation

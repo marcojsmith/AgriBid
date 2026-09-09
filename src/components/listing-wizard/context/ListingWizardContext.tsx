@@ -75,7 +75,9 @@ export const ListingWizardProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [previews, setPreviews] = useState<Record<string, string | undefined>>(
+    {}
+  );
   const [draftSaved, setDraftSaved] = useState(false);
 
   // Persistence effect

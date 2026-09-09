@@ -162,7 +162,7 @@ interface SellerRating {
 }
 
 const formatPrice = (price?: number): string => {
-  if (price === undefined || price === null) return "—";
+  if (price === undefined) return "—";
   return `R ${price.toLocaleString("en-ZA")}`;
 };
 

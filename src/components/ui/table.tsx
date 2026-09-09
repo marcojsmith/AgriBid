@@ -5,9 +5,8 @@ import { cn } from "@/lib/utils";
 /**
  * Renders an HTML table wrapped in a responsive container that enables horizontal scrolling.
  *
- * @param props - Component props.
+ * @param props - Component props; other props are forwarded to the underlying `table` element.
  * @param props.className - Additional CSS classes to apply to the table element.
- * @param props - Other props forwarded to the underlying `table` element.
  * @returns The table element wrapped in a div that provides horizontal overflow handling.
  */
 function Table({ className, ...props }: React.ComponentProps<"table">) {
@@ -29,7 +28,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
  * Renders a table header (`thead`) element with default row-border styling and any passed props.
  *
  * @param props - Component props.
- * @param props.className
+ * @param props.className - Optional additional CSS classes merged with the default header styles.
  * @returns The rendered `thead` element with `data-slot="table-header"` and merged class names.
  */
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
@@ -48,7 +47,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
  * Includes a `data-slot="table-body"` attribute for styling hooks.
  *
  * @param props - Component props.
- * @param props.className
+ * @param props.className - Optional additional CSS classes merged with the default body styles.
  * @returns The rendered `tbody` element with combined classes and forwarded props
  */
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
@@ -104,9 +103,8 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 /**
  * Renders a styled table header cell (`th`) with checkbox-aware spacing and baseline header typography.
  *
- * @param props - Component props.
+ * @param props - Component props; any other props are forwarded to the underlying `th` element.
  * @param props.className - Additional CSS classes to merge with the component's default header classes
- * @param props - Any other props are forwarded to the underlying `th` element
  * @returns A `th` element configured for use as a table header cell
  */
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
@@ -146,7 +144,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
  * Renders a table caption element with default muted styling and a data-slot attribute for styling hooks.
  *
  * @param props - Component props.
- * @param props.className
+ * @param props.className - Optional additional CSS classes merged with the default caption styles.
  * @returns A `caption` element with the component's default classes merged with any provided `className` and all other passed props applied.
  */
 function TableCaption({

@@ -17,21 +17,27 @@ export function useListingForm() {
    */
   const getStepError = (stepIndex: number): string | null => {
     switch (stepIndex) {
-      case 0: // General Info
+      case 0: {
+        // General Info
         if (!formData.title.trim()) return "Title is required";
         if (!formData.location.trim()) return "Location is required";
         if (!formData.year || formData.year < 1900)
           return "Valid year is required";
-        if (
-          formData.operatingHours === undefined ||
-          formData.operatingHours === null
-        )
+        // operatingHours is typed `number`, but drafts restored from storage
+        // may hold null/undefined at runtime, so validate the raw value.
+        const operatingHours: unknown = formData.operatingHours;
+        if (operatingHours === undefined || operatingHours === null) {
           return "Operating hours are required";
-        if (!Number.isFinite(formData.operatingHours))
+        }
+        if (
+          typeof operatingHours !== "number" ||
+          !Number.isFinite(operatingHours)
+        ) {
           return "Operating hours must be a valid number";
-        if (formData.operatingHours < 0)
-          return "Operating hours cannot be negative";
+        }
+        if (operatingHours < 0) return "Operating hours cannot be negative";
         return null;
+      }
       case 1: // Technical Specs
         if (!formData.categoryId) return "Please select a category.";
         if (!formData.make) return "Please select a manufacturer.";

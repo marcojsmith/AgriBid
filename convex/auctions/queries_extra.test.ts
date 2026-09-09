@@ -11,8 +11,8 @@ import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
 vi.mock("../_generated/server", () => ({
-  query: vi.fn((q) => q),
-  mutation: vi.fn((m) => m),
+  query: vi.fn((q: unknown) => q),
+  mutation: vi.fn((m: unknown) => m),
 }));
 
 vi.mock("../lib/auth", () => ({
@@ -25,7 +25,7 @@ vi.mock("../lib/auth", () => ({
 
 vi.mock("./helpers", () => {
   return {
-    toAuctionSummary: vi.fn((_ctx, a) =>
+    toAuctionSummary: vi.fn((_ctx: unknown, a: Doc<"auctions">) =>
       Promise.resolve({ _id: a._id, title: a.title, status: a.status })
     ),
     AuctionSummaryValidator: v.object({
@@ -233,7 +233,7 @@ describe("Queries Extra Coverage", () => {
       { auctionId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
       { auctionId: "a2", amount: 200, bidderId: "u1", timestamp: 200 },
     ]);
-    vi.mocked(mockCtx.db.get).mockImplementation(async (id: unknown) => {
+    vi.mocked(mockCtx.db.get).mockImplementation((id: unknown) => {
       return {
         _id: id,
         status: "active",

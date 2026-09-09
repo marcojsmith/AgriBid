@@ -18,15 +18,15 @@ export interface StatCardProps {
 /**
  * Renders a compact statistic card showing a label, a prominent value, and an icon.
  *
- * @param props - Component properties including label, value, icon, and optional styling
- * @param props.label
- * @param props.value
- * @param props.icon
- * @param props.color
- * @param props.className
- * @param props.padding
- * @param props.bgVariant
- * @param props.iconSize
+ * @param root0 - Component properties including label, value, icon, and optional styling
+ * @param root0.label - Statistic label shown above the value
+ * @param root0.value - Statistic value displayed prominently
+ * @param root0.icon - Icon node rendered on the right side of the card
+ * @param root0.color - Optional text color class applied to the value
+ * @param root0.className - Optional additional classes merged onto the card
+ * @param root0.padding - Padding variant for the card; defaults to "p-4"
+ * @param root0.bgVariant - Background variant of the card; defaults to "bg-card/30"
+ * @param root0.iconSize - Size classes for the icon container; defaults to "h-10 w-10"
  * @returns A Card element containing the labeled statistic and icon
  */
 export function StatCard({

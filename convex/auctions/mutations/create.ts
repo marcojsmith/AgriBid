@@ -351,13 +351,11 @@ export const saveDraftHandler = async (
       validateAuctionBeforePublish(mergedState);
     }
 
-    const patchData: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(restArgs)) {
-      if (key === "images" || value === undefined) {
-        continue;
-      }
-      patchData[key] = value;
-    }
+    const patchData: Record<string, unknown> = Object.fromEntries(
+      (Object.entries(restArgs) as Array<[string, unknown]>).filter(
+        ([key, value]) => key !== "images" && value !== undefined
+      )
+    );
     if (images !== undefined) {
       patchData.images = images;
     }

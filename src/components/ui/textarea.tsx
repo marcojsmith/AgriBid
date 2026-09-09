@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 /**
  * Renders a styled textarea element with merged classes and forwarded props.
  *
- * @param root0
- * @param root0.className
+ * @param root0 - Component props.
+ * @param root0.className - Optional additional CSS classes merged with the textarea's default styles.
  * @returns A JSX textarea element with computed classes, a `data-slot="textarea"` attribute, and all provided props forwarded.
  */
 function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {

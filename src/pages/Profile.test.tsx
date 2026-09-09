@@ -1042,8 +1042,9 @@ describe("Profile Page", () => {
 
     renderProfile();
     const loadMoreBtn = screen.getByText("Load More Listings");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(loadMoreBtn);
+      return Promise.resolve();
     });
 
     expect(loadMore).toHaveBeenCalledWith(6);
@@ -1148,8 +1149,9 @@ describe("Profile Page", () => {
       target: { value: "New bio text" },
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      return Promise.resolve();
     });
 
     expect(mockMutate).toHaveBeenCalledWith(
@@ -1173,8 +1175,9 @@ describe("Profile Page", () => {
     expect(screen.getByText("Saving...")).toBeInTheDocument();
 
     // Resolve the mutation
-    await act(async () => {
+    await act(() => {
       resolvePromise!();
+      return Promise.resolve();
     });
 
     expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
@@ -1188,8 +1191,9 @@ describe("Profile Page", () => {
     fireEvent.click(screen.getByRole("button", { name: /edit/i }));
 
     // Leave all fields empty
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      return Promise.resolve();
     });
 
     expect(mockMutate).toHaveBeenCalledWith({
@@ -1207,8 +1211,9 @@ describe("Profile Page", () => {
     renderProfile("user1");
     fireEvent.click(screen.getByRole("button", { name: /edit/i }));
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      return Promise.resolve();
     });
 
     expect(spy).toHaveBeenCalled();
@@ -1231,8 +1236,9 @@ describe("Profile Page", () => {
       target: { value: "Sunrise Farms" },
     });
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      return Promise.resolve();
     });
 
     expect(mockMutate).toHaveBeenCalledWith(

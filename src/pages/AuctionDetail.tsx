@@ -105,7 +105,7 @@ export default function AuctionDetail() {
 
   const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
 
-  const isOwner = session?.user?.id === auction?.sellerId;
+  const isOwner = session?.user.id === auction?.sellerId;
 
   const handleFlagAuction = async () => {
     if (!flagReason) {

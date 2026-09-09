@@ -56,10 +56,7 @@ function matchesAuctionFilter(
     return false;
   if (args.maxPrice !== undefined && auction.currentPrice > args.maxPrice)
     return false;
-  if (
-    args.maxHours !== undefined &&
-    (auction.operatingHours ?? 0) > args.maxHours
-  )
+  if (args.maxHours !== undefined && auction.operatingHours > args.maxHours)
     return false;
   return true;
 }
@@ -407,8 +404,7 @@ export const getSellerInfoHandler = async (
   const soldAuctionsCount = soldAuctions.length;
   const activeListingsCount = activeAuctions;
   const totalSoldPrice = soldAuctions.reduce(
-    (sum, auction) =>
-      sum + (auction.currentPrice ?? auction.startingPrice ?? 0),
+    (sum, auction) => sum + auction.currentPrice,
     0
   );
   const avgSalePrice =

@@ -165,10 +165,8 @@ export default function AdminFAQ() {
     const swapIndex = direction === "up" ? index - 1 : index + 1;
     if (swapIndex < 0 || swapIndex >= faqItems.length) return;
     const newOrder = [...faqItems];
-    [newOrder[index], newOrder[swapIndex]] = [
-      newOrder[swapIndex],
-      newOrder[index],
-    ];
+    const movedItem = newOrder.splice(index, 1)[0];
+    newOrder.splice(swapIndex, 0, movedItem);
     try {
       await reorderFaqItems({ orderedIds: newOrder.map((i) => i._id) });
     } catch (err) {

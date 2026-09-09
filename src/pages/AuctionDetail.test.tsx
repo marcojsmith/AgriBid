@@ -325,7 +325,7 @@ describe("AuctionDetail Page", () => {
     });
   });
 
-  it("handles condition report dialog and download link", async () => {
+  it("handles condition report dialog and download link", () => {
     renderPage();
     const viewBtn = screen.getByRole("button", { name: /View Report/i });
     fireEvent.click(viewBtn);
@@ -435,7 +435,7 @@ describe("AuctionDetail Page", () => {
     });
   });
 
-  it("handles condition report dialog with missing URL in dialog itself", async () => {
+  it("handles condition report dialog with missing URL in dialog itself", () => {
     const { rerender } = render(
       <BrowserRouter>
         <AuctionDetail />

@@ -310,10 +310,10 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
 
 /**
  * Validate that an auction record contains required fields for a target status.
- * @param auction
- * @param auction.status
- * @param auction.endTime
- * @param newStatus
+ * @param auction - The auction record to validate
+ * @param auction.status - Current status of the auction
+ * @param auction.endTime - Optional Unix timestamp (ms) when the auction ends
+ * @param newStatus - Target status to validate against the auction record
  */
 export function validateAuctionStatus(
   auction: { status: string; endTime?: number | null },

@@ -132,7 +132,7 @@ describe("NotificationDropdown", () => {
   it("calls markAllRead when button is clicked", async () => {
     const mockMarkAllRead = vi.fn().mockResolvedValue({});
     (useMutation as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef?._path === "notifications:markAllRead") return mockMarkAllRead;
+      if (apiRef._path === "notifications:markAllRead") return mockMarkAllRead;
       return vi.fn();
     });
 
@@ -162,7 +162,7 @@ describe("NotificationDropdown", () => {
   it("handles error when markAllRead fails", async () => {
     const mockMarkAllRead = vi.fn().mockRejectedValue(new Error("Fail"));
     (useMutation as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef?._path === "notifications:markAllRead") return mockMarkAllRead;
+      if (apiRef._path === "notifications:markAllRead") return mockMarkAllRead;
       return vi.fn();
     });
 
@@ -185,7 +185,7 @@ describe("NotificationDropdown", () => {
   it("marks notification as read and navigates when clicked", async () => {
     const mockMarkAsRead = vi.fn().mockResolvedValue({});
     (useMutation as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef?._path === "notifications:markAsRead") return mockMarkAsRead;
+      if (apiRef._path === "notifications:markAsRead") return mockMarkAsRead;
       return vi.fn();
     });
 

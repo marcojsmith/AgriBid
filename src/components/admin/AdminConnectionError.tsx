@@ -29,17 +29,17 @@ export function AdminConnectionError({
   className,
   iconSize = "md",
 }: AdminConnectionErrorProps) {
-  const iconSizes = {
-    sm: "h-12 w-12",
-    md: "h-16 w-16",
-    lg: "h-20 w-20",
-  };
+  const iconSizes = new Map<"sm" | "md" | "lg", string>([
+    ["sm", "h-12 w-12"],
+    ["md", "h-16 w-16"],
+    ["lg", "h-20 w-20"],
+  ]);
 
-  const iconInnerSizes = {
-    sm: "h-6 w-6",
-    md: "h-8 w-8",
-    lg: "h-10 w-10",
-  };
+  const iconInnerSizes = new Map<"sm" | "md" | "lg", string>([
+    ["sm", "h-6 w-6"],
+    ["md", "h-8 w-8"],
+    ["lg", "h-10 w-10"],
+  ]);
 
   return (
     <div
@@ -52,12 +52,12 @@ export function AdminConnectionError({
       <div
         className={cn(
           "rounded-full bg-destructive/10 flex items-center justify-center",
-          iconSizes[iconSize]
+          iconSizes.get(iconSize)
         )}
       >
         <AlertCircle
           aria-hidden="true"
-          className={cn("text-destructive", iconInnerSizes[iconSize])}
+          className={cn("text-destructive", iconInnerSizes.get(iconSize))}
         />
       </div>
       <div className="space-y-2">

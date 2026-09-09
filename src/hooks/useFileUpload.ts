@@ -16,6 +16,10 @@ interface UseFileUploadOptions {
   cleanupHandler?: (storageIds: string[]) => Promise<void>;
 }
 
+interface StorageUploadResponse {
+  storageId: string;
+}
+
 /**
  * Manage file selection, validation, uploading to presigned URLs, and cleanup for client-side file uploads.
  *
@@ -83,7 +87,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
   /**
    * Internal helper to handle cleanup using either the injected handler or the default mutation.
-   * @param storageIds
+   * @param storageIds - The storage IDs of the uploads to delete.
    */
   const performCleanup = async (storageIds: string[]) => {
     if (storageIds.length === 0) return;
@@ -103,7 +107,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
       results.forEach((result, index) => {
         if (result.status === "rejected") {
-          const reason = result.reason;
+          const reason: unknown = result.reason;
           const isAuthError =
             reason instanceof Error &&
             (reason.message.toLowerCase().includes("unauthorized") ||
@@ -111,13 +115,13 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
           if (isAuthError) {
             console.warn(
-              `Authorization failure while deleting orphaned upload ${storageIds[index]}. ` +
+              `Authorization failure while deleting orphaned upload ${storageIds.at(index)}. ` +
                 `This usually happens when a non-admin caller omits a 'cleanupHandler'. ` +
                 `Please provide a custom cleanupHandler for this context.`
             );
           } else {
             console.error(
-              `Failed to delete orphaned upload ${storageIds[index]}:`,
+              `Failed to delete orphaned upload ${storageIds.at(index)}:`,
               reason
             );
           }
@@ -148,8 +152,8 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
             throw new Error(`Failed to upload ${file.name}`);
           }
 
-          const { storageId } = await result.json();
-          return storageId as string;
+          const { storageId } = (await result.json()) as StorageUploadResponse;
+          return storageId;
         })
       );
 

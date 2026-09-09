@@ -101,8 +101,9 @@ describe("Header", () => {
     renderHeader();
 
     // Trigger sign out from mock UserDropdown
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByText("Sign Out"));
+      return Promise.resolve();
     });
 
     await waitFor(() => {
@@ -116,8 +117,9 @@ describe("Header", () => {
     mockSignOut.mockRejectedValue(new Error("Fail"));
     renderHeader();
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByText("Sign Out"));
+      return Promise.resolve();
     });
 
     await waitFor(() => {

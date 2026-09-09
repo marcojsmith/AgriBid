@@ -52,7 +52,7 @@ describe("MobileMenu", () => {
 
     // Mock offsetParent for visibility check in focus trap
     Object.defineProperty(HTMLElement.prototype, "offsetParent", {
-      get() {
+      get(this: HTMLElement) {
         return this.parentNode;
       },
       configurable: true,
@@ -218,8 +218,9 @@ describe("MobileMenu", () => {
     );
 
     const signOutButton = screen.getByText("Sign Out");
-    await act(async () => {
+    await act(() => {
       fireEvent.click(signOutButton);
+      return Promise.resolve();
     });
 
     expect(defaultProps.onSignOut).toHaveBeenCalled();
@@ -340,8 +341,9 @@ describe("MobileMenu", () => {
       </MemoryRouter>
     );
 
-    await act(async () => {
+    await act(() => {
       fireEvent.click(screen.getByText("Sign Out"));
+      return Promise.resolve();
     });
 
     await waitFor(() => {

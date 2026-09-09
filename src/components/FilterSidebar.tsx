@@ -124,7 +124,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   // change or reset) so the external-navigation sync effect can skip it.
   const isLocalUpdateRef = useRef<boolean>(true);
   // Track the current user ID to detect user switches
-  const lastUserIdRef = useRef<string | undefined>(session?.user?.id);
+  const lastUserIdRef = useRef<string | undefined>(session?.user.id);
 
   // Always-current reference to searchParams used inside the local→URL effect
   // to avoid adding searchParams to its dependency array (which would cause it
@@ -183,14 +183,14 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   // Reset preferences state when user changes
   useEffect(() => {
-    const currentUserId = session?.user?.id;
+    const currentUserId = session?.user.id;
     if (currentUserId !== lastUserIdRef.current) {
       lastUserIdRef.current = currentUserId;
       // Reset the applied flag so preferences are re-applied for the new user
       prefsAppliedRef.current = false;
       isLocalUpdateRef.current = false;
     }
-  }, [session?.user?.id]);
+  }, [session?.user.id]);
 
   // Apply saved preferences once when they arrive (only if not yet applied).
   // Uses searchParamsRef to avoid stale closures; searchParamsString ensures

@@ -60,7 +60,7 @@ describe("BidForm", () => {
     expect(mockOnBid).toHaveBeenCalledWith(1100);
   });
 
-  it("enables and validates proxy bidding", async () => {
+  it("enables and validates proxy bidding", () => {
     render(
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
     );

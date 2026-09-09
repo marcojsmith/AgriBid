@@ -51,6 +51,9 @@ export function generateFingerprint(
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed && trimmed.startsWith("at ")) {
+        // Safe from catastrophic backtracking: the lazy groups have no nested
+        // quantifiers and input is a single stack-frame line, so backtracking
+        // is at worst quadratic in the line length.
         const match = /at\s+(?:(.+?)\s+\()?(.*?)\)?$/.exec(trimmed);
         if (match) {
           topFrame = match[1] || match[2];
@@ -131,19 +134,19 @@ function sanitizeBreadcrumbMetadata(
   if (!breadcrumb.metadata) {
     return breadcrumb;
   }
-  const sanitized: Record<string, string | number> = {};
-  const allowedKeys = ["action", "path", "component", "props"];
-  for (const key of allowedKeys) {
-    if (breadcrumb.metadata[key] !== undefined) {
-      const value = breadcrumb.metadata[key];
-      if (typeof value === "string" || typeof value === "number") {
-        sanitized[key] = value;
-      }
+  const sanitizedEntries: Array<[string, string | number]> = [];
+  for (const key of ["action", "path", "component", "props"] as const) {
+    const { [key]: value } = breadcrumb.metadata;
+    if (typeof value === "string" || typeof value === "number") {
+      sanitizedEntries.push([key, value]);
     }
   }
   return {
     ...breadcrumb,
-    metadata: Object.keys(sanitized).length > 0 ? sanitized : undefined,
+    metadata:
+      sanitizedEntries.length > 0
+        ? Object.fromEntries(sanitizedEntries)
+        : undefined,
   };
 }
 
@@ -186,7 +189,6 @@ export async function submitErrorReportHandler(
   const sanitizedBreadcrumbs = args.breadcrumbs.map(sanitizeBreadcrumbMetadata);
   const authUser = await getAuthUser(ctx);
   const serverUserId = authUser?._id ?? null;
-  const serverUserRole = null;
 
   if (isServerValidationError(args.errorMessage)) {
     return {
@@ -229,7 +231,7 @@ export async function submitErrorReportHandler(
       instanceCount: existingReport.instanceCount + 1,
       lastOccurredAt: now,
       userId: serverUserId ?? existingReport.userId,
-      userRole: serverUserRole ?? existingReport.userRole,
+      userRole: existingReport.userRole,
       additionalInfo: args.additionalInfo ?? existingReport.additionalInfo,
       breadcrumbs: sanitizedBreadcrumbs.slice(-20),
       metadata: args.metadata,
@@ -248,7 +250,7 @@ export async function submitErrorReportHandler(
     errorMessage: args.errorMessage,
     stackTrace: args.stackTrace,
     userId: serverUserId ?? undefined,
-    userRole: serverUserRole ?? undefined,
+    userRole: undefined,
     additionalInfo: args.additionalInfo,
     breadcrumbs: sanitizedBreadcrumbs.slice(-20),
     metadata: args.metadata,
@@ -333,7 +335,7 @@ function formatIssueBody(report: {
       let line = `- **${new Date(b.timestamp).toISOString()}** [${b.type}] ${b.description}`;
       if (b.metadata) {
         const metaStr = Object.entries(b.metadata)
-          .map(([k, v]) => `${k}=${String(v)}`)
+          .map(([k, val]) => `${k}=${String(val)}`)
           .join(", ");
         line += ` \`${metaStr}\``;
       }
@@ -343,7 +345,7 @@ function formatIssueBody(report: {
 
   const additionalInfoMd = report.additionalInfo
     ? Object.entries(report.additionalInfo)
-        .map(([k, v]) => `- **${k}:** ${String(v)}`)
+        .map(([k, val]) => `- **${k}:** ${String(val)}`)
         .join("\n")
     : "None";
 

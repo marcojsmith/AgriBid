@@ -4,12 +4,10 @@ import React from "react";
 /**
  * Render a stylized empty-state placeholder with an icon, a primary label, and a subtitle.
  *
- * @param label.label
- * @param label - Primary label text shown below the icon
- * @param icon - Icon node rendered inside the circular icon container
- * @param subtitle - Secondary subtitle shown beneath the label; defaults to "Operational Equilibrium Reached"
- * @param label.icon
- * @param label.subtitle
+ * @param root0 - Component props
+ * @param root0.label - Primary label text shown below the icon
+ * @param root0.icon - Icon node rendered inside the circular icon container
+ * @param root0.subtitle - Secondary subtitle shown beneath the label; defaults to "Operational Equilibrium Reached"
  * @returns The empty-state JSX element containing the icon, label, and subtitle
  */
 export function EmptyState({

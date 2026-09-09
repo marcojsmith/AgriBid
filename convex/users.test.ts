@@ -36,8 +36,10 @@ const mockAdminUser: AuthUser = {
 
 vi.mock("./admin_utils", () => ({
   logAudit: vi.fn(),
-  encryptPII: vi.fn((val) => Promise.resolve(`enc_${val}`)),
-  decryptPII: vi.fn((val) => Promise.resolve(val?.replace("enc_", "") ?? "")),
+  encryptPII: vi.fn((val: string | undefined) => Promise.resolve(`enc_${val}`)),
+  decryptPII: vi.fn((val: string | undefined) =>
+    Promise.resolve(val?.replace("enc_", "") ?? "")
+  ),
   updateCounter: vi.fn(),
   countQuery: vi.fn().mockResolvedValue(0),
 }));
@@ -77,11 +79,11 @@ describe("Users Coverage", () => {
     vi.resetAllMocks();
 
     const q: MockQuery = {
-      withIndex: vi.fn((_idx, cb) => {
+      withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
         if (cb) cb({ eq: vi.fn().mockReturnThis() });
         return q;
       }),
-      filter: vi.fn((cb) => {
+      filter: vi.fn((cb?: (q: unknown) => unknown) => {
         if (cb)
           cb({
             eq: vi.fn().mockReturnThis(),

@@ -2,16 +2,21 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Id } from "convex/_generated/dataModel";
 
+import type { AuctionImages } from "@/lib/auction-utils";
+
 import { ModerationCard } from "./ModerationCard";
 
 vi.mock("@/lib/auction-utils", () => ({
-  normalizeAuctionImages: vi.fn((images) => {
-    if (!images) return {};
-    if (typeof images === "string") return { front: images };
-    if (Array.isArray(images) && images.length > 0) return { front: images[0] };
-    if (typeof images === "object" && "front" in images) return images;
-    return {};
-  }),
+  normalizeAuctionImages: vi.fn(
+    (images: AuctionImages | string[] | string | undefined) => {
+      if (!images) return {};
+      if (typeof images === "string") return { front: images };
+      if (Array.isArray(images) && images.length > 0)
+        return { front: images[0] };
+      if (typeof images === "object" && "front" in images) return images;
+      return {};
+    }
+  ),
 }));
 
 vi.mock("@/lib/currency", () => ({

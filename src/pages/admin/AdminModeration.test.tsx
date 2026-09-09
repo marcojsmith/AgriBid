@@ -351,7 +351,7 @@ describe("AdminModeration Page", () => {
     });
   });
 
-  it("navigates to auction detail when 'View' or 'Details' is clicked", async () => {
+  it("navigates to auction detail when 'View' or 'Details' is clicked", () => {
     renderPage();
 
     // From flagged auction
@@ -421,13 +421,15 @@ describe("AdminModeration Page", () => {
       createdAt: Date.now(),
     };
 
-    (useQuery as Mock).mockImplementation((apiPath) => {
-      // Handle both object and string paths
-      const path = typeof apiPath === "string" ? apiPath : apiPath?._path;
-      if (path === "auctions:getAllPendingFlags") return [unknownFlag];
-      if (path === "auctions:getPendingAuctions") return [];
-      return [];
-    });
+    (useQuery as Mock).mockImplementation(
+      (apiPath: string | { _path?: string } | undefined) => {
+        // Handle both object and string paths
+        const path = typeof apiPath === "string" ? apiPath : apiPath?._path;
+        if (path === "auctions:getAllPendingFlags") return [unknownFlag];
+        if (path === "auctions:getPendingAuctions") return [];
+        return [];
+      }
+    );
 
     renderPage();
 

@@ -60,10 +60,15 @@ vi.mock("@/components/ui/select", () => {
     Select: ({ children, onValueChange }: MockProps) => (
       <div>
         {Array.isArray(children)
-          ? children.map((child) =>
-              child?.props?.children
-                ? { ...child, props: { ...child.props, onValueChange } }
-                : child
+          ? children.map(
+              (
+                child?: React.ReactElement<
+                  { children?: React.ReactNode } | undefined
+                >
+              ) =>
+                child?.props?.children
+                  ? { ...child, props: { ...child.props, onValueChange } }
+                  : child
             )
           : children}
       </div>
