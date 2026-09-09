@@ -21,6 +21,9 @@ vi.mock("./_generated/api", () => ({
     errors: {
       processErrorReportsAction: "processErrorReportsAction",
     },
+    seed: {
+      weeklyReset: "weeklyReset",
+    },
   },
 }));
 
@@ -52,6 +55,12 @@ describe("Crons Coverage", () => {
       "process error reports",
       { hourUTC: 2, minuteUTC: 0 },
       "processErrorReportsAction"
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "weekly mock data reset",
+      { hours: 24 * 7 },
+      "weeklyReset"
     );
   });
 });

@@ -40,4 +40,15 @@ crons.daily(
   internal.errors.processErrorReportsAction
 );
 
+/**
+ * Weekly job to reset the showcase mock data so the demo deployment never
+ * goes stale. Clears all mock application data (preserving admin profiles and
+ * static reference data) and reseeds it via internal.seed.weeklyReset.
+ */
+crons.interval(
+  "weekly mock data reset",
+  { hours: 24 * 7 },
+  internal.seed.weeklyReset
+);
+
 export default crons;
