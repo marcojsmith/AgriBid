@@ -8,6 +8,8 @@
 interface ImportMetaEnv {
   /** Application version injected at build time from package.json. */
   readonly VITE_APP_VERSION: string;
+  /** Clerk publishable key used to initialise the Clerk provider. */
+  readonly VITE_CLERK_PUBLISHABLE_KEY: string;
   /** Convex deployment URL for client-server communication. */
   readonly VITE_CONVEX_URL: string;
   /** Convex site URL for production deployments. */

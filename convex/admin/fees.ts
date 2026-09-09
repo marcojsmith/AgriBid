@@ -155,7 +155,7 @@ export const getPlatformFees = query({
  * @param visibleToSeller - Whether sellers can see the fee
  * @returns { success: boolean, feeId: id } on success
  * @throws Error if name is empty/long, value is invalid, or duplicate name exists
- * @sideEffects Inserts new platformFee record, computes sortOrder, sets timestamps, logs audit entry
+ * Side effects: inserts new platformFee record, computes sortOrder, sets timestamps, logs audit entry.
  */
 export const createPlatformFee = mutation({
   args: {
@@ -236,7 +236,7 @@ export const createPlatformFee = mutation({
  * @param sortOrder - Optional new sort order
  * @returns { success: boolean } on success
  * @throws Error if fee not found, validation fails, or duplicate name
- * @sideEffects Patches fee record, updates timestamp, logs audit entry
+ * Side effects: patches fee record, updates timestamp, logs audit entry.
  */
 export const updatePlatformFee = mutation({
   args: {
@@ -312,7 +312,7 @@ export const updatePlatformFee = mutation({
  * @param feeId - ID of the fee to delete
  * @returns { success: boolean } on success
  * @throws Error if fee not found
- * @sideEffects Sets isActive to false, adds deletedAt timestamp, logs audit entry
+ * Side effects: sets isActive to false, adds deletedAt timestamp, logs audit entry.
  */
 export const deletePlatformFee = mutation({
   args: {
@@ -353,8 +353,7 @@ export const reorderPlatformFees = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    for (let i = 0; i < args.feeIds.length; i++) {
-      const feeId = args.feeIds[i];
+    for (const [i, feeId] of args.feeIds.entries()) {
       const fee = await ctx.db.get(feeId);
 
       if (!fee) {
@@ -407,7 +406,7 @@ export const getFeeStats = query({
 
       if (fee.appliedTo === "buyer") {
         buyerFeesTotal += fee.calculatedAmount;
-      } else if (fee.appliedTo === "seller") {
+      } else {
         sellerFeesTotal += fee.calculatedAmount;
       }
 
@@ -476,8 +475,8 @@ export const getAuctionFees = query({
  * @param auctionId - ID of the auction
  * @param userId - ID of the user requesting fees
  * @returns Object with buyerFees and sellerFees arrays containing feeName, feeType, rate, calculatedAmount
- * @authorization Returns empty arrays if caller is neither auction winner nor seller
- * @sideEffects Read-only query; filters out inactive platform fees
+ * Authorization: returns empty arrays if caller is neither auction winner nor seller.
+ * Side effects: read-only query; filters out inactive platform fees.
  */
 export const getAuctionFeesForUser = query({
   args: {
@@ -553,7 +552,7 @@ export const getAuctionFeesForUser = query({
 
       if (fee.appliedTo === "buyer") {
         buyerFees.push(feeData);
-      } else if (fee.appliedTo === "seller") {
+      } else {
         sellerFees.push(feeData);
       }
     }

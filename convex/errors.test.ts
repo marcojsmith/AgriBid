@@ -146,14 +146,14 @@ describe("Errors Backend", () => {
         eq: vi.fn().mockReturnThis(),
         neq: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
-        field: vi.fn((f) => f),
+        field: vi.fn((f: unknown) => f),
       };
       const queryMock = {
-        withIndex: vi.fn((_name, cb) => {
+        withIndex: vi.fn((_name: string, cb?: (q: unknown) => unknown) => {
           if (typeof cb === "function") cb(mockQ);
           return queryMock;
         }),
-        filter: vi.fn((cb) => {
+        filter: vi.fn((cb?: (q: unknown) => unknown) => {
           if (typeof cb === "function") cb(mockQ);
           return queryMock;
         }),
@@ -370,14 +370,14 @@ describe("Errors Backend", () => {
         eq: vi.fn().mockReturnThis(),
         neq: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
-        field: vi.fn((f) => f),
+        field: vi.fn((f: unknown) => f),
       };
       const queryMock = {
-        withIndex: vi.fn((_name, cb) => {
+        withIndex: vi.fn((_name: string, cb?: (q: unknown) => unknown) => {
           if (typeof cb === "function") cb(mockQ);
           return queryMock;
         }),
-        filter: vi.fn((cb) => {
+        filter: vi.fn((cb?: (q: unknown) => unknown) => {
           if (typeof cb === "function") cb(mockQ);
           return queryMock;
         }),

@@ -28,21 +28,20 @@ export async function batchFetchReadCounts(
 ): Promise<Map<Id<"notifications">, number>> {
   if (notificationIds.length === 0) return new Map();
 
-  const counts = await Promise.all(
-    notificationIds.map((id) =>
-      ctx.db
+  const results = await Promise.all(
+    notificationIds.map(async (id) => ({
+      id,
+      count: await ctx.db
         .query("readReceipts")
         .withIndex("by_notification", (q) => q.eq("notificationId", id))
         .collect()
-        .then((r) => r.length)
-    )
+        .then((r) => r.length),
+    }))
   );
 
-  const result = new Map<Id<"notifications">, number>();
-  notificationIds.forEach((id, i) => {
-    result.set(id, counts[i] as number);
-  });
-  return result;
+  return new Map<Id<"notifications">, number>(
+    results.map(({ id, count }): [Id<"notifications">, number] => [id, count])
+  );
 }
 
 /**

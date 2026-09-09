@@ -29,11 +29,11 @@ interface MockQueryChain {
 
 const createMockQuery = (): MockQueryChain => {
   const q: MockQueryChain = {
-    withIndex: vi.fn((_idx, cb) => {
+    withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
       if (cb) cb({ eq: vi.fn().mockReturnThis() });
       return q;
     }),
-    filter: vi.fn((cb) => {
+    filter: vi.fn((cb?: (q: unknown) => unknown) => {
       if (cb)
         cb({
           eq: vi.fn().mockReturnThis(),
@@ -230,7 +230,7 @@ describe("Equipment Metadata Backend", () => {
       "make_inactive",
       expect.objectContaining({
         isActive: true,
-        models: expect.arrayContaining(["6R", "8R"]),
+        models: expect.arrayContaining(["6R", "8R"]) as unknown,
       })
     );
   });
@@ -321,7 +321,7 @@ describe("updateEquipmentMake", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: unknown, getResponse?: unknown) => {
+  const setupMockCtxWithQuery = (mockQuery: unknown, getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
@@ -343,7 +343,7 @@ describe("updateEquipmentMake", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    mockCtx = setupMockCtx(mockQuery, existingMake);
+    mockCtx = setupMockCtxWithQuery(mockQuery, existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -366,7 +366,7 @@ describe("updateEquipmentMake", () => {
 
   it("should throw error if equipment make not found", async () => {
     const mockQuery = createMockQuery();
-    mockCtx = setupMockCtx(mockQuery, null);
+    mockCtx = setupMockCtxWithQuery(mockQuery, null);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -389,7 +389,7 @@ describe("updateEquipmentMake", () => {
       isActive: true,
     };
     const mockQuery = createMockQuery();
-    mockCtx = setupMockCtx(mockQuery, existingMake);
+    mockCtx = setupMockCtxWithQuery(mockQuery, existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -412,7 +412,7 @@ describe("updateEquipmentMake", () => {
       isActive: true,
     };
     const mockQuery = createMockQuery();
-    mockCtx = setupMockCtx(mockQuery, existingMake);
+    mockCtx = setupMockCtxWithQuery(mockQuery, existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -443,7 +443,7 @@ describe("updateEquipmentMake", () => {
         isActive: true,
       }),
     };
-    mockCtx = setupMockCtx(mockQuery, existingMake);
+    mockCtx = setupMockCtxWithQuery(mockQuery, existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -466,7 +466,7 @@ describe("updateEquipmentMake", () => {
       isActive: true,
     };
     const mockQuery = createMockQuery();
-    mockCtx = setupMockCtx(mockQuery, existingMake);
+    mockCtx = setupMockCtxWithQuery(mockQuery, existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -483,7 +483,7 @@ describe("updateEquipmentMake", () => {
 
   it("should reject non-admin users", async () => {
     const mockQuery = createMockQuery();
-    mockCtx = setupMockCtx(mockQuery, {});
+    mockCtx = setupMockCtxWithQuery(mockQuery, {});
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
@@ -505,7 +505,7 @@ describe("deleteEquipmentMake", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (getResponse?: unknown) => {
+  const setupMockCtxWithGet = (getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
@@ -523,7 +523,7 @@ describe("deleteEquipmentMake", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    mockCtx = setupMockCtx(existingMake);
+    mockCtx = setupMockCtxWithGet(existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -540,7 +540,7 @@ describe("deleteEquipmentMake", () => {
   });
 
   it("should throw error if equipment make not found", async () => {
-    mockCtx = setupMockCtx(null);
+    mockCtx = setupMockCtxWithGet(null);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -552,7 +552,7 @@ describe("deleteEquipmentMake", () => {
   });
 
   it("should reject non-admin users", async () => {
-    mockCtx = setupMockCtx({});
+    mockCtx = setupMockCtxWithGet({});
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
@@ -571,7 +571,7 @@ describe("removeModelFromMake", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (getResponse?: unknown) => {
+  const setupMockCtxWithGet = (getResponse?: unknown) => {
     const mockDb = {
       get: vi.fn().mockResolvedValue(getResponse),
       patch: vi.fn(),
@@ -589,7 +589,7 @@ describe("removeModelFromMake", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    mockCtx = setupMockCtx(existingMake);
+    mockCtx = setupMockCtxWithGet(existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -607,7 +607,7 @@ describe("removeModelFromMake", () => {
   });
 
   it("should throw error if equipment make not found", async () => {
-    mockCtx = setupMockCtx(null);
+    mockCtx = setupMockCtxWithGet(null);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -627,7 +627,7 @@ describe("removeModelFromMake", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    mockCtx = setupMockCtx(existingMake);
+    mockCtx = setupMockCtxWithGet(existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -647,7 +647,7 @@ describe("removeModelFromMake", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    mockCtx = setupMockCtx(existingMake);
+    mockCtx = setupMockCtxWithGet(existingMake);
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
@@ -660,7 +660,7 @@ describe("removeModelFromMake", () => {
   });
 
   it("should reject non-admin users", async () => {
-    mockCtx = setupMockCtx({});
+    mockCtx = setupMockCtxWithGet({});
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 

@@ -166,6 +166,7 @@ describe("Support Page", () => {
     });
     await act(() => {
       fireEvent.click(submitBtn);
+      return Promise.resolve();
     });
 
     expect(mockCreateTicket).toHaveBeenCalledWith({
@@ -196,8 +197,9 @@ describe("Support Page", () => {
     const submitBtn = screen.getByRole("button", {
       name: /submit support ticket/i,
     });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(submitBtn);
+      return Promise.resolve();
     });
 
     await waitFor(() => {
@@ -259,8 +261,9 @@ describe("Support Page", () => {
     const submitBtn = screen.getByRole("button", {
       name: /submit support ticket/i,
     });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(submitBtn);
+      return Promise.resolve();
     });
 
     await waitFor(() => {

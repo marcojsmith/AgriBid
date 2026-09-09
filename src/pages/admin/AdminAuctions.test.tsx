@@ -32,8 +32,8 @@ global.ResizeObserver = class ResizeObserver {
   disconnect = vi.fn();
 };
 
-// Mock PointerEvent for Radix UI
-if (!global.PointerEvent) {
+// Mock PointerEvent for Radix UI (jsdom may not provide one)
+if (typeof global.PointerEvent === "undefined") {
   class MockPointerEvent extends MouseEvent {
     pointerId: number;
     width: number;
@@ -217,7 +217,7 @@ describe("AdminAuctions", () => {
     expect(screen.getByText("Sold")).toBeInTheDocument();
   });
 
-  it("filters auctions based on search input", async () => {
+  it("filters auctions based on search input", () => {
     renderComponent();
 
     const searchInput = screen.getByPlaceholderText("Search Auctions...");
@@ -232,7 +232,7 @@ describe("AdminAuctions", () => {
     expect(screen.getByText("Case IH Combine")).toBeInTheDocument();
   });
 
-  it("handles individual auction selection", async () => {
+  it("handles individual auction selection", () => {
     renderComponent();
 
     const row = screen.getByText("John Deere Tractor").closest("tr")!;
@@ -242,7 +242,7 @@ describe("AdminAuctions", () => {
     expect(screen.getByText("1 Items Selected")).toBeInTheDocument();
   });
 
-  it("handles select all functionality", async () => {
+  it("handles select all functionality", () => {
     renderComponent();
 
     const selectAllCheckbox = screen.getAllByRole("checkbox")[0];
@@ -491,7 +491,7 @@ describe("AdminAuctions", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/auction/auction1");
   });
 
-  it("handles bulk action cancellation", async () => {
+  it("handles bulk action cancellation", () => {
     renderComponent();
 
     const selectAllCheckbox = screen.getAllByRole("checkbox")[0];
@@ -853,13 +853,14 @@ describe("AdminAuctions", () => {
     expect(screen.getByText("Close Auction Early?")).toBeInTheDocument();
 
     // Resolve and then it should be able to close
-    await act(async () => {
+    await act(() => {
       resolveClose!({
         success: true,
         finalStatus: "sold",
         winnerId: "u",
         winningAmount: 100,
       });
+      return Promise.resolve();
     });
 
     await waitFor(() => {

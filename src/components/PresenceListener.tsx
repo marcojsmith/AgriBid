@@ -17,7 +17,7 @@ const HEARTBEAT_INTERVAL = 25 * 1000; // 25 seconds (threshold is 30s)
 export const PresenceListener = () => {
   const { data: session } = useSession();
   const heartbeat = useMutation(api.presence.heartbeat);
-  const userId = session?.user?.id;
+  const userId = session?.user.id;
 
   useEffect(() => {
     if (!userId) return;

@@ -44,9 +44,8 @@ describe("Notifications Coverage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     queryMock = {
-      withIndex: vi.fn((_index, cb) => {
+      withIndex: vi.fn((_index: string, cb?: (q: unknown) => unknown) => {
         if (cb) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- test mock: cb is a query builder callback from vi.fn() mock
           cb({
             eq: vi.fn().mockReturnThis(),
             lte: vi.fn().mockReturnThis(),

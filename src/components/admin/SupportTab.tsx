@@ -187,7 +187,7 @@ export function SupportTab() {
                 size="sm"
                 className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={handleNext}
-                disabled={ticketsResult?.isDone ?? true}
+                disabled={ticketsResult.isDone}
               >
                 Next <ChevronRight className="h-3 w-3" />
               </Button>

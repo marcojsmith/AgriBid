@@ -194,11 +194,11 @@ export function BidMonitor() {
                 size="sm"
                 className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={() => {
-                  if (bidsResult?.continueCursor) {
+                  if (bidsResult.continueCursor) {
                     setCurrentCursor(bidsResult.continueCursor);
                   }
                 }}
-                disabled={bidsResult?.isDone ?? true}
+                disabled={bidsResult.isDone}
               >
                 More <ChevronRight className="h-3 w-3" />
               </Button>

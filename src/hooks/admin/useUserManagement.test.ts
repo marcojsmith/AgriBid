@@ -155,16 +155,16 @@ describe("useUserManagement hook", () => {
       });
     });
 
-    it("should block duplicate invocation when called twice in immediate succession", async () => {
+    it("should block duplicate invocation when called twice in immediate succession", () => {
       const { result } = renderHook(() => useUserManagement());
 
       mockVerifyUser.mockResolvedValue(undefined);
 
       act(() => {
-        result.current.handleManualVerify("u1");
+        void result.current.handleManualVerify("u1");
       });
       act(() => {
-        result.current.handleManualVerify("u1");
+        void result.current.handleManualVerify("u1");
       });
 
       expect(mockVerifyUser).toHaveBeenCalledTimes(1);

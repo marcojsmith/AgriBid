@@ -419,7 +419,7 @@ describe("Create Mutations", () => {
         expect.objectContaining({
           images: expect.objectContaining({
             additional: ["1", "2", "3", "4", "5", "6"],
-          }),
+          }) as unknown as Record<string, unknown>,
         })
       );
     });

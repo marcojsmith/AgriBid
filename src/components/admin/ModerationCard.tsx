@@ -16,14 +16,11 @@ import { ConditionItem } from "./ConditionItem";
 /**
  * Renders a moderation card for a single auction with actions to approve, reject, or view details.
  *
- * @param auction.auction
- * @param auction - Auction document providing images, year, title, make, location, startingPrice, and conditionChecklist
- * @param onApprove - Callback invoked when the Approve button is clicked
- * @param onReject - Callback invoked when the Reject button is clicked
- * @param onView - Callback invoked when the Details button is clicked
- * @param auction.onApprove
- * @param auction.onReject
- * @param auction.onView
+ * @param root0 - Component props
+ * @param root0.auction - Auction document providing images, year, title, make, location, startingPrice, and conditionChecklist
+ * @param root0.onApprove - Callback invoked when the Approve button is clicked
+ * @param root0.onReject - Callback invoked when the Reject button is clicked
+ * @param root0.onView - Callback invoked when the Details button is clicked
  * @returns The moderation card React element
  */
 export function ModerationCard({

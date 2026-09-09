@@ -32,7 +32,7 @@ describe("Internal Mutations Branch Coverage", () => {
       db: {
         query: vi.fn(() => ({
           withIndex: vi.fn().mockReturnThis(),
-          filter: vi.fn((cb) => {
+          filter: vi.fn((cb: (q: unknown) => void) => {
             cb({
               lte: vi.fn(),
               field: vi.fn(),

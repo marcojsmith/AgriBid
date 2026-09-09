@@ -648,16 +648,29 @@ export async function getBusinessInfoHandler(ctx: QueryCtx) {
     )
   );
 
-  const getValue = (index: number): string | null => {
-    const setting = settings[index];
-    return setting && typeof setting.value === "string" ? setting.value : null;
-  };
+  const [
+    businessNameSetting,
+    businessDescriptionSetting,
+    streetAddressSetting,
+    addressLocalitySetting,
+    addressCountrySetting,
+    postalCodeSetting,
+    telephoneSetting,
+    emailSetting,
+    websiteSetting,
+    logoUrlSetting,
+    sameAsSetting,
+  ] = settings;
 
-  const sameAsSetting = settings[keys.indexOf(BUSINESS_KEYS.sameAs)];
+  const toText = (
+    setting: (typeof settings)[number] | undefined
+  ): string | null =>
+    setting && typeof setting.value === "string" ? setting.value : null;
+
   let sameAs: string[] | null = null;
   if (sameAsSetting && typeof sameAsSetting.value === "string") {
     try {
-      const parsed = JSON.parse(sameAsSetting.value);
+      const parsed: unknown = JSON.parse(sameAsSetting.value);
       if (Array.isArray(parsed)) {
         sameAs = parsed.filter(
           (item): item is string => typeof item === "string"
@@ -671,18 +684,16 @@ export async function getBusinessInfoHandler(ctx: QueryCtx) {
   }
 
   return {
-    businessName: getValue(keys.indexOf(BUSINESS_KEYS.businessName)),
-    businessDescription: getValue(
-      keys.indexOf(BUSINESS_KEYS.businessDescription)
-    ),
-    streetAddress: getValue(keys.indexOf(BUSINESS_KEYS.streetAddress)),
-    addressLocality: getValue(keys.indexOf(BUSINESS_KEYS.addressLocality)),
-    addressCountry: getValue(keys.indexOf(BUSINESS_KEYS.addressCountry)),
-    postalCode: getValue(keys.indexOf(BUSINESS_KEYS.postalCode)),
-    telephone: getValue(keys.indexOf(BUSINESS_KEYS.telephone)),
-    email: getValue(keys.indexOf(BUSINESS_KEYS.email)),
-    website: getValue(keys.indexOf(BUSINESS_KEYS.website)),
-    logoUrl: getValue(keys.indexOf(BUSINESS_KEYS.logoUrl)),
+    businessName: toText(businessNameSetting),
+    businessDescription: toText(businessDescriptionSetting),
+    streetAddress: toText(streetAddressSetting),
+    addressLocality: toText(addressLocalitySetting),
+    addressCountry: toText(addressCountrySetting),
+    postalCode: toText(postalCodeSetting),
+    telephone: toText(telephoneSetting),
+    email: toText(emailSetting),
+    website: toText(websiteSetting),
+    logoUrl: toText(logoUrlSetting),
     sameAs,
   };
 }

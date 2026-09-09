@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   render,
   screen,
@@ -26,7 +25,17 @@ vi.mock("../CountdownTimer", () => ({
 
 // Mock BidConfirmation directly to avoid Radix issues in tests
 vi.mock("@/components/BidConfirmation", () => ({
-  BidConfirmation: ({ isOpen, onConfirm, onCancel, amount }: any) => (
+  BidConfirmation: ({
+    isOpen,
+    onConfirm,
+    onCancel,
+    amount,
+  }: {
+    isOpen: boolean;
+    onConfirm: () => void;
+    onCancel: () => void;
+    amount: number;
+  }) => (
     <div data-testid={isOpen ? "alert-dialog" : "hidden-dialog"}>
       <p>Confirm Bid {amount}</p>
       <button onClick={onConfirm}>Confirm Bid</button>
@@ -100,7 +109,7 @@ describe("BiddingPanel", () => {
     );
 
     // Default mock for queries: getMyProfile has no args
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
       const queryArgs = args[1];
       if (queryArgs === undefined) {
         return { profile: { isVerified: true, kycStatus: "verified" } };
@@ -145,7 +154,7 @@ describe("BiddingPanel", () => {
 
   it("gates bidding UI when user is unverified", async () => {
     const auction = getActiveAuction();
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
       const queryArgs = args[1];
       if (queryArgs === undefined) {
         return { profile: { isVerified: false, kycStatus: "none" } };
@@ -309,7 +318,7 @@ describe("BiddingPanel", () => {
 
   it("prevents bidding when profile is loading", async () => {
     const auction = getActiveAuction();
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
       const queryArgs = args[1];
       if (queryArgs === undefined) {
         return undefined; // Loading
@@ -333,7 +342,7 @@ describe("BiddingPanel", () => {
 
   it("redirects to kyc if not verified", async () => {
     const auction = getActiveAuction();
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
       const queryArgs = args[1];
       if (queryArgs === undefined) {
         return { profile: { isVerified: false, kycStatus: "none" } };
@@ -462,8 +471,9 @@ describe("BiddingPanel", () => {
     });
 
     const cancelButton = screen.getByRole("button", { name: "Cancel" });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(cancelButton);
+      return Promise.resolve();
     });
 
     await waitFor(() => {
@@ -471,7 +481,7 @@ describe("BiddingPanel", () => {
     });
   });
 
-  it("prompts for sign in when unauthenticated", async () => {
+  it("prompts for sign in when unauthenticated", () => {
     const auction = getActiveAuction();
     const sessionData = { data: null, isPending: false };
     vi.mocked(useSession).mockReturnValue(
@@ -495,7 +505,7 @@ describe("BiddingPanel", () => {
 
   it("handles missing profile gracefully", async () => {
     const auction = getActiveAuction();
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
       const queryArgs = args[1];
       if (queryArgs === undefined) {
         return { profile: undefined }; // missing isVerified
@@ -517,7 +527,7 @@ describe("BiddingPanel", () => {
     });
   });
 
-  it("handles bid confirmation with zero amount gracefully", async () => {
+  it("handles bid confirmation with zero amount gracefully", () => {
     const auction = getActiveAuction();
     render(
       <BrowserRouter>
@@ -670,7 +680,10 @@ describe("BiddingPanel", () => {
     expect(container.querySelector(".border-transparent")).toBeInTheDocument();
 
     // Case 3: isEnded && isHighlighted (should still be border-border because !isEnded is false)
-    const endedAuction = { ...auction, status: "sold" } as any;
+    const endedAuction = {
+      ...auction,
+      status: "sold",
+    } as unknown as Doc<"auctions">;
     vi.mocked(usePriceHighlight).mockReturnValue(true);
     rerender(
       <BrowserRouter>
@@ -689,7 +702,7 @@ describe("BiddingPanel", () => {
     expect(container.querySelector(".border-transparent")).toBeInTheDocument();
   });
 
-  it("renders with 0 amount when pendingBid.amount is falsy", async () => {
+  it("renders with 0 amount when pendingBid.amount is falsy", () => {
     const auction = getActiveAuction();
     render(
       <BrowserRouter>
@@ -716,8 +729,9 @@ describe("BiddingPanel", () => {
 
     // Trigger handleBidConfirm directly through the mock
     const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(confirmButton);
+      return Promise.resolve();
     });
 
     expect(mockPlaceBid).not.toHaveBeenCalled();
@@ -750,8 +764,9 @@ describe("BiddingPanel", () => {
     fireEvent.click(bidButton);
 
     const confirmButton = screen.getByRole("button", { name: "Confirm Bid" });
-    await act(async () => {
+    await act(() => {
       fireEvent.click(confirmButton);
+      return Promise.resolve();
     });
 
     expect(toast.info).not.toHaveBeenCalled();
@@ -759,7 +774,7 @@ describe("BiddingPanel", () => {
 
   it("shows pending verification message when kycStatus is pending", async () => {
     const auction = getActiveAuction();
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
       const queryArgs = args[1];
       if (queryArgs === undefined) {
         return { profile: { isVerified: false, kycStatus: "pending" } };
@@ -785,7 +800,7 @@ describe("BiddingPanel", () => {
 
   it("shows rejected verification message and KYC link when kycStatus is rejected", async () => {
     const auction = getActiveAuction();
-    vi.mocked(convexReact.useQuery).mockImplementation((...args: any[]) => {
+    vi.mocked(convexReact.useQuery).mockImplementation((...args: unknown[]) => {
       const queryArgs = args[1];
       if (queryArgs === undefined) {
         return { profile: { isVerified: false, kycStatus: "rejected" } };

@@ -109,7 +109,7 @@ describe("UserDropdown", () => {
     expect(screen.getByText("Identity Required")).toBeInTheDocument();
   });
 
-  it("calls onSignOut when Sign Out is clicked", async () => {
+  it("calls onSignOut when Sign Out is clicked", () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     renderWithRouter({ ...defaultProps, onSignOut });
 

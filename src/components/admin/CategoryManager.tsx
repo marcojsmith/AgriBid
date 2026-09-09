@@ -41,11 +41,11 @@ interface CategoryManagerProps {
  * Component for managing equipment categories.
  * Provides a table view of categories with actions to add, edit, and deactivate.
  *
- * @param props - Component props
- * @param props.categories
- * @param props.addCategory
- * @param props.updateCategory
- * @param props.deleteCategory
+ * @param root0 - Component props
+ * @param root0.categories - Equipment categories displayed in the table with their active status
+ * @param root0.addCategory - Mutation to add a new category by name, or reactivate an inactive one by re-adding its name
+ * @param root0.updateCategory - Mutation to rename a category, called with its id and the new name
+ * @param root0.deleteCategory - Mutation to deactivate a category, called with its id
  * @returns The rendered category manager interface
  */
 export function CategoryManager({

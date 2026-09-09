@@ -951,7 +951,6 @@ describe("Queries Branch Coverage Expansion", () => {
       );
     });
 
-    // eslint-disable-next-line no-secrets/no-secrets
     it("getMyBidsCountHandler rethrows non-Unauthenticated error", async () => {
       const { getMyBidsCountHandler } = await import("./queries");
       vi.mocked(auth.getAuthUser).mockRejectedValue(

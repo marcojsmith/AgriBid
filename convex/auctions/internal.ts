@@ -21,7 +21,7 @@ import type { MutationCtx } from "../_generated/server";
  * @param auction - The auction document to calculate fees for.
  * @param salesVolume - Optional override for the sale price (e.g. actual winning amount).
  * @returns Promise<void>
- * @sideEffects Writes new auctionFee records to the database, emits audit log entries.
+ * Side effects: writes new auctionFee records to the database, emits audit log entries.
  * @throws Error if database operations fail.
  */
 export async function calculateAndRecordFees(

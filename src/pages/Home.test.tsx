@@ -86,7 +86,7 @@ describe("Home Page Full Coverage", () => {
     });
 
     // Default desktop matchMedia
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: false,
       media: query,
       onchange: null,
@@ -297,7 +297,7 @@ describe("Home Page Full Coverage", () => {
   });
 
   it("initializes in mobile view (compact) when viewport is small", () => {
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query === "(max-width: 768px)",
       media: query,
       onchange: null,
@@ -313,7 +313,7 @@ describe("Home Page Full Coverage", () => {
 
   it("shows mobile filter overlay", () => {
     // Mock mobile viewport
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query === "(max-width: 768px)",
       media: query,
       addEventListener: vi.fn(),
@@ -336,7 +336,7 @@ describe("Home Page Full Coverage", () => {
   });
 
   it("closes mobile filters via onClose prop", () => {
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query === "(max-width: 768px)",
       media: query,
       addEventListener: vi.fn(),
@@ -396,7 +396,7 @@ describe("Home Page Full Coverage", () => {
       matches: false,
       media: "(max-width: 768px)",
       onchange: null,
-      addEventListener: vi.fn((event, handler) => {
+      addEventListener: vi.fn((event: string, handler: () => void) => {
         if (event === "change") changeHandler = handler;
       }),
       removeEventListener: vi.fn(),
@@ -549,7 +549,7 @@ describe("Home Page Full Coverage", () => {
     expect(screen.getByText(/Hide Filters/i)).toBeInTheDocument();
   });
 
-  it("fires updateMyPreferences when authenticated user toggles view mode", async () => {
+  it("fires updateMyPreferences when authenticated user toggles view mode", () => {
     const mockMutate = vi.fn().mockResolvedValue(undefined);
     (useMutation as Mock).mockReturnValue(mockMutate);
     (useSession as Mock).mockReturnValue({
@@ -564,7 +564,7 @@ describe("Home Page Full Coverage", () => {
     expect(mockMutate).toHaveBeenCalledWith({ viewMode: "compact" });
   });
 
-  it("fires updateMyPreferences when authenticated user toggles sidebar", async () => {
+  it("fires updateMyPreferences when authenticated user toggles sidebar", () => {
     const mockMutate = vi.fn().mockResolvedValue(undefined);
     (useMutation as Mock).mockReturnValue(mockMutate);
     (useSession as Mock).mockReturnValue({
@@ -591,7 +591,7 @@ describe("Home Page Full Coverage", () => {
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
-  it("fires updateMyPreferences when authenticated user clicks Detailed", async () => {
+  it("fires updateMyPreferences when authenticated user clicks Detailed", () => {
     const mockMutate = vi.fn().mockResolvedValue(undefined);
     (useMutation as Mock).mockReturnValue(mockMutate);
     (useSession as Mock).mockReturnValue({
@@ -614,7 +614,7 @@ describe("Home Page Full Coverage", () => {
     });
 
     // Set compact mode
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query === "(max-width: 768px)",
       media: query,
       addEventListener: vi.fn(),

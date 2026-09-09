@@ -203,7 +203,7 @@ describe("AuctionHeader", () => {
     expect(screen.getByText(/Reserve met/i)).toBeDefined();
   });
 
-  it("disables button when toggling", async () => {
+  it("disables button when toggling", () => {
     const toggleMock = vi.fn().mockReturnValue(new Promise(() => {})); // never resolves
     vi.mocked(useSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -288,7 +288,7 @@ describe("AuctionHeader", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/login?callbackUrl=/");
   });
 
-  it("returns early if isWatched is undefined", async () => {
+  it("returns early if isWatched is undefined", () => {
     const toggleMock = vi.fn();
     vi.mocked(useSession).mockReturnValue({
       data: { user: { id: "u1" } },

@@ -205,10 +205,8 @@ export function FeeManager() {
   const handleMoveUp = async (index: number) => {
     if (index === 0 || reorderingIndex !== null) return;
     const newOrder = [...sortedFees];
-    [newOrder[index - 1], newOrder[index]] = [
-      newOrder[index],
-      newOrder[index - 1],
-    ];
+    const [movedFee] = newOrder.splice(index, 1);
+    newOrder.splice(index - 1, 0, movedFee);
     try {
       setReorderingIndex(index);
       await reorderFees({
@@ -227,10 +225,8 @@ export function FeeManager() {
   const handleMoveDown = async (index: number) => {
     if (index === sortedFees.length - 1 || reorderingIndex !== null) return;
     const newOrder = [...sortedFees];
-    [newOrder[index], newOrder[index + 1]] = [
-      newOrder[index + 1],
-      newOrder[index],
-    ];
+    const [movedFee] = newOrder.splice(index, 1);
+    newOrder.splice(index + 1, 0, movedFee);
     try {
       setReorderingIndex(index);
       await reorderFees({
@@ -321,7 +317,10 @@ export function FeeManager() {
                           size="sm"
                           className="h-6 w-6 p-0"
                           onClick={() => handleMoveDown(index)}
-                          disabled={index === sortedFees.length - 1 || reorderingIndex !== null}
+                          disabled={
+                            index === sortedFees.length - 1 ||
+                            reorderingIndex !== null
+                          }
                           aria-label={`Move ${fee.name} down`}
                         >
                           <ArrowDown className="h-3 w-3" />

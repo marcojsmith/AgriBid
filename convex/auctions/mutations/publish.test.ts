@@ -20,9 +20,9 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 vi.mock("../../_generated/server", () => ({
-  mutation: vi.fn((config) => config),
-  query: vi.fn((config) => config),
-  internalMutation: vi.fn((config) => config),
+  mutation: vi.fn((config: unknown) => config),
+  query: vi.fn((config: unknown) => config),
+  internalMutation: vi.fn((config: unknown) => config),
 }));
 
 // helper types for mocking
@@ -50,11 +50,11 @@ const mockQ = {
   lte: vi.fn().mockReturnThis(),
   gt: vi.fn().mockReturnThis(),
   lt: vi.fn().mockReturnThis(),
-  field: vi.fn((f) => f),
+  field: vi.fn((f: string) => f),
 };
 
 const queryMock = {
-  withIndex: vi.fn((_name, cb) => {
+  withIndex: vi.fn((_name: string, cb?: (q: unknown) => void) => {
     if (typeof cb === "function") cb(mockQ);
     return queryMock;
   }),
@@ -114,7 +114,9 @@ describe("Publish Mutations", () => {
         patch: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
         query: vi.fn().mockReturnValue(queryMock),
-        normalizeId: vi.fn().mockImplementation((_table, id) => id),
+        normalizeId: vi
+          .fn()
+          .mockImplementation((_table: string, id: string) => id),
       },
       storage: {
         generateUploadUrl: vi.fn().mockResolvedValue("url"),

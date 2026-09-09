@@ -130,15 +130,6 @@ export const getMyListingsCount = query({
   handler: getMyListingsCountHandler,
 });
 
-const COUNTABLE_STATUSES = [
-  "draft",
-  "pending_review",
-  "active",
-  "sold",
-  "unsold",
-  "rejected",
-] as const;
-
 /**
  * Returns breakdown of user's listings by status (draft, pending_review, active, sold, etc).
  *
@@ -174,11 +165,25 @@ export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
   };
 
   for (const listing of listings) {
-    if ((COUNTABLE_STATUSES as readonly string[]).includes(listing.status)) {
-      const status = listing.status;
-      if (status in stats) {
-        (stats as Record<string, number>)[status]++;
-      }
+    switch (listing.status) {
+      case "draft":
+        stats.draft++;
+        break;
+      case "pending_review":
+        stats.pending_review++;
+        break;
+      case "active":
+        stats.active++;
+        break;
+      case "sold":
+        stats.sold++;
+        break;
+      case "unsold":
+        stats.unsold++;
+        break;
+      case "rejected":
+        stats.rejected++;
+        break;
     }
   }
 

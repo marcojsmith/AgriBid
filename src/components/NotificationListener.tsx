@@ -30,7 +30,7 @@ export const NotificationListener = () => {
   const settledAuctionsRef = useRef<Set<string>>(new Set());
 
   // Clear cache if user changes (e.g. logout/login)
-  const userId = session?.user?.id;
+  const userId = session?.user.id;
   useEffect(() => {
     settledAuctionsRef.current.clear();
   }, [userId]);

@@ -22,6 +22,23 @@ const sharedSettings = {
   jsdoc: { mode: "typescript" },
 };
 
+/**
+ * Known non-secret strings with high character entropy that trip
+ * no-secrets/no-secrets: handler/config identifiers and env-flag names,
+ * reviewed as false positives (see conductor/opencode_tasks/fix_lint_warnings.md).
+ * Matched against string CONTENT (ignoreContent) so any usage site is covered.
+ */
+const noSecretsIgnoreContent = [
+  "isGitHubReportingEnabled",
+  "publishAuctionHandler",
+  "bulkUpdateAuctionsHandler",
+  "getMyBidsCountHandler",
+  "submitKYCHandler",
+  "getWatchedAuctionIdsHandler",
+  "ALLOW_PII_DEV_FALLBACK=true",
+  "import.meta.env.VITE_APP_VERSION",
+];
+
 export default defineConfig([
   globalIgnores(["dist", "convex/_generated", "coverage"]),
 
@@ -50,7 +67,10 @@ export default defineConfig([
     rules: {
       // Config files don't need JSDoc
       "jsdoc/require-jsdoc": "off",
-      "no-secrets/no-secrets": "warn",
+      "no-secrets/no-secrets": [
+        "warn",
+        { ignoreContent: noSecretsIgnoreContent },
+      ],
     },
   },
 
@@ -136,7 +156,10 @@ export default defineConfig([
       "react-hooks/exhaustive-deps": "warn",
 
       // --- Security ---
-      "no-secrets/no-secrets": "warn",
+      "no-secrets/no-secrets": [
+        "warn",
+        { ignoreContent: noSecretsIgnoreContent },
+      ],
 
       // --- Imports ---
       "import-x/no-duplicates": "warn",
@@ -155,19 +178,6 @@ export default defineConfig([
           pathGroups: [{ pattern: "@/**", group: "internal" }],
           "newlines-between": "always",
         },
-      ],
-    },
-  },
-
-  // -----------------------------------------------------------------------
-  // File-scoped override for getMyBidsCountHandler
-  // -----------------------------------------------------------------------
-  {
-    files: ["convex/auctions/queries/bids.ts"],
-    rules: {
-      "no-secrets/no-secrets": [
-        "warn",
-        { ignoreIdentifiers: ["getMyBidsCountHandler"] },
       ],
     },
   },

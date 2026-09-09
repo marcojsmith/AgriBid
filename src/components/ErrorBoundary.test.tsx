@@ -1,5 +1,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockInstance,
+} from "vitest";
 
 import * as errorReporter from "@/lib/error-reporter";
 
@@ -14,7 +22,7 @@ const ThrowError = () => {
 };
 
 describe("ErrorBoundary", () => {
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: MockInstance<typeof console.error> | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();

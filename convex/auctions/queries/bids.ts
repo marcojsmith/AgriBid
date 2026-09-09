@@ -47,8 +47,6 @@ export const getAuctionBidsHandler = async (
 
   const bids = bidsResult.page;
 
-  const ANONYMOUS_KEY = "anonymous";
-
   const uniqueBidderIds = Array.from(
     new Set(bids.map((b: Doc<"bids">) => b.bidderId))
   );
@@ -63,15 +61,13 @@ export const getAuctionBidsHandler = async (
 
   await Promise.all(
     uniqueBidderIds.map(async (bidderId) => {
-      const mapKey = bidderId ?? ANONYMOUS_KEY;
-
       if (!bidderId) {
-        bidderNames.set(mapKey, "Anonymous");
+        bidderNames.set(bidderId, "Anonymous");
         return;
       }
 
       if (!isAdmin && !isSeller) {
-        bidderNames.set(mapKey, "Bidder");
+        bidderNames.set(bidderId, "Bidder");
         return;
       }
 
@@ -81,16 +77,16 @@ export const getAuctionBidsHandler = async (
         .unique();
 
       if (profile) {
-        bidderNames.set(mapKey, profile.name ?? "Anonymous");
+        bidderNames.set(bidderId, profile.name ?? "Anonymous");
       } else {
-        bidderNames.set(mapKey, "Anonymous");
+        bidderNames.set(bidderId, "Anonymous");
       }
     })
   );
 
   const page = bids.map((bid: Doc<"bids">) => ({
     ...bid,
-    bidderName: bidderNames.get(bid.bidderId ?? ANONYMOUS_KEY) ?? "Anonymous",
+    bidderName: bidderNames.get(bid.bidderId) ?? "Anonymous",
   }));
 
   return {

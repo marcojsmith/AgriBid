@@ -4,8 +4,8 @@ import { Check } from "lucide-react";
 /**
  * Renders a list item with a check icon and the given label styled for compliance rules.
  *
- * @param text.text
- * @param text - The label to display next to the check icon
+ * @param root0 - Component props
+ * @param root0.text - The label to display next to the check icon
  * @returns A React element for the list item
  */
 export function ListItem({ text }: { text: string }) {
