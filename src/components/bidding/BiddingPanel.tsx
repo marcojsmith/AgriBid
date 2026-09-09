@@ -86,7 +86,7 @@ export const BiddingPanel = ({
           >
             Auction {auction.status}
           </Badge>
-          <h3 className="text-3xl font-black text-primary tracking-tighter">
+          <h3 className="text-3xl font-black tabular-nums text-primary tracking-tighter">
             R {auction.currentPrice.toLocaleString("en-ZA")}
           </h3>
           <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
@@ -230,7 +230,7 @@ export const BiddingPanel = ({
                 : "border-transparent"
             }`}
           >
-            <span className="text-4xl font-black text-primary tracking-tighter">
+            <span className="text-4xl font-black tabular-nums text-primary tracking-tighter">
               R {auction.currentPrice.toLocaleString("en-ZA")}
             </span>
             {!isEnded && (
@@ -258,7 +258,7 @@ export const BiddingPanel = ({
           <p className="font-bold text-muted-foreground uppercase tracking-widest text-sm">
             Auction Ended
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
             Final Price: R {auction.currentPrice.toLocaleString("en-ZA")}
           </p>
         </div>
@@ -281,7 +281,7 @@ export const BiddingPanel = ({
             <Gavel className="h-4 w-4 text-primary" />
             <span>
               Next minimum bid:{" "}
-              <span className="text-foreground">
+              <span className="text-foreground tabular-nums">
                 R {nextMinBid.toLocaleString("en-ZA")}
               </span>
             </span>

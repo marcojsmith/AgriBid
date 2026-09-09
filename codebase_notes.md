@@ -10,6 +10,14 @@
 - **Admin Moderation**: Integrated flagging system with auto-hide thresholds and admin review dashboard.
 - **Settlement & Cleanup**: Automated auction settlement (Sold/Unsold) and periodic cleanup of abandoned drafts.
 
+## Visual Refresh Phase 1 — Foundation (2026-09-09)
+
+- **Inter font**: Loaded via Google Fonts `<link>` in `index.html` (repo loads assets there; no fontsource pattern existed). `--font-sans` set in the `@theme` block of `src/index.css` so Tailwind's default `font-sans` picks it up — no per-component font-family overrides.
+- **Image fallbacks are content-addressed**: `AuctionCardThumbnail` tracks the failed URL (not a boolean) and `ImageGallery` tracks a `Set<string>` of failed URLs. This avoids `react-hooks/set-state-in-effect` violations (eslint-plugin-react-hooks v7 errors on `setState` inside effects used for prop-change resets) and recovers automatically when the URL changes — no reset effect needed.
+- **AuctionDetail delegates**: the page has no inline price display or gallery `<img>` — prices live in `BiddingPanel.tsx`, images in `ImageGallery.tsx`. Fix those components, not the page.
+- **Lint baseline**: repo tolerates ~524 pre-existing eslint warnings (mostly jsdoc params, `no-unnecessary-condition`, `detect-object-injection` in tests); lint passes on 0 errors. New code should not add warnings beyond this baseline.
+- **Remaining visual noise (follow-up phases)**: `BiddingPanel.tsx` and `AuctionCardPrice.tsx` still use `uppercase`/`font-black` labels ("Current Bid", "Ends In", closed-state copy) — intentionally left for the later phases per the phase-1 scope.
+
 ## Next Focus
 
 - **Real-time Bidding Enhancements**: Refining bid concurrency handling and proxy bidding notifications.

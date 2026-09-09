@@ -41,7 +41,7 @@ export function AuctionCardPrice({
         <p className="text-muted-foreground uppercase font-black tracking-widest text-[10px] md:text-xs">
           Current Bid
         </p>
-        <p className="font-black text-primary tracking-tighter leading-none text-2xl md:text-3xl">
+        <p className="font-black tabular-nums text-primary tracking-tighter leading-none text-2xl md:text-3xl">
           R {currentPrice.toLocaleString("en-ZA")}
         </p>
       </div>
