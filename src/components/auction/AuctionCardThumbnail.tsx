@@ -120,7 +120,7 @@ export function AuctionCardThumbnail({
       {/* Timer - Under Image */}
       {isCompact && !isClosed && (
         <div className="bg-muted/30 flex items-center justify-center px-2 border-r h-12 border-t">
-          <div className="font-black whitespace-nowrap leading-none text-sm sm:text-base">
+          <div className="font-bold whitespace-nowrap leading-none text-sm sm:text-base">
             <CountdownTimer endTime={endTime} />
           </div>
         </div>

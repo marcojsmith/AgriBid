@@ -32,24 +32,20 @@ export function AuctionCardPrice({
   return (
     <div className="flex justify-between items-end mt-2 md:mt-4">
       <div
-        className={`rounded-lg p-2 border-2 transition-colors duration-700 ${
+        className={`rounded-lg p-2 border transition-colors duration-700 ${
           isHighlighted
-            ? "bg-green-500/10 border-green-500/30"
+            ? "bg-success/10 border-success/30"
             : "border-transparent"
         }`}
       >
-        <p className="text-muted-foreground uppercase font-black tracking-widest text-[10px] md:text-xs">
-          Current Bid
-        </p>
-        <p className="font-black tabular-nums text-primary tracking-tighter leading-none text-2xl md:text-3xl">
+        <p className="text-muted-foreground font-medium text-xs">Current bid</p>
+        <p className="font-bold tabular-nums text-primary tracking-tight leading-none text-2xl md:text-3xl">
           R {currentPrice.toLocaleString("en-ZA")}
         </p>
       </div>
       {!isClosed && (
         <div className="text-right">
-          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
-            Ends In
-          </p>
+          <p className="text-xs text-muted-foreground font-medium">Ends in</p>
           <div className="text-sm font-bold">
             <CountdownTimer endTime={endTime} />
           </div>

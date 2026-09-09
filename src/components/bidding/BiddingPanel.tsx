@@ -228,7 +228,7 @@ export const BiddingPanel = ({
                 : "border-transparent"
             }`}
           >
-            <span className="text-4xl font-black tabular-nums text-primary tracking-tighter">
+            <span className="text-4xl font-bold tabular-nums text-primary tracking-tighter">
               R {auction.currentPrice.toLocaleString("en-ZA")}
             </span>
             {!isEnded && (

@@ -275,8 +275,8 @@ export const AuctionCard = ({
             className={cn(
               "flex-1 font-semibold shadow-sm",
               isCompact
-                ? "text-[10px] h-8 rounded-lg"
-                : "text-xs h-11 rounded-xl"
+                ? "text-[10px] h-8 rounded-md"
+                : "text-xs h-11 rounded-md"
             )}
             onClick={handleBidInitiate}
             disabled={isBidding || auction.status !== "active"}
