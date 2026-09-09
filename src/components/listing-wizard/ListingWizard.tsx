@@ -262,12 +262,12 @@ const ListingWizardContent = () => {
 
   if (isSuccess) {
     return (
-      <div className="bg-card border-2 rounded-3xl p-12 text-center space-y-8 animate-in zoom-in duration-500">
+      <div className="bg-card border rounded-lg p-12 text-center space-y-8 animate-in zoom-in duration-500">
         <div className="h-24 w-24 rounded-full bg-green-500/10 flex items-center justify-center mx-auto border-4 border-green-500/20">
           <CheckCircle2 className="h-12 w-12 text-green-500" />
         </div>
         <div className="space-y-3">
-          <h2 className="text-4xl font-black uppercase tracking-tight">
+          <h2 className="text-4xl font-bold tracking-tight">
             Submission Received
           </h2>
           <p className="text-muted-foreground text-lg max-w-md mx-auto">
@@ -275,24 +275,24 @@ const ListingWizardContent = () => {
             moderation queue.
           </p>
         </div>
-        <div className="bg-muted/30 p-6 rounded-2xl border-2 border-dashed max-w-md mx-auto">
-          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">
+        <div className="bg-muted/30 p-6 rounded-lg border border-dashed max-w-md mx-auto">
+          <p className="text-xs font-semibold text-muted-foreground mb-4">
             What Happens Next?
           </p>
           <ul className="text-left space-y-4">
-            <li className="flex gap-3 text-sm font-bold uppercase tracking-tight">
+            <li className="flex gap-3 text-sm font-bold tracking-tight">
               <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">
                 1
               </span>
               Technical Review (2-4 Hours)
             </li>
-            <li className="flex gap-3 text-sm font-bold uppercase tracking-tight">
+            <li className="flex gap-3 text-sm font-bold tracking-tight">
               <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">
                 2
               </span>
               Valuation Confirmation
             </li>
-            <li className="flex gap-3 text-sm font-bold uppercase tracking-tight">
+            <li className="flex gap-3 text-sm font-bold tracking-tight">
               <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">
                 3
               </span>
@@ -302,7 +302,7 @@ const ListingWizardContent = () => {
         </div>
         <Button
           size="lg"
-          className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20"
+          className="h-14 px-12 rounded-lg font-semibold text-xl shadow-xl shadow-primary/20"
           asChild
         >
           <Link to="/">Return to Marketplace</Link>
@@ -333,7 +333,7 @@ const ListingWizardContent = () => {
   return (
     <div className="space-y-8">
       <StepIndicator />
-      <div className="bg-card border-2 rounded-2xl p-8 min-h-[450px]">
+      <div className="bg-card border rounded-lg p-8 min-h-[450px]">
         {renderStep()}
       </div>
       <WizardNavigation

@@ -41,9 +41,9 @@ export function ModerationCard({
     auction.images as AuctionImages | string[] | undefined
   );
   return (
-    <Card className="p-5 border-2 hover:border-primary/40 transition-all bg-card/40 backdrop-blur-md group">
+    <Card className="p-5 border hover:border-primary/40 transition-all bg-card/40 backdrop-blur-md group">
       <div className="flex flex-col md:flex-row gap-8">
-        <div className="w-full md:w-56 h-40 bg-muted rounded-xl border-2 relative overflow-hidden shrink-0">
+        <div className="w-full md:w-56 h-40 bg-muted rounded-md border relative overflow-hidden shrink-0">
           {images.front ? (
             <img
               src={images.front}
@@ -55,7 +55,7 @@ export function ModerationCard({
               <Clock className="h-8 w-8 text-muted-foreground/20" />
             </div>
           )}
-          <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/70 text-white text-[9px] font-black uppercase rounded-lg backdrop-blur-sm border border-white/10">
+          <div className="absolute top-2 left-2 px-2 py-0.5 bg-foreground/70 text-background text-xs font-medium rounded-md backdrop-blur-sm border border-border/10">
             {auction.year}
           </div>
         </div>
@@ -63,41 +63,41 @@ export function ModerationCard({
         <div className="flex-1 space-y-4">
           <div className="flex justify-between">
             <div>
-              <h3 className="text-xl font-black uppercase tracking-tight group-hover:text-primary transition-colors">
+              <h3 className="text-xl font-semibold tracking-tight group-hover:text-primary transition-colors">
                 {auction.title}
               </h3>
               <div className="flex gap-2 mt-1">
                 <Badge
                   variant="outline"
-                  className="font-bold border-primary/20 bg-primary/5 text-primary py-0 h-6 uppercase text-[9px]"
+                  className="font-medium border-primary/20 bg-primary/5 text-primary py-0 h-6 text-xs"
                 >
                   {auction.categoryName || "Unknown"}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="font-bold border-2 py-0 h-6"
+                  className="font-medium border py-0 h-6"
                 >
                   {auction.make}
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="font-bold border-2 py-0 h-6 uppercase text-[9px] tracking-wider"
+                  className="font-medium border py-0 h-6 text-xs"
                 >
                   {auction.location}
                 </Badge>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-[9px] font-black uppercase text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Starting At
               </p>
-              <p className="text-xl font-black text-primary">
+              <p className="text-xl font-bold text-primary">
                 {formatCurrency(auction.startingPrice)}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-4 p-3 bg-muted/20 rounded-xl border-2 border-dashed">
+          <div className="grid grid-cols-4 gap-4 p-3 bg-muted/20 rounded-md border border-dashed">
             <ConditionItem
               label="Engine"
               value={auction.conditionChecklist?.engine}
@@ -120,21 +120,21 @@ export function ModerationCard({
         <div className="flex flex-col gap-2 justify-center shrink-0 w-full md:w-auto">
           <Button
             onClick={onApprove}
-            className="h-10 px-6 rounded-xl font-black uppercase text-xs bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/10"
+            className="h-10 px-6 rounded-md font-semibold text-xs bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/10"
           >
             <Check className="h-4 w-4 mr-2" /> Approve
           </Button>
           <Button
             onClick={onReject}
             variant="outline"
-            className="h-10 px-6 rounded-xl font-black uppercase text-xs border-2 hover:bg-destructive/10 hover:text-destructive"
+            className="h-10 px-6 rounded-md font-semibold text-xs border hover:bg-destructive/10 hover:text-destructive"
           >
             <X className="h-4 w-4 mr-2" /> Reject
           </Button>
           <Button
             onClick={onView}
             variant="ghost"
-            className="h-10 px-6 rounded-xl font-bold uppercase text-[10px] tracking-widest opacity-60 hover:opacity-100"
+            className="h-10 px-6 rounded-md font-medium text-xs opacity-60 hover:opacity-100"
           >
             Details
           </Button>

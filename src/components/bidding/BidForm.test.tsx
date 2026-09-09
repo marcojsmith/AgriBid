@@ -18,6 +18,13 @@ describe("BidForm", () => {
     vi.clearAllMocks();
   });
 
+  /**
+   * Expands the collapsed auto-bid section so its controls can be interacted with.
+   */
+  const expandAutoBid = () => {
+    fireEvent.click(screen.getByTestId("auto-bid-toggle"));
+  };
+
   it("renders manual bid input correctly", () => {
     render(
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
@@ -58,6 +65,8 @@ describe("BidForm", () => {
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
     );
 
+    expandAutoBid();
+
     // Enable proxy
     const proxyCheckbox = screen.getByLabelText(/enable auto-bid/i);
     fireEvent.click(proxyCheckbox);
@@ -89,6 +98,8 @@ describe("BidForm", () => {
     render(
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
     );
+
+    expandAutoBid();
 
     // Enable proxy and set max bid to 1150
     fireEvent.click(screen.getByLabelText(/enable auto-bid/i));
@@ -169,6 +180,7 @@ describe("BidForm", () => {
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
     );
 
+    expandAutoBid();
     fireEvent.click(screen.getByLabelText(/enable auto-bid/i));
     const manualInput = screen.getByPlaceholderText(/enter amount/i);
     const maxBidInput = screen.getByPlaceholderText(/enter max amount/i);
@@ -217,6 +229,7 @@ describe("BidForm", () => {
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
     );
 
+    expandAutoBid();
     fireEvent.click(screen.getByLabelText(/enable auto-bid/i));
     fireEvent.change(screen.getByPlaceholderText(/enter max amount/i), {
       target: { value: "1150" },
@@ -238,6 +251,7 @@ describe("BidForm", () => {
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
     );
 
+    expandAutoBid();
     fireEvent.click(screen.getByLabelText(/enable auto-bid/i));
     // Set max bid extremely low (below nextMinBid)
     fireEvent.change(screen.getByPlaceholderText(/enter max amount/i), {
@@ -255,6 +269,7 @@ describe("BidForm", () => {
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
     );
 
+    expandAutoBid();
     fireEvent.click(screen.getByLabelText(/enable auto-bid/i));
     fireEvent.change(screen.getByPlaceholderText(/enter max amount/i), {
       target: { value: "1050" }, // Invalid max bid
@@ -276,6 +291,7 @@ describe("BidForm", () => {
       />
     );
 
+    expandAutoBid();
     expect(screen.getByLabelText(/enable auto-bid/i)).not.toBeChecked();
 
     rerender(
@@ -288,5 +304,52 @@ describe("BidForm", () => {
     );
 
     expect(screen.getByLabelText(/enable auto-bid/i)).toBeChecked();
+  });
+
+  it("starts with the auto-bid section collapsed by default", () => {
+    render(
+      <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
+    );
+
+    expect(screen.getByTestId("auto-bid-toggle")).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(screen.queryByLabelText(/enable auto-bid/i)).not.toBeInTheDocument();
+  });
+
+  it("starts with the auto-bid section expanded when isProxyActive is true on mount", () => {
+    render(
+      <BidForm
+        auction={mockAuction}
+        onBid={mockOnBid}
+        isLoading={false}
+        currentUserMaxBid={2000}
+        isProxyActive={true}
+      />
+    );
+
+    expect(screen.getByTestId("auto-bid-toggle")).toHaveAttribute(
+      "aria-expanded",
+      "true"
+    );
+    expect(screen.getByLabelText(/enable auto-bid/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/enable auto-bid/i)).toBeChecked();
+  });
+
+  it("expands and collapses the auto-bid section via the toggle", () => {
+    render(
+      <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
+    );
+
+    const toggle = screen.getByTestId("auto-bid-toggle");
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText(/enable auto-bid/i)).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByLabelText(/enable auto-bid/i)).not.toBeInTheDocument();
   });
 });

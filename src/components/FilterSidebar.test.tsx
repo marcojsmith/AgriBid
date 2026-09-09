@@ -416,6 +416,19 @@ describe("FilterSidebar", () => {
         expect.objectContaining({ defaultMake: undefined })
       );
     });
+
+    it("disables defaults buttons and shows pending labels while saving", () => {
+      const mockMutate = vi.fn().mockReturnValue(new Promise(() => {}));
+      (useMutation as Mock).mockReturnValue(mockMutate);
+
+      renderSidebar();
+      fireEvent.click(screen.getByText("Save Defaults"));
+
+      expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Clear Defaults" })
+      ).toBeDisabled();
+    });
   });
 
   it("applies saved preferences to filters when no URL params present", async () => {

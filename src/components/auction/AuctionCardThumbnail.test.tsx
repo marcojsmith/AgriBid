@@ -59,4 +59,34 @@ describe("AuctionCardThumbnail", () => {
     const img = screen.getByAltText("Test Auction");
     expect(img).toBeInTheDocument();
   });
+
+  it("renders placeholder when the image fails to load", () => {
+    render(<AuctionCardThumbnail {...defaultProps} />);
+
+    fireEvent.error(screen.getByAltText("Test Auction"));
+
+    expect(screen.getByText("Image Pending")).toBeInTheDocument();
+    expect(screen.getByText("🚜")).toBeInTheDocument();
+    expect(screen.queryByAltText("Test Auction")).not.toBeInTheDocument();
+  });
+
+  it("renders the image again when primaryImage changes after a load failure", () => {
+    const { rerender } = render(<AuctionCardThumbnail {...defaultProps} />);
+
+    fireEvent.error(screen.getByAltText("Test Auction"));
+    expect(screen.getByText("Image Pending")).toBeInTheDocument();
+
+    rerender(
+      <AuctionCardThumbnail
+        {...defaultProps}
+        primaryImage="https://example.com/replacement.jpg"
+      />
+    );
+
+    expect(screen.queryByText("Image Pending")).not.toBeInTheDocument();
+    expect(screen.getByAltText("Test Auction")).toHaveAttribute(
+      "src",
+      "https://example.com/replacement.jpg"
+    );
+  });
 });

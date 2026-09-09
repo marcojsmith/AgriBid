@@ -67,7 +67,7 @@ export const MediaGalleryStep = () => {
             <div
               key={slot.id}
               className={cn(
-                "relative group aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-4 transition-all overflow-hidden",
+                "relative group aspect-video rounded-lg border border-dashed flex flex-col items-center justify-center p-4 transition-all overflow-hidden",
                 storageId
                   ? "border-primary/40 bg-muted"
                   : "border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5"
@@ -93,13 +93,13 @@ export const MediaGalleryStep = () => {
                       onClick={() => {
                         handleRemove(slot.id);
                       }}
-                      className="rounded-xl font-bold gap-2"
+                      className="rounded-md font-bold gap-2"
                     >
                       <X className="h-4 w-4" />
                       Remove
                     </Button>
                   </div>
-                  <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
+                  <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm">
                     <Check className="h-3 w-3 text-green-600" />
                     {slot.label} (UPLOADED)
                   </div>
@@ -129,10 +129,10 @@ export const MediaGalleryStep = () => {
                       )}
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-black uppercase tracking-tight">
+                      <p className="text-sm font-semibold tracking-tight">
                         {slot.label}
                       </p>
-                      <p className="text-[10px] text-muted-foreground font-medium uppercase">
+                      <p className="text-xs text-muted-foreground font-medium">
                         {slot.desc}
                       </p>
                     </div>
@@ -145,7 +145,7 @@ export const MediaGalleryStep = () => {
       </div>
 
       <div className="space-y-4">
-        <label className="text-xs font-black uppercase text-muted-foreground ml-1">
+        <label className="text-xs font-semibold text-muted-foreground ml-1">
           Additional Photos (Optional)
         </label>
         <div className="flex flex-wrap gap-4">
@@ -156,7 +156,7 @@ export const MediaGalleryStep = () => {
             return (
               <div
                 key={id}
-                className="relative h-24 w-24 rounded-xl border-2 border-primary/20 bg-primary/5 flex items-center justify-center group overflow-hidden"
+                className="relative h-24 w-24 rounded-lg border border-primary/20 bg-primary/5 flex items-center justify-center group overflow-hidden"
               >
                 {previewUrl ? (
                   <img
@@ -181,7 +181,7 @@ export const MediaGalleryStep = () => {
             );
           })}
           {formData.images.additional.length < 6 && (
-            <div className="relative h-24 w-24 rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5 transition-all">
+            <div className="relative h-24 w-24 rounded-lg border border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5 transition-all">
               <input
                 type="file"
                 accept="image/*"
@@ -201,18 +201,16 @@ export const MediaGalleryStep = () => {
                 ) : (
                   <Plus className="h-5 w-5 text-muted-foreground" />
                 )}
-                <span className="text-[8px] font-bold uppercase">
-                  Add Photo
-                </span>
+                <span className="text-[8px] font-bold">Add Photo</span>
               </label>
             </div>
           )}
         </div>
       </div>
 
-      <div className="bg-primary/5 p-4 rounded-xl flex items-center gap-3 border border-primary/10">
+      <div className="bg-primary/5 p-4 rounded-md flex items-center gap-3 border border-primary/10">
         <Info className="h-5 w-5 text-primary shrink-0" />
-        <p className="text-[10px] font-black uppercase tracking-wide text-primary">
+        <p className="text-xs font-semibold text-primary">
           Required: At least one photo. Recommended: Front, Engine, Cabin, Rear.
           Clear photos increase trust.
         </p>

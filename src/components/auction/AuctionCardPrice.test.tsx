@@ -18,7 +18,7 @@ describe("AuctionCardPrice", () => {
   it("renders current price", () => {
     render(<AuctionCardPrice {...defaultProps} />);
     // The price is split across elements, check for part of it
-    expect(screen.getByText("Current Bid")).toBeInTheDocument();
+    expect(screen.getByText("Current bid")).toBeInTheDocument();
     // Find an element containing R and a number
     const priceElement = screen.getByText(
       (content) => content.includes("R") && /\d/.test(content)
@@ -29,7 +29,7 @@ describe("AuctionCardPrice", () => {
   it("renders price with proper formatting", () => {
     render(<AuctionCardPrice {...defaultProps} currentPrice={1234567} />);
     // Just check that some price element exists
-    expect(screen.getByText("Current Bid")).toBeInTheDocument();
+    expect(screen.getByText("Current bid")).toBeInTheDocument();
   });
 
   it("renders nothing when isCompact is true", () => {
@@ -41,13 +41,13 @@ describe("AuctionCardPrice", () => {
 
   it("does not render countdown when isClosed is true", () => {
     render(<AuctionCardPrice {...defaultProps} isClosed={true} />);
-    expect(screen.queryByText("Ends In")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ends in")).not.toBeInTheDocument();
   });
 
   it("renders countdown when not closed", () => {
     render(
       <AuctionCardPrice {...defaultProps} endTime={Date.now() + 86400000} />
     );
-    expect(screen.getByText("Ends In")).toBeInTheDocument();
+    expect(screen.getByText("Ends in")).toBeInTheDocument();
   });
 });

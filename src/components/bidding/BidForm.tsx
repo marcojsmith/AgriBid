@@ -1,7 +1,13 @@
 // app/src/components/bidding/BidForm.tsx
 import { useState, useEffect, useRef } from "react";
 import type { Doc } from "convex/_generated/dataModel";
-import { TrendingUp, ArrowUpCircle, Clock, AlertTriangle } from "lucide-react";
+import {
+  TrendingUp,
+  ArrowUpCircle,
+  Clock,
+  AlertTriangle,
+  ChevronDown,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +52,11 @@ export const BidForm = ({
     nextMinBid.toString()
   );
   const [isProxyEnabled, setIsProxyEnabled] = useState(isProxyActive || false);
+  // Auto-bid section is collapsed by default (optional feature); users with an
+  // already-active proxy bid start expanded so they can see and edit it
+  const [isProxyExpanded, setIsProxyExpanded] = useState(
+    isProxyActive || false
+  );
   const [maxBid, setMaxBid] = useState<string>(
     currentUserMaxBid != null ? String(currentUserMaxBid) : ""
   );
@@ -149,67 +160,89 @@ export const BidForm = ({
 
   return (
     <div className="space-y-6">
-      {/* Proxy Bidding Section - Show if the form is enabled (logged in) */}
+      {/* Proxy Bidding Section - optional, collapsed by default (shown if the form is enabled/logged in) */}
       {isBidFormEnabled && (
         <div
-          className={`border-2 ${isProxyActive ? "border-primary" : "border-muted-foreground"} border-opacity-20 rounded-xl p-4 mb-4`}
+          className={`border ${isProxyActive ? "border-primary" : "border-muted-foreground"} border-opacity-20 rounded-md p-4 mb-4`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="proxy-enabled"
-                name="proxy-enabled"
-                checked={isProxyEnabled}
-                onChange={(e) => setIsProxyEnabled(e.target.checked)}
-                disabled={isLoading}
-                className="h-4 w-4 text-primary-foreground border-primary-foreground"
-              />
-              <label
-                htmlFor="proxy-enabled"
-                className="text-sm font-medium cursor-pointer"
-              >
-                Enable Auto-bid (Proxy Bidding)
-              </label>
-            </div>
-            {isProxyActive && (
-              <span className="text-xs font-medium bg-primary/10 text-primary rounded-full px-2 py-1">
-                Active
-              </span>
-            )}
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full justify-between h-8 px-2 font-medium"
+            onClick={() => setIsProxyExpanded((prev) => !prev)}
+            aria-expanded={isProxyExpanded}
+            aria-controls="proxy-bidding-section"
+            data-testid="auto-bid-toggle"
+          >
+            <span className="flex items-center gap-2">
+              Auto-bid (optional)
+              {isProxyActive && (
+                <span className="text-xs font-medium bg-primary/10 text-primary rounded-full px-2 py-0.5">
+                  Active
+                </span>
+              )}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${isProxyExpanded ? "rotate-180" : ""}`}
+            />
+          </Button>
 
-          {isProxyEnabled && (
-            <div className="mt-3">
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="proxy-max-bid"
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  Max Bid:
-                </label>
-                <input
-                  type="number"
-                  id="proxy-max-bid"
-                  name="proxy-max-bid"
-                  value={maxBid}
-                  onChange={(e) => setMaxBid(e.target.value)}
-                  placeholder="Enter max amount"
-                  className="w-32 h-8 px-2 py-1 text-sm rounded border border-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  disabled={isLoading}
-                />
-                {currentUserMaxBid != null && (
-                  <span className="text-xs text-muted-foreground">
-                    Current: R{currentUserMaxBid.toLocaleString()}
-                  </span>
-                )}
+          {isProxyExpanded && (
+            <div id="proxy-bidding-section" className="mt-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="proxy-enabled"
+                    name="proxy-enabled"
+                    checked={isProxyEnabled}
+                    onChange={(e) => setIsProxyEnabled(e.target.checked)}
+                    disabled={isLoading}
+                    className="h-4 w-4 text-primary-foreground border-primary-foreground"
+                  />
+                  <label
+                    htmlFor="proxy-enabled"
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    Enable Auto-bid (Proxy Bidding)
+                  </label>
+                </div>
               </div>
-              {!isMaxBidValid && maxBid !== "" && (
-                <p className="text-destructive text-xs font-bold mt-1">
-                  {currentMaxBidNum < nextMinBid
-                    ? `Max bid must be at least R${nextMinBid.toLocaleString()}`
-                    : `Max bid must be at least the manual amount of R${currentManualNum.toLocaleString()}`}
-                </p>
+
+              {isProxyEnabled && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="proxy-max-bid"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Max Bid:
+                    </label>
+                    <input
+                      type="number"
+                      id="proxy-max-bid"
+                      name="proxy-max-bid"
+                      value={maxBid}
+                      onChange={(e) => setMaxBid(e.target.value)}
+                      placeholder="Enter max amount"
+                      className="w-32 h-8 px-2 py-1 text-sm rounded border border-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      disabled={isLoading}
+                    />
+                    {currentUserMaxBid != null && (
+                      <span className="text-xs text-muted-foreground">
+                        Current: R{currentUserMaxBid.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  {!isMaxBidValid && maxBid !== "" && (
+                    <p className="text-destructive text-xs font-bold mt-1">
+                      {currentMaxBidNum < nextMinBid
+                        ? `Max bid must be at least R${nextMinBid.toLocaleString()}`
+                        : `Max bid must be at least the manual amount of R${currentManualNum.toLocaleString()}`}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -222,7 +255,7 @@ export const BidForm = ({
           <Button
             key={`quick-bid-${index}-${amount}`}
             variant="outline"
-            className="h-14 flex flex-col items-center justify-center gap-0.5 border-2 hover:border-primary hover:bg-primary/5 transition-all group"
+            className="h-14 flex flex-col items-center justify-center gap-0.5 border hover:border-primary hover:bg-primary/5 transition-all group"
             onClick={() => handleQuickBid(amount)}
             disabled={
               isLoading ||
@@ -230,10 +263,10 @@ export const BidForm = ({
               (isProxyEnabled && (!isMaxBidValid || currentMaxBidNum < amount))
             }
           >
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider group-hover:text-primary transition-colors">
+            <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">
               Quick Bid
             </span>
-            <span className="text-base font-black tracking-tight">
+            <span className="text-base font-semibold tracking-tight">
               R {amount.toLocaleString()}
             </span>
           </Button>
@@ -244,8 +277,8 @@ export const BidForm = ({
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t"></span>
         </div>
-        <div className="relative flex justify-center text-[10px] uppercase">
-          <span className="bg-card px-2 text-muted-foreground font-black tracking-[0.2em]">
+        <div className="relative flex justify-center text-[10px]">
+          <span className="bg-card px-2 text-muted-foreground font-medium">
             Or Enter Custom Amount
           </span>
         </div>
@@ -266,12 +299,12 @@ export const BidForm = ({
               value={manualAmount}
               onChange={(e) => setManualAmount(e.target.value)}
               placeholder="Enter amount"
-              className="h-14 pl-8 text-lg font-bold rounded-xl border-2 focus-visible:ring-primary"
+              className="h-14 pl-8 text-lg font-bold rounded-md border focus-visible:ring-primary"
               disabled={isLoading || !isBidFormEnabled}
             />
           </div>
           <Button
-            className="h-14 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
+            className="h-14 px-8 rounded-md font-semibold text-lg gap-2 shadow-lg shadow-primary/20"
             disabled={
               !isManualValid ||
               isLoading ||

@@ -58,7 +58,7 @@ export function LoadingPage({
   return (
     <div
       className={cn(
-        "flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold uppercase tracking-widest",
+        "flex h-[80vh] items-center justify-center bg-background text-primary animate-pulse font-bold",
         className
       )}
       role="status"

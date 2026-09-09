@@ -195,13 +195,13 @@ export default function MyListings() {
           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
             <LayoutDashboard className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-primary uppercase">
+          <h1 className="text-4xl font-bold tracking-tight text-primary">
             My Listings
           </h1>
         </div>
         <Button
           size="lg"
-          className="rounded-xl font-bold shadow-lg shadow-primary/20"
+          className="rounded-md font-bold shadow-lg shadow-primary/20"
           onClick={() => {
             try {
               localStorage.removeItem("agribid_listing_draft");
@@ -250,8 +250,8 @@ export default function MyListings() {
       </Tabs>
 
       {filteredListings.length === 0 ? (
-        <div className="max-w-4xl mx-auto space-y-8 py-24 text-center bg-card border-2 border-dashed rounded-3xl border-primary/10">
-          <p className="text-muted-foreground text-lg max-w-md mx-auto font-bold uppercase tracking-widest">
+        <div className="max-w-4xl mx-auto space-y-8 py-24 text-center bg-card border border-dashed rounded-lg border-primary/10">
+          <p className="text-muted-foreground text-lg max-w-md mx-auto font-bold">
             {statusFilter === "all"
               ? "You haven't listed any equipment yet."
               : `No listings with status: ${statusFilter.replace("_", " ")}`}
@@ -259,7 +259,7 @@ export default function MyListings() {
           {statusFilter === "all" && (
             <Button
               size="lg"
-              className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20"
+              className="h-14 px-12 rounded-lg font-semibold text-xl shadow-xl shadow-primary/20"
               asChild
             >
               <Link to="/sell">Start Selling</Link>
@@ -271,9 +271,9 @@ export default function MyListings() {
           {filteredListings.map((auction) => (
             <div
               key={auction._id}
-              className="bg-card border-2 rounded-2xl p-4 flex flex-col md:flex-row gap-6 items-start md:items-center group hover:border-primary/50 transition-colors"
+              className="bg-card border rounded-lg p-4 flex flex-col md:flex-row gap-6 items-start md:items-center group hover:border-primary/50 transition-colors"
             >
-              <div className="w-full md:w-48 aspect-video bg-muted rounded-xl overflow-hidden shrink-0">
+              <div className="w-full md:w-48 aspect-video bg-muted rounded-lg overflow-hidden shrink-0">
                 {(() => {
                   const normalizedImages = normalizeListingImages(
                     auction.images
@@ -297,7 +297,7 @@ export default function MyListings() {
                   </h3>
                   <Badge
                     variant={TYPED_BADGE_VARIANTS[auction.status] ?? "outline"}
-                    className="font-bold uppercase tracking-wider shrink-0"
+                    className="font-bold shrink-0"
                   >
                     {getAuctionStatusLabel(auction.status)}
                   </Badge>
@@ -429,7 +429,7 @@ export default function MyListings() {
           ))}
 
           <div className="flex flex-col items-center gap-4 pt-8">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+            <p className="text-xs font-semibold text-muted-foreground">
               Showing {filteredListings.length.toString()}
               {getStatusCount(statusFilter) > 0
                 ? ` of ${getStatusCount(statusFilter).toString()}`

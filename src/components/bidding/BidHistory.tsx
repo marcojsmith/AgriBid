@@ -76,11 +76,11 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="bid-history" className="border-none">
         <AccordionTrigger className="hover:no-underline py-4 px-0">
-          <div className="flex items-center gap-2 text-lg font-bold uppercase tracking-tight">
+          <div className="flex items-center gap-2 text-lg font-bold tracking-tight">
             <History className="h-5 w-5 text-primary" />
             Bid History
             {bids.length > 0 && (
-              <span className="ml-2 bg-primary/10 text-primary text-xs py-0.5 px-2 rounded-full font-black">
+              <span className="ml-2 bg-primary/10 text-primary text-xs py-0.5 px-2 rounded-full font-semibold">
                 {bids.length}
               </span>
             )}
@@ -92,11 +92,11 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
               <LoadingIndicator size="sm" />
             </div>
           ) : bids.length === 0 ? (
-            <div className="text-center py-12 bg-muted/20 rounded-xl border-2 border-dashed">
+            <div className="text-center py-12 bg-muted/20 rounded-md border border-dashed">
               <p className="text-muted-foreground text-sm font-medium">
                 No bids have been placed yet.
               </p>
-              <p className="text-[10px] text-muted-foreground uppercase mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Be the first to bid on this item!
               </p>
             </div>
@@ -107,7 +107,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
                 return (
                   <div
                     key={bid._id}
-                    className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                    className={`flex items-center justify-between p-3 rounded-md border transition-all ${
                       isHighest
                         ? "bg-primary/5 border-primary/20 shadow-sm"
                         : "bg-card border-transparent"
@@ -127,19 +127,19 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
                         <p className="text-sm font-bold tracking-tight">
                           {anonymizeName(bid.bidderName)}
                           {isHighest && (
-                            <span className="ml-2 text-[9px] uppercase bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-black tracking-widest">
+                            <span className="ml-2 text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-semibold">
                               Highest
                             </span>
                           )}
                         </p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase">
+                        <p className="text-xs text-muted-foreground font-medium">
                           {formatTime(bid.timestamp)}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p
-                        className={`text-base font-black tracking-tight ${isHighest ? "text-primary" : "text-foreground"}`}
+                        className={`text-base font-bold tracking-tight ${isHighest ? "text-primary" : "text-foreground"}`}
                       >
                         R {bid.amount.toLocaleString("en-ZA")}
                       </p>
@@ -150,7 +150,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
 
               <div className="pt-2 flex flex-col items-center gap-2">
                 {totalBids !== undefined && totalBids > 0 && (
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                  <p className="text-xs font-semibold text-muted-foreground">
                     Showing {bids.length} of {totalBids} Bids
                   </p>
                 )}
@@ -160,7 +160,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
                     variant="outline"
                     size="sm"
                     onClick={() => loadMore(PAGE_SIZE)}
-                    className="group border-2 font-bold uppercase tracking-tight text-[10px] h-8 px-4"
+                    className="group border font-bold tracking-tight text-xs h-8 px-4"
                   >
                     Load More Bids
                     <ChevronDown className="ml-1 h-3 w-3 group-hover:translate-y-0.5 transition-transform" />

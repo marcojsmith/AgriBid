@@ -3,7 +3,7 @@ import { useState, useRef, useLayoutEffect } from "react";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, ChevronDown, X } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import { useSession } from "@/lib/auth-client";
@@ -35,7 +35,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
  */
 export default function Home() {
   const { data: session, isPending } = useSession();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const preferences = useQuery(
@@ -137,14 +137,92 @@ export default function Home() {
     return <LoadingPage message="Loading..." />;
   }
 
-  const hasActiveFilters =
-    statusFilter !== "active" ||
-    make !== undefined ||
-    minYear !== undefined ||
-    maxYear !== undefined ||
-    minPrice !== undefined ||
-    maxPrice !== undefined ||
-    maxHours !== undefined;
+  /**
+   * A single removable filter chip shown below the page heading.
+   */
+  interface FilterChip {
+    /** Stable identifier used for the chip's data-testid */
+    key: string;
+    /** Human-readable label, e.g. "Make: John Deere" */
+    label: string;
+    /** Search param keys deleted when the chip is dismissed */
+    paramKeys: string[];
+  }
+
+  const formatRand = (value: number) => `R ${value.toLocaleString("en-ZA")}`;
+
+  /**
+   * Format a human-readable "X–Y" range label, falling back to
+   * "from"/"up to" phrasing when only one bound is set.
+   *
+   * @param label - The chip category label, e.g. "Year" or "Price"
+   * @param format - Formatter applied to each bound value
+   * @param min - Optional lower bound of the range
+   * @param max - Optional upper bound of the range
+   * @returns The formatted range label
+   */
+  const formatRangeLabel = (
+    label: string,
+    format: (value: number) => string,
+    min?: number,
+    max?: number
+  ): string => {
+    if (min !== undefined && max !== undefined) {
+      return `${label}: ${format(min)}\u2013${format(max)}`;
+    }
+    if (min !== undefined) {
+      return `${label}: from ${format(min)}`;
+    }
+    if (max !== undefined) {
+      return `${label}: up to ${format(max)}`;
+    }
+    return label;
+  };
+
+  const activeFilterChips: FilterChip[] = [];
+  if (make !== undefined) {
+    activeFilterChips.push({
+      key: "make",
+      label: `Make: ${make}`,
+      paramKeys: ["make"],
+    });
+  }
+  if (minYear !== undefined || maxYear !== undefined) {
+    activeFilterChips.push({
+      key: "year",
+      label: formatRangeLabel("Year", (value) => `${value}`, minYear, maxYear),
+      paramKeys: ["minYear", "maxYear"],
+    });
+  }
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    activeFilterChips.push({
+      key: "price",
+      label: formatRangeLabel("Price", formatRand, minPrice, maxPrice),
+      paramKeys: ["minPrice", "maxPrice"],
+    });
+  }
+  if (maxHours !== undefined) {
+    activeFilterChips.push({
+      key: "hours",
+      label: `Max Hours: ${maxHours.toLocaleString("en-ZA")}`,
+      paramKeys: ["maxHours"],
+    });
+  }
+  if (isValidStatus(rawStatus) && rawStatus !== "active") {
+    activeFilterChips.push({
+      key: "status",
+      label: `Status: ${rawStatus === "closed" ? "Closed" : "All"}`,
+      paramKeys: ["status"],
+    });
+  }
+
+  const removeFilter = (paramKeys: string[]) => {
+    const newParams = new URLSearchParams(searchParams.toString());
+    paramKeys.forEach((key) => {
+      newParams.delete(key);
+    });
+    setSearchParams(newParams);
+  };
 
   const getGridClasses = (mode: "compact" | "detailed", sidebarOpen: boolean) =>
     cn(
@@ -224,7 +302,7 @@ export default function Home() {
         <div className="flex-1 space-y-6 md:space-y-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-primary uppercase">
+              <h1 className="text-3xl font-bold tracking-tight text-primary">
                 {searchQuery
                   ? `Results for "${searchQuery}"`
                   : statusFilter === "active"
@@ -237,16 +315,34 @@ export default function Home() {
                 {searchQuery && (
                   <Button
                     variant="link"
-                    className="p-0 h-auto text-muted-foreground hover:text-primary font-bold uppercase text-[10px] tracking-widest"
+                    className="p-0 h-auto text-muted-foreground hover:text-primary font-medium text-xs"
                     asChild
                   >
                     <Link to="/">Clear search results</Link>
                   </Button>
                 )}
-                {hasActiveFilters && !searchQuery && (
-                  <p className="text-[10px] font-black uppercase text-primary tracking-widest">
-                    Filters Applied
-                  </p>
+                {activeFilterChips.length > 0 && (
+                  <div
+                    className="flex flex-wrap gap-2"
+                    data-testid="active-filter-chips"
+                  >
+                    {activeFilterChips.map((chip) => (
+                      <Button
+                        key={chip.key}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          removeFilter(chip.paramKeys);
+                        }}
+                        className="h-7 rounded-md px-2 text-xs font-medium text-muted-foreground hover:text-foreground gap-1"
+                        aria-label={`Remove filter: ${chip.label}`}
+                        data-testid={`filter-chip-${chip.key}`}
+                      >
+                        {chip.label}
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </Button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -259,14 +355,14 @@ export default function Home() {
                   setIsDesktopSidebarOpen(next);
                   if (session) void updateMyPreferences({ sidebarOpen: next });
                 }}
-                className="hidden lg:flex h-10 px-4 rounded-xl border-2 gap-2 font-bold uppercase text-xs"
+                className="hidden lg:flex h-10 px-4 rounded-md border gap-2 font-medium text-xs"
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 {isDesktopSidebarOpen ? "Hide Filters" : "Show Filters"}
               </Button>
 
               {/* View Toggle */}
-              <div className="flex bg-muted p-1 rounded-xl border shrink-0">
+              <div className="flex bg-muted p-1 rounded-md border shrink-0">
                 <Button
                   variant={viewMode === "detailed" ? "default" : "ghost"}
                   size="sm"
@@ -275,7 +371,7 @@ export default function Home() {
                     if (session)
                       void updateMyPreferences({ viewMode: "detailed" });
                   }}
-                  className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
+                  className="h-8 px-3 rounded-md text-xs font-medium"
                 >
                   Detailed
                 </Button>
@@ -287,7 +383,7 @@ export default function Home() {
                     if (session)
                       void updateMyPreferences({ viewMode: "compact" });
                   }}
-                  className="h-8 px-3 rounded-lg text-[10px] font-black uppercase"
+                  className="h-8 px-3 rounded-md text-xs font-medium"
                 >
                   Compact
                 </Button>
@@ -298,14 +394,14 @@ export default function Home() {
                 onClick={() => {
                   setIsMobileFilterOpen(true);
                 }}
-                className="lg:hidden h-10 w-10 p-0 rounded-xl border-2 flex items-center justify-center font-bold uppercase"
+                className="lg:hidden h-10 w-10 p-0 rounded-md border flex items-center justify-center font-medium"
                 aria-label="Filters"
               >
                 <SlidersHorizontal className="h-4 w-4" />
               </Button>
 
               <Button
-                className="flex-1 md:flex-none font-bold uppercase tracking-wider h-10 px-6 rounded-xl shadow-lg shadow-primary/20"
+                className="flex-1 md:flex-none font-semibold h-10 px-6 rounded-md shadow-lg shadow-primary/20"
                 asChild
               >
                 <Link to="/sell">Sell</Link>
@@ -333,9 +429,9 @@ export default function Home() {
               ))}
             </div>
           ) : auctions.length === 0 ? (
-            <div className="text-center py-24 bg-card rounded-3xl border-2 border-dashed border-primary/10">
+            <div className="text-center py-24 bg-card rounded-lg border border-dashed">
               <div className="text-5xl mb-4">🚜</div>
-              <p className="text-muted-foreground font-bold uppercase tracking-widest mb-6 px-4">
+              <p className="text-muted-foreground font-medium mb-6 px-4">
                 {searchQuery
                   ? `No auctions found matching "${searchQuery}".`
                   : "No auctions found matching your current filters."}
@@ -343,7 +439,7 @@ export default function Home() {
               <Button
                 asChild
                 variant="outline"
-                className="rounded-xl font-black px-8 border-2"
+                className="rounded-md font-medium px-8 border"
               >
                 <Link to="/">Clear All Filters</Link>
               </Button>
@@ -381,7 +477,7 @@ export default function Home() {
                       loadMore(PAGINATION_LOAD_MORE_ITEMS);
                     }}
                     variant="outline"
-                    className="rounded-xl font-black px-12 border-2 gap-2 h-12 uppercase tracking-widest text-xs"
+                    className="rounded-md font-medium px-12 border gap-2 h-12 text-xs"
                   >
                     Load More Auctions
                     <ChevronDown className="h-4 w-4" />

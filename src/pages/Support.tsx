@@ -90,23 +90,21 @@ export default function Support() {
 
       <div className="flex justify-between items-end">
         <div className="space-y-2">
-          <h1 className="text-4xl font-black uppercase tracking-tight">
-            Help & Support
-          </h1>
-          <p className="text-muted-foreground font-medium uppercase text-sm tracking-wide">
+          <h1 className="text-4xl font-bold tracking-tight">Help & Support</h1>
+          <p className="text-muted-foreground font-medium text-sm">
             Get assistance with auctions, accounts, or equipment.
           </p>
         </div>
         <div className="hidden md:flex gap-4">
-          <Card className="p-4 border-2 flex items-center gap-3 bg-muted/30">
-            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+          <Card className="p-4 border flex items-center gap-3 bg-muted/30">
+            <div className="h-10 w-10 bg-primary/10 rounded-md flex items-center justify-center text-primary">
               <Clock className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase text-muted-foreground">
+              <p className="text-xs font-semibold text-muted-foreground">
                 Response Time
               </p>
-              <p className="text-sm font-black">&lt; 4 Hours</p>
+              <p className="text-sm font-bold">&lt; 4 Hours</p>
             </div>
           </Card>
         </div>
@@ -114,18 +112,15 @@ export default function Support() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-6">
-          <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+          <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             Open New Ticket
           </h2>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Card className="p-6 border-2 space-y-4">
+            <Card className="p-6 border space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="subject"
-                    className="text-[10px] font-black uppercase tracking-widest"
-                  >
+                  <Label htmlFor="subject" className="text-xs font-semibold">
                     Subject
                   </Label>
                   <Input
@@ -135,15 +130,13 @@ export default function Support() {
                       setSubject(e.target.value.slice(0, 100));
                     }}
                     placeholder="e.g. Bidding Issue"
-                    className="h-12 border-2 rounded-xl"
+                    className="h-12 border rounded-md"
                     required
                     maxLength={100}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest">
-                    Priority
-                  </Label>
+                  <Label className="text-xs font-semibold">Priority</Label>
                   <Select
                     value={priority}
                     onValueChange={(v: "low" | "medium" | "high") => {
@@ -152,7 +145,7 @@ export default function Support() {
                   >
                     <SelectTrigger
                       aria-label="Priority"
-                      className="h-12 border-2 rounded-xl"
+                      className="h-12 border rounded-md"
                     >
                       <SelectValue />
                     </SelectTrigger>
@@ -170,13 +163,10 @@ export default function Support() {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
-                  <Label
-                    htmlFor="message"
-                    className="text-[10px] font-black uppercase tracking-widest"
-                  >
+                  <Label htmlFor="message" className="text-xs font-semibold">
                     Message
                   </Label>
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                  <span className="text-[9px] font-bold text-muted-foreground">
                     {message.length} / 2000
                   </span>
                 </div>
@@ -187,14 +177,14 @@ export default function Support() {
                     setMessage(e.target.value.slice(0, 2000));
                   }}
                   placeholder="Describe your issue in detail..."
-                  className="min-h-[150px] border-2 rounded-xl resize-none"
+                  className="min-h-[150px] border rounded-md resize-none"
                   required
                   maxLength={2000}
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full h-14 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                className="w-full h-14 rounded-md font-semibold shadow-lg shadow-primary/20"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -208,7 +198,7 @@ export default function Support() {
         </div>
 
         <div className="space-y-6">
-          <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+          <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
             My Tickets
           </h2>
@@ -222,18 +212,18 @@ export default function Support() {
                 {tickets.map((ticket) => (
                   <Card
                     key={ticket._id}
-                    className="p-4 border-2 hover:border-primary/40 transition-all"
+                    className="p-4 border hover:border-primary/40 transition-all"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <Badge
                         variant={
                           ticket.status === "open" ? "destructive" : "outline"
                         }
-                        className="text-[9px] font-black uppercase"
+                        className="text-[9px] font-semibold"
                       >
                         {ticket.status}
                       </Badge>
-                      <span className="text-[9px] font-mono text-muted-foreground uppercase">
+                      <span className="text-[9px] font-mono text-muted-foreground">
                         {new Date(ticket.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -244,7 +234,7 @@ export default function Support() {
                     {ticket.status === "resolved" && (
                       <div className="mt-3 pt-3 border-t flex items-center gap-2 text-green-600">
                         <CheckCircle2 className="h-3 w-3" />
-                        <span className="text-[10px] font-black uppercase">
+                        <span className="text-xs font-semibold">
                           Resolved by Admin
                         </span>
                       </div>
@@ -252,9 +242,9 @@ export default function Support() {
                   </Card>
                 ))}
                 {tickets.length === 0 && (
-                  <div className="text-center py-12 bg-muted/20 border-2 border-dashed rounded-3xl">
+                  <div className="text-center py-12 bg-muted/20 border border-dashed rounded-lg">
                     <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
-                    <p className="text-xs font-black uppercase text-muted-foreground">
+                    <p className="text-xs font-semibold text-muted-foreground">
                       No active tickets
                     </p>
                   </div>

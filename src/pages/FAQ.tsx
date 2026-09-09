@@ -48,10 +48,10 @@ export default function FAQ() {
       </Helmet>
 
       <div className="space-y-2">
-        <h1 className="text-4xl font-black uppercase tracking-tight">
+        <h1 className="text-4xl font-bold tracking-tight">
           Frequently Asked Questions
         </h1>
-        <p className="text-muted-foreground font-medium uppercase text-sm tracking-wide">
+        <p className="text-muted-foreground font-medium text-sm">
           Answers to common questions about AgriBid.
         </p>
       </div>
@@ -61,14 +61,14 @@ export default function FAQ() {
           <LoadingIndicator />
         </div>
       ) : faqs.length === 0 ? (
-        <div className="text-center py-16 bg-muted/20 border-2 border-dashed rounded-3xl">
+        <div className="text-center py-16 bg-muted/20 border border-dashed rounded-lg">
           <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
-          <p className="text-xs font-black uppercase text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">
             No FAQ items published yet.
           </p>
         </div>
       ) : (
-        <Card className="border-2 p-6">
+        <Card className="border p-6">
           <Accordion type="single" collapsible className="space-y-1">
             {faqs.map((item) => (
               <AccordionItem

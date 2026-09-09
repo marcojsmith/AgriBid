@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { AuctionHeader } from "@/components/AuctionHeader";
 import { ImageGallery } from "@/components/ImageGallery";
 import { BiddingPanel } from "@/components/bidding/BiddingPanel";
+import { MobileBidBar } from "@/components/bidding/MobileBidBar";
 import { BidHistory } from "@/components/bidding/BidHistory";
 import { SellerInfo } from "@/components/SellerInfo";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
@@ -270,15 +271,15 @@ export default function AuctionDetail() {
         crumbs={[{ label: "Home", href: "/" }, { label: auction.title }]}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-20 lg:pb-0">
         {/* Left Column: Images & Info */}
         <div className="lg:col-span-8 space-y-8">
           <AuctionHeader auction={auction} />
 
           {auction.startTime && (
-            <div className="flex items-center gap-2 text-sm font-bold bg-primary/5 border-2 border-primary/20 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-medium bg-primary/5 border border-primary/20 rounded-md px-4 py-3">
               <CalendarClock className="h-4 w-4 text-primary shrink-0" />
-              <span className="uppercase tracking-wide text-xs text-primary">
+              <span className="text-xs text-primary">
                 Auction Starts:{" "}
                 {new Date(auction.startTime).toLocaleString("en-ZA", {
                   dateStyle: "medium",
@@ -296,19 +297,17 @@ export default function AuctionDetail() {
           {/* Description Section */}
           <section
             aria-label="Equipment Description"
-            className="bg-card border-2 rounded-2xl p-8 space-y-6"
+            className="bg-card border rounded-md p-8 space-y-6"
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-xl font-bold uppercase tracking-tight">
-                Equipment Description
-              </h2>
+              <h2 className="text-lg font-semibold">Equipment Description</h2>
 
               {auction.conditionReportUrl && (
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5"
+                    className="rounded-md font-medium gap-2 border-primary/20 hover:bg-primary/5"
                     onClick={handleViewConditionReport}
                   >
                     <FileText className="h-4 w-4 text-primary" />
@@ -317,7 +316,7 @@ export default function AuctionDetail() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5"
+                    className="rounded-md font-medium gap-2 border-primary/20 hover:bg-primary/5"
                     asChild
                   >
                     <a
@@ -342,7 +341,7 @@ export default function AuctionDetail() {
 
           {/* Flag Button (for non-owners) */}
           {!sessionLoading && session && !isOwner && (
-            <div className="bg-card border-2 border-destructive/20 rounded-2xl p-6">
+            <div className="bg-card border border-destructive/20 rounded-md p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <h4 className="font-bold text-sm">See something wrong?</h4>
@@ -439,7 +438,7 @@ export default function AuctionDetail() {
           {/* Related Auctions */}
           {relatedAuctions && relatedAuctions.length > 0 && (
             <section aria-label={`More ${auction.make} Equipment`}>
-              <h2 className="text-lg font-black uppercase tracking-tight mb-4">
+              <h2 className="text-lg font-semibold mb-4">
                 More {auction.make} Equipment
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -463,7 +462,8 @@ export default function AuctionDetail() {
           <div className="lg:sticky lg:top-24 space-y-6 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto pr-2">
             <aside
               aria-label="Bidding"
-              className="bg-card border-2 border-primary/20 rounded-2xl p-6"
+              id="bidding-panel"
+              className="bg-card border border-primary/20 rounded-md p-6"
             >
               <BiddingPanel auction={auction} />
             </aside>
@@ -482,9 +482,9 @@ export default function AuctionDetail() {
 
             <section
               aria-label="Bid History"
-              className="bg-card border-2 rounded-2xl p-6"
+              className="bg-card border rounded-md p-6"
             >
-              <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-4">
+              <h2 className="text-sm font-semibold text-muted-foreground mb-4">
                 Bid History
               </h2>
               <BidHistory auctionId={auction._id} />
@@ -494,6 +494,8 @@ export default function AuctionDetail() {
           </div>
         </div>
       </div>
+
+      <MobileBidBar auction={auction} />
 
       {/* Condition Report Viewer Dialog */}
       <Dialog open={conditionReportOpen} onOpenChange={setConditionReportOpen}>

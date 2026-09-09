@@ -143,7 +143,7 @@ export function MetadataCatalog({
               <div className="space-y-2">
                 <label
                   htmlFor="make-name"
-                  className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+                  className="text-xs font-medium text-muted-foreground"
                 >
                   Manufacturer Name
                 </label>
@@ -159,7 +159,7 @@ export function MetadataCatalog({
               <div className="space-y-2">
                 <label
                   htmlFor="make-category"
-                  className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+                  className="text-xs font-medium text-muted-foreground"
                 >
                   Category
                 </label>
@@ -189,7 +189,7 @@ export function MetadataCatalog({
               <div className="space-y-2">
                 <label
                   htmlFor="make-initial-model"
-                  className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+                  className="text-xs font-medium text-muted-foreground"
                 >
                   Initial Model
                 </label>
@@ -214,7 +214,7 @@ export function MetadataCatalog({
       </div>
 
       {metadata.length === 0 ? (
-        <div className="bg-muted/30 rounded-xl p-12 text-center border-2 border-dashed">
+        <div className="bg-muted/30 rounded-md p-12 text-center border border-dashed">
           <Hammer className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
           <p className="text-muted-foreground font-medium">
             No equipment makes found matching your search.
@@ -226,7 +226,7 @@ export function MetadataCatalog({
             <AccordionItem
               key={item._id}
               value={item._id}
-              className={`border rounded-xl px-4 ${!item.isActive ? "bg-muted/50 grayscale-[0.5]" : "bg-card"}`}
+              className={`border rounded-md px-4 ${!item.isActive ? "bg-muted/50 grayscale-[0.5]" : "bg-card"}`}
             >
               <AccordionTrigger className="hover:no-underline py-4">
                 <div className="flex items-center gap-4 text-left">
@@ -318,7 +318,7 @@ export function MetadataCatalog({
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-black uppercase tracking-widest text-muted-foreground">
+                    <h4 className="text-sm font-semibold text-muted-foreground">
                       Models
                     </h4>
                     <AddModelDialog makeId={item._id} addModel={addModel} />
@@ -439,7 +439,7 @@ function EditMakeDialog({ item, categories, updateMake }: EditMakeDialogProps) {
           <div className="space-y-2">
             <label
               htmlFor={`edit-make-name-${item._id}`}
-              className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+              className="text-xs font-medium text-muted-foreground"
             >
               Name
             </label>
@@ -452,7 +452,7 @@ function EditMakeDialog({ item, categories, updateMake }: EditMakeDialogProps) {
           <div className="space-y-2">
             <label
               htmlFor={`edit-make-category-${item._id}`}
-              className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+              className="text-xs font-medium text-muted-foreground"
             >
               Category
             </label>
@@ -536,7 +536,7 @@ function AddModelDialog({ makeId, addModel }: AddModelDialogProps) {
           <div className="space-y-2">
             <label
               htmlFor={`add-model-${makeId}`}
-              className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+              className="text-xs font-medium text-muted-foreground"
             >
               Model Name
             </label>

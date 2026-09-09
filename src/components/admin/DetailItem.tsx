@@ -25,7 +25,7 @@ export function DetailItem({
         {icon}
       </div>
       <div>
-        <p className="text-[8px] font-black uppercase text-muted-foreground leading-none mb-0.5">
+        <p className="text-xs font-medium text-muted-foreground leading-none mb-0.5">
           {label}
         </p>
         <p className="text-sm font-bold tracking-tight">

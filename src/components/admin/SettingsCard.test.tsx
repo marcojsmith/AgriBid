@@ -86,7 +86,7 @@ describe("SettingsCard", () => {
     render(<SettingsCard {...defaultProps} />);
 
     const iconContainer = screen.getByTestId("icon").parentElement;
-    expect(iconContainer).toHaveClass("h-12", "w-12", "rounded-2xl");
+    expect(iconContainer).toHaveClass("h-12", "w-12", "rounded-md");
   });
 
   it("renders with long title", () => {

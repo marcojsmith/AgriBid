@@ -230,7 +230,7 @@ describe("AuctionCard", () => {
     const closedAuction = { ...mockAuction, status: "sold" as const };
     renderWithRouter({ auction: closedAuction });
 
-    expect(screen.getByText("SOLD")).toBeInTheDocument();
+    expect(screen.getByText("Sold")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Closed" })).toBeDisabled();
   });
 
@@ -415,24 +415,24 @@ describe("AuctionCard", () => {
     expect(screen.getByLabelText("Closed auction")).toBeInTheDocument();
   });
 
-  it("renders closed and detailed state with SOLD badge", () => {
+  it("renders closed and detailed state with Sold badge", () => {
     const closedAuction = { ...mockAuction, status: "sold" as const };
     renderWithRouter({
       auction: closedAuction as unknown as AuctionWithCategory,
       viewMode: "detailed",
     });
 
-    expect(screen.getByText("SOLD")).toBeInTheDocument();
+    expect(screen.getByText("Sold")).toBeInTheDocument();
   });
 
-  it("renders closed and detailed state with UNSOLD badge", () => {
+  it("renders closed and detailed state with Unsold badge", () => {
     const closedAuction = { ...mockAuction, status: "unsold" as const };
     renderWithRouter({
       auction: closedAuction as unknown as AuctionWithCategory,
       viewMode: "detailed",
     });
 
-    expect(screen.getByText("UNSOLD")).toBeInTheDocument();
+    expect(screen.getByText("Unsold")).toBeInTheDocument();
   });
 
   it("renders active and compact state without closed badges", () => {
@@ -451,7 +451,7 @@ describe("AuctionCard", () => {
       viewMode: "detailed",
     });
 
-    expect(screen.queryByText("SOLD")).not.toBeInTheDocument();
-    expect(screen.queryByText("UNSOLD")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sold")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unsold")).not.toBeInTheDocument();
   });
 });

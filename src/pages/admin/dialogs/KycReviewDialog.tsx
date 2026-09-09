@@ -74,7 +74,7 @@ export function KycReviewDialog({
     >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black uppercase tracking-tight">
+          <DialogTitle className="text-2xl font-semibold tracking-tight">
             KYC Verification Review
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -86,7 +86,7 @@ export function KycReviewDialog({
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                   <Fingerprint className="h-3 w-3" /> Personal Details
                 </h3>
                 <div className="space-y-3">
@@ -115,7 +115,7 @@ export function KycReviewDialog({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[8px] font-black uppercase absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 px-2 text-xs font-medium absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => {
                           setShowFullId(!showFullId);
                         }}
@@ -137,7 +137,7 @@ export function KycReviewDialog({
                 </div>
               </div>
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                   <FileText className="h-3 w-3" /> Submitted Documents
                 </h3>
                 <div className="space-y-2">
@@ -145,7 +145,7 @@ export function KycReviewDialog({
                     <Button
                       key={i}
                       variant="outline"
-                      className="w-full justify-start font-bold uppercase text-[10px] h-10 border-2 gap-2"
+                      className="w-full justify-start font-medium text-xs h-10 border gap-2"
                       onClick={() => {
                         window.open(url, "_blank", "noopener,noreferrer");
                       }}
@@ -164,10 +164,7 @@ export function KycReviewDialog({
             </div>
 
             <div className="space-y-2 border-t pt-4">
-              <Label
-                htmlFor="rejection-reason"
-                className="text-[10px] font-black uppercase tracking-widest"
-              >
+              <Label htmlFor="rejection-reason" className="text-xs font-medium">
                 Rejection Reason (Required for Reject)
               </Label>
               <Textarea
@@ -178,13 +175,13 @@ export function KycReviewDialog({
                 onChange={(e) => {
                   setRejectionReason(e.target.value);
                 }}
-                className="border-2 rounded-xl"
+                className="border rounded-md"
               />
             </div>
             <DialogFooter className="gap-2">
               <Button
                 variant="outline"
-                className="border-2 font-black uppercase text-xs h-12 px-8 hover:bg-destructive/10 hover:text-destructive"
+                className="border font-semibold text-xs h-12 px-8 hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => {
                   onReview("reject");
                 }}
@@ -198,7 +195,7 @@ export function KycReviewDialog({
                 Reject Application
               </Button>
               <Button
-                className="font-black uppercase text-xs h-12 px-8 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
+                className="font-semibold text-xs h-12 px-8 bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/20"
                 onClick={() => {
                   onReview("approve");
                 }}

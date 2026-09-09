@@ -145,7 +145,7 @@ export const AuctionCard = ({
   return (
     <Card
       className={cn(
-        "overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:scale-[1.01] hover:shadow-xl bg-card group rounded-lg h-full shadow-none"
+        "overflow-hidden border hover:border-primary/60 transition-shadow duration-200 hover:shadow-md bg-card group rounded-lg h-full shadow-none"
       )}
     >
       <div className="relative">
@@ -194,9 +194,9 @@ export const AuctionCard = ({
                 variant={
                   auction.status === "sold" ? "secondary" : "destructive"
                 }
-                className="font-black uppercase tracking-wider shadow-lg"
+                className="font-semibold shadow-lg"
               >
-                {auction.status === "sold" ? "SOLD" : "UNSOLD"}
+                {auction.status === "sold" ? "Sold" : "Unsold"}
               </Badge>
             </div>
           )}
@@ -208,7 +208,10 @@ export const AuctionCard = ({
               <div className="flex flex-wrap gap-1 mb-1">
                 <Badge
                   variant="outline"
-                  className="text-[8px] h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5 uppercase font-bold"
+                  className={cn(
+                    "h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5 font-medium",
+                    isCompact ? "text-[10px]" : "text-xs"
+                  )}
                 >
                   {auction.categoryName ?? "Equipment"}
                 </Badge>
@@ -216,7 +219,7 @@ export const AuctionCard = ({
               <div className="flex justify-between items-start gap-2">
                 <CardTitle
                   className={cn(
-                    "leading-tight font-black group-hover:text-primary transition-colors line-clamp-2 uppercase tracking-tight",
+                    "leading-tight font-semibold group-hover:text-primary transition-colors line-clamp-2",
                     isCompact
                       ? "text-xs sm:text-sm md:text-base"
                       : "text-lg md:text-xl"
@@ -231,7 +234,7 @@ export const AuctionCard = ({
                   {auction.description}
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-muted-foreground font-bold text-sm">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-muted-foreground font-medium text-sm">
                   <div className="flex items-center gap-1">
                     <MapPin className="text-primary/60 h-4 w-4" />
                     <span className="truncate">{auction.location}</span>
@@ -268,11 +271,12 @@ export const AuctionCard = ({
         >
           <Button
             size="sm"
+            variant={isCompact ? "default" : "outline"}
             className={cn(
-              "flex-1 font-black uppercase shadow-sm",
+              "flex-1 font-semibold shadow-sm",
               isCompact
-                ? "text-[10px] h-8 rounded-lg"
-                : "text-xs h-11 rounded-xl"
+                ? "text-[10px] h-8 rounded-md"
+                : "text-xs h-11 rounded-md"
             )}
             onClick={handleBidInitiate}
             disabled={isBidding || auction.status !== "active"}

@@ -34,15 +34,13 @@ export function DocumentUploadSection({
   onDeleteDocument,
 }: DocumentUploadSectionProps) {
   return (
-    <Card className="p-6 border-2 space-y-4">
+    <Card className="p-6 border space-y-4">
       <div className="flex items-center gap-2 pb-2 border-b">
         <Upload className="h-5 w-5 text-primary" />
-        <h2 className="font-black uppercase text-sm tracking-widest">
-          Supporting Documents
-        </h2>
+        <h2 className="font-bold text-sm">Supporting Documents</h2>
       </div>
 
-      <div className="p-8 bg-muted/30 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 text-center group hover:bg-muted/50 transition-colors">
+      <div className="p-8 bg-muted/30 rounded-lg border border-dashed flex flex-col items-center justify-center gap-4 text-center group hover:bg-muted/50 transition-colors">
         <Label
           htmlFor="kyc-file-upload"
           className="cursor-pointer space-y-4 w-full"
@@ -51,7 +49,7 @@ export function DocumentUploadSection({
             <Upload className="h-8 w-8 text-primary" />
           </div>
           <div className="space-y-1">
-            <p className="font-black uppercase text-sm">Drop ID images here</p>
+            <p className="font-semibold text-sm">Drop ID images here</p>
             <p className="text-xs text-muted-foreground font-medium">
               PNG, JPG or PDF up to 10MB
             </p>
@@ -74,7 +72,7 @@ export function DocumentUploadSection({
             <Badge
               key={docId}
               variant="secondary"
-              className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/20"
+              className="h-8 px-3 gap-2 font-bold text-xs border border-success/20"
             >
               <ShieldCheck className="h-3 w-3 text-green-600" />
               Existing Doc {idx + 1}
@@ -95,7 +93,7 @@ export function DocumentUploadSection({
             <Badge
               key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
               variant="secondary"
-              className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2"
+              className="h-8 px-3 gap-2 font-bold text-xs border"
             >
               <FileText className="h-3 w-3" />
               {f.name}

@@ -68,17 +68,17 @@ export default function Notifications() {
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       <div className="flex justify-between items-end">
         <div className="space-y-2">
-          <h1 className="text-4xl font-black uppercase tracking-tight">
+          <h1 className="text-4xl font-bold tracking-tight">
             Notification Archive
           </h1>
-          <p className="text-muted-foreground font-medium uppercase text-xs tracking-widest">
+          <p className="text-muted-foreground font-medium text-xs">
             Your communication history
           </p>
         </div>
         {hasNotifications && (
           <Button
             variant="outline"
-            className="border-2 font-black uppercase text-[10px] tracking-widest h-10 px-6 rounded-xl"
+            className="border font-semibold text-xs h-10 px-6 rounded-md"
             onClick={handleMarkAllRead}
             disabled={isMarkingAllRead}
           >
@@ -90,14 +90,14 @@ export default function Notifications() {
         )}
       </div>
 
-      <Card className="border-2 overflow-hidden bg-card/50">
+      <Card className="border overflow-hidden bg-card/50">
         <div className="divide-y-2">
           {(() => {
             if (notifications === undefined) {
               return (
                 <div className="py-24 text-center">
                   <LoadingIndicator className="mx-auto" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-4">
+                  <p className="text-xs font-semibold text-muted-foreground mt-4">
                     Syncing History...
                   </p>
                 </div>
@@ -109,10 +109,8 @@ export default function Notifications() {
                 <div className="py-24 text-center space-y-4">
                   <Inbox className="h-12 w-12 text-muted-foreground/20 mx-auto" />
                   <div className="space-y-1">
-                    <p className="text-xl font-black uppercase">
-                      No notifications
-                    </p>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                    <p className="text-xl font-semibold">No notifications</p>
+                    <p className="text-xs text-muted-foreground font-medium">
                       You're all caught up for now.
                     </p>
                   </div>
@@ -129,21 +127,21 @@ export default function Notifications() {
                 )}
                 onClick={() => onNotificationClick(n._id, n.link)}
               >
-                <div className="h-12 w-12 rounded-2xl bg-background border-2 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                <div className="h-12 w-12 rounded-lg bg-background border flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
                   {getNotificationIcon(n.type)}
                 </div>
 
                 <div className="flex-1 space-y-1">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-black uppercase text-sm tracking-tight">
+                      <h3 className="font-semibold text-sm tracking-tight">
                         {n.title}
                       </h3>
                       {!n.isRead && (
                         <Badge className="h-2 w-2 rounded-full p-0 bg-primary animate-pulse" />
                       )}
                     </div>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                       <Clock className="h-3 w-3" />
                       {new Date(n.createdAt).toLocaleDateString()}
                     </span>
@@ -156,7 +154,7 @@ export default function Notifications() {
                     <div className="pt-2">
                       <Button
                         variant="link"
-                        className="p-0 h-auto text-[10px] font-black uppercase tracking-widest text-primary gap-1 group-hover:translate-x-1 transition-transform"
+                        className="p-0 h-auto text-xs font-semibold text-primary gap-1 group-hover:translate-x-1 transition-transform"
                       >
                         View Details <ArrowRight className="h-3 w-3" />
                       </Button>

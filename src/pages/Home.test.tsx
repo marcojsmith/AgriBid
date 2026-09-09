@@ -184,13 +184,116 @@ describe("Home Page Full Coverage", () => {
     expect(screen.getByText(/All Auctions/i)).toBeInTheDocument();
   });
 
-  it("renders filters applied indicator", () => {
+  it("renders removable filter chips when filters are active", () => {
     (useSearchParams as Mock).mockReturnValue([
       new URLSearchParams("make=John+Deere"),
       vi.fn(),
     ]);
     renderHome();
-    expect(screen.getByText(/Filters Applied/i)).toBeInTheDocument();
+    expect(screen.getByTestId("active-filter-chips")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-chip-make")).toHaveTextContent(
+      "Make: John Deere"
+    );
+  });
+
+  it("does not render filter chips when no filters are active", () => {
+    renderHome();
+    expect(screen.queryByTestId("active-filter-chips")).not.toBeInTheDocument();
+  });
+
+  it("removes the make filter and preserves other params when its chip is dismissed", () => {
+    const setSearchParams = vi.fn();
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("make=John+Deere&q=tractor"),
+      setSearchParams,
+    ]);
+    renderHome();
+    fireEvent.click(screen.getByTestId("filter-chip-make"));
+
+    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("make")).toBe(false);
+    expect(calledWith.get("q")).toBe("tractor");
+  });
+
+  it("renders a combined year chip and removes both year params on dismissal", () => {
+    const setSearchParams = vi.fn();
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("minYear=2015&maxYear=2020&make=John+Deere"),
+      setSearchParams,
+    ]);
+    renderHome();
+    const chip = screen.getByTestId("filter-chip-year");
+    expect(chip).toHaveTextContent("Year: 2015–2020");
+
+    fireEvent.click(chip);
+    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("minYear")).toBe(false);
+    expect(calledWith.has("maxYear")).toBe(false);
+    expect(calledWith.get("make")).toBe("John Deere");
+  });
+
+  it("renders a price chip and removes both price params on dismissal", () => {
+    const setSearchParams = vi.fn();
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("minPrice=100000&maxPrice=500000"),
+      setSearchParams,
+    ]);
+    renderHome();
+    const chip = screen.getByTestId("filter-chip-price");
+    expect(chip).toHaveTextContent(/100/);
+    expect(chip).toHaveTextContent(/500/);
+
+    fireEvent.click(chip);
+    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("minPrice")).toBe(false);
+    expect(calledWith.has("maxPrice")).toBe(false);
+  });
+
+  it("renders a max hours chip and removes it on dismissal", () => {
+    const setSearchParams = vi.fn();
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("maxHours=1000"),
+      setSearchParams,
+    ]);
+    renderHome();
+    expect(screen.getByTestId("filter-chip-hours")).toHaveTextContent(
+      "Max Hours: 1"
+    );
+
+    fireEvent.click(screen.getByTestId("filter-chip-hours"));
+    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("maxHours")).toBe(false);
+  });
+
+  it("renders a status chip for non-active status and removes it on dismissal", () => {
+    const setSearchParams = vi.fn();
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=closed"),
+      setSearchParams,
+    ]);
+    renderHome();
+    expect(screen.getByTestId("filter-chip-status")).toHaveTextContent(
+      "Status: Closed"
+    );
+
+    fireEvent.click(screen.getByTestId("filter-chip-status"));
+    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(calledWith.has("status")).toBe(false);
+  });
+
+  it("does not render a status chip when status comes from saved preferences only", () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "u1" } },
+      isPending: false,
+    });
+    (useQuery as Mock)
+      .mockReturnValueOnce({ defaultStatusFilter: "closed" })
+      .mockReturnValueOnce(["1"]);
+    (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
+
+    renderHome();
+    expect(screen.queryByTestId("filter-chip-status")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("active-filter-chips")).not.toBeInTheDocument();
   });
 
   it("initializes in mobile view (compact) when viewport is small", () => {

@@ -82,29 +82,27 @@ export const BiddingPanel = ({
         <div className="text-center space-y-2">
           <Badge
             variant={auction.status === "sold" ? "default" : "destructive"}
-            className="font-black uppercase tracking-widest px-4 py-1.5 text-xs mb-2"
+            className="font-semibold px-4 py-1.5 text-xs mb-2"
           >
             Auction {auction.status}
           </Badge>
-          <h3 className="text-3xl font-black text-primary tracking-tighter">
+          <h3 className="text-3xl font-semibold tabular-nums text-primary tracking-tighter">
             R {auction.currentPrice.toLocaleString("en-ZA")}
           </h3>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+          <p className="text-xs font-medium text-muted-foreground">
             Final Price
           </p>
         </div>
 
-        <div className="bg-muted/30 border-2 rounded-2xl p-6 text-center space-y-4">
+        <div className="bg-muted/30 border rounded-md p-6 text-center space-y-4">
           {auction.status === "sold" ? (
             <>
-              <div className="h-16 w-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
-                <Gavel className="h-8 w-8 text-green-600" />
+              <div className="h-16 w-16 bg-success/10 rounded-full flex items-center justify-center mx-auto">
+                <Gavel className="h-8 w-8 text-success" />
               </div>
               <div className="space-y-1">
-                <p className="font-black uppercase text-sm">
-                  Winning Bid Confirmed
-                </p>
-                <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                <p className="font-semibold text-sm">Winning Bid Confirmed</p>
+                <p className="text-xs text-muted-foreground font-medium">
                   {isWon
                     ? "Congratulations, you are the buyer!"
                     : "This item has found a new owner."}
@@ -118,8 +116,8 @@ export const BiddingPanel = ({
               </div>
               <div className="space-y-1">
                 <div className="space-y-1">
-                  <p className="font-black uppercase text-sm">Auction Closed</p>
-                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                  <p className="font-semibold text-sm">Auction Closed</p>
+                  <p className="text-xs text-muted-foreground font-medium">
                     {auction.currentPrice === auction.startingPrice
                       ? "No bids were placed."
                       : "Reserve price was not met."}
@@ -132,7 +130,7 @@ export const BiddingPanel = ({
 
         <Button
           variant="outline"
-          className="w-full h-14 rounded-xl font-black uppercase tracking-tight border-2"
+          className="w-full h-14 rounded-md font-medium border"
           asChild
         >
           <Link to="/">Explore Other Auctions</Link>
@@ -220,17 +218,17 @@ export const BiddingPanel = ({
     <div className="space-y-6">
       <div className="flex justify-between items-start">
         <div className="space-y-1">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">
+          <p className="text-xs font-medium text-muted-foreground">
             Current Bid
           </p>
           <div
-            className={`flex items-baseline gap-2 rounded-lg p-2 border-2 transition-colors duration-700 ${
+            className={`flex items-baseline gap-2 rounded-md p-2 border transition-colors duration-700 ${
               !isEnded && isHighlighted
-                ? "bg-green-500/10 border-green-500/30"
+                ? "bg-success/10 border-success/30"
                 : "border-transparent"
             }`}
           >
-            <span className="text-4xl font-black text-primary tracking-tighter">
+            <span className="text-4xl font-bold tabular-nums text-primary tracking-tighter">
               R {auction.currentPrice.toLocaleString("en-ZA")}
             </span>
             {!isEnded && (
@@ -244,7 +242,7 @@ export const BiddingPanel = ({
           </div>
         </div>
         <div className="text-right space-y-1">
-          <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.2em]">
+          <p className="text-xs font-medium text-muted-foreground">
             Time Remaining
           </p>
           <div className="text-xl font-bold">
@@ -254,23 +252,23 @@ export const BiddingPanel = ({
       </div>
 
       {isEnded ? (
-        <div className="bg-muted/50 border-2 border-dashed rounded-xl p-6 text-center">
-          <p className="font-bold text-muted-foreground uppercase tracking-widest text-sm">
+        <div className="bg-muted/50 border border-dashed rounded-md p-6 text-center">
+          <p className="font-medium text-muted-foreground text-sm">
             Auction Ended
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
             Final Price: R {auction.currentPrice.toLocaleString("en-ZA")}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {auction.isExtended && (
-            <Alert className="bg-amber-50 border-amber-200 text-amber-900 rounded-xl py-3 border-2">
-              <Info className="h-4 w-4 text-amber-600" />
-              <AlertTitle className="text-xs font-black uppercase tracking-widest mb-0.5">
+            <Alert className="bg-warning/10 border-warning/20 text-warning rounded-md py-3 border">
+              <Info className="h-4 w-4 text-warning" />
+              <AlertTitle className="text-xs font-semibold mb-0.5">
                 Soft Close Extended
               </AlertTitle>
-              <AlertDescription className="text-[10px] font-bold leading-tight opacity-80 uppercase">
+              <AlertDescription className="text-[10px] font-normal leading-tight opacity-80">
                 Bidding activity has extended the auction to ensure a fair
                 finish.
               </AlertDescription>
@@ -281,7 +279,7 @@ export const BiddingPanel = ({
             <Gavel className="h-4 w-4 text-primary" />
             <span>
               Next minimum bid:{" "}
-              <span className="text-foreground">
+              <span className="text-foreground tabular-nums">
                 R {nextMinBid.toLocaleString("en-ZA")}
               </span>
             </span>
@@ -290,14 +288,14 @@ export const BiddingPanel = ({
           {!isProfileLoading && !isVerified && session && (
             <Alert
               variant="destructive"
-              className="bg-orange-50 border-orange-200 text-orange-900 rounded-xl py-4 border-2"
+              className="bg-destructive/10 border-destructive/20 text-destructive rounded-md py-4 border"
             >
-              <ShieldAlert className="h-5 w-5 text-orange-600" />
+              <ShieldAlert className="h-5 w-5 text-destructive" />
               <div className="space-y-1 ml-2">
-                <AlertTitle className="text-xs font-black uppercase tracking-widest mb-1">
+                <AlertTitle className="text-xs font-semibold mb-1">
                   Verification Required
                 </AlertTitle>
-                <AlertDescription className="text-[10px] font-bold leading-relaxed opacity-90 uppercase">
+                <AlertDescription className="text-[10px] font-normal leading-relaxed opacity-90">
                   {kycStatus === "pending"
                     ? "Your identity verification is currently under review. Bidding will be enabled once approved."
                     : "To ensure marketplace integrity, you must complete identity verification before placing bids."}
@@ -305,7 +303,7 @@ export const BiddingPanel = ({
                 {kycStatus !== "pending" && (
                   <Button
                     variant="link"
-                    className="p-0 h-auto text-[10px] font-black uppercase text-orange-700 underline underline-offset-4"
+                    className="p-0 h-auto text-[10px] font-medium text-destructive underline underline-offset-4"
                     asChild
                   >
                     <Link to="/kyc">Complete KYC Now</Link>

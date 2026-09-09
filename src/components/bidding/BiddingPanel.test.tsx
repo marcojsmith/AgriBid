@@ -546,7 +546,7 @@ describe("BiddingPanel", () => {
       </BrowserRouter>
     );
 
-    expect(container.innerHTML).toContain("bg-green-500/10");
+    expect(container.innerHTML).toContain("bg-success/10");
     vi.mocked(usePriceHighlight).mockReturnValue(false); // reset
   });
 
@@ -658,9 +658,7 @@ describe("BiddingPanel", () => {
         <BiddingPanel auction={auction} />
       </BrowserRouter>
     );
-    expect(
-      container.querySelector(".border-green-500\\/30")
-    ).toBeInTheDocument();
+    expect(container.querySelector(".border-success\\/30")).toBeInTheDocument();
 
     // Case 2: !isEnded && !isHighlighted
     vi.mocked(usePriceHighlight).mockReturnValue(false);

@@ -72,13 +72,13 @@ export function VerificationStatusSection({
     const hasDocs = !!myKycDetails.kycDocumentUrls?.length;
 
     return (
-      <Card className="p-12 border-2 border-green-500/20 bg-green-500/5 space-y-8">
+      <Card className="p-12 border border-success/20 bg-success/5 space-y-8">
         <div className="text-center space-y-4">
           <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
             <ShieldCheck className="h-8 w-8 text-white" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-2xl font-black uppercase">Identity Verified</h2>
+            <h2 className="text-2xl font-bold">Identity Verified</h2>
             <p className="text-muted-foreground font-medium">
               Your account is fully verified. Thank you for maintaining
               marketplace integrity.
@@ -89,7 +89,7 @@ export function VerificationStatusSection({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-green-500/10 pt-8">
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <Label className="text-xs font-semibold text-muted-foreground">
                 Full Name
               </Label>
               <p className="font-bold">
@@ -99,7 +99,7 @@ export function VerificationStatusSection({
               </p>
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <Label className="text-xs font-semibold text-muted-foreground">
                 ID Number
               </Label>
               <p className="font-bold">{myKycDetails.idNumber || "N/A"}</p>
@@ -107,7 +107,7 @@ export function VerificationStatusSection({
           </div>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <Label className="text-xs font-semibold text-muted-foreground">
                 Contact Details
               </Label>
               <div className="space-y-1">
@@ -121,7 +121,7 @@ export function VerificationStatusSection({
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <Label className="text-xs font-semibold text-muted-foreground">
                 Verified Documents
               </Label>
               <div className="flex flex-wrap gap-2">
@@ -131,7 +131,7 @@ export function VerificationStatusSection({
                       <Badge
                         key={url}
                         variant="secondary"
-                        className="h-8 px-3 gap-2 font-bold uppercase text-[10px] border-2 border-green-500/10"
+                        className="h-8 px-3 gap-2 font-bold text-xs border border-success/20"
                       >
                         <FileText className="h-3 w-3" />
                         Document {idx + 1}
@@ -139,7 +139,7 @@ export function VerificationStatusSection({
                     )
                   )
                 ) : (
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase italic">
+                  <p className="text-xs font-bold text-muted-foreground italic">
                     No documents verified
                   </p>
                 )}
@@ -152,14 +152,14 @@ export function VerificationStatusSection({
           <Button
             onClick={() => navigate("/profile/" + userId)}
             variant="outline"
-            className="border-2 font-bold uppercase h-12 px-8"
+            className="border font-bold h-12 px-8"
           >
             View Public Profile
           </Button>
           <Button
             onClick={onEdit}
             variant="secondary"
-            className="border-2 font-bold uppercase h-12 px-8"
+            className="border font-bold h-12 px-8"
           >
             Edit Details
           </Button>
@@ -170,12 +170,12 @@ export function VerificationStatusSection({
 
   if (status === "pending") {
     return (
-      <Card className="p-12 border-2 border-orange-500/20 bg-orange-500/5 text-center space-y-4">
+      <Card className="p-12 border border-warning/20 bg-warning/5 text-center space-y-4">
         <div className="h-16 w-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto animate-pulse shadow-lg shadow-orange-500/20">
           <Clock className="h-8 w-8 text-white" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-2xl font-black uppercase">Review in Progress</h2>
+          <h2 className="text-2xl font-bold">Review in Progress</h2>
           <p className="text-muted-foreground font-medium">
             Our compliance team is reviewing your documents. You'll receive a
             notification once verified.
@@ -184,7 +184,7 @@ export function VerificationStatusSection({
         <Button
           onClick={() => navigate("/")}
           variant="outline"
-          className="border-2 font-bold uppercase"
+          className="border font-bold"
         >
           Return to Marketplace
         </Button>
@@ -194,20 +194,18 @@ export function VerificationStatusSection({
 
   if (status === "rejected") {
     return (
-      <Card className="p-12 border-2 border-red-500/20 bg-red-500/5 text-center space-y-4">
+      <Card className="p-12 border border-destructive/20 bg-destructive/5 text-center space-y-4">
         <div className="h-16 w-16 bg-red-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-red-500/20">
           <ShieldX className="h-8 w-8 text-white" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-2xl font-black uppercase">
-            Verification Rejected
-          </h2>
+          <h2 className="text-2xl font-bold">Verification Rejected</h2>
           <p className="text-muted-foreground font-medium">
             Your identity verification was not approved. Please review your
             documents and try again.
           </p>
         </div>
-        <Button onClick={onEdit} className="border-2 font-bold uppercase">
+        <Button onClick={onEdit} className="border font-bold">
           Resubmit Documents
         </Button>
       </Card>

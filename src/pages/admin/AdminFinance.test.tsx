@@ -43,6 +43,8 @@ vi.mock("lucide-react", () => ({
   Activity: () => <div data-testid="activity-icon" />,
   Bug: () => <div data-testid="bug-icon" />,
   Building2: () => <div data-testid="building2-icon" />,
+  Menu: () => <div data-testid="menu-icon" />,
+  X: () => <div data-testid="x-icon" />,
 }));
 
 describe("AdminFinance Page", () => {

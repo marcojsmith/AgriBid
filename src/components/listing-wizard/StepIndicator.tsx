@@ -17,10 +17,10 @@ export const StepIndicator = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-end">
         <div className="space-y-1">
-          <p className="text-xs font-black text-primary uppercase tracking-[0.2em]">
+          <p className="text-xs font-semibold text-primary">
             Step {currentStep + 1} of {STEPS.length}
           </p>
-          <h2 className="text-2xl font-black uppercase tracking-tight">
+          <h2 className="text-2xl font-bold tracking-tight">
             {STEPS[currentStep]}
           </h2>
         </div>
@@ -31,7 +31,7 @@ export const StepIndicator = () => {
           )}
         >
           <Save className="h-4 w-4 text-muted-foreground" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <span className="text-xs font-bold text-muted-foreground">
             Draft Saved
           </span>
         </div>
