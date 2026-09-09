@@ -91,12 +91,12 @@ export default function AdminUsers() {
       subtitle="Oversight of Platform Participants & Verification"
     >
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-md border border-dashed">
           <div className="relative group w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input
               placeholder="Search Users..."
-              className="pl-9 h-9 border-2 rounded-lg bg-background focus-visible:ring-primary/20"
+              className="pl-9 h-9 border rounded-lg bg-background focus-visible:ring-primary/20"
               value={userSearch}
               onChange={(e) => {
                 setUserSearch(e.target.value);
@@ -112,23 +112,21 @@ export default function AdminUsers() {
             </Badge>
           </div>
         </div>
-        <Card className="border-2 overflow-hidden bg-card/30 backdrop-blur-sm">
+        <Card className="border overflow-hidden bg-card/30 backdrop-blur-sm">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
+                <TableHead className="text-xs font-medium py-4">
                   Identity
                 </TableHead>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
-                  Role
-                </TableHead>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
+                <TableHead className="text-xs font-medium py-4">Role</TableHead>
+                <TableHead className="text-xs font-medium py-4">
                   Verification
                 </TableHead>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
+                <TableHead className="text-xs font-medium py-4">
                   Joined
                 </TableHead>
-                <TableHead className="text-right uppercase text-[10px] font-black tracking-widest py-4 pr-6">
+                <TableHead className="text-right text-xs font-medium py-4 pr-6">
                   Actions
                 </TableHead>
               </TableRow>
@@ -151,7 +149,7 @@ export default function AdminUsers() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary text-xs border-2 border-primary/20">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary text-xs border border-primary/20">
                           {p.name?.[0] ?? "?"}
                         </div>
                         <div className="space-y-0.5">
@@ -175,7 +173,7 @@ export default function AdminUsers() {
                     <TableCell>
                       <Badge
                         variant={p.role === "admin" ? "default" : "outline"}
-                        className="font-black uppercase text-[10px] tracking-widest"
+                        className="font-semibold text-xs"
                       >
                         {p.role}
                       </Badge>
@@ -192,7 +190,7 @@ export default function AdminUsers() {
                           </div>
                         )}
                         {p.kycStatus === "pending" && (
-                          <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-[9px] uppercase w-fit">
+                          <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs font-medium w-fit">
                             KYC Pending
                           </Badge>
                         )}
@@ -206,7 +204,7 @@ export default function AdminUsers() {
                         {p.kycStatus === "pending" && (
                           <Button
                             size="sm"
-                            className="h-8 font-black uppercase text-[10px] tracking-wider bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20"
+                            className="h-8 font-semibold text-xs bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20"
                             onClick={() => handleReviewKYCClick(p.userId)}
                             disabled={
                               isFetchingKYC && fetchingKycUserId === p.userId
@@ -223,7 +221,7 @@ export default function AdminUsers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 border-2 font-black uppercase text-[10px] tracking-wider"
+                            className="h-8 border font-semibold text-xs"
                             onClick={() => handleManualVerify(p.userId)}
                             disabled={verifyingUserIds.has(p.userId)}
                           >
@@ -234,7 +232,7 @@ export default function AdminUsers() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 border-2 font-black uppercase text-[10px] tracking-wider"
+                            className="h-8 border font-semibold text-xs"
                             onClick={() => {
                               setPromoteTarget(p);
                             }}
@@ -267,7 +265,7 @@ export default function AdminUsers() {
                 onClick={() => {
                   loadMoreProfiles(50);
                 }}
-                className="font-bold uppercase text-[10px] tracking-widest border-2"
+                className="font-medium text-xs border"
               >
                 Load More Users
               </Button>

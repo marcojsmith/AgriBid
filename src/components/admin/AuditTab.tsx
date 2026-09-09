@@ -21,11 +21,16 @@ import { Button } from "@/components/ui/button";
  * @returns A React element that displays a centred loading indicator while logs are fetched, or a card containing the audit logs table with details and pagination controls.
  */
 export function AuditTab() {
-  const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([null]);
+  const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([
+    null,
+  ]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
 
   const result = useQuery(api.admin.getAuditLogs, {
-    paginationOpts: { numItems: 50, cursor: cursorHistory[currentCursorIndex] ?? null },
+    paginationOpts: {
+      numItems: 50,
+      cursor: cursorHistory[currentCursorIndex] ?? null,
+    },
   });
 
   const logs = result?.page ?? [];
@@ -38,7 +43,7 @@ export function AuditTab() {
       const parsed: unknown = JSON.parse(details);
       return (
         <details className="cursor-pointer">
-          <summary className="text-[10px] text-primary hover:underline font-bold uppercase tracking-tighter">
+          <summary className="text-xs text-primary hover:underline font-medium">
             View Payload
           </summary>
           <pre className="mt-2 p-2 bg-muted rounded-lg text-[10px] font-mono overflow-x-auto whitespace-pre-wrap w-full">
@@ -61,7 +66,7 @@ export function AuditTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      <Card className="border-2 overflow-hidden bg-card/50">
+      <Card className="border overflow-hidden bg-card/50">
         <Table>
           <TableHeader>
             <TableRow>
@@ -78,9 +83,7 @@ export function AuditTab() {
                 <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <FileText className="h-8 w-8 opacity-20" />
-                    <p className="font-black uppercase text-xs tracking-widest">
-                      No audit logs found
-                    </p>
+                    <p className="font-medium text-xs">No audit logs found</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -95,7 +98,7 @@ export function AuditTab() {
                       ? `${log.adminId.substring(0, 10)}...`
                       : log.adminId}
                   </TableCell>
-                  <TableCell className="font-bold uppercase text-xs tracking-wider">
+                  <TableCell className="font-medium text-xs">
                     {log.action}
                   </TableCell>
                   <TableCell className="text-sm font-medium">
@@ -112,14 +115,14 @@ export function AuditTab() {
 
         {logs.length > 0 && (
           <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
-            <p className="text-[10px] font-black uppercase text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Showing {logs.length} of {totalCount} entries
             </p>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={() => {
                   setCurrentCursorIndex(0);
                   setCursorHistory([null]);
@@ -131,7 +134,7 @@ export function AuditTab() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={() => {
                   if (currentCursorIndex > 0) {
                     setCurrentCursorIndex(currentCursorIndex - 1);
@@ -144,10 +147,13 @@ export function AuditTab() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={() => {
                   if (result?.continueCursor) {
-                    const newHistory = [...cursorHistory.slice(0, currentCursorIndex + 1), result.continueCursor];
+                    const newHistory = [
+                      ...cursorHistory.slice(0, currentCursorIndex + 1),
+                      result.continueCursor,
+                    ];
                     setCursorHistory(newHistory);
                     setCurrentCursorIndex(currentCursorIndex + 1);
                   }

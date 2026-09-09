@@ -250,11 +250,11 @@ export default function AdminModeration() {
           </div>
 
           {pendingAuctions.length === 0 && flaggedAuctionsCount === 0 && (
-            <div className="py-20 bg-muted/30 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center text-center px-4">
-              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+            <div className="py-20 bg-muted/30 rounded-lg border border-dashed flex flex-col items-center justify-center text-center px-4">
+              <div className="h-16 w-16 rounded-md bg-primary/10 flex items-center justify-center text-primary mb-4">
                 <Check className="h-8 w-8" />
               </div>
-              <h3 className="text-lg font-black uppercase tracking-tight">
+              <h3 className="text-lg font-semibold tracking-tight">
                 Queue is Clear
               </h3>
               <p className="text-muted-foreground text-sm max-w-[250px] mt-1">

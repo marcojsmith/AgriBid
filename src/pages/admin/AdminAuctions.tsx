@@ -184,34 +184,31 @@ export default function AdminAuctions() {
     switch (status) {
       case "active":
         return (
-          <Badge className="bg-green-500/10 text-green-500 border-green-500/20 font-bold uppercase text-[10px]">
+          <Badge className="bg-success/10 text-success border-success/20 font-semibold text-xs">
             Active
           </Badge>
         );
       case "pending_review":
         return (
-          <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 font-bold uppercase text-[10px]">
+          <Badge className="bg-warning/10 text-warning border-warning/20 font-semibold text-xs">
             Pending
           </Badge>
         );
       case "sold":
         return (
-          <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 font-bold uppercase text-[10px]">
+          <Badge className="bg-primary/10 text-primary border-primary/20 font-semibold text-xs">
             Sold
           </Badge>
         );
       case "unsold":
         return (
-          <Badge className="bg-muted text-muted-foreground font-bold uppercase text-[10px]">
+          <Badge className="bg-muted text-muted-foreground font-semibold text-xs">
             Unsold
           </Badge>
         );
       case "rejected":
         return (
-          <Badge
-            variant="destructive"
-            className="font-bold uppercase text-[10px]"
-          >
+          <Badge variant="destructive" className="font-semibold text-xs">
             Rejected
           </Badge>
         );
@@ -239,12 +236,12 @@ export default function AdminAuctions() {
       subtitle="Comprehensive Listing & Inventory Management"
     >
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-muted/20 p-4 rounded-md border border-dashed">
           <div className="relative group w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input
               placeholder="Search Auctions..."
-              className="pl-9 h-9 border-2 rounded-lg bg-background focus-visible:ring-primary/20"
+              className="pl-9 h-9 border rounded-md bg-background focus-visible:ring-primary/20"
               value={auctionSearch}
               onChange={(e) => {
                 setAuctionSearch(e.target.value);
@@ -256,10 +253,10 @@ export default function AdminAuctions() {
             {adminStats ? adminStats.totalAuctions : "—"} Auctions
           </Badge>
         </div>
-        <Card className="border-2 overflow-hidden bg-card/50 backdrop-blur-sm">
+        <Card className="border overflow-hidden bg-card/50 backdrop-blur-sm">
           {selectedAuctions.length > 0 && (
-            <div className="bg-primary/10 border-b-2 p-4 flex items-center justify-between animate-in slide-in-from-top-4">
-              <p className="text-sm font-black uppercase tracking-tight">
+            <div className="bg-primary/10 border-b p-4 flex items-center justify-between animate-in slide-in-from-top-4">
+              <p className="text-sm font-semibold">
                 {selectedAuctions.length} Items Selected
               </p>
               <div className="flex gap-2">
@@ -269,7 +266,7 @@ export default function AdminAuctions() {
                     setBulkStatusTarget("active");
                   }}
                   disabled={isBulkProcessing}
-                  className="font-bold uppercase text-xs h-9"
+                  className="font-medium text-xs h-9"
                 >
                   Mark Active
                 </Button>
@@ -280,7 +277,7 @@ export default function AdminAuctions() {
                   }}
                   disabled={isBulkProcessing}
                   variant="outline"
-                  className="font-bold uppercase text-xs h-9"
+                  className="font-medium text-xs h-9"
                 >
                   End Unsold
                 </Button>
@@ -291,7 +288,7 @@ export default function AdminAuctions() {
                   }}
                   disabled={isBulkProcessing}
                   variant="ghost"
-                  className="font-bold uppercase text-xs h-9"
+                  className="font-medium text-xs h-9"
                 >
                   Cancel
                 </Button>
@@ -311,19 +308,17 @@ export default function AdminAuctions() {
                     }}
                   />
                 </TableHead>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
+                <TableHead className="text-xs font-medium py-4">
                   Status
                 </TableHead>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
+                <TableHead className="text-xs font-medium py-4">
                   Auction Details
                 </TableHead>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
+                <TableHead className="text-xs font-medium py-4">
                   Price (Current/Res)
                 </TableHead>
-                <TableHead className="uppercase text-[10px] font-black tracking-widest py-4">
-                  Ends
-                </TableHead>
-                <TableHead className="text-right uppercase text-[10px] font-black tracking-widest py-4 pr-6">
+                <TableHead className="text-xs font-medium py-4">Ends</TableHead>
+                <TableHead className="text-right text-xs font-medium py-4 pr-6">
                   Actions
                 </TableHead>
               </TableRow>
@@ -358,7 +353,7 @@ export default function AdminAuctions() {
                         <p className="font-bold text-sm leading-tight group-hover:text-primary transition-colors">
                           {a.title}
                         </p>
-                        <div className="text-[10px] font-medium text-muted-foreground uppercase flex gap-1 items-center">
+                        <div className="text-xs font-medium text-muted-foreground flex gap-1 items-center">
                           <Badge
                             variant="outline"
                             className="text-[8px] h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5"
@@ -383,7 +378,7 @@ export default function AdminAuctions() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                      <div className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
                         {a.endTime
                           ? new Date(a.endTime).toLocaleDateString()
@@ -403,7 +398,7 @@ export default function AdminAuctions() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="w-48 rounded-xl p-2 border-2"
+                          className="w-48 rounded-md p-2 border"
                         >
                           <DropdownMenuItem
                             onClick={() => navigate(`/auction/${a._id}`)}
@@ -437,7 +432,7 @@ export default function AdminAuctions() {
                 onClick={() => {
                   loadMoreAuctions(50);
                 }}
-                className="font-bold uppercase text-[10px] tracking-widest border-2"
+                className="font-medium text-xs border"
               >
                 Load More
               </Button>
@@ -464,9 +459,9 @@ export default function AdminAuctions() {
           if (!open) setClosingAuction(null);
         }}
       >
-        <AlertDialogContent className="rounded-2xl border-2">
+        <AlertDialogContent className="rounded-md border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black uppercase tracking-tight">
+            <AlertDialogTitle className="font-semibold">
               Close Auction Early?
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
@@ -521,7 +516,7 @@ export default function AdminAuctions() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="rounded-xl border-2 font-bold uppercase text-[10px]"
+              className="rounded-md border font-medium text-xs"
               disabled={isClosing}
             >
               Cancel
@@ -529,7 +524,7 @@ export default function AdminAuctions() {
             <AlertDialogAction
               onClick={handleCloseAuction}
               disabled={isClosing}
-              className="rounded-xl bg-destructive text-destructive-foreground font-black uppercase text-[10px]"
+              className="rounded-md bg-destructive text-destructive-foreground font-semibold text-xs"
             >
               {isClosing ? (
                 <LoadingIndicator size="sm" className="mr-2" />

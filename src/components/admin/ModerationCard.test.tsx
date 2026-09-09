@@ -118,14 +118,14 @@ describe("ModerationCard", () => {
     expect(screen.getByText("History")).toBeInTheDocument();
   });
 
-  it("renders PASS for true condition values", () => {
+  it("renders Pass for true condition values", () => {
     render(<ModerationCard {...defaultProps} />);
-    expect(screen.getAllByText("PASS")).toHaveLength(2);
+    expect(screen.getAllByText("Pass")).toHaveLength(2);
   });
 
-  it("renders FAIL for false condition values", () => {
+  it("renders Fail for false condition values", () => {
     render(<ModerationCard {...defaultProps} />);
-    expect(screen.getAllByText("FAIL")).toHaveLength(2);
+    expect(screen.getAllByText("Fail")).toHaveLength(2);
   });
 
   it("renders N/A for conditionChecklist undefined", () => {

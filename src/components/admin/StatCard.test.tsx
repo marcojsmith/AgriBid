@@ -50,7 +50,7 @@ describe("StatCard", () => {
       />
     );
 
-    const card = screen.getByText("Test").closest(".border-2");
+    const card = screen.getByText("Test").closest(".border");
     expect(card).toHaveClass("custom-class");
   });
 
@@ -59,7 +59,7 @@ describe("StatCard", () => {
       <StatCard label="Test" value={42} icon={<Package />} padding="p-2" />
     );
 
-    const card = screen.getByText("Test").closest(".border-2");
+    const card = screen.getByText("Test").closest(".border");
     expect(card).toHaveClass("p-2");
   });
 
@@ -68,14 +68,14 @@ describe("StatCard", () => {
       <StatCard label="Test" value={42} icon={<Package />} padding="p-6" />
     );
 
-    const card = screen.getByText("Test").closest(".border-2");
+    const card = screen.getByText("Test").closest(".border");
     expect(card).toHaveClass("p-6");
   });
 
   it("renders with default padding", () => {
     render(<StatCard label="Test" value={42} icon={<Package />} />);
 
-    const card = screen.getByText("Test").closest(".border-2");
+    const card = screen.getByText("Test").closest(".border");
     expect(card).toHaveClass("p-4");
   });
 
@@ -89,7 +89,7 @@ describe("StatCard", () => {
       />
     );
 
-    const card = screen.getByText("Test").closest(".border-2");
+    const card = screen.getByText("Test").closest(".border");
     expect(card).toHaveClass("bg-card/50");
   });
 
@@ -164,7 +164,7 @@ describe("StatCard", () => {
       />
     );
 
-    const card = screen.getByText("Test").closest(".border-2");
+    const card = screen.getByText("Test").closest(".border");
     expect(card).toHaveClass("mt-4", "ml-2");
   });
 });

@@ -96,7 +96,7 @@ export function FinanceTab() {
         />
       </div>
 
-      <Card className="border-2 overflow-hidden">
+      <Card className="border overflow-hidden">
         <div className="p-4 border-b bg-muted/30">
           <h3 className="font-bold text-lg">Recent Transactions</h3>
         </div>

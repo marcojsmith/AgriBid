@@ -58,9 +58,7 @@ describe("SummaryCard", () => {
 
   it("renders with custom className", () => {
     renderWithRouter(<SummaryCard {...mockProps} className="custom-class" />);
-    const card = screen
-      .getByText("Test Title")
-      .closest("div[class*='border-2']");
+    const card = screen.getByText("Test Title").closest("div[class*='border']");
     expect(card).toHaveClass("custom-class");
   });
 

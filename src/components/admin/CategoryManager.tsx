@@ -97,7 +97,7 @@ export function CategoryManager({
               <div className="space-y-2">
                 <label
                   htmlFor="category-name"
-                  className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+                  className="text-xs font-medium text-muted-foreground"
                 >
                   Category Name
                 </label>
@@ -120,7 +120,7 @@ export function CategoryManager({
         </Dialog>
       </div>
 
-      <div className="border rounded-xl overflow-hidden">
+      <div className="border rounded-md overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -264,7 +264,7 @@ function EditCategoryDialog({
           <div className="space-y-2">
             <label
               htmlFor={`edit-category-${category._id}`}
-              className="text-sm font-bold uppercase tracking-wider text-muted-foreground"
+              className="text-xs font-medium text-muted-foreground"
             >
               Name
             </label>

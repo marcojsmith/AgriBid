@@ -111,16 +111,16 @@ export default function AdminAnnouncements() {
         <div className="flex justify-end">
           <Dialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 rounded-xl shadow-lg shadow-primary/20 h-11 px-6">
+              <Button className="gap-2 rounded-md shadow-lg shadow-primary/20 h-11 px-6">
                 <Plus className="h-4 w-4" /> New Announcement
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] border-2 rounded-2xl">
+            <DialogContent className="sm:max-w-[500px] border rounded-md">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tight">
+                <DialogTitle className="text-2xl font-semibold tracking-tight">
                   New Announcement
                 </DialogTitle>
-                <DialogDescription className="font-medium uppercase text-xs tracking-widest text-muted-foreground">
+                <DialogDescription className="font-medium text-xs text-muted-foreground">
                   Send a broadcast notification to all platform users.
                 </DialogDescription>
               </DialogHeader>
@@ -128,7 +128,7 @@ export default function AdminAnnouncements() {
                 <div className="space-y-2">
                   <label
                     htmlFor="announcement-title"
-                    className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+                    className="text-xs font-medium text-muted-foreground ml-1"
                   >
                     Notification Title
                   </label>
@@ -140,13 +140,13 @@ export default function AdminAnnouncements() {
                     onChange={(e) => {
                       setAnnouncementTitle(e.target.value);
                     }}
-                    className="h-12 border-2 rounded-xl bg-muted/30 focus:ring-primary/20"
+                    className="h-12 border rounded-md bg-muted/30 focus:ring-primary/20"
                   />
                 </div>
                 <div className="space-y-2">
                   <label
                     htmlFor="announcement-message"
-                    className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+                    className="text-xs font-medium text-muted-foreground ml-1"
                   >
                     Detailed Message
                   </label>
@@ -158,7 +158,7 @@ export default function AdminAnnouncements() {
                     onChange={(e) => {
                       setAnnouncementMessage(e.target.value);
                     }}
-                    className="min-h-[120px] border-2 rounded-xl bg-muted/30 focus:ring-primary/20 resize-none"
+                    className="min-h-[120px] border rounded-md bg-muted/30 focus:ring-primary/20 resize-none"
                   />
                 </div>
               </div>
@@ -168,14 +168,14 @@ export default function AdminAnnouncements() {
                   onClick={() => {
                     setAnnouncementOpen(false);
                   }}
-                  className="rounded-xl border-2"
+                  className="rounded-md border"
                   disabled={isSending}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSendAnnouncement}
-                  className="gap-2 rounded-xl shadow-lg shadow-primary/20"
+                  className="gap-2 rounded-md shadow-lg shadow-primary/20"
                   disabled={isSending}
                 >
                   {isSending ? (
@@ -216,25 +216,21 @@ export default function AdminAnnouncements() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <History className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">
+            <h3 className="text-sm font-semibold text-muted-foreground">
               Broadcast History
             </h3>
           </div>
 
-          <Card className="border-2 rounded-2xl overflow-hidden bg-card/30 backdrop-blur-sm">
+          <Card className="border rounded-md overflow-hidden bg-card/30 backdrop-blur-sm">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                    Date
-                  </TableHead>
-                  <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                    Title
-                  </TableHead>
-                  <TableHead className="font-black uppercase tracking-widest text-[10px]">
+                  <TableHead className="font-medium text-xs">Date</TableHead>
+                  <TableHead className="font-medium text-xs">Title</TableHead>
+                  <TableHead className="font-medium text-xs">
                     Message Preview
                   </TableHead>
-                  <TableHead className="font-black uppercase tracking-widest text-[10px] text-right">
+                  <TableHead className="font-medium text-xs text-right">
                     Read Count
                   </TableHead>
                 </TableRow>

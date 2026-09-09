@@ -43,21 +43,19 @@ export function StatCard({
     <Card
       className={cn(
         padding,
-        "border-2 flex items-center justify-between backdrop-blur-sm",
+        "border flex items-center justify-between backdrop-blur-sm",
         bgVariant,
         className
       )}
     >
       <div className="space-y-1">
-        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-          {label}
-        </p>
-        <p className={cn("text-2xl font-black", color)}>{value}</p>
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className={cn("text-2xl font-bold", color)}>{value}</p>
       </div>
       <div
         className={cn(
           iconSize,
-          "rounded-xl bg-muted/50 flex items-center justify-center text-muted-foreground"
+          "rounded-md bg-muted/50 flex items-center justify-center text-muted-foreground"
         )}
       >
         {icon}

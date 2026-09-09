@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react";
 /**
  * Renders a compact labeled condition indicator.
  *
- * Displays a green check and "PASS" when `value` is `true`, a destructive X and "FAIL" when `value` is `false`, or a muted dash and "N/A" when `value` is `undefined`.
+ * Displays a green check and "Pass" when `value` is `true`, a destructive X and "Fail" when `value` is `false`, or a muted dash and "N/A" when `value` is `undefined`.
  *
  * @param label.label
  * @param label - The condition label shown above the status
@@ -21,9 +21,7 @@ export function ConditionItem({
 }) {
   return (
     <div className="space-y-1 text-center md:text-left">
-      <p className="text-[8px] font-black uppercase text-muted-foreground">
-        {label}
-      </p>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center gap-1">
         {value === true ? (
           <Check className="h-3 w-3 text-green-500" />
@@ -32,8 +30,8 @@ export function ConditionItem({
         ) : (
           <span className="h-3 w-3 text-muted-foreground">—</span>
         )}
-        <span className="text-[10px] font-bold uppercase">
-          {value === true ? "PASS" : value === false ? "FAIL" : "N/A"}
+        <span className="text-xs font-semibold">
+          {value === true ? "Pass" : value === false ? "Fail" : "N/A"}
         </span>
       </div>
     </div>

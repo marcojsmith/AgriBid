@@ -37,6 +37,14 @@
 - **`#bidding-panel` is a cross-component contract**: the bidding `<aside>` id in `AuctionDetail.tsx` is the scroll target for `MobileBidBar`'s "Place bid" action — keep the id if restructuring the page.
 - **Verification checks live in three places** (`BiddingPanel`, `BidForm` call flow, `MobileBidBar`): all mirror the `useQuery(api.users.getMyProfile)` + `profile.isVerified`/`kycStatus` pattern with an explicit `undefined === loading` check; keep them in sync if the profile shape changes.
 
+## Visual Refresh Phase 4 — Admin (2026-09-09)
+
+- **Rule sweep was sufficient, no page redesign**: the substitution table (uppercase/font-black/border-2/oversized radii → calm equivalents) covered every admin file; the post-sweep grep over `src/pages/admin` + `src/components/admin` returns zero matches, and the 12 section-3 pages (AdminDashboard, AdminAudit, AdminFees, …) already had none of the flagged patterns — no changes needed there.
+- **Pass/Fail copy change cascades wider than the component**: `ConditionItem` literals `PASS`/`FAIL` → `Pass`/`Fail` (phase-1 SOLD→Sold precedent) required updating `ConditionItem.test.tsx`, `ModerationCard.test.tsx`, **and `AdminModeration.test.tsx`** (page-level test asserting through the card). `BulkActionDialog` dropped its `uppercase` class _and_ its `.toUpperCase()` call (display-only formatting, not business logic), so its test now expects `active`/`unspecified` as authored.
+- **CodeRabbit majors to expect on touched admin lines**: (1) hardcoded status colours on touched lines → convert to `bg-success/10 text-success border-success/20` / `bg-warning/10 ...` — there is **no info/blue token**, so the blue "Sold" badge became `bg-primary/10 text-primary` (muted forest green; stays distinguishable from vivid `success` "Active"); (2) any container `rounded-lg` on a non-image/non-avatar → `rounded-md` (AGENTS rule 10). Applied proactively to all admin `AlertDialogContent`s and icon chips, not just the flagged lines.
+- **Image-scrim overlay token pattern**: `ModerationCard`'s year badge over the photo went `bg-black/70 text-white` → `bg-foreground/70 text-background` — contrast is guaranteed by construction in both themes (the scrim flips to light in dark mode). Prefer this over raw black/white for overlays on imagery.
+- **Pre-existing lint baseline unchanged**: admin files carry long-standing jsdoc `@param` misnomers (`@param label.label` style) and `detect-object-injection` warnings; repo total stayed exactly at the documented ~524-warning baseline (0 errors) — leave for a dedicated cleanup, not a visual sweep.
+
 ## Next Focus
 
 - **Real-time Bidding Enhancements**: Refining bid concurrency handling and proxy bidding notifications.

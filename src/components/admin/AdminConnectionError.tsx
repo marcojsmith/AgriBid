@@ -45,7 +45,7 @@ export function AdminConnectionError({
     <div
       role="alert"
       className={cn(
-        "flex flex-col items-center space-y-4 max-w-md text-center p-8 border-2 border-dashed rounded-2xl bg-muted/10 animate-in fade-in zoom-in-95",
+        "flex flex-col items-center space-y-4 max-w-md text-center p-8 border border-dashed rounded-lg bg-muted/10 animate-in fade-in zoom-in-95",
         className
       )}
     >
@@ -61,7 +61,7 @@ export function AdminConnectionError({
         />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-black uppercase tracking-tight">{title}</h3>
+        <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
         <p className="text-sm text-muted-foreground font-medium">
           {description}
         </p>
@@ -71,7 +71,7 @@ export function AdminConnectionError({
           e.preventDefault();
           onRetry();
         }}
-        className="rounded-xl font-bold uppercase tracking-widest gap-2"
+        className="rounded-md font-semibold gap-2"
       >
         <RefreshCw className="h-4 w-4" />
         Retry Connection

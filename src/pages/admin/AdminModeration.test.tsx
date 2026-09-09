@@ -179,10 +179,10 @@ describe("AdminModeration Page", () => {
     const tractorCard = screen.getByText("Tractor 2024").closest(".group");
     expect(tractorCard).not.toBeNull();
     expect(
-      within(tractorCard as HTMLElement).getAllByText("PASS")
+      within(tractorCard as HTMLElement).getAllByText("Pass")
     ).toHaveLength(3); // Engine, Hydraulics, History
     expect(
-      within(tractorCard as HTMLElement).getAllByText("FAIL")
+      within(tractorCard as HTMLElement).getAllByText("Fail")
     ).toHaveLength(1); // Tires
 
     // Check for "Unknown" category when missing
