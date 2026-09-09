@@ -18,6 +18,15 @@
 - **Lint baseline**: repo tolerates ~524 pre-existing eslint warnings (mostly jsdoc params, `no-unnecessary-condition`, `detect-object-injection` in tests); lint passes on 0 errors. New code should not add warnings beyond this baseline.
 - **Remaining visual noise (follow-up phases)**: `BiddingPanel.tsx` and `AuctionCardPrice.tsx` still use `uppercase`/`font-black` labels ("Current Bid", "Ends In", closed-state copy) — intentionally left for the later phases per the phase-1 scope.
 
+## Visual Refresh Phase 2 — Marketplace (2026-09-09)
+
+- **Filter chips replace "Filters Applied" text**: `Home.tsx` now derives `activeFilterChips` (make, combined year/price ranges, maxHours, explicit URL status) and renders removable outline `Button` pills below the heading. Removal copies `searchParams` → deletes the chip's keys → `setSearchParams` (mirrors `FilterSidebar`'s reset pattern; the sidebar's URL→local sync effect picks the change up automatically).
+- **Status chip is URL-only by design**: `statusFilter` falls back to `preferences.defaultStatusFilter` when the URL has no `status` param. A chip built from that fallback can't be removed (deleting an absent param is a no-op and the preference recreates it), so the chip is only rendered for an explicit valid non-active URL status (`isValidStatus(rawStatus) && rawStatus !== "active"`). The chips row gate is `activeFilterChips.length > 0`, not the old `hasActiveFilters` (removed).
+- **Card footer bid button**: `variant` is now conditional — `default` (filled) in compact view (primary mobile tap target), `outline` in detailed view, per the design feedback to reserve the strongest bid treatment for the detail page.
+- **Defaults buttons pending state**: `FilterSidebar` tracks `pendingDefaultsAction: "save" | "clear" | null`; both buttons disable while a write is in flight and the in-flight one shows "Saving..."/"Clearing..." (CodeRabbit flagged the missing feedback per the UI guidelines).
+- **CodeRabbit CLI syntax drift**: AGENTS.md documents `bunx coderabbit --prompt-only --type uncommitted`, but the installed CLI (0.7.6) only supports `bunx coderabbit review --uncommitted` (`--prompt-only` errors as an unknown option). Update AGENTS.md when convenient.
+- **Remaining visual noise (phase 3)**: `AuctionCardPrice.tsx` labels ("Current Bid", "Ends In") still use `uppercase font-black tracking-widest`; `AuctionHeader.tsx`, `BidConfirmation.tsx`, and `BiddingPanel.tsx` keep their heavy treatment — out of scope here, slated for phase 3.
+
 ## Next Focus
 
 - **Real-time Bidding Enhancements**: Refining bid concurrency handling and proxy bidding notifications.

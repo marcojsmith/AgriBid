@@ -144,6 +144,10 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   // Local state for debounced inputs
   const [localFilters, setLocalFilters] =
     useState<LocalFilters>(getInitialFilters);
+  // Tracks which defaults action is in flight so labels reflect it
+  const [pendingDefaultsAction, setPendingDefaultsAction] = useState<
+    "save" | "clear" | null
+  >(null);
 
   // Sync localFilters → URL whenever filters change locally.
   // Uses searchParamsRef so it does not run on external URL changes.
@@ -173,7 +177,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       return;
     }
     // Use the normalizer to ensure valid state from URL
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setLocalFilters(parseUrlFilters(searchParams));
   }, [searchParams]);
 
@@ -211,17 +215,23 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         return val !== undefined && Number.isFinite(val) ? val.toString() : "";
       };
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setLocalFilters({
-        status: urlFilters.status !== "active"
-          ? urlFilters.status
-          : validateStatus(preferences.defaultStatusFilter),
+        status:
+          urlFilters.status !== "active"
+            ? urlFilters.status
+            : validateStatus(preferences.defaultStatusFilter),
         make: urlFilters.make || (preferences.defaultMake ?? "").trim(),
-        minYear: urlFilters.minYear || validateNumber(preferences.defaultMinYear),
-        maxYear: urlFilters.maxYear || validateNumber(preferences.defaultMaxYear),
-        minPrice: urlFilters.minPrice || validateNumber(preferences.defaultMinPrice),
-        maxPrice: urlFilters.maxPrice || validateNumber(preferences.defaultMaxPrice),
-        maxHours: urlFilters.maxHours || validateNumber(preferences.defaultMaxHours),
+        minYear:
+          urlFilters.minYear || validateNumber(preferences.defaultMinYear),
+        maxYear:
+          urlFilters.maxYear || validateNumber(preferences.defaultMaxYear),
+        minPrice:
+          urlFilters.minPrice || validateNumber(preferences.defaultMinPrice),
+        maxPrice:
+          urlFilters.maxPrice || validateNumber(preferences.defaultMaxPrice),
+        maxHours:
+          urlFilters.maxHours || validateNumber(preferences.defaultMaxHours),
       });
     }
   }, [preferences, searchParamsString]);
@@ -242,7 +252,8 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
   };
 
   const saveDefaults = async () => {
-    if (!session) return;
+    if (!session || pendingDefaultsAction !== null) return;
+    setPendingDefaultsAction("save");
     try {
       // Use the same validation logic when saving
       const validateAndParseInt = (val: string): number | undefined => {
@@ -268,11 +279,14 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       toast.success("Default filters saved");
     } catch {
       toast.error("Failed to save default filters");
+    } finally {
+      setPendingDefaultsAction(null);
     }
   };
 
   const clearDefaults = async () => {
-    if (!session) return;
+    if (!session || pendingDefaultsAction !== null) return;
+    setPendingDefaultsAction("clear");
     try {
       await updateMyPreferences({
         defaultStatusFilter: undefined,
@@ -294,6 +308,8 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       toast.success("Default filters cleared");
     } catch {
       toast.error("Failed to clear default filters");
+    } finally {
+      setPendingDefaultsAction(null);
     }
   };
 
@@ -302,13 +318,11 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
     status !== "active" || Object.values(otherFilters).some((v) => v !== "");
 
   return (
-    <div className="flex flex-col h-full bg-card border-2 rounded-lg overflow-hidden shadow-xl shadow-primary/5 animate-in slide-in-from-left-4 duration-300">
+    <div className="flex flex-col h-full bg-card border rounded-lg overflow-hidden shadow-sm animate-in slide-in-from-left-4 duration-300">
       <div className="p-4 border-b flex justify-between items-center bg-muted/30">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-primary" />
-          <h2 className="font-black uppercase tracking-tight text-sm">
-            Filter Equipment
-          </h2>
+          <h2 className="font-semibold text-sm">Filter Equipment</h2>
         </div>
         <div className="flex items-center gap-1">
           <Button
@@ -340,7 +354,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         <div className="space-y-2">
           <label
             htmlFor="filter-make"
-            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+            className="text-xs font-medium text-muted-foreground ml-1"
           >
             Manufacturer
           </label>
@@ -348,7 +362,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             id="filter-make"
             value={localFilters.make}
             onChange={(e) => updateParam("make", e.target.value)}
-            className="w-full h-10 rounded-md border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+            className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="">All Manufacturers</option>
             {activeMakes.map((make) => (
@@ -361,7 +375,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
         {/* Year Range */}
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+          <label className="text-xs font-medium text-muted-foreground ml-1">
             Year Model
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -373,7 +387,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             >
               <SelectTrigger
                 aria-label="Minimum year"
-                className="h-10 rounded-md border-2 font-bold"
+                className="h-10 rounded-md border font-medium"
               >
                 <SelectValue placeholder="From" />
               </SelectTrigger>
@@ -394,7 +408,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             >
               <SelectTrigger
                 aria-label="Maximum year"
-                className="h-10 rounded-md border-2 font-bold"
+                className="h-10 rounded-md border font-medium"
               >
                 <SelectValue placeholder="To" />
               </SelectTrigger>
@@ -414,7 +428,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         <div className="space-y-2">
           <label
             id="price-range-label"
-            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+            className="text-xs font-medium text-muted-foreground ml-1"
           >
             Price Range (ZAR)
           </label>
@@ -428,7 +442,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
               <SelectTrigger
                 aria-labelledby="price-range-label"
                 aria-label="Minimum price"
-                className="h-10 rounded-md border-2 font-bold"
+                className="h-10 rounded-md border font-medium"
               >
                 <SelectValue placeholder="Min" />
               </SelectTrigger>
@@ -450,7 +464,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
               <SelectTrigger
                 aria-labelledby="price-range-label"
                 aria-label="Maximum price"
-                className="h-10 rounded-md border-2 font-bold"
+                className="h-10 rounded-md border font-medium"
               >
                 <SelectValue placeholder="Max" />
               </SelectTrigger>
@@ -470,7 +484,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         <div className="space-y-2">
           <label
             id="hours-label"
-            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+            className="text-xs font-medium text-muted-foreground ml-1"
           >
             Max Operating Hours
           </label>
@@ -482,7 +496,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           >
             <SelectTrigger
               aria-labelledby="hours-label"
-              className="h-10 rounded-md border-2 font-bold"
+              className="h-10 rounded-md border font-medium"
             >
               <SelectValue placeholder="Any" />
             </SelectTrigger>
@@ -502,7 +516,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         <div className="space-y-2">
           <label
             htmlFor="filter-status"
-            className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1"
+            className="text-xs font-medium text-muted-foreground ml-1"
           >
             Auction Status
           </label>
@@ -510,7 +524,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
             id="filter-status"
             value={localFilters.status}
             onChange={(e) => updateParam("status", e.target.value)}
-            className="w-full h-10 rounded-md border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+            className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="active">Active Auctions</option>
             <option value="closed">Closed Auctions</option>
@@ -521,20 +535,26 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
       <div className="p-4 border-t bg-muted/10">
         {session && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-center gap-4">
             <Button
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={saveDefaults}
-              className="h-9 rounded-md font-black uppercase tracking-tight border-2 text-xs"
+              disabled={pendingDefaultsAction !== null}
+              className="h-8 px-2 font-medium text-xs"
             >
-              Save Defaults
+              {pendingDefaultsAction === "save" ? "Saving..." : "Save Defaults"}
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={clearDefaults}
-              className="h-9 rounded-md font-black uppercase tracking-tight border-2 text-xs"
+              disabled={pendingDefaultsAction !== null}
+              className="h-8 px-2 font-medium text-xs"
             >
-              Clear Defaults
+              {pendingDefaultsAction === "clear"
+                ? "Clearing..."
+                : "Clear Defaults"}
             </Button>
           </div>
         )}

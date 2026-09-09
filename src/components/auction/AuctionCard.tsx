@@ -145,7 +145,7 @@ export const AuctionCard = ({
   return (
     <Card
       className={cn(
-        "overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:scale-[1.01] hover:shadow-xl bg-card group rounded-lg h-full shadow-none"
+        "overflow-hidden border hover:border-primary/60 transition-shadow duration-200 hover:shadow-md bg-card group rounded-lg h-full shadow-none"
       )}
     >
       <div className="relative">
@@ -271,6 +271,7 @@ export const AuctionCard = ({
         >
           <Button
             size="sm"
+            variant={isCompact ? "default" : "outline"}
             className={cn(
               "flex-1 font-semibold shadow-sm",
               isCompact
