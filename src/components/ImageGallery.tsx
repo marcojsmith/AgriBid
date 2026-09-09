@@ -1,6 +1,6 @@
 // app/src/components/ImageGallery.tsx
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -62,7 +62,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
 
   if (!images || images.length === 0) {
     return (
-      <div className="aspect-[16/10] bg-muted rounded-2xl flex items-center justify-center border-2 overflow-hidden">
+      <div className="aspect-[16/10] bg-muted rounded-lg flex items-center justify-center border overflow-hidden">
         <ImagePlaceholder />
       </div>
     );
@@ -80,7 +80,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
         <DialogTrigger asChild>
           <button
             type="button"
-            className="w-full aspect-[16/10] bg-muted rounded-2xl flex items-center justify-center border-2 overflow-hidden group relative cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full aspect-[16/10] bg-muted rounded-lg flex items-center justify-center border overflow-hidden group relative cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Open full-screen gallery"
           >
             {failedUrls.has(activeImage) ? (
@@ -96,6 +96,12 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                 }}
               />
             )}
+            <div className="absolute top-4 right-4 h-9 w-9 rounded-md bg-background/80 backdrop-blur flex items-center justify-center shadow-sm transition-colors group-hover:bg-background">
+              <Maximize2
+                className="h-4 w-4 text-foreground"
+                aria-hidden="true"
+              />
+            </div>
             <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
               {activeIndex + 1} / {images.length}
             </div>
@@ -175,7 +181,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
               type="button"
               onClick={() => setActiveIndex(index)}
               className={cn(
-                "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 activeIndex === index
                   ? "border-primary ring-2 ring-primary/20 scale-95"
                   : "border-transparent hover:border-primary/40"

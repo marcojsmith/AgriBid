@@ -27,6 +27,16 @@
 - **CodeRabbit CLI syntax drift**: AGENTS.md documents `bunx coderabbit --prompt-only --type uncommitted`, but the installed CLI (0.7.6) only supports `bunx coderabbit review --uncommitted` (`--prompt-only` errors as an unknown option). Update AGENTS.md when convenient.
 - **Remaining visual noise (phase 3)**: `AuctionCardPrice.tsx` labels ("Current Bid", "Ends In") still use `uppercase font-black tracking-widest`; `AuctionHeader.tsx`, `BidConfirmation.tsx`, and `BiddingPanel.tsx` keep their heavy treatment — out of scope here, slated for phase 3.
 
+## Visual Refresh Phase 3 — Auction Detail & Bidding (2026-09-09)
+
+- **`react-hooks/purity` rejects `Date.now()` in render bodies (error, not warning)**: new components must read the clock via a lazy state initializer — `const [now] = useState(() => Date.now())` — as `CountdownTimer` and `MobileBidBar` do. `BiddingPanel`'s long-standing render-body call isn't currently flagged, but don't copy that pattern into new code.
+- **CodeRabbit CLI extras**: untracked (brand-new) files are excluded from `review --uncommitted` by default — pass `--include-untracked`; `bunx coderabbit review findings` reprints stored findings from the most recent review without re-running it.
+- **Semantic status tokens exist and are enforced**: `--success`/`--warning` in `src/index.css` (precedent: `SellerInfo`, `FinanceTab`). CodeRabbit majors on any _touched_ line still using hardcoded `green-*`/`amber-*`/`orange-*`/`red-*` — convert to `bg-success/10 border-success/20 text-success` style when editing those lines.
+- **Radii rule nuance**: AGENTS.md rule 10 wants `rounded`/`rounded-md` on containers and reserves `rounded-lg` for images/avatars. CodeRabbit flagged the task's `rounded-lg` conversions; containers in `AuctionDetail`/`BiddingPanel`/`BidForm`/`AuctionHeader` now use `rounded-md`.
+- **BidForm auto-bid is collapsed by default**: `isProxyExpanded` initialised from `isProxyActive` (starts expanded only for users with an existing proxy bid). Tests must click the `data-testid="auto-bid-toggle"` before touching the proxy checkbox. `#proxy-bidding-section` + `aria-controls`/`aria-expanded` keep the toggle accessible.
+- **`#bidding-panel` is a cross-component contract**: the bidding `<aside>` id in `AuctionDetail.tsx` is the scroll target for `MobileBidBar`'s "Place bid" action — keep the id if restructuring the page.
+- **Verification checks live in three places** (`BiddingPanel`, `BidForm` call flow, `MobileBidBar`): all mirror the `useQuery(api.users.getMyProfile)` + `profile.isVerified`/`kycStatus` pattern with an explicit `undefined === loading` check; keep them in sync if the profile shape changes.
+
 ## Next Focus
 
 - **Real-time Bidding Enhancements**: Refining bid concurrency handling and proxy bidding notifications.

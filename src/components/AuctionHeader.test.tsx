@@ -100,6 +100,19 @@ describe("AuctionHeader", () => {
     expect(screen.getByText("500 Operating Hours")).toBeDefined();
   });
 
+  it("renders a make/model/year subtitle below the title", () => {
+    renderComponent();
+    expect(screen.getByText("2022 John Deere 8R")).toBeDefined();
+  });
+
+  it("hides the subtitle when make or model is missing", () => {
+    const noModelAuction = { ...mockAuction, model: undefined };
+    renderComponent(
+      noModelAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+    );
+    expect(screen.queryByText("2022 John Deere 8R")).not.toBeInTheDocument();
+  });
+
   it("shows login toast when unauthenticated user clicks watch", () => {
     renderComponent();
     const watchBtn = screen.getByRole("button", { name: /watch/i });
@@ -144,7 +157,7 @@ describe("AuctionHeader", () => {
     renderComponent(
       soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
     );
-    expect(screen.getByText("YOU WON")).toBeDefined();
+    expect(screen.getByText("You won")).toBeDefined();
     expect(screen.getByText(/Congratulations/i)).toBeDefined();
   });
 
@@ -161,7 +174,7 @@ describe("AuctionHeader", () => {
     renderComponent(
       soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
     );
-    expect(screen.getByText("SOLD")).toBeDefined();
+    expect(screen.getByText("Sold")).toBeDefined();
   });
 
   it("shows UNSOLD badge", () => {
@@ -169,7 +182,7 @@ describe("AuctionHeader", () => {
     renderComponent(
       unsoldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
     );
-    expect(screen.getByText("UNSOLD")).toBeDefined();
+    expect(screen.getByText("Unsold")).toBeDefined();
   });
 
   it("shows item sold info for seller", () => {
