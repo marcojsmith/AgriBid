@@ -177,7 +177,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       return;
     }
     // Use the normalizer to ensure valid state from URL
-     
+
     setLocalFilters(parseUrlFilters(searchParams));
   }, [searchParams]);
 
@@ -215,7 +215,6 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         return val !== undefined && Number.isFinite(val) ? val.toString() : "";
       };
 
-       
       setLocalFilters({
         status:
           urlFilters.status !== "active"

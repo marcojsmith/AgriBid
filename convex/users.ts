@@ -22,6 +22,7 @@ import {
   updateCounter,
   countQuery,
 } from "./admin_utils";
+import { logActivity } from "./userActivity";
 import { PRESENCE_HEARTBEAT_THRESHOLD } from "./presence";
 
 /**
@@ -120,6 +121,11 @@ export const syncUserHandler = async (ctx: MutationCtx) => {
         updatedAt: now,
       });
       await updateCounter(ctx, "profiles", "total", 1);
+      await logActivity(ctx, {
+        userId: linkId,
+        type: "account_created",
+        description: "Account created",
+      });
     } else {
       await ctx.db.patch(existingProfile._id, {
         ...identityFields,
@@ -401,6 +407,12 @@ export const verifyUserHandler = async (
     });
 
     await updateCounter(ctx, "profiles", "verified", 1);
+
+    await logActivity(ctx, {
+      userId,
+      type: "verification_approved",
+      description: "Verification approved",
+    });
   }
 
   await logAudit(ctx, {
@@ -451,6 +463,12 @@ export const promoteToAdminHandler = async (
   await ctx.db.patch(profile._id, {
     role: "admin",
     updatedAt: now,
+  });
+
+  await logActivity(ctx, {
+    userId,
+    type: "role_changed",
+    description: "Promoted to admin",
   });
 
   await logAudit(ctx, {
@@ -538,6 +556,14 @@ export const submitKYCHandler = async (
   if (!wasPending) {
     await updateCounter(ctx, "profiles", "pending", 1);
   }
+
+  // Every submission gets a fresh activity entry so a rejected-then-resubmitted
+  // user's feed reflects the new review request.
+  await logActivity(ctx, {
+    userId,
+    type: "verification_requested",
+    description: "Identity documents submitted for review",
+  });
 
   return { success: true };
 };

@@ -1,7 +1,15 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import React from "react";
+import {
+  render,
+  screen,
+  fireEvent,
+  act,
+  waitFor,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
+import { toast } from "sonner";
 
 import Profile from "./Profile";
 
@@ -12,10 +20,140 @@ interface AuctionCardProps {
   isWatched: boolean;
 }
 
+interface SellerInfo {
+  _id: string;
+  name?: string;
+  isVerified: boolean;
+  kycStatus?: "pending" | "verified" | "rejected";
+  role: string;
+  createdAt?: number;
+  itemsSold: number;
+  totalListings: number;
+  bio?: string;
+  companyName?: string;
+  location?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  bankingVerified?: boolean;
+  taxNumberVerified?: boolean;
+  bidsPlaced: number;
+  avgSalePrice?: number;
+  avgRating?: number;
+  reviewCount: number;
+}
+
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   usePaginatedQuery: vi.fn(),
   useMutation: vi.fn(() => vi.fn()),
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+// Mock Dialog component (same pattern as AuctionDetail.test.tsx)
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (o: boolean) => void;
+  }) => (
+    <div data-testid="dialog-root">
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(
+            child as React.ReactElement<{
+              open?: boolean;
+              onOpenChange?: (o: boolean) => void;
+            }>,
+            {
+              open,
+              onOpenChange,
+            }
+          );
+        }
+        return child;
+      })}
+    </div>
+  ),
+  DialogTrigger: ({
+    children,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    onOpenChange?: (o: boolean) => void;
+  }) => (
+    <div
+      onClick={() => onOpenChange && onOpenChange(true)}
+      data-testid="dialog-trigger"
+    >
+      {children}
+    </div>
+  ),
+  DialogContent: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+  }) => (open ? <div data-testid="dialog-content">{children}</div> : null),
+  DialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <h2>{children}</h2>
+  ),
+  DialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <p>{children}</p>
+  ),
+  DialogFooter: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
+// Mock Select to be a simple native select for easier testing
+vi.mock("@/components/ui/select", () => ({
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: React.ReactNode;
+    value?: string;
+    onValueChange: (v: string) => void;
+  }) => (
+    <select
+      data-testid="mock-select"
+      value={value}
+      onChange={(e) => onValueChange(e.target.value)}
+    >
+      {children}
+    </select>
+  ),
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  SelectValue: ({ placeholder }: { placeholder?: string }) => (
+    <option value="">{placeholder}</option>
+  ),
+  SelectContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  SelectItem: ({
+    value,
+    children,
+  }: {
+    value: string;
+    children: React.ReactNode;
+  }) => <option value={value}>{children}</option>,
 }));
 
 const { mockApi } = vi.hoisted(() => ({
@@ -23,12 +161,24 @@ const { mockApi } = vi.hoisted(() => ({
     users: {
       getMyProfile: { name: "users:getMyProfile" },
     },
+    userActivity: {
+      getSellerActivity: { name: "userActivity:getSellerActivity" },
+    },
     auctions: {
       getSellerInfo: { name: "auctions:getSellerInfo" },
       getSellerListings: { name: "auctions:getSellerListings" },
     },
+    reviews: {
+      getSellerReviews: { name: "reviews:getSellerReviews" },
+    },
     watchlist: {
       getWatchedAuctionIds: { name: "watchlist:getWatchedAuctionIds" },
+    },
+    profileFlags: {
+      reportProfile: { name: "profileFlags:reportProfile" },
+    },
+    messages: {
+      startConversation: { name: "messages:startConversation" },
     },
   },
 }));
@@ -46,7 +196,7 @@ vi.mock("@/components/auction/AuctionCard", () => ({
 }));
 
 describe("Profile Page", () => {
-  const mockSellerInfo = {
+  const mockSellerInfo: SellerInfo = {
     _id: "user1",
     name: "John Dippenaar",
     isVerified: true,
@@ -64,6 +214,8 @@ describe("Profile Page", () => {
     taxNumberVerified: false,
     bidsPlaced: 24,
     avgSalePrice: 485000,
+    avgRating: undefined,
+    reviewCount: 0,
   };
 
   const mockMyProfile = {
@@ -76,20 +228,51 @@ describe("Profile Page", () => {
     { _id: "auction2", title: "Sold Baler", status: "sold" },
   ];
 
+  const mockReviews = [
+    {
+      _id: "review1",
+      auctionId: "auction2",
+      rating: 5,
+      comment: "Great seller, smooth transaction.",
+      createdAt: new Date("2026-02-10").getTime(),
+      reviewerName: "Alice Bezuidenhout",
+      response: {
+        text: "Thank you for the smooth sale!",
+        createdAt: new Date("2026-02-12").getTime(),
+      },
+    },
+    {
+      _id: "review2",
+      auctionId: "auction3",
+      rating: 4,
+      comment: "Tractor as described.",
+      createdAt: new Date("2026-01-20").getTime(),
+    },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) return [];
       if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
         return ["auction1"];
       return null;
     });
 
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: mockListings,
-      status: "Exhausted",
-      loadMore: vi.fn(),
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.auctions.getSellerListings) {
+        return {
+          results: mockListings,
+          status: "Exhausted",
+          loadMore: vi.fn(),
+        };
+      }
+      if (apiPath === mockApi.reviews.getSellerReviews) {
+        return { results: [], status: "Exhausted", loadMore: vi.fn() };
+      }
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
     });
   });
 
@@ -107,6 +290,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return undefined;
       if (apiPath === mockApi.auctions.getSellerInfo) return undefined;
+      if (apiPath === mockApi.userActivity.getSellerActivity) return undefined;
       return null;
     });
     (usePaginatedQuery as Mock).mockReturnValue({
@@ -151,6 +335,85 @@ describe("Profile Page", () => {
     expect(screen.getByText("No reviews yet")).toBeInTheDocument();
   });
 
+  it("renders amber stars and review count when reviews exist", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("★★★★☆")).toBeInTheDocument();
+    expect(screen.getByText("2 reviews")).toBeInTheDocument();
+    expect(screen.queryByText("No reviews yet")).not.toBeInTheDocument();
+  });
+
+  it("renders singular review label for a single review", () => {
+    const singleReviewSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 5,
+      reviewCount: 1,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo)
+        return singleReviewSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("★★★★★")).toBeInTheDocument();
+    expect(screen.getByText("1 review")).toBeInTheDocument();
+  });
+
+  it("renders Seller Rating trust item with average and count when reviewed", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4.5,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("4.5 (2)")).toBeInTheDocument();
+  });
+
+  it("renders verified Seller Rating trust item when reviewed", () => {
+    const ratedSellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4,
+      reviewCount: 2,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    const ratingLabel = screen.getByText("Seller Rating");
+    const ratingItem = ratingLabel.parentElement;
+    expect(ratingItem).not.toBeNull();
+    expect(ratingItem).toHaveTextContent("4.0 (2)");
+  });
+
   it("shows non-owner buttons for non-owner", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile)
@@ -162,7 +425,260 @@ describe("Profile Page", () => {
 
     renderProfile("user1");
     expect(screen.getByText("Contact Seller")).toBeInTheDocument();
-    expect(screen.getByText("Report Profile")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /contact seller/i })
+    ).toBeEnabled();
+    const reportButton = screen.getByRole("button", {
+      name: /report profile/i,
+    });
+    expect(reportButton).toBeInTheDocument();
+    expect(reportButton).toBeEnabled();
+  });
+
+  describe("Report Profile dialog", () => {
+    const setupNonOwner = () => {
+      (useQuery as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.users.getMyProfile)
+          return { ...mockMyProfile, userId: "other", _id: "other" };
+        if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+        if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+        return null;
+      });
+    };
+
+    const openReportDialog = () => {
+      setupNonOwner();
+      renderProfile("user1");
+      fireEvent.click(screen.getByRole("button", { name: /report profile/i }));
+      expect(screen.getByText("Report this Profile")).toBeInTheDocument();
+    };
+
+    it("opens the report dialog with reason select and details field", () => {
+      openReportDialog();
+
+      expect(screen.getByTestId("mock-select")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/Provide more context/i)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /submit report/i })
+      ).toBeInTheDocument();
+    });
+
+    it("closes the dialog on cancel", () => {
+      openReportDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+      expect(screen.queryByText("Report this Profile")).not.toBeInTheDocument();
+    });
+
+    it("shows an error toast when submitting without a reason", () => {
+      openReportDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      expect(toast.error).toHaveBeenCalledWith(
+        "Please select a reason for reporting"
+      );
+    });
+
+    it("submits the report with reason and details, shows success toast, and closes the dialog", async () => {
+      const mockReportProfile = vi.fn().mockResolvedValue({ success: true });
+      (useMutation as Mock).mockReturnValue(mockReportProfile);
+
+      openReportDialog();
+
+      fireEvent.change(screen.getByTestId("mock-select"), {
+        target: { value: "fake_account" },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/Provide more context/i), {
+        target: { value: "Suspicious seller" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      await waitFor(() => {
+        expect(mockReportProfile).toHaveBeenCalledWith({
+          reportedUserId: "user1",
+          reason: "fake_account",
+          details: "Suspicious seller",
+        });
+        expect(toast.success).toHaveBeenCalledWith("Thank you for your report");
+      });
+      expect(screen.queryByText("Report this Profile")).not.toBeInTheDocument();
+    });
+
+    it("submits undefined details when the details field is blank", async () => {
+      const mockReportProfile = vi.fn().mockResolvedValue({ success: true });
+      (useMutation as Mock).mockReturnValue(mockReportProfile);
+
+      openReportDialog();
+
+      fireEvent.change(screen.getByTestId("mock-select"), {
+        target: { value: "abusive_behaviour" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      await waitFor(() => {
+        expect(mockReportProfile).toHaveBeenCalledWith({
+          reportedUserId: "user1",
+          reason: "abusive_behaviour",
+          details: undefined,
+        });
+      });
+    });
+
+    it("shows an error toast and keeps the dialog open when submission fails", async () => {
+      const mockReportProfile = vi
+        .fn()
+        .mockRejectedValue(new Error("You have already reported this profile"));
+      (useMutation as Mock).mockReturnValue(mockReportProfile);
+
+      openReportDialog();
+
+      fireEvent.change(screen.getByTestId("mock-select"), {
+        target: { value: "other" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "You have already reported this profile"
+        );
+      });
+      expect(screen.getByText("Report this Profile")).toBeInTheDocument();
+    });
+  });
+
+  describe("Contact Seller dialog", () => {
+    const setupNonOwner = () => {
+      (useQuery as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.users.getMyProfile)
+          return { ...mockMyProfile, userId: "other", _id: "other" };
+        if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+        if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+        return null;
+      });
+    };
+
+    const renderProfileWithMessagesRoute = () => {
+      return render(
+        <MemoryRouter initialEntries={["/profile/user1"]}>
+          <Routes>
+            <Route path="/profile/:userId" element={<Profile />} />
+            <Route
+              path="/messages/:conversationId"
+              element={<div data-testid="messages-thread">Thread</div>}
+            />
+          </Routes>
+        </MemoryRouter>
+      );
+    };
+
+    const openContactDialog = () => {
+      setupNonOwner();
+      renderProfileWithMessagesRoute();
+      fireEvent.click(screen.getByRole("button", { name: /contact seller/i }));
+      expect(
+        screen.getByText("Send a message to start a conversation")
+      ).toBeInTheDocument();
+    };
+
+    it("opens the contact dialog with a message field and send button", () => {
+      openContactDialog();
+
+      expect(screen.getByLabelText(/^message$/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /send message/i })
+      ).toBeInTheDocument();
+    });
+
+    it("closes the dialog on cancel", () => {
+      openContactDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+      expect(screen.queryByTestId("dialog-content")).not.toBeInTheDocument();
+    });
+
+    it("shows an error toast when submitting without a message", () => {
+      openContactDialog();
+
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      expect(toast.error).toHaveBeenCalledWith("Please enter a message");
+    });
+
+    it("starts a conversation and navigates to the thread on success", async () => {
+      const mockStartConversation = vi.fn().mockResolvedValue("conv_new_123");
+      (useMutation as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.messages.startConversation) {
+          return mockStartConversation;
+        }
+        return vi.fn();
+      });
+
+      openContactDialog();
+
+      fireEvent.change(screen.getByLabelText(/^message$/i), {
+        target: { value: "Hi, is the tractor still available?" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      await waitFor(() => {
+        expect(mockStartConversation).toHaveBeenCalledWith({
+          recipientId: "user1",
+          initialMessage: "Hi, is the tractor still available?",
+          auctionId: undefined,
+        });
+        expect(toast.success).toHaveBeenCalledWith("Message sent");
+        expect(screen.getByTestId("messages-thread")).toBeInTheDocument();
+      });
+    });
+
+    it("trims whitespace-only messages to empty and rejects submission", () => {
+      const mockStartConversation = vi.fn();
+      (useMutation as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.messages.startConversation) {
+          return mockStartConversation;
+        }
+        return vi.fn();
+      });
+
+      openContactDialog();
+
+      fireEvent.change(screen.getByLabelText(/^message$/i), {
+        target: { value: "   " },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      expect(toast.error).toHaveBeenCalledWith("Please enter a message");
+      expect(mockStartConversation).not.toHaveBeenCalled();
+    });
+
+    it("shows an error toast and stays on the profile when the mutation fails", async () => {
+      const mockStartConversation = vi
+        .fn()
+        .mockRejectedValue(new Error("You cannot message yourself"));
+      (useMutation as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.messages.startConversation) {
+          return mockStartConversation;
+        }
+        return vi.fn();
+      });
+
+      openContactDialog();
+
+      fireEvent.change(screen.getByLabelText(/^message$/i), {
+        target: { value: "Hello" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("You cannot message yourself");
+      });
+      expect(screen.queryByTestId("messages-thread")).not.toBeInTheDocument();
+    });
   });
 
   it("renders Active Auctions section with cards", () => {
@@ -178,6 +694,68 @@ describe("Profile Page", () => {
     renderProfile();
     expect(screen.getByText("Sales History")).toBeInTheDocument();
     expect(screen.getByText(/Sold Baler/i)).toBeInTheDocument();
+  });
+
+  const setupReviewsSection = (
+    reviews = mockReviews,
+    sellerInfo: SellerInfo = {
+      ...mockSellerInfo,
+      avgRating: 4.5,
+      reviewCount: 2,
+    }
+  ) => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return sellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.auctions.getSellerListings) {
+        return {
+          results: mockListings,
+          status: "Exhausted",
+          loadMore: vi.fn(),
+        };
+      }
+      if (apiPath === mockApi.reviews.getSellerReviews) {
+        return { results: reviews, status: "Exhausted", loadMore: vi.fn() };
+      }
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
+    });
+  };
+
+  it("renders the Reviews section with reviewer names, ratings, and comments", () => {
+    setupReviewsSection();
+    renderProfile();
+
+    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("Alice Bezuidenhout")).toBeInTheDocument();
+    expect(screen.getByText("Anonymous")).toBeInTheDocument();
+    expect(
+      screen.getByText("Great seller, smooth transaction.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Tractor as described.")).toBeInTheDocument();
+    expect(screen.getByText("Feb 2026")).toBeInTheDocument();
+  });
+
+  it("renders the seller response underneath a reviewed review", () => {
+    setupReviewsSection();
+    renderProfile();
+
+    expect(screen.getByText("Seller response")).toBeInTheDocument();
+    expect(
+      screen.getByText("Thank you for the smooth sale!")
+    ).toBeInTheDocument();
+  });
+
+  it("renders the Reviews empty state when the seller has no reviews", () => {
+    setupReviewsSection([], mockSellerInfo);
+    renderProfile();
+
+    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("No reviews yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Seller response")).not.toBeInTheDocument();
   });
 
   it("still shows Sales History and its View all link when itemsSold > 0 but no sold listings are on the current page", () => {
@@ -212,10 +790,158 @@ describe("Profile Page", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders Recent Activity section placeholder", () => {
+  it("renders the Recent Activity empty state when there is no activity", () => {
     renderProfile();
     expect(screen.getByText("Recent Activity")).toBeInTheDocument();
+    expect(screen.getByText("No activity yet")).toBeInTheDocument();
+  });
+
+  it("shows a loading indicator in Recent Activity while the query is loading", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) return undefined;
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+    const statusIndicators = screen.getAllByRole("status");
+    expect(statusIndicators.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders activity items from the getSellerActivity query", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "account_created",
+            description: "Account created",
+            relatedId: undefined,
+            createdAt: new Date("2026-01-15").getTime(),
+          },
+          {
+            _id: "act2",
+            _creationTime: 1001,
+            type: "listing_created",
+            description: "Listing created: John Deere 6120M",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-01").getTime(),
+          },
+          {
+            _id: "act3",
+            _creationTime: 1002,
+            type: "listing_sold",
+            description: "Listing sold for R450 000",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-10").getTime(),
+          },
+          {
+            _id: "act4",
+            _creationTime: 1003,
+            type: "bid_placed",
+            description: "Bid placed: R120 000",
+            relatedId: "auction2",
+            createdAt: new Date("2026-02-12").getTime(),
+          },
+          {
+            _id: "act5",
+            _creationTime: 1004,
+            type: "bid_won",
+            description: "Won auction for R450 000",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-14").getTime(),
+          },
+        ];
+      }
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
     expect(screen.getByText("Account created")).toBeInTheDocument();
+    expect(
+      screen.getByText("Listing created: John Deere 6120M")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Listing sold for R450 000")).toBeInTheDocument();
+    expect(screen.getByText("Bid placed: R120 000")).toBeInTheDocument();
+    expect(screen.getByText("Won auction for R450 000")).toBeInTheDocument();
+    expect(screen.queryByText("No activity yet")).not.toBeInTheDocument();
+  });
+
+  it("renders verification activity entries when returned by the query", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "verification_requested",
+            description: "Identity documents submitted for review",
+            relatedId: undefined,
+            createdAt: new Date("2026-01-20").getTime(),
+          },
+          {
+            _id: "act2",
+            _creationTime: 1001,
+            type: "verification_approved",
+            description: "Verification approved",
+            relatedId: undefined,
+            createdAt: new Date("2026-01-25").getTime(),
+          },
+        ];
+      }
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(
+      screen.getByText("Identity documents submitted for review")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Verification approved")).toBeInTheDocument();
+  });
+
+  it("falls back to the type title when an activity entry has no description", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "role_changed",
+            description: undefined,
+            relatedId: undefined,
+            createdAt: new Date("2026-01-20").getTime(),
+          },
+        ];
+      }
+      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      return null;
+    });
+
+    renderProfile();
+
+    expect(screen.getByText("Role changed")).toBeInTheDocument();
+  });
+
+  it("queries the activity feed for the profile owner with a limit of 10", () => {
+    renderProfile("user1");
+
+    expect(useQuery).toHaveBeenCalledWith(
+      mockApi.userActivity.getSellerActivity,
+      { userId: "user1", limit: 10 }
+    );
   });
 
   it("renders Trust & Compliance section placeholder", () => {
@@ -517,25 +1243,6 @@ describe("Profile Page", () => {
     );
   });
 
-  it("shows admin activity item when user has admin role", () => {
-    const adminSellerInfo = {
-      ...mockSellerInfo,
-      name: "Admin User",
-      role: "admin",
-    };
-    (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
-      if (apiPath === mockApi.auctions.getSellerInfo) return adminSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
-        return ["auction1"];
-      return null;
-    });
-
-    renderProfile("user1");
-
-    expect(screen.getByText("Admin role assigned")).toBeInTheDocument();
-  });
-
   it("handles single-word name for getInitials", () => {
     const shortNameSellerInfo = {
       ...mockSellerInfo,
@@ -553,12 +1260,6 @@ describe("Profile Page", () => {
     renderProfile("user1");
 
     expect(screen.getByText("Bob")).toBeInTheDocument();
-  });
-
-  it("shows verification requested activity for non-admin user", () => {
-    renderProfile("user1");
-
-    expect(screen.getByText("Verification requested")).toBeInTheDocument();
   });
 
   it("shows Complete Verification button for unverified owner", () => {
@@ -616,21 +1317,29 @@ describe("Profile Page", () => {
     expect(screen.getByText("??")).toBeInTheDocument();
   });
 
-  it("shows Unknown date for activity when createdAt is undefined", () => {
-    const noDateSellerInfo = {
-      ...mockSellerInfo,
-      createdAt: undefined,
-    };
+  it("renders formatted dates for activity entries", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
-      if (apiPath === mockApi.auctions.getSellerInfo) return noDateSellerInfo;
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.userActivity.getSellerActivity) {
+        return [
+          {
+            _id: "act1",
+            _creationTime: 1000,
+            type: "listing_sold",
+            description: "Listing sold for R450 000",
+            relatedId: "auction1",
+            createdAt: new Date("2026-02-10").getTime(),
+          },
+        ];
+      }
       if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
       return null;
     });
 
-    renderProfile("user1");
+    renderProfile();
 
-    expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Feb 2026")).toBeInTheDocument();
   });
 
   it("shows unverified badge for unverified seller", () => {

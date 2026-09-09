@@ -8,6 +8,7 @@ import {
 } from "../../lib/auth";
 import { normalizeImages } from "../../lib/storage";
 import { updateCounter } from "../../admin_utils";
+import { logActivity } from "../../userActivity";
 import {
   validateAuctionBeforePublish,
   assertOwnership,
@@ -179,6 +180,18 @@ export const createAuctionHandler = async (
     await updateCounter(ctx, "auctions", "pending", 1);
   } else {
     await updateCounter(ctx, "auctions", "draft", 1);
+  }
+
+  // A draft isn't a real "listing" event yet — only log when the auction is
+  // actually submitted for review at creation time. Drafts that are submitted
+  // later get their `listing_created` entry from publishAuctionHandler.
+  if (status !== "draft") {
+    await logActivity(ctx, {
+      userId,
+      type: "listing_created",
+      description: `Listing created: ${args.title}`,
+      relatedId: auctionId,
+    });
   }
 
   return auctionId;
