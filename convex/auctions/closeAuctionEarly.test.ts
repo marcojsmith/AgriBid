@@ -82,6 +82,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };
@@ -206,6 +208,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };
@@ -282,6 +286,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };
@@ -315,6 +321,8 @@ describe("closeAuctionEarly mutation", () => {
     const auctionDoc = {
       _id: auctionId,
       status: "active",
+      sellerId: "seller1",
+      currentPrice: 1100,
       reservePrice: 1000,
       title: "Test Auction",
     };

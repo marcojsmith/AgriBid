@@ -427,6 +427,8 @@ describe("Mutations Branch Coverage Expansion", () => {
       vi.mocked(mockCtx.db.get).mockResolvedValue({
         _id: "a1",
         status: "active",
+        sellerId: "seller1",
+        currentPrice: 1000,
         reservePrice: 500,
       });
 

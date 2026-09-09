@@ -10,6 +10,7 @@ import {
   resolveUserId,
 } from "../../lib/auth";
 import { logAudit, updateCounter } from "../../admin_utils";
+import { logActivity } from "../../userActivity";
 import {
   validateAuctionBeforePublish,
   adjustStatusCounters,
@@ -24,7 +25,10 @@ import {
 } from "../../constants";
 import type { Id, Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
-import { calculateAndRecordFees } from "../internal";
+import {
+  calculateAndRecordFees,
+  logAuctionSettlementActivity,
+} from "../internal";
 
 /**
  * Result type for closeAuctionEarly mutation.
@@ -69,6 +73,16 @@ export const publishAuctionHandler = async (
   await ctx.db.patch(args.auctionId, { status: "pending_review" });
 
   await adjustStatusCounters(ctx, "draft", "pending_review");
+
+  // Auctions created as non-drafts never reach this handler, so each auction
+  // gets exactly one `listing_created` entry (the other path is in
+  // createAuctionHandler).
+  await logActivity(ctx, {
+    userId,
+    type: "listing_created",
+    description: `Listing created: ${auction.title}`,
+    relatedId: args.auctionId,
+  });
 
   return { success: true };
 };
@@ -453,6 +467,8 @@ export const closeAuctionEarlyHandler = async (
     await updateCounter(ctx, "auctions", "salesVolume", winningAmount ?? 0);
     await calculateAndRecordFees(ctx, auction, winningAmount);
   }
+
+  await logAuctionSettlementActivity(ctx, auction, finalStatus, winnerId);
 
   const authUser = await getAuthUser(ctx);
   const adminId = authUser ? resolveUserId(authUser) : "unknown";

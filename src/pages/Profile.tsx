@@ -24,6 +24,8 @@ import {
   X,
   Check,
   Building2,
+  Tag,
+  Trophy,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -60,13 +62,84 @@ type ReportReason =
   | "identity_misrepresentation"
   | "other";
 
-interface ActivityItem {
-  id: string;
-  type: "account_created" | "verification_requested" | "role_changed";
+/**
+ * Activity feed entry types returned by the `getSellerActivity` query.
+ * Keep in sync with the `userActivity.type` schema validator.
+ */
+type ActivityType =
+  | "account_created"
+  | "verification_requested"
+  | "verification_approved"
+  | "verification_rejected"
+  | "role_changed"
+  | "listing_created"
+  | "listing_sold"
+  | "bid_placed"
+  | "bid_won";
+
+interface ActivityMeta {
+  icon: LucideIcon;
+  bgClass: string;
+  iconColor: string;
   title: string;
-  description: string;
-  date: string;
 }
+
+const ACTIVITY_META: Record<ActivityType, ActivityMeta> = {
+  account_created: {
+    icon: UserCheck,
+    bgClass: "bg-blue-500/10",
+    iconColor: "text-blue-600",
+    title: "Account created",
+  },
+  verification_requested: {
+    icon: ShieldAlert,
+    bgClass: "bg-amber-500/10",
+    iconColor: "text-amber-600",
+    title: "Verification requested",
+  },
+  verification_approved: {
+    icon: ShieldCheck,
+    bgClass: "bg-green-500/10",
+    iconColor: "text-green-600",
+    title: "Verification approved",
+  },
+  verification_rejected: {
+    icon: ShieldAlert,
+    bgClass: "bg-red-500/10",
+    iconColor: "text-red-600",
+    title: "Verification rejected",
+  },
+  role_changed: {
+    icon: ShieldCheck,
+    bgClass: "bg-blue-500/10",
+    iconColor: "text-blue-600",
+    title: "Role changed",
+  },
+  listing_created: {
+    icon: Tag,
+    bgClass: "bg-blue-500/10",
+    iconColor: "text-blue-600",
+    title: "Listing created",
+  },
+  listing_sold: {
+    icon: Award,
+    bgClass: "bg-green-500/10",
+    iconColor: "text-green-600",
+    title: "Listing sold",
+  },
+  bid_placed: {
+    icon: Gavel,
+    bgClass: "bg-amber-500/10",
+    iconColor: "text-amber-600",
+    title: "Bid placed",
+  },
+  bid_won: {
+    icon: Trophy,
+    bgClass: "bg-green-500/10",
+    iconColor: "text-green-600",
+    title: "Auction won",
+  },
+};
 
 interface TrustItem {
   id: string;
@@ -112,36 +185,6 @@ const formatActivityDate = (timestamp?: number): string => {
   if (!timestamp) return "Unknown";
   const date = new Date(timestamp);
   return date.toLocaleDateString("en-ZA", { month: "short", year: "numeric" });
-};
-
-const getActivityItems = (role: string, createdAt?: number): ActivityItem[] => {
-  const memberSince = formatActivityDate(createdAt);
-  const items: ActivityItem[] = [
-    {
-      id: "1",
-      type: "account_created",
-      title: "Account created",
-      description: "Profile set up — verification pending",
-      date: memberSince,
-    },
-    {
-      id: "2",
-      type: "verification_requested",
-      title: "Verification requested",
-      description: "Identity documents submitted for review",
-      date: memberSince,
-    },
-  ];
-  if (role === "admin") {
-    items.push({
-      id: "3",
-      type: "role_changed",
-      title: "Admin role assigned",
-      description: "Granted administrative access to platform",
-      date: memberSince,
-    });
-  }
-  return items;
 };
 
 const getTrustItems = (
@@ -314,6 +357,11 @@ export default function Profile() {
 
   const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
 
+  const activity = useQuery(api.userActivity.getSellerActivity, {
+    userId: userId ?? "",
+    limit: 10,
+  });
+
   const {
     results: listings,
     status,
@@ -361,7 +409,9 @@ export default function Profile() {
 
   const activeListings = listings.filter((l) => l.status === "active");
   const soldListings = listings.filter((l) => l.status === "sold");
-  const activityItems = getActivityItems(sellerInfo.role, sellerInfo.createdAt);
+  // `activity` is undefined while loading; coerce to an array so the feed
+  // renders an empty state rather than crashing on a missing result.
+  const activityItems = activity ?? [];
   const trustItems = getTrustItems(
     sellerInfo.isVerified,
     sellerInfo.kycStatus,
@@ -995,45 +1045,42 @@ export default function Profile() {
               </h2>
             </div>
 
-            <div className="space-y-0">
-              {activityItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-3 py-3 border-b border-border last:border-0"
-                >
-                  <div
-                    className={`h-9 w-9 rounded flex items-center justify-center flex-shrink-0 ${
-                      item.type === "account_created"
-                        ? "bg-blue-500/10"
-                        : item.type === "verification_requested"
-                          ? "bg-amber-500/10"
-                          : "bg-green-500/10"
-                    }`}
-                  >
-                    <UserCheck
-                      className={`h-4 w-4 ${
-                        item.type === "account_created"
-                          ? "text-blue-600"
-                          : item.type === "verification_requested"
-                            ? "text-amber-600"
-                            : "text-green-600"
-                      }`}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      {item.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">
-                    {item.date}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {activity === undefined ? (
+              <LoadingIndicator />
+            ) : activityItems.length === 0 ? (
+              <div className="border-2 border-dashed border-border rounded p-8 text-center">
+                <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+                  No activity yet
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {activity.map((item) => {
+                  const meta = ACTIVITY_META[item.type];
+                  const Icon = meta.icon;
+                  return (
+                    <div
+                      key={item._id}
+                      className="flex items-start gap-3 py-3 border-b border-border last:border-0"
+                    >
+                      <div
+                        className={`h-9 w-9 rounded flex items-center justify-center flex-shrink-0 ${meta.bgClass}`}
+                      >
+                        <Icon className={`h-4 w-4 ${meta.iconColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">
+                          {item.description ?? meta.title}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatActivityDate(item.createdAt)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           {/* Trust & Compliance */}

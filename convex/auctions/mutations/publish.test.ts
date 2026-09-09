@@ -87,12 +87,16 @@ vi.mock("../../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-const { calculateAndRecordFees } = vi.hoisted(() => ({
-  calculateAndRecordFees: vi.fn().mockResolvedValue(undefined),
-}));
+const { calculateAndRecordFees, logAuctionSettlementActivity } = vi.hoisted(
+  () => ({
+    calculateAndRecordFees: vi.fn().mockResolvedValue(undefined),
+    logAuctionSettlementActivity: vi.fn().mockResolvedValue(undefined),
+  })
+);
 
 vi.mock("../internal", () => ({
   calculateAndRecordFees,
+  logAuctionSettlementActivity,
 }));
 
 const createMockProfile = (userId: string, role: string) => ({
@@ -199,6 +203,16 @@ describe("Publish Mutations", () => {
       expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
         status: "pending_review",
       });
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "u1",
+          type: "listing_created",
+          description: "Listing created: Title",
+          relatedId: "a1",
+          createdAt: expect.any(Number) as number,
+        })
+      );
     });
 
     it("should handle array-based image validation in publish", async () => {
@@ -649,6 +663,12 @@ describe("Publish Mutations", () => {
         expect.objectContaining({ _id: "a1" }),
         1500
       );
+      expect(logAuctionSettlementActivity).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({ _id: "a1" }),
+        "sold",
+        "u2"
+      );
     });
 
     it("should close as unsold if no bids", async () => {
@@ -665,6 +685,12 @@ describe("Publish Mutations", () => {
       );
       expect(result.finalStatus).toBe("unsold");
       expect(calculateAndRecordFees).not.toHaveBeenCalled();
+      expect(logAuctionSettlementActivity).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({ _id: "a1" }),
+        "unsold",
+        undefined
+      );
     });
 
     it("should handle same amount bids by timestamp", async () => {
