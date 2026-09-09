@@ -72,46 +72,50 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       <div className="flex flex-wrap gap-2 items-center">
         <Badge
           variant="outline"
-          className="font-bold bg-primary/5 text-primary border-primary/20 uppercase tracking-wide text-[10px]"
+          className="font-medium bg-primary/5 text-primary border-primary/20 text-[10px]"
         >
           {auction.categoryName || UNCATEGORIZED_LABEL}
         </Badge>
-        <Badge variant="secondary" className="font-bold">
+        <Badge variant="secondary" className="font-medium">
           {auction.year} {auction.make}
         </Badge>
         <Badge
           variant="outline"
-          className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]"
+          className="font-semibold text-muted-foreground text-[10px]"
         >
           ID: {auction._id.toString().slice(-8)}
         </Badge>
         {auction.status === "sold" && (
-          <Badge className="bg-green-600 hover:bg-green-700 font-black uppercase tracking-widest px-3 py-1">
-            {isWinner ? "YOU WON" : "SOLD"}
+          <Badge className="bg-success hover:bg-success/90 text-success-foreground font-semibold px-3 py-1">
+            {isWinner ? "You won" : "Sold"}
           </Badge>
         )}
         {auction.status === "unsold" && (
-          <Badge
-            variant="destructive"
-            className="font-black uppercase tracking-widest px-3 py-1"
-          >
-            UNSOLD
+          <Badge variant="destructive" className="font-semibold px-3 py-1">
+            Unsold
           </Badge>
         )}
       </div>
 
       <div className="flex justify-between items-start gap-4">
-        <h1 className="text-4xl md:text-5xl font-black tracking-tight text-primary uppercase leading-tight flex-1">
-          {auction.title}
-        </h1>
+        <div className="flex-1 min-w-0 space-y-1">
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground leading-snug">
+            {auction.title}
+          </h1>
+          {auction.make && auction.model && (
+            <p className="text-sm font-medium text-muted-foreground">
+              {auction.year} {auction.make} {auction.model}
+            </p>
+          )}
+        </div>
         {auction.status === "active" && (
           <Button
             variant="outline"
             size="lg"
             className={cn(
-              "rounded-xl border-2 font-black uppercase text-xs tracking-widest gap-2 h-12 px-6 transition-all shrink-0",
+              "rounded-md border font-medium text-xs gap-2 h-12 px-6 transition-all shrink-0",
               isWatched
-                ? "border-red-500/50 text-red-500 hover:bg-red-50 hover:text-red-600"
+                ? "border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 : "text-zinc-500 hover:border-primary hover:text-primary"
             )}
             onClick={handleWatchlistToggle}
@@ -124,15 +128,15 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       </div>
 
       {isWinner && (
-        <div className="bg-green-500/10 border-2 border-green-500/20 text-green-700 p-4 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in-95 duration-500">
-          <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0">
+        <div className="bg-success/10 border border-success/20 text-success p-4 rounded-md flex items-center gap-3 animate-in fade-in zoom-in-95 duration-500">
+          <div className="h-10 w-10 rounded-full bg-success flex items-center justify-center text-success-foreground shrink-0">
             <Heart className="h-5 w-5 fill-current" />
           </div>
           <div>
-            <p className="font-black uppercase text-sm leading-tight">
+            <p className="font-semibold text-sm leading-tight">
               Congratulations!
             </p>
-            <p className="text-xs font-bold opacity-80 uppercase tracking-wide mt-0.5">
+            <p className="text-xs font-medium opacity-80 mt-0.5">
               You are the winning bidder for this equipment.
             </p>
           </div>
@@ -140,15 +144,15 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
       )}
 
       {!isWinner && isSeller && auction.status === "sold" && (
-        <div className="bg-primary/10 border-2 border-primary/20 text-primary-foreground p-4 rounded-xl flex items-center gap-3">
+        <div className="bg-primary/10 border border-primary/20 text-primary-foreground p-4 rounded-md flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
             <Gavel className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-black uppercase text-sm leading-tight text-primary">
+            <p className="font-semibold text-sm leading-tight text-primary">
               Item Sold
             </p>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mt-0.5">
+            <p className="text-xs font-medium text-muted-foreground mt-0.5">
               Reserve met. Transaction finalization in progress.
             </p>
           </div>

@@ -140,7 +140,7 @@ export default function KYC() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       <div className="space-y-2">
-        <h1 className="text-4xl font-black uppercase tracking-tight">
+        <h1 className="text-4xl font-bold tracking-tight">
           Seller Verification
         </h1>
         <p className="text-muted-foreground">
@@ -161,10 +161,10 @@ export default function KYC() {
       ) : (
         <div className="space-y-8">
           {isEditMode && (
-            <div className="p-4 border-2 border-orange-500/20 bg-orange-500/5 rounded-xl flex gap-3 items-center">
+            <div className="p-4 border border-warning/20 bg-warning/5 rounded-md flex gap-3 items-center">
               <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
               <div>
-                <p className="font-black uppercase text-xs text-orange-600">
+                <p className="font-semibold text-xs text-warning">
                   Editing Verified Details
                 </p>
                 <p className="text-sm font-medium text-orange-600/80 leading-relaxed">
@@ -175,7 +175,7 @@ export default function KYC() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto font-bold uppercase text-[10px]"
+                className="ml-auto font-bold text-xs"
                 onClick={() => {
                   setIsEditMode(false);
                 }}
@@ -200,12 +200,10 @@ export default function KYC() {
             </div>
 
             <div className="space-y-6">
-              <Card className="p-6 border-2 bg-primary/5 space-y-4">
+              <Card className="p-6 border bg-primary/5 space-y-4">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-primary" />
-                  <h3 className="font-black uppercase text-xs tracking-widest">
-                    Compliance Check
-                  </h3>
+                  <h3 className="font-semibold text-xs">Compliance Check</h3>
                 </div>
                 <ul className="space-y-3">
                   <ListItem text="Names must match ID exactly" />
@@ -216,7 +214,7 @@ export default function KYC() {
               </Card>
 
               <Button
-                className="w-full h-16 rounded-2xl font-black uppercase tracking-widest bg-primary text-primary-foreground hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/20"
+                className="w-full h-16 rounded-lg font-semibold bg-primary text-primary-foreground hover:scale-[1.02] transition-transform shadow-2xl shadow-primary/20"
                 onClick={() => handleUpload()}
                 disabled={
                   isUploading ||
@@ -232,10 +230,10 @@ export default function KYC() {
               </Button>
 
               {status === "rejected" && (
-                <div className="p-4 border-2 border-destructive/20 bg-destructive/5 rounded-xl flex gap-3">
+                <div className="p-4 border border-destructive/20 bg-destructive/5 rounded-md flex gap-3">
                   <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
                   <div className="space-y-1">
-                    <p className="font-black uppercase text-[10px] text-destructive">
+                    <p className="font-semibold text-xs text-destructive">
                       Application Rejected
                     </p>
                     <p className="text-xs font-medium text-destructive/80 leading-relaxed">

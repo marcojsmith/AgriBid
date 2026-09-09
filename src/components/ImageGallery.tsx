@@ -1,6 +1,6 @@
 // app/src/components/ImageGallery.tsx
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -18,7 +18,26 @@ interface ImageGalleryProps {
 }
 
 /**
+ * Placeholder shown when an image is missing or failed to load.
+ *
+ * @returns The placeholder markup matching the gallery's empty state.
+ */
+function ImagePlaceholder() {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-6xl mb-4">🚜</span>
+      <span className="text-muted-foreground font-medium italic text-center px-4">
+        Image Pending (Seller Inspection in Progress)
+      </span>
+    </div>
+  );
+}
+
+/**
  * Component for an image gallery with a lightbox.
+ *
+ * Images that fail to load are replaced with the same placeholder used for
+ * missing images, so a broken CDN link never renders as a broken-image icon.
  *
  * @param props - Component props.
  * @param props.images - An array of image URLs.
@@ -28,20 +47,28 @@ interface ImageGalleryProps {
 export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  // Track which URLs failed to load so a broken CDN link never renders as a
+  // broken-image icon; recovery is automatic when the URL list changes
+  const [failedUrls, setFailedUrls] = useState<ReadonlySet<string>>(new Set());
+
+  /**
+   * Mark an image URL as failed so the placeholder renders in its place.
+   *
+   * @param url - The image URL that failed to load
+   */
+  const markImageFailed = (url: string) => {
+    setFailedUrls((prev) => new Set(prev).add(url));
+  };
 
   if (!images || images.length === 0) {
     return (
-      <div className="aspect-[16/10] bg-muted rounded-2xl flex items-center justify-center border-2 overflow-hidden">
-        <div className="flex flex-col items-center">
-          <span className="text-6xl mb-4">🚜</span>
-          <span className="text-muted-foreground font-medium italic text-center px-4">
-            Image Pending (Seller Inspection in Progress)
-          </span>
-        </div>
+      <div className="aspect-[16/10] bg-muted rounded-lg flex items-center justify-center border overflow-hidden">
+        <ImagePlaceholder />
       </div>
     );
   }
 
+  const activeImage = images[activeIndex];
   const nextImage = () => setActiveIndex((prev) => (prev + 1) % images.length);
   const prevImage = () =>
     setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
@@ -53,15 +80,28 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
         <DialogTrigger asChild>
           <button
             type="button"
-            className="w-full aspect-[16/10] bg-muted rounded-2xl flex items-center justify-center border-2 overflow-hidden group relative cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full aspect-[16/10] bg-muted rounded-lg flex items-center justify-center border overflow-hidden group relative cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Open full-screen gallery"
           >
-            <img
-              src={images[activeIndex]}
-              alt={`${title} - Main`}
-              loading="eager"
-              className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
-            />
+            {failedUrls.has(activeImage) ? (
+              <ImagePlaceholder />
+            ) : (
+              <img
+                src={activeImage}
+                alt={`${title} - Main`}
+                loading="eager"
+                className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                onError={() => {
+                  markImageFailed(activeImage);
+                }}
+              />
+            )}
+            <div className="absolute top-4 right-4 h-9 w-9 rounded-md bg-background/80 backdrop-blur flex items-center justify-center shadow-sm transition-colors group-hover:bg-background">
+              <Maximize2
+                className="h-4 w-4 text-foreground"
+                aria-hidden="true"
+              />
+            </div>
             <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
               {activeIndex + 1} / {images.length}
             </div>
@@ -74,12 +114,19 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
             Full-screen high-resolution image gallery for {title}
           </DialogDescription>
           <div className="relative w-full h-full flex items-center justify-center">
-            <img
-              src={images[activeIndex]}
-              alt={`${title} - Full Screen`}
-              loading="lazy"
-              className="max-w-full max-h-full object-contain"
-            />
+            {failedUrls.has(activeImage) ? (
+              <ImagePlaceholder />
+            ) : (
+              <img
+                src={activeImage}
+                alt={`${title} - Full Screen`}
+                loading="lazy"
+                className="max-w-full max-h-full object-contain"
+                onError={() => {
+                  markImageFailed(activeImage);
+                }}
+              />
+            )}
 
             {/* Lightbox Controls */}
             {images.length > 1 && (
@@ -137,19 +184,28 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
               type="button"
               onClick={() => setActiveIndex(index)}
               className={cn(
-                "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 activeIndex === index
                   ? "border-primary ring-2 ring-primary/20 scale-95"
                   : "border-transparent hover:border-primary/40"
               )}
               aria-label={`View image ${index + 1}`}
             >
-              <img
-                src={image}
-                alt={`${title} thumbnail ${index + 1}`}
-                loading="lazy"
-                className="object-cover w-full h-full"
-              />
+              {failedUrls.has(image) ? (
+                <span className="text-2xl" aria-hidden="true">
+                  🚜
+                </span>
+              ) : (
+                <img
+                  src={image}
+                  alt={`${title} thumbnail ${index + 1}`}
+                  loading="lazy"
+                  className="object-cover w-full h-full"
+                  onError={() => {
+                    markImageFailed(image);
+                  }}
+                />
+              )}
               {activeIndex !== index && (
                 <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors" />
               )}

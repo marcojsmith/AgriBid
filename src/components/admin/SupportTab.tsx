@@ -103,7 +103,7 @@ export function SupportTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      <Card className="border-2 overflow-hidden bg-card/50">
+      <Card className="border overflow-hidden bg-card/50">
         <Table>
           <TableHeader>
             <TableRow>
@@ -120,9 +120,7 @@ export function SupportTab() {
                 <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <MessageSquare className="h-8 w-8 opacity-20" />
-                    <p className="font-black uppercase text-xs tracking-widest">
-                      No support tickets
-                    </p>
+                    <p className="font-medium text-xs">No support tickets</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -142,7 +140,7 @@ export function SupportTab() {
                     {ticket.subject}
                   </TableCell>
                   <TableCell className="truncate">{ticket.message}</TableCell>
-                  <TableCell className="uppercase text-xs font-bold">
+                  <TableCell className="text-xs font-medium">
                     {ticket.priority}
                   </TableCell>
                   <TableCell className="text-right">
@@ -171,14 +169,14 @@ export function SupportTab() {
 
         {tickets.length > 0 && (
           <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
-            <p className="text-[10px] font-black uppercase text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Showing {tickets.length} tickets
             </p>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={handlePrevious}
                 disabled={cursorStack.length === 0}
               >
@@ -187,7 +185,7 @@ export function SupportTab() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={handleNext}
                 disabled={ticketsResult?.isDone ?? true}
               >

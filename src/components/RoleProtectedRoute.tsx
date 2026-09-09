@@ -134,7 +134,7 @@ export const RoleProtectedRoute = ({
   if (allowedRole !== "any" && userRole !== allowedRole) {
     return (
       <div className="flex flex-col h-[80vh] items-center justify-center space-y-4">
-        <h1 className="text-2xl font-bold uppercase">Access Denied</h1>
+        <h1 className="text-2xl font-bold">Access Denied</h1>
         <p className="text-muted-foreground font-medium">
           You do not have the required permissions to view this page.
         </p>

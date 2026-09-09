@@ -221,7 +221,7 @@ export default function MyBids() {
           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
             <Gavel className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-primary uppercase">
+          <h1 className="text-4xl font-bold tracking-tight text-primary">
             My Bids
           </h1>
         </div>
@@ -229,42 +229,42 @@ export default function MyBids() {
 
       {rawAuctions.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-card/50 border-2">
+          <Card className="bg-card/50 border">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">
                 Active Bids
               </p>
-              <p className="text-3xl font-black text-primary">
+              <p className="text-3xl font-bold text-primary">
                 {stats.totalActive}
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-card/50 border-2">
+          <Card className="bg-card/50 border">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">
                 Winning
               </p>
-              <p className="text-3xl font-black text-green-600">
+              <p className="text-3xl font-bold text-success">
                 {stats.winningCount}
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-card/50 border-2">
+          <Card className="bg-card/50 border">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">
                 Outbid
               </p>
-              <p className="text-3xl font-black text-red-600">
+              <p className="text-3xl font-bold text-destructive">
                 {stats.outbidCount}
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-card/50 border-2">
+          <Card className="bg-card/50 border">
             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-1">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">
                 Total Exposure
               </p>
-              <p className="text-xl font-black text-primary">
+              <p className="text-xl font-bold text-primary">
                 {formatCurrency(stats.totalExposure)}
               </p>
             </CardContent>
@@ -273,13 +273,13 @@ export default function MyBids() {
       )}
 
       {rawAuctions.length === 0 ? (
-        <div className="max-w-4xl mx-auto space-y-8 py-24 text-center bg-card border-2 border-dashed rounded-3xl border-primary/10">
-          <p className="text-muted-foreground text-lg max-w-md mx-auto font-bold uppercase tracking-widest">
+        <div className="max-w-4xl mx-auto space-y-8 py-24 text-center bg-card border border-dashed rounded-lg border-primary/10">
+          <p className="text-muted-foreground text-lg max-w-md mx-auto font-bold">
             You haven’t placed any bids yet.
           </p>
           <Button
             size="lg"
-            className="h-14 px-12 rounded-2xl font-black text-xl shadow-xl shadow-primary/20 transition-[transform,shadow,background-color] hover:scale-105 active:scale-95"
+            className="h-14 px-12 rounded-lg font-semibold text-xl shadow-xl shadow-primary/20 transition-[transform,shadow,background-color] hover:scale-105 active:scale-95"
             asChild
           >
             <Link to="/">Browse Auctions</Link>
@@ -296,25 +296,25 @@ export default function MyBids() {
               <TabsList className="bg-muted/50 p-1">
                 <TabsTrigger
                   value="all"
-                  className="font-bold text-xs uppercase tracking-widest px-4 transition-[background-color,color]"
+                  className="font-bold text-xs px-4 transition-[background-color,color]"
                 >
                   All
                 </TabsTrigger>
                 <TabsTrigger
                   value="winning"
-                  className="font-bold text-xs uppercase tracking-widest px-4 transition-[background-color,color]"
+                  className="font-bold text-xs px-4 transition-[background-color,color]"
                 >
                   Winning
                 </TabsTrigger>
                 <TabsTrigger
                   value="outbid"
-                  className="font-bold text-xs uppercase tracking-widest px-4 transition-[background-color,color]"
+                  className="font-bold text-xs px-4 transition-[background-color,color]"
                 >
                   Outbid
                 </TabsTrigger>
                 <TabsTrigger
                   value="ended"
-                  className="font-bold text-xs uppercase tracking-widest px-4 transition-[background-color,color]"
+                  className="font-bold text-xs px-4 transition-[background-color,color]"
                 >
                   Ended
                 </TabsTrigger>
@@ -326,27 +326,18 @@ export default function MyBids() {
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger
                   aria-label="Sort bids"
-                  className="w-[180px] font-bold text-xs uppercase tracking-widest bg-muted/30 border-2 transition-[border-color,background-color]"
+                  className="w-[180px] font-bold text-xs bg-muted/30 border transition-[border-color,background-color]"
                 >
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem
-                    value="ending"
-                    className="font-bold text-xs uppercase tracking-widest"
-                  >
+                  <SelectItem value="ending" className="font-bold text-xs">
                     Ending Soon
                   </SelectItem>
-                  <SelectItem
-                    value="recent"
-                    className="font-bold text-xs uppercase tracking-widest"
-                  >
+                  <SelectItem value="recent" className="font-bold text-xs">
                     Recent Activity
                   </SelectItem>
-                  <SelectItem
-                    value="bid"
-                    className="font-bold text-xs uppercase tracking-widest"
-                  >
+                  <SelectItem value="bid" className="font-bold text-xs">
                     Highest Bid
                   </SelectItem>
                 </SelectContent>
@@ -363,7 +354,7 @@ export default function MyBids() {
                 <div
                   key={auction._id}
                   className={cn(
-                    "group relative bg-card border rounded-xl overflow-hidden transition-[transform,shadow] duration-300 hover:shadow-md hover:-translate-y-0.5 flex flex-col sm:flex-row sm:h-48 border-border/50"
+                    "group relative bg-card border rounded-md overflow-hidden transition-[transform,shadow] duration-300 hover:shadow-md hover:-translate-y-0.5 flex flex-col sm:flex-row sm:h-48 border-border/50"
                   )}
                 >
                   {/* Status Strip Indicator */}
@@ -391,7 +382,7 @@ export default function MyBids() {
                     <div className="absolute top-2 left-2">
                       <Badge
                         className={cn(
-                          "px-2 py-0.5 font-black text-xs tracking-tighter uppercase rounded-full shadow-lg",
+                          "px-2 py-0.5 font-semibold text-xs rounded-full shadow-lg",
                           colorClass
                         )}
                       >
@@ -421,11 +412,11 @@ export default function MyBids() {
                   <div className="flex-1 p-5 flex flex-col min-w-0">
                     <div className="space-y-1">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-black text-base leading-tight truncate group-hover:text-primary transition-colors uppercase tracking-tight">
+                        <h3 className="font-semibold text-base leading-tight truncate group-hover:text-primary transition-colors">
                           {auction.title}
                         </h3>
                       </div>
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                         <span>{auction.make}</span>
                         <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
                         <span>{auction.model}</span>
@@ -434,10 +425,10 @@ export default function MyBids() {
 
                     <div className="grid grid-cols-2 gap-3 py-2 border-y border-border/5 my-auto">
                       <div className="space-y-0.5">
-                        <p className="text-xs text-muted-foreground uppercase font-black tracking-tighter">
+                        <p className="text-xs text-muted-foreground font-semibold">
                           My Bid
                         </p>
-                        <p className="font-black text-sm tracking-tight tabular-nums">
+                        <p className="font-bold text-sm tracking-tight tabular-nums">
                           {formatCurrency(auction.myHighestBid)}
                         </p>
                         <p className="text-[10px] text-muted-foreground font-bold">
@@ -446,12 +437,12 @@ export default function MyBids() {
                         </p>
                       </div>
                       <div className="space-y-0.5 text-right border-l border-border/10 pl-3">
-                        <p className="text-xs text-muted-foreground uppercase font-black tracking-tighter">
+                        <p className="text-xs text-muted-foreground font-semibold">
                           {auction.status === "active" ? "Next Min" : "Final"}
                         </p>
                         <p
                           className={cn(
-                            "font-black text-sm tracking-tight tabular-nums",
+                            "font-bold text-sm tracking-tight tabular-nums",
                             auction.status === "active"
                               ? "text-primary"
                               : auction.isWon
@@ -464,7 +455,7 @@ export default function MyBids() {
                             : formatCurrency(auction.currentPrice)}
                         </p>
                         {auction.isOutbid && (
-                          <p className="text-[10px] text-red-600 font-black animate-pulse uppercase">
+                          <p className="text-xs text-destructive font-semibold animate-pulse">
                             Outbid!
                           </p>
                         )}
@@ -474,7 +465,7 @@ export default function MyBids() {
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        className="flex-1 font-black uppercase text-xs tracking-wider h-10 rounded-xl transition-[background-color,transform,shadow]"
+                        className="flex-1 font-semibold text-xs h-10 rounded-md transition-[background-color,transform,shadow]"
                         variant={auction.isOutbid ? "default" : "outline"}
                         asChild
                       >
@@ -500,14 +491,14 @@ export default function MyBids() {
 
           {filteredAndSortedAuctions.length === 0 && (
             <div className="py-20 text-center">
-              <p className="text-muted-foreground font-bold uppercase tracking-widest">
+              <p className="text-muted-foreground font-bold">
                 No auctions found matching this filter.
               </p>
             </div>
           )}
 
           <div className="flex flex-col items-center gap-4 pt-8">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+            <p className="text-xs font-semibold text-muted-foreground">
               Showing {filteredAndSortedAuctions.length} of{" "}
               {totalBids ?? filteredAndSortedAuctions.length} Auctions
             </p>
@@ -517,7 +508,7 @@ export default function MyBids() {
                 onClick={() => {
                   loadMore(10);
                 }}
-                className="h-12 px-10 rounded-xl font-black uppercase tracking-widest border-2 hover:bg-primary hover:text-white transition-[background-color,color,border-color]"
+                className="h-12 px-10 rounded-md font-semibold border hover:bg-primary hover:text-primary-foreground transition-[background-color,color,border-color]"
               >
                 Load More
               </Button>
@@ -525,7 +516,7 @@ export default function MyBids() {
               <Button
                 disabled
                 variant="outline"
-                className="h-12 px-10 rounded-xl border-2"
+                className="h-12 px-10 rounded-md border"
               >
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Loading…

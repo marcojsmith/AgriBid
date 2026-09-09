@@ -62,9 +62,9 @@ export function FeeBreakdown({
   );
 
   return (
-    <Card className="border-2 border-primary/20">
+    <Card className="border border-primary/20">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
           <Receipt className="h-4 w-4" />
           Fee Breakdown
         </CardTitle>

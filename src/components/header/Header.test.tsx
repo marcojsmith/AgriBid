@@ -90,7 +90,7 @@ describe("Header", () => {
 
   it("renders brand name and navigation links", () => {
     renderHeader();
-    expect(screen.getByText("AGRIBID")).toBeInTheDocument();
+    expect(screen.getByText("AgriBid")).toBeInTheDocument();
     expect(screen.getByText("Marketplace")).toBeInTheDocument();
     expect(screen.getByText("Sell")).toBeInTheDocument();
     expect(screen.getByText("Support")).toBeInTheDocument();
@@ -138,8 +138,8 @@ describe("Header", () => {
   it("renders loading profile state", () => {
     (useQuery as Mock).mockReturnValue(undefined);
     renderHeader();
-    // Header should still render AGRIBID
-    expect(screen.getByText("AGRIBID")).toBeInTheDocument();
+    // Header should still render the brand name
+    expect(screen.getByText("AgriBid")).toBeInTheDocument();
   });
 
   it("renders login button when unauthenticated", () => {

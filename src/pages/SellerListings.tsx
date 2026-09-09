@@ -64,7 +64,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
   return (
     <div className="max-w-7xl mx-auto space-y-8 px-4 py-4 sm:p-6">
       <div className="space-y-4">
-        <Button asChild variant="outline" className="rounded-md border-2">
+        <Button asChild variant="outline" className="rounded-md border">
           <Link to={`/profile/${userId ?? ""}`}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to profile
           </Link>
@@ -76,8 +76,8 @@ export default function SellerListings({ status }: SellerListingsProps) {
             <Award className="h-5 w-5 text-green-600" />
           )}
           <h1
-            className={`text-2xl sm:text-4xl font-black uppercase tracking-tight ${
-              isActive ? "text-primary" : "text-green-700"
+            className={`text-2xl sm:text-4xl font-bold tracking-tight ${
+              isActive ? "text-primary" : "text-success"
             }`}
           >
             {isActive ? "Active Auctions" : "Past Sales"} by {sellerName}
@@ -86,9 +86,9 @@ export default function SellerListings({ status }: SellerListingsProps) {
       </div>
 
       {listings.length === 0 && listingsStatus === "Exhausted" ? (
-        <div className="border-2 border-dashed border-border rounded p-12 text-center">
+        <div className="border border-dashed border-border rounded p-12 text-center">
           <p className="text-4xl mb-3">🚜</p>
-          <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+          <p className="text-muted-foreground font-bold italic text-sm">
             {isActive
               ? "No active auctions at this time."
               : "No past sales at this time."}
@@ -109,7 +109,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
           {(listingsStatus === "CanLoadMore" ||
             listingsStatus === "LoadingMore") && (
             <div className="flex flex-col items-center gap-4 pt-4 pb-8">
-              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+              <p className="text-xs font-semibold text-muted-foreground">
                 Showing {listings.length} Listings
               </p>
               <Button
@@ -119,7 +119,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
                   loadMore(PAGINATION_LOAD_MORE_ITEMS);
                 }}
                 disabled={listingsStatus === "LoadingMore"}
-                className="rounded-md border-2 px-12 font-black uppercase tracking-widest"
+                className="rounded-md border px-12 font-semibold"
               >
                 {listingsStatus === "LoadingMore" ? (
                   <>

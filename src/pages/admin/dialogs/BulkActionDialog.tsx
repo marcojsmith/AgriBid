@@ -44,9 +44,9 @@ export function BulkActionDialog({
 }: BulkActionDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="rounded-2xl border-2">
+      <AlertDialogContent className="rounded-md border">
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-black uppercase tracking-tight">
+          <AlertDialogTitle className="font-semibold">
             Perform Bulk Status Update?
           </AlertDialogTitle>
           <AlertDialogDescription className="font-medium text-sm">
@@ -55,20 +55,20 @@ export function BulkActionDialog({
               {selectedCount} auctions
             </span>{" "}
             to status{" "}
-            <span className="font-bold text-primary uppercase">
-              {(targetStatus ?? "unspecified").toUpperCase()}
+            <span className="font-bold text-primary">
+              {targetStatus ?? "unspecified"}
             </span>
             . This action is auditable and affects marketplace visibility.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-xl border-2 font-bold uppercase text-[10px]">
+          <AlertDialogCancel className="rounded-md border font-medium text-xs">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isProcessing}
-            className="rounded-xl bg-primary text-primary-foreground font-black uppercase text-[10px]"
+            className="rounded-md bg-primary text-primary-foreground font-semibold text-xs"
           >
             {isProcessing ? (
               <LoadingIndicator size="sm" className="mr-2" />

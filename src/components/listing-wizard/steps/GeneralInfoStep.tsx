@@ -31,7 +31,7 @@ export const GeneralInfoStep = () => {
         <div className="space-y-2">
           <label
             htmlFor="year"
-            className="text-xs font-black uppercase text-muted-foreground ml-1"
+            className="text-xs font-semibold text-muted-foreground ml-1"
           >
             Manufacturing Year
           </label>
@@ -54,13 +54,13 @@ export const GeneralInfoStep = () => {
               }
             }}
             placeholder={`e.g. ${String(new Date().getFullYear())}`}
-            className="h-12 border-2 rounded-xl"
+            className="h-12 border rounded-md"
           />
         </div>
         <div className="space-y-2 relative">
           <label
             htmlFor="location"
-            className="text-xs font-black uppercase text-muted-foreground ml-1"
+            className="text-xs font-semibold text-muted-foreground ml-1"
           >
             Location (Town / City / Country)
           </label>
@@ -77,7 +77,7 @@ export const GeneralInfoStep = () => {
               }, 200)
             }
             placeholder="e.g. Johannesburg, ZA or Gaborone, BW"
-            className="h-12 border-2 rounded-xl"
+            className="h-12 border rounded-md"
             aria-expanded={
               showLocationSuggestions && filteredLocations.length > 0
             }
@@ -88,7 +88,7 @@ export const GeneralInfoStep = () => {
             <div
               id="location-suggestions"
               role="listbox"
-              className="absolute z-50 w-full mt-1 bg-card border-2 rounded-xl shadow-xl max-h-48 overflow-y-auto"
+              className="absolute z-50 w-full mt-1 bg-card border rounded-md shadow-xl max-h-48 overflow-y-auto"
             >
               {filteredLocations.map((loc) => (
                 <button
@@ -112,7 +112,7 @@ export const GeneralInfoStep = () => {
       <div className="space-y-2">
         <label
           htmlFor="description"
-          className="text-xs font-black uppercase text-muted-foreground ml-1"
+          className="text-xs font-semibold text-muted-foreground ml-1"
         >
           Equipment Description
         </label>
@@ -123,14 +123,14 @@ export const GeneralInfoStep = () => {
             updateField("description", e.target.value);
           }}
           placeholder="Describe the condition, key features, and any recent maintenance..."
-          className="min-h-[120px] border-2 rounded-xl resize-none"
+          className="min-h-[120px] border rounded-md resize-none"
         />
       </div>
 
       <div className="space-y-2">
         <label
           htmlFor="title"
-          className="text-xs font-black uppercase text-muted-foreground ml-1"
+          className="text-xs font-semibold text-muted-foreground ml-1"
         >
           Listing Title
         </label>
@@ -141,16 +141,16 @@ export const GeneralInfoStep = () => {
             updateField("title", e.target.value);
           }}
           placeholder="e.g. 2023 John Deere 6155R Premium"
-          className="h-12 border-2 rounded-xl"
+          className="h-12 border rounded-md"
         />
-        <p className="text-[10px] text-muted-foreground font-medium uppercase px-1 italic">
+        <p className="text-xs text-muted-foreground font-medium px-1 italic">
           Pro-tip: Include Year, Make, and Model for better search results.
         </p>
       </div>
       <div className="space-y-2">
         <label
           htmlFor="hours"
-          className="text-xs font-black uppercase text-muted-foreground ml-1"
+          className="text-xs font-semibold text-muted-foreground ml-1"
         >
           Operating Hours
         </label>
@@ -172,7 +172,7 @@ export const GeneralInfoStep = () => {
             }
           }}
           placeholder="e.g. 1200"
-          className="h-12 border-2 rounded-xl"
+          className="h-12 border rounded-md"
         />
       </div>
     </div>

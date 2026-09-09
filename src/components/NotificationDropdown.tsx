@@ -74,13 +74,13 @@ export function NotificationDropdown() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-10 w-10 rounded-full border-2 hover:bg-muted transition-all"
+          className="relative h-10 w-10 rounded-full border hover:bg-muted transition-all"
           aria-label={`Notifications, ${unreadCount} unread`}
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-black text-primary-foreground flex items-center justify-center border-2 border-background animate-in zoom-in"
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center border border-background animate-in zoom-in"
               aria-hidden="true"
             >
               {unreadCount}
@@ -90,17 +90,17 @@ export function NotificationDropdown() {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-80 p-2 rounded-2xl border-2 shadow-2xl"
+        className="w-80 p-2 rounded-lg border shadow-2xl"
       >
         <div className="flex items-center justify-between px-2 py-2">
-          <DropdownMenuLabel className="text-xs font-black uppercase tracking-widest opacity-50">
+          <DropdownMenuLabel className="text-xs font-semibold opacity-50">
             Notifications
           </DropdownMenuLabel>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-[10px] font-bold uppercase tracking-tighter hover:bg-primary/10 hover:text-primary"
+              className="h-7 text-xs font-bold hover:bg-primary/10 hover:text-primary"
               onClick={handleMarkAllRead}
               disabled={isMarkingAllRead}
             >
@@ -116,14 +116,14 @@ export function NotificationDropdown() {
           {notificationsResult === undefined ? (
             <div className="py-12 text-center">
               <LoadingIndicator className="mx-auto" />
-              <p className="text-[10px] font-black uppercase text-muted-foreground mt-2">
+              <p className="text-xs font-semibold text-muted-foreground mt-2">
                 Syncing...
               </p>
             </div>
           ) : typedNotifications.length === 0 ? (
             <div className="py-8 text-center space-y-2">
               <Clock className="h-8 w-8 text-muted-foreground/20 mx-auto" />
-              <p className="text-[10px] font-black uppercase text-muted-foreground">
+              <p className="text-xs font-semibold text-muted-foreground">
                 All caught up
               </p>
             </div>
@@ -132,7 +132,7 @@ export function NotificationDropdown() {
             <DropdownMenuItem
               key={n._id}
               className={cn(
-                "flex flex-col items-start gap-1 p-3 rounded-xl cursor-pointer transition-all border-2 border-transparent",
+                "flex flex-col items-start gap-1 p-3 rounded-md cursor-pointer transition-all border border-transparent",
                 "focus:bg-muted/10 focus:border-primary focus:text-foreground outline-none",
                 !n.isRead ? "bg-muted/50 border-primary/10" : "opacity-60"
               )}
@@ -152,7 +152,7 @@ export function NotificationDropdown() {
             >
               <div className="flex items-center gap-2 w-full">
                 {getNotificationIcon(n.type)}
-                <span className="font-black uppercase text-[10px] tracking-tight flex-1 truncate">
+                <span className="font-semibold text-xs flex-1 truncate">
                   {n.title}
                 </span>
                 <span className="text-[8px] font-bold text-muted-foreground">
@@ -171,7 +171,7 @@ export function NotificationDropdown() {
             <div className="p-1">
               <Button
                 variant="ghost"
-                className="w-full h-9 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+                className="w-full h-9 text-xs font-semibold text-muted-foreground"
                 onClick={() => navigate("/notifications")}
               >
                 View Archive

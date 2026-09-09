@@ -34,7 +34,7 @@ export const WizardNavigation = ({
           variant="outline"
           onClick={prev}
           disabled={currentStep === 0 || isSubmitting}
-          className="h-12 px-6 rounded-xl font-bold border-2 gap-2"
+          className="h-12 px-6 rounded-md font-bold border gap-2"
         >
           <ChevronLeft className="h-4 w-4" />
           Previous
@@ -43,7 +43,7 @@ export const WizardNavigation = ({
           variant="outline"
           onClick={onSaveDraft}
           disabled={isSubmitting}
-          className="h-12 px-6 rounded-xl font-bold border-2 gap-2"
+          className="h-12 px-6 rounded-md font-bold border gap-2"
         >
           {draftSaved ? (
             <Check className="h-4 w-4 text-green-500" />
@@ -58,7 +58,7 @@ export const WizardNavigation = ({
         <Button
           onClick={onFinalSubmit}
           disabled={isSubmitting || !!getStepError(currentStep)}
-          className="h-14 px-12 rounded-xl font-black text-xl gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all scale-105"
+          className="h-14 px-12 rounded-md font-semibold text-xl gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all scale-105"
         >
           {isSubmitting ? (
             <>
@@ -76,7 +76,7 @@ export const WizardNavigation = ({
         <Button
           onClick={next}
           disabled={!!getStepError(currentStep)}
-          className="h-12 px-8 rounded-xl font-black text-lg gap-2 shadow-lg shadow-primary/20"
+          className="h-12 px-8 rounded-md font-semibold text-lg gap-2 shadow-lg shadow-primary/20"
         >
           Next Step
           <ChevronRight className="h-5 w-5" />

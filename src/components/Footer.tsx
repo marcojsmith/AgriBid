@@ -64,10 +64,10 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand Column */}
           <div className="space-y-6">
-            <div className="font-black text-3xl tracking-tighter text-primary">
+            <div className="font-bold text-3xl text-primary">
               {businessName.toUpperCase()}
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed uppercase font-bold tracking-wide">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               The national marketplace for heavy machinery. Built for farmers,
               by farmers. We provide a transparent, high-integrity platform for
               equipment liquidation.
@@ -76,7 +76,7 @@ export const Footer = () => {
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <ShieldCheck className="h-4 w-4" />
               </div>
-              <p className="text-[10px] font-black uppercase text-primary leading-tight">
+              <p className="text-xs font-semibold text-primary leading-tight">
                 Verified Seller
                 <br />
                 Network
@@ -87,7 +87,7 @@ export const Footer = () => {
           {/* Navigation Sections */}
           {footerSections.map((section) => (
             <div key={section.title} className="space-y-6">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+              <h3 className="text-xs font-semibold text-primary">
                 {section.title}
               </h3>
               <ul className="space-y-4">
@@ -100,7 +100,7 @@ export const Footer = () => {
                     </>
                   );
                   const className =
-                    "group flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground hover:text-primary transition-colors";
+                    "group flex items-center gap-3 text-xs text-muted-foreground hover:text-primary transition-colors";
 
                   return (
                     <li key={link.name}>
@@ -122,12 +122,10 @@ export const Footer = () => {
 
           {/* Contact Info */}
           <div className="space-y-6">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-              Headquarters
-            </h3>
+            <h3 className="text-xs font-semibold text-primary">Headquarters</h3>
             <ul className="space-y-4">
               {addressParts && (
-                <li className="flex items-start gap-3 text-xs font-bold uppercase text-muted-foreground">
+                <li className="flex items-start gap-3 text-xs text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressParts)}`}
@@ -140,7 +138,7 @@ export const Footer = () => {
                 </li>
               )}
               {telephone && (
-                <li className="flex items-center gap-3 text-xs font-bold uppercase text-muted-foreground">
+                <li className="flex items-center gap-3 text-xs text-muted-foreground">
                   <Phone className="h-3.5 w-3.5" />
                   <a
                     href={`tel:${telephone.replace(/[^0-9+]/g, "")}`}
@@ -155,10 +153,10 @@ export const Footer = () => {
         </div>
 
         <div className="mt-16 pt-8 border-t border-muted flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+          <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} {businessName}. All rights reserved.
           </p>
-          <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <div className="flex gap-6 text-xs text-muted-foreground">
             <a href="#" className="hover:text-primary transition-colors">
               Privacy Policy
             </a>

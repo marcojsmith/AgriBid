@@ -154,6 +154,10 @@ vi.mock("@/components/bidding/BiddingPanel", () => ({
   BiddingPanel: () => <div data-testid="bidding-panel">Bidding Panel</div>,
 }));
 
+vi.mock("@/components/bidding/MobileBidBar", () => ({
+  MobileBidBar: () => <div data-testid="mobile-bid-bar">Mobile Bid Bar</div>,
+}));
+
 vi.mock("@/components/bidding/BidHistory", () => ({
   BidHistory: () => <div data-testid="bid-history">Bid History</div>,
 }));
@@ -226,6 +230,7 @@ describe("AuctionDetail Page", () => {
       "Test Tractor"
     );
     expect(screen.getByText("Detailed description")).toBeInTheDocument();
+    expect(screen.getByTestId("mobile-bid-bar")).toBeInTheDocument();
   });
 
   it("renders invalid id state", () => {

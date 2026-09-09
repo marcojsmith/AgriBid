@@ -43,7 +43,7 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
   if (endTime === undefined || endTime === null) {
     return (
       <span
-        className={`font-mono font-bold text-muted-foreground ${className || ""}`}
+        className={`font-mono font-bold tabular-nums text-muted-foreground ${className || ""}`}
       >
         TBD
       </span>
@@ -54,7 +54,9 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
 
   if (remainingMs <= 0) {
     return (
-      <span className={`font-mono font-bold text-primary ${className || ""}`}>
+      <span
+        className={`font-mono font-bold tabular-nums text-primary ${className || ""}`}
+      >
         Ended
       </span>
     );
@@ -80,7 +82,7 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
 
   return (
     <span
-      className={`font-mono font-bold ${stateColorClass} ${className || ""}`}
+      className={`font-mono font-bold tabular-nums ${stateColorClass} ${className || ""}`}
     >
       {timeLeft}
     </span>

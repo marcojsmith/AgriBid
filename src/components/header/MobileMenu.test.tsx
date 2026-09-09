@@ -185,6 +185,17 @@ describe("MobileMenu", () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
+  it("should show Watchlist link for authenticated users", () => {
+    render(
+      <MemoryRouter>
+        <MobileMenu {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    const watchlistLink = screen.getByText("Watchlist").closest("a");
+    expect(watchlistLink).toHaveAttribute("href", "/watchlist");
+  });
+
   it("should show verification CTA for unverified users", () => {
     render(
       <MemoryRouter>

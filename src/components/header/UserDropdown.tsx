@@ -77,7 +77,7 @@ export function UserDropdown({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-xl group"
+          className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-md group"
           disabled={isLoadingProfile}
         >
           <div className="flex-col items-end hidden sm:flex">
@@ -87,14 +87,14 @@ export function UserDropdown({
               ) : isVerified ? (
                 <Badge
                   variant="secondary"
-                  className="h-4 px-1 text-[8px] font-black bg-green-500/10 text-green-600 border-green-500/20 uppercase"
+                  className="h-4 px-1 text-[8px] font-semibold bg-success/10 text-success border-success/20"
                 >
                   Verified
                 </Badge>
               ) : (
                 <Badge
                   variant="secondary"
-                  className="h-4 px-1 text-[8px] font-black bg-orange-500/10 text-orange-600 border-orange-500/20 uppercase"
+                  className="h-4 px-1 text-[8px] font-semibold bg-warning/10 text-warning border-warning/20"
                 >
                   {kycStatus === "pending" ? "Pending Review" : "Unverified"}
                 </Badge>
@@ -104,7 +104,7 @@ export function UserDropdown({
               {isLoadingProfile ? "Loading..." : userData?.name || "User"}
             </span>
           </div>
-          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all border-2 border-primary/20">
+          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all border border-primary/20">
             {isLoadingProfile ? (
               <LoadingIndicator size="sm" />
             ) : (
@@ -116,7 +116,7 @@ export function UserDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-64 rounded-2xl border-2 p-2 shadow-2xl"
+        className="w-64 rounded-md border p-2 shadow-2xl"
       >
         {navLinks.map((link) => {
           const Icon = link.icon;
@@ -125,7 +125,7 @@ export function UserDropdown({
             <DropdownMenuItem
               key={link.name}
               asChild
-              className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+              className="rounded-md font-semibold text-xs h-10"
             >
               <Link
                 to={link.href}
@@ -144,15 +144,15 @@ export function UserDropdown({
         {!isVerified && kycStatus !== "pending" && (
           <DropdownMenuItem
             asChild
-            className="bg-orange-500/10 text-orange-600 focus:bg-orange-500/20 focus:text-orange-700 rounded-xl mb-1 border border-orange-500/20 p-3"
+            className="bg-warning/10 text-warning focus:bg-warning/20 focus:text-warning rounded-md mb-1 border border-warning/20 p-3"
           >
             <Link to="/kyc" className="flex items-center gap-3 w-full">
               <ShieldAlert className="h-5 w-5" />
               <div className="flex flex-col">
-                <span className="font-black text-[10px] uppercase tracking-tighter leading-none">
+                <span className="font-semibold text-xs leading-none">
                   Identity Required
                 </span>
-                <span className="text-[9px] font-bold opacity-80 mt-0.5">
+                <span className="text-[9px] font-medium opacity-80 mt-0.5">
                   Complete KYC to start selling
                 </span>
               </div>
@@ -163,7 +163,7 @@ export function UserDropdown({
         {profileId ? (
           <DropdownMenuItem
             asChild
-            className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+            className="rounded-md font-semibold text-xs h-10"
           >
             <Link
               to={`/profile/${profileId}`}
@@ -176,7 +176,7 @@ export function UserDropdown({
         ) : (
           <DropdownMenuItem
             disabled
-            className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10 opacity-50"
+            className="rounded-md font-semibold text-xs h-10 opacity-50"
           >
             <div className="flex items-center gap-2 w-full">
               <User className="h-4 w-4" />
@@ -188,7 +188,7 @@ export function UserDropdown({
         {role === "admin" && (
           <DropdownMenuItem
             asChild
-            className="rounded-xl font-black uppercase text-[10px] tracking-widest text-primary focus:bg-primary/10 focus:text-primary h-10"
+            className="rounded-md font-semibold text-xs text-primary focus:bg-primary/10 focus:text-primary h-10"
           >
             <Link to="/admin" className="flex items-center gap-2 w-full">
               <ShieldAlert className="h-4 w-4" />
@@ -201,7 +201,7 @@ export function UserDropdown({
 
         <DropdownMenuItem
           asChild
-          className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+          className="rounded-md font-semibold text-xs h-10"
         >
           <Link to="/dashboard/bids" className="flex items-center gap-2 w-full">
             <LayoutDashboard className="h-4 w-4" />
@@ -210,7 +210,7 @@ export function UserDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           asChild
-          className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+          className="rounded-md font-semibold text-xs h-10"
         >
           <Link to="/watchlist" className="flex items-center gap-2 w-full">
             <Heart className="h-4 w-4" />
@@ -219,7 +219,7 @@ export function UserDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           asChild
-          className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+          className="rounded-md font-semibold text-xs h-10"
         >
           <Link
             to="/dashboard/listings"
@@ -231,7 +231,7 @@ export function UserDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           asChild
-          className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+          className="rounded-md font-semibold text-xs h-10"
         >
           <Link
             to="/messages"
@@ -258,7 +258,7 @@ export function UserDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           asChild
-          className="rounded-md font-bold uppercase text-[10px] tracking-wide h-10"
+          className="rounded-md font-semibold text-xs h-10"
         >
           <Link to="/settings" className="flex items-center gap-2 w-full">
             <Settings className="h-4 w-4" />
@@ -267,7 +267,7 @@ export function UserDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           asChild
-          className="rounded-xl font-bold uppercase text-[10px] tracking-wide h-10"
+          className="rounded-md font-semibold text-xs h-10"
         >
           <Link to="/support" className="flex items-center gap-2 w-full">
             <MessageSquare className="h-4 w-4" />
@@ -283,7 +283,7 @@ export function UserDropdown({
               toast.error("Sign out failed. Please try again.");
             });
           }}
-          className="rounded-xl font-black uppercase text-[10px] tracking-widest cursor-pointer focus:bg-destructive/10 focus:text-destructive text-destructive h-10 gap-2"
+          className="rounded-md font-semibold text-xs cursor-pointer focus:bg-destructive/10 focus:text-destructive text-destructive h-10 gap-2"
         >
           <LogOut className="h-4 w-4" />
           Sign Out

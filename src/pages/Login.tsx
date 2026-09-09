@@ -33,10 +33,10 @@ export default function Login() {
   return (
     <div className="flex flex-col items-center mt-12 mb-20 space-y-8">
       <div className="text-center">
-        <h2 className="text-3xl font-black text-primary mb-2 uppercase tracking-tight">
+        <h2 className="text-3xl font-bold text-primary mb-2 tracking-tight">
           {branding?.appName ?? "AgriBid"} Access
         </h2>
-        <p className="text-muted-foreground text-sm uppercase tracking-widest">
+        <p className="text-muted-foreground text-sm">
           Real-Time Bidding for Serious Farmers
         </p>
       </div>

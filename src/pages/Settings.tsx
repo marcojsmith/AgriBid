@@ -131,7 +131,7 @@ export default function Settings() {
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 space-y-10">
       <div>
-        <h1 className="text-3xl font-black uppercase tracking-tight text-primary">
+        <h1 className="text-3xl font-bold tracking-tight text-primary">
           Settings
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
@@ -141,7 +141,7 @@ export default function Settings() {
 
       {/* Notification Preferences */}
       <section className="space-y-6">
-        <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground border-b pb-2">
+        <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
           Notifications
         </h2>
         <p className="text-xs text-muted-foreground -mt-3">
@@ -168,7 +168,7 @@ export default function Settings() {
               update({ notificationsWatchlistEnding: value })
             }
           >
-            <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
+            <SelectTrigger className="w-48 h-10 rounded-md border font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -223,7 +223,7 @@ export default function Settings() {
 
       {/* Display Preferences */}
       <section className="space-y-6">
-        <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground border-b pb-2">
+        <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
           Display
         </h2>
 
@@ -235,7 +235,7 @@ export default function Settings() {
               update({ viewMode: value })
             }
           >
-            <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
+            <SelectTrigger className="w-48 h-10 rounded-md border font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -262,7 +262,7 @@ export default function Settings() {
               update({ defaultStatusFilter: value })
             }
           >
-            <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
+            <SelectTrigger className="w-48 h-10 rounded-md border font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +276,7 @@ export default function Settings() {
 
       {/* Bidding Preferences */}
       <section className="space-y-6">
-        <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground border-b pb-2">
+        <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
           Bidding
         </h2>
 

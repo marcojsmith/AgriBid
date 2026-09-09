@@ -40,7 +40,7 @@ export function SettingsCard({
 
   return (
     <Card
-      className="p-6 border-2 hover:border-primary/40 transition-all cursor-pointer group flex flex-col justify-between h-48 bg-card/30 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+      className="p-6 border hover:border-primary/40 transition-all cursor-pointer group flex flex-col justify-between h-48 bg-card/30 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
       onClick={action}
       onKeyDown={handleKeyDown}
       tabIndex={0}
@@ -48,13 +48,11 @@ export function SettingsCard({
       aria-label={`${title}: ${description}`}
     >
       <div className="space-y-3">
-        <div className="h-12 w-12 rounded-2xl bg-muted group-hover:bg-primary/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-all border-2">
+        <div className="h-12 w-12 rounded-md bg-muted group-hover:bg-primary/10 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-all border">
           {icon}
         </div>
         <div className="space-y-1">
-          <h3 className="font-black uppercase tracking-tight text-lg">
-            {title}
-          </h3>
+          <h3 className="font-semibold text-lg">{title}</h3>
           <p className="text-xs text-muted-foreground font-medium leading-relaxed">
             {description}
           </p>

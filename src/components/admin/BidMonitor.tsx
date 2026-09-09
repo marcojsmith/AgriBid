@@ -66,7 +66,7 @@ export function BidMonitor() {
 
   if (bidsResult === undefined) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 space-y-4 border-2 border-dashed rounded-2xl bg-muted/10 min-h-[400px]">
+      <div className="flex flex-col items-center justify-center p-12 space-y-4 border border-dashed rounded-lg bg-muted/10 min-h-[400px]">
         {!hasTimedOut ? (
           <>
             <LoadingIndicator size="lg" />
@@ -87,7 +87,7 @@ export function BidMonitor() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      <Card className="border-2 overflow-hidden bg-card/50">
+      <Card className="border overflow-hidden bg-card/50">
         <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <Gavel className="h-4 w-4" /> Real-time Feed
@@ -112,9 +112,7 @@ export function BidMonitor() {
                 <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <Gavel className="h-8 w-8 opacity-20" />
-                    <p className="font-black uppercase text-xs tracking-widest">
-                      No bids yet
-                    </p>
+                    <p className="font-medium text-xs">No bids yet</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -176,14 +174,14 @@ export function BidMonitor() {
 
         {bids.length > 0 && (
           <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
-            <p className="text-[10px] font-black uppercase text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Showing {bids.length} bids
             </p>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={() => {
                   setCurrentCursor(null);
                 }}
@@ -194,7 +192,7 @@ export function BidMonitor() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
+                className="h-8 px-3 font-medium text-xs gap-1"
                 onClick={() => {
                   if (bidsResult?.continueCursor) {
                     setCurrentCursor(bidsResult.continueCursor);
@@ -217,9 +215,9 @@ export function BidMonitor() {
           }
         }}
       >
-        <AlertDialogContent className="rounded-2xl border-2">
+        <AlertDialogContent className="rounded-md border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black uppercase tracking-tight">
+            <AlertDialogTitle className="font-semibold">
               Void Bid Transaction?
             </AlertDialogTitle>
             <AlertDialogDescription className="font-medium text-sm">
@@ -230,7 +228,7 @@ export function BidMonitor() {
           <AlertDialogFooter>
             <AlertDialogCancel
               disabled={isVoiding}
-              className="rounded-xl border-2 font-bold uppercase text-[10px]"
+              className="rounded-md border font-medium text-xs"
             >
               Cancel
             </AlertDialogCancel>
@@ -240,7 +238,7 @@ export function BidMonitor() {
                 void handleVoid();
               }}
               disabled={isVoiding}
-              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-black uppercase text-[10px]"
+              className="rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold text-xs"
             >
               {isVoiding ? (
                 <LoadingIndicator size="sm" className="mr-2" />

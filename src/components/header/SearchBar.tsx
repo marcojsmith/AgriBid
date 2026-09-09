@@ -51,7 +51,7 @@ export function SearchBar({
         id={id}
         type="search"
         placeholder="Search equipment..."
-        className="pl-10 h-10 bg-muted/50 border-2 rounded-xl focus-visible:ring-primary focus-visible:border-primary font-medium"
+        className="pl-10 h-10 bg-muted/50 border rounded-md focus-visible:ring-primary focus-visible:border-primary font-medium"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />

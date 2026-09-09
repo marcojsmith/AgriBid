@@ -33,17 +33,13 @@ export function DashboardListSkeleton({
           <Skeleton className="h-12 w-12 rounded-full" />
           <Skeleton className="h-10 w-32" />
         </div>
-        {isBids && <Skeleton className="h-11 w-40 rounded-xl" />}
+        {isBids && <Skeleton className="h-11 w-40 rounded-md" />}
       </div>
 
       {isBids && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card
-              key={i}
-              className="bg-card/50 border-2"
-              data-testid="stat-card"
-            >
+            <Card key={i} className="bg-card/50 border" data-testid="stat-card">
               <CardContent className="p-4 flex flex-col items-center justify-center text-center space-y-2">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-8 w-12" />
@@ -88,7 +84,7 @@ export function DashboardListSkeleton({
             key={i}
             data-testid="auction-card-skeleton"
             className={cn(
-              "overflow-hidden border-2 bg-card h-full shadow-none rounded-lg",
+              "overflow-hidden border bg-card h-full shadow-none rounded-lg",
               isBids
                 ? "flex flex-col sm:flex-row sm:h-48"
                 : "flex flex-col md:flex-row"
@@ -119,7 +115,7 @@ export function DashboardListSkeleton({
               <Skeleton className="h-px w-full border-y border-border/5" />
 
               <div className="flex-1 flex items-end">
-                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-md" />
               </div>
             </div>
           </Card>

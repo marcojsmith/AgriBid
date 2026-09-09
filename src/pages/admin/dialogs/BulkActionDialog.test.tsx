@@ -18,7 +18,7 @@ describe("BulkActionDialog", () => {
 
     expect(screen.getByText("Perform Bulk Status Update?")).toBeInTheDocument();
     expect(screen.getByText("5 auctions")).toBeInTheDocument();
-    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(screen.getByText("active")).toBeInTheDocument();
   });
 
   it("should call onClose when Cancel is clicked", () => {
@@ -53,6 +53,6 @@ describe("BulkActionDialog", () => {
   it("should display unspecified status when targetStatus is null", () => {
     render(<BulkActionDialog {...defaultProps} targetStatus={null} />);
 
-    expect(screen.getByText("UNSPECIFIED")).toBeInTheDocument();
+    expect(screen.getByText("unspecified")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 // app/src/components/auction/AuctionCardThumbnail.tsx
+import { useState } from "react";
 import { Heart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ interface AuctionCardThumbnailProps {
  * Render a responsive auction thumbnail containing an image or placeholder, a watchlist toggle and an optional countdown.
  *
  * @param props - Component props
- * @param props.primaryImage - URL of the primary image; if undefined a placeholder is shown
+ * @param props.primaryImage - URL of the primary image; if undefined (or the URL fails to load) a placeholder is shown
  * @param props.title - Title used for the image alt text
  * @param props.make - Equipment make, combined with model and title for richer alt text
  * @param props.model - Equipment model, combined with make and title for richer alt text
@@ -43,6 +44,10 @@ export function AuctionCardThumbnail({
   endTime,
   isClosed,
 }: AuctionCardThumbnailProps) {
+  // Track the URL that failed to load so the placeholder renders instead of a
+  // broken image, and a swap to a different URL recovers automatically
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+
   const imageAlt = [make, model, title].filter(Boolean).join(" — ");
   return (
     <div
@@ -57,12 +62,15 @@ export function AuctionCardThumbnail({
           isCompact ? "aspect-[4/3] h-full border-r" : "aspect-video"
         )}
       >
-        {primaryImage ? (
+        {primaryImage && primaryImage !== failedImage ? (
           <img
             src={primaryImage}
             alt={imageAlt}
             loading="lazy"
             className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
+            onError={() => {
+              setFailedImage(primaryImage);
+            }}
           />
         ) : (
           <div className="text-muted-foreground flex flex-col items-center">
@@ -112,7 +120,7 @@ export function AuctionCardThumbnail({
       {/* Timer - Under Image */}
       {isCompact && !isClosed && (
         <div className="bg-muted/30 flex items-center justify-center px-2 border-r h-12 border-t">
-          <div className="font-black whitespace-nowrap leading-none text-sm sm:text-base">
+          <div className="font-bold whitespace-nowrap leading-none text-sm sm:text-base">
             <CountdownTimer endTime={endTime} />
           </div>
         </div>

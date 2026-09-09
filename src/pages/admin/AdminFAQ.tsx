@@ -197,11 +197,11 @@ export default function AdminFAQ() {
         </div>
 
         {faqItems.length === 0 ? (
-          <Card className="border-2">
+          <Card className="border">
             <div className="text-center py-16 space-y-4">
               <HelpCircle className="h-10 w-10 text-muted-foreground/20 mx-auto" />
               <div className="space-y-1">
-                <p className="text-sm font-black uppercase text-muted-foreground">
+                <p className="text-sm font-semibold text-muted-foreground">
                   No FAQ items yet.
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -211,7 +211,7 @@ export default function AdminFAQ() {
             </div>
           </Card>
         ) : (
-          <Card className="border-2">
+          <Card className="border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -256,7 +256,7 @@ export default function AdminFAQ() {
                       <button onClick={() => void handleTogglePublished(item)}>
                         <Badge
                           variant={item.isPublished ? "default" : "outline"}
-                          className="cursor-pointer text-[10px] font-black uppercase"
+                          className="cursor-pointer text-xs font-semibold"
                         >
                           {item.isPublished ? "Published" : "Draft"}
                         </Badge>

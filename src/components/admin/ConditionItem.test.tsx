@@ -4,18 +4,18 @@ import { describe, it, expect } from "vitest";
 import { ConditionItem } from "./ConditionItem";
 
 describe("ConditionItem", () => {
-  it("renders with true value as PASS with check icon", () => {
+  it("renders with true value as Pass with check icon", () => {
     render(<ConditionItem label="Engine" value={true} />);
 
     expect(screen.getByText("Engine")).toBeInTheDocument();
-    expect(screen.getByText("PASS")).toBeInTheDocument();
+    expect(screen.getByText("Pass")).toBeInTheDocument();
   });
 
-  it("renders with false value as FAIL with X icon", () => {
+  it("renders with false value as Fail with X icon", () => {
     render(<ConditionItem label="Brakes" value={false} />);
 
     expect(screen.getByText("Brakes")).toBeInTheDocument();
-    expect(screen.getByText("FAIL")).toBeInTheDocument();
+    expect(screen.getByText("Fail")).toBeInTheDocument();
   });
 
   it("renders with undefined value as N/A with dash", () => {
@@ -31,16 +31,16 @@ describe("ConditionItem", () => {
     expect(screen.getByText("Test Label")).toBeInTheDocument();
   });
 
-  it("renders PASS for true value", () => {
+  it("renders Pass for true value", () => {
     render(<ConditionItem label="Test" value={true} />);
 
-    expect(screen.getByText("PASS")).toBeInTheDocument();
+    expect(screen.getByText("Pass")).toBeInTheDocument();
   });
 
-  it("renders FAIL for false value", () => {
+  it("renders Fail for false value", () => {
     render(<ConditionItem label="Test" value={false} />);
 
-    expect(screen.getByText("FAIL")).toBeInTheDocument();
+    expect(screen.getByText("Fail")).toBeInTheDocument();
   });
 
   it("renders N/A for undefined value", () => {

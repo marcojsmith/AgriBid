@@ -393,12 +393,12 @@ export default function Profile() {
   if (sellerInfo === null) {
     return (
       <div className="max-w-4xl mx-auto py-24 text-center space-y-6">
-        <h1 className="text-4xl font-black uppercase">User Not Found</h1>
+        <h1 className="text-4xl font-bold">User Not Found</h1>
         <p className="text-muted-foreground font-bold">
           The profile you are looking for does not exist or has been
           deactivated.
         </p>
-        <Button asChild variant="outline" className="rounded-md border-2">
+        <Button asChild variant="outline" className="rounded-md border">
           <Link to="/">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Marketplace
           </Link>
@@ -438,14 +438,14 @@ export default function Profile() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-4 -mt-10 mb-4">
                 <div className="h-16 w-16 rounded-md bg-primary/10 flex items-center justify-center border-4 border-card shadow-md">
-                  <span className="text-xl font-black text-primary">
+                  <span className="text-xl font-bold text-primary">
                     {getInitials(sellerInfo.name)}
                   </span>
                 </div>
               </div>
 
               <div className="flex items-start justify-between">
-                <h1 className="text-2xl font-black text-primary uppercase leading-none mb-2">
+                <h1 className="text-2xl font-bold text-primary leading-none mb-2">
                   {sellerInfo.name}
                 </h1>
                 {isOwner && !isEditing && (
@@ -460,7 +460,7 @@ export default function Profile() {
                       });
                       setIsEditing(true);
                     }}
-                    className="h-8 px-2 rounded-md font-bold uppercase text-xs"
+                    className="h-8 px-2 rounded-md font-bold text-xs"
                   >
                     <Pencil className="h-3 w-3 mr-1" />
                     Edit
@@ -470,17 +470,17 @@ export default function Profile() {
 
               <div className="flex flex-wrap gap-2 mb-3">
                 {sellerInfo.role === "admin" && (
-                  <Badge className="bg-primary text-primary-foreground font-black uppercase tracking-widest text-[10px]">
+                  <Badge className="bg-primary text-primary-foreground font-semibold text-xs">
                     Admin
                   </Badge>
                 )}
                 {sellerInfo.isVerified ? (
-                  <Badge className="bg-green-600 hover:bg-green-700 font-black uppercase tracking-widest text-[10px] flex items-center gap-1">
+                  <Badge className="bg-success hover:bg-success/90 text-success-foreground font-semibold text-xs flex items-center gap-1">
                     <ShieldCheck className="h-3 w-3" />
                     Verified
                   </Badge>
                 ) : (
-                  <Badge className="bg-amber-500 hover:bg-amber-600 font-black uppercase tracking-widest text-[10px] flex items-center gap-1">
+                  <Badge className="bg-warning hover:bg-warning/90 text-warning-foreground font-semibold text-xs flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     Unverified
                   </Badge>
@@ -497,7 +497,7 @@ export default function Profile() {
                   <div>
                     <label
                       htmlFor="profile-bio"
-                      className="text-[10px] font-black uppercase text-muted-foreground tracking-widest"
+                      className="text-xs font-semibold text-muted-foreground"
                     >
                       Bio
                     </label>
@@ -508,13 +508,13 @@ export default function Profile() {
                         setEditForm({ ...editForm, bio: e.target.value })
                       }
                       placeholder="Tell us about yourself..."
-                      className="mt-1 min-h-[80px] rounded-md border-2 font-bold text-sm"
+                      className="mt-1 min-h-[80px] rounded-md border font-bold text-sm"
                     />
                   </div>
                   <div>
                     <label
                       htmlFor="profile-location"
-                      className="text-[10px] font-black uppercase text-muted-foreground tracking-widest"
+                      className="text-xs font-semibold text-muted-foreground"
                     >
                       Location
                     </label>
@@ -525,13 +525,13 @@ export default function Profile() {
                         setEditForm({ ...editForm, location: e.target.value })
                       }
                       placeholder="City, Province"
-                      className="mt-1 rounded-md border-2 font-bold text-sm"
+                      className="mt-1 rounded-md border font-bold text-sm"
                     />
                   </div>
                   <div>
                     <label
                       htmlFor="profile-company-name"
-                      className="text-[10px] font-black uppercase text-muted-foreground tracking-widest"
+                      className="text-xs font-semibold text-muted-foreground"
                     >
                       Company Name
                     </label>
@@ -545,7 +545,7 @@ export default function Profile() {
                         })
                       }
                       placeholder="Your company name"
-                      className="mt-1 rounded-md border-2 font-bold text-sm"
+                      className="mt-1 rounded-md border font-bold text-sm"
                     />
                   </div>
                   {saveError && (
@@ -555,7 +555,7 @@ export default function Profile() {
                     <Button
                       onClick={handleSaveProfile}
                       disabled={isSaving}
-                      className="flex-1 h-9 rounded-md font-black uppercase text-xs"
+                      className="flex-1 h-9 rounded-md font-semibold text-xs"
                     >
                       {isSaving ? (
                         <>
@@ -579,7 +579,7 @@ export default function Profile() {
                         setIsEditing(false);
                       }}
                       disabled={isSaving}
-                      className="flex-1 h-9 rounded-md font-black uppercase text-xs border-2"
+                      className="flex-1 h-9 rounded-md font-semibold text-xs border"
                     >
                       <X className="h-3 w-3 mr-1" />
                       Cancel
@@ -618,34 +618,34 @@ export default function Profile() {
             <div className="h-px bg-border" />
             <div className="grid grid-cols-4 divide-x divide-border">
               <div className="p-3 text-center">
-                <p className="text-xl font-black text-primary">
+                <p className="text-xl font-bold text-primary">
                   {sellerInfo.activeListings}
                 </p>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Active
                 </p>
               </div>
               <div className="p-3 text-center">
-                <p className="text-xl font-black text-green-600">
+                <p className="text-xl font-bold text-success">
                   {sellerInfo.itemsSold}
                 </p>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Sold
                 </p>
               </div>
               <div className="p-3 text-center">
-                <p className="text-xl font-black text-primary">
+                <p className="text-xl font-bold text-primary">
                   {formatPrice(sellerInfo.avgSalePrice)}
                 </p>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Avg Sale
                 </p>
               </div>
               <div className="p-3 text-center">
-                <p className="text-xl font-black text-primary">
+                <p className="text-xl font-bold text-primary">
                   {sellerInfo.bidsPlaced}
                 </p>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                <p className="text-xs font-semibold text-muted-foreground">
                   Bids
                 </p>
               </div>
@@ -671,7 +671,7 @@ export default function Profile() {
                     : "No reviews yet"}
                 </p>
               </div>
-              <p className="text-xl font-black text-muted-foreground">—</p>
+              <p className="text-xl font-semibold text-muted-foreground">—</p>
             </div>
 
             {/* Action buttons */}
@@ -680,7 +680,7 @@ export default function Profile() {
               {isOwner && !sellerInfo.isVerified && (
                 // TODO(#219): Implement granular verification status fields in backend
                 <Button
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider text-xs h-10 rounded-md"
+                  className="w-full bg-warning hover:bg-warning/90 text-warning-foreground font-semibold text-xs h-10 rounded-md"
                   disabled
                   title="Coming soon - see issue #219"
                 >
@@ -691,7 +691,7 @@ export default function Profile() {
               {isOwner && (
                 <Button
                   asChild
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wider text-xs h-10 rounded-md"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-10 rounded-md"
                 >
                   <Link to="/sell">
                     <Plus className="h-4 w-4 mr-2" />
@@ -708,7 +708,7 @@ export default function Profile() {
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-full border-2 border-border hover:border-primary/30 bg-transparent font-black uppercase tracking-wider text-xs h-10 rounded-md"
+                        className="w-full border border-border hover:border-primary/30 bg-transparent font-semibold text-xs h-10 rounded-md"
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Contact Seller
@@ -774,7 +774,7 @@ export default function Profile() {
                     <DialogTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full text-muted-foreground hover:text-destructive font-bold uppercase tracking-wider text-xs h-10 rounded-md"
+                        className="w-full text-muted-foreground hover:text-destructive font-semibold text-xs h-10 rounded-md"
                       >
                         <Flag className="h-4 w-4 mr-2" />
                         Report Profile
@@ -872,22 +872,22 @@ export default function Profile() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Gavel className="h-4 w-4 text-primary" />
-                  <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+                  <h2 className="text-lg font-bold text-primary">
                     Active Auctions
                   </h2>
                 </div>
                 <Link
                   to={`/sellers/${userId}/listings`}
-                  className="text-xs font-bold uppercase tracking-widest text-primary hover:underline"
+                  className="text-xs font-bold text-primary hover:underline"
                 >
                   View all →
                 </Link>
               </div>
 
               {activeListings.length === 0 && status === "Exhausted" ? (
-                <div className="border-2 border-dashed border-border rounded p-12 text-center">
+                <div className="border border-dashed border-border rounded p-12 text-center">
                   <p className="text-4xl mb-3">🚜</p>
-                  <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+                  <p className="text-muted-foreground font-bold italic text-sm">
                     No active auctions at this time.
                   </p>
                 </div>
@@ -914,13 +914,13 @@ export default function Profile() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Award className="h-4 w-4 text-green-600" />
-                    <h2 className="text-lg font-black uppercase tracking-wide text-green-700">
+                    <h2 className="text-lg font-bold text-success">
                       Sales History
                     </h2>
                   </div>
                   <Link
                     to={`/sellers/${userId}/listings/sold`}
-                    className="text-xs font-bold uppercase tracking-widest text-green-600 hover:underline"
+                    className="text-xs font-bold text-success hover:underline"
                   >
                     View all →
                   </Link>
@@ -939,8 +939,8 @@ export default function Profile() {
                     ))}
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-border rounded p-8 text-center">
-                    <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
+                  <div className="border border-dashed border-border rounded p-8 text-center">
+                    <p className="text-muted-foreground font-bold italic text-sm">
                       View all sold listings →
                     </p>
                   </div>
@@ -1040,7 +1040,7 @@ export default function Profile() {
           <section>
             <div className="flex items-center gap-2 mb-4">
               <UserCheck className="h-4 w-4 text-blue-600" />
-              <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+              <h2 className="text-lg font-bold text-primary">
                 Recent Activity
               </h2>
             </div>
@@ -1087,7 +1087,7 @@ export default function Profile() {
           <section>
             <div className="flex items-center gap-2 mb-4">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-black uppercase tracking-wide text-primary">
+              <h2 className="text-lg font-bold text-primary">
                 Trust & Compliance
               </h2>
             </div>
@@ -1105,7 +1105,7 @@ export default function Profile() {
                         item.verified ? "text-green-600" : "text-amber-600"
                       }`}
                     />
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">
                       {item.label}
                     </p>
                     <p
@@ -1126,7 +1126,7 @@ export default function Profile() {
       {/* Pagination */}
       {(status === "CanLoadMore" || status === "LoadingMore") && (
         <div className="flex flex-col items-center gap-4 pt-4 pb-8">
-          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">
+          <p className="text-xs font-semibold text-muted-foreground">
             Showing {listings.length} of {sellerInfo.totalListings} Listings
           </p>
           <Button
@@ -1136,7 +1136,7 @@ export default function Profile() {
               loadMore(6);
             }}
             disabled={status === "LoadingMore"}
-            className="rounded-md border-2 px-12 font-black uppercase tracking-widest"
+            className="rounded-md border px-12 font-semibold"
           >
             {status === "LoadingMore" ? (
               <>

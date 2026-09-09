@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 
@@ -198,5 +198,57 @@ describe("AdminLayout", () => {
       </AdminLayout>
     );
     expect(screen.getByText("Management")).toBeInTheDocument();
+  });
+
+  it("does not show the mobile nav drawer by default", () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    expect(
+      screen.queryByTestId("admin-mobile-nav-overlay")
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the mobile nav drawer when the menu button is clicked", () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByTestId("admin-mobile-nav-overlay")).toBeInTheDocument();
+  });
+
+  it("closes the mobile nav drawer when the close button is clicked", () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const overlay = screen.getByTestId("admin-mobile-nav-overlay");
+    fireEvent.click(
+      within(overlay).getByRole("button", { name: "Close navigation" })
+    );
+    expect(
+      screen.queryByTestId("admin-mobile-nav-overlay")
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the mobile nav drawer when a nav link is clicked", () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const overlay = screen.getByTestId("admin-mobile-nav-overlay");
+    const { getByRole } = within(overlay);
+    fireEvent.click(getByRole("link", { name: "Moderation" }));
+    expect(
+      screen.queryByTestId("admin-mobile-nav-overlay")
+    ).not.toBeInTheDocument();
   });
 });

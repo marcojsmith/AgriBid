@@ -47,9 +47,9 @@ export function PromoteAdminDialog({
         if (!open) onClose();
       }}
     >
-      <AlertDialogContent className="rounded-2xl border-2">
+      <AlertDialogContent className="rounded-md border">
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-black uppercase tracking-tight text-destructive">
+          <AlertDialogTitle className="font-semibold text-destructive">
             Elevate to Admin Role?
           </AlertDialogTitle>
           <AlertDialogDescription className="font-medium text-sm">
@@ -64,13 +64,13 @@ export function PromoteAdminDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-xl border-2 font-bold uppercase text-[10px]">
+          <AlertDialogCancel className="rounded-md border font-medium text-xs">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isProcessing}
-            className="rounded-xl bg-destructive text-destructive-foreground font-black uppercase text-[10px]"
+            className="rounded-md bg-destructive text-destructive-foreground font-semibold text-xs"
           >
             {isProcessing ? (
               <LoadingIndicator size="sm" className="mr-2" />
