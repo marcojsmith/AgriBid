@@ -230,7 +230,7 @@ describe("AdminLayout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
     const overlay = screen.getByTestId("admin-mobile-nav-overlay");
     fireEvent.click(
-      within(overlay).getAllByRole("button", { name: "Close navigation" })[1]
+      within(overlay).getByRole("button", { name: "Close navigation" })
     );
     expect(
       screen.queryByTestId("admin-mobile-nav-overlay")

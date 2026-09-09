@@ -122,6 +122,9 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                 alt={`${title} - Full Screen`}
                 loading="lazy"
                 className="max-w-full max-h-full object-contain"
+                onError={() => {
+                  markImageFailed(activeImage);
+                }}
               />
             )}
 

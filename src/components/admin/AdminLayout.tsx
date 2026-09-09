@@ -1,5 +1,5 @@
 // app/src/components/admin/AdminLayout.tsx
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Megaphone,
@@ -139,6 +139,17 @@ function AdminLayoutContent({
   const stats = useAdminStats();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
+  useEffect(() => {
+    if (!isMobileNavOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileNavOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMobileNavOpen]);
+
   return (
     <div className="flex min-h-[calc(100vh-64px)] bg-muted/30">
       {/* Sidebar — desktop */}
@@ -155,6 +166,9 @@ function AdminLayoutContent({
       {isMobileNavOpen && (
         <div
           data-testid="admin-mobile-nav-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Admin navigation"
           className="fixed inset-0 z-[100] lg:hidden"
         >
           <button
@@ -163,7 +177,7 @@ function AdminLayoutContent({
             onClick={() => {
               setIsMobileNavOpen(false);
             }}
-            aria-label="Close navigation"
+            aria-label="Close navigation overlay"
           />
           <div className="absolute inset-y-0 left-0 w-[280px] bg-background border-r flex flex-col animate-in slide-in-from-left duration-200">
             <div className="p-6 flex-1 overflow-y-auto">

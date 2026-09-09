@@ -195,7 +195,7 @@ export function KycReviewDialog({
                 Reject Application
               </Button>
               <Button
-                className="font-semibold text-xs h-12 px-8 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-600/20"
+                className="font-semibold text-xs h-12 px-8 bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/20"
                 onClick={() => {
                   onReview("approve");
                 }}
