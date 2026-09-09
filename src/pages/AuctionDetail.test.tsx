@@ -162,8 +162,23 @@ vi.mock("@/components/bidding/BidHistory", () => ({
   BidHistory: () => <div data-testid="bid-history">Bid History</div>,
 }));
 
+interface CapturedSellerInfoProps {
+  sellerId?: string;
+  auctionId?: string;
+  isOwnListing?: boolean;
+}
+
+const { sellerInfoPropsRef } = vi.hoisted(() => ({
+  sellerInfoPropsRef: {
+    current: null as CapturedSellerInfoProps | null,
+  },
+}));
+
 vi.mock("@/components/SellerInfo", () => ({
-  SellerInfo: () => <div data-testid="seller-info">Seller Info</div>,
+  SellerInfo: (props: CapturedSellerInfoProps) => {
+    sellerInfoPropsRef.current = props;
+    return <div data-testid="seller-info">Seller Info</div>;
+  },
 }));
 
 vi.mock("@/components/LoadingIndicator", () => ({
@@ -450,5 +465,33 @@ describe("AuctionDetail Page", () => {
     (useQuery as Mock).mockReturnValue(auctionNoDesc);
     renderPage();
     expect(screen.getByText("No description provided.")).toBeInTheDocument();
+  });
+
+  it("passes auctionId and isOwnListing=false to SellerInfo for non-owners", () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "buyer1" } },
+      isPending: false,
+    });
+    renderPage();
+
+    expect(sellerInfoPropsRef.current).toEqual({
+      sellerId: "seller1",
+      auctionId: "auction1",
+      isOwnListing: false,
+    });
+  });
+
+  it("passes isOwnListing=true to SellerInfo when the viewer is the seller", () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "seller1" } },
+      isPending: false,
+    });
+    renderPage();
+
+    expect(sellerInfoPropsRef.current).toEqual({
+      sellerId: "seller1",
+      auctionId: "auction1",
+      isOwnListing: true,
+    });
   });
 });

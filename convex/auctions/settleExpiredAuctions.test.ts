@@ -99,6 +99,7 @@ describe("settleExpiredAuctions mutation", () => {
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "sold",
       winnerId: bidderId,
+      settledAt: expect.any(Number) as number,
     });
   });
 
@@ -135,6 +136,7 @@ describe("settleExpiredAuctions mutation", () => {
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "unsold",
       winnerId: undefined,
+      settledAt: expect.any(Number) as number,
     });
   });
 
@@ -160,6 +162,7 @@ describe("settleExpiredAuctions mutation", () => {
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "unsold",
       winnerId: undefined,
+      settledAt: expect.any(Number) as number,
     });
   });
 
@@ -204,6 +207,7 @@ describe("settleExpiredAuctions mutation", () => {
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       status: "sold",
       winnerId: "winner",
+      settledAt: expect.any(Number) as number,
     });
   });
 });

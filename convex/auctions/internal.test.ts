@@ -144,6 +144,7 @@ describe("Internal Logic Coverage", () => {
       const mockAuction = {
         _id: "a1",
         title: "Test",
+        sellerId: "seller1",
         currentPrice: 1000,
         reservePrice: 500,
         status: "active",
@@ -190,6 +191,24 @@ describe("Internal Logic Coverage", () => {
         expect.objectContaining({
           status: "sold",
           winnerId: "u1",
+        })
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "seller1",
+          type: "listing_sold",
+          description: expect.stringContaining("Listing sold for R") as string,
+          relatedId: "a1",
+        })
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "u1",
+          type: "bid_won",
+          description: expect.stringContaining("Won auction for R") as string,
+          relatedId: "a1",
         })
       );
     });
@@ -300,6 +319,10 @@ describe("Internal Logic Coverage", () => {
           status: "unsold",
         })
       );
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "userActivity",
+        expect.anything()
+      );
     });
 
     it("should skip voided bids when settling", async () => {
@@ -338,6 +361,10 @@ describe("Internal Logic Coverage", () => {
           status: "unsold",
         })
       );
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "userActivity",
+        expect.anything()
+      );
     });
 
     it("should settle auction as unsold when no bids exist", async () => {
@@ -375,6 +402,10 @@ describe("Internal Logic Coverage", () => {
           status: "unsold",
           winnerId: undefined,
         })
+      );
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "userActivity",
+        expect.anything()
       );
     });
 

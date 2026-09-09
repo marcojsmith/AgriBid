@@ -72,6 +72,11 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([{}, {}, {}]),
     };
 
+    const mockReviewsQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([{ rating: 5 }, { rating: 4 }]),
+    };
+
     // The mock uses queryCallCount to distinguish auction queries by call order:
     // - queryCallCount === 2 returns mockSoldAuctionsQuery (sold count)
     // - queryCallCount === 3 returns mockActiveAuctionsQuery (active count)
@@ -87,6 +92,7 @@ describe("getSellerInfoHandler", () => {
         return mockSoldAuctionsQuery;
       }
       if (table === "bids") return mockBidsQuery;
+      if (table === "reviews") return mockReviewsQuery;
       return mockProfileQuery;
     });
 
@@ -111,6 +117,8 @@ describe("getSellerInfoHandler", () => {
     expect(result?.totalListings).toBe(4);
     expect(result?.bidsPlaced).toBe(3);
     expect(result?.avgSalePrice).toBe(291750);
+    expect(result?.avgRating).toBe(4.5);
+    expect(result?.reviewCount).toBe(2);
   });
 
   it("should handle profile with missing optional fields gracefully", async () => {
@@ -139,6 +147,11 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([]),
     };
 
+    const mockReviewsQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([]),
+    };
+
     // The mock uses queryCallCount to distinguish auction queries by call order.
     // NOTE: This couples the test to the implementation's query order.
     let queryCallCount = 0;
@@ -151,6 +164,7 @@ describe("getSellerInfoHandler", () => {
         return mockSoldAuctionsQuery;
       }
       if (table === "bids") return mockBidsQuery;
+      if (table === "reviews") return mockReviewsQuery;
       return mockProfileQuery;
     });
 
@@ -172,6 +186,8 @@ describe("getSellerInfoHandler", () => {
     expect(result?.taxNumberVerified).toBeUndefined();
     expect(result?.activeListings).toBe(0);
     expect(result?.totalListings).toBe(0);
+    expect(result?.avgRating).toBeUndefined();
+    expect(result?.reviewCount).toBe(0);
   });
 
   it("should handle zero sold auctions (no avgSalePrice)", async () => {
@@ -199,6 +215,11 @@ describe("getSellerInfoHandler", () => {
       collect: vi.fn().mockResolvedValue([{}]),
     };
 
+    const mockReviewsQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([]),
+    };
+
     // The mock uses queryCallCount to distinguish auction queries by call order.
     // NOTE: This couples the test to the implementation's query order.
     let queryCallCount = 0;
@@ -211,6 +232,7 @@ describe("getSellerInfoHandler", () => {
         return mockSoldAuctionsQuery;
       }
       if (table === "bids") return mockBidsQuery;
+      if (table === "reviews") return mockReviewsQuery;
       return mockProfileQuery;
     });
 
@@ -224,6 +246,8 @@ describe("getSellerInfoHandler", () => {
     expect(result?.totalListings).toBe(1);
     expect(result?.avgSalePrice).toBeUndefined();
     expect(result?.bidsPlaced).toBe(1);
+    expect(result?.avgRating).toBeUndefined();
+    expect(result?.reviewCount).toBe(0);
   });
 });
 

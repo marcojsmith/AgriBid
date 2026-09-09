@@ -1,11 +1,14 @@
 // app/src/components/header/UserDropdown.tsx
 import { Link, useLocation } from "react-router-dom";
+import { useQuery } from "convex/react";
+import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 import {
   User,
   LogOut,
   LayoutDashboard,
   Heart,
+  Mail,
   ChevronDown,
   Settings,
   ShieldAlert,
@@ -45,7 +48,7 @@ interface UserDropdownProps {
 /**
  * Render a user account dropdown with profile status, navigation links and a sign-out action.
  *
- * Renders a trigger button that reflects loading and verification states and a content menu that conditionally includes a KYC prompt, public profile link (or syncing state), an admin dashboard link for admins, common navigation items (My Bids, Watchlist, My Listings, Support Tickets) and a Sign Out item.
+ * Renders a trigger button that reflects loading and verification states and a content menu that conditionally includes a KYC prompt, public profile link (or syncing state), an admin dashboard link for admins, common navigation items (My Bids, Watchlist, My Listings, Messages, Support Tickets) and a Sign Out item. The Messages item carries a badge with the number of the user's conversations that contain unread messages.
  *
  * @param props - Component props
  * @param props.userData - Optional user object; used to display the user's name when available
@@ -67,6 +70,7 @@ export function UserDropdown({
   onSignOut,
 }: UserDropdownProps) {
   const location = useLocation();
+  const unreadMessageCount = useQuery(api.messages.getUnreadConversationCount);
 
   return (
     <DropdownMenu>
@@ -223,6 +227,33 @@ export function UserDropdown({
           >
             <ClipboardList className="h-4 w-4" />
             My Listings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          asChild
+          className="rounded-md font-semibold text-xs h-10"
+        >
+          <Link
+            to="/messages"
+            className="flex items-center gap-2 w-full"
+            aria-label={
+              unreadMessageCount
+                ? `Messages, ${unreadMessageCount} unread`
+                : undefined
+            }
+          >
+            <span className="relative flex">
+              <Mail className="h-4 w-4" />
+              {unreadMessageCount ? (
+                <span
+                  className="absolute -top-1.5 -right-2 h-4 min-w-4 px-1 rounded-full bg-primary text-[9px] font-black text-primary-foreground flex items-center justify-center border-2 border-background animate-in zoom-in"
+                  aria-hidden="true"
+                >
+                  {unreadMessageCount}
+                </span>
+              ) : null}
+            </span>
+            Messages
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem

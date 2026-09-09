@@ -131,6 +131,42 @@ describe("Create Mutations", () => {
       expect(mockCtx.db.insert).toHaveBeenCalled();
     });
 
+    it("should log listing_created activity when created as a non-draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+
+      const auctionId = await createAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        validArgs
+      );
+
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "userActivity",
+        expect.objectContaining({
+          userId: "u1",
+          type: "listing_created",
+          description: "Listing created: Test",
+          relatedId: auctionId,
+          createdAt: expect.any(Number) as number,
+        })
+      );
+    });
+
+    it("should not log activity for drafts", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+
+      await createAuctionHandler(mockCtx as unknown as MutationCtx, {
+        ...validArgs,
+        isDraft: true,
+      });
+
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "userActivity",
+        expect.anything()
+      );
+    });
+
     it("should throw if category not found", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue(null);
@@ -419,7 +455,7 @@ describe("Create Mutations", () => {
         expect.objectContaining({
           images: expect.objectContaining({
             additional: ["1", "2", "3", "4", "5", "6"],
-          }) as unknown as Record<string, unknown>,
+          }) as { front?: string; additional?: string[] },
         })
       );
     });
