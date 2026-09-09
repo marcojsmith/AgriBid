@@ -490,7 +490,11 @@ export default function AuctionDetail() {
               <BidHistory auctionId={auction._id} />
             </section>
 
-            <SellerInfo sellerId={auction.sellerId} />
+            <SellerInfo
+              sellerId={auction.sellerId}
+              auctionId={auction._id}
+              isOwnListing={isOwner}
+            />
           </div>
         </div>
       </div>
