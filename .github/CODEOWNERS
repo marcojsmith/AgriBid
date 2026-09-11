@@ -1,0 +1,4 @@
+# Default code owner for the entire repository.
+# Combined with branch protection's "require code owner reviews",
+# this ensures only @marcojsmith's approval satisfies the review requirement.
+* @marcojsmith
