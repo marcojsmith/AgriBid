@@ -23,7 +23,12 @@ const sharedSettings = {
 };
 
 export default defineConfig([
-  globalIgnores(["dist", "convex/_generated", "coverage"]),
+  globalIgnores([
+    "dist",
+    "convex/_generated",
+    "coverage",
+    ".claude/worktrees",
+  ]),
 
   // -----------------------------------------------------------------------
   // Node/config files — vite.config.ts, vitest.config.ts, eslint.config.js

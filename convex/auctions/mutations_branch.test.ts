@@ -47,6 +47,13 @@ vi.mock("../admin_utils", () => ({
 vi.mock("../lib/storage", () => ({
   normalizeImages: vi.fn((i: unknown) => i),
   deleteAuctionImages: vi.fn(),
+  safeDelete: vi.fn(async (ctx: MockCtx, storageId: string, label: string) => {
+    try {
+      await ctx.storage.delete(storageId);
+    } catch (e) {
+      console.warn(`Failed to delete ${label}: ${storageId}`, e);
+    }
+  }),
 }));
 
 interface MockCtx {

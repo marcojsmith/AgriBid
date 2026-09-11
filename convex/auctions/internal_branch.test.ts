@@ -11,6 +11,19 @@ vi.mock("../admin_utils", () => ({
 
 vi.mock("../lib/storage", () => ({
   deleteAuctionImages: vi.fn(),
+  safeDelete: vi.fn(
+    async (
+      ctx: { storage: { delete: (id: string) => Promise<void> } },
+      storageId: string,
+      label: string
+    ) => {
+      try {
+        await ctx.storage.delete(storageId);
+      } catch (e) {
+        console.warn(`Failed to delete ${label}: ${storageId}`, e);
+      }
+    }
+  ),
 }));
 
 describe("Internal Mutations Branch Coverage", () => {
