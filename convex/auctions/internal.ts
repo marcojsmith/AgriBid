@@ -227,7 +227,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
 
     await logAuctionSettlementActivity(ctx, auction, finalStatus, winnerId);
 
-    console.log(
+    console.warn(
       `Auction ${auction._id} (${auction.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`
     );
   }
@@ -316,7 +316,7 @@ export const cleanupDraftsHandler = async (
     await updateCounter(ctx, "auctions", "draft", -deleted);
   }
 
-  console.log(
+  console.warn(
     `Cleanup: deleted ${deleted.toString()} draft auctions, ${errors.toString()} errors`
   );
 

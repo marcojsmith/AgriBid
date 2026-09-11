@@ -60,7 +60,7 @@ export default function Home() {
     if (preferences && prefsAppliedRef.current == null) {
       prefsAppliedRef.current = true;
       if (preferences.viewMode != null) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization of view mode from saved user preferences
         setManualViewMode(preferences.viewMode);
       }
       if (preferences.sidebarOpen != null) {

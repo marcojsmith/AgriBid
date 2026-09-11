@@ -16,6 +16,30 @@ run() {
   fi
 }
 
+# Reject new undocumented eslint-disable directives in production code.
+# Documented disables ("-- reason") are allowed; tests and generated code are exempt.
+check_eslint_disable() {
+  echo "▶ eslint-disable check"
+  local offenders=""
+  while IFS= read -r file; do
+    case "$file" in
+      *.test.ts | *.test.tsx | convex/_generated/*) continue ;;
+    esac
+    if git diff --cached -U0 -- "$file" |
+      grep -E '^\+[^+]' | grep 'eslint-disable' |
+      grep -vq -- '--'; then
+      offenders="$offenders\n  $file"
+    fi
+  done < <(git diff --cached --name-only --diff-filter=ACM -- 'src/**' 'convex/**')
+  if [ -n "$offenders" ]; then
+    echo "  ✗ FAILED: new eslint-disable directives found in:$offenders"
+    echo "  Fix the underlying issue or document the disable with a '-- reason' comment."
+    exit 1
+  fi
+  echo "  ✓ passed"
+}
+
+check_eslint_disable
 run "lint-staged" bunx lint-staged
 run "build" bun run build
 run "tests" bun run test --run

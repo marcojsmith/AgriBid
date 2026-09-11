@@ -600,7 +600,7 @@ export const processErrorReportsAction = internalAction({
       internal.errors.isGitHubReportingEnabledProxy
     )) as boolean;
     if (!enabled) {
-      console.log("GitHub error reporting not enabled, skipping processing");
+      console.warn("GitHub error reporting not enabled, skipping processing");
       return { processed: 0, created: 0, commented: 0, failed: 0 };
     }
 
@@ -620,7 +620,7 @@ export const processErrorReportsAction = internalAction({
       !githubConfig.repoOwner ||
       !githubConfig.repoName
     ) {
-      console.log("GitHub reporting not configured, skipping processing");
+      console.warn("GitHub reporting not configured, skipping processing");
       return { processed: 0, created: 0, commented: 0, failed: 0 };
     }
 

@@ -196,7 +196,7 @@ describe("Presence Coverage", () => {
         .mockResolvedValueOnce([{ _id: "p1" }, { _id: "p2" }])
         .mockResolvedValueOnce([]); // end loop
 
-      const spy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
       await (
         cleanup as unknown as {
           handler: (...args: unknown[]) => Promise<unknown>;

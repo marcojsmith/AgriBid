@@ -9,6 +9,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    exclude: ["**/node_modules/**", ".claude/worktrees/**"],
     setupFiles: ["./src/test/setup.ts"],
     env: {
       ALLOW_PII_DEV_FALLBACK: "true",
