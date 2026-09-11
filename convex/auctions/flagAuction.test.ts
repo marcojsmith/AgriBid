@@ -16,12 +16,12 @@ vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-type MockDb = {
+interface MockDb {
   get: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   query: ReturnType<typeof vi.fn>;
-};
+}
 
 type MockCtxType = {
   db: MockDb;

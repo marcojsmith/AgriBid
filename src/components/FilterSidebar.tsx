@@ -267,7 +267,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           localFilters.status === "active" ||
           localFilters.status === "closed" ||
           localFilters.status === "all"
-            ? (localFilters.status as "active" | "closed" | "all")
+            ? localFilters.status
             : undefined,
         defaultMake: localFilters.make.trim() || undefined,
         defaultMinYear: validateAndParseInt(localFilters.minYear),

@@ -6,14 +6,14 @@ import type { Id } from "convex/_generated/dataModel";
 
 import AdminFAQ from "./AdminFAQ";
 
-type FaqItem = {
+interface FaqItem {
   _id: Id<"faqItems">;
   _creationTime: number;
   question: string;
   answer: string;
   order: number;
   isPublished: boolean;
-};
+}
 
 let mockFaqItems: FaqItem[] | undefined;
 const mockCreateFaqItem = vi.fn();

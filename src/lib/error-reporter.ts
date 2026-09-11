@@ -110,12 +110,7 @@ export async function reportError(
         timestamp: b.timestamp,
         type: b.type,
         description: sanitizeString(b.description),
-        metadata: b.metadata
-          ? (sanitizeAdditionalInfo(b.metadata) as Record<
-              string,
-              string | number
-            >)
-          : undefined,
+        metadata: b.metadata ? sanitizeAdditionalInfo(b.metadata)! : undefined,
       })),
       metadata: {
         url: sanitizeString(

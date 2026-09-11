@@ -47,9 +47,9 @@ describe("notifications lib", () => {
     });
 
     it("should handle error and still navigate if link present", async () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: suppress expected mark-as-read failure logging
+      });
       markRead.mockRejectedValue(new Error("Fail"));
 
       await handleNotificationClick(id, "/error-nav", navigate, markRead);
@@ -64,9 +64,9 @@ describe("notifications lib", () => {
     });
 
     it("should handle error and not navigate if link missing", async () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: suppress expected mark-as-read failure logging
+      });
       markRead.mockRejectedValue(new Error("Fail"));
 
       await handleNotificationClick(id, undefined, navigate, markRead);

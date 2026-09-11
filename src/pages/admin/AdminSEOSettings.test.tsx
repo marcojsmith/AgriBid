@@ -5,11 +5,11 @@ import { toast } from "sonner";
 
 import AdminSEOSettings from "./AdminSEOSettings";
 
-type SeoSettings = {
+interface SeoSettings {
   ga4MeasurementId: string | null;
   searchConsoleVerification: string | null;
   bingVerification: string | null;
-};
+}
 
 let mockSettings: SeoSettings | undefined;
 const mockUpdateSeoSettings = vi.fn();

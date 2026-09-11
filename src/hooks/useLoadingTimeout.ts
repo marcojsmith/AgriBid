@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from "react";
  */
 export function useLoadingTimeout(
   isLoading: boolean,
-  timeoutMs: number = 10000
+  timeoutMs = 10000
 ): boolean {
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const prevIsLoadingRef = useRef(isLoading);
@@ -19,7 +19,9 @@ export function useLoadingTimeout(
 
   useEffect(() => {
     if (prevIsLoadingRef.current && !isLoading) {
-      resetTimerRef.current = setTimeout(() => setHasTimedOut(false), 0);
+      resetTimerRef.current = setTimeout(() => {
+        setHasTimedOut(false);
+      }, 0);
     }
     prevIsLoadingRef.current = isLoading;
 
@@ -29,7 +31,9 @@ export function useLoadingTimeout(
       setHasTimedOut(true);
     }, timeoutMs);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [isLoading, timeoutMs]);
 
   useEffect(() => {

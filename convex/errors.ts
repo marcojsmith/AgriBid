@@ -8,7 +8,6 @@ import {
   query,
 } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import type { Doc } from "./_generated/dataModel";
 import { getGitHubConfig, isGitHubReportingEnabled } from "./admin/settings";
 import { getAuthUser, requireAdmin } from "./lib/auth";
 import { internal } from "./_generated/api";
@@ -121,12 +120,12 @@ async function checkRateLimit(ctx: QueryCtx): Promise<boolean> {
   return rateLimitCache.count < MAX_REPORTS_PER_WINDOW;
 }
 
-type BreadcrumbWithMetadata = {
+interface BreadcrumbWithMetadata {
   timestamp: number;
   type: string;
   description: string;
   metadata?: Record<string, string | number>;
-};
+}
 
 function sanitizeBreadcrumbMetadata(
   breadcrumb: BreadcrumbWithMetadata
@@ -596,9 +595,9 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
 export const processErrorReportsAction = internalAction({
   args: {},
   handler: async (ctx) => {
-    const enabled = (await ctx.runQuery(
+    const enabled = await ctx.runQuery(
       internal.errors.isGitHubReportingEnabledProxy
-    )) as boolean;
+    );
     if (!enabled) {
       console.warn("GitHub error reporting not enabled, skipping processing");
       return { processed: 0, created: 0, commented: 0, failed: 0 };
@@ -624,9 +623,9 @@ export const processErrorReportsAction = internalAction({
       return { processed: 0, created: 0, commented: 0, failed: 0 };
     }
 
-    const pendingReports = (await ctx.runMutation(
+    const pendingReports = await ctx.runMutation(
       internal.errors.getPendingReportsToProcess
-    )) as Doc<"errorReports">[];
+    );
 
     let processed = 0;
     let created = 0;

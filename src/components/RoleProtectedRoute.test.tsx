@@ -203,7 +203,9 @@ describe("RoleProtectedRoute", () => {
     (useQuery as Mock).mockReturnValue(undefined);
     mockSyncUser.mockRejectedValue(new Error("Sync failed"));
 
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected profile sync failure logging
+    });
 
     renderWithRouter("admin");
 
@@ -236,7 +238,9 @@ describe("RoleProtectedRoute", () => {
     (useQuery as Mock).mockReturnValue(undefined);
     mockSyncUser.mockResolvedValue(null);
 
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected profile sync failure logging
+    });
 
     renderWithRouter("admin");
 
@@ -273,7 +277,9 @@ describe("RoleProtectedRoute", () => {
       })
     );
 
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected profile sync failure logging
+    });
 
     const { unmount } = render(
       <BrowserRouter>

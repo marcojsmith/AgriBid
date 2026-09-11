@@ -21,9 +21,7 @@ import { Button } from "@/components/ui/button";
  * @returns A React element that displays a centred loading indicator while logs are fetched, or a card containing the audit logs table with details and pagination controls.
  */
 export function AuditTab() {
-  const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([
-    null,
-  ]);
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
 
   const result = useQuery(api.admin.getAuditLogs, {

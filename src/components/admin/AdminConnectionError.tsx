@@ -25,7 +25,9 @@ interface AdminConnectionErrorProps {
 export function AdminConnectionError({
   title = "Connection Timeout",
   description = "We're having trouble reaching the requested service. This could be due to a temporary network issue or high server load.",
-  onRetry = () => window.location.reload(),
+  onRetry = () => {
+    window.location.reload();
+  },
   className,
   iconSize = "md",
 }: AdminConnectionErrorProps) {

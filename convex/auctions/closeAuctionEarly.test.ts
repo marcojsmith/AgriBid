@@ -21,7 +21,7 @@ vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-type MockCtx = {
+interface MockCtx {
   db: {
     get: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
@@ -40,16 +40,16 @@ type MockCtx = {
   runMutation: unknown;
   runQuery: unknown;
   runAction: unknown;
-};
+}
 
-type MockUser = {
+interface MockUser {
   userId?: string | null;
   _id: string;
   email?: string | null;
   name?: string | null;
   image?: string | null;
   _creationTime?: number;
-};
+}
 
 describe("closeAuctionEarly mutation", () => {
   let mockCtx: MockCtx;

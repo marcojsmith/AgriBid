@@ -10,7 +10,7 @@ import type { ListingImages } from "@/components/listing-wizard/types";
 export function normalizeListingImages(images: unknown): ListingImages {
   if (Array.isArray(images)) {
     return {
-      front: typeof images[0] === "string" ? (images[0] as string).trim() : "",
+      front: typeof images[0] === "string" ? images[0].trim() : "",
       additional: images
         .slice(1)
         .filter(

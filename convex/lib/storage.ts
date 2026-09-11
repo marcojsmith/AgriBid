@@ -31,13 +31,13 @@ export function normalizeImages(images: {
 /**
  * Type for auction images in the database.
  */
-type AuctionImages = {
+interface AuctionImages {
   front?: string;
   engine?: string;
   cabin?: string;
   rear?: string;
   additional?: string[];
-};
+}
 
 /**
  * Deletes a storage item, swallowing and logging any error instead of throwing.

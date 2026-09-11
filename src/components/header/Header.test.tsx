@@ -113,7 +113,9 @@ describe("Header", () => {
   });
 
   it("handles sign out failure", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected sign-out failure logging
+    });
     mockSignOut.mockRejectedValue(new Error("Fail"));
     renderHeader();
 

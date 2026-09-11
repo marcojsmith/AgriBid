@@ -10,7 +10,7 @@ import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
 import AdminMarketplace from "./AdminMarketplace";
 
 interface PaginatedBidsPage {
-  page: Array<{
+  page: {
     _id: string;
     _creationTime?: number;
     auctionId?: string;
@@ -20,7 +20,7 @@ interface PaginatedBidsPage {
     bidderId: string;
     amount: number;
     status: string;
-  }>;
+  }[];
   isDone: boolean;
   continueCursor: string;
   totalCount: number;

@@ -79,7 +79,9 @@ describe("Auth Utilities Coverage", () => {
 
     it("should return null without logging when the identity lookup throws", async () => {
       mockCtx.auth.getUserIdentity.mockRejectedValue(new Error("Critical"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: test asserts console.error is never invoked
+      });
 
       expect(await getAuthUser(mockCtx as unknown as QueryCtx)).toBeNull();
       expect(spy).not.toHaveBeenCalled();

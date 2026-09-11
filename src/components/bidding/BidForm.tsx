@@ -297,7 +297,9 @@ export const BidForm = ({
               aria-label="Bid amount"
               type="number"
               value={manualAmount}
-              onChange={(e) => setManualAmount(e.target.value)}
+              onChange={(e) => {
+                setManualAmount(e.target.value);
+              }}
               placeholder="Enter amount"
               className="h-14 pl-8 text-lg font-bold rounded-md border focus-visible:ring-primary"
               disabled={isLoading || !isBidFormEnabled}

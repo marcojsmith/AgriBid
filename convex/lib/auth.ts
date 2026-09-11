@@ -16,13 +16,13 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
  * - `email` / `name` / `image`: mapped from the `email` / `name` / `pictureUrl`
  *   claims respectively; all nullable when the claim is absent.
  */
-export type AuthUser = {
+export interface AuthUser {
   _id: string;
   userId?: string | null;
   email?: string | null;
   name?: string | null;
   image?: string | null;
-};
+}
 
 /**
  * Error message for non-verified users attempting restricted actions.
@@ -248,7 +248,7 @@ export async function getAuthWithProfile(ctx: QueryCtx | MutationCtx) {
  */
 export async function requireProfile(ctx: QueryCtx | MutationCtx) {
   const result = await getAuthWithProfile(ctx);
-  if (!result || !result.profile) {
+  if (!result?.profile) {
     throw new ConvexError("Authenticated profile not found");
   }
   return { profile: result.profile, userId: result.userId };

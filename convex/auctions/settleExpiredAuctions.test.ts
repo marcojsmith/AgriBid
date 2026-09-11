@@ -4,7 +4,7 @@ import { settleExpiredAuctionsHandler } from "./internal";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
     query: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
@@ -21,7 +21,7 @@ type MockCtxType = {
   runMutation: unknown;
   runQuery: unknown;
   runAction: unknown;
-};
+}
 
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
@@ -36,8 +36,8 @@ describe("settleExpiredAuctions mutation", () => {
   });
 
   const setupMockCtx = (
-    expiredAuctions: { [key: string]: unknown }[],
-    bids: { [key: string]: unknown }[]
+    expiredAuctions: Record<string, unknown>[],
+    bids: Record<string, unknown>[]
   ) => {
     return {
       db: {

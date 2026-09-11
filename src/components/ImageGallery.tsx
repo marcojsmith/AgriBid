@@ -182,7 +182,9 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
             <button
               key={index}
               type="button"
-              onClick={() => setActiveIndex(index)}
+              onClick={() => {
+                setActiveIndex(index);
+              }}
               className={cn(
                 "relative aspect-square w-20 md:w-24 rounded-lg overflow-hidden border transition-all flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 activeIndex === index

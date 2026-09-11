@@ -437,9 +437,9 @@ describe("AdminAuctions", () => {
     const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
     const actionButton = within(firstRow).getAllByRole("button").pop()!;
     openDropdown(actionButton);
-    await waitFor(() =>
-      expect(screen.getByText("Force End")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      expect(screen.getByText("Force End")).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText("Force End"));
 
     const confirmButton = screen.getByRole("button", { name: "Close Auction" });
@@ -463,9 +463,9 @@ describe("AdminAuctions", () => {
     const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
     const actionButton = within(firstRow).getAllByRole("button").pop()!;
     openDropdown(actionButton);
-    await waitFor(() =>
-      expect(screen.getByText("Force End")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      expect(screen.getByText("Force End")).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText("Force End"));
 
     const confirmButton = screen.getByRole("button", { name: "Close Auction" });
@@ -483,9 +483,9 @@ describe("AdminAuctions", () => {
     const actionButton = within(firstRow).getAllByRole("button").pop()!;
     openDropdown(actionButton);
 
-    await waitFor(() =>
-      expect(screen.getByText("View Details")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      expect(screen.getByText("View Details")).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText("View Details"));
 
     expect(mockNavigate).toHaveBeenCalledWith("/auction/auction1");
@@ -655,13 +655,13 @@ describe("AdminAuctions", () => {
       const row = screen.getByText(title).closest("tr")!;
       const actionButton = within(row).getAllByRole("button").pop()!;
       openDropdown(actionButton);
-      await waitFor(() =>
-        expect(screen.getByText("Force End")).toBeInTheDocument()
-      );
+      await waitFor(() => {
+        expect(screen.getByText("Force End")).toBeInTheDocument();
+      });
       fireEvent.click(screen.getByText("Force End"));
-      await waitFor(() =>
-        expect(screen.getByRole("alertdialog")).toBeInTheDocument()
-      );
+      await waitFor(() => {
+        expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+      });
     };
 
     await openForceEnd("Days Left");
@@ -770,9 +770,9 @@ describe("AdminAuctions", () => {
     const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
     const actionButton = within(firstRow).getAllByRole("button").pop()!;
     openDropdown(actionButton);
-    await waitFor(() =>
-      expect(screen.getByText("Force End")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      expect(screen.getByText("Force End")).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText("Force End"));
 
     const confirmButton = screen.getByRole("button", { name: "Close Auction" });
@@ -816,9 +816,9 @@ describe("AdminAuctions", () => {
     const row = screen.getByText("No Reserve Met").closest("tr")!;
     const actionButton = within(row).getAllByRole("button").pop()!;
     openDropdown(actionButton);
-    await waitFor(() =>
-      expect(screen.getByText("Force End")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      expect(screen.getByText("Force End")).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText("Force End"));
 
     await waitFor(() => {
@@ -838,9 +838,9 @@ describe("AdminAuctions", () => {
     const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
     const actionButton = within(firstRow).getAllByRole("button").pop()!;
     openDropdown(actionButton);
-    await waitFor(() =>
-      expect(screen.getByText("Force End")).toBeInTheDocument()
-    );
+    await waitFor(() => {
+      expect(screen.getByText("Force End")).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText("Force End"));
 
     const confirmButton = screen.getByRole("button", { name: "Close Auction" });

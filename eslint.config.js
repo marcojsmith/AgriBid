@@ -199,11 +199,18 @@ export default defineConfig([
   },
 
   // -----------------------------------------------------------------------
-  // Test files — console.log is useful for debugging test output
+  // Test files — console.log is useful for debugging test output.
+  // `unbound-method` almost always false-positives on vi.fn()/vi.mocked()-based
+  // mock methods and destructured mock object methods in tests — the standard,
+  // accepted reason this rule gets disabled for test files in TypeScript+Vitest
+  // projects.
   // -----------------------------------------------------------------------
   {
     files: ["**/*.test.{ts,tsx}"],
-    rules: { "no-console": "off" },
+    rules: {
+      "no-console": "off",
+      "@typescript-eslint/unbound-method": "off",
+    },
   },
 
   // -----------------------------------------------------------------------

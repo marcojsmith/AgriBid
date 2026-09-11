@@ -43,9 +43,7 @@ describe("DocumentUploadSection", () => {
 
   it("calls onFileChange when file input changes", () => {
     render(<DocumentUploadSection {...defaultProps} />);
-    const input = document.querySelector(
-      'input[type="file"]'
-    ) as HTMLInputElement;
+    const input = document.querySelector('input[type="file"]')!;
     fireEvent.change(input, { target: { files: [] } });
     expect(mockOnFileChange).toHaveBeenCalled();
   });

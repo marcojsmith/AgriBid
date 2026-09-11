@@ -5,7 +5,7 @@ import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
     get: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
@@ -26,7 +26,7 @@ type MockCtxType = {
   runMutation: unknown;
   runQuery: unknown;
   runAction: unknown;
-};
+}
 
 vi.mock("../lib/auth", () => ({
   getAuthenticatedUserId: vi.fn(),
@@ -42,7 +42,7 @@ describe("deleteDraft mutation", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (auction: { [key: string]: unknown } | null) => {
+  const setupMockCtx = (auction: Record<string, unknown> | null) => {
     return {
       db: {
         get: vi.fn().mockResolvedValue(auction),

@@ -234,7 +234,9 @@ describe("Users Coverage", () => {
 
     it("should return null and log error for other errors", async () => {
       vi.mocked(auth.requireAuth).mockRejectedValue(new Error("DB Error"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected sync-failure error
+      });
       const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
       expect(result).toBeNull();
       expect(spy).toHaveBeenCalled();
@@ -320,7 +322,9 @@ describe("Users Coverage", () => {
 
     it("should catch and log errors", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected profile-fetch error
+      });
       const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
       expect(result).toBeNull();
       expect(spy).toHaveBeenCalled();
@@ -331,7 +335,9 @@ describe("Users Coverage", () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: test asserts Unauthenticated errors are never logged
+      });
       const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
       expect(result).toBeNull();
       expect(spy).not.toHaveBeenCalled();
@@ -566,7 +572,9 @@ describe("Users Coverage", () => {
         _id: "p1",
         kycStatus: "pending",
       });
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected admin-ID fallback warning
+      });
 
       await verifyUserHandler(mockCtx as unknown as MutationCtx, {
         userId: "user123",
@@ -589,7 +597,9 @@ describe("Users Coverage", () => {
         isVerified: false,
         kycStatus: "pending",
       });
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected missing-KYC warning
+      });
 
       await verifyUserHandler(mockCtx as unknown as MutationCtx, {
         userId: "user123",
@@ -879,7 +889,9 @@ describe("Users Coverage", () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: test asserts Unauthenticated errors are never logged
+      });
       const result = await getMyKYCDetailsHandler(
         mockCtx as unknown as QueryCtx
       );
@@ -991,7 +1003,9 @@ describe("Users Coverage", () => {
       mockCtx.storage.delete.mockRejectedValue(
         new Error("Storage Delete Fail")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected storage-delete error
+      });
 
       const result = await deleteMyKYCDocumentHandler(
         mockCtx as unknown as MutationCtx,

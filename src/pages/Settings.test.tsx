@@ -253,9 +253,9 @@ describe("Settings Page", () => {
     expect(toast.info).toHaveBeenCalledWith("Save already in progress");
 
     pendingSave.resolve?.();
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith("Setting saved")
-    );
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Setting saved");
+    });
   });
 
   it("reflects saved preferences in switch aria-checked", () => {

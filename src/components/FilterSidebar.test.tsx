@@ -443,7 +443,9 @@ describe("FilterSidebar", () => {
 
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     // After prefs load, the make select should reflect Case IH
     const makeSelect = screen.getByLabelText(/Manufacturer/i);
@@ -462,7 +464,9 @@ describe("FilterSidebar", () => {
 
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     const makeSelect = screen.getByLabelText(/Manufacturer/i);
     expect(makeSelect).toHaveTextContent("John Deere");
@@ -479,7 +483,9 @@ describe("FilterSidebar", () => {
     mockSearchParams = new URLSearchParams();
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByLabelText(/Auction Status/i)).toHaveTextContent(
       "Closed Auctions"
@@ -498,7 +504,9 @@ describe("FilterSidebar", () => {
     mockSearchParams = new URLSearchParams();
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByLabelText(/Minimum year/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Maximum year/i)).toBeInTheDocument();
@@ -516,7 +524,9 @@ describe("FilterSidebar", () => {
     mockSearchParams = new URLSearchParams();
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByLabelText(/Minimum price/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Maximum price/i)).toBeInTheDocument();
@@ -533,7 +543,9 @@ describe("FilterSidebar", () => {
     mockSearchParams = new URLSearchParams();
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByLabelText(/Max Operating Hours/i)).toBeInTheDocument();
   });
@@ -564,7 +576,9 @@ describe("FilterSidebar", () => {
 
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     // URL params should win over prefs — verify via DOM state
     // status: URL "closed" wins over prefs "all"
@@ -642,7 +656,9 @@ describe("FilterSidebar", () => {
     mockSearchParams = new URLSearchParams();
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByLabelText(/Auction Status/i)).toBeInTheDocument();
   });
@@ -658,7 +674,9 @@ describe("FilterSidebar", () => {
     mockSearchParams = new URLSearchParams();
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByLabelText(/Manufacturer/i)).toBeInTheDocument();
   });
@@ -680,7 +698,9 @@ describe("FilterSidebar", () => {
 
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     fireEvent.click(screen.getByText("Save Defaults"));
 
@@ -700,7 +720,9 @@ describe("FilterSidebar", () => {
 
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByLabelText(/Auction Status/i)).toBeInTheDocument();
   });
@@ -728,7 +750,9 @@ describe("FilterSidebar", () => {
 
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     const makeSelect = screen.getByLabelText(/Manufacturer/i);
     expect(makeSelect).toHaveTextContent("John Deere");
@@ -790,7 +814,9 @@ describe("FilterSidebar", () => {
 
     renderSidebar();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     fireEvent.click(screen.getByText("Save Defaults"));
 

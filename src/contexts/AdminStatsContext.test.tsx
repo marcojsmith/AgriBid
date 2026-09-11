@@ -60,9 +60,9 @@ describe("AdminStatsContext", () => {
 
   describe("useAdminStats", () => {
     it("should throw error when used outside of Provider", () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: suppress expected missing-provider error log
+      });
 
       expect(() => renderHook(() => useAdminStats())).toThrow(
         "useAdminStats must be used within an AdminStatsProvider"

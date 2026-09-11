@@ -284,7 +284,9 @@ export default function AdminModeration() {
                         variant="destructive"
                         size="sm"
                         className="flex-1"
-                        onClick={() => openDismissDialog(flag)}
+                        onClick={() => {
+                          openDismissDialog(flag);
+                        }}
                       >
                         <X className="h-3 w-3 mr-1" />
                         Dismiss
@@ -445,7 +447,9 @@ export default function AdminModeration() {
                   : "Explain why this flag is being dismissed..."
               }
               value={dismissReason}
-              onChange={(e) => setDismissReason(e.target.value)}
+              onChange={(e) => {
+                setDismissReason(e.target.value);
+              }}
               rows={3}
             />
           </div>

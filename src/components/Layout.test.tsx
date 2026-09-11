@@ -97,7 +97,9 @@ describe("Layout", () => {
       )
     );
 
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: silence console.error while asserting the sync failure
+    });
 
     mockUseQuery.mockReturnValue(undefined);
     render(

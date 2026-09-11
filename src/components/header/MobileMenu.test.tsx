@@ -330,7 +330,9 @@ describe("MobileMenu", () => {
   });
 
   it("should handle onSignOut failure", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected sign-out failure logging
+    });
     const failOnSignOut = vi
       .fn()
       .mockRejectedValue(new Error("Sign out failed"));
@@ -381,7 +383,9 @@ describe("MobileMenu", () => {
     vi.spyOn(menuRoot!, "querySelectorAll").mockReturnValue({
       length: 0,
       item: () => null,
-      forEach: () => {},
+      forEach: () => {
+        // intentional no-op: mocked NodeList is empty, nothing to iterate
+      },
       [Symbol.iterator]: function* () {
         yield* [];
       },

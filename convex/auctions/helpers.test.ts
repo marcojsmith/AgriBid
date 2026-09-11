@@ -98,24 +98,15 @@ describe("resolveImageUrls", () => {
   });
 
   it("should handle null or undefined input", async () => {
-    const result1 = await resolveImageUrls(
-      mockStorage,
-      null as unknown as Parameters<typeof resolveImageUrls>[1]
-    );
-    const result2 = await resolveImageUrls(
-      mockStorage,
-      undefined as unknown as Parameters<typeof resolveImageUrls>[1]
-    );
+    const result1 = await resolveImageUrls(mockStorage, null as unknown);
+    const result2 = await resolveImageUrls(mockStorage, undefined as unknown);
 
     expect(result1.additional).toEqual([]);
     expect(result2.additional).toEqual([]);
   });
 
   it("should handle non-object, non-array input", async () => {
-    const result = await resolveImageUrls(
-      mockStorage,
-      "invalid" as unknown as Parameters<typeof resolveImageUrls>[1]
-    );
+    const result = await resolveImageUrls(mockStorage, "invalid" as unknown);
 
     expect(result.front).toBeUndefined();
     expect(result.additional).toEqual([]);
@@ -268,7 +259,7 @@ describe("toAuctionDetail", () => {
 
   const setupMockCtx = (
     category: unknown = null,
-    isAuthenticated: boolean = false,
+    isAuthenticated = false,
     sellerProfile: unknown = null
   ) => {
     return {
@@ -432,23 +423,23 @@ describe("toAuctionDetail", () => {
 
 describe("validateAuctionStatus", () => {
   it("should throw if status is active but endTime is missing", () => {
-    expect(() =>
-      validateAuctionStatus({ status: "pending_review" }, "active")
-    ).toThrow("Cannot set status to 'active' without endTime");
+    expect(() => {
+      validateAuctionStatus({ status: "pending_review" }, "active");
+    }).toThrow("Cannot set status to 'active' without endTime");
   });
 
   it("should not throw if status is active and endTime is present", () => {
-    expect(() =>
+    expect(() => {
       validateAuctionStatus(
         { status: "pending_review", endTime: Date.now() },
         "active"
-      )
-    ).not.toThrow();
+      );
+    }).not.toThrow();
   });
 
   it("should not throw for other status transitions", () => {
-    expect(() =>
-      validateAuctionStatus({ status: "draft" }, "pending_review")
-    ).not.toThrow();
+    expect(() => {
+      validateAuctionStatus({ status: "draft" }, "pending_review");
+    }).not.toThrow();
   });
 });

@@ -373,6 +373,8 @@ export const updateSystemConfig = mutation({
   handler: updateSystemConfigHandler,
 });
 
+// Type alias (not interface): Convex derives the mutation's FunctionReference
+// args type from this handler args type — interfaces break that inference.
 type GitHubErrorReportingConfig = {
   enabled: boolean;
   token?: string;
@@ -416,7 +418,7 @@ export async function updateGitHubErrorReportingConfigHandler(
         .withIndex("by_key", (q) => q.eq("key", "github_api_token"))
         .unique();
 
-      if (!existingTokenSetting || !existingTokenSetting.value) {
+      if (!existingTokenSetting?.value) {
         throw new Error(
           "GitHub API token is required when enabling error reporting"
         );
@@ -424,10 +426,10 @@ export async function updateGitHubErrorReportingConfigHandler(
     }
   }
 
-  const settingsToUpdate: Array<{
+  const settingsToUpdate: {
     key: string;
     value: string | boolean;
-  }> = [
+  }[] = [
     { key: "github_error_reporting_enabled", value: args.enabled },
     { key: "github_repo_owner", value: repoOwner },
     { key: "github_repo_name", value: repoName },
@@ -572,8 +574,7 @@ export const updateSeoSettings = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    const updates: Array<{ key: string; value: string; description: string }> =
-      [];
+    const updates: { key: string; value: string; description: string }[] = [];
 
     if (args.ga4MeasurementId !== undefined) {
       updates.push({
@@ -751,8 +752,7 @@ export async function updateBusinessInfoHandler(
 ) {
   await requireAdmin(ctx);
 
-  const updates: Array<{ key: string; value: string; description: string }> =
-    [];
+  const updates: { key: string; value: string; description: string }[] = [];
 
   if (args.businessName !== undefined) {
     updates.push({

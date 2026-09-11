@@ -36,7 +36,7 @@ import { confirmResolveTicket } from "./confirmResolveTicket";
  * @returns A React element showing a centered loading indicator while tickets are loading, or a table of tickets with per-ticket status, subject, message, priority, and controls to open a resolution dialog for open tickets.
  */
 export function SupportTab() {
-  const [cursorStack, setCursorStack] = useState<Array<string | null>>([]);
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([]);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const ticketsResult = useQuery(api.admin.getTickets, {
     paginationOpts: { numItems: 50, cursor: currentCursor },
@@ -76,14 +76,16 @@ export function SupportTab() {
     await confirmResolveTicket({
       ticketId: selectedTicketId,
       resolutionText,
-      onResolveStart: (ticketId) =>
-        setResolvingIds((prev) => new Set(prev).add(ticketId)),
-      onResolveEnd: (ticketId) =>
+      onResolveStart: (ticketId) => {
+        setResolvingIds((prev) => new Set(prev).add(ticketId));
+      },
+      onResolveEnd: (ticketId) => {
         setResolvingIds((prev) => {
           const next = new Set(prev);
           next.delete(ticketId);
           return next;
-        }),
+        });
+      },
       resolveTicket,
       toastError: (message) => toast.error(message),
       toastSuccess: (message) => {
