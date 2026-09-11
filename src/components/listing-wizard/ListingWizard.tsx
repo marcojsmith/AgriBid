@@ -51,6 +51,7 @@ const ListingWizardContent = () => {
   const { getStepError } = useListingForm();
 
   const [searchParams] = useSearchParams();
+  // Intentionally `||` not `??`: an empty "edit=" query param must also be treated as "not editing"
   const editingAuctionId = searchParams.get("edit") || undefined;
 
   const createAuction = useMutation(

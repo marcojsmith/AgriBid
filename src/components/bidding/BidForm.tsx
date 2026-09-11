@@ -51,12 +51,10 @@ export const BidForm = ({
   const [manualAmount, setManualAmount] = useState<string>(
     nextMinBid.toString()
   );
-  const [isProxyEnabled, setIsProxyEnabled] = useState(isProxyActive || false);
+  const [isProxyEnabled, setIsProxyEnabled] = useState(isProxyActive ?? false);
   // Auto-bid section is collapsed by default (optional feature); users with an
   // already-active proxy bid start expanded so they can see and edit it
-  const [isProxyExpanded, setIsProxyExpanded] = useState(
-    isProxyActive || false
-  );
+  const [isProxyExpanded, setIsProxyExpanded] = useState(isProxyActive ?? false);
   const [maxBid, setMaxBid] = useState<string>(
     currentUserMaxBid != null ? String(currentUserMaxBid) : ""
   );
@@ -72,7 +70,7 @@ export const BidForm = ({
    */
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing state with server-backed prop changes
-    setIsProxyEnabled(isProxyActive || false);
+    setIsProxyEnabled(isProxyActive ?? false);
   }, [isProxyActive]);
 
   useEffect(() => {

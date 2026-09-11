@@ -24,7 +24,7 @@ export function normalizeImages(images: {
 }) {
   return {
     ...images,
-    additional: images.additional || [],
+    additional: images.additional ?? [],
   };
 }
 
@@ -87,7 +87,7 @@ export async function deleteAuctionImages(
       imagesObj.engine,
       imagesObj.cabin,
       imagesObj.rear,
-      ...(imagesObj.additional || []),
+      ...(imagesObj.additional ?? []),
     ].filter((id): id is string => !!id);
   }
 

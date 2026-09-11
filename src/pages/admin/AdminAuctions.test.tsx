@@ -44,12 +44,12 @@ if (typeof global.PointerEvent === "undefined") {
 
     constructor(type: string, props: PointerEventInit = {}) {
       super(type, props);
-      this.pointerId = props.pointerId || 0;
-      this.width = props.width || 0;
-      this.height = props.height || 0;
-      this.pressure = props.pressure || 0;
-      this.button = props.button || 0;
-      this.buttons = props.buttons || 0;
+      this.pointerId = props.pointerId ?? 0;
+      this.width = props.width ?? 0;
+      this.height = props.height ?? 0;
+      this.pressure = props.pressure ?? 0;
+      this.button = props.button ?? 0;
+      this.buttons = props.buttons ?? 0;
     }
   }
   global.PointerEvent = MockPointerEvent as unknown as typeof PointerEvent;

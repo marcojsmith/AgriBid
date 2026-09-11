@@ -486,7 +486,11 @@ describe("Errors Backend", () => {
       const mockCtx = setupMockCtx(mockReports);
 
       vi.mocked(global.fetch).mockImplementation((url) => {
-        if (url.toString().includes("comments")) {
+        if (
+          (url instanceof Request ? url.url : url.toString()).includes(
+            "comments"
+          )
+        ) {
           return Promise.resolve({ ok: true } as Response);
         }
         return Promise.resolve({
@@ -610,7 +614,7 @@ describe("Errors Backend", () => {
       // Mock first fetch for issues to return not found (so it goes to comment path)
       // and second fetch for comments to return non-ok
       vi.mocked(global.fetch).mockImplementation((url) => {
-        const urlStr = url.toString();
+        const urlStr = url instanceof Request ? url.url : url.toString();
         if (urlStr.includes("comments")) {
           return Promise.resolve({
             ok: false,

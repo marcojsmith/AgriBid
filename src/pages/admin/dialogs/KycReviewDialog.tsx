@@ -104,7 +104,7 @@ export function KycReviewDialog({
                       label="ID/Passport"
                       value={
                         showFullId
-                          ? (user.idNumber ?? "Not Provided")
+                          ? user.idNumber || "Not Provided"
                           : user.idNumber
                             ? `****${user.idNumber.slice(-4)}`
                             : "Not Provided"

@@ -164,9 +164,8 @@ describe("Support Page", () => {
     const submitBtn = screen.getByRole("button", {
       name: /submit support ticket/i,
     });
-    await act(() => {
+    act(() => {
       fireEvent.click(submitBtn);
-      return Promise.resolve();
     });
 
     expect(mockCreateTicket).toHaveBeenCalledWith({

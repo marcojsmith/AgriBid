@@ -68,7 +68,7 @@ describe("ErrorBoundary", () => {
 
   it("handles string errors thrown by children", () => {
     const ThrowString = () => {
-      throw "String error";
+      throw "String error" as unknown as Error;
     };
 
     render(

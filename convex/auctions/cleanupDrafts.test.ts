@@ -26,9 +26,7 @@ describe("cleanupDrafts mutation", () => {
     runQuery: ReturnType<typeof vi.fn>;
   };
 
-  const makeQueryChainMock = <T = Record<string, unknown>>(
-    results: T[] = []
-  ) => ({
+  const makeQueryChainMock = (results: Record<string, unknown>[] = []) => ({
     withIndex: vi.fn().mockReturnThis(),
     filter: vi.fn().mockReturnThis(),
     collect: vi.fn().mockResolvedValue(results),

@@ -50,7 +50,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
   const deleteUpload = useMutation(api.auctions.mutations.delete.deleteUpload);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
+    const selectedFiles = Array.from(e.target.files ?? []);
 
     if (files.length + selectedFiles.length > maxFiles) {
       toast.error(`Maximum ${maxFiles} files allowed`);

@@ -22,13 +22,10 @@ export * from "./factories";
 
 /**
  * Creates a mock query result object for testing Convex queries.
- * @template T - The type of results
  * @param results - Array of results to return
  * @returns Mock query object with chainable methods
  */
-export const createMockQuery = <T extends Record<string, unknown>>(
-  results: T[] = []
-) => ({
+export const createMockQuery = (results: Record<string, unknown>[] = []) => ({
   collect: vi.fn().mockResolvedValue(results),
   unique: vi.fn(),
   withIndex: vi.fn().mockReturnThis(),

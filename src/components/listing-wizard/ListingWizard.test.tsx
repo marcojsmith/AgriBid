@@ -62,14 +62,14 @@ vi.mock("convex/_generated/api", () => ({
 // Mock Convex hooks
 vi.mock("convex/react", () => ({
   useQuery: (apiFunc: { _path?: string } | null | undefined) => {
-    const path = apiFunc?._path || "";
+    const path = apiFunc?._path ?? "";
     if (path === "auctions:getCategories") {
       return [{ _id: "cat1", name: "Tractor", isActive: true }];
     }
     return [];
   },
   usePaginatedQuery: (apiFunc: { _path?: string } | null | undefined) => {
-    const path = apiFunc?._path || "";
+    const path = apiFunc?._path ?? "";
     if (path === "auctions:getEquipmentMetadata") {
       return {
         results: [
@@ -638,7 +638,7 @@ describe("ListingWizard Full Coverage", () => {
     // Mock JSON.parse to throw a non-Error string
     const originalParse = JSON.parse;
     JSON.parse = vi.fn().mockImplementation(() => {
-      throw "Not an error object";
+      throw "Not an error object" as unknown as Error;
     });
 
     try {

@@ -17,9 +17,10 @@ export interface Session {
 /**
  * Shared type for users with role and verification metadata.
  * Used to avoid manual type assertions across the codebase.
+ * Accepted role values: "admin", "seller", "buyer".
  */
 export type UserWithRole = User & {
-  role?: "admin" | "seller" | "buyer" | string;
+  role?: string;
   isVerified?: boolean;
 };
 
@@ -30,7 +31,8 @@ export type SessionWithRole = Session & {
 export interface UserProfileMetadata {
   _id: string;
   userId: string;
-  role: "admin" | "seller" | "buyer" | string;
+  /** User role, e.g. "admin", "seller", "buyer". */
+  role: string;
   isVerified: boolean;
   kycStatus?: "none" | "pending" | "verified" | "rejected";
   createdAt: number;

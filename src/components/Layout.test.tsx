@@ -6,10 +6,6 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 
 import { Layout } from "./Layout";
 
-function typedMutationMock<T>(_val: unknown): T {
-  return _val as T;
-}
-
 vi.mock("./header/Header", () => ({
   Header: () => <header data-testid="mock-header">Header</header>,
 }));
@@ -66,9 +62,9 @@ describe("Layout", () => {
     mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true });
     mockUseUser.mockReturnValue({ user: undefined });
     mockUseMutation.mockReturnValue(
-      typedMutationMock<ReturnType<typeof convexReact.useMutation>>(
-        vi.fn().mockResolvedValue({})
-      )
+      vi.fn().mockResolvedValue({}) as unknown as ReturnType<
+        typeof convexReact.useMutation
+      >
     );
   });
 
@@ -92,9 +88,7 @@ describe("Layout", () => {
     mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
     mockUseUser.mockReturnValue({ user: { id: "user1" } });
     mockUseMutation.mockReturnValue(
-      typedMutationMock<ReturnType<typeof convexReact.useMutation>>(
-        mockSyncUser
-      )
+      mockSyncUser as unknown as ReturnType<typeof convexReact.useMutation>
     );
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {

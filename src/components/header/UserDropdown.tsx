@@ -101,7 +101,10 @@ export function UserDropdown({
               )}
             </div>
             <span className="text-sm font-bold text-primary leading-none mt-1">
-              {isLoadingProfile ? "Loading..." : userData?.name || "User"}
+              {isLoadingProfile
+                ? "Loading..."
+                : // Intentionally `||` not `??`: an empty string name must also fall through to "User"
+                  userData?.name || "User"}
             </span>
           </div>
           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all border border-primary/20">

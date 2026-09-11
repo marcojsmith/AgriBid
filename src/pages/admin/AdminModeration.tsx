@@ -405,7 +405,9 @@ export default function AdminModeration() {
       {/* Dismiss Flag Dialog */}
       <AlertDialog
         open={showDismissDialog}
-        onOpenChange={(open) => !open && handleCloseDismissDialog()}
+        onOpenChange={(open) => {
+          if (!open) handleCloseDismissDialog();
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -424,7 +426,7 @@ export default function AdminModeration() {
               ) : (
                 <>
                   Are you sure you want to dismiss this flag?
-                  {selectedFlag && selectedFlag.auctionTitle && (
+                  {selectedFlag?.auctionTitle && (
                     <span className="block mt-2">
                       Auction: <strong>{selectedFlag.auctionTitle}</strong>
                     </span>

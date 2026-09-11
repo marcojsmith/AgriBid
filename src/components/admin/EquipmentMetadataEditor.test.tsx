@@ -41,7 +41,7 @@ vi.mock("convex/_generated/api", () => ({
 // Mock Convex hooks
 vi.mock("convex/react", () => ({
   useQuery: vi.fn((apiFunc: { _path?: string } | null | undefined) => {
-    const path = apiFunc?._path || "";
+    const path = apiFunc?._path ?? "";
     if (path === "admin:categories:getCategories") {
       return [
         {
@@ -94,7 +94,7 @@ describe("EquipmentMetadataEditor", () => {
   const getDefaultMockData = (
     apiFunc: { _path?: string } | null | undefined
   ) => {
-    const path = apiFunc?._path || "";
+    const path = apiFunc?._path ?? "";
     if (path === "admin:categories:getCategories") {
       return [
         {

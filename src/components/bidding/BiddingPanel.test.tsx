@@ -538,7 +538,7 @@ describe("BiddingPanel", () => {
     // Click the confirm button while the dialog is technically closed (amount = 0)
     const hiddenDialog = screen.getByTestId("hidden-dialog");
     const confirmButton =
-      hiddenDialog.querySelector("button") ||
+      hiddenDialog.querySelector("button") ??
       screen.getByRole("button", { name: "Confirm Bid" });
     fireEvent.click(confirmButton);
 

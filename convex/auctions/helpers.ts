@@ -107,7 +107,7 @@ export async function resolveImageUrls(
     rear,
     additional: (
       await Promise.all(
-        (normalizedImages.additional || []).map((id: string) =>
+        (normalizedImages.additional ?? []).map((id: string) =>
           resolveUrlCached(storage, id)
         )
       )
@@ -204,6 +204,7 @@ export async function toAuctionSummary(
     operatingHours: auction.operatingHours,
     location: auction.location,
     categoryId: auction.categoryId,
+    // Intentionally `||` not `??`: an empty string category name also means "no category"
     categoryName: category?.name || "Unknown",
     sellerId: auction.sellerId,
     winnerId: auction.winnerId,
@@ -286,6 +287,7 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     operatingHours: auction.operatingHours,
     location: auction.location,
     categoryId: auction.categoryId,
+    // Intentionally `||` not `??`: an empty string category name also means "no category"
     categoryName: category?.name || "Unknown",
     startingPrice: auction.startingPrice,
     reservePrice: auction.reservePrice,

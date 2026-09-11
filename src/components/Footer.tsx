@@ -24,11 +24,11 @@ export const Footer = () => {
   const businessInfo = useQuery(api.admin.getBusinessInfo);
 
   const businessName = branding?.appName ?? "AgriBid";
-  const streetAddress = businessInfo?.streetAddress || "";
-  const addressLocality = businessInfo?.addressLocality || "";
-  const addressCountry = businessInfo?.addressCountry || "";
-  const postalCode = businessInfo?.postalCode || "";
-  const telephone = businessInfo?.telephone || "";
+  const streetAddress = businessInfo?.streetAddress ?? "";
+  const addressLocality = businessInfo?.addressLocality ?? "";
+  const addressCountry = businessInfo?.addressCountry ?? "";
+  const postalCode = businessInfo?.postalCode ?? "";
+  const telephone = businessInfo?.telephone ?? "";
 
   const addressParts = [
     streetAddress,

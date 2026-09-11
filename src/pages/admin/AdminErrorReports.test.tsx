@@ -65,7 +65,7 @@ describe("AdminErrorReports", () => {
     render(<AdminErrorReports />);
     expect(screen.getByTestId("admin-layout")).toBeInTheDocument();
     expect(
-      document.querySelector(".animate-spin") || screen.getByRole("status")
+      document.querySelector(".animate-spin") ?? screen.getByRole("status")
     ).toBeInTheDocument();
   });
 

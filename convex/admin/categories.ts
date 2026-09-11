@@ -245,7 +245,7 @@ export const fixMetadataHandler = async (ctx: MutationCtx) => {
       // If multiple matches by make, try to narrow down by model
       let match = matches.length === 1 ? matches[0] : null;
       if (matches.length > 1 && auction.model) {
-        match = matches.find((m) => m.models.includes(auction.model)) || null;
+        match = matches.find((m) => m.models.includes(auction.model)) ?? null;
       }
 
       if (match?.categoryId) {

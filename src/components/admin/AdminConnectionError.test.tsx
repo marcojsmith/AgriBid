@@ -78,7 +78,7 @@ describe("AdminConnectionError", () => {
     const originalReload = window.location.reload;
     Object.defineProperty(window, "location", {
       writable: true,
-      value: { ...window.location, reload: vi.fn() },
+      value: Object.assign({}, window.location, { reload: vi.fn() }),
     });
 
     render(<AdminConnectionError />);
@@ -88,7 +88,7 @@ describe("AdminConnectionError", () => {
 
     Object.defineProperty(window, "location", {
       writable: true,
-      value: { ...window.location, reload: originalReload },
+      value: Object.assign({}, window.location, { reload: originalReload }),
     });
   });
 });

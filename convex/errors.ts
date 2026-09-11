@@ -49,7 +49,7 @@ export function generateFingerprint(
     const lines = stackTrace.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed && trimmed.startsWith("at ")) {
+      if (trimmed !== "" && trimmed.startsWith("at ")) {
         // Safe from catastrophic backtracking: the lazy groups have no nested
         // quantifiers and input is a single stack-frame line, so backtracking
         // is at worst quadratic in the line length.
@@ -360,8 +360,8 @@ ${report.stackTrace ?? "No stack trace available"}
 \`\`\`
 
 ### User Context
-- **User ID:** ${report.userId ?? "Anonymous"}
-- **User Role:** ${report.userRole ?? "N/A"}
+- **User ID:** ${report.userId || "Anonymous"}
+- **User Role:** ${report.userRole || "N/A"}
 
 ### Additional Info
 ${additionalInfoMd}

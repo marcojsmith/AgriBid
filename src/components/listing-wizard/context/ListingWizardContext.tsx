@@ -18,7 +18,7 @@ const validateAndNormalizeDraft = (saved: unknown): ListingFormData => {
   ) as Partial<ListingFormData>;
 
   const normalizedImages = normalizeListingImages(
-    data.images || DEFAULT_FORM_DATA.images
+    data.images ?? DEFAULT_FORM_DATA.images
   );
 
   return {
@@ -27,7 +27,7 @@ const validateAndNormalizeDraft = (saved: unknown): ListingFormData => {
     images: normalizedImages,
     conditionChecklist: {
       ...DEFAULT_FORM_DATA.conditionChecklist,
-      ...(data.conditionChecklist || {}),
+      ...(data.conditionChecklist ?? {}),
     },
   };
 };

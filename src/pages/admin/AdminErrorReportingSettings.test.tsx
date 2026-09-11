@@ -45,7 +45,7 @@ describe("AdminErrorReportingSettings", () => {
     render(<AdminErrorReportingSettings />);
     expect(screen.getByTestId("admin-layout")).toBeInTheDocument();
     expect(
-      screen.queryByRole("status") || document.querySelector(".animate-spin")
+      screen.queryByRole("status") ?? document.querySelector(".animate-spin")
     ).toBeInTheDocument();
   });
 
@@ -54,7 +54,7 @@ describe("AdminErrorReportingSettings", () => {
     mockSettings = undefined;
     render(<AdminErrorReportingSettings />);
     expect(
-      screen.queryByRole("status") || document.querySelector(".animate-spin")
+      screen.queryByRole("status") ?? document.querySelector(".animate-spin")
     ).toBeInTheDocument();
   });
 

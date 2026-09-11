@@ -24,7 +24,8 @@ import {
 
 interface NotificationItem {
   _id: Id<"notifications">;
-  type: "info" | "success" | "warning" | "error" | string;
+  /** Notification category, e.g. "info", "success", "warning", "error". */
+  type: string;
   title: string;
   message: string;
   createdAt: number;
@@ -51,9 +52,9 @@ export function NotificationDropdown() {
   const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
 
   const unreadCount =
-    notifications?.filter((n: NotificationItem) => !n.isRead).length || 0;
+    notifications?.filter((n: NotificationItem) => !n.isRead).length ?? 0;
 
-  const typedNotifications = (notifications || []) as NotificationItem[];
+  const typedNotifications = (notifications ?? []) as NotificationItem[];
 
   const handleMarkAllRead = async () => {
     setIsMarkingAllRead(true);
