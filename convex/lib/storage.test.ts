@@ -69,7 +69,9 @@ describe("Storage Utilities", () => {
 
     it("should handle deletion failures gracefully", async () => {
       mockCtx.storage.delete.mockRejectedValue(new Error("Storage Error"));
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected storage-delete warning
+      });
 
       const images = { front: "f1" };
       await deleteAuctionImages(mockCtx as unknown as MutationCtx, images);

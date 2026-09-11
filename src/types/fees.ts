@@ -119,11 +119,11 @@ export interface FeeStats {
   totalFeesCollected: number;
   buyerFeesTotal: number;
   sellerFeesTotal: number;
-  feeBreakdown: Array<{
+  feeBreakdown: {
     feeName: string;
     totalAmount: number;
     count: number;
-  }>;
+  }[];
 }
 
 /**

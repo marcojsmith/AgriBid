@@ -40,7 +40,7 @@ export async function batchFetchReadCounts(
 
   const result = new Map<Id<"notifications">, number>();
   notificationIds.forEach((id, i) => {
-    result.set(id, counts[i] as number);
+    result.set(id, counts[i]);
   });
   return result;
 }

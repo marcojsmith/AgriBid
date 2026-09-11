@@ -83,7 +83,9 @@ export function DocumentUploadSection({
                   variant="ghost"
                   size="icon"
                   className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                  onClick={() => onDeleteDocument(docId)}
+                  onClick={() => {
+                    onDeleteDocument(docId);
+                  }}
                   aria-label={`Delete document ${idx + 1}`}
                 >
                   ×

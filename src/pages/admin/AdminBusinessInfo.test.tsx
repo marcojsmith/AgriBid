@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import AdminBusinessInfo from "./AdminBusinessInfo";
 
-type BusinessInfo = {
+interface BusinessInfo {
   businessName: string | null;
   businessDescription: string | null;
   streetAddress: string | null;
@@ -18,7 +18,7 @@ type BusinessInfo = {
   website: string | null;
   logoUrl: string | null;
   sameAs: string[] | null;
-};
+}
 
 const blankBusinessInfo: BusinessInfo = {
   businessName: null,

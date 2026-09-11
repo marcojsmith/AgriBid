@@ -37,7 +37,7 @@ export function isValidCallbackUrl(
  */
 export function getErrorMessage(
   error: unknown,
-  fallback: string = "An error occurred"
+  fallback = "An error occurred"
 ): string {
   if (error instanceof ConvexError) {
     if (typeof error.data === "string") {

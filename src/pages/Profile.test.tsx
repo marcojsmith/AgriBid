@@ -476,7 +476,9 @@ describe("Profile Page", () => {
   it("logs error and stays in edit mode when save fails", async () => {
     const mockMutate = vi.fn().mockRejectedValue(new Error("Network error"));
     (useMutation as Mock).mockReturnValue(mockMutate);
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected profile save failure logging
+    });
 
     renderProfile("user1");
     fireEvent.click(screen.getByRole("button", { name: /edit/i }));

@@ -37,7 +37,9 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [endTime]);
 
   if (endTime === undefined || endTime === null) {

@@ -447,7 +447,9 @@ describe("Admin Utils", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       // Make updateCounter fail by making getCounter (which it calls) fail
       queryMock.unique.mockRejectedValue(new Error("Database error"));
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected counter-update warning
+      });
 
       await logAudit(mockCtx as unknown as MutationCtx, {
         action: "test",
@@ -524,7 +526,9 @@ describe("Admin Utils", () => {
 
     it("should clamp to 0 and warn on underflow", async () => {
       queryMock.unique.mockResolvedValue({ _id: "c1", total: 10 });
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected underflow warning
+      });
       await updateCounter(
         mockCtx as unknown as MutationCtx,
         "test",

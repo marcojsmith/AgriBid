@@ -80,7 +80,9 @@ export function EquipmentMetadataEditor() {
           <Button
             variant={activeTab === "catalog" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setActiveTab("catalog")}
+            onClick={() => {
+              setActiveTab("catalog");
+            }}
             className="rounded-md"
           >
             <Hammer className="h-4 w-4 mr-2" />
@@ -89,7 +91,9 @@ export function EquipmentMetadataEditor() {
           <Button
             variant={activeTab === "categories" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setActiveTab("categories")}
+            onClick={() => {
+              setActiveTab("categories");
+            }}
             className="rounded-md"
           >
             <LayoutGrid className="h-4 w-4 mr-2" />
@@ -102,7 +106,9 @@ export function EquipmentMetadataEditor() {
           <Input
             placeholder="Search..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+            }}
             className="pl-9"
             aria-label="Search equipment"
           />

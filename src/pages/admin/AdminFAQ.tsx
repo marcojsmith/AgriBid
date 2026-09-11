@@ -49,14 +49,14 @@ import {
 } from "@/components/ui/table";
 import { getErrorMessage } from "@/lib/utils";
 
-type FaqItem = {
+interface FaqItem {
   _id: Id<"faqItems">;
   _creationTime: number;
   question: string;
   answer: string;
   order: number;
   isPublished: boolean;
-};
+}
 
 const EMPTY_FORM = { question: "", answer: "", isPublished: false };
 
@@ -267,7 +267,9 @@ export default function AdminFAQ() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => openEdit(item)}
+                          onClick={() => {
+                            openEdit(item);
+                          }}
                           aria-label="Edit"
                         >
                           <Pencil className="h-4 w-4" />
@@ -275,7 +277,9 @@ export default function AdminFAQ() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => void handleDelete(item)}
+                          onClick={() => {
+                            handleDelete(item);
+                          }}
                           aria-label="Delete"
                           className="text-destructive hover:text-destructive"
                         >
@@ -310,9 +314,9 @@ export default function AdminFAQ() {
               <Input
                 id="faq-question"
                 value={form.question}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, question: e.target.value }))
-                }
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, question: e.target.value }));
+                }}
                 placeholder="How do I register to bid?"
                 maxLength={300}
               />
@@ -323,9 +327,9 @@ export default function AdminFAQ() {
               <Textarea
                 id="faq-answer"
                 value={form.answer}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, answer: e.target.value }))
-                }
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, answer: e.target.value }));
+                }}
                 placeholder="Create a free account, then complete KYC verification..."
                 className="min-h-[120px] resize-none"
                 maxLength={2000}
@@ -336,9 +340,9 @@ export default function AdminFAQ() {
               <Checkbox
                 id="faq-published"
                 checked={form.isPublished}
-                onCheckedChange={(checked) =>
-                  setForm((f) => ({ ...f, isPublished: Boolean(checked) }))
-                }
+                onCheckedChange={(checked) => {
+                  setForm((f) => ({ ...f, isPublished: Boolean(checked) }));
+                }}
               />
               <Label htmlFor="faq-published" className="cursor-pointer">
                 Published (visible on /faq)
@@ -349,7 +353,9 @@ export default function AdminFAQ() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDialogOpen(false)}
+              onClick={() => {
+                setDialogOpen(false);
+              }}
               disabled={isSaving}
             >
               Cancel

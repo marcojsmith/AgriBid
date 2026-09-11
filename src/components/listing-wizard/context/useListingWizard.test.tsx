@@ -8,7 +8,9 @@ import { ListingWizardProvider } from "./ListingWizardContext";
 describe("useListingWizard", () => {
   it("throws error when used outside of ListingWizardProvider", () => {
     // Suppress console.error for this test as React will log the error boundary/unhandled error
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress React's expected missing-context error log
+    });
 
     expect(() => renderHook(() => useListingWizard())).toThrow(
       "useListingWizard must be used within a ListingWizardProvider"

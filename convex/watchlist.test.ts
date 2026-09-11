@@ -162,7 +162,9 @@ describe("Watchlist Coverage", () => {
 
     it("should return false and log on error", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected error log under test
+      });
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
         auctionId: "a1" as Id<"auctions">,
       });
@@ -175,7 +177,9 @@ describe("Watchlist Coverage", () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: test asserts Unauthenticated errors are never logged
+      });
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
         auctionId: "a1" as Id<"auctions">,
       });
@@ -247,7 +251,9 @@ describe("Watchlist Coverage", () => {
 
     it("should handle error gracefully", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected error log under test
+      });
       const result = await getWatchedAuctionsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
@@ -261,7 +267,9 @@ describe("Watchlist Coverage", () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: test asserts Unauthenticated errors are never logged
+      });
       const result = await getWatchedAuctionsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
@@ -320,7 +328,9 @@ describe("Watchlist Coverage", () => {
         continueCursor: "c",
       });
 
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected truncation warning
+      });
       const result = await getWatchedAuctionIdsHandler(
         mockCtx as unknown as QueryCtx
       );
@@ -333,7 +343,9 @@ describe("Watchlist Coverage", () => {
 
     it("should handle error", async () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(new Error("Fail"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected error log under test
+      });
       const result = await getWatchedAuctionIdsHandler(
         mockCtx as unknown as QueryCtx
       );
@@ -346,7 +358,9 @@ describe("Watchlist Coverage", () => {
       vi.mocked(auth.getAuthUser).mockRejectedValue(
         new Error("Unauthenticated")
       );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: test asserts Unauthenticated errors are never logged
+      });
       const result = await getWatchedAuctionIdsHandler(
         mockCtx as unknown as QueryCtx
       );

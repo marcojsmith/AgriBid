@@ -195,7 +195,9 @@ describe("useFileUpload", () => {
     const customCleanup = vi
       .fn()
       .mockRejectedValue(new Error("Custom cleanup failed"));
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected cleanupHandler failure logging
+    });
 
     const { result } = renderHook(() =>
       useFileUpload({ cleanupHandler: customCleanup })
@@ -213,7 +215,9 @@ describe("useFileUpload", () => {
   });
 
   it("should log warning on authorization failure during default cleanup", async () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+      // intentional no-op: suppress expected authorization-failure warning
+    });
     mockDeleteUpload.mockRejectedValue(new Error("unauthorized action"));
 
     const { result } = renderHook(() => useFileUpload());
@@ -231,7 +235,9 @@ describe("useFileUpload", () => {
   });
 
   it("should log error on generic failure during default cleanup", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected orphaned-upload delete error
+    });
     const genericError = new Error("Generic network error");
     mockDeleteUpload.mockRejectedValue(genericError);
 
@@ -259,7 +265,9 @@ describe("useFileUpload", () => {
   });
 
   it("should catch and log unexpected errors during entire upload process", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected fatal upload error logging
+    });
 
     // Provide default mocks to prevent unhandled rejections from the background mapping
     mockGenerateUploadUrl.mockResolvedValue("http://upload.url");

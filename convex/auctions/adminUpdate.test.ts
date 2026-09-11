@@ -15,12 +15,12 @@ vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
     get: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
   };
-};
+}
 
 describe("adminUpdateAuction mutation", () => {
   let mockCtx: MockCtxType;

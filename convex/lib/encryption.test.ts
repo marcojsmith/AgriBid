@@ -38,7 +38,9 @@ describe("Encryption Utilities Global Scope Coverage", () => {
     vi.stubEnv("PII_ENCRYPTION_KEY", "");
     vi.stubEnv("APP_ENV", "development");
     vi.stubEnv("ALLOW_PII_DEV_FALLBACK", "true");
-    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+      // intentional no-op: silences the expected dev-fallback warning
+    });
 
     // @ts-expect-error - query param is used to force re-evaluation of module in Vitest
     await import("./encryption?test4");
@@ -89,7 +91,9 @@ describe("Encryption Utilities Functionality", () => {
     crypto.subtle.encrypt = vi
       .fn()
       .mockRejectedValue(new Error("Subtle encrypt failed"));
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: silences the expected encryption-failure error
+    });
 
     await expect(encryptPII("some data")).rejects.toThrow("encryptPII failed");
     expect(spy).toHaveBeenCalled();
@@ -105,7 +109,9 @@ describe("Encryption Utilities Functionality", () => {
     const data = btoa("corrupted-data-with-enough-length");
     const encrypted = `${iv}.${data}`;
 
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: silences the expected decryption-failure error
+    });
     await expect(decryptPII(encrypted)).rejects.toThrow("Decryption failed");
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();

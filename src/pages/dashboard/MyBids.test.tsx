@@ -57,7 +57,9 @@ vi.mock("@/components/ui/select", () => ({
   }) => (
     <select
       value={value}
-      onChange={(e) => onValueChange(e.target.value)}
+      onChange={(e) => {
+        onValueChange(e.target.value);
+      }}
       aria-label="Sort bids"
     >
       {children}
@@ -209,15 +211,11 @@ describe("MyBids Page", () => {
     // stats values - find the card containing "Active Bids" then check for "2"
     const activeBidsText = screen.getByText("Active Bids");
     const activeBidsCard = activeBidsText.parentElement;
-    expect(
-      within(activeBidsCard as HTMLElement).getByText("2")
-    ).toBeInTheDocument();
+    expect(within(activeBidsCard!).getByText("2")).toBeInTheDocument();
 
     const winningText = screen.getByText("Winning", { selector: "p" });
     const winningCard = winningText.parentElement;
-    expect(
-      within(winningCard as HTMLElement).getByText("1")
-    ).toBeInTheDocument();
+    expect(within(winningCard!).getByText("1")).toBeInTheDocument();
   });
 
   it("renders the list of auctions", () => {
@@ -442,9 +440,7 @@ describe("MyBids Page", () => {
     renderMyBids();
     // Stats should show 0 instead of crashing
     const activeBidsCard = screen.getByText("Active Bids").parentElement;
-    expect(
-      within(activeBidsCard as HTMLElement).getByText("0")
-    ).toBeInTheDocument();
+    expect(within(activeBidsCard!).getByText("0")).toBeInTheDocument();
   });
 
   it("shows message when filter returns no results", async () => {

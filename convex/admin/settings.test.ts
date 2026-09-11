@@ -357,7 +357,9 @@ describe("Settings Config", () => {
     });
 
     it("handles type mismatch in getSetting", async () => {
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected type-mismatch warning
+      });
       const ctx = createMockCtx({
         github_repo_owner: 123, // Expected string
       });
@@ -392,7 +394,7 @@ describe("Settings Config", () => {
   describe("getBusinessInfoHandler", () => {
     it("returns all nulls when no business keys are set", async () => {
       const ctx = createMockCtx({});
-      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+      const result = await getBusinessInfoHandler(ctx);
 
       expect(result.businessName).toBeNull();
       expect(result.businessDescription).toBeNull();
@@ -422,7 +424,7 @@ describe("Settings Config", () => {
         "business.sameAs":
           '["https://facebook.com/agribid","https://twitter.com/agribid"]',
       });
-      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+      const result = await getBusinessInfoHandler(ctx);
 
       expect(result.businessName).toBe("AgriBid");
       expect(result.businessDescription).toBe("Auction platform");
@@ -444,7 +446,7 @@ describe("Settings Config", () => {
       const ctx = createMockCtx({
         "business.sameAs": "not valid json",
       });
-      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+      const result = await getBusinessInfoHandler(ctx);
 
       expect(result.sameAs).toEqual([]);
     });
@@ -453,7 +455,7 @@ describe("Settings Config", () => {
       const ctx = createMockCtx({
         "business.sameAs": '"just a string"',
       });
-      const result = await getBusinessInfoHandler(ctx as QueryCtx);
+      const result = await getBusinessInfoHandler(ctx);
 
       expect(result.sameAs).toEqual([]);
     });

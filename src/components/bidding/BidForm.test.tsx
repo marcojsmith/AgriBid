@@ -198,7 +198,9 @@ describe("BidForm", () => {
     expect(screen.getByRole("button", { name: /place bid/i })).toBeDisabled();
     // Quick bid buttons should also be disabled
     const quickBidBtns = screen.getAllByRole("button", { name: /quick bid/i });
-    quickBidBtns.forEach((btn) => expect(btn).toBeDisabled());
+    quickBidBtns.forEach((btn) => {
+      expect(btn).toBeDisabled();
+    });
   });
 
   it("handles empty manual amount input gracefully", () => {

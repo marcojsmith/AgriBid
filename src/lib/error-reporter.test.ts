@@ -39,7 +39,7 @@ vi.mock("./error-classifier", () => ({
   shouldReportError: vi.fn().mockReturnValue(true),
 }));
 
-type SubmitErrorReportArgs = {
+interface SubmitErrorReportArgs {
   errorType: string;
   errorMessage: string;
   stackTrace?: string;
@@ -47,7 +47,7 @@ type SubmitErrorReportArgs = {
   userRole?: string;
   breadcrumbs: { timestamp: number; type: string; description: string }[];
   metadata: { url: string; userAgent: string; timestamp: number };
-};
+}
 
 function getMockCallArgs(
   mockFn: ReturnType<typeof vi.fn>
@@ -128,7 +128,9 @@ describe("Error Reporter", () => {
 
     it("should return false if VITE_CONVEX_URL is not set", async () => {
       vi.stubEnv("VITE_CONVEX_URL", "");
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: suppress expected missing-URL warning
+      });
 
       const result = await reportError(new Error("Test error"));
 
@@ -159,7 +161,9 @@ describe("Error Reporter", () => {
 
     it("should return false and warn if VITE_CONVEX_URL is missing", async () => {
       vi.stubEnv("VITE_CONVEX_URL", "");
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: suppress expected missing-URL warning
+      });
       const result = await reportError("test");
       expect(result).toBe(false);
       expect(spy).toHaveBeenCalledWith(

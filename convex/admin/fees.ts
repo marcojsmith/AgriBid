@@ -525,18 +525,18 @@ export const getAuctionFeesForUser = query({
         .collect()
     ).map((f) => f._id);
 
-    const buyerFees: Array<{
+    const buyerFees: {
       feeName: string;
       feeType: "percentage" | "fixed";
       rate: number;
       calculatedAmount: number;
-    }> = [];
-    const sellerFees: Array<{
+    }[] = [];
+    const sellerFees: {
       feeName: string;
       feeType: "percentage" | "fixed";
       rate: number;
       calculatedAmount: number;
-    }> = [];
+    }[] = [];
 
     for (const fee of fees) {
       if (!activeFeeIds.includes(fee.feeId)) continue;

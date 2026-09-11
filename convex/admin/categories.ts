@@ -248,7 +248,7 @@ export const fixMetadataHandler = async (ctx: MutationCtx) => {
         match = matches.find((m) => m.models.includes(auction.model)) || null;
       }
 
-      if (match && match.categoryId) {
+      if (match?.categoryId) {
         await ctx.db.patch(auction._id, { categoryId: match.categoryId });
         auctionsFixed++;
       }

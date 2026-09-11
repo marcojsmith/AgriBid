@@ -321,7 +321,10 @@ export function FeeManager() {
                           size="sm"
                           className="h-6 w-6 p-0"
                           onClick={() => handleMoveDown(index)}
-                          disabled={index === sortedFees.length - 1 || reorderingIndex !== null}
+                          disabled={
+                            index === sortedFees.length - 1 ||
+                            reorderingIndex !== null
+                          }
                           aria-label={`Move ${fee.name} down`}
                         >
                           <ArrowDown className="h-3 w-3" />
@@ -364,7 +367,9 @@ export function FeeManager() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleOpenEdit(fee)}
+                          onClick={() => {
+                            handleOpenEdit(fee);
+                          }}
                           aria-label={`Edit fee ${fee.name}`}
                         >
                           <Pencil className="h-4 w-4" />
@@ -372,7 +377,9 @@ export function FeeManager() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleOpenDelete(fee._id as string)}
+                          onClick={() => {
+                            handleOpenDelete(fee._id as string);
+                          }}
                           aria-label={`Delete fee ${fee.name}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -406,9 +413,9 @@ export function FeeManager() {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                }}
                 placeholder="e.g., Seller Commission"
                 className="mt-1"
               />
@@ -419,9 +426,9 @@ export function FeeManager() {
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, description: e.target.value });
+                }}
                 placeholder="Brief description of this fee"
                 className="mt-1"
               />
@@ -432,13 +439,13 @@ export function FeeManager() {
                 <Label htmlFor="feeType">Fee Type</Label>
                 <Select
                   value={formData.feeType}
-                  onValueChange={(value: "percentage" | "fixed") =>
+                  onValueChange={(value: "percentage" | "fixed") => {
                     setFormData({
                       ...formData,
                       feeType: value,
                       value: value === "percentage" ? 5 : 500,
-                    })
-                  }
+                    });
+                  }}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -463,12 +470,12 @@ export function FeeManager() {
                   min={formData.feeType === "percentage" ? "0.01" : "0"}
                   max={formData.feeType === "percentage" ? "100" : undefined}
                   value={formData.value}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       value: parseFloat(e.target.value) || 0,
-                    })
-                  }
+                    });
+                  }}
                   className="mt-1"
                 />
               </div>
@@ -478,9 +485,9 @@ export function FeeManager() {
               <Label htmlFor="appliesTo">Applies To</Label>
               <Select
                 value={formData.appliesTo}
-                onValueChange={(value: "buyer" | "seller" | "both") =>
-                  setFormData({ ...formData, appliesTo: value })
-                }
+                onValueChange={(value: "buyer" | "seller" | "both") => {
+                  setFormData({ ...formData, appliesTo: value });
+                }}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -498,9 +505,9 @@ export function FeeManager() {
                 <Checkbox
                   id="isActive"
                   checked={formData.isActive}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, isActive: checked === true })
-                  }
+                  onCheckedChange={(checked) => {
+                    setFormData({ ...formData, isActive: checked === true });
+                  }}
                 />
                 <Label htmlFor="isActive" className="font-normal">
                   Active
@@ -511,12 +518,12 @@ export function FeeManager() {
                 <Checkbox
                   id="visibleToBuyer"
                   checked={formData.visibleToBuyer}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked) => {
                     setFormData({
                       ...formData,
                       visibleToBuyer: checked === true,
-                    })
-                  }
+                    });
+                  }}
                 />
                 <Label htmlFor="visibleToBuyer" className="font-normal">
                   Visible to buyer
@@ -527,12 +534,12 @@ export function FeeManager() {
                 <Checkbox
                   id="visibleToSeller"
                   checked={formData.visibleToSeller}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked) => {
                     setFormData({
                       ...formData,
                       visibleToSeller: checked === true,
-                    })
-                  }
+                    });
+                  }}
                 />
                 <Label htmlFor="visibleToSeller" className="font-normal">
                   Visible to seller
@@ -542,7 +549,12 @@ export function FeeManager() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDialogOpen(false);
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>

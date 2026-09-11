@@ -1,18 +1,18 @@
 /**
  * Shape of a signed-in user's identity fields.
  */
-export type User = {
+export interface User {
   id: string;
   email?: string | null;
   name?: string | null;
-};
+}
 
 /**
  * Wraps a {@link User} as returned by the app's session/auth hooks.
  */
-export type Session = {
+export interface Session {
   user: User;
-};
+}
 
 /**
  * Shared type for users with role and verification metadata.

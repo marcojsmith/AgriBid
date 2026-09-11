@@ -105,13 +105,20 @@ export function CategoryManager({
                   id="category-name"
                   placeholder="e.g. Excavator"
                   value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
+                  onChange={(e) => {
+                    setNewName(e.target.value);
+                  }}
                   onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAddOpen(false);
+                }}
+              >
                 Cancel
               </Button>
               <Button onClick={handleAdd}>Add Category</Button>
@@ -271,12 +278,19 @@ function EditCategoryDialog({
             <Input
               id={`edit-category-${category._id}`}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+              }}
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
             Cancel
           </Button>
           <Button onClick={handleUpdate}>Save Changes</Button>

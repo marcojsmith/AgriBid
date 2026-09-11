@@ -151,22 +151,22 @@ export default function Settings() {
         <ToggleSwitch
           label="Outbid Alerts"
           checked={preferences?.notificationsBidOutbid ?? true}
-          onChange={() =>
+          onChange={() => {
             update({
               notificationsBidOutbid: !(
                 preferences?.notificationsBidOutbid ?? true
               ),
-            })
-          }
+            });
+          }}
         />
 
         <div className="space-y-2">
           <Label className="text-sm font-bold">Watchlist Ending Alerts</Label>
           <Select
             value={preferences?.notificationsWatchlistEnding ?? "1h"}
-            onValueChange={(value: "disabled" | "1h" | "3h" | "24h") =>
-              update({ notificationsWatchlistEnding: value })
-            }
+            onValueChange={(value: "disabled" | "1h" | "3h" | "24h") => {
+              update({ notificationsWatchlistEnding: value });
+            }}
           >
             <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
               <SelectValue />
@@ -183,26 +183,26 @@ export default function Settings() {
         <ToggleSwitch
           label="Auction Won Notifications"
           checked={preferences?.notificationsAuctionWon ?? true}
-          onChange={() =>
+          onChange={() => {
             update({
               notificationsAuctionWon: !(
                 preferences?.notificationsAuctionWon ?? true
               ),
-            })
-          }
+            });
+          }}
         />
 
         {isSeller && (
           <ToggleSwitch
             label="Auction Approval Notifications"
             checked={preferences?.notificationsSellerAuctionApproved ?? true}
-            onChange={() =>
+            onChange={() => {
               update({
                 notificationsSellerAuctionApproved: !(
                   preferences?.notificationsSellerAuctionApproved ?? true
                 ),
-              })
-            }
+              });
+            }}
             description="Notify when your auction listing is approved"
           />
         )}
@@ -210,13 +210,13 @@ export default function Settings() {
         <ToggleSwitch
           label="Email Notifications"
           checked={preferences?.notificationsEmailEnabled ?? false}
-          onChange={() =>
+          onChange={() => {
             update({
               notificationsEmailEnabled: !(
                 preferences?.notificationsEmailEnabled ?? false
               ),
-            })
-          }
+            });
+          }}
           description="Receive notifications via email (in addition to in-app)"
         />
       </section>
@@ -231,9 +231,9 @@ export default function Settings() {
           <Label className="text-sm font-bold">Default View Mode</Label>
           <Select
             value={preferences?.viewMode ?? "detailed"}
-            onValueChange={(value: "compact" | "detailed") =>
-              update({ viewMode: value })
-            }
+            onValueChange={(value: "compact" | "detailed") => {
+              update({ viewMode: value });
+            }}
           >
             <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
               <SelectValue />
@@ -248,9 +248,9 @@ export default function Settings() {
         <ToggleSwitch
           label="Show Filter Sidebar by Default"
           checked={preferences?.sidebarOpen ?? false}
-          onChange={() =>
-            update({ sidebarOpen: !(preferences?.sidebarOpen ?? false) })
-          }
+          onChange={() => {
+            update({ sidebarOpen: !(preferences?.sidebarOpen ?? false) });
+          }}
           description="Desktop only"
         />
 
@@ -258,9 +258,9 @@ export default function Settings() {
           <Label className="text-sm font-bold">Default Auction Status</Label>
           <Select
             value={preferences?.defaultStatusFilter ?? "active"}
-            onValueChange={(value: "active" | "closed" | "all") =>
-              update({ defaultStatusFilter: value })
-            }
+            onValueChange={(value: "active" | "closed" | "all") => {
+              update({ defaultStatusFilter: value });
+            }}
           >
             <SelectTrigger className="w-48 h-10 rounded-xl border-2 font-bold">
               <SelectValue />
@@ -283,26 +283,26 @@ export default function Settings() {
         <ToggleSwitch
           label="Require Bid Confirmation"
           checked={preferences?.biddingRequireConfirmation ?? false}
-          onChange={() =>
+          onChange={() => {
             update({
               biddingRequireConfirmation: !(
                 preferences?.biddingRequireConfirmation ?? false
               ),
-            })
-          }
+            });
+          }}
           description="Show a confirmation dialog before placing bids"
         />
 
         <ToggleSwitch
           label="Enable Proxy Bidding by Default"
           checked={preferences?.biddingProxyBidDefault ?? false}
-          onChange={() =>
+          onChange={() => {
             update({
               biddingProxyBidDefault: !(
                 preferences?.biddingProxyBidDefault ?? false
               ),
-            })
-          }
+            });
+          }}
           description="Automatically bid up to your maximum amount"
         />
       </section>

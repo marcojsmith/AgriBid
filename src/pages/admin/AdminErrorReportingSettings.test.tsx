@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import AdminErrorReportingSettings from "./AdminErrorReportingSettings";
 
-type MockSettings = {
+interface MockSettings {
   githubConfig: {
     enabled: boolean;
     tokenMasked: string;
@@ -12,7 +12,7 @@ type MockSettings = {
     repoName: string | null;
     labels: string | null;
   };
-};
+}
 
 let mockSettings: MockSettings | undefined;
 const mockUpdateGitHubConfig = vi.fn();

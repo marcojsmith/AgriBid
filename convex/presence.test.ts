@@ -20,22 +20,22 @@ vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),
 }));
 
-type QueryMock = {
+interface QueryMock {
   withIndex: ReturnType<typeof vi.fn>;
   unique: ReturnType<typeof vi.fn>;
   collect: ReturnType<typeof vi.fn>;
   take: ReturnType<typeof vi.fn>;
   count?: ReturnType<typeof vi.fn>;
-};
+}
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
     query: ReturnType<typeof vi.fn>;
     insert: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
   };
-};
+}
 
 describe("Presence Coverage", () => {
   let mockCtx: MockCtxType;
@@ -196,7 +196,9 @@ describe("Presence Coverage", () => {
         .mockResolvedValueOnce([{ _id: "p1" }, { _id: "p2" }])
         .mockResolvedValueOnce([]); // end loop
 
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected stale-record cleanup warning
+      });
       await (
         cleanup as unknown as {
           handler: (...args: unknown[]) => Promise<unknown>;

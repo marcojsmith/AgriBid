@@ -70,10 +70,7 @@ vi.mock("@/components/ui/dialog", () => ({
     children: React.ReactNode;
     onOpenChange?: (o: boolean) => void;
   }) => (
-    <div
-      onClick={() => onOpenChange && onOpenChange(true)}
-      data-testid="dialog-trigger"
-    >
+    <div onClick={() => onOpenChange?.(true)} data-testid="dialog-trigger">
       {children}
     </div>
   ),
@@ -112,7 +109,9 @@ vi.mock("@/components/ui/select", () => ({
     <select
       data-testid="mock-select"
       value={value}
-      onChange={(e) => onValueChange(e.target.value)}
+      onChange={(e) => {
+        onValueChange(e.target.value);
+      }}
     >
       {children}
     </select>

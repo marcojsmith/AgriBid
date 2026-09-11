@@ -16,6 +16,8 @@ import { MAX_RESULTS_CAP } from "../../constants";
 type StatusFilter = "active" | "closed" | "all";
 
 /** Arguments for getActiveAuctions query */
+// Type alias (not interface): Convex derives the query's FunctionReference args
+// type from this handler args type — interfaces break that inference.
 export type ActiveAuctionsArgs = {
   paginationOpts: PaginationOptions;
   search?: string;

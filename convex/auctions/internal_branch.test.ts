@@ -258,7 +258,9 @@ describe("Internal Mutations Branch Coverage", () => {
       });
 
       mockCtx.storage.delete.mockRejectedValue(new Error("Storage fail"));
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected storage-delete warning
+      });
 
       const result = await cleanupDraftsHandler(
         mockCtx as unknown as MutationCtx
@@ -280,9 +282,9 @@ describe("Internal Mutations Branch Coverage", () => {
       });
 
       mockCtx.db.delete.mockRejectedValue(new Error("DB fail"));
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected draft-delete error
+      });
 
       const result = await cleanupDraftsHandler(
         mockCtx as unknown as MutationCtx

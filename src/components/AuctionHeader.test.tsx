@@ -191,7 +191,11 @@ describe("AuctionHeader", () => {
   });
 
   it("disables button when toggling", async () => {
-    const toggleMock = vi.fn().mockReturnValue(new Promise(() => {})); // never resolves
+    const toggleMock = vi.fn().mockReturnValue(
+      new Promise(() => {
+        // intentionally never resolves: keeps the watch toggle in pending state
+      })
+    );
     vi.mocked(useSession).mockReturnValue({
       data: { user: { id: "u1" } },
       isPending: false,

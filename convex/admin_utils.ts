@@ -133,7 +133,7 @@ export async function countUsers(
       ctx.db
         .query("profiles")
         .withIndex("by_isVerified", (q) =>
-          q.eq("isVerified", options.isVerified as boolean)
+          q.eq("isVerified", options.isVerified!)
         )
     );
   }
@@ -150,12 +150,7 @@ export async function countUsers(
     return await countQuery(
       ctx.db
         .query("profiles")
-        .withIndex("by_kycStatus", (q) =>
-          q.eq(
-            "kycStatus",
-            options.kycStatus as "pending" | "verified" | "rejected"
-          )
-        )
+        .withIndex("by_kycStatus", (q) => q.eq("kycStatus", options.kycStatus))
     );
   }
 
@@ -167,9 +162,7 @@ export async function countUsers(
     return await countQuery(
       ctx.db
         .query("profiles")
-        .withIndex("by_role", (q) =>
-          q.eq("role", options.role as "buyer" | "seller" | "admin")
-        )
+        .withIndex("by_role", (q) => q.eq("role", options.role!))
     );
   }
 
@@ -180,19 +173,12 @@ export async function countUsers(
   if (options.role !== undefined) {
     results = await ctx.db
       .query("profiles")
-      .withIndex("by_role", (q) =>
-        q.eq("role", options.role as "buyer" | "seller" | "admin")
-      )
+      .withIndex("by_role", (q) => q.eq("role", options.role!))
       .collect();
   } else if (options.kycStatus !== undefined) {
     results = await ctx.db
       .query("profiles")
-      .withIndex("by_kycStatus", (q) =>
-        q.eq(
-          "kycStatus",
-          options.kycStatus as "pending" | "verified" | "rejected"
-        )
-      )
+      .withIndex("by_kycStatus", (q) => q.eq("kycStatus", options.kycStatus))
       .collect();
   } else {
     // Fallback to full scan if no role or kycStatus index can be used.
@@ -283,7 +269,7 @@ export async function updateCounter(
   const counter = await getCounter(ctx, name);
 
   if (counter) {
-    const currentValue = (counter[field] as number | undefined) ?? 0;
+    const currentValue = counter[field] ?? 0;
     const newValue = absolute ? delta : currentValue + delta;
 
     if (newValue < 0) {

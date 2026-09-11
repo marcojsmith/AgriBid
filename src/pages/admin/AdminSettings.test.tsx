@@ -22,10 +22,7 @@ vi.mock("convex/_generated/api", () => ({
 // Mocking useNavigate
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {
-  const actual = (await vi.importActual("react-router-dom")) as Record<
-    string,
-    unknown
-  >;
+  const actual = await vi.importActual("react-router-dom");
   return {
     ...actual,
     useNavigate: () => mockNavigate,

@@ -30,9 +30,7 @@ describe("dismissFlag mutation", () => {
       get: vi.fn(),
       patch: vi.fn(),
       insert: vi.fn(),
-      query: vi.fn(
-        () => mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
-      ),
+      query: vi.fn(() => mockQuery as ReturnType<MutationCtx["db"]["query"]>),
     };
     return {
       db: mockDb as unknown as MutationCtx["db"],

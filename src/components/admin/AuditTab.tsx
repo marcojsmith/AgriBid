@@ -21,11 +21,14 @@ import { Button } from "@/components/ui/button";
  * @returns A React element that displays a centred loading indicator while logs are fetched, or a card containing the audit logs table with details and pagination controls.
  */
 export function AuditTab() {
-  const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([null]);
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
   const [currentCursorIndex, setCurrentCursorIndex] = useState(0);
 
   const result = useQuery(api.admin.getAuditLogs, {
-    paginationOpts: { numItems: 50, cursor: cursorHistory[currentCursorIndex] ?? null },
+    paginationOpts: {
+      numItems: 50,
+      cursor: cursorHistory[currentCursorIndex] ?? null,
+    },
   });
 
   const logs = result?.page ?? [];
@@ -147,7 +150,10 @@ export function AuditTab() {
                 className="h-8 px-3 font-bold text-[10px] uppercase gap-1"
                 onClick={() => {
                   if (result?.continueCursor) {
-                    const newHistory = [...cursorHistory.slice(0, currentCursorIndex + 1), result.continueCursor];
+                    const newHistory = [
+                      ...cursorHistory.slice(0, currentCursorIndex + 1),
+                      result.continueCursor,
+                    ];
                     setCursorHistory(newHistory);
                     setCurrentCursorIndex(currentCursorIndex + 1);
                   }

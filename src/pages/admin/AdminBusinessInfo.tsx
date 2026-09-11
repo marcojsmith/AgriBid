@@ -185,7 +185,9 @@ export default function AdminBusinessInfo() {
                 id="business-name"
                 type="text"
                 value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
+                onChange={(e) => {
+                  setBusinessName(e.target.value);
+                }}
                 placeholder="AgriBid"
               />
             </div>
@@ -195,7 +197,9 @@ export default function AdminBusinessInfo() {
               <Textarea
                 id="business-description"
                 value={businessDescription}
-                onChange={(e) => setBusinessDescription(e.target.value)}
+                onChange={(e) => {
+                  setBusinessDescription(e.target.value);
+                }}
                 placeholder="South Africa's agricultural equipment auction platform"
                 rows={3}
               />
@@ -208,7 +212,9 @@ export default function AdminBusinessInfo() {
                   id="street-address"
                   type="text"
                   value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
+                  onChange={(e) => {
+                    setStreetAddress(e.target.value);
+                  }}
                   placeholder="123 Harvest Road"
                 />
               </div>
@@ -218,7 +224,9 @@ export default function AdminBusinessInfo() {
                   id="address-locality"
                   type="text"
                   value={addressLocality}
-                  onChange={(e) => setAddressLocality(e.target.value)}
+                  onChange={(e) => {
+                    setAddressLocality(e.target.value);
+                  }}
                   placeholder="Agricultural Hub"
                 />
               </div>
@@ -228,7 +236,9 @@ export default function AdminBusinessInfo() {
                   id="address-country"
                   type="text"
                   value={addressCountry}
-                  onChange={(e) => setAddressCountry(e.target.value)}
+                  onChange={(e) => {
+                    setAddressCountry(e.target.value);
+                  }}
                   placeholder="ZA"
                   maxLength={2}
                 />
@@ -239,7 +249,9 @@ export default function AdminBusinessInfo() {
                   id="postal-code"
                   type="text"
                   value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
+                  onChange={(e) => {
+                    setPostalCode(e.target.value);
+                  }}
                   placeholder="4500"
                 />
               </div>
@@ -252,7 +264,9 @@ export default function AdminBusinessInfo() {
                   id="telephone"
                   type="tel"
                   value={telephone}
-                  onChange={(e) => setTelephone(e.target.value)}
+                  onChange={(e) => {
+                    setTelephone(e.target.value);
+                  }}
                   placeholder="+27-11-555-0123"
                 />
               </div>
@@ -262,7 +276,9 @@ export default function AdminBusinessInfo() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                  }}
                   placeholder="info@agribid.co.za"
                 />
               </div>
@@ -272,7 +288,9 @@ export default function AdminBusinessInfo() {
                   id="website"
                   type="url"
                   value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
+                  onChange={(e) => {
+                    setWebsite(e.target.value);
+                  }}
                   placeholder="https://agribid.co.za"
                 />
               </div>
@@ -282,7 +300,9 @@ export default function AdminBusinessInfo() {
                   id="logo-url"
                   type="url"
                   value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
+                  onChange={(e) => {
+                    setLogoUrl(e.target.value);
+                  }}
                   placeholder="https://agribid.co.za/logo.png"
                 />
               </div>
@@ -293,7 +313,9 @@ export default function AdminBusinessInfo() {
               <Textarea
                 id="same-as"
                 value={sameAs}
-                onChange={(e) => setSameAs(e.target.value)}
+                onChange={(e) => {
+                  setSameAs(e.target.value);
+                }}
                 placeholder="https://facebook.com/agribid&#10;https://twitter.com/agribid&#10;https://instagram.com/agribid"
                 rows={4}
                 className="font-mono text-sm"

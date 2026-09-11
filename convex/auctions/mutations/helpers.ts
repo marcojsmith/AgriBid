@@ -4,7 +4,7 @@ import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { updateCounter } from "../../admin_utils";
 
-export type AuctionValidationInput = {
+export interface AuctionValidationInput {
   title?: string;
   description?: string;
   startingPrice?: number;
@@ -18,7 +18,7 @@ export type AuctionValidationInput = {
         rear?: string;
         additional?: string[];
       };
-};
+}
 
 export const EDITABLE_STATUSES = ["draft", "pending_review"] as const;
 

@@ -193,7 +193,9 @@ describe("Notifications Page", () => {
   });
 
   it("handles individual notification click failure", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected notification click failure log
+    });
     vi.mocked(handleNotificationClick).mockRejectedValueOnce(
       new Error("Click fail")
     );
@@ -229,7 +231,9 @@ describe("Notifications Page", () => {
   });
 
   it("handles notification click error with non-Error object", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected notification click failure log
+    });
     vi.mocked(handleNotificationClick).mockRejectedValueOnce(
       "Click fail string"
     );

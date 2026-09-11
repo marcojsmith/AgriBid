@@ -220,7 +220,9 @@ describe("ListingWizard Full Coverage", () => {
 
   it("handles localStorage corruption", () => {
     localStorage.setItem("agribid_listing_draft", "invalid-json");
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected draft parse failure logging
+    });
     renderWizard();
     expect(spy).toHaveBeenCalledWith(
       expect.stringContaining("Failed to parse saved draft"),
@@ -425,7 +427,9 @@ describe("ListingWizard Full Coverage", () => {
     mockCreateAuction.mockImplementation(
       () =>
         new Promise((resolve) => {
-          setTimeout(() => resolve({ success: true }), 100);
+          setTimeout(() => {
+            resolve({ success: true });
+          }, 100);
         })
     );
 
@@ -512,7 +516,9 @@ describe("ListingWizard Full Coverage", () => {
     // Click Save Draft button
     const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
 
-    await waitFor(() => expect(saveBtn).not.toBeDisabled());
+    await waitFor(() => {
+      expect(saveBtn).not.toBeDisabled();
+    });
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -534,7 +540,12 @@ describe("ListingWizard Full Coverage", () => {
     fireEvent.click(screen.getByText(/Tractor/i));
 
     mockSaveDraft.mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve("id1"), 100))
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => {
+            resolve("id1");
+          }, 100)
+        )
     );
 
     const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
@@ -563,7 +574,9 @@ describe("ListingWizard Full Coverage", () => {
     mockCreateAuction.mockImplementation(
       () =>
         new Promise((resolve) =>
-          setTimeout(() => resolve({ success: true }), 500)
+          setTimeout(() => {
+            resolve({ success: true });
+          }, 500)
         )
     );
 
@@ -618,7 +631,9 @@ describe("ListingWizard Full Coverage", () => {
 
   it("handles non-Error objects in localStorage parsing catch", () => {
     localStorage.setItem("agribid_listing_draft", "invalid-json");
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected draft parse failure logging
+    });
 
     // Mock JSON.parse to throw a non-Error string
     const originalParse = JSON.parse;

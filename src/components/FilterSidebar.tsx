@@ -262,7 +262,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           localFilters.status === "active" ||
           localFilters.status === "closed" ||
           localFilters.status === "all"
-            ? (localFilters.status as "active" | "closed" | "all")
+            ? localFilters.status
             : undefined,
         defaultMake: localFilters.make.trim() || undefined,
         defaultMinYear: validateAndParseInt(localFilters.minYear),
@@ -353,7 +353,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           <select
             id="filter-make"
             value={localFilters.make}
-            onChange={(e) => updateParam("make", e.target.value)}
+            onChange={(e) => {
+              updateParam("make", e.target.value);
+            }}
             className="w-full h-10 rounded-md border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="">All Manufacturers</option>
@@ -515,7 +517,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           <select
             id="filter-status"
             value={localFilters.status}
-            onChange={(e) => updateParam("status", e.target.value)}
+            onChange={(e) => {
+              updateParam("status", e.target.value);
+            }}
             className="w-full h-10 rounded-md border-2 bg-background px-3 font-bold text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="active">Active Auctions</option>

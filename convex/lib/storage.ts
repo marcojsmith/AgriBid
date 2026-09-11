@@ -31,13 +31,13 @@ export function normalizeImages(images: {
 /**
  * Type for auction images in the database.
  */
-type AuctionImages = {
+interface AuctionImages {
   front?: string;
   engine?: string;
   cabin?: string;
   rear?: string;
   additional?: string[];
-};
+}
 
 /**
  * Deletes a storage item, swallowing and logging any error instead of throwing.
@@ -73,7 +73,7 @@ export async function deleteAuctionImages(
   let storageIds: string[] = [];
 
   if (Array.isArray(images)) {
-    storageIds = (images as string[]).filter(Boolean);
+    storageIds = images.filter(Boolean);
   } else if (images && typeof images === "object") {
     const imagesObj = images as AuctionImages;
     storageIds = [

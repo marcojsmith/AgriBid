@@ -231,8 +231,7 @@ export default function AdminErrorReports() {
                 ) : (
                   reports.reports.map((report: ErrorReport) => {
                     const config =
-                      STATUS_CONFIG[report.status as ErrorStatus] ??
-                      STATUS_CONFIG.pending;
+                      STATUS_CONFIG[report.status] ?? STATUS_CONFIG.pending;
                     return (
                       <tr
                         key={report._id}

@@ -161,7 +161,9 @@ export const BidForm = ({
                 id="proxy-enabled"
                 name="proxy-enabled"
                 checked={isProxyEnabled}
-                onChange={(e) => setIsProxyEnabled(e.target.checked)}
+                onChange={(e) => {
+                  setIsProxyEnabled(e.target.checked);
+                }}
                 disabled={isLoading}
                 className="h-4 w-4 text-primary-foreground border-primary-foreground"
               />
@@ -193,7 +195,9 @@ export const BidForm = ({
                   id="proxy-max-bid"
                   name="proxy-max-bid"
                   value={maxBid}
-                  onChange={(e) => setMaxBid(e.target.value)}
+                  onChange={(e) => {
+                    setMaxBid(e.target.value);
+                  }}
                   placeholder="Enter max amount"
                   className="w-32 h-8 px-2 py-1 text-sm rounded border border-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   disabled={isLoading}
@@ -223,7 +227,9 @@ export const BidForm = ({
             key={`quick-bid-${index}-${amount}`}
             variant="outline"
             className="h-14 flex flex-col items-center justify-center gap-0.5 border-2 hover:border-primary hover:bg-primary/5 transition-all group"
-            onClick={() => handleQuickBid(amount)}
+            onClick={() => {
+              handleQuickBid(amount);
+            }}
             disabled={
               isLoading ||
               !isBidFormEnabled ||
@@ -264,7 +270,9 @@ export const BidForm = ({
               aria-label="Bid amount"
               type="number"
               value={manualAmount}
-              onChange={(e) => setManualAmount(e.target.value)}
+              onChange={(e) => {
+                setManualAmount(e.target.value);
+              }}
               placeholder="Enter amount"
               className="h-14 pl-8 text-lg font-bold rounded-xl border-2 focus-visible:ring-primary"
               disabled={isLoading || !isBidFormEnabled}

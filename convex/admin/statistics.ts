@@ -184,11 +184,11 @@ export const getFinancialStats = query({
 
       const auctionFeeMap = new Map<
         string,
-        Array<{
+        {
           feeName: string;
           appliedTo: "buyer" | "seller";
           amount: number;
-        }>
+        }[]
       >();
 
       let buyerFeesTotal = 0;

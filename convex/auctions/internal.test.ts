@@ -12,7 +12,7 @@ vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-type MockCtxType = {
+interface MockCtxType {
   db: {
     query: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
@@ -25,7 +25,7 @@ type MockCtxType = {
   auth: {
     getUserIdentity: ReturnType<typeof vi.fn>;
   };
-};
+}
 
 interface IndexQuery {
   eq: ReturnType<typeof vi.fn>;
@@ -100,7 +100,9 @@ describe("Internal Logic Coverage", () => {
       mockCtx.storage.delete.mockRejectedValue(
         new Error("Storage delete failed")
       );
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected storage-delete warning
+      });
 
       await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
 
@@ -123,7 +125,9 @@ describe("Internal Logic Coverage", () => {
       q.collect.mockResolvedValue([mockDraft]);
       mockCtx.db.query = vi.fn().mockReturnValue(q);
       mockCtx.db.delete.mockRejectedValue(new Error("DB delete failed"));
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const spy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: silences the expected draft-delete error
+      });
 
       const result = await cleanupDraftsHandler(
         mockCtx as unknown as MutationCtx

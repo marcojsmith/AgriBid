@@ -59,7 +59,7 @@ export const getAuctionBidsHandler = async (
   const isAdmin = auth?.profile?.role === "admin";
   // Guard against undefined === undefined: a missing auction doc combined
   // with an unauthenticated caller must never mark the caller as the seller.
-  const isSeller = Boolean(auction && auth && auction.sellerId === auth.userId);
+  const isSeller = Boolean(auction && auction.sellerId === auth?.userId);
 
   await Promise.all(
     uniqueBidderIds.map(async (bidderId) => {

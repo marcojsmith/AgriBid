@@ -345,9 +345,9 @@ export default function Profile() {
                     <Textarea
                       id="profile-bio"
                       value={editForm.bio}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, bio: e.target.value })
-                      }
+                      onChange={(e) => {
+                        setEditForm({ ...editForm, bio: e.target.value });
+                      }}
                       placeholder="Tell us about yourself..."
                       className="mt-1 min-h-[80px] rounded-md border-2 font-bold text-sm"
                     />
@@ -362,9 +362,9 @@ export default function Profile() {
                     <Input
                       id="profile-location"
                       value={editForm.location}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, location: e.target.value })
-                      }
+                      onChange={(e) => {
+                        setEditForm({ ...editForm, location: e.target.value });
+                      }}
                       placeholder="City, Province"
                       className="mt-1 rounded-md border-2 font-bold text-sm"
                     />
@@ -379,12 +379,12 @@ export default function Profile() {
                     <Input
                       id="profile-company-name"
                       value={editForm.companyName}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setEditForm({
                           ...editForm,
                           companyName: e.target.value,
-                        })
-                      }
+                        });
+                      }}
                       placeholder="Your company name"
                       className="mt-1 rounded-md border-2 font-bold text-sm"
                     />

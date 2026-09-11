@@ -288,7 +288,9 @@ describe("Home Page Full Coverage", () => {
   });
 
   it("updates view when media query matches change", () => {
-    let changeHandler: () => void = () => {};
+    let changeHandler: () => void = () => {
+      // intentional no-op: placeholder until Home registers its change listener
+    };
     const mql = {
       matches: false,
       media: "(max-width: 768px)",
@@ -425,7 +427,9 @@ describe("Home Page Full Coverage", () => {
 
     renderHome();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
   });
@@ -441,7 +445,9 @@ describe("Home Page Full Coverage", () => {
 
     renderHome();
 
-    await act(async () => {});
+    await act(async () => {
+      // intentional no-op: flush async preference-loading effects before asserting
+    });
 
     expect(screen.getByText(/Hide Filters/i)).toBeInTheDocument();
   });

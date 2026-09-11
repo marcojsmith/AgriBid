@@ -151,9 +151,9 @@ export function MetadataCatalog({
                   id="make-name"
                   placeholder="e.g. John Deere"
                   value={newMake.make}
-                  onChange={(e) =>
-                    setNewMake({ ...newMake, make: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setNewMake({ ...newMake, make: e.target.value });
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -165,12 +165,12 @@ export function MetadataCatalog({
                 </label>
                 <Select
                   value={newMake.categoryId}
-                  onValueChange={(val) =>
+                  onValueChange={(val) => {
                     setNewMake({
                       ...newMake,
                       categoryId: val as Id<"equipmentCategories">,
-                    })
-                  }
+                    });
+                  }}
                 >
                   <SelectTrigger id="make-category">
                     <SelectValue placeholder="Select category" />
@@ -197,14 +197,19 @@ export function MetadataCatalog({
                   id="make-initial-model"
                   placeholder="e.g. 8R 410"
                   value={newMake.initialModel}
-                  onChange={(e) =>
-                    setNewMake({ ...newMake, initialModel: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setNewMake({ ...newMake, initialModel: e.target.value });
+                  }}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddMakeOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAddMakeOpen(false);
+                }}
+              >
                 Cancel
               </Button>
               <Button onClick={handleAddMake}>Add Make</Button>
@@ -446,7 +451,9 @@ function EditMakeDialog({ item, categories, updateMake }: EditMakeDialogProps) {
             <Input
               id={`edit-make-name-${item._id}`}
               value={data.make}
-              onChange={(e) => setData({ ...data, make: e.target.value })}
+              onChange={(e) => {
+                setData({ ...data, make: e.target.value });
+              }}
             />
           </div>
           <div className="space-y-2">
@@ -458,12 +465,12 @@ function EditMakeDialog({ item, categories, updateMake }: EditMakeDialogProps) {
             </label>
             <Select
               value={data.categoryId}
-              onValueChange={(val) =>
+              onValueChange={(val) => {
                 setData({
                   ...data,
                   categoryId: val as Id<"equipmentCategories">,
-                })
-              }
+                });
+              }}
             >
               <SelectTrigger id={`edit-make-category-${item._id}`}>
                 <SelectValue />
@@ -479,7 +486,12 @@ function EditMakeDialog({ item, categories, updateMake }: EditMakeDialogProps) {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
             Cancel
           </Button>
           <Button onClick={handleUpdate}>Save Changes</Button>
@@ -544,14 +556,21 @@ function AddModelDialog({ makeId, addModel }: AddModelDialogProps) {
               id={`add-model-${makeId}`}
               placeholder="e.g. 8R 410"
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => {
+                setModel(e.target.value);
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               autoFocus
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
             Cancel
           </Button>
           <Button onClick={handleAdd}>Add Model</Button>

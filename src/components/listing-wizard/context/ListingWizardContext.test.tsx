@@ -12,9 +12,7 @@ function TestConsumer({
 }: {
   onRender: (ctx: ListingWizardContextType) => void;
 }) {
-  const ctx = React.useContext(
-    ListingWizardContext
-  ) as ListingWizardContextType;
+  const ctx = React.useContext(ListingWizardContext)!;
 
   React.useEffect(() => {
     onRender(ctx);
