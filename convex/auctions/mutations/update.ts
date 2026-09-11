@@ -2,6 +2,7 @@ import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
+import { safeDelete } from "../../lib/storage";
 import { logAudit } from "../../admin_utils";
 import { validateAuctionStatus, validateStartTimeBounds } from "../helpers";
 import {
@@ -525,11 +526,7 @@ export const updateConditionReportHandler = async (
   assertEditable(auction);
 
   if (auction.conditionReportUrl) {
-    try {
-      await ctx.storage.delete(auction.conditionReportUrl);
-    } catch (e) {
-      console.warn("Failed to delete old condition report", e);
-    }
+    await safeDelete(ctx, auction.conditionReportUrl, "old condition report");
   }
 
   await ctx.db.patch(args.auctionId, {

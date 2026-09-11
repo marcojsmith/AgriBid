@@ -2,7 +2,7 @@ import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
-import { deleteAuctionImages } from "../../lib/storage";
+import { deleteAuctionImages, safeDelete } from "../../lib/storage";
 import { logAudit, updateCounter } from "../../admin_utils";
 import { assertOwnership, assertEditable } from "./helpers";
 import type { Id } from "../../_generated/dataModel";
@@ -67,14 +67,7 @@ export const deleteDraftHandler = async (
   await deleteAuctionImages(ctx, auction.images);
 
   if (auction.conditionReportUrl) {
-    try {
-      await ctx.storage.delete(auction.conditionReportUrl);
-    } catch (e) {
-      console.warn(
-        `Failed to delete condition report: ${auction.conditionReportUrl}`,
-        e
-      );
-    }
+    await safeDelete(ctx, auction.conditionReportUrl, "condition report");
   }
 
   await ctx.db.delete(args.auctionId);
@@ -125,11 +118,7 @@ export const deleteConditionReportHandler = async (
   assertEditable(auction);
 
   if (auction.conditionReportUrl) {
-    try {
-      await ctx.storage.delete(auction.conditionReportUrl);
-    } catch (e) {
-      console.warn("Failed to delete condition report", e);
-    }
+    await safeDelete(ctx, auction.conditionReportUrl, "condition report");
   }
 
   await ctx.db.patch(args.auctionId, {

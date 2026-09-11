@@ -40,6 +40,26 @@ type AuctionImages = {
 };
 
 /**
+ * Deletes a storage item, swallowing and logging any error instead of throwing.
+ * Used for best-effort cleanup where a failed delete should not block the
+ * surrounding mutation (e.g. an already-deleted or missing storage item).
+ * @param ctx - Mutation context with storage access
+ * @param storageId - The storage ID to delete
+ * @param label - Short description used in the warning log on failure
+ */
+export async function safeDelete(
+  ctx: MutationCtx,
+  storageId: Id<"_storage">,
+  label: string
+): Promise<void> {
+  try {
+    await ctx.storage.delete(storageId);
+  } catch (e) {
+    console.warn(`Failed to delete ${label}: ${storageId}`, e);
+  }
+}
+
+/**
  * Deletes all storage items associated with auction images.
  * Silently handles missing or already-deleted storage items.
  *
@@ -74,12 +94,8 @@ export async function deleteAuctionImages(
   if (storageIds.length === 0) return;
 
   await Promise.allSettled(
-    storageIds.map(async (storageId) => {
-      try {
-        await ctx.storage.delete(storageId as Id<"_storage">);
-      } catch (e) {
-        console.warn(`Failed to delete storage item: ${storageId}`, e);
-      }
-    })
+    storageIds.map((storageId) =>
+      safeDelete(ctx, storageId as Id<"_storage">, "storage item")
+    )
   );
 }

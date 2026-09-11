@@ -3,13 +3,13 @@ import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { updateCounter, logAudit } from "../admin_utils";
 import { logActivity } from "../userActivity";
-import { deleteAuctionImages } from "../lib/storage";
+import { deleteAuctionImages, safeDelete } from "../lib/storage";
 import {
   DRAFT_RETENTION_MS,
   CLEANUP_BATCH_SIZE,
   DRAFT_RETENTION_DAYS,
 } from "../constants";
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
 /**
@@ -279,16 +279,7 @@ export const cleanupDraftsHandler = async (
 
       // Delete condition report PDF if it exists
       if (auction.conditionReportUrl) {
-        try {
-          await ctx.storage.delete(
-            auction.conditionReportUrl as Id<"_storage">
-          );
-        } catch (e) {
-          console.warn(
-            `Failed to delete condition report: ${auction.conditionReportUrl}`,
-            e
-          );
-        }
+        await safeDelete(ctx, auction.conditionReportUrl, "condition report");
       }
 
       await ctx.db.delete(auction._id);
