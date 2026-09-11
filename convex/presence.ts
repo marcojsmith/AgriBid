@@ -111,7 +111,7 @@ export const cleanup = internalMutation({
     }
 
     if (deletedCount > 0) {
-      console.log(`Presence cleanup: Removed ${deletedCount} stale records.`);
+      console.warn(`Presence cleanup: Removed ${deletedCount} stale records.`);
     }
 
     return null;

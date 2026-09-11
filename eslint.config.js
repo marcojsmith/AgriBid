@@ -131,6 +131,9 @@ export default defineConfig([
       "no-shadow": "off",
       "@typescript-eslint/no-shadow": "warn",
 
+      // --- Logging ---
+      "no-console": ["error", { "allow": ["warn", "error"] }],
+
       // --- React ---
       "react-hooks/rules-of-hooks": "warn",
       "react-hooks/exhaustive-deps": "warn",
@@ -157,6 +160,31 @@ export default defineConfig([
         },
       ],
     },
+  },
+
+  // -----------------------------------------------------------------------
+  // Standalone seeding script — CLI output via console.log is fine
+  // -----------------------------------------------------------------------
+  {
+    files: ["convex/seed.ts"],
+    rules: { "no-console": "off" },
+  },
+
+  // -----------------------------------------------------------------------
+  // Test files — console.log is useful for debugging test output
+  // -----------------------------------------------------------------------
+  {
+    files: ["**/*.test.{ts,tsx}"],
+    rules: { "no-console": "off" },
+  },
+
+  // -----------------------------------------------------------------------
+  // shadcn/ui generated files — exporting variants alongside components
+  // is intentional and expected from the generator
+  // -----------------------------------------------------------------------
+  {
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: { "react-refresh/only-export-components": "off" },
   },
 
   // -----------------------------------------------------------------------

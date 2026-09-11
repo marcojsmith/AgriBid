@@ -235,16 +235,11 @@ describe("ListingWizard Full Coverage", () => {
     fillStep1(); // Fill to ensure valid data for auto-save if needed
 
     const saveBtn = screen.getByRole("button", { name: /Save Draft/i });
-    const spy = vi.spyOn(console, "log").mockImplementation(() => {});
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
-      expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining("Draft saved locally")
-      );
       expect(toast.success).toHaveBeenCalledWith("Draft saved successfully!");
     });
-    spy.mockRestore();
   });
 
   it("handles save draft with categoryId (server sync)", async () => {

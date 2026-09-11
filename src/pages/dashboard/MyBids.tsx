@@ -1,6 +1,7 @@
 // app/src/pages/dashboard/MyBids.tsx
 import { useState, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
 import {
@@ -95,6 +96,32 @@ interface Auction {
   lastBidTimestamp?: number;
 }
 
+type MyBidsPage = FunctionReturnType<
+  typeof api.auctions.queries.getMyBids
+>["page"];
+
+const AUCTION_STATUSES: readonly AuctionStatus[] = [
+  "draft",
+  "pending_review",
+  "active",
+  "sold",
+  "unsold",
+  "rejected",
+];
+
+/**
+ * Type guard narrowing a getMyBids row (whose `status` is typed as `string`)
+ * to a row with a known `AuctionStatus`, satisfying the local `Auction` interface.
+ *
+ * @param auction - Raw row from the getMyBids query
+ * @returns True if the row's status is a known auction status
+ */
+function isAuction(
+  auction: MyBidsPage[number]
+): auction is MyBidsPage[number] & { status: AuctionStatus } {
+  return (AUCTION_STATUSES as readonly string[]).includes(auction.status);
+}
+
 /**
  * Determine the user-facing badge label, visual variant, icon, and color for an auction's bid status.
  * @param auction - The auction data to analyze
@@ -179,7 +206,7 @@ export default function MyBids() {
 
   // Apply filtering and sorting
   const filteredAndSortedAuctions = useMemo(() => {
-    let result = [...(rawAuctions as unknown as Auction[])];
+    let result = rawAuctions.filter(isAuction);
 
     // Filter
     if (filter === "winning") {

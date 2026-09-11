@@ -173,7 +173,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       return;
     }
     // Use the normalizer to ensure valid state from URL
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing local filters with filters changed by external navigation
     setLocalFilters(parseUrlFilters(searchParams));
   }, [searchParams]);
 
@@ -211,17 +211,23 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         return val !== undefined && Number.isFinite(val) ? val.toString() : "";
       };
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization of filters from saved user preferences
       setLocalFilters({
-        status: urlFilters.status !== "active"
-          ? urlFilters.status
-          : validateStatus(preferences.defaultStatusFilter),
+        status:
+          urlFilters.status !== "active"
+            ? urlFilters.status
+            : validateStatus(preferences.defaultStatusFilter),
         make: urlFilters.make || (preferences.defaultMake ?? "").trim(),
-        minYear: urlFilters.minYear || validateNumber(preferences.defaultMinYear),
-        maxYear: urlFilters.maxYear || validateNumber(preferences.defaultMaxYear),
-        minPrice: urlFilters.minPrice || validateNumber(preferences.defaultMinPrice),
-        maxPrice: urlFilters.maxPrice || validateNumber(preferences.defaultMaxPrice),
-        maxHours: urlFilters.maxHours || validateNumber(preferences.defaultMaxHours),
+        minYear:
+          urlFilters.minYear || validateNumber(preferences.defaultMinYear),
+        maxYear:
+          urlFilters.maxYear || validateNumber(preferences.defaultMaxYear),
+        minPrice:
+          urlFilters.minPrice || validateNumber(preferences.defaultMinPrice),
+        maxPrice:
+          urlFilters.maxPrice || validateNumber(preferences.defaultMaxPrice),
+        maxHours:
+          urlFilters.maxHours || validateNumber(preferences.defaultMaxHours),
       });
     }
   }, [preferences, searchParamsString]);

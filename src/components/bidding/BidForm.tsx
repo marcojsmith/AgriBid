@@ -60,12 +60,12 @@ export const BidForm = ({
    * Sync proxy states with server-backed props when they change.
    */
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing state with server-backed prop changes
     setIsProxyEnabled(isProxyActive || false);
   }, [isProxyActive]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing state with server-backed prop changes
     setMaxBid(currentUserMaxBid != null ? String(currentUserMaxBid) : "");
   }, [currentUserMaxBid]);
 
@@ -78,7 +78,7 @@ export const BidForm = ({
     const currentManualNum = parseFloat(manualAmountRef.current) || 0;
     if (currentManualNum < nextMinBid) {
       const newAmount = nextMinBid.toString();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing input with the new minimum bid when the user's value is stale
       setManualAmount(newAmount);
       manualAmountRef.current = newAmount;
     }

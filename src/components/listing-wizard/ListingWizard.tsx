@@ -130,9 +130,6 @@ const ListingWizardContent = () => {
           },
           startTime: formData.startTime,
         });
-      } else {
-        // Just log that we're keeping it local for now
-        console.log("Draft saved locally (missing categoryId for server sync)");
       }
 
       setDraftSaved(true);
