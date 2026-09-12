@@ -103,6 +103,7 @@ export function VerificationStatusSection({
                 ID Number
               </Label>
               {/* Intentionally `||` not `??`: an empty string ID also means "not provided" */}
+              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above */}
               <p className="font-bold">{myKycDetails.idNumber || "N/A"}</p>
             </div>
           </div>
@@ -115,11 +116,13 @@ export function VerificationStatusSection({
                 <p className="font-bold flex items-center gap-2">
                   <Mail className="h-3 w-3" />{" "}
                   {/* Intentionally `||` not `??`: an empty string email also means "not provided" */}
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above */}
                   {myKycDetails.kycEmail || "N/A"}
                 </p>
                 <p className="font-bold flex items-center gap-2">
                   <Phone className="h-3 w-3" />{" "}
                   {/* Intentionally `||` not `??`: an empty string phone also means "not provided" */}
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above */}
                   {myKycDetails.phoneNumber || "N/A"}
                 </p>
               </div>

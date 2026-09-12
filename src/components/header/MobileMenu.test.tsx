@@ -380,7 +380,10 @@ describe("MobileMenu", () => {
 
     const menuRoot =
       screen.getByRole("navigation").parentElement?.parentElement;
-    vi.spyOn(menuRoot!, "querySelectorAll").mockReturnValue({
+    if (!menuRoot) {
+      throw new Error("Expected MobileMenu container to be rendered");
+    }
+    vi.spyOn(menuRoot, "querySelectorAll").mockReturnValue({
       length: 0,
       item: () => null,
       forEach: () => {
@@ -392,7 +395,7 @@ describe("MobileMenu", () => {
     } as unknown as NodeListOf<HTMLElement>);
 
     const event = new KeyboardEvent("keydown", { key: "Tab" });
-    menuRoot?.dispatchEvent(event);
+    menuRoot.dispatchEvent(event);
 
     // Should not throw and just return
     expect(menuRoot).toBeInTheDocument();

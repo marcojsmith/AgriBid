@@ -34,9 +34,12 @@ describe("SearchBar", () => {
     render(<SearchBar />);
     const input = screen.getByPlaceholderText(/Search equipment/i);
     const form = input.closest("form");
+    if (!form) {
+      throw new Error("Expected SearchBar to render a <form> element");
+    }
 
     fireEvent.change(input, { target: { value: "John Deere" } });
-    fireEvent.submit(form!);
+    fireEvent.submit(form);
 
     expect(mockNavigate).toHaveBeenCalledWith("/?q=John%20Deere");
     expect(input).toHaveValue("");
@@ -47,9 +50,12 @@ describe("SearchBar", () => {
     render(<SearchBar onSearch={onSearch} />);
     const input = screen.getByPlaceholderText(/Search equipment/i);
     const form = input.closest("form");
+    if (!form) {
+      throw new Error("Expected SearchBar to render a <form> element");
+    }
 
     fireEvent.change(input, { target: { value: "Tractor" } });
-    fireEvent.submit(form!);
+    fireEvent.submit(form);
 
     expect(onSearch).toHaveBeenCalled();
   });
@@ -58,8 +64,11 @@ describe("SearchBar", () => {
     render(<SearchBar />);
     const input = screen.getByPlaceholderText(/Search equipment/i);
     const form = input.closest("form");
+    if (!form) {
+      throw new Error("Expected SearchBar to render a <form> element");
+    }
 
-    fireEvent.submit(form!);
+    fireEvent.submit(form);
 
     expect(mockNavigate).not.toHaveBeenCalled();
   });

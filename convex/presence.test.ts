@@ -73,7 +73,9 @@ describe("Presence Coverage", () => {
 
   describe("countOnlineUsers", () => {
     it("should use count() if available", async () => {
-      queryMock.count!.mockResolvedValue(5);
+      const countMock = queryMock.count;
+      if (!countMock) throw new Error("queryMock.count must be defined");
+      countMock.mockResolvedValue(5);
       const result = await countOnlineUsers(mockCtx as unknown as QueryCtx);
       expect(result).toBe(5);
       expect(queryMock.count).toHaveBeenCalled();
@@ -168,7 +170,9 @@ describe("Presence Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
       } as unknown as AuthUser);
-      queryMock.count!.mockResolvedValue(10);
+      const countMock = queryMock.count;
+      if (!countMock) throw new Error("queryMock.count must be defined");
+      countMock.mockResolvedValue(10);
 
       const result = await (
         getOnlineCount as unknown as {

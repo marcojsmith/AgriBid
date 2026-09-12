@@ -42,8 +42,9 @@ describe("DocumentUploadSection", () => {
   });
 
   it("calls onFileChange when file input changes", () => {
-    render(<DocumentUploadSection {...defaultProps} />);
-    const input = document.querySelector('input[type="file"]')!;
+    const { container } = render(<DocumentUploadSection {...defaultProps} />);
+    const input = container.querySelector('input[type="file"]');
+    if (!input) throw new Error("File input not found");
     fireEvent.change(input, { target: { files: [] } });
     expect(mockOnFileChange).toHaveBeenCalled();
   });

@@ -129,12 +129,11 @@ export async function countUsers(
         return counter.total - (counter.verified ?? 0);
       }
     }
+    const isVerified = options.isVerified;
     return await countQuery(
       ctx.db
         .query("profiles")
-        .withIndex("by_isVerified", (q) =>
-          q.eq("isVerified", options.isVerified!)
-        )
+        .withIndex("by_isVerified", (q) => q.eq("isVerified", isVerified))
     );
   }
 
@@ -159,10 +158,9 @@ export async function countUsers(
     options.isVerified === undefined &&
     options.kycStatus === undefined
   ) {
+    const role = options.role;
     return await countQuery(
-      ctx.db
-        .query("profiles")
-        .withIndex("by_role", (q) => q.eq("role", options.role!))
+      ctx.db.query("profiles").withIndex("by_role", (q) => q.eq("role", role))
     );
   }
 
@@ -171,9 +169,10 @@ export async function countUsers(
   let results: Doc<"profiles">[];
 
   if (options.role !== undefined) {
+    const role = options.role;
     results = await ctx.db
       .query("profiles")
-      .withIndex("by_role", (q) => q.eq("role", options.role!))
+      .withIndex("by_role", (q) => q.eq("role", role))
       .collect();
   } else if (options.kycStatus !== undefined) {
     results = await ctx.db

@@ -92,13 +92,7 @@ export default function Settings() {
 
   const isSeller = myProfile?.profile?.role === "seller";
 
-  const update = (
-    fieldsOrUpdater:
-      | Parameters<typeof updateMyPreferences>[0]
-      | ((
-          current: NonNullable<typeof preferences>
-        ) => Parameters<typeof updateMyPreferences>[0])
-  ) => {
+  const update = (fields: Parameters<typeof updateMyPreferences>[0]) => {
     if (!session) {
       toast.error("Not signed in");
       return;
@@ -110,11 +104,6 @@ export default function Settings() {
     }
 
     isSavingRef.current = true;
-
-    const fields =
-      typeof fieldsOrUpdater === "function"
-        ? fieldsOrUpdater(preferences!)
-        : fieldsOrUpdater;
 
     updateMyPreferences(fields)
       .then(() => {

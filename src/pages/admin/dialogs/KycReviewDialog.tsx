@@ -105,6 +105,7 @@ export function KycReviewDialog({
                       value={
                         showFullId
                           ? // Intentionally `||` not `??`: an empty string ID also means "not provided"
+                            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
                             user.idNumber || "Not Provided"
                           : user.idNumber
                             ? `****${user.idNumber.slice(-4)}`
@@ -129,6 +130,7 @@ export function KycReviewDialog({
                     label="Phone"
                     value={
                       // Intentionally `||` not `??`: an empty string phone also means "not provided"
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
                       user.phoneNumber || "Not Provided"
                     }
                     icon={<Phone className="h-4 w-4" />}
@@ -137,6 +139,7 @@ export function KycReviewDialog({
                     label="Email"
                     value={
                       // Intentionally `||` not `??`: an empty string email also means "not provided"
+                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
                       user.kycEmail || "Not Provided"
                     }
                     icon={<Mail className="h-4 w-4" />}

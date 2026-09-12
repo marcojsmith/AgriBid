@@ -10,9 +10,9 @@ import type { ListingWizardContextType } from "./ListingWizardContextDef";
 function TestConsumer({
   onRender,
 }: {
-  onRender: (ctx: ListingWizardContextType) => void;
+  onRender: (ctx: ListingWizardContextType | undefined) => void;
 }) {
-  const ctx = React.useContext(ListingWizardContext)!;
+  const ctx = React.useContext(ListingWizardContext);
 
   React.useEffect(() => {
     onRender(ctx);

@@ -375,6 +375,7 @@ export const updateSystemConfig = mutation({
 
 // Type alias (not interface): Convex derives the mutation's FunctionReference
 // args type from this handler args type — interfaces break that inference.
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- see comment above
 type GitHubErrorReportingConfig = {
   enabled: boolean;
   token?: string;

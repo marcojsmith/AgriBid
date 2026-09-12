@@ -225,9 +225,13 @@ describe("MetadataCatalog Full Coverage", () => {
       renderCatalog();
       fireEvent.click(screen.getByText("Add Make"));
 
-      const submitBtn = screen
-        .getAllByRole("button", { name: "Add Make" })
-        .pop()!;
+      const addMakeButtons = screen.getAllByRole("button", {
+        name: "Add Make",
+      });
+      const submitBtn = addMakeButtons.at(-1);
+      if (!submitBtn) {
+        throw new Error("Expected 'Add Make' submit button to be rendered");
+      }
       fireEvent.click(submitBtn);
 
       expect(toast.error).toHaveBeenCalledWith("All fields are required");
@@ -250,9 +254,13 @@ describe("MetadataCatalog Full Coverage", () => {
       });
 
       await act(() => {
-        const submitBtn = screen
-          .getAllByRole("button", { name: "Add Make" })
-          .pop()!;
+        const addMakeButtons = screen.getAllByRole("button", {
+          name: "Add Make",
+        });
+        const submitBtn = addMakeButtons.at(-1);
+        if (!submitBtn) {
+          throw new Error("Expected 'Add Make' submit button to be rendered");
+        }
         fireEvent.click(submitBtn);
         return Promise.resolve();
       });
@@ -475,9 +483,13 @@ describe("MetadataCatalog Full Coverage", () => {
       });
 
       await act(() => {
-        const submitBtn = screen
-          .getAllByRole("button", { name: "Add Make" })
-          .pop()!;
+        const addMakeButtons = screen.getAllByRole("button", {
+          name: "Add Make",
+        });
+        const submitBtn = addMakeButtons.at(-1);
+        if (!submitBtn) {
+          throw new Error("Expected 'Add Make' submit button to be rendered");
+        }
         fireEvent.click(submitBtn);
         return Promise.resolve();
       });
@@ -499,9 +511,13 @@ describe("MetadataCatalog Full Coverage", () => {
         target: { value: "M" },
       });
       await act(() => {
-        const submitBtn = screen
-          .getAllByRole("button", { name: "Add Make" })
-          .pop()!;
+        const addMakeButtons = screen.getAllByRole("button", {
+          name: "Add Make",
+        });
+        const submitBtn = addMakeButtons.at(-1);
+        if (!submitBtn) {
+          throw new Error("Expected 'Add Make' submit button to be rendered");
+        }
         fireEvent.click(submitBtn);
         return Promise.resolve();
       });

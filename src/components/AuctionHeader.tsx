@@ -75,6 +75,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
           className="font-medium bg-primary/5 text-primary border-primary/20 text-[10px]"
         >
           {/* Intentionally `||` not `??`: an empty string category name also means "no category" */}
+          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above */}
           {auction.categoryName || UNCATEGORIZED_LABEL}
         </Badge>
         <Badge variant="secondary" className="font-medium">

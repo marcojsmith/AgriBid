@@ -19,6 +19,7 @@ type StatusFilter = "active" | "closed" | "all";
 /** Arguments for getActiveAuctions query */
 // Type alias (not interface): Convex derives the query's FunctionReference args
 // type from this handler args type — interfaces break that inference.
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- see comment above
 export type ActiveAuctionsArgs = {
   paginationOpts: PaginationOptions;
   search?: string;

@@ -103,18 +103,21 @@ describe("Config Coverage", () => {
     // for as long as the constant still exists.
     it("should use env value if valid", async () => {
       vi.stubEnv("COMMISSION_RATE", "0.1");
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentionally testing the deprecated fallback
       const { COMMISSION_RATE } = await import("./config");
       expect(COMMISSION_RATE).toBe(0.1);
       vi.unstubAllEnvs();
     });
 
     it("should fallback to 0.05 if env is missing", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentionally testing the deprecated fallback
       const { COMMISSION_RATE } = await import("./config");
       expect(COMMISSION_RATE).toBe(0.05);
     });
 
     it("should fallback to 0.05 if env is invalid", async () => {
       vi.stubEnv("COMMISSION_RATE", "not-a-number");
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentionally testing the deprecated fallback
       const { COMMISSION_RATE } = await import("./config");
       expect(COMMISSION_RATE).toBe(0.05);
       vi.unstubAllEnvs();

@@ -69,6 +69,7 @@ export function ModerationCard({
                   className="font-medium border-primary/20 bg-primary/5 text-primary py-0 h-6 text-xs"
                 >
                   {/* Intentionally `||` not `??`: an empty string category name also means "no category" */}
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above */}
                   {auction.categoryName || "Unknown"}
                 </Badge>
                 <Badge

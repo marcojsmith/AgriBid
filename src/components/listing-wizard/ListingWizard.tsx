@@ -52,6 +52,7 @@ const ListingWizardContent = () => {
 
   const [searchParams] = useSearchParams();
   // Intentionally `||` not `??`: an empty "edit=" query param must also be treated as "not editing"
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
   const editingAuctionId = searchParams.get("edit") || undefined;
 
   const createAuction = useMutation(

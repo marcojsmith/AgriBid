@@ -61,6 +61,7 @@ export const MediaGalleryStep = () => {
             ];
           const previewUrl =
             // Intentionally `||` not `??`: an empty string is not a usable preview URL
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
             previews[slot.id] ||
             (storageId?.startsWith("http") ? storageId : null);
 

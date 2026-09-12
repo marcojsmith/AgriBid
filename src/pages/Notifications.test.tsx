@@ -167,8 +167,9 @@ describe("Notifications Page", () => {
     const notification = screen
       .getByText("New Bid")
       .closest("div[class*='group']");
+    if (!notification) throw new Error("Notification element not found");
     await act(() => {
-      fireEvent.click(notification!);
+      fireEvent.click(notification);
       return Promise.resolve();
     });
 
@@ -208,8 +209,9 @@ describe("Notifications Page", () => {
     const notification = screen
       .getByText("New Bid")
       .closest("div[class*='group']");
+    if (!notification) throw new Error("Notification element not found");
     await act(() => {
-      fireEvent.click(notification!);
+      fireEvent.click(notification);
       return Promise.resolve();
     });
 
@@ -248,8 +250,9 @@ describe("Notifications Page", () => {
     const notification = screen
       .getByText("New Bid")
       .closest("div[class*='group']");
+    if (!notification) throw new Error("Notification element not found");
     await act(() => {
-      fireEvent.click(notification!);
+      fireEvent.click(notification);
       return Promise.resolve();
     });
 

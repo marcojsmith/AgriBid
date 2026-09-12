@@ -349,7 +349,9 @@ function formatIssueBody(report: {
     : "None";
 
   // Intentionally `||` not `??`: an empty string user ID/role also means "missing"
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
   const userIdLabel = report.userId || "Anonymous";
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
   const userRoleLabel = report.userRole || "N/A";
 
   return `## Production Error Report

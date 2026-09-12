@@ -249,7 +249,7 @@ describe("AdminBusinessInfo", () => {
     mockBusinessInfo = { ...blankBusinessInfo };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
 
-    let resolveMutation: (value: unknown) => void;
+    let resolveMutation: ((value: unknown) => void) | undefined;
     mockUpdateBusinessInfo.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -263,7 +263,10 @@ describe("AdminBusinessInfo", () => {
 
     expect(screen.getByRole("button", { name: /saving.../i })).toBeDisabled();
 
-    resolveMutation!(null);
+    if (!resolveMutation) {
+      throw new Error("resolveMutation was not captured");
+    }
+    resolveMutation(null);
 
     await waitFor(() => {
       expect(

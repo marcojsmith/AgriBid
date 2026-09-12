@@ -284,7 +284,8 @@ describe("AuctionDetail Page", () => {
     const reportBtn = reportButtons.find((b) =>
       b.classList.contains("bg-destructive")
     );
-    fireEvent.click(reportBtn!);
+    if (!reportBtn) throw new Error("Could not find Report button");
+    fireEvent.click(reportBtn);
 
     const select = screen.getByTestId("mock-select");
     fireEvent.change(select, { target: { value: "suspicious" } });
@@ -305,7 +306,8 @@ describe("AuctionDetail Page", () => {
     const reportBtn = reportButtons.find((b) =>
       b.classList.contains("bg-destructive")
     );
-    fireEvent.click(reportBtn!);
+    if (!reportBtn) throw new Error("Could not find Report button");
+    fireEvent.click(reportBtn);
 
     const submitBtn = screen.getByRole("button", { name: "Submit Report" });
     fireEvent.click(submitBtn);
@@ -366,7 +368,8 @@ describe("AuctionDetail Page", () => {
     const reportBtn = reportButtons.find((b) =>
       b.classList.contains("bg-destructive")
     );
-    fireEvent.click(reportBtn!);
+    if (!reportBtn) throw new Error("Could not find Report button");
+    fireEvent.click(reportBtn);
 
     const select = screen.getByTestId("mock-select");
     fireEvent.change(select, { target: { value: "inappropriate" } });
@@ -405,7 +408,8 @@ describe("AuctionDetail Page", () => {
     const reportBtn = reportButtons.find((b) =>
       b.classList.contains("bg-destructive")
     );
-    fireEvent.click(reportBtn!);
+    if (!reportBtn) throw new Error("Could not find Report button");
+    fireEvent.click(reportBtn);
 
     const select = screen.getByTestId("mock-select");
     fireEvent.change(select, { target: { value: "other" } });
@@ -424,7 +428,8 @@ describe("AuctionDetail Page", () => {
     const reportBtn = reportButtons.find((b) =>
       b.classList.contains("bg-destructive")
     );
-    fireEvent.click(reportBtn!);
+    if (!reportBtn) throw new Error("Could not find Report button");
+    fireEvent.click(reportBtn);
 
     const cancelBtn = screen.getByRole("button", { name: "Cancel" });
     fireEvent.click(cancelBtn);

@@ -60,6 +60,12 @@
 - **User Profile Extensions**: Implementing detailed KYC verification for commercial sellers.
 - **Performance Optimization**: Optimizing image delivery and caching for high-traffic auctions.
 
+## ESLint strictTypeChecked enablement (Issue #171, Phase 3 — 2026-09-12)
+
+- **`strictTypeChecked`/`stylisticTypeChecked` are now permanently ON** for `src/**` + `convex/**` in `eslint.config.js` (uncommented in batch 4 of Phase 3). All 52 `no-non-null-assertion` sites were fixed with real guards/restructures — zero `eslint-disable` directives were needed. Remaining errors under the strict config are only the documented intentional exceptions: ~16 `prefer-nullish-coalescing` (empty-string-means-missing), 2 `consistent-type-definitions` (Convex args types), 3 `no-deprecated` (tests verifying the deprecated `COMMISSION_RATE` fallback). Don't "fix" these; they are deliberate.
+- **Settings.test.tsx relies on `null` preferences rendering the full page with defaults**: the test mock returns `null` from `useQuery(getMyPreferences)` by default, and the page's original semantics treat `null` (unauthenticated/no row) as "render with fallback values", NOT as loading. When touching `Settings.tsx`'s guard, preserve this — adding `preferences === null` to the early-return broke 14 tests. The `update` closure there was also simplified to object-form-only (the `(current) => ...` function form was dead code within the component).
+- **Convex `useQuery` returns `T | undefined | null`** (null = valid "not found / unauthenticated" result from the query's `returns` union) — `=== undefined` checks alone don't prove non-nullness, and TS const-capture narrowing preserves the undefined exclusion but keeps `null` in the type. Remember this when removing `!` assertions around Convex query results.
+
 ## Naming Conventions
 
 For consistency, this project follows these naming rules:

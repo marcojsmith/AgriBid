@@ -205,6 +205,7 @@ export async function toAuctionSummary(
     location: auction.location,
     categoryId: auction.categoryId,
     // Intentionally `||` not `??`: an empty string category name also means "no category"
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
     categoryName: category?.name || "Unknown",
     sellerId: auction.sellerId,
     winnerId: auction.winnerId,
@@ -288,6 +289,7 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
     location: auction.location,
     categoryId: auction.categoryId,
     // Intentionally `||` not `??`: an empty string category name also means "no category"
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
     categoryName: category?.name || "Unknown",
     startingPrice: auction.startingPrice,
     reservePrice: auction.reservePrice,

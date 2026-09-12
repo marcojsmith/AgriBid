@@ -87,8 +87,8 @@ export default defineConfig([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      // tseslint.configs.strictTypeChecked,
-      // tseslint.configs.stylisticTypeChecked,
+      tseslint.configs.strictTypeChecked,
+      tseslint.configs.stylisticTypeChecked,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
       security.configs.recommended,

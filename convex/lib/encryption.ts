@@ -34,6 +34,7 @@ if (ENCRYPTION_KEY_STR) {
 const DEV_FALLBACK_KEY = "temporary-dev-key-32-chars-long!";
 // Intentionally `||` not `??`: an empty string ("") must also fall through to the dev-key check, not just null/undefined
 const FINAL_KEY_STR =
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
   ENCRYPTION_KEY_STR ||
   (ALLOW_DEV_FALLBACK && !IS_PRODUCTION ? DEV_FALLBACK_KEY : "");
 

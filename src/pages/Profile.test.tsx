@@ -1160,7 +1160,7 @@ describe("Profile Page", () => {
   });
 
   it("shows Saving... while mutation is in-flight", async () => {
-    let resolvePromise: () => void;
+    let resolvePromise: (() => void) | undefined;
     const pendingPromise = new Promise<void>((resolve) => {
       resolvePromise = resolve;
     });
@@ -1175,7 +1175,10 @@ describe("Profile Page", () => {
 
     // Resolve the mutation
     await act(() => {
-      resolvePromise!();
+      if (!resolvePromise) {
+        throw new Error("resolvePromise was not captured");
+      }
+      resolvePromise();
       return Promise.resolve();
     });
 

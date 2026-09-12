@@ -65,6 +65,32 @@ const openDropdown = (trigger: HTMLElement) => {
   fireEvent.click(trigger);
 };
 
+/**
+ * Find the table row containing the given text.
+ * @param text - Text to search for within a table row
+ * @returns The table row containing the text
+ */
+const getRowByText = (text: string): HTMLTableRowElement => {
+  const row = screen.getByText(text).closest("tr");
+  if (!row) {
+    throw new Error(`Expected a table row containing "${text}"`);
+  }
+  return row;
+};
+
+/**
+ * Find the action button (last button) within a table row.
+ * @param row - The table row to search within
+ * @returns The last button within the row
+ */
+const getRowActionButton = (row: HTMLTableRowElement): HTMLElement => {
+  const actionButton = within(row).getAllByRole("button").at(-1);
+  if (!actionButton) {
+    throw new Error("Expected a button within the row");
+  }
+  return actionButton;
+};
+
 // Mock react-router-dom
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -235,7 +261,7 @@ describe("AdminAuctions", () => {
   it("handles individual auction selection", () => {
     renderComponent();
 
-    const row = screen.getByText("John Deere Tractor").closest("tr")!;
+    const row = getRowByText("John Deere Tractor");
     const checkbox = within(row).getByRole("checkbox");
     fireEvent.click(checkbox);
 
@@ -264,8 +290,8 @@ describe("AdminAuctions", () => {
 
     renderComponent();
 
-    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
-    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    const firstRow = getRowByText("John Deere Tractor");
+    const actionButton = getRowActionButton(firstRow);
 
     openDropdown(actionButton);
 
@@ -300,8 +326,8 @@ describe("AdminAuctions", () => {
 
     renderComponent();
 
-    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
-    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    const firstRow = getRowByText("John Deere Tractor");
+    const actionButton = getRowActionButton(firstRow);
 
     openDropdown(actionButton);
 
@@ -434,8 +460,8 @@ describe("AdminAuctions", () => {
 
     renderComponent();
 
-    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
-    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    const firstRow = getRowByText("John Deere Tractor");
+    const actionButton = getRowActionButton(firstRow);
     openDropdown(actionButton);
     await waitFor(() => {
       expect(screen.getByText("Force End")).toBeInTheDocument();
@@ -460,8 +486,8 @@ describe("AdminAuctions", () => {
 
     renderComponent();
 
-    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
-    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    const firstRow = getRowByText("John Deere Tractor");
+    const actionButton = getRowActionButton(firstRow);
     openDropdown(actionButton);
     await waitFor(() => {
       expect(screen.getByText("Force End")).toBeInTheDocument();
@@ -479,8 +505,8 @@ describe("AdminAuctions", () => {
   it("navigates to auction details", async () => {
     renderComponent();
 
-    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
-    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    const firstRow = getRowByText("John Deere Tractor");
+    const actionButton = getRowActionButton(firstRow);
     openDropdown(actionButton);
 
     await waitFor(() => {
@@ -652,8 +678,8 @@ describe("AdminAuctions", () => {
     renderComponent();
 
     const openForceEnd = async (title: string) => {
-      const row = screen.getByText(title).closest("tr")!;
-      const actionButton = within(row).getAllByRole("button").pop()!;
+      const row = getRowByText(title);
+      const actionButton = getRowActionButton(row);
       openDropdown(actionButton);
       await waitFor(() => {
         expect(screen.getByText("Force End")).toBeInTheDocument();
@@ -767,8 +793,8 @@ describe("AdminAuctions", () => {
 
     renderComponent();
 
-    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
-    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    const firstRow = getRowByText("John Deere Tractor");
+    const actionButton = getRowActionButton(firstRow);
     openDropdown(actionButton);
     await waitFor(() => {
       expect(screen.getByText("Force End")).toBeInTheDocument();
@@ -813,8 +839,8 @@ describe("AdminAuctions", () => {
     });
 
     renderComponent();
-    const row = screen.getByText("No Reserve Met").closest("tr")!;
-    const actionButton = within(row).getAllByRole("button").pop()!;
+    const row = getRowByText("No Reserve Met");
+    const actionButton = getRowActionButton(row);
     openDropdown(actionButton);
     await waitFor(() => {
       expect(screen.getByText("Force End")).toBeInTheDocument();
@@ -828,15 +854,15 @@ describe("AdminAuctions", () => {
 
   it("prevents closing dialog when isClosing is true", async () => {
     // Delay resolution to keep isClosing true
-    let resolveClose: (val: unknown) => void;
+    let resolveClose: ((val: unknown) => void) | undefined;
     const closePromise = new Promise((resolve) => {
       resolveClose = resolve;
     });
     closeAuctionEarlyMock.mockReturnValue(closePromise);
 
     renderComponent();
-    const firstRow = screen.getByText("John Deere Tractor").closest("tr")!;
-    const actionButton = within(firstRow).getAllByRole("button").pop()!;
+    const firstRow = getRowByText("John Deere Tractor");
+    const actionButton = getRowActionButton(firstRow);
     openDropdown(actionButton);
     await waitFor(() => {
       expect(screen.getByText("Force End")).toBeInTheDocument();
@@ -854,7 +880,10 @@ describe("AdminAuctions", () => {
 
     // Resolve and then it should be able to close
     await act(() => {
-      resolveClose!({
+      if (!resolveClose) {
+        throw new Error("resolveClose was not captured");
+      }
+      resolveClose({
         success: true,
         finalStatus: "sold",
         winnerId: "u",

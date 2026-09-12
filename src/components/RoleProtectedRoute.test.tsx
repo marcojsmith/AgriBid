@@ -270,7 +270,7 @@ describe("RoleProtectedRoute", () => {
     (useQuery as Mock).mockReturnValue(undefined);
 
     // Create a promise we can control
-    let rejectPromise: (reason?: unknown) => void;
+    let rejectPromise: ((reason?: unknown) => void) | undefined;
     mockSyncUser.mockReturnValue(
       new Promise((_, reject) => {
         rejectPromise = reject;
@@ -305,8 +305,14 @@ describe("RoleProtectedRoute", () => {
     unmount();
 
     // Now fail the syncUser mutation
+    if (!rejectPromise) {
+      throw new Error(
+        "Expected rejectPromise to be set when retry was clicked"
+      );
+    }
+    const reject = rejectPromise;
     await act(() => {
-      rejectPromise!(new Error("Sync failed after unmount"));
+      reject(new Error("Sync failed after unmount"));
       return Promise.resolve();
     });
 

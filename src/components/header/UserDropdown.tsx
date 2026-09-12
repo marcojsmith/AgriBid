@@ -104,6 +104,7 @@ export function UserDropdown({
               {isLoadingProfile
                 ? "Loading..."
                 : // Intentionally `||` not `??`: an empty string name must also fall through to "User"
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
                   userData?.name || "User"}
             </span>
           </div>
