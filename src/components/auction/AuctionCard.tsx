@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BidConfirmation } from "@/components/BidConfirmation";
+import { formatCurrency } from "@/lib/currency";
 import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
 import type { AuctionWithCategory } from "@/types/auction";
 
@@ -103,7 +104,7 @@ export const AuctionCard = ({
     const minimum = auction.currentPrice + auction.minIncrement;
     if (pendingBid < minimum) {
       toast.error(
-        `Price updated to R ${minimum.toLocaleString("en-ZA")} due to a newer bid.`
+        `Price updated to ${formatCurrency(minimum)} due to a newer bid.`
       );
       setPendingBid(minimum);
       return;
@@ -285,7 +286,7 @@ export const AuctionCard = ({
               ? "..."
               : isClosed
                 ? "Closed"
-                : `Bid R ${(auction.currentPrice + auction.minIncrement).toLocaleString("en-ZA")}`}
+                : `Bid ${formatCurrency(auction.currentPrice + auction.minIncrement)}`}
           </Button>
         </div>
       </div>

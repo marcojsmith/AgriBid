@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatCurrency } from "@/lib/currency";
 
 interface BidFormProps {
   /** The auction document containing current pricing and status */
@@ -237,15 +238,15 @@ export const BidForm = ({
                     />
                     {currentUserMaxBid != null && (
                       <span className="text-xs text-muted-foreground">
-                        Current: R{currentUserMaxBid.toLocaleString()}
+                        Current: {formatCurrency(currentUserMaxBid)}
                       </span>
                     )}
                   </div>
                   {!isMaxBidValid && maxBid !== "" && (
                     <p className="text-destructive text-xs font-bold mt-1">
                       {currentMaxBidNum < nextMinBid
-                        ? `Max bid must be at least R${nextMinBid.toLocaleString()}`
-                        : `Max bid must be at least the manual amount of R${currentManualNum.toLocaleString()}`}
+                        ? `Max bid must be at least ${formatCurrency(nextMinBid)}`
+                        : `Max bid must be at least the manual amount of ${formatCurrency(currentManualNum)}`}
                     </p>
                   )}
                 </div>
@@ -275,7 +276,7 @@ export const BidForm = ({
               Quick Bid
             </span>
             <span className="text-base font-semibold tracking-tight">
-              R {amount.toLocaleString()}
+              {formatCurrency(amount)}
             </span>
           </Button>
         ))}
@@ -332,7 +333,7 @@ export const BidForm = ({
       {!isManualValid && manualAmount !== "" && (
         <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
           <ArrowUpCircle className="h-3 w-3" />
-          Minimum bid required: R {nextMinBid.toLocaleString()}
+          Minimum bid required: {formatCurrency(nextMinBid)}
         </p>
       )}
 
@@ -341,15 +342,15 @@ export const BidForm = ({
         maxBid !== "" && (
           <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
             <AlertTriangle className="h-3 w-3" />
-            Max bid must be at least the manual amount of R{" "}
-            {currentManualNum.toLocaleString()}
+            Max bid must be at least the manual amount of{" "}
+            {formatCurrency(currentManualNum)}
           </p>
         )}
 
       {isProxyEnabled && isMaxBidValid && (
         <p className="text-muted-foreground text-xs mt-2">
           <Clock className="h-3 w-3 inline" /> Proxy bid will automatically
-          increment bids up to R{currentMaxBidNum.toLocaleString()}
+          increment bids up to {formatCurrency(currentMaxBidNum)}
         </p>
       )}
     </div>

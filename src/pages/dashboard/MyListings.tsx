@@ -34,6 +34,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { DashboardListSkeleton } from "@/components/DashboardListSkeleton";
+import { formatCurrency } from "@/lib/currency";
 import { normalizeListingImages } from "@/lib/normalize-images";
 import type { ListingFormData } from "@/components/listing-wizard/types";
 import {
@@ -304,12 +305,12 @@ export default function MyListings() {
                 </div>
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <span className="font-medium">
-                    Reserve: R {auction.reservePrice.toLocaleString("en-ZA")}
+                    Reserve: {formatCurrency(auction.reservePrice)}
                   </span>
                   <span className="font-medium">
                     Current:{" "}
                     <span className="text-primary font-bold">
-                      R {auction.currentPrice.toLocaleString("en-ZA")}
+                      {formatCurrency(auction.currentPrice)}
                     </span>
                   </span>
                   <span>
