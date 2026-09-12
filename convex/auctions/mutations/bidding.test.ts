@@ -549,6 +549,147 @@ describe("Bidding Coverage", () => {
     });
   });
 
+  describe("placeBidHandler bid cooldown (issue #283)", () => {
+    const setupVerifiedUser = (userId: string) => {
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+    };
+
+    const setupAuction = () => {
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "active",
+        sellerId: "u_seller",
+        endTime: Date.now() + 10000,
+        currentPrice: 100,
+        minIncrement: 10,
+      });
+    };
+
+    const mockCooldownQuery = (cooldown: Record<string, unknown> | null) => {
+      mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
+        if (table === "bidCooldowns") {
+          return {
+            withIndex: vi
+              .fn()
+              .mockImplementation(
+                (
+                  _name: string,
+                  selector: (q: {
+                    eq: (field: string, value: unknown) => void;
+                  }) => void
+                ) => {
+                  let selectorValue: unknown;
+                  selector({
+                    eq: (_field: string, value: unknown) => {
+                      selectorValue = value;
+                    },
+                  });
+                  return {
+                    unique: vi
+                      .fn()
+                      .mockResolvedValue(
+                        cooldown && selectorValue === cooldown.userId
+                          ? cooldown
+                          : null
+                      ),
+                  };
+                }
+              ),
+          };
+        }
+        return createMockQuery([]);
+      });
+    };
+
+    it("should throw when two bids from the same user are within the cooldown window", async () => {
+      setupVerifiedUser("u2");
+      setupAuction();
+      mockCooldownQuery({ _id: "bc1", userId: "u2", lastBidAt: Date.now() });
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          amount: 200,
+        })
+      ).rejects.toThrow(
+        "You're bidding too fast. Please wait a moment and try again."
+      );
+    });
+
+    it("should allow two bids from the same user spaced beyond the cooldown window", async () => {
+      setupVerifiedUser("u2");
+      setupAuction();
+      mockCooldownQuery({
+        _id: "bc1",
+        userId: "u2",
+        lastBidAt: Date.now() - 2000,
+      });
+
+      const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        amount: 200,
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "bc1",
+        expect.objectContaining({ lastBidAt: expect.any(Number) })
+      );
+    });
+
+    it("should allow two bids from different users in quick succession", async () => {
+      setupVerifiedUser("u2");
+      setupAuction();
+      // Cooldown row belongs to a different user — u2 has none
+      mockCooldownQuery({ _id: "bc1", userId: "u3", lastBidAt: Date.now() });
+
+      const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        amount: 200,
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "bidCooldowns",
+        expect.objectContaining({ userId: "u2", lastBidAt: expect.any(Number) })
+      );
+    });
+
+    it("should not consume the cooldown when a bid is rejected", async () => {
+      setupVerifiedUser("u2");
+      // Ended auction first
+      mockCtx.db.get.mockResolvedValue({
+        status: "active",
+        sellerId: "u_seller",
+        endTime: Date.now() - 1000,
+      });
+      mockCooldownQuery(null);
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          amount: 200,
+        })
+      ).rejects.toThrow("Auction ended");
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "bidCooldowns",
+        expect.anything()
+      );
+      expect(mockCtx.db.patch).not.toHaveBeenCalled();
+
+      // Retry on an active auction now succeeds
+      setupAuction();
+      const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        amount: 200,
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe("getProxyBid", () => {
     it("should return proxy bid for user", async () => {
       mockCtx.db.query = vi.fn().mockReturnValue({

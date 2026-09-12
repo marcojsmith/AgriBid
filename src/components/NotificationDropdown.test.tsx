@@ -34,6 +34,20 @@ vi.mock("@/lib/notifications", () => ({
   handleNotificationClick: vi.fn(),
 }));
 
+// Mocks the api path for the component to identify the mutation. vi.mock
+// calls are hoisted to the top of the module regardless of where they're
+// written, so this must live at top level (not nested in a test) to reflect
+// its actual execution order.
+vi.mock("convex/_generated/api", () => ({
+  api: {
+    notifications: {
+      getMyNotifications: { _path: "notifications:getMyNotifications" },
+      markAsRead: { _path: "notifications:markAsRead" },
+      markAllRead: { _path: "notifications:markAllRead" },
+    },
+  },
+}));
+
 interface DropdownMenuProps {
   children?: React.ReactNode;
   onSelect?: () => void;
@@ -135,17 +149,6 @@ describe("NotificationDropdown", () => {
       if (apiRef._path === "notifications:markAllRead") return mockMarkAllRead;
       return vi.fn();
     });
-
-    // We need to mock the api path for the component to identify the mutation
-    vi.mock("convex/_generated/api", () => ({
-      api: {
-        notifications: {
-          getMyNotifications: { _path: "notifications:getMyNotifications" },
-          markAsRead: { _path: "notifications:markAsRead" },
-          markAllRead: { _path: "notifications:markAllRead" },
-        },
-      },
-    }));
 
     renderDropdown();
     const btn = screen.getByText(/Mark all read/i);
