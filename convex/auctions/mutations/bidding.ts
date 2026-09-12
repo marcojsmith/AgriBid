@@ -8,6 +8,12 @@ import { logActivity } from "../../userActivity";
 import { handleNewBid } from "../proxy_bidding";
 
 /**
+ * Minimum time between consecutive bids from the same user (issue #283).
+ * Prevents bid spam / runaway function-call costs.
+ */
+export const BID_COOLDOWN_MS = 1000;
+
+/**
  * Handler for placing a bid.
  * @param ctx - Mutation context
  * @param args - Arguments for placing a bid
@@ -26,6 +32,19 @@ export const placeBidHandler = async (
 ) => {
   // This also returns userId
   const { userId } = await requireVerified(ctx);
+
+  // Per-user cooldown check (issue #283). Must happen before handleNewBid so
+  // a rejected bid never consumes the cooldown window.
+  const now = Date.now();
+  const cooldown = await ctx.db
+    .query("bidCooldowns")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  if (cooldown && now - cooldown.lastBidAt < BID_COOLDOWN_MS) {
+    throw new ConvexError(
+      "You're bidding too fast. Please wait a moment and try again."
+    );
+  }
 
   const auction = await ctx.db.get(args.auctionId);
   if (!auction) throw new ConvexError("Auction not found");
@@ -49,6 +68,14 @@ export const placeBidHandler = async (
     args.amount,
     args.maxBid
   );
+
+  // Record the cooldown only after the bid succeeds, so a rejected bid
+  // (e.g. "Auction ended") doesn't consume the cooldown window.
+  if (cooldown) {
+    await ctx.db.patch(cooldown._id, { lastBidAt: now });
+  } else {
+    await ctx.db.insert("bidCooldowns", { userId, lastBidAt: now });
+  }
 
   // handleNewBid throws on any validation failure, so a resolved result
   // always represents a recorded bid and is safe to log.
