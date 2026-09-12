@@ -208,7 +208,9 @@ export const getWatchedAuctionIdsHandler = async (ctx: QueryCtx) => {
     }
 
     if (!isDone) {
-      console.warn(`getWatchedAuctionIds truncated after ${MAX_PAGES} pages`);
+      console.warn(
+        `getWatchedAuctionIds truncated after ${String(MAX_PAGES)} pages`
+      );
     }
 
     return results;

@@ -98,6 +98,9 @@ describe("Config Coverage", () => {
   });
 
   describe("COMMISSION_RATE", () => {
+    // COMMISSION_RATE is deprecated (use the platformFees table instead), but
+    // these tests intentionally verify its backward-compatible env fallback
+    // for as long as the constant still exists.
     it("should use env value if valid", async () => {
       vi.stubEnv("COMMISSION_RATE", "0.1");
       const { COMMISSION_RATE } = await import("./config");

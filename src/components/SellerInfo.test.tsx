@@ -57,10 +57,7 @@ vi.mock("@/components/ui/dialog", () => ({
     children: React.ReactNode;
     onOpenChange?: (o: boolean) => void;
   }) => (
-    <div
-      onClick={() => onOpenChange && onOpenChange(true)}
-      data-testid="dialog-trigger"
-    >
+    <div onClick={() => onOpenChange?.(true)} data-testid="dialog-trigger">
       {children}
     </div>
   ),

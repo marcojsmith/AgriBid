@@ -69,9 +69,12 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
   }
 
   const activeImage = images.at(activeIndex) ?? images[0];
-  const nextImage = () => setActiveIndex((prev) => (prev + 1) % images.length);
-  const prevImage = () =>
+  const nextImage = () => {
+    setActiveIndex((prev) => (prev + 1) % images.length);
+  };
+  const prevImage = () => {
     setActiveIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
 
   return (
     <div className="space-y-4">
@@ -191,7 +194,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
                   ? "border-primary ring-2 ring-primary/20 scale-95"
                   : "border-transparent hover:border-primary/40"
               )}
-              aria-label={`View image ${index + 1}`}
+              aria-label={`View image ${String(index + 1)}`}
             >
               {failedUrls.has(image) ? (
                 <span className="text-2xl" aria-hidden="true">
@@ -200,7 +203,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
               ) : (
                 <img
                   src={image}
-                  alt={`${title} thumbnail ${index + 1}`}
+                  alt={`${title} thumbnail ${String(index + 1)}`}
                   loading="lazy"
                   className="object-cover w-full h-full"
                   onError={() => {

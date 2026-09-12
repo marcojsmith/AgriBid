@@ -258,7 +258,7 @@ export function MetadataCatalog({
                   </div>
                   <div className="flex gap-2">
                     <EditMakeDialog
-                      key={`${item._id}-${item.updatedAt}`}
+                      key={`${item._id}-${String(item.updatedAt ?? "")}`}
                       item={item}
                       categories={categories}
                       updateMake={updateMake}
@@ -339,7 +339,7 @@ export function MetadataCatalog({
                     </TableHeader>
                     <TableBody>
                       {item.models.map((model: string, index: number) => (
-                        <TableRow key={`${item._id}-${model}-${index}`}>
+                        <TableRow key={`${item._id}-${model}-${String(index)}`}>
                           <TableCell className="font-medium">{model}</TableCell>
                           <TableCell className="text-right">
                             <Button

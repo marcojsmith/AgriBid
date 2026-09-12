@@ -60,6 +60,7 @@ export const MediaGalleryStep = () => {
               slot.id as keyof Omit<typeof formData.images, "additional">
             ];
           const previewUrl =
+            // Intentionally `||` not `??`: an empty string is not a usable preview URL
             previews[slot.id] ||
             (storageId?.startsWith("http") ? storageId : null);
 
@@ -151,8 +152,7 @@ export const MediaGalleryStep = () => {
         <div className="flex flex-wrap gap-4">
           {formData.images.additional.map((id: string, index: number) => {
             const previewUrl =
-              (Reflect.get(previews, id) as string | undefined) ??
-              (id.startsWith("http") ? id : null);
+              Reflect.get(previews, id) ?? (id.startsWith("http") ? id : null);
             return (
               <div
                 key={id}

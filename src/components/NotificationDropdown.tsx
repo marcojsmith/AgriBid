@@ -76,7 +76,7 @@ export function NotificationDropdown() {
           variant="ghost"
           size="icon"
           className="relative h-10 w-10 rounded-full border hover:bg-muted transition-all"
-          aria-label={`Notifications, ${unreadCount} unread`}
+          aria-label={`Notifications, ${String(unreadCount)} unread`}
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (

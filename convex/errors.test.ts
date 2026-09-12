@@ -647,10 +647,10 @@ describe("Errors Backend", () => {
       });
 
       const mockReports = Array.from({ length: 10 }, (_, i) => ({
-        _id: `r${i}` as Id<"errorReports">,
+        _id: `r${String(i)}` as Id<"errorReports">,
         status: "pending" as const,
         errorType: "E",
-        errorMessage: `M${i}`,
+        errorMessage: `M${String(i)}`,
         instanceCount: 1,
         breadcrumbs: [],
         metadata: { url: "u", userAgent: "ua", timestamp: now },

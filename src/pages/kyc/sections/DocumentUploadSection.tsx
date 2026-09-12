@@ -84,7 +84,7 @@ export function DocumentUploadSection({
                   onClick={() => {
                     onDeleteDocument(docId);
                   }}
-                  aria-label={`Delete document ${idx + 1}`}
+                  aria-label={`Delete document ${String(idx + 1)}`}
                 >
                   ×
                 </Button>
@@ -93,7 +93,7 @@ export function DocumentUploadSection({
           ))}
           {files.map((f, idx) => (
             <Badge
-              key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
+              key={`${f.name}-${String(f.size)}-${String(f.lastModified)}-${String(idx)}`}
               variant="secondary"
               className="h-8 px-3 gap-2 font-bold text-xs border"
             >

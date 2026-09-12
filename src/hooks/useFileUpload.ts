@@ -53,7 +53,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     const selectedFiles = Array.from(e.target.files ?? []);
 
     if (files.length + selectedFiles.length > maxFiles) {
-      toast.error(`Maximum ${maxFiles} files allowed`);
+      toast.error(`Maximum ${String(maxFiles)} files allowed`);
       return;
     }
 
@@ -62,7 +62,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     for (const file of selectedFiles) {
       if (file.size > maxSize) {
         toast.error(
-          `${file.name} exceeds ${Math.round(maxSize / 1024 / 1024)}MB limit`
+          `${file.name} exceeds ${String(Math.round(maxSize / 1024 / 1024))}MB limit`
         );
         continue;
       }
@@ -115,13 +115,13 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
           if (isAuthError) {
             console.warn(
-              `Authorization failure while deleting orphaned upload ${storageIds.at(index)}. ` +
+              `Authorization failure while deleting orphaned upload ${storageIds.at(index) ?? "(unknown id)"}. ` +
                 `This usually happens when a non-admin caller omits a 'cleanupHandler'. ` +
                 `Please provide a custom cleanupHandler for this context.`
             );
           } else {
             console.error(
-              `Failed to delete orphaned upload ${storageIds.at(index)}:`,
+              `Failed to delete orphaned upload ${storageIds.at(index) ?? "(unknown id)"}:`,
               reason
             );
           }
@@ -169,7 +169,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       if (failures.length > 0) {
         console.error("Upload partial failure:", failures);
         toast.error(
-          `Failed to upload ${failures.length} file(s). Please try again.`
+          `Failed to upload ${String(failures.length)} file(s). Please try again.`
         );
 
         // Cleanup successes since we are halting

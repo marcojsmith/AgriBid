@@ -166,7 +166,7 @@ const MOCK_EXTRA_SELLER_PROFILES = [
   },
 ];
 
-type MockAuction = {
+interface MockAuction {
   seedId: string;
   title: string;
   categoryId: Id<"equipmentCategories">;
@@ -192,20 +192,20 @@ type MockAuction = {
     cabin: string;
     additional: string[];
   };
-};
+}
 
-type MockBidPlan = {
-  bids: Array<{ bidderId: string; amount: number }>;
+interface MockBidPlan {
+  bids: { bidderId: string; amount: number }[];
   windowStart: number;
   windowEnd: number;
-};
+}
 
-type MockMessagePlan = {
+interface MockMessagePlan {
   sender: "buyer" | "seller";
   content: string;
   isRead: boolean;
   hoursAfterStart: number;
-};
+}
 
 /**
  * Ascending bid amounts for every active mock auction. The last amount of
@@ -228,10 +228,10 @@ const ACTIVE_BID_AMOUNTS: Record<string, number[]> = {
 };
 
 /** Winning bid sequences for sold auctions; the last bid is the winner. */
-const SOLD_BID_PLANS: Array<{
+const SOLD_BID_PLANS: {
   seedId: string;
-  bids: Array<{ bidderId: string; amount: number }>;
-}> = [
+  bids: { bidderId: string; amount: number }[];
+}[] = [
   {
     seedId: "jd-s780",
     bids: [
@@ -261,14 +261,14 @@ const SOLD_BID_PLANS: Array<{
 ];
 
 /** Reviews left by the winning buyers of sold mock auctions. */
-const REVIEW_PLANS: Array<{
+const REVIEW_PLANS: {
   seedId: string;
   reviewerId: string;
   rating: number;
   comment: string;
   daysAfterSettlement: number;
   response?: { text: string; daysAfterReview: number };
-}> = [
+}[] = [
   {
     seedId: "jd-s780",
     reviewerId: "mock-buyer-1",
@@ -305,7 +305,7 @@ const REVIEW_PLANS: Array<{
 ];
 
 /** Mock buyers watching active mock auctions. */
-const WATCHLIST_PLANS: Array<{ userId: string; seedId: string }> = [
+const WATCHLIST_PLANS: { userId: string; seedId: string }[] = [
   { userId: "mock-buyer-1", seedId: "case-axial-flow-8250" },
   { userId: "mock-buyer-2", seedId: "jd-8r-410" },
   { userId: "mock-buyer-3", seedId: "jcb-541-70" },
@@ -317,14 +317,14 @@ const WATCHLIST_PLANS: Array<{ userId: string; seedId: string }> = [
 /** Sentinel standing in for the live mock seller's Clerk-synced userId. */
 const MOCK_SELLER_KEY = "mock-seller";
 
-const CONVERSATION_PLANS: Array<{
+const CONVERSATION_PLANS: {
   buyerId: string;
   /** {@link MOCK_SELLER_KEY} or a synthetic seller userId. */
   sellerId: string;
   auctionSeedId: string;
   startedDaysAgo: number;
   messages: MockMessagePlan[];
-}> = [
+}[] = [
   {
     buyerId: "mock-buyer-1",
     sellerId: "mock-seller-2",
@@ -1533,11 +1533,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   }
 
   // 3.8. Seed proxy bids for a couple of active auctions
-  const proxyBidPlans: Array<{
+  const proxyBidPlans: {
     seedId: string;
     bidderId: string;
     maxBid: number;
-  }> = [
+  }[] = [
     { seedId: "jd-8r-410", bidderId: "mock-buyer-6", maxBid: 290000 },
     {
       seedId: "case-axial-flow-8250",
@@ -1704,7 +1704,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     const jdS780 = getAuctionBySeedId("jd-s780");
     const speedrower = getAuctionBySeedId("nh-speedrower-260");
 
-    const notificationPlans: Array<{
+    const notificationPlans: {
       recipientId: string;
       type: "info" | "success" | "warning" | "error";
       title: string;
@@ -1712,7 +1712,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       link?: string;
       isRead: boolean;
       createdAt: number;
-    }> = [
+    }[] = [
       {
         recipientId: "all",
         type: "info",
@@ -1762,7 +1762,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     const bellLoader = getAuctionBySeedId("bell-l1206e");
     const cat320 = getAuctionBySeedId("cat-320-gc");
 
-    const ticketPlans: Array<{
+    const ticketPlans: {
       userId: string;
       auctionId?: Id<"auctions">;
       subject: string;
@@ -1771,7 +1771,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       status: "open" | "resolved" | "closed";
       createdDaysAgo: number;
       updatedDaysAgo: number;
-    }> = [
+    }[] = [
       {
         userId: "mock-buyer-5",
         auctionId: bellLoader._id,
@@ -1823,7 +1823,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   // 3.15. Seed the per-user activity feeds (only while the table is empty)
   const existingActivity = await ctx.db.query("userActivity").first();
   if (!existingActivity) {
-    const mockUsers: Array<{ userId: string; createdDaysAgo: number }> = [
+    const mockUsers: { userId: string; createdDaysAgo: number }[] = [
       ...MOCK_BUYER_PROFILES.map((buyer) => ({
         userId: buyer.userId,
         createdDaysAgo: buyer.createdDaysAgo,

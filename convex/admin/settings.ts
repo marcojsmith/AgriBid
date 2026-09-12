@@ -473,7 +473,7 @@ export async function updateGitHubErrorReportingConfigHandler(
     action: "UPDATE_GITHUB_ERROR_REPORTING_CONFIG",
     targetId: "github-error-reporting",
     targetType: "settings",
-    details: `Updated GitHub error reporting config: enabled=${args.enabled}, repo=${args.repoOwner}/${args.repoName}`,
+    details: `Updated GitHub error reporting config: enabled=${String(args.enabled)}, repo=${args.repoOwner}/${args.repoName}`,
   });
 
   return { success: true };

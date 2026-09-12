@@ -15,11 +15,11 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 type ErrorStatus = "pending" | "processing" | "completed" | "failed";
 
-type StatusConfig = {
+interface StatusConfig {
   label: string;
   icon: typeof AlertTriangle;
   color: string;
-};
+}
 
 interface ErrorReport {
   _id: string;
@@ -235,9 +235,9 @@ export default function AdminErrorReports() {
                 ) : (
                   reports.reports.map((report: ErrorReport) => {
                     // Defensive fallback for statuses outside STATUS_CONFIG.
-                    const statusConfig = STATUS_CONFIG[
-                      report.status as ErrorStatus
-                    ] as StatusConfig | undefined;
+                    const statusConfig = STATUS_CONFIG[report.status] as
+                      | StatusConfig
+                      | undefined;
                     const config = statusConfig ?? STATUS_CONFIG.pending;
                     return (
                       <tr

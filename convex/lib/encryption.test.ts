@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 
 /** Minimal typed shape of the dynamically imported encryption module. */
-type EncryptionModule = {
+interface EncryptionModule {
   encryptPII: (value: string | null | undefined) => Promise<string | undefined>;
   decryptPII: (value: string | null | undefined) => Promise<string | undefined>;
-};
+}
 
 /**
  * Dynamically imports a fresh copy of the encryption module. The query string

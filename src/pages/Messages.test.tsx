@@ -307,7 +307,9 @@ describe("Messages Page — thread view", () => {
   });
 
   it("re-throws non-Convex errors to the root error boundary", () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // Intentional no-op: suppress expected error logging in this test
+    });
     (usePaginatedQuery as Mock).mockImplementation((query) => {
       if (query === mockApi.messages.getConversations) {
         return inboxResult();

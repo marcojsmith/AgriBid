@@ -17,12 +17,12 @@ vi.mock("./lib/auth", () => ({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-type MockDb = {
+interface MockDb {
   get: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
   query: ReturnType<typeof vi.fn>;
-};
+}
 
 type MockMutationCtx = {
   db: MockDb;

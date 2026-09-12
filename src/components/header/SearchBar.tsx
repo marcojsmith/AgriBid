@@ -32,7 +32,7 @@ export function SearchBar({
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       void navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);

@@ -340,7 +340,9 @@ export default function AdminModeration() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => openProfileFlagDialog(flag, "reviewed")}
+                        onClick={() => {
+                          openProfileFlagDialog(flag, "reviewed");
+                        }}
                       >
                         <Check className="h-3 w-3 mr-1" />
                         Mark Reviewed
@@ -349,7 +351,9 @@ export default function AdminModeration() {
                         variant="destructive"
                         size="sm"
                         className="flex-1"
-                        onClick={() => openProfileFlagDialog(flag, "dismissed")}
+                        onClick={() => {
+                          openProfileFlagDialog(flag, "dismissed");
+                        }}
                       >
                         <X className="h-3 w-3 mr-1" />
                         Dismiss Report

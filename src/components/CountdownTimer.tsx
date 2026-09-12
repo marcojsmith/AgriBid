@@ -72,10 +72,10 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
   const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
 
   const parts = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0 || days > 0) parts.push(`${hours}h`);
-  parts.push(`${minutes}m`);
-  parts.push(`${seconds}s`);
+  if (days > 0) parts.push(`${String(days)}d`);
+  if (hours > 0 || days > 0) parts.push(`${String(hours)}h`);
+  parts.push(`${String(minutes)}m`);
+  parts.push(`${String(seconds)}s`);
   const timeLeft = parts.join(" ");
 
   const stateColorClass = isLowTime

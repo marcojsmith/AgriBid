@@ -17,14 +17,14 @@ vi.mock("./lib/auth", async (importOriginal) => ({
 
 type MockRow = { _id: string } & Record<string, unknown>;
 
-type MockIndexFilter = {
+interface MockIndexFilter {
   eq: (field: string, value: unknown) => MockIndexFilter;
-};
+}
 
-type MockQueryFilter = {
+interface MockQueryFilter {
   field: (name: string) => { __mockField: string };
   eq: (left: unknown, right: unknown) => void;
-};
+}
 
 /**
  * Creates a lightweight in-memory Convex-style database mock that supports the
@@ -48,7 +48,7 @@ function createMockDb() {
   };
 
   const makeBuilder = (table: string) => {
-    let constraints: Array<[string, unknown]> = [];
+    let constraints: [string, unknown][] = [];
     const matches = (row: MockRow) =>
       constraints.every(([field, value]) => Reflect.get(row, field) === value);
 
@@ -131,7 +131,9 @@ function createMockDb() {
 }
 
 type MockDb = ReturnType<typeof createMockDb>;
-type MockCtx = { db: MockDb["db"] };
+interface MockCtx {
+  db: MockDb["db"];
+}
 
 /**
  * Extracts the raw handler from a Convex function wrapper so tests can invoke
@@ -159,7 +161,9 @@ describe("Seed Coverage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {
+      // Intentional no-op: suppress seed script logging during tests
+    });
     mockDb = createMockDb();
     mockCtx = { db: mockDb.db };
   });

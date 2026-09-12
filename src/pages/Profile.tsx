@@ -237,7 +237,7 @@ const getTrustItems = (
       label: "Seller Rating",
       value:
         rating?.avgRating !== undefined
-          ? `${rating.avgRating.toFixed(1)} (${rating.reviewCount})`
+          ? `${rating.avgRating.toFixed(1)} (${String(rating.reviewCount)})`
           : "No reviews",
       verified: (rating?.reviewCount ?? 0) > 0,
     },
@@ -665,7 +665,7 @@ export default function Profile() {
                 )}
                 <p className="text-[10px] text-muted-foreground">
                   {sellerInfo.reviewCount > 0
-                    ? `${sellerInfo.reviewCount} review${
+                    ? `${String(sellerInfo.reviewCount)} review${
                         sellerInfo.reviewCount === 1 ? "" : "s"
                       }`
                     : "No reviews yet"}
@@ -877,7 +877,7 @@ export default function Profile() {
                   </h2>
                 </div>
                 <Link
-                  to={`/sellers/${userId}/listings`}
+                  to={`/sellers/${userId ?? ""}/listings`}
                   className="text-xs font-bold text-primary hover:underline"
                 >
                   View all →
@@ -919,7 +919,7 @@ export default function Profile() {
                     </h2>
                   </div>
                   <Link
-                    to={`/sellers/${userId}/listings/sold`}
+                    to={`/sellers/${userId ?? ""}/listings/sold`}
                     className="text-xs font-bold text-success hover:underline"
                   >
                     View all →
@@ -979,7 +979,7 @@ export default function Profile() {
                         </div>
                         <p
                           className="text-amber-500 tracking-widest mt-1"
-                          aria-label={`Rated ${review.rating} out of 5 stars`}
+                          aria-label={`Rated ${String(review.rating)} out of 5 stars`}
                         >
                           {"★".repeat(Math.round(review.rating))}
                           {"☆".repeat(5 - Math.round(review.rating))}

@@ -79,7 +79,7 @@ export async function deleteAuctionImages(
   let storageIds: string[] = [];
 
   if (legacyImages != null && Array.isArray(legacyImages)) {
-    storageIds = (legacyImages as string[]).filter(Boolean);
+    storageIds = legacyImages.filter(Boolean);
   } else if (legacyImages != null && typeof legacyImages === "object") {
     const imagesObj = legacyImages as AuctionImages;
     storageIds = [

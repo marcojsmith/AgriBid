@@ -105,7 +105,7 @@ vi.mock("./ui/select", () => {
       </div>
     ),
     SelectItem: ({ children, value, onClick }: MockProps) => (
-      <button data-testid={`select-item-${value}`} onClick={onClick}>
+      <button data-testid={`select-item-${value ?? ""}`} onClick={onClick}>
         {children}
       </button>
     ),
@@ -418,7 +418,12 @@ describe("FilterSidebar", () => {
     });
 
     it("disables defaults buttons and shows pending labels while saving", () => {
-      const mockMutate = vi.fn().mockReturnValue(new Promise(() => {}));
+      // Never-resolving promise: intentionally empty executor simulates a pending save
+      const mockMutate = vi.fn().mockReturnValue(
+        new Promise(() => {
+          /* intentionally empty: keeps the promise pending */
+        })
+      );
       (useMutation as Mock).mockReturnValue(mockMutate);
 
       renderSidebar();

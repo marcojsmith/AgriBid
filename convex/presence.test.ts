@@ -215,7 +215,7 @@ describe("Presence Coverage", () => {
     it("should handle large number of records across batches", async () => {
       const batch = Array(100)
         .fill(0)
-        .map((_, i) => ({ _id: `p${i}` }));
+        .map((_, i) => ({ _id: `p${String(i)}` }));
       queryMock.take
         .mockResolvedValueOnce(batch)
         .mockResolvedValueOnce([{ _id: "p101" }])
@@ -233,7 +233,7 @@ describe("Presence Coverage", () => {
     it("should stop after MAX_ITERATIONS", async () => {
       const batch = Array(100)
         .fill(0)
-        .map((_, i) => ({ _id: `p${i}` }));
+        .map((_, i) => ({ _id: `p${String(i)}` }));
       queryMock.take.mockResolvedValue(batch); // Always return full batch
 
       await (

@@ -102,6 +102,7 @@ export function VerificationStatusSection({
               <Label className="text-xs font-semibold text-muted-foreground">
                 ID Number
               </Label>
+              {/* Intentionally `||` not `??`: an empty string ID also means "not provided" */}
               <p className="font-bold">{myKycDetails.idNumber || "N/A"}</p>
             </div>
           </div>
@@ -112,10 +113,13 @@ export function VerificationStatusSection({
               </Label>
               <div className="space-y-1">
                 <p className="font-bold flex items-center gap-2">
-                  <Mail className="h-3 w-3" /> {myKycDetails.kycEmail || "N/A"}
+                  <Mail className="h-3 w-3" />{" "}
+                  {/* Intentionally `||` not `??`: an empty string email also means "not provided" */}
+                  {myKycDetails.kycEmail || "N/A"}
                 </p>
                 <p className="font-bold flex items-center gap-2">
                   <Phone className="h-3 w-3" />{" "}
+                  {/* Intentionally `||` not `??`: an empty string phone also means "not provided" */}
                   {myKycDetails.phoneNumber || "N/A"}
                 </p>
               </div>

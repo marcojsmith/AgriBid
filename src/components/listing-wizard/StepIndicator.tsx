@@ -42,12 +42,12 @@ export const StepIndicator = () => {
         aria-valuenow={currentStep + 1}
         aria-valuemin={1}
         aria-valuemax={STEPS.length}
-        aria-label={`Step ${currentStep + 1} of ${STEPS.length}`}
+        aria-label={`Step ${String(currentStep + 1)} of ${String(STEPS.length)}`}
       >
         <div
           className="h-full bg-primary transition-all duration-500 ease-out"
           style={{
-            width: `${((currentStep + 1) / STEPS.length) * 100}%`,
+            width: `${String(((currentStep + 1) / STEPS.length) * 100)}%`,
           }}
         />
       </div>

@@ -104,7 +104,8 @@ export function KycReviewDialog({
                       label="ID/Passport"
                       value={
                         showFullId
-                          ? user.idNumber || "Not Provided"
+                          ? // Intentionally `||` not `??`: an empty string ID also means "not provided"
+                            user.idNumber || "Not Provided"
                           : user.idNumber
                             ? `****${user.idNumber.slice(-4)}`
                             : "Not Provided"
@@ -126,12 +127,18 @@ export function KycReviewDialog({
                   </div>
                   <DetailItem
                     label="Phone"
-                    value={user.phoneNumber || "Not Provided"}
+                    value={
+                      // Intentionally `||` not `??`: an empty string phone also means "not provided"
+                      user.phoneNumber || "Not Provided"
+                    }
                     icon={<Phone className="h-4 w-4" />}
                   />
                   <DetailItem
                     label="Email"
-                    value={user.kycEmail || "Not Provided"}
+                    value={
+                      // Intentionally `||` not `??`: an empty string email also means "not provided"
+                      user.kycEmail || "Not Provided"
+                    }
                     icon={<Mail className="h-4 w-4" />}
                   />
                 </div>

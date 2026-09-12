@@ -241,7 +241,7 @@ export function UserDropdown({
             className="flex items-center gap-2 w-full"
             aria-label={
               unreadMessageCount
-                ? `Messages, ${unreadMessageCount} unread`
+                ? `Messages, ${String(unreadMessageCount)} unread`
                 : undefined
             }
           >
@@ -281,7 +281,7 @@ export function UserDropdown({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
-            onSignOut().catch((err) => {
+            onSignOut().catch((err: unknown) => {
               console.error("Sign out failed:", err);
               toast.error("Sign out failed. Please try again.");
             });

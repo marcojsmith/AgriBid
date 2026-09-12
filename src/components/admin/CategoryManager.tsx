@@ -171,12 +171,13 @@ export function CategoryManager({
                         aria-label={`Deactivate category ${cat.name}`}
                         onClick={() => {
                           if (confirm(`Deactivate category "${cat.name}"?`)) {
-                            deleteCategory({ id: cat._id }).catch((err) =>
-                              toast.error(
-                                err instanceof Error
-                                  ? err.message
-                                  : "Failed to delete"
-                              )
+                            deleteCategory({ id: cat._id }).catch(
+                              (err: unknown) =>
+                                toast.error(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Failed to delete"
+                                )
                             );
                           }
                         }}

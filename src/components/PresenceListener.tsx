@@ -25,7 +25,7 @@ export const PresenceListener = () => {
     const sendHeartbeat = () => {
       // Only send heartbeat if the page is visible to save bandwidth/resources
       if (document.visibilityState === "visible") {
-        heartbeat().catch((err) => {
+        heartbeat().catch((err: unknown) => {
           console.error("Presence heartbeat failed:", err);
         });
       }

@@ -43,7 +43,12 @@ export function BulkActionDialog({
   targetStatus,
 }: BulkActionDialogProps) {
   return (
-    <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <AlertDialogContent className="rounded-md border">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-semibold">

@@ -159,7 +159,9 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => loadMore(PAGE_SIZE)}
+                    onClick={() => {
+                      loadMore(PAGE_SIZE);
+                    }}
                     className="group border font-bold tracking-tight text-xs h-8 px-4"
                   >
                     Load More Bids

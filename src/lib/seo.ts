@@ -114,7 +114,7 @@ export function buildAuctionDescription(
   location: string | undefined
 ): string {
   const parts = [
-    year && make && model ? `${year} ${make} ${model}` : title,
+    year && make && model ? `${String(year)} ${make} ${model}` : title,
     location ? `located in ${location}` : null,
     "Live auction on AgriBid — South Africa's agricultural equipment marketplace.",
   ].filter(Boolean);

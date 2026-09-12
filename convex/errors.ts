@@ -133,7 +133,7 @@ function sanitizeBreadcrumbMetadata(
   if (!breadcrumb.metadata) {
     return breadcrumb;
   }
-  const sanitizedEntries: Array<[string, string | number]> = [];
+  const sanitizedEntries: [string, string | number][] = [];
   for (const key of ["action", "path", "component", "props"] as const) {
     const { [key]: value } = breadcrumb.metadata;
     if (typeof value === "string" || typeof value === "number") {
@@ -348,6 +348,10 @@ function formatIssueBody(report: {
         .join("\n")
     : "None";
 
+  // Intentionally `||` not `??`: an empty string user ID/role also means "missing"
+  const userIdLabel = report.userId || "Anonymous";
+  const userRoleLabel = report.userRole || "N/A";
+
   return `## Production Error Report
 
 **Error Type:** ${report.errorType}
@@ -360,8 +364,8 @@ ${report.stackTrace ?? "No stack trace available"}
 \`\`\`
 
 ### User Context
-- **User ID:** ${report.userId || "Anonymous"}
-- **User Role:** ${report.userRole || "N/A"}
+- **User ID:** ${userIdLabel}
+- **User Role:** ${userRoleLabel}
 
 ### Additional Info
 ${additionalInfoMd}

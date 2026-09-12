@@ -25,7 +25,7 @@ if (ENCRYPTION_KEY_STR) {
   const keyBytes = new TextEncoder().encode(ENCRYPTION_KEY_STR);
   if (keyBytes.length !== 32) {
     throw new Error(
-      `CRITICAL: PII_ENCRYPTION_KEY must be exactly 32 bytes. Current byte length: ${keyBytes.length}`
+      `CRITICAL: PII_ENCRYPTION_KEY must be exactly 32 bytes. Current byte length: ${String(keyBytes.length)}`
     );
   }
 }

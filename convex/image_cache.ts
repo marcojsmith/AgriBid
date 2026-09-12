@@ -1,4 +1,5 @@
 import type { QueryCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 
 /**
  * Resolve a storage ID to a URL.
@@ -18,6 +19,6 @@ export async function resolveUrlCached(
   if (!storageId) return undefined;
   if (storageId.startsWith("http")) return storageId;
 
-  const url = await storage.getUrl(storageId);
+  const url = await storage.getUrl(storageId as Id<"_storage">);
   return url ?? undefined;
 }

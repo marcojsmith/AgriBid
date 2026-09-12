@@ -74,6 +74,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
           variant="outline"
           className="font-medium bg-primary/5 text-primary border-primary/20 text-[10px]"
         >
+          {/* Intentionally `||` not `??`: an empty string category name also means "no category" */}
           {auction.categoryName || UNCATEGORIZED_LABEL}
         </Badge>
         <Badge variant="secondary" className="font-medium">

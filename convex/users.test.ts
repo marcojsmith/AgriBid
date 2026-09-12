@@ -36,7 +36,9 @@ const mockAdminUser: AuthUser = {
 
 vi.mock("./admin_utils", () => ({
   logAudit: vi.fn(),
-  encryptPII: vi.fn((val: string | undefined) => Promise.resolve(`enc_${val}`)),
+  encryptPII: vi.fn((val: string | undefined) =>
+    Promise.resolve(`enc_${val ?? ""}`)
+  ),
   decryptPII: vi.fn((val: string | undefined) =>
     Promise.resolve(val?.replace("enc_", "") ?? "")
   ),

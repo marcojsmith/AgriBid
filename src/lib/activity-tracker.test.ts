@@ -34,7 +34,7 @@ describe("Activity Tracker", () => {
 
   it("should respect the 20 breadcrumb limit", () => {
     for (let i = 0; i < 25; i++) {
-      trackAction("custom", `Action ${i}`);
+      trackAction("custom", `Action ${String(i)}`);
     }
 
     const breadcrumbs = getBreadcrumbs();

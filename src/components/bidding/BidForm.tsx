@@ -54,7 +54,9 @@ export const BidForm = ({
   const [isProxyEnabled, setIsProxyEnabled] = useState(isProxyActive ?? false);
   // Auto-bid section is collapsed by default (optional feature); users with an
   // already-active proxy bid start expanded so they can see and edit it
-  const [isProxyExpanded, setIsProxyExpanded] = useState(isProxyActive ?? false);
+  const [isProxyExpanded, setIsProxyExpanded] = useState(
+    isProxyActive ?? false
+  );
   const [maxBid, setMaxBid] = useState<string>(
     currentUserMaxBid != null ? String(currentUserMaxBid) : ""
   );
@@ -168,7 +170,9 @@ export const BidForm = ({
             variant="ghost"
             size="sm"
             className="w-full justify-between h-8 px-2 font-medium"
-            onClick={() => setIsProxyExpanded((prev) => !prev)}
+            onClick={() => {
+              setIsProxyExpanded((prev) => !prev);
+            }}
             aria-expanded={isProxyExpanded}
             aria-controls="proxy-bidding-section"
             data-testid="auto-bid-toggle"
@@ -195,7 +199,9 @@ export const BidForm = ({
                     id="proxy-enabled"
                     name="proxy-enabled"
                     checked={isProxyEnabled}
-                    onChange={(e) => setIsProxyEnabled(e.target.checked)}
+                    onChange={(e) => {
+                      setIsProxyEnabled(e.target.checked);
+                    }}
                     disabled={isLoading}
                     className="h-4 w-4 text-primary-foreground border-primary-foreground"
                   />
@@ -222,7 +228,9 @@ export const BidForm = ({
                       id="proxy-max-bid"
                       name="proxy-max-bid"
                       value={maxBid}
-                      onChange={(e) => setMaxBid(e.target.value)}
+                      onChange={(e) => {
+                        setMaxBid(e.target.value);
+                      }}
                       placeholder="Enter max amount"
                       className="w-32 h-8 px-2 py-1 text-sm rounded border border-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                       disabled={isLoading}
@@ -251,10 +259,12 @@ export const BidForm = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {getQuickBidAmounts().map((amount, index) => (
           <Button
-            key={`quick-bid-${index}-${amount}`}
+            key={`quick-bid-${String(index)}-${String(amount)}`}
             variant="outline"
             className="h-14 flex flex-col items-center justify-center gap-0.5 border hover:border-primary hover:bg-primary/5 transition-all group"
-            onClick={() => handleQuickBid(amount)}
+            onClick={() => {
+              handleQuickBid(amount);
+            }}
             disabled={
               isLoading ||
               !isBidFormEnabled ||

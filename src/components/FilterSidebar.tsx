@@ -177,7 +177,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       return;
     }
     // Use the normalizer to ensure valid state from URL
-     
+
     setLocalFilters(parseUrlFilters(searchParams));
   }, [searchParams]);
 
@@ -215,7 +215,6 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         return val !== undefined && Number.isFinite(val) ? val.toString() : "";
       };
 
-       
       setLocalFilters({
         status:
           urlFilters.status !== "active"
@@ -361,7 +360,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           <select
             id="filter-make"
             value={localFilters.make}
-            onChange={(e) => updateParam("make", e.target.value)}
+            onChange={(e) => {
+              updateParam("make", e.target.value);
+            }}
             className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="">All Manufacturers</option>
@@ -523,7 +524,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           <select
             id="filter-status"
             value={localFilters.status}
-            onChange={(e) => updateParam("status", e.target.value)}
+            onChange={(e) => {
+              updateParam("status", e.target.value);
+            }}
             className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
           >
             <option value="active">Active Auctions</option>

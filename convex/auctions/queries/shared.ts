@@ -109,10 +109,10 @@ export async function calculateUserBidStats(
 
   // Only load auctions that the user has bid on, in chunks to avoid overwhelming the database
   const CHUNK_SIZE = 100;
-  const auctionEntries: Array<{
+  const auctionEntries: {
     id: Id<"auctions">;
     auction: Doc<"auctions"> | null;
-  }> = [];
+  }[] = [];
 
   for (let i = 0; i < auctionIds.length; i += CHUNK_SIZE) {
     const chunk = auctionIds.slice(i, i + CHUNK_SIZE);

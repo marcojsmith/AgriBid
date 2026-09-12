@@ -190,7 +190,12 @@ export default function Home() {
   if (minYear !== undefined || maxYear !== undefined) {
     activeFilterChips.push({
       key: "year",
-      label: formatRangeLabel("Year", (value) => `${value}`, minYear, maxYear),
+      label: formatRangeLabel(
+        "Year",
+        (value) => String(value),
+        minYear,
+        maxYear
+      ),
       paramKeys: ["minYear", "maxYear"],
     });
   }

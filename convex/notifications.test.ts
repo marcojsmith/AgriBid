@@ -119,21 +119,21 @@ describe("Notifications Coverage", () => {
 
       // Create enough items to test pagination
       const personalNotifications = Array.from({ length: 25 }, (_, i) => ({
-        _id: `n${i}`,
+        _id: `n${String(i)}`,
         createdAt: 100 + i * 10,
         recipientId: "user1",
         type: "bid" as const,
-        title: `Title ${i}`,
-        message: `Msg ${i}`,
+        title: `Title ${String(i)}`,
+        message: `Msg ${String(i)}`,
         isRead: false,
       }));
       const announcements = Array.from({ length: 25 }, (_, i) => ({
-        _id: `a${i}`,
+        _id: `a${String(i)}`,
         createdAt: 200 + i * 10,
         recipientId: "all",
         type: "announcement" as const,
-        title: `Ann ${i}`,
-        message: `Ann Msg ${i}`,
+        title: `Ann ${String(i)}`,
+        message: `Ann Msg ${String(i)}`,
         isRead: false,
       }));
 
@@ -193,12 +193,12 @@ describe("Notifications Coverage", () => {
 
       // Return more than 20 items to test default pagination
       const notifications = Array.from({ length: 30 }, (_, i) => ({
-        _id: `n${i}`,
+        _id: `n${String(i)}`,
         createdAt: 100 + i * 10,
         recipientId: "user1",
         type: "bid" as const,
-        title: `Title ${i}`,
-        message: `Msg ${i}`,
+        title: `Title ${String(i)}`,
+        message: `Msg ${String(i)}`,
         isRead: false,
       }));
 

@@ -505,7 +505,7 @@ describe("ListingWizard Full Coverage", () => {
     localStorage.setItem(
       "agribid_listing_draft",
       JSON.stringify({
-        ...JSON.parse(localStorage.getItem("agribid_listing_draft") || "{}"),
+        ...JSON.parse(localStorage.getItem("agribid_listing_draft") ?? "{}"),
         startingPrice: 1000,
         reservePrice: 2000,
       })
@@ -524,7 +524,7 @@ describe("ListingWizard Full Coverage", () => {
     await waitFor(() => {
       expect(mockSaveDraft).toHaveBeenCalled();
       const saved = JSON.parse(
-        localStorage.getItem("agribid_listing_draft") || "{}"
+        localStorage.getItem("agribid_listing_draft") ?? "{}"
       ) as { auctionId?: string };
       expect(saved.auctionId).toBe("new-id-123");
     });
@@ -678,7 +678,7 @@ describe("ListingWizard Full Coverage", () => {
     await waitFor(() => {
       expect(mockSaveDraft).toHaveBeenCalled();
       const saved = JSON.parse(
-        originalGetItem.call(localStorage, "agribid_listing_draft") || "{}"
+        originalGetItem.call(localStorage, "agribid_listing_draft") ?? "{}"
       ) as { auctionId?: string };
       expect(saved.auctionId).toBe("new-id-999");
     });

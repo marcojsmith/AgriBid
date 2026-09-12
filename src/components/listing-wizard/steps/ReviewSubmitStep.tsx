@@ -150,7 +150,7 @@ export const ReviewSubmitStep = () => {
                 slot.id as keyof Omit<typeof formData.images, "additional">
               ];
             const previewUrl =
-              (Reflect.get(previews, slot.id) as string | undefined) ??
+              Reflect.get(previews, slot.id) ??
               (storageId?.startsWith("http") ? storageId : null);
 
             return (

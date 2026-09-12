@@ -148,7 +148,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     if (userId) {
-      syncUserRef.current().catch((error) => {
+      syncUserRef.current().catch((error: unknown) => {
         console.error("Failed to sync user:", error);
       });
     }

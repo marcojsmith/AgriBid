@@ -62,8 +62,8 @@ describe("FAQ Page", () => {
   it("renders all published FAQ questions", () => {
     const faqs = Array.from({ length: 3 }, (_, i) => ({
       _id: String(i),
-      question: `Question ${i + 1}`,
-      answer: `Answer ${i + 1}`,
+      question: `Question ${String(i + 1)}`,
+      answer: `Answer ${String(i + 1)}`,
     }));
     (useQuery as Mock).mockReturnValue(faqs);
     renderFAQ();

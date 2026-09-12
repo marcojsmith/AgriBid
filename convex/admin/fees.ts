@@ -15,7 +15,7 @@ function validateFeeValue(feeType: string, value: number): void {
   if (feeType === "percentage") {
     if (value < MIN_PERCENTAGE || value > MAX_PERCENTAGE) {
       throw new Error(
-        `Percentage fee must be between ${MIN_PERCENTAGE * 100}% and ${MAX_PERCENTAGE * 100}%`
+        `Percentage fee must be between ${String(MIN_PERCENTAGE * 100)}% and ${String(MAX_PERCENTAGE * 100)}%`
       );
     }
   } else if (feeType === "fixed") {
@@ -23,7 +23,7 @@ function validateFeeValue(feeType: string, value: number): void {
       throw new Error("Fixed fee must be greater than 0");
     }
     if (value > MAX_FIXED_FEE) {
-      throw new Error(`Fixed fee cannot exceed ${MAX_FIXED_FEE}`);
+      throw new Error(`Fixed fee cannot exceed ${String(MAX_FIXED_FEE)}`);
     }
   }
 }
@@ -182,7 +182,7 @@ export const createPlatformFee = mutation({
     const name = args.name.trim();
     if (name.length === 0 || name.length > MAX_NAME_LENGTH) {
       throw new Error(
-        `Fee name must be between 1 and ${MAX_NAME_LENGTH} characters`
+        `Fee name must be between 1 and ${String(MAX_NAME_LENGTH)} characters`
       );
     }
 
@@ -214,7 +214,7 @@ export const createPlatformFee = mutation({
       action: "CREATE_FEE",
       targetId: feeId,
       targetType: "platformFee",
-      details: `Created fee: ${name} (${args.feeType}, ${args.value}, applies to ${args.appliesTo})`,
+      details: `Created fee: ${name} (${args.feeType}, ${String(args.value)}, applies to ${args.appliesTo})`,
     });
 
     return { success: true, feeId };
@@ -268,7 +268,7 @@ export const updatePlatformFee = mutation({
       const name = updates.name.trim();
       if (name.length === 0 || name.length > MAX_NAME_LENGTH) {
         throw new Error(
-          `Fee name must be between 1 and ${MAX_NAME_LENGTH} characters`
+          `Fee name must be between 1 and ${String(MAX_NAME_LENGTH)} characters`
         );
       }
       await checkDuplicateName(ctx, name, feeId);
@@ -369,7 +369,7 @@ export const reorderPlatformFees = mutation({
     await logAudit(ctx, {
       action: "REORDER_FEES",
       targetType: "platformFee",
-      details: `Reordered ${args.feeIds.length} fees`,
+      details: `Reordered ${String(args.feeIds.length)} fees`,
     });
 
     return { success: true };

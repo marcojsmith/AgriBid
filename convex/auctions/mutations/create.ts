@@ -352,7 +352,7 @@ export const saveDraftHandler = async (
     }
 
     const patchData: Record<string, unknown> = Object.fromEntries(
-      (Object.entries(restArgs) as Array<[string, unknown]>).filter(
+      (Object.entries(restArgs) as [string, unknown][]).filter(
         ([key, value]) => key !== "images" && value !== undefined
       )
     );

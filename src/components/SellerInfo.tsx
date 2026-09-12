@@ -155,7 +155,7 @@ export const SellerInfo = ({
               aria-label={
                 isOwnListing
                   ? "This is your own listing"
-                  : `Message ${seller.name}`
+                  : `Message ${seller.name ?? "this seller"}`
               }
             >
               <Mail className="h-4 w-4" />
@@ -210,7 +210,7 @@ export const SellerInfo = ({
         <Button
           variant="secondary"
           className="h-11 font-bold rounded-md border border-transparent hover:border-muted-foreground/20 transition-all"
-          aria-label={`View ${seller.name}'s profile`}
+          aria-label={`View ${seller.name ?? "this seller"}'s profile`}
           asChild
         >
           <Link to={`/profile/${sellerId}`}>View Profile</Link>

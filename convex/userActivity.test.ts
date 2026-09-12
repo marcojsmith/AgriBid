@@ -11,7 +11,7 @@ vi.mock("./lib/auth", () => ({
   resolveUserId: vi.fn(),
 }));
 
-type ActivityRow = {
+interface ActivityRow {
   _id: string;
   _creationTime: number;
   userId: string;
@@ -19,7 +19,7 @@ type ActivityRow = {
   description?: string;
   relatedId?: string;
   createdAt: number;
-};
+}
 
 const makeRow = (overrides: Partial<ActivityRow>): ActivityRow => ({
   _id: "activity1" as Id<"userActivity">,

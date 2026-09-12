@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * @returns The rendered checkbox element with a centered check indicator
  */
 const Checkbox = React.forwardRef<
-  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  React.ComponentRef<typeof CheckboxPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
 >(({ className, ...props }, ref) => {
   return (

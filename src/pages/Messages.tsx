@@ -34,13 +34,13 @@ const formatRelativeTime = (timestamp: number): string => {
   const diffMs = Date.now() - timestamp;
   const minutes = Math.floor(diffMs / 60_000);
   if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return `${String(minutes)}m`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return `${String(hours)}h`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d`;
+  if (days < 7) return `${String(days)}d`;
   const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks}w`;
+  if (weeks < 5) return `${String(weeks)}w`;
   return new Date(timestamp).toLocaleDateString();
 };
 
@@ -237,7 +237,9 @@ class ConversationErrorBoundary extends Component<
           </div>
         );
       }
-      throw this.state.error;
+      throw this.state.error instanceof Error
+        ? this.state.error
+        : new Error(getErrorMessage(this.state.error));
     }
     return this.props.children;
   }

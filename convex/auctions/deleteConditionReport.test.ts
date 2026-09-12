@@ -12,6 +12,9 @@ vi.mock("../lib/auth", () => ({
 
 describe("deleteConditionReport mutation", () => {
   let mockCtx: MutationCtx;
+  // Captured raw mock so assertions don't reference the deprecated
+  // string-arg overload of MutationCtx["storage"]["delete"]
+  let storageDeleteMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -25,6 +28,7 @@ describe("deleteConditionReport mutation", () => {
     const mockStorage = {
       delete: vi.fn(),
     };
+    storageDeleteMock = mockStorage.delete;
     return {
       db: mockDb as unknown as MutationCtx["db"],
       storage: mockStorage as unknown as MutationCtx["storage"],
@@ -52,7 +56,7 @@ describe("deleteConditionReport mutation", () => {
     const result = await deleteConditionReportHandler(mockCtx, { auctionId });
 
     expect(result.success).toBe(true);
-    expect(mockCtx.storage.delete).toHaveBeenCalledWith(storageId);
+    expect(storageDeleteMock).toHaveBeenCalledWith(storageId);
     expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
       conditionReportUrl: undefined,
     });

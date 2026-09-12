@@ -18,12 +18,12 @@ vi.mock("./lib/auth", () => ({
   getAuthenticatedUserId: vi.fn(),
 }));
 
-type MockDb = {
+interface MockDb {
   get: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
   query: ReturnType<typeof vi.fn>;
-};
+}
 
 type MockMutationCtx = {
   db: MockDb;
@@ -66,7 +66,7 @@ describe("startConversation mutation", () => {
     recipientProfile?: unknown;
     existingConversation?: unknown;
     newConversationId?: string;
-    recentMessages?: Array<{ createdAt: number }>;
+    recentMessages?: { createdAt: number }[];
   } = {}) => {
     const profilesQuery = {
       withIndex: vi.fn().mockReturnThis(),
@@ -276,7 +276,7 @@ describe("startConversation mutation", () => {
 
     // Mirror the database: every inserted message counts toward the sender's
     // rate-limit window on the next call.
-    const insertedMessages: Array<{ createdAt: number }> = [];
+    const insertedMessages: { createdAt: number }[] = [];
     mockCtx.db.insert.mockImplementation((table: string) => {
       if (table === "messages") {
         insertedMessages.push({ createdAt: Date.now() });
@@ -357,7 +357,7 @@ describe("sendMessage mutation", () => {
     senderProfile = { userId: "user_buyer", name: "Ben Buyer" } as unknown,
   }: {
     conversation?: unknown;
-    recentMessages?: Array<{ createdAt: number }>;
+    recentMessages?: { createdAt: number }[];
     senderProfile?: unknown;
   } = {}) => {
     const messagesQuery = {
@@ -904,9 +904,9 @@ describe("getUnreadConversationCount query", () => {
   });
 
   /** Chainable stand-in for Convex's index filter builder. */
-  type MockIndexFilter = {
+  interface MockIndexFilter {
     eq: (field: string, value: string | boolean) => MockIndexFilter;
-  };
+  }
 
   const setupCtx = (
     buyerSideConversations: unknown[],

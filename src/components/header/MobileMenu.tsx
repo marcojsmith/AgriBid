@@ -57,7 +57,7 @@ function MessagesTile({ onClose }: { onClose: () => void }) {
         onClick={onClose}
         aria-label={
           unreadMessageCount
-            ? `Messages, ${unreadMessageCount} unread`
+            ? `Messages, ${String(unreadMessageCount)} unread`
             : undefined
         }
       >
