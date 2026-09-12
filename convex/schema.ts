@@ -166,6 +166,14 @@ export default defineSchema({
     .index("by_bidder_auction", ["bidderId", "auctionId"])
     .index("by_timestamp", ["timestamp"]),
 
+  // Per-user bid cooldown state (issue #283). One row per user, keyed by the
+  // same string userId used across the app (profile.userId / auth user id —
+  // there is no "users" table; ids are strings, see convex/lib/auth.ts).
+  bidCooldowns: defineTable({
+    userId: v.string(),
+    lastBidAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
   proxy_bids: defineTable({
     auctionId: v.id("auctions"),
     bidderId: v.string(),
