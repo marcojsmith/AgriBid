@@ -173,6 +173,7 @@ Consult these regularly. Keep them accurate when making changes.
 
 ## Branching & Commits
 
+- **Never commit or push directly to `main`, even when you have permission to bypass branch protection.** Always create a new branch for any change, however small, and merge it into `main` via a pull request.
 - Branch per feature/fix: `feature/description` or `bugfix/description`.
 - Follow the commit format in `Checklist.md`.
 - Group related changes per commit. No unrelated changes in one commit.
@@ -202,6 +203,7 @@ The version flows from `package.json` → Vite build → AdminDashboard display.
 
 ## Pull Requests
 
+- All changes to `main` go through a PR — no direct pushes to `main`, ever.
 - One PR per feature/fix. Clear description referencing relevant issues.
 - All automated tests must pass before requesting review.
 
