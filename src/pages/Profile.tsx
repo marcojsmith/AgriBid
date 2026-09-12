@@ -31,6 +31,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/currency";
 import { getErrorMessage } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
@@ -163,7 +164,7 @@ interface SellerRating {
 
 const formatPrice = (price?: number): string => {
   if (price === undefined) return "—";
-  return `R ${price.toLocaleString("en-ZA")}`;
+  return formatCurrency(price);
 };
 
 const formatMemberSince = (timestamp?: number): string => {

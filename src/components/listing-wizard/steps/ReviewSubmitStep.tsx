@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/currency";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 import { PHOTO_SLOTS } from "../constants";
@@ -96,7 +97,7 @@ export const ReviewSubmitStep = () => {
                   Starting Price
                 </p>
                 <p className="font-bold text-primary">
-                  R {formData.startingPrice.toLocaleString("en-ZA")}
+                  {formatCurrency(formData.startingPrice)}
                 </p>
               </div>
               <div>
@@ -104,7 +105,7 @@ export const ReviewSubmitStep = () => {
                   Reserve Price
                 </p>
                 <p className="font-bold">
-                  R {formData.reservePrice.toLocaleString("en-ZA")}
+                  {formatCurrency(formData.reservePrice)}
                 </p>
               </div>
             </div>

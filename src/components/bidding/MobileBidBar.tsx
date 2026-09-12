@@ -7,6 +7,7 @@ import type { Doc } from "convex/_generated/dataModel";
 
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/auth-client";
+import { formatCurrency } from "@/lib/currency";
 
 interface MobileBidBarProps {
   /** The auction document to display the current price and status for */
@@ -68,7 +69,7 @@ export const MobileBidBar = ({ auction }: MobileBidBarProps) => {
             Current bid
           </p>
           <p className="text-lg font-semibold tabular-nums text-primary whitespace-nowrap">
-            R {auction.currentPrice.toLocaleString("en-ZA")}
+            {formatCurrency(auction.currentPrice)}
           </p>
         </div>
 

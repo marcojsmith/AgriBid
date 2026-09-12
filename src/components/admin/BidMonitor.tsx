@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { formatCurrency } from "@/lib/currency";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -143,11 +144,11 @@ export function BidMonitor() {
                   <TableCell className="text-right font-bold">
                     {bid.status === "voided" ? (
                       <span className="line-through text-muted-foreground">
-                        R {bid.amount.toLocaleString()}
+                        {formatCurrency(bid.amount)}
                       </span>
                     ) : (
                       <span className="text-green-600">
-                        R {bid.amount.toLocaleString()}
+                        {formatCurrency(bid.amount)}
                       </span>
                     )}
                   </TableCell>

@@ -51,6 +51,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { formatCurrency } from "@/lib/currency";
 
 interface FeeFormData {
   name: string;
@@ -246,7 +247,7 @@ export function FeeManager() {
     if (fee.feeType === "percentage") {
       return `${(fee.value * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
     }
-    return `R ${fee.value.toLocaleString()}`;
+    return formatCurrency(fee.value);
   };
 
   if (fees === undefined) {
