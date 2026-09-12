@@ -10,6 +10,8 @@ import {
 
 import {
   generateFingerprint,
+  sanitizeAdditionalInfo,
+  sanitizeText,
   submitErrorReportHandler,
   getErrorReportsHandler,
   getErrorReportStatsHandler,
@@ -138,6 +140,66 @@ describe("Errors Backend", () => {
     });
   });
 
+  describe("sanitizeText", () => {
+    it("redacts email addresses", () => {
+      expect(sanitizeText("failed for user@example.com during signup")).toBe(
+        "failed for [redacted-email] during signup"
+      );
+    });
+
+    it("redacts JWT tokens", () => {
+      const jwt = ["a".repeat(25), "b".repeat(25), "c".repeat(25)].join(".");
+      expect(sanitizeText(`auth error: ${jwt}`)).toBe(
+        "auth error: [redacted-token]"
+      );
+    });
+
+    it("redacts sk_live API keys", () => {
+      const key = `sk_live_${"a".repeat(25)}`;
+      expect(sanitizeText(`stripe error ${key}`)).toBe(
+        "stripe error [redacted-token]"
+      );
+    });
+
+    it("redacts Bearer tokens", () => {
+      const token = "a".repeat(25);
+      expect(sanitizeText(`Bearer ${token}`)).toBe("[redacted-token]");
+    });
+
+    it("redacts card numbers", () => {
+      expect(sanitizeText("payment failed for 4111 1111 1111 1111")).toBe(
+        "payment failed for [redacted-card]"
+      );
+      expect(sanitizeText("payment failed for 4111-1111-1111-1111")).toBe(
+        "payment failed for [redacted-card]"
+      );
+    });
+
+    it("leaves clean text unchanged", () => {
+      const clean =
+        "Cannot read properties of undefined (reading 'foo') at Object.<anonymous> (/app/src/test.ts:10:15)";
+      expect(sanitizeText(clean)).toBe(clean);
+    });
+  });
+
+  describe("sanitizeAdditionalInfo", () => {
+    it("sanitizes string values and passes numbers through", () => {
+      expect(
+        sanitizeAdditionalInfo({
+          note: "retry for user@example.com",
+          attemptCount: 3,
+        })
+      ).toEqual({
+        note: "retry for [redacted-email]",
+        attemptCount: 3,
+      });
+    });
+
+    it("returns undefined as-is", () => {
+      expect(sanitizeAdditionalInfo(undefined)).toBeUndefined();
+    });
+  });
+
   describe("submitErrorReport", () => {
     const setupMockCtx = (
       existingReports: Partial<Doc<"errorReports">>[] = []
@@ -254,6 +316,56 @@ describe("Errors Backend", () => {
         expect.objectContaining({
           instanceCount: 6,
           userId: "u1",
+        })
+      );
+    });
+
+    it("should redact sensitive patterns before storage", async () => {
+      const mockCtx = setupMockCtx([]);
+      const jwt = ["a".repeat(25), "b".repeat(25), "c".repeat(25)].join(".");
+      const args = {
+        errorType: "Error",
+        errorMessage: "failed for user@example.com 4111 1111 1111 1111",
+        stackTrace: `Error: token ${jwt}\n    at fn (/app/src/test.ts:1:1)`,
+        additionalInfo: {
+          note: "contact admin@example.com",
+          retries: 2,
+        },
+        breadcrumbs: [],
+        metadata: { url: "test", userAgent: "test", timestamp: now },
+      };
+
+      const result = await submitErrorReportHandler(mockCtx, args);
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "errorReports",
+        expect.objectContaining({
+          errorMessage: "failed for [redacted-email] [redacted-card]",
+          stackTrace: `Error: token [redacted-token]\n    at fn (/app/src/test.ts:1:1)`,
+          additionalInfo: {
+            note: "contact [redacted-email]",
+            retries: 2,
+          },
+        })
+      );
+    });
+
+    it("should not modify clean messages during storage", async () => {
+      const mockCtx = setupMockCtx([]);
+      const args = {
+        errorType: "TypeError",
+        errorMessage: "Cannot read properties of undefined (reading 'foo')",
+        breadcrumbs: [],
+        metadata: { url: "test", userAgent: "test", timestamp: now },
+      };
+
+      await submitErrorReportHandler(mockCtx, args);
+
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "errorReports",
+        expect.objectContaining({
+          errorMessage: "Cannot read properties of undefined (reading 'foo')",
         })
       );
     });
