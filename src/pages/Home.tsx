@@ -15,6 +15,7 @@ import {
   DEFAULT_DESCRIPTION,
   DEFAULT_OG_IMAGE,
 } from "@/lib/seo";
+import { formatCurrency } from "@/lib/currency";
 import { AuctionCardSkeleton } from "@/components/AuctionCardSkeleton";
 import { FilterSidebar } from "@/components/FilterSidebar";
 import { cn } from "@/lib/utils";
@@ -149,8 +150,6 @@ export default function Home() {
     paramKeys: string[];
   }
 
-  const formatRand = (value: number) => `R ${value.toLocaleString("en-ZA")}`;
-
   /**
    * Format a human-readable "X–Y" range label, falling back to
    * "from"/"up to" phrasing when only one bound is set.
@@ -202,7 +201,7 @@ export default function Home() {
   if (minPrice !== undefined || maxPrice !== undefined) {
     activeFilterChips.push({
       key: "price",
-      label: formatRangeLabel("Price", formatRand, minPrice, maxPrice),
+      label: formatRangeLabel("Price", formatCurrency, minPrice, maxPrice),
       paramKeys: ["minPrice", "maxPrice"],
     });
   }

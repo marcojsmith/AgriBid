@@ -20,7 +20,7 @@ vi.mock("@/lib/auction-utils", () => ({
 }));
 
 vi.mock("@/lib/currency", () => ({
-  formatCurrency: vi.fn((amount: number) => `R ${amount.toLocaleString()}`),
+  formatCurrency: vi.fn((amount: number) => `R ${amount.toFixed(2)}`),
 }));
 
 describe("ModerationCard", () => {

@@ -1,5 +1,6 @@
 // app/src/components/auction/AuctionCardPrice.tsx
 import { CountdownTimer } from "@/components/CountdownTimer";
+import { formatCurrency } from "@/lib/currency";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 
 interface AuctionCardPriceProps {
@@ -40,7 +41,7 @@ export function AuctionCardPrice({
       >
         <p className="text-muted-foreground font-medium text-xs">Current bid</p>
         <p className="font-bold tabular-nums text-primary tracking-tight leading-none text-2xl md:text-3xl">
-          R {currentPrice.toLocaleString("en-ZA")}
+          {formatCurrency(currentPrice)}
         </p>
       </div>
       {!isClosed && (
