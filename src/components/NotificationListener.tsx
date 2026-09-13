@@ -5,6 +5,7 @@ import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 
 import { useSession } from "@/lib/auth-client";
+import { formatCurrency } from "@/lib/currency";
 
 /**
  * Monitors auctions the user is participating in (bidding/watching)
@@ -69,7 +70,7 @@ export const NotificationListener = () => {
               `Congratulations! You won the auction for ${auction.title}!`,
               {
                 duration: 10000,
-                description: `Winning Bid: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
+                description: `Winning Bid: ${formatCurrency(auction.currentPrice)}`,
               }
             );
           } else if (isSeller) {
@@ -77,12 +78,12 @@ export const NotificationListener = () => {
               `Success! Your equipment ${auction.title} has been sold!`,
               {
                 duration: 10000,
-                description: `Final Price: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
+                description: `Final Price: ${formatCurrency(auction.currentPrice)}`,
               }
             );
           } else {
             toast.info(`Auction ended: ${auction.title} has been sold.`, {
-              description: `Final Price: R ${auction.currentPrice.toLocaleString("en-ZA")}`,
+              description: `Final Price: ${formatCurrency(auction.currentPrice)}`,
             });
           }
         } else {

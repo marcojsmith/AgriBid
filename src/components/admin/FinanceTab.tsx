@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { formatCurrency } from "@/lib/currency";
 
 import { StatCard } from "./StatCard";
 
@@ -52,7 +53,7 @@ export function FinanceTab() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
           label="Total Sales Volume"
-          value={`R ${stats.totalSalesVolume.toLocaleString()}`}
+          value={formatCurrency(stats.totalSalesVolume)}
           icon={<DollarSign className="h-5 w-5" />}
           color="text-success"
           padding="p-6"
@@ -61,7 +62,7 @@ export function FinanceTab() {
         />
         <StatCard
           label="Total Fees Collected"
-          value={`R ${stats.totalFeesCollected.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatCurrency(stats.totalFeesCollected)}
           icon={<DollarSign className="h-5 w-5" />}
           color="text-primary"
           padding="p-6"
@@ -70,7 +71,7 @@ export function FinanceTab() {
         />
         <StatCard
           label="Buyer Fees"
-          value={`R ${stats.buyerFeesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatCurrency(stats.buyerFeesTotal)}
           icon={<Users className="h-5 w-5" />}
           color="text-primary"
           padding="p-6"
@@ -79,7 +80,7 @@ export function FinanceTab() {
         />
         <StatCard
           label="Seller Fees"
-          value={`R ${stats.sellerFeesTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={formatCurrency(stats.sellerFeesTotal)}
           icon={<Building2 className="h-5 w-5" />}
           color="text-success"
           padding="p-6"
@@ -132,17 +133,13 @@ export function FinanceTab() {
                     </TableCell>
                     <TableCell className="font-medium">{sale.title}</TableCell>
                     <TableCell className="text-right font-bold">
-                      R {sale.amount.toLocaleString()}
+                      {formatCurrency(sale.amount)}
                     </TableCell>
                     <TableCell className="text-right">
                       {sale.fees.length > 0 ? (
                         <div className="space-y-1">
                           <div className="font-medium">
-                            R{" "}
-                            {totalFees.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
+                            {formatCurrency(totalFees)}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {sale.fees

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { isValidCallbackUrl } from "@/lib/utils";
 import { useSession } from "@/lib/auth-client";
+import { formatCurrency } from "@/lib/currency";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
@@ -87,7 +88,7 @@ export const BiddingPanel = ({
             Auction {auction.status}
           </Badge>
           <h3 className="text-3xl font-semibold tabular-nums text-primary tracking-tighter">
-            R {auction.currentPrice.toLocaleString("en-ZA")}
+            {formatCurrency(auction.currentPrice)}
           </h3>
           <p className="text-xs font-medium text-muted-foreground">
             Final Price
@@ -198,11 +199,11 @@ export const BiddingPanel = ({
 
       if (result.success) {
         toast.success(
-          `Bid of R ${pendingBid.amount.toLocaleString("en-ZA")} placed successfully!`
+          `Bid of ${formatCurrency(pendingBid.amount)} placed successfully!`
         );
         if (result.proxyBidActive && result.confirmedMaxBid) {
           toast.info(
-            `Your proxy bid is active up to R ${result.confirmedMaxBid.toLocaleString("en-ZA")}`
+            `Your proxy bid is active up to ${formatCurrency(result.confirmedMaxBid)}`
           );
         }
       }
@@ -229,7 +230,7 @@ export const BiddingPanel = ({
             }`}
           >
             <span className="text-4xl font-bold tabular-nums text-primary tracking-tighter">
-              R {auction.currentPrice.toLocaleString("en-ZA")}
+              {formatCurrency(auction.currentPrice)}
             </span>
             {!isEnded && (
               <Badge
@@ -257,7 +258,7 @@ export const BiddingPanel = ({
             Auction Ended
           </p>
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            Final Price: R {auction.currentPrice.toLocaleString("en-ZA")}
+            Final Price: {formatCurrency(auction.currentPrice)}
           </p>
         </div>
       ) : (
@@ -280,7 +281,7 @@ export const BiddingPanel = ({
             <span>
               Next minimum bid:{" "}
               <span className="text-foreground tabular-nums">
-                R {nextMinBid.toLocaleString("en-ZA")}
+                {formatCurrency(nextMinBid)}
               </span>
             </span>
           </div>

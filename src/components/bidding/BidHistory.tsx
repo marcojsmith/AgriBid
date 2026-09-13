@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/accordion";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/currency";
 
 interface BidHistoryProps {
   auctionId: Id<"auctions">;
@@ -141,7 +142,7 @@ export const BidHistory = ({ auctionId }: BidHistoryProps) => {
                       <p
                         className={`text-base font-bold tracking-tight ${isHighest ? "text-primary" : "text-foreground"}`}
                       >
-                        R {bid.amount.toLocaleString("en-ZA")}
+                        {formatCurrency(bid.amount)}
                       </p>
                     </div>
                   </div>
