@@ -23,7 +23,9 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)                                             |
 | `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)                                              |
 
-**URLs:** Dev: `https://localhost:5173` · Prod: `https://agribid.vercel.app`
+**URLs:** Dev: `https://localhost:5173` · Dev (Tailscale): `https://100.95.66.9:5173` · Prod: `https://agribid.vercel.app`
+
+When sharing local dev-server changes for review, give the Tailscale URL (`https://100.95.66.9:5173`) instead of `localhost` so it's reachable from any device on the tailnet (`vite.config.ts` already sets `host: true`).
 
 ---
 
