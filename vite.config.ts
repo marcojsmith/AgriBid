@@ -25,17 +25,24 @@ export default defineConfig(() => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            "vendor-react": ["react", "react-dom", "react-router-dom"],
-            "vendor-convex": ["convex"],
-            "vendor-clerk": ["@clerk/clerk-react"],
-            "vendor-ui": [
-              "lucide-react",
-              "@radix-ui/react-accordion",
-              "@radix-ui/react-alert-dialog",
-              "@radix-ui/react-dialog",
-              "@radix-ui/react-slot",
-              "sonner",
+          codeSplitting: {
+            groups: [
+              {
+                name: "vendor-react",
+                test: /node_modules[\\/](react|react-dom|react-router-dom)[\\/]/,
+              },
+              {
+                name: "vendor-convex",
+                test: /node_modules[\\/]convex[\\/]/,
+              },
+              {
+                name: "vendor-clerk",
+                test: /node_modules[\\/]@clerk[\\/]clerk-react[\\/]/,
+              },
+              {
+                name: "vendor-ui",
+                test: /node_modules[\\/](lucide-react|@radix-ui[\\/]react-accordion|@radix-ui[\\/]react-alert-dialog|@radix-ui[\\/]react-dialog|@radix-ui[\\/]react-slot|sonner)[\\/]/,
+              },
             ],
           },
         },
