@@ -96,16 +96,18 @@ describe("deleteDraft mutation", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.delete).toHaveBeenCalledWith(auctionId);
+    expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", auctionId);
 
     // Check that counters were updated
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "counters",
       "counter_id",
       expect.objectContaining({
         draft: 0,
       })
     );
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "counters",
       "counter_id",
       expect.objectContaining({
         total: 0,

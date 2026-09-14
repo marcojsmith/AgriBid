@@ -46,7 +46,7 @@ export const placeBidHandler = async (
     );
   }
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) throw new ConvexError("Auction not found");
   if (auction.status !== "active") throw new ConvexError("Auction not active");
 
@@ -72,7 +72,7 @@ export const placeBidHandler = async (
   // Record the cooldown only after the bid succeeds, so a rejected bid
   // (e.g. "Auction ended") doesn't consume the cooldown window.
   if (cooldown) {
-    await ctx.db.patch(cooldown._id, { lastBidAt: now });
+    await ctx.db.patch("bidCooldowns", cooldown._id, { lastBidAt: now });
   } else {
     await ctx.db.insert("bidCooldowns", { userId, lastBidAt: now });
   }

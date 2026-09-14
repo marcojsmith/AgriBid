@@ -117,7 +117,10 @@ export async function calculateUserBidStats(
   for (let i = 0; i < auctionIds.length; i += CHUNK_SIZE) {
     const chunk = auctionIds.slice(i, i + CHUNK_SIZE);
     const chunkEntries = await Promise.all(
-      chunk.map(async (id) => ({ id, auction: await ctx.db.get(id) }))
+      chunk.map(async (id) => ({
+        id,
+        auction: await ctx.db.get("auctions", id),
+      }))
     );
     auctionEntries.push(...chunkEntries);
   }

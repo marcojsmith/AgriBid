@@ -65,7 +65,7 @@ describe("publishAuction mutation", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
       status: "pending_review",
     });
   });

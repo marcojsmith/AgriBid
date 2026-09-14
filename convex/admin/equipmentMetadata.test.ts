@@ -69,7 +69,7 @@ const setupMockCtx = (
 
 const setupGetMockCtx = (metadataItems: unknown[]) => {
   const mockDb = {
-    get: vi.fn((id: string) => {
+    get: vi.fn((_table: string, id: string) => {
       if (id === "cat_1") return Promise.resolve({ name: "Tractors" });
       if (id === "cat_2") return Promise.resolve({ name: "Harvesters" });
       return Promise.resolve(null);
@@ -143,6 +143,7 @@ describe("Equipment Metadata Backend", () => {
     });
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentMetadata",
       "make_123",
       expect.objectContaining({
         models: ["8R", "7R"],
@@ -227,6 +228,7 @@ describe("Equipment Metadata Backend", () => {
 
     expect(result).toBe("make_inactive");
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentMetadata",
       "make_inactive",
       expect.objectContaining({
         isActive: true,
@@ -353,6 +355,7 @@ describe("updateEquipmentMake", () => {
     });
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentMetadata",
       "make_123",
       expect.objectContaining({
         make: "John Deere Updated",
@@ -530,6 +533,7 @@ describe("deleteEquipmentMake", () => {
     });
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentMetadata",
       "make_123",
       expect.objectContaining({
         isActive: false,
@@ -597,6 +601,7 @@ describe("removeModelFromMake", () => {
     });
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentMetadata",
       "make_123",
       expect.objectContaining({
         models: ["8R", "6R"],

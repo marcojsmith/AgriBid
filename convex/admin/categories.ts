@@ -65,7 +65,9 @@ export const addCategoryHandler = async (
   if (existing) {
     if (!existing.isActive) {
       // Reactivate instead of creating new
-      await ctx.db.patch(existing._id, { isActive: true });
+      await ctx.db.patch("equipmentCategories", existing._id, {
+        isActive: true,
+      });
       return existing._id;
     }
     throw new ConvexError("Category already exists");
@@ -100,7 +102,7 @@ export const updateCategoryHandler = async (
     throw new ConvexError("Unauthorized: Admin access required");
   }
 
-  const existing = await ctx.db.get(args.id);
+  const existing = await ctx.db.get("equipmentCategories", args.id);
   if (!existing) {
     throw new ConvexError("Category not found");
   }
@@ -127,7 +129,7 @@ export const updateCategoryHandler = async (
     }
   }
 
-  await ctx.db.patch(args.id, { name: trimmedName });
+  await ctx.db.patch("equipmentCategories", args.id, { name: trimmedName });
 };
 
 export const updateCategory = mutation({
@@ -152,7 +154,7 @@ export const deleteCategoryHandler = async (
     throw new ConvexError("Unauthorized: Admin access required");
   }
 
-  const existing = await ctx.db.get(args.id);
+  const existing = await ctx.db.get("equipmentCategories", args.id);
   if (!existing) {
     throw new ConvexError("Category not found");
   }
@@ -182,7 +184,7 @@ export const deleteCategoryHandler = async (
     );
   }
 
-  await ctx.db.patch(args.id, { isActive: false });
+  await ctx.db.patch("equipmentCategories", args.id, { isActive: false });
 };
 
 export const deleteCategory = mutation({
@@ -229,7 +231,7 @@ export const fixMetadataHandler = async (ctx: MutationCtx) => {
       }
     }
 
-    await ctx.db.patch(item._id, updates);
+    await ctx.db.patch("equipmentMetadata", item._id, updates);
     metadataFixed++;
   }
 
@@ -249,7 +251,9 @@ export const fixMetadataHandler = async (ctx: MutationCtx) => {
       }
 
       if (match?.categoryId) {
-        await ctx.db.patch(auction._id, { categoryId: match.categoryId });
+        await ctx.db.patch("auctions", auction._id, {
+          categoryId: match.categoryId,
+        });
         auctionsFixed++;
       }
     }

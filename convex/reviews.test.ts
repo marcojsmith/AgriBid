@@ -385,7 +385,7 @@ describe("respondToReview mutation", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(reviewId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("reviews", reviewId, {
       response: {
         text: "Thank you for the purchase!",
         createdAt: expect.any(Number) as number,

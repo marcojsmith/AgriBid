@@ -258,7 +258,7 @@ export const updatePlatformFee = mutation({
     await requireAdmin(ctx);
 
     const { feeId, ...updates } = args;
-    const fee = await ctx.db.get(feeId);
+    const fee = await ctx.db.get("platformFees", feeId);
 
     if (!fee) {
       throw new Error("Fee not found");
@@ -292,7 +292,7 @@ export const updatePlatformFee = mutation({
       updatedAt: Date.now(),
     };
 
-    await ctx.db.patch(feeId, updatedFields);
+    await ctx.db.patch("platformFees", feeId, updatedFields);
 
     await logAudit(ctx, {
       action: "UPDATE_FEE",
@@ -322,13 +322,13 @@ export const deletePlatformFee = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    const fee = await ctx.db.get(args.feeId);
+    const fee = await ctx.db.get("platformFees", args.feeId);
 
     if (!fee) {
       throw new Error("Fee not found");
     }
 
-    await ctx.db.patch(args.feeId, {
+    await ctx.db.patch("platformFees", args.feeId, {
       isActive: false,
       deletedAt: Date.now(),
       updatedAt: Date.now(),
@@ -354,13 +354,13 @@ export const reorderPlatformFees = mutation({
     await requireAdmin(ctx);
 
     for (const [i, feeId] of args.feeIds.entries()) {
-      const fee = await ctx.db.get(feeId);
+      const fee = await ctx.db.get("platformFees", feeId);
 
       if (!fee) {
         throw new Error(`Fee not found: ${feeId}`);
       }
 
-      await ctx.db.patch(feeId, {
+      await ctx.db.patch("platformFees", feeId, {
         sortOrder: i,
         updatedAt: Date.now(),
       });
@@ -502,7 +502,7 @@ export const getAuctionFeesForUser = query({
     ),
   }),
   handler: async (ctx, args) => {
-    const auction = await ctx.db.get(args.auctionId);
+    const auction = await ctx.db.get("auctions", args.auctionId);
 
     if (!auction) {
       throw new Error("Auction not found");
@@ -540,7 +540,7 @@ export const getAuctionFeesForUser = query({
     for (const fee of fees) {
       if (!activeFeeIds.includes(fee.feeId)) continue;
 
-      const platformFee = await ctx.db.get(fee.feeId);
+      const platformFee = await ctx.db.get("platformFees", fee.feeId);
       if (!platformFee) continue;
 
       const feeData = {

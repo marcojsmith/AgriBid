@@ -227,6 +227,7 @@ describe("Settings Config", () => {
       });
 
       expect(mockDb.patch).toHaveBeenCalledWith(
+        "settings",
         "s1",
         expect.objectContaining({
           value: 100,
@@ -594,6 +595,7 @@ describe("Settings Config", () => {
       });
 
       expect(mockDb.patch).toHaveBeenCalledWith(
+        "settings",
         "s1",
         expect.objectContaining({
           value: "New Name",

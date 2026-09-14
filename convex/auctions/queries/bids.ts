@@ -52,7 +52,7 @@ export const getAuctionBidsHandler = async (
   );
   const bidderNames = new Map<string, string>();
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   const auth = await getAuthenticatedProfile(ctx);
   const isAdmin = auth?.profile?.role === "admin";
   // Guard against undefined === undefined: a missing auction doc combined

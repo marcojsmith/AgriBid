@@ -103,7 +103,7 @@ export const reviewKYC = mutation({
     if (args.decision === "approve") {
       const wasVerified = profile.isVerified;
 
-      await ctx.db.patch(profile._id, {
+      await ctx.db.patch("profiles", profile._id, {
         kycStatus: "verified",
         isVerified: true,
         // clear any previous rejection reason and record update time
@@ -143,7 +143,7 @@ export const reviewKYC = mutation({
 
       const wasVerified = profile.isVerified;
 
-      await ctx.db.patch(profile._id, {
+      await ctx.db.patch("profiles", profile._id, {
         kycStatus: "rejected",
         kycRejectionReason: reason,
         isVerified: false,

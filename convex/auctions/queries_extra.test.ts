@@ -233,15 +233,17 @@ describe("Queries Extra Coverage", () => {
       { auctionId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
       { auctionId: "a2", amount: 200, bidderId: "u1", timestamp: 200 },
     ]);
-    vi.mocked(mockCtx.db.get).mockImplementation((id: unknown) => {
-      return {
-        _id: id,
-        status: "active",
-        currentPrice: id === "a1" ? 100 : 200,
-        winnerId: "u1",
-        title: id,
-      } as unknown as Doc<"auctions">;
-    });
+    vi.mocked(mockCtx.db.get).mockImplementation(
+      (_table: unknown, id: unknown) => {
+        return {
+          _id: id,
+          status: "active",
+          currentPrice: id === "a1" ? 100 : 200,
+          winnerId: "u1",
+          title: id,
+        } as unknown as Doc<"auctions">;
+      }
+    );
 
     const result = await getMyBidsHandler(mockCtx as unknown as QueryCtx, {
       paginationOpts: { numItems: 1, cursor: "1" },

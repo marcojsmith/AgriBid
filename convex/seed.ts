@@ -474,7 +474,7 @@ async function clearTable(
   let deletedCount = 0;
   let batch = await ctx.db.query(tableName).take(BATCH_SIZE);
   while (batch.length > 0) {
-    await Promise.all(batch.map((item) => ctx.db.delete(item._id)));
+    await Promise.all(batch.map((item) => ctx.db.delete(tableName, item._id)));
     deletedCount += batch.length;
     batch = await ctx.db.query(tableName).take(BATCH_SIZE);
   }
@@ -496,7 +496,9 @@ async function deleteNonAdminProfiles(ctx: MutationCtx): Promise<number> {
 
   for (let i = 0; i < nonAdminProfiles.length; i += BATCH_SIZE) {
     const batch = nonAdminProfiles.slice(i, i + BATCH_SIZE);
-    await Promise.all(batch.map((profile) => ctx.db.delete(profile._id)));
+    await Promise.all(
+      batch.map((profile) => ctx.db.delete("profiles", profile._id))
+    );
   }
 
   return nonAdminProfiles.length;
@@ -810,7 +812,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     if (!existing) {
       await ctx.db.insert("equipmentMetadata", metadataData);
     } else {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("equipmentMetadata", existing._id, {
         categoryId, // Ensure it's linked to the new category
         isActive: true, // Ensure it's active
         models: Array.from(new Set([...existing.models, ...item.models])),
@@ -840,7 +842,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   const sellerId: string = sellerProfile.userId;
 
   if (sellerProfile.role !== "seller") {
-    await ctx.db.patch(sellerProfile._id, {
+    await ctx.db.patch("profiles", sellerProfile._id, {
       role: "seller",
       isVerified: true,
       updatedAt: now,
@@ -854,7 +856,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     .first();
 
   if (adminProfile && adminProfile.role !== "admin") {
-    await ctx.db.patch(adminProfile._id, {
+    await ctx.db.patch("profiles", adminProfile._id, {
       role: "admin",
       isVerified: true,
       updatedAt: now,
@@ -1476,7 +1478,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     if (!existing) {
       await ctx.db.insert("auctions", auctionData);
     } else {
-      await ctx.db.patch(existing._id, auctionData);
+      await ctx.db.patch("auctions", existing._id, auctionData);
     }
   }
 
@@ -1694,7 +1696,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       });
     }
 
-    await ctx.db.patch(conversationId, { lastMessageAt });
+    await ctx.db.patch("conversations", conversationId, { lastMessageAt });
   }
 
   // 3.13. Seed notifications (only while the table is empty)
@@ -1871,7 +1873,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       }
     }
     for (const [auctionId, bid] of topBidByAuction) {
-      const auction = await ctx.db.get(auctionId);
+      const auction = await ctx.db.get("auctions", auctionId);
       if (!auction) continue;
       await ctx.db.insert("userActivity", {
         userId: bid.bidderId,

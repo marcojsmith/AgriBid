@@ -110,7 +110,7 @@ describe("Internal Logic Coverage", () => {
         expect.stringContaining("Failed to delete condition report"),
         expect.anything()
       );
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("d1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "d1");
 
       spy.mockRestore();
     });
@@ -191,6 +191,7 @@ describe("Internal Logic Coverage", () => {
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "sold",
@@ -279,6 +280,7 @@ describe("Internal Logic Coverage", () => {
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "sold",
@@ -318,6 +320,7 @@ describe("Internal Logic Coverage", () => {
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "unsold",
@@ -360,6 +363,7 @@ describe("Internal Logic Coverage", () => {
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "unsold",
@@ -401,6 +405,7 @@ describe("Internal Logic Coverage", () => {
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "unsold",
@@ -465,6 +470,7 @@ describe("Internal Logic Coverage", () => {
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "sold",
@@ -505,7 +511,7 @@ describe("Internal Logic Coverage", () => {
 
       await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
 
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("d1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "d1");
     });
   });
 

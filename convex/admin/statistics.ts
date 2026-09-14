@@ -74,7 +74,7 @@ async function upsertCounter(
   };
 
   if (existing) {
-    await ctx.db.patch(existing._id, data);
+    await ctx.db.patch("counters", existing._id, data);
   } else {
     await ctx.db.insert("counters", {
       name,

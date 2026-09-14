@@ -115,7 +115,7 @@ export async function getCurrentHighestBidAmount(
   ctx: QueryCtx | MutationCtx,
   auctionId: Id<"auctions">
 ): Promise<number> {
-  const auction = await ctx.db.get(auctionId);
+  const auction = await ctx.db.get("auctions", auctionId);
   if (!auction) {
     throw new Error(`Auction ${auctionId} not found`);
   }
@@ -187,7 +187,7 @@ async function upsertProxyBid(
     .unique();
 
   if (existingProxy) {
-    await ctx.db.patch(existingProxy._id, {
+    await ctx.db.patch("proxy_bids", existingProxy._id, {
       maxBid,
       updatedAt: Date.now(),
     });
@@ -213,7 +213,7 @@ async function extendAuctionIfNeeded(
   now: number
 ) {
   if (auction.endTime && auction.endTime - now < SOFT_CLOSE_THRESHOLD_MS) {
-    await ctx.db.patch(auction._id, {
+    await ctx.db.patch("auctions", auction._id, {
       endTime: now + SOFT_CLOSE_THRESHOLD_MS,
       isExtended: true,
     });
@@ -254,7 +254,7 @@ async function resolveProxyBids(
   bidderId: string,
   bidAmount: number
 ): Promise<HandleNewBidResult | null> {
-  const auction = await ctx.db.get(auctionId);
+  const auction = await ctx.db.get("auctions", auctionId);
   if (!auction) {
     console.warn(
       `Attempted to resolve proxy bids for non-existent auction ${auctionId}`
@@ -306,7 +306,7 @@ async function resolveProxyBids(
         status: "valid",
       });
 
-      await ctx.db.patch(auctionId, {
+      await ctx.db.patch("auctions", auctionId, {
         currentPrice: validatedAmount,
         winnerId: highestProxy.bidderId,
       });
@@ -347,7 +347,7 @@ async function resolveProxyBids(
         status: "valid",
       });
 
-      await ctx.db.patch(auctionId, {
+      await ctx.db.patch("auctions", auctionId, {
         currentPrice: validatedAmount,
         winnerId: highestProxy.bidderId,
       });
@@ -388,7 +388,7 @@ export async function handleNewBid(
   bidAmount: number,
   maxBid?: number
 ): Promise<HandleNewBidResult> {
-  const auction = await ctx.db.get(auctionId);
+  const auction = await ctx.db.get("auctions", auctionId);
   if (!auction) throw new Error("Auction not found");
 
   // 1. Validation
@@ -411,7 +411,7 @@ export async function handleNewBid(
   });
 
   // 4. Update Auction Price and handle Soft Close
-  await ctx.db.patch(auctionId, {
+  await ctx.db.patch("auctions", auctionId, {
     currentPrice: bidAmount,
     winnerId: bidderId,
   });

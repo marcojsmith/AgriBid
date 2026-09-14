@@ -485,7 +485,9 @@ describe("Notifications Coverage", () => {
       });
 
       expect(mockCtx.db.patch).toHaveBeenCalledTimes(1);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("n1", { isRead: true });
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("notifications", "n1", {
+        isRead: true,
+      });
       expect(mockCtx.db.insert).not.toHaveBeenCalled();
     });
   });

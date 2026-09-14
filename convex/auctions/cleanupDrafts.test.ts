@@ -85,7 +85,7 @@ describe("cleanupDrafts mutation", () => {
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage_front");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage_extra1");
 
-    expect(mockCtx.db.delete).toHaveBeenCalledWith("draft_123");
+    expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "draft_123");
     expect(mockCtx.db.insert).toHaveBeenCalledWith(
       "auditLogs",
       expect.objectContaining({

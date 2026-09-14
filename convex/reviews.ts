@@ -63,7 +63,7 @@ export const submitReviewHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     throw new ConvexError("Auction not found");
   }
@@ -141,7 +141,7 @@ export const respondToReviewHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const review = await ctx.db.get(args.reviewId);
+  const review = await ctx.db.get("reviews", args.reviewId);
   if (!review) {
     throw new ConvexError("Review not found");
   }
@@ -160,7 +160,7 @@ export const respondToReviewHandler = async (
     throw new ConvexError("Response text cannot be empty");
   }
 
-  await ctx.db.patch(args.reviewId, {
+  await ctx.db.patch("reviews", args.reviewId, {
     response: { text: args.text, createdAt: Date.now() },
   });
 

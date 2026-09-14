@@ -127,6 +127,7 @@ describe("Presence Coverage", () => {
       ).handler(mockCtx, {});
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "presence",
         "p1",
         expect.objectContaining({
           updatedAt: expect.any(Number) as unknown,

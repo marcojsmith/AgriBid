@@ -182,7 +182,7 @@ export async function toAuctionSummary(
   auction: Doc<"auctions">
 ) {
   const category = auction.categoryId
-    ? await ctx.db.get(auction.categoryId)
+    ? await ctx.db.get("equipmentCategories", auction.categoryId)
     : null;
 
   return {
@@ -272,7 +272,9 @@ export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", auction.sellerId))
       .unique(),
-    auction.categoryId ? ctx.db.get(auction.categoryId) : null,
+    auction.categoryId
+      ? ctx.db.get("equipmentCategories", auction.categoryId)
+      : null,
     ctx.auth.getUserIdentity(),
   ]);
   const isAuthenticated = identity !== null;

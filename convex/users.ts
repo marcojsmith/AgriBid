@@ -127,7 +127,7 @@ export const syncUserHandler = async (ctx: MutationCtx) => {
         description: "Account created",
       });
     } else {
-      await ctx.db.patch(existingProfile._id, {
+      await ctx.db.patch("profiles", existingProfile._id, {
         ...identityFields,
         updatedAt: now,
       });
@@ -397,7 +397,7 @@ export const verifyUserHandler = async (
 
   const now = Date.now();
   if (!profile.isVerified) {
-    await ctx.db.patch(profile._id, {
+    await ctx.db.patch("profiles", profile._id, {
       isVerified: true,
       // KYC submission includes the user's email, so approval verifies it.
       ...(profile.kycEmail ? { emailVerified: true } : {}),
@@ -458,7 +458,7 @@ export const promoteToAdminHandler = async (
   if (profile.role === "admin") return { success: true }; // No-op
 
   const now = Date.now();
-  await ctx.db.patch(profile._id, {
+  await ctx.db.patch("profiles", profile._id, {
     role: "admin",
     updatedAt: now,
   });
@@ -540,7 +540,7 @@ export const submitKYCHandler = async (
 
   const wasPending = profile.kycStatus === "pending";
 
-  await ctx.db.patch(profile._id, {
+  await ctx.db.patch("profiles", profile._id, {
     kycStatus: "pending",
     kycDocuments: args.documents,
     firstName: encFirstName,
@@ -682,7 +682,7 @@ export const deleteMyKYCDocumentHandler = async (
 
   // Remove from profile
   const updatedDocs = kycDocuments.filter((id) => id !== storageId);
-  await ctx.db.patch(profile._id, {
+  await ctx.db.patch("profiles", profile._id, {
     kycDocuments: updatedDocs,
     updatedAt: Date.now(),
   });
@@ -735,7 +735,7 @@ export const updateMyProfileHandler = async (
     throw new ConvexError("Profile not found");
   }
 
-  await ctx.db.patch(profile._id, {
+  await ctx.db.patch("profiles", profile._id, {
     ...args,
     updatedAt: Date.now(),
   });

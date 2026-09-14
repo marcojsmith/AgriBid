@@ -351,6 +351,7 @@ describe("Create Mutations", () => {
       );
       expect(result).toBe("a1");
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           title: "T",
@@ -536,6 +537,7 @@ describe("Create Mutations", () => {
         } as PartialDraftArgs as SaveDraftArgs
       );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           minIncrement: 500,

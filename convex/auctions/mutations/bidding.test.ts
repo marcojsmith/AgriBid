@@ -444,6 +444,7 @@ describe("Bidding Coverage", () => {
         expect.objectContaining({ amount: 1050, bidderId: "u1" })
       );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({ currentPrice: 1050 })
       );
@@ -517,6 +518,7 @@ describe("Bidding Coverage", () => {
       );
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           currentPrice: 1100,
@@ -541,6 +543,7 @@ describe("Bidding Coverage", () => {
       );
 
       expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           currentPrice: 1000,
@@ -635,6 +638,7 @@ describe("Bidding Coverage", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "bidCooldowns",
         "bc1",
         expect.objectContaining({ lastBidAt: expect.any(Number) })
       );

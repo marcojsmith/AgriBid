@@ -313,6 +313,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       }) as Record<string, unknown>;
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           images: expectedImages,
@@ -342,7 +343,7 @@ describe("Mutations Branch Coverage Expansion", () => {
         expect.stringContaining("Failed to delete condition report"),
         expect.any(Error)
       );
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("a1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "a1");
       spy.mockRestore();
     });
   });
@@ -390,7 +391,10 @@ describe("Mutations Branch Coverage Expansion", () => {
   describe("dismissFlagHandler branches", () => {
     it("should handle missing authUser for adminId", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
-      vi.mocked(mockCtx.db.get).mockImplementation(((id: string) => {
+      vi.mocked(mockCtx.db.get).mockImplementation(((
+        _table: string,
+        id: string
+      ) => {
         if (id === "f1")
           return Promise.resolve({
             _id: "f1",

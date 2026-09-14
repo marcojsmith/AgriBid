@@ -46,7 +46,7 @@ async function requireParticipant(
   conversationId: Id<"conversations">,
   callerId: string
 ): Promise<Doc<"conversations">> {
-  const conversation = await ctx.db.get(conversationId);
+  const conversation = await ctx.db.get("conversations", conversationId);
   if (!conversation) {
     throw new ConvexError("Conversation not found");
   }
@@ -100,7 +100,7 @@ async function insertMessageAndNotify(
     createdAt: now,
   });
 
-  await ctx.db.patch(conversationId, { lastMessageAt: now });
+  await ctx.db.patch("conversations", conversationId, { lastMessageAt: now });
 
   const senderProfile = await ctx.db
     .query("profiles")
@@ -189,7 +189,7 @@ export const startConversationHandler = async (
     conversationId = existing._id;
     // Re-point the reused thread at the newly supplied auction (if any)
     // without ever clearing an existing auctionId with an explicit undefined.
-    await ctx.db.patch(conversationId, {
+    await ctx.db.patch("conversations", conversationId, {
       lastMessageAt: now,
       ...(args.auctionId ? { auctionId: args.auctionId } : {}),
     });
@@ -582,7 +582,7 @@ export const markReadHandler = async (
   );
 
   for (const message of toMark) {
-    await ctx.db.patch(message._id, { isRead: true });
+    await ctx.db.patch("messages", message._id, { isRead: true });
   }
 
   return { success: true, markedCount: toMark.length };

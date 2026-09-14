@@ -329,7 +329,7 @@ export const getAuctionByIdHandler = async (
   ctx: QueryCtx,
   args: { auctionId: Id<"auctions"> }
 ) => {
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) return null;
 
   const PUBLIC_STATUSES = ["active", "sold", "unsold"];

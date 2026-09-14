@@ -65,13 +65,13 @@ export const voidBid = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    const bid = await ctx.db.get(args.bidId);
+    const bid = await ctx.db.get("bids", args.bidId);
     if (!bid) throw new Error("Bid not found");
     if (bid.status === "voided") return { success: true };
 
-    await ctx.db.patch(args.bidId, { status: "voided" });
+    await ctx.db.patch("bids", args.bidId, { status: "voided" });
 
-    const auction = await ctx.db.get(bid.auctionId);
+    const auction = await ctx.db.get("auctions", bid.auctionId);
     if (!auction) throw new Error("Auction not found");
 
     const latestValidBid = await ctx.db
@@ -94,7 +94,7 @@ export const voidBid = mutation({
       patchData.winnerId = newWinnerId;
     }
 
-    await ctx.db.patch(bid.auctionId, patchData);
+    await ctx.db.patch("auctions", bid.auctionId, patchData);
 
     await logAudit(ctx, {
       action: "VOID_BID",
@@ -126,7 +126,7 @@ export const resolveTicket = mutation({
       throw new Error("Admin identity not found or invalid");
     }
 
-    const ticket = await ctx.db.get(args.ticketId);
+    const ticket = await ctx.db.get("supportTickets", args.ticketId);
     if (!ticket) {
       throw new Error("Ticket not found");
     }
@@ -135,7 +135,7 @@ export const resolveTicket = mutation({
       return { success: true };
     }
 
-    await ctx.db.patch(args.ticketId, {
+    await ctx.db.patch("supportTickets", args.ticketId, {
       status: "resolved",
       updatedAt: Date.now(),
       resolvedBy: authUser.userId ?? authUser._id,
@@ -252,7 +252,7 @@ export const syncAuctionWinners = mutation({
       const currentWinnerId = highestBid ? highestBid.bidderId : null;
 
       if (auction.winnerId !== currentWinnerId) {
-        await ctx.db.patch(auction._id, {
+        await ctx.db.patch("auctions", auction._id, {
           winnerId: currentWinnerId,
         });
         updatedCount++;

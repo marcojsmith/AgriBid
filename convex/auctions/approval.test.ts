@@ -85,6 +85,7 @@ describe("auction approval mutations", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         auctionId,
         expect.objectContaining({
           status: "active",
@@ -160,6 +161,7 @@ describe("auction approval mutations", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         auctionId,
         expect.objectContaining({
           status: "rejected",

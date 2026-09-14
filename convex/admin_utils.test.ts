@@ -525,6 +525,7 @@ describe("Admin Utils", () => {
         true
       );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "counters",
         "c1",
         expect.objectContaining({
           total: 50,
@@ -561,6 +562,7 @@ describe("Admin Utils", () => {
         -20
       );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "counters",
         "c1",
         expect.objectContaining({
           total: 0,
@@ -643,6 +645,7 @@ describe("Admin Utils", () => {
         );
 
         expect(mockCtx.db.patch).toHaveBeenCalledWith(
+          "counters",
           "c1",
           expect.objectContaining({
             [field]: 15,
@@ -661,6 +664,7 @@ describe("Admin Utils", () => {
         );
 
         expect(mockCtx.db.patch).toHaveBeenCalledWith(
+          "counters",
           "c1",
           expect.objectContaining({
             [field]: 10,

@@ -280,7 +280,7 @@ export async function updateCounter(
       );
     }
 
-    await ctx.db.patch(counter._id, {
+    await ctx.db.patch("counters", counter._id, {
       [field]: Math.max(0, newValue),
       updatedAt: Date.now(),
     });

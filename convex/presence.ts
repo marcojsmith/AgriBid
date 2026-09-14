@@ -59,7 +59,7 @@ export const heartbeat = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { updatedAt: now });
+      await ctx.db.patch("presence", existing._id, { updatedAt: now });
     } else {
       await ctx.db.insert("presence", { userId, updatedAt: now });
     }
@@ -104,7 +104,9 @@ export const cleanup = internalMutation({
 
       if (oldRecords.length === 0) break;
 
-      await Promise.all(oldRecords.map((record) => ctx.db.delete(record._id)));
+      await Promise.all(
+        oldRecords.map((record) => ctx.db.delete("presence", record._id))
+      );
       deletedCount += oldRecords.length;
 
       if (oldRecords.length < BATCH_SIZE) break;

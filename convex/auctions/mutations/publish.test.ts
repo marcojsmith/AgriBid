@@ -202,7 +202,7 @@ describe("Publish Mutations", () => {
       );
 
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         status: "pending_review",
       });
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
@@ -401,7 +401,7 @@ describe("Publish Mutations", () => {
         }
       );
       expect(result.hideTriggered).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         status: "pending_review",
         hiddenByFlags: true,
       });
@@ -427,7 +427,7 @@ describe("Publish Mutations", () => {
         { flagId: "f1" as Id<"auctionFlags"> }
       );
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("f1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctionFlags", "f1", {
         status: "dismissed",
       });
     });
@@ -452,7 +452,7 @@ describe("Publish Mutations", () => {
         { flagId: "f1" as Id<"auctionFlags"> }
       );
       expect(result.auctionRestored).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         status: "active",
         hiddenByFlags: false,
       });
@@ -559,6 +559,7 @@ describe("Publish Mutations", () => {
       );
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "active",
@@ -613,6 +614,7 @@ describe("Publish Mutations", () => {
       );
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           status: "rejected",

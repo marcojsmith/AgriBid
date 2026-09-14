@@ -202,7 +202,7 @@ describe("reviewProfileFlag mutation", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(flagId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("profileFlags", flagId, {
       status: "reviewed",
       adminNotes: "Confirmed fake account",
     });
@@ -239,7 +239,7 @@ describe("reviewProfileFlag mutation", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(flagId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("profileFlags", flagId, {
       status: "dismissed",
       adminNotes: undefined,
     });

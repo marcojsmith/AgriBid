@@ -126,7 +126,7 @@ describe("Delete Mutations", () => {
       );
 
       expect(result.success).toBe(true);
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("a1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "a1");
     });
 
     it("should throw if not draft", async () => {
@@ -164,7 +164,7 @@ describe("Delete Mutations", () => {
       );
 
       expect(result.success).toBe(true);
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("a1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "a1");
       expect(spy).toHaveBeenCalledWith(
         expect.stringContaining("Failed to delete condition report"),
         expect.anything()
@@ -200,7 +200,7 @@ describe("Delete Mutations", () => {
       );
       expect(result.success).toBe(true);
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("s1");
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         conditionReportUrl: undefined,
       });
     });
@@ -233,7 +233,7 @@ describe("Delete Mutations", () => {
       );
       expect(result.success).toBe(true);
       expect(spy).toHaveBeenCalled();
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         conditionReportUrl: undefined,
       });
       spy.mockRestore();

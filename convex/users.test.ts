@@ -194,7 +194,7 @@ describe("Users Coverage", () => {
       const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
 
       expect(result).toEqual({ success: true });
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("p1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("profiles", "p1", {
         updatedAt: 1_700_000_000_000,
       });
       dateSpy.mockRestore();
@@ -218,7 +218,7 @@ describe("Users Coverage", () => {
       const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
 
       expect(result).toEqual({ success: true });
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("p1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("profiles", "p1", {
         name: "New Name",
         email: "new@example.com",
         updatedAt: 1_700_000_000_000,
@@ -491,6 +491,7 @@ describe("Users Coverage", () => {
 
       expect(result).toEqual({ success: true });
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "profiles",
         "p1",
         expect.objectContaining({ isVerified: true })
       );
@@ -530,6 +531,7 @@ describe("Users Coverage", () => {
       });
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "profiles",
         "p1",
         expect.objectContaining({ isVerified: true, emailVerified: true })
       );
@@ -555,7 +557,8 @@ describe("Users Coverage", () => {
 
       dateSpy.mockRestore();
       expect(mockCtx.db.patch).toHaveBeenCalledTimes(1);
-      const [, patchArgs] = vi.mocked(mockCtx.db.patch).mock.calls[0] as [
+      const [, , patchArgs] = vi.mocked(mockCtx.db.patch).mock.calls[0] as [
+        string,
         string,
         Record<string, unknown>,
       ];
@@ -670,6 +673,7 @@ describe("Users Coverage", () => {
 
       expect(result).toEqual({ success: true });
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "profiles",
         "p1",
         expect.objectContaining({ role: "admin" })
       );
@@ -748,6 +752,7 @@ describe("Users Coverage", () => {
 
       expect(result).toEqual({ success: true });
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "profiles",
         "p1",
         expect.objectContaining({
           kycStatus: "pending",
@@ -922,6 +927,7 @@ describe("Users Coverage", () => {
 
       expect(result).toEqual({ success: true });
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "profiles",
         "p1",
         expect.objectContaining({ kycDocuments: ["s2"] })
       );
@@ -1032,6 +1038,7 @@ describe("Users Coverage", () => {
 
       expect(result).toBeNull();
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "profiles",
         "p1",
         expect.objectContaining({
           bio: "New bio",
@@ -1061,10 +1068,11 @@ describe("Users Coverage", () => {
       });
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "profiles",
         "p1",
         expect.objectContaining({ location: "Pretoria" })
       );
-      const patchArgs = mockCtx.db.patch.mock.calls[0][1] as Record<
+      const patchArgs = mockCtx.db.patch.mock.calls[0][2] as Record<
         string,
         unknown
       >;
