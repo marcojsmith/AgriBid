@@ -212,7 +212,7 @@ export const reviewProfileFlagHandler = async (
     throw new Error("Not authorized: Admin privileges required");
   }
 
-  const flag = await ctx.db.get(args.flagId);
+  const flag = await ctx.db.get("profileFlags", args.flagId);
   if (!flag) {
     throw new ConvexError("Flag not found");
   }
@@ -221,7 +221,7 @@ export const reviewProfileFlagHandler = async (
     throw new ConvexError("Flag has already been reviewed");
   }
 
-  await ctx.db.patch(args.flagId, {
+  await ctx.db.patch("profileFlags", args.flagId, {
     status: args.status,
     adminNotes: args.adminNotes,
   });

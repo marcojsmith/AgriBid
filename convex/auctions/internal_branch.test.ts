@@ -104,6 +104,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           winnerId: "u1", // earliest wins
@@ -138,6 +139,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           winnerId: "u1",
@@ -172,6 +174,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           winnerId: "u2",

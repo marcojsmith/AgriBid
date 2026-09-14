@@ -256,6 +256,7 @@ describe("reviewKYC mutation", () => {
 
     expect(result).toEqual({ success: true });
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "profiles",
       "p1",
       expect.objectContaining({ kycStatus: "rejected", isVerified: false })
     );

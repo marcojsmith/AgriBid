@@ -117,7 +117,7 @@ export const getRecentBids = query({
     await Promise.all(
       uniqueAuctionIds.map(async (id) => {
         try {
-          const auction = await ctx.db.get(id);
+          const auction = await ctx.db.get("auctions", id);
           auctionMap.set(id, auction);
         } catch {
           failedAuctionIds.push(id);

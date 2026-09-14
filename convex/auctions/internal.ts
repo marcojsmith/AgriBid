@@ -202,7 +202,7 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
       winnerId = highestBid.bidderId;
     }
 
-    await ctx.db.patch(auction._id, {
+    await ctx.db.patch("auctions", auction._id, {
       status: finalStatus,
       winnerId,
       settledAt: now,
@@ -282,7 +282,7 @@ export const cleanupDraftsHandler = async (
         await safeDelete(ctx, auction.conditionReportUrl, "condition report");
       }
 
-      await ctx.db.delete(auction._id);
+      await ctx.db.delete("auctions", auction._id);
       deleted++;
     } catch (e) {
       console.error(`Failed to delete draft auction: ${auction._id}`, e);

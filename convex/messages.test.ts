@@ -143,9 +143,13 @@ describe("startConversation mutation", () => {
     );
 
     expect(result).toBe("conv_existing");
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("conv_existing", {
-      lastMessageAt: expect.any(Number) as number,
-    });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "conversations",
+      "conv_existing",
+      {
+        lastMessageAt: expect.any(Number) as number,
+      }
+    );
     expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
       "conversations",
       expect.anything()
@@ -187,9 +191,13 @@ describe("startConversation mutation", () => {
     );
 
     expect(result).toBe("conv_reversed");
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("conv_reversed", {
-      lastMessageAt: expect.any(Number) as number,
-    });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "conversations",
+      "conv_reversed",
+      {
+        lastMessageAt: expect.any(Number) as number,
+      }
+    );
     expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
       "conversations",
       expect.anything()
@@ -214,6 +222,7 @@ describe("startConversation mutation", () => {
     });
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "conversations",
       "conv_existing",
       expect.objectContaining({
         auctionId: "auction_new",
@@ -239,7 +248,7 @@ describe("startConversation mutation", () => {
     });
 
     const patchPayloads = mockCtx.db.patch.mock.calls.map(
-      (call) => call[1] as Record<string, unknown>
+      (call) => call[2] as Record<string, unknown>
     );
     expect(patchPayloads.length).toBeGreaterThan(0);
     for (const payload of patchPayloads) {
@@ -396,7 +405,7 @@ describe("sendMessage mutation", () => {
         isRead: false,
       })
     );
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("conv123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("conversations", "conv123", {
       lastMessageAt: expect.any(Number) as number,
     });
   });
@@ -864,9 +873,15 @@ describe("markRead mutation", () => {
 
     expect(result).toEqual({ success: true, markedCount: 2 });
     expect(mockCtx.db.patch).toHaveBeenCalledTimes(2);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("m1", { isRead: true });
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("m3", { isRead: true });
-    expect(mockCtx.db.patch).not.toHaveBeenCalledWith("m2", { isRead: true });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("messages", "m1", {
+      isRead: true,
+    });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("messages", "m3", {
+      isRead: true,
+    });
+    expect(mockCtx.db.patch).not.toHaveBeenCalledWith("messages", "m2", {
+      isRead: true,
+    });
   });
 
   it("should succeed with zero marked messages when nothing is unread", async () => {

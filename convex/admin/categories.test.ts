@@ -154,9 +154,13 @@ describe("Categories Backend", () => {
     });
 
     expect(result).toBe("cat_inactive");
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("cat_inactive", {
-      isActive: true,
-    });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentCategories",
+      "cat_inactive",
+      {
+        isActive: true,
+      }
+    );
     expect(mockCtx.db.insert).not.toHaveBeenCalled();
   });
 });
@@ -205,9 +209,13 @@ describe("updateCategory", () => {
       name: "New Name",
     });
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("cat_123", {
-      name: "New Name",
-    });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentCategories",
+      "cat_123",
+      {
+        name: "New Name",
+      }
+    );
   });
 
   it("should throw error if category not found", async () => {
@@ -414,9 +422,13 @@ describe("deleteCategory", () => {
       id: "cat_123" as Id<"equipmentCategories">,
     });
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("cat_123", {
-      isActive: false,
-    });
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "equipmentCategories",
+      "cat_123",
+      {
+        isActive: false,
+      }
+    );
   });
 
   it("should throw error if category not found", async () => {
@@ -552,25 +564,27 @@ describe("fixMetadata", () => {
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
       }),
-      patch: vi.fn((id: string, updates: Record<string, unknown>) => {
-        // Simulate the patch by updating the shared objects
-        if (id === "meta_1" && updates.categoryId) {
-          (equipmentMetadata[0] as Record<string, unknown>).categoryId =
-            updates.categoryId;
+      patch: vi.fn(
+        (_table: string, id: string, updates: Record<string, unknown>) => {
+          // Simulate the patch by updating the shared objects
+          if (id === "meta_1" && updates.categoryId) {
+            (equipmentMetadata[0] as Record<string, unknown>).categoryId =
+              updates.categoryId;
+          }
+          if (id === "meta_2" && updates.categoryId) {
+            (equipmentMetadata[1] as Record<string, unknown>).categoryId =
+              updates.categoryId;
+          }
+          if (id === "auction_1" && updates.categoryId) {
+            (auctions[0] as Record<string, unknown>).categoryId =
+              updates.categoryId;
+          }
+          if (id === "auction_2" && updates.categoryId) {
+            (auctions[1] as Record<string, unknown>).categoryId =
+              updates.categoryId;
+          }
         }
-        if (id === "meta_2" && updates.categoryId) {
-          (equipmentMetadata[1] as Record<string, unknown>).categoryId =
-            updates.categoryId;
-        }
-        if (id === "auction_1" && updates.categoryId) {
-          (auctions[0] as Record<string, unknown>).categoryId =
-            updates.categoryId;
-        }
-        if (id === "auction_2" && updates.categoryId) {
-          (auctions[1] as Record<string, unknown>).categoryId =
-            updates.categoryId;
-        }
-      }),
+      ),
     };
     return {
       db: mockDb as unknown as MutationCtx["db"],
@@ -692,7 +706,7 @@ describe("fixMetadata", () => {
     const result = await fixMetadataHandler(mockCtx);
 
     expect(result.auctionsFixed).toBe(1);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_1", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_1", {
       categoryId: "cat_1",
     });
   });

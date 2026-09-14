@@ -280,6 +280,7 @@ describe("Errors Backend", () => {
       expect(result.isDuplicate).toBe(true);
       expect(result.instanceCount).toBe(6);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "errorReports",
         "existing_id",
         expect.objectContaining({
           instanceCount: 6,
@@ -312,6 +313,7 @@ describe("Errors Backend", () => {
       expect(result.isDuplicate).toBe(true);
       expect(result.instanceCount).toBe(6);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "errorReports",
         "existing_id",
         expect.objectContaining({
           instanceCount: 6,
@@ -619,6 +621,7 @@ describe("Errors Backend", () => {
       expect(result.created).toBe(1);
       expect(result.commented).toBe(1);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "errorReports",
         "r1",
         expect.objectContaining({
           status: "completed",
@@ -660,7 +663,7 @@ describe("Errors Backend", () => {
       await vi.advanceTimersByTimeAsync(500);
       await promise;
 
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("r1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("errorReports", "r1", {
         status: "pending",
       });
     });
@@ -697,7 +700,9 @@ describe("Errors Backend", () => {
       await vi.advanceTimersByTimeAsync(500);
       const result = await promise;
       expect(result.failed).toBe(1);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("r1", { status: "failed" });
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("errorReports", "r1", {
+        status: "failed",
+      });
     });
 
     it("should throw error when comment request fails with non-ok response", async () => {
@@ -745,7 +750,9 @@ describe("Errors Backend", () => {
       const result = await promise;
 
       expect(result.failed).toBe(1);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("r1", { status: "failed" });
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("errorReports", "r1", {
+        status: "failed",
+      });
     });
 
     it("should call take with BATCH_SIZE limit", async () => {

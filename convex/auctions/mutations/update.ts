@@ -76,7 +76,7 @@ export const updateAuctionHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     throw new ConvexError("Auction not found");
   }
@@ -149,7 +149,7 @@ export const updateAuctionHandler = async (
     validateAuctionBeforePublish(mergedState);
   }
 
-  await ctx.db.patch(args.auctionId, updates);
+  await ctx.db.patch("auctions", args.auctionId, updates);
 
   await logAudit(ctx, {
     action: "SELLER_UPDATE_AUCTION",
@@ -261,7 +261,7 @@ export const adminUpdateAuctionHandler = async (
 ) => {
   await requireAdmin(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) throw new ConvexError("Auction not found");
 
   const oldStatus = auction.status;
@@ -310,7 +310,7 @@ export const adminUpdateAuctionHandler = async (
     validateStartTimeBounds(args.updates.startTime, true);
   }
 
-  await ctx.db.patch(args.auctionId, patchData);
+  await ctx.db.patch("auctions", args.auctionId, patchData);
 
   if (newStatus && oldStatus !== newStatus) {
     await adjustStatusCounters(ctx, oldStatus, newStatus);
@@ -400,7 +400,7 @@ export const bulkUpdateAuctionsHandler = async (
   const updated: Id<"auctions">[] = [];
   const skipped: Id<"auctions">[] = [];
   for (const id of args.auctionIds) {
-    const auction = await ctx.db.get(id);
+    const auction = await ctx.db.get("auctions", id);
     if (auction) {
       const oldStatus = auction.status;
       const newStatus = args.updates.status;
@@ -447,7 +447,7 @@ export const bulkUpdateAuctionsHandler = async (
         }
       }
 
-      await ctx.db.patch(id, patchData);
+      await ctx.db.patch("auctions", id, patchData);
       updated.push(id);
 
       if (newStatus && oldStatus !== newStatus) {
@@ -517,7 +517,7 @@ export const updateConditionReportHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     throw new ConvexError("Auction not found");
   }
@@ -529,7 +529,7 @@ export const updateConditionReportHandler = async (
     await safeDelete(ctx, auction.conditionReportUrl, "old condition report");
   }
 
-  await ctx.db.patch(args.auctionId, {
+  await ctx.db.patch("auctions", args.auctionId, {
     conditionReportUrl: args.storageId,
   });
 

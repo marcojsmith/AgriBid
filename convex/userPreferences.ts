@@ -107,7 +107,10 @@ export const updateMyPreferences = mutation({
     }
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...args, updatedAt: now });
+      await ctx.db.patch("userPreferences", existing._id, {
+        ...args,
+        updatedAt: now,
+      });
     } else {
       await ctx.db.insert("userPreferences", {
         userId,

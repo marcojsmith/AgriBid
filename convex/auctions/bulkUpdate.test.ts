@@ -64,7 +64,7 @@ describe("bulkUpdateAuctions mutation", () => {
     const auction2 = { _id: id2, status: "pending_review" };
 
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockImplementation((id: Id<"auctions">) => {
+    mockCtx.db.get.mockImplementation((_table: string, id: Id<"auctions">) => {
       if (id === id1) return auction1;
       if (id === id2) return auction2;
       return null;
@@ -87,10 +87,12 @@ describe("bulkUpdateAuctions mutation", () => {
     expect(result.updated).toContain(id1);
     expect(result.updated).toContain(id2);
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "auctions",
       id1,
       expect.objectContaining({ status: "active" })
     );
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "auctions",
       id2,
       expect.objectContaining({ status: "active" })
     );

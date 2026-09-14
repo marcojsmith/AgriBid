@@ -115,7 +115,7 @@ describe("closeAuctionEarly mutation", () => {
     expect(result.finalStatus).toBe("sold");
     expect(result.winnerId).toBe(bidderId);
     expect(result.winningAmount).toBe(1100);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "sold",
       winnerId: bidderId,
       settledAt: expect.any(Number) as number,
@@ -159,7 +159,7 @@ describe("closeAuctionEarly mutation", () => {
 
     expect(result.success).toBe(true);
     expect(result.finalStatus).toBe("unsold");
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "unsold",
       winnerId: undefined,
       settledAt: expect.any(Number) as number,

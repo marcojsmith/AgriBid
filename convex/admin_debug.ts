@@ -44,7 +44,7 @@ export const promoteToAdmin = mutation({
     const linkId = profile.userId;
     const previousRole = profile.role;
 
-    await ctx.db.patch(profile._id, {
+    await ctx.db.patch("profiles", profile._id, {
       role: "admin",
       isVerified: true,
       updatedAt: Date.now(),

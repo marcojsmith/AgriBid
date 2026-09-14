@@ -418,6 +418,7 @@ describe("Proxy Bidding Coverage", () => {
       );
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           isExtended: true,
@@ -736,6 +737,7 @@ describe("Proxy Bidding Coverage", () => {
       );
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "proxy_bids",
         "p1",
         expect.objectContaining({
           maxBid: 2000,
@@ -765,6 +767,7 @@ describe("Proxy Bidding Coverage", () => {
       );
 
       expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           isExtended: true,

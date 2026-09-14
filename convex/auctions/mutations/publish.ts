@@ -56,7 +56,7 @@ export const publishAuctionHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     throw new ConvexError("Auction not found");
   }
@@ -70,7 +70,7 @@ export const publishAuctionHandler = async (
   // Validate required fields before allowing publish
   validateAuctionBeforePublish(auction);
 
-  await ctx.db.patch(args.auctionId, { status: "pending_review" });
+  await ctx.db.patch("auctions", args.auctionId, { status: "pending_review" });
 
   await adjustStatusCounters(ctx, "draft", "pending_review");
 
@@ -126,7 +126,7 @@ export const flagAuctionHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     throw new ConvexError("Auction not found");
   }
@@ -162,7 +162,7 @@ export const flagAuctionHandler = async (
   const pendingFlags = existingFlags.filter((f) => f.status === "pending");
   if (pendingFlags.length + 1 >= AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
     if (auction.status === "active") {
-      await ctx.db.patch(args.auctionId, {
+      await ctx.db.patch("auctions", args.auctionId, {
         status: "pending_review",
         hiddenByFlags: true,
       });
@@ -224,7 +224,7 @@ export const dismissFlagHandler = async (
     throw new Error("Not authorized: Admin privileges required");
   }
 
-  const flag = await ctx.db.get(args.flagId);
+  const flag = await ctx.db.get("auctionFlags", args.flagId);
   if (!flag) {
     throw new ConvexError("Flag not found");
   }
@@ -233,13 +233,13 @@ export const dismissFlagHandler = async (
     throw new ConvexError("Flag has already been reviewed");
   }
 
-  await ctx.db.patch(args.flagId, {
+  await ctx.db.patch("auctionFlags", args.flagId, {
     status: "dismissed",
   });
 
   let auctionRestored = false;
 
-  const auction = await ctx.db.get(flag.auctionId);
+  const auction = await ctx.db.get("auctions", flag.auctionId);
   if (auction?.status === "pending_review" && auction.hiddenByFlags === true) {
     const remainingFlags = await ctx.db
       .query("auctionFlags")
@@ -249,7 +249,7 @@ export const dismissFlagHandler = async (
       .collect();
 
     if (remainingFlags.length < AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
-      await ctx.db.patch(flag.auctionId, {
+      await ctx.db.patch("auctions", flag.auctionId, {
         status: "active",
         hiddenByFlags: false,
       });
@@ -303,7 +303,7 @@ export const approveAuctionHandler = async (
 ) => {
   await requireAdmin(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) throw new ConvexError("Auction not found");
   if (auction.status !== "pending_review") {
     throw new ConvexError("Only auctions in pending_review can be approved");
@@ -324,7 +324,7 @@ export const approveAuctionHandler = async (
   const durationMs = durationDays * MS_PER_DAY;
   const endTime = startTime + durationMs;
 
-  await ctx.db.patch(args.auctionId, {
+  await ctx.db.patch("auctions", args.auctionId, {
     status: "active",
     startTime,
     endTime,
@@ -356,13 +356,13 @@ export const rejectAuctionHandler = async (
 ) => {
   await requireAdmin(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) throw new ConvexError("Auction not found");
   if (auction.status !== "pending_review") {
     throw new ConvexError("Only auctions in pending_review can be rejected");
   }
 
-  await ctx.db.patch(args.auctionId, {
+  await ctx.db.patch("auctions", args.auctionId, {
     status: "rejected",
     startTime: undefined,
     endTime: undefined,
@@ -400,7 +400,7 @@ export const closeAuctionEarlyHandler = async (
     };
   }
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     return {
       success: false,
@@ -454,7 +454,7 @@ export const closeAuctionEarlyHandler = async (
     finalStatus = "unsold";
   }
 
-  await ctx.db.patch(auction._id, {
+  await ctx.db.patch("auctions", auction._id, {
     status: finalStatus,
     winnerId,
     settledAt: Date.now(),

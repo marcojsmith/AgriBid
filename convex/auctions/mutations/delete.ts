@@ -53,7 +53,7 @@ export const deleteDraftHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     throw new ConvexError("Auction not found");
   }
@@ -70,7 +70,7 @@ export const deleteDraftHandler = async (
     await safeDelete(ctx, auction.conditionReportUrl, "condition report");
   }
 
-  await ctx.db.delete(args.auctionId);
+  await ctx.db.delete("auctions", args.auctionId);
   await updateCounter(ctx, "auctions", "draft", -1);
   await updateCounter(ctx, "auctions", "total", -1);
 
@@ -109,7 +109,7 @@ export const deleteConditionReportHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get(args.auctionId);
+  const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) {
     throw new ConvexError("Auction not found");
   }
@@ -121,7 +121,7 @@ export const deleteConditionReportHandler = async (
     await safeDelete(ctx, auction.conditionReportUrl, "condition report");
   }
 
-  await ctx.db.patch(args.auctionId, {
+  await ctx.db.patch("auctions", args.auctionId, {
     conditionReportUrl: undefined,
   });
 

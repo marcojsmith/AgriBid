@@ -114,6 +114,7 @@ describe("Update Mutations", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           title: "Updated Title",
@@ -142,6 +143,7 @@ describe("Update Mutations", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           images: expect.objectContaining({
@@ -172,6 +174,7 @@ describe("Update Mutations", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           images: { front: "new-img" },
@@ -199,6 +202,7 @@ describe("Update Mutations", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           images: { front: "old-img", engine: "engine-img" },
@@ -315,7 +319,7 @@ describe("Update Mutations", () => {
         }
       );
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         title: "New Title",
       });
     });
@@ -341,6 +345,7 @@ describe("Update Mutations", () => {
         updates: { status: "active", endTime: Date.now() + 1000 },
       });
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
         "a1",
         expect.objectContaining({
           hiddenByFlags: false,
@@ -481,7 +486,7 @@ describe("Update Mutations", () => {
         }
       );
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         conditionReportUrl: "s1",
       });
     });
@@ -501,7 +506,7 @@ describe("Update Mutations", () => {
         storageId: "new-s" as Id<"_storage">,
       });
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("old-s");
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
         conditionReportUrl: "new-s",
       });
     });

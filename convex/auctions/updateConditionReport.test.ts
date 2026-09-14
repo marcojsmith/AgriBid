@@ -44,9 +44,9 @@ describe("updateConditionReportHandler", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(mockCtx.db.get).toHaveBeenCalledWith("auction_123");
+    expect(mockCtx.db.get).toHaveBeenCalledWith("auctions", "auction_123");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("old_storage_id");
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
       conditionReportUrl: "new_storage_id",
     });
   });
@@ -64,7 +64,7 @@ describe("updateConditionReportHandler", () => {
     await updateConditionReportHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.storage.delete).not.toHaveBeenCalled();
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
       conditionReportUrl: "new_storage_id",
     });
   });

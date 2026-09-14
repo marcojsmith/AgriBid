@@ -37,7 +37,7 @@ export const getAllEquipmentMetadataHandler = async (
   return await Promise.all(
     metadata.map(async (item) => {
       const category = item.categoryId
-        ? await ctx.db.get(item.categoryId)
+        ? await ctx.db.get("equipmentCategories", item.categoryId)
         : null;
       return {
         ...item,
@@ -97,7 +97,7 @@ export const addEquipmentMakeHandler = async (
 
   if (existing) {
     if (!existing.isActive) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("equipmentMetadata", existing._id, {
         isActive: true,
         models: Array.from(new Set([...existing.models, ...trimmedModels])),
         updatedAt: Date.now(),
@@ -150,7 +150,7 @@ export const updateEquipmentMakeHandler = async (
     throw new ConvexError("Unauthorized: Admin access required");
   }
 
-  const existing = await ctx.db.get(args.id);
+  const existing = await ctx.db.get("equipmentMetadata", args.id);
   if (!existing) {
     throw new ConvexError("Equipment metadata not found");
   }
@@ -187,7 +187,7 @@ export const updateEquipmentMakeHandler = async (
     }
   }
 
-  await ctx.db.patch(args.id, {
+  await ctx.db.patch("equipmentMetadata", args.id, {
     make: trimmedMake,
     models: trimmedModels,
     categoryId: args.categoryId,
@@ -222,12 +222,12 @@ export const deleteEquipmentMakeHandler = async (
     throw new ConvexError("Unauthorized: Admin access required");
   }
 
-  const existing = await ctx.db.get(args.id);
+  const existing = await ctx.db.get("equipmentMetadata", args.id);
   if (!existing) {
     throw new ConvexError("Equipment metadata not found");
   }
 
-  await ctx.db.patch(args.id, {
+  await ctx.db.patch("equipmentMetadata", args.id, {
     isActive: false,
     updatedAt: Date.now(),
   });
@@ -261,7 +261,7 @@ export const addModelToMakeHandler = async (
     throw new ConvexError("Model name is required");
   }
 
-  const existing = await ctx.db.get(args.id);
+  const existing = await ctx.db.get("equipmentMetadata", args.id);
   if (!existing) {
     throw new ConvexError("Equipment metadata not found");
   }
@@ -270,7 +270,7 @@ export const addModelToMakeHandler = async (
     throw new ConvexError("Model already exists for this make");
   }
 
-  await ctx.db.patch(args.id, {
+  await ctx.db.patch("equipmentMetadata", args.id, {
     models: [...existing.models, trimmedModel],
     updatedAt: Date.now(),
   });
@@ -299,7 +299,7 @@ export const removeModelFromMakeHandler = async (
     throw new ConvexError("Unauthorized: Admin access required");
   }
 
-  const existing = await ctx.db.get(args.id);
+  const existing = await ctx.db.get("equipmentMetadata", args.id);
   if (!existing) {
     throw new ConvexError("Equipment metadata not found");
   }
@@ -316,7 +316,7 @@ export const removeModelFromMakeHandler = async (
 
   const updatedModels = existing.models.filter((m) => m !== args.model);
 
-  await ctx.db.patch(args.id, {
+  await ctx.db.patch("equipmentMetadata", args.id, {
     models: updatedModels,
     updatedAt: Date.now(),
   });

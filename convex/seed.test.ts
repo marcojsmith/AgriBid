@@ -97,16 +97,18 @@ function createMockDb() {
       rowsOf(table).push({ ...doc, _id });
       return _id;
     }),
-    patch: vi.fn((id: string, patch: Record<string, unknown>) => {
-      for (const rows of tables.values()) {
-        const row = rows.find((r) => r._id === id);
-        if (row) {
-          Object.assign(row, patch);
-          return;
+    patch: vi.fn(
+      (_table: string, id: string, patch: Record<string, unknown>) => {
+        for (const rows of tables.values()) {
+          const row = rows.find((r) => r._id === id);
+          if (row) {
+            Object.assign(row, patch);
+            return;
+          }
         }
       }
-    }),
-    delete: vi.fn((id: string) => {
+    ),
+    delete: vi.fn((_table: string, id: string) => {
       for (const rows of tables.values()) {
         const index = rows.findIndex((r) => r._id === id);
         if (index !== -1) {
@@ -115,7 +117,7 @@ function createMockDb() {
         }
       }
     }),
-    get: vi.fn((id: string) => {
+    get: vi.fn((_table: string, id: string) => {
       for (const rows of tables.values()) {
         const row = rows.find((r) => r._id === id);
         if (row) return row;

@@ -96,7 +96,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "sold",
       winnerId: bidderId,
       settledAt: expect.any(Number) as number,
@@ -133,7 +133,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "unsold",
       winnerId: undefined,
       settledAt: expect.any(Number) as number,
@@ -159,7 +159,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "unsold",
       winnerId: undefined,
       settledAt: expect.any(Number) as number,
@@ -204,7 +204,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "sold",
       winnerId: "winner",
       settledAt: expect.any(Number) as number,

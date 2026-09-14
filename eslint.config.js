@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import convexPlugin from "@convex-dev/eslint-plugin";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
@@ -187,6 +188,19 @@ export default defineConfig([
           "newlines-between": "always",
         },
       ],
+    },
+  },
+
+  // -----------------------------------------------------------------------
+  // Convex backend — require explicit table names on db operations so
+  // IDs from one table can never be misused as another table's ID.
+  // Scoped to convex/** so src/ is unaffected.
+  // -----------------------------------------------------------------------
+  {
+    files: ["convex/**/*.ts"],
+    plugins: { "@convex-dev": convexPlugin },
+    rules: {
+      "@convex-dev/explicit-table-ids": "error",
     },
   },
 

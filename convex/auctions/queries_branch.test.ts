@@ -331,19 +331,21 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      (vi.mocked(dbGetMock) as Mock).mockImplementation((id: string) => {
-        if (id === "a1")
+      (vi.mocked(dbGetMock) as Mock).mockImplementation(
+        (_table: string, id: string) => {
+          if (id === "a1")
+            return Promise.resolve({
+              _id: id as Id<"auctions">,
+              status: "active",
+              endTime: 2000,
+            } as unknown as Doc<"auctions">);
           return Promise.resolve({
             _id: id as Id<"auctions">,
             status: "active",
-            endTime: 2000,
+            endTime: 1000,
           } as unknown as Doc<"auctions">);
-        return Promise.resolve({
-          _id: id as Id<"auctions">,
-          status: "active",
-          endTime: 1000,
-        } as unknown as Doc<"auctions">);
-      });
+        }
+      );
 
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -379,19 +381,21 @@ describe("Queries Branch Coverage Expansion", () => {
           status: "placed",
         },
       ]);
-      (vi.mocked(dbGetMock) as Mock).mockImplementation((id: string) => {
-        if (id === "a1")
+      (vi.mocked(dbGetMock) as Mock).mockImplementation(
+        (_table: string, id: string) => {
+          if (id === "a1")
+            return Promise.resolve({
+              _id: id as Id<"auctions">,
+              status: "active",
+              endTime: undefined,
+            } as unknown as Doc<"auctions">);
           return Promise.resolve({
             _id: id as Id<"auctions">,
             status: "active",
-            endTime: undefined,
+            endTime: 1000,
           } as unknown as Doc<"auctions">);
-        return Promise.resolve({
-          _id: id as Id<"auctions">,
-          status: "active",
-          endTime: 1000,
-        } as unknown as Doc<"auctions">);
-      });
+        }
+      );
 
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -531,13 +535,15 @@ describe("Queries Branch Coverage Expansion", () => {
           },
         ] as unknown[]);
       });
-      (vi.mocked(dbGetMock) as Mock).mockImplementation((id: string) => {
-        console.log("Mock db.get called with:", id);
-        return Promise.resolve({
-          _id: id,
-          status: "active",
-        } as unknown as Doc<"auctions">);
-      });
+      (vi.mocked(dbGetMock) as Mock).mockImplementation(
+        (_table: string, id: string) => {
+          console.log("Mock db.get called with:", id);
+          return Promise.resolve({
+            _id: id,
+            status: "active",
+          } as unknown as Doc<"auctions">);
+        }
+      );
 
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 1, cursor: "0" },

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { ConvexError } from "convex/values";
 
 import { dismissFlagHandler } from "./mutations/publish";
@@ -62,17 +62,19 @@ describe("dismissFlag mutation", () => {
     };
 
     mockCtx = setupMockCtx(mockQuery);
-    vi.mocked(mockCtx.db.get).mockImplementation((id: unknown) => {
-      if (id === flagId)
-        return Promise.resolve(
-          flagDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
-        );
-      if (id === auctionId)
-        return Promise.resolve(
-          auctionDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
-        );
-      return Promise.resolve(null);
-    });
+    (vi.mocked(mockCtx.db.get) as Mock).mockImplementation(
+      (_table: string, id: unknown) => {
+        if (id === flagId)
+          return Promise.resolve(
+            flagDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+          );
+        if (id === auctionId)
+          return Promise.resolve(
+            auctionDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+          );
+        return Promise.resolve(null);
+      }
+    );
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
     vi.mocked(auth.getAuthUser).mockResolvedValue({
@@ -88,10 +90,10 @@ describe("dismissFlag mutation", () => {
 
     expect(result.success).toBe(true);
     expect(result.auctionRestored).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(flagId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctionFlags", flagId, {
       status: "dismissed",
     });
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "active",
       hiddenByFlags: false,
     });

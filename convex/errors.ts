@@ -280,7 +280,7 @@ export async function submitErrorReportHandler(
   );
 
   if (existingReport) {
-    await ctx.db.patch(existingReport._id, {
+    await ctx.db.patch("errorReports", existingReport._id, {
       instanceCount: existingReport.instanceCount + 1,
       lastOccurredAt: now,
       userId: serverUserId ?? existingReport.userId,
@@ -471,7 +471,7 @@ export const getPendingReportsToProcess = internalMutation({
       .take(BATCH_SIZE);
 
     for (const report of pendingReports) {
-      await ctx.db.patch(report._id, { status: "processing" });
+      await ctx.db.patch("errorReports", report._id, { status: "processing" });
     }
 
     return pendingReports;
@@ -493,7 +493,7 @@ export const updateReportStatus = internalMutation({
     githubIssueNumber: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, {
+    await ctx.db.patch("errorReports", args.id, {
       status: args.status,
       githubIssueUrl: args.githubIssueUrl,
       githubIssueNumber: args.githubIssueNumber,
@@ -566,7 +566,7 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
   };
 
   for (const report of pendingReports) {
-    await ctx.db.patch(report._id, { status: "processing" });
+    await ctx.db.patch("errorReports", report._id, { status: "processing" });
 
     try {
       const isNewIssue = !report.githubIssueNumber;
@@ -586,7 +586,9 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
         if (!response.ok) {
           const errorText = await response.text();
           if (response.status === 403 || response.status === 429) {
-            await ctx.db.patch(report._id, { status: "pending" });
+            await ctx.db.patch("errorReports", report._id, {
+              status: "pending",
+            });
             failed++;
             continue;
           }
@@ -599,7 +601,7 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
           number: number;
           html_url: string;
         };
-        await ctx.db.patch(report._id, {
+        await ctx.db.patch("errorReports", report._id, {
           status: "completed",
           githubIssueUrl: issueData.html_url,
           githubIssueNumber: issueData.number,
@@ -619,7 +621,7 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
         );
 
         if (response.status === 403 || response.status === 429) {
-          await ctx.db.patch(report._id, { status: "pending" });
+          await ctx.db.patch("errorReports", report._id, { status: "pending" });
           failed++;
           continue;
         }
@@ -631,7 +633,7 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
           );
         }
 
-        await ctx.db.patch(report._id, {
+        await ctx.db.patch("errorReports", report._id, {
           status: "completed",
         });
         commented++;
@@ -640,7 +642,7 @@ export async function processErrorReportsHandler(ctx: MutationCtx) {
       processed++;
     } catch (error) {
       console.error("Error processing GitHub issue:", error);
-      await ctx.db.patch(report._id, { status: "failed" });
+      await ctx.db.patch("errorReports", report._id, { status: "failed" });
       failed++;
     }
   }

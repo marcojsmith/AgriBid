@@ -329,7 +329,7 @@ export async function updateSystemConfigHandler(
     .unique();
 
   if (existing) {
-    await ctx.db.patch(existing._id, {
+    await ctx.db.patch("settings", existing._id, {
       value: finalValue,
       description: args.description ?? existing.description,
       updatedAt: Date.now(),
@@ -456,7 +456,7 @@ export async function updateGitHubErrorReportingConfigHandler(
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("settings", existing._id, {
         value: setting.value,
         updatedAt: Date.now(),
       });
@@ -608,7 +608,7 @@ export const updateSeoSettings = mutation({
         .unique();
 
       if (existing) {
-        await ctx.db.patch(existing._id, {
+        await ctx.db.patch("settings", existing._id, {
           value: update.value,
           updatedAt: Date.now(),
         });
@@ -842,7 +842,7 @@ export async function updateBusinessInfoHandler(
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("settings", existing._id, {
         value: update.value,
         updatedAt: Date.now(),
       });

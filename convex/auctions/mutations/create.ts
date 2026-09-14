@@ -138,7 +138,7 @@ export const createAuctionHandler = async (
   }
 
   // Validate categoryId exists
-  const category = await ctx.db.get(args.categoryId);
+  const category = await ctx.db.get("equipmentCategories", args.categoryId);
   if (!category) {
     throw new ConvexError("Invalid categoryId: Category not found");
   }
@@ -335,7 +335,7 @@ export const saveDraftHandler = async (
   }
 
   if (validAuctionId) {
-    const existing = await ctx.db.get(validAuctionId);
+    const existing = await ctx.db.get("auctions", validAuctionId);
     if (!existing) {
       throw new ConvexError("Auction not found");
     }
@@ -376,7 +376,7 @@ export const saveDraftHandler = async (
           : LARGE_INCREMENT_AMOUNT;
     }
 
-    await ctx.db.patch(validAuctionId, patchData);
+    await ctx.db.patch("auctions", validAuctionId, patchData);
 
     return validAuctionId;
   }

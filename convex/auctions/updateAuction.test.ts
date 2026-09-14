@@ -70,7 +70,7 @@ describe("updateAuction mutation", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
       title: "New Title",
     });
   });
@@ -181,6 +181,7 @@ describe("bulkUpdateAuctionsHandler", () => {
     await bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "auctions",
       "auction_1",
       expect.objectContaining({
         currentPrice: 500,
@@ -244,7 +245,7 @@ describe("updateConditionReportHandler", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
       conditionReportUrl: "new_storage",
     });
   });
@@ -291,6 +292,7 @@ describe("adminUpdateAuctionHandler", () => {
     await adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "auctions",
       "auction_1",
       expect.objectContaining({
         currentPrice: 20000,

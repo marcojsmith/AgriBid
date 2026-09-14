@@ -201,7 +201,7 @@ export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
 
   await Promise.all([
     ...uniqueAuctionIds.map(async (auctionId) => {
-      const auction = await ctx.db.get(auctionId);
+      const auction = await ctx.db.get("auctions", auctionId);
       auctionTitles.set(auctionId, auction?.title ?? "Unknown Auction");
     }),
     ...uniqueReporterIds.map(async (reporterId) => {

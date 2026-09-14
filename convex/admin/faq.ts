@@ -66,9 +66,9 @@ export const updateFaqItem = mutation({
   returns: v.null(),
   handler: async (ctx, { id, ...patch }) => {
     await requireAdmin(ctx);
-    const existing = await ctx.db.get(id);
+    const existing = await ctx.db.get("faqItems", id);
     if (!existing) throw new Error("FAQ item not found");
-    await ctx.db.patch(id, patch);
+    await ctx.db.patch("faqItems", id, patch);
     return null;
   },
 });
@@ -82,7 +82,7 @@ export const deleteFaqItem = mutation({
   returns: v.null(),
   handler: async (ctx, { id }) => {
     await requireAdmin(ctx);
-    await ctx.db.delete(id);
+    await ctx.db.delete("faqItems", id);
     return null;
   },
 });
@@ -98,13 +98,18 @@ export const reorderFaqItems = mutation({
   handler: async (ctx, { orderedIds }) => {
     await requireAdmin(ctx);
     const fetched = await Promise.all(
-      orderedIds.map(async (id) => ({ id, item: await ctx.db.get(id) }))
+      orderedIds.map(async (id) => ({
+        id,
+        item: await ctx.db.get("faqItems", id),
+      }))
     );
     for (const { id, item } of fetched) {
       if (!item) throw new Error(`FAQ item ${id} not found`);
     }
     await Promise.all(
-      fetched.map(({ id }, index) => ctx.db.patch(id, { order: index }))
+      fetched.map(({ id }, index) =>
+        ctx.db.patch("faqItems", id, { order: index })
+      )
     );
     return null;
   },

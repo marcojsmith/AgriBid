@@ -103,7 +103,7 @@ describe("Watchlist Coverage", () => {
         }
       );
       expect(result).toBe(false);
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("w1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("watchlist", "w1");
     });
 
     it("should insert if not existing", async () => {

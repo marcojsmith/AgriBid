@@ -57,7 +57,7 @@ describe("deleteConditionReport mutation", () => {
 
     expect(result.success).toBe(true);
     expect(storageDeleteMock).toHaveBeenCalledWith(storageId);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       conditionReportUrl: undefined,
     });
   });

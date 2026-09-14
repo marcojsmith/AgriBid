@@ -36,7 +36,7 @@ export const toggleWatchlistHandler = async (
     .first();
 
   if (existing) {
-    await ctx.db.delete(existing._id);
+    await ctx.db.delete("watchlist", existing._id);
     return false; // Not watched anymore
   } else {
     await ctx.db.insert("watchlist", {
@@ -136,7 +136,7 @@ export const getWatchedAuctionsHandler = async (
 
     const page = await Promise.all(
       watchlist.page.map(async (item: Doc<"watchlist">) => {
-        const auction = await ctx.db.get(item.auctionId);
+        const auction = await ctx.db.get("auctions", item.auctionId);
         if (!auction) return null;
         return await toAuctionSummary(ctx, auction);
       })

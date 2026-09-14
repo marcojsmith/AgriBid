@@ -275,7 +275,7 @@ export const markAsReadHandler = async (
   const userId = resolveUserId(authUser);
   if (!userId) throw new Error("Unable to determine user ID");
 
-  const notification = await ctx.db.get(args.notificationId);
+  const notification = await ctx.db.get("notifications", args.notificationId);
   if (!notification) throw new ConvexError("Notification not found");
 
   if (notification.recipientId === "all") {
@@ -300,7 +300,7 @@ export const markAsReadHandler = async (
         "Unauthorized: This notification does not belong to you"
       );
     }
-    await ctx.db.patch(args.notificationId, { isRead: true });
+    await ctx.db.patch("notifications", args.notificationId, { isRead: true });
   }
 
   return null;
@@ -345,7 +345,7 @@ export const markAllReadHandler = async (ctx: MutationCtx) => {
   for (const batch of personalChunks) {
     await Promise.all(
       batch.map((notification: Doc<"notifications">) =>
-        ctx.db.patch(notification._id, { isRead: true })
+        ctx.db.patch("notifications", notification._id, { isRead: true })
       )
     );
   }

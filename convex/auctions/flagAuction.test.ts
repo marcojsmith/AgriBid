@@ -120,7 +120,7 @@ describe("flagAuction mutation", () => {
     });
 
     expect(result.hideTriggered).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith(auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
       status: "pending_review",
       hiddenByFlags: true,
     });
