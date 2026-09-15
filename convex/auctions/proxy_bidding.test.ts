@@ -88,35 +88,35 @@ describe("Proxy Bidding Coverage", () => {
   });
 
   describe("getMinIncrement", () => {
-    it("should return minIncrement if defined on auction", () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+    it("should return minIncrement if defined on lot", () => {
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         minIncrement: 500,
         startingPrice: 10000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      expect(getMinIncrement(auction)).toBe(500);
+      expect(getMinIncrement(lot)).toBe(500);
     });
 
     it("should return SMALL_INCREMENT_AMOUNT for low starting prices", () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         startingPrice: 5000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      expect(getMinIncrement(auction)).toBe(100);
+      expect(getMinIncrement(lot)).toBe(100);
     });
 
     it("should return LARGE_INCREMENT_AMOUNT for high starting prices", () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         startingPrice: 15000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      expect(getMinIncrement(auction)).toBe(500);
+      expect(getMinIncrement(lot)).toBe(500);
     });
   });
 
@@ -125,7 +125,7 @@ describe("Proxy Bidding Coverage", () => {
       const mockBid = {
         _id: "b1" as Id<"bids">,
         _creationTime: Date.now(),
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         bidderId: "u1",
         amount: 1000,
         status: "valid" as const,
@@ -135,7 +135,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await getMostRecentBid(
         mockCtx as unknown as QueryCtx,
-        "a1" as Id<"auctions">
+        "l1" as Id<"lots">
       );
 
       expect(result).toEqual(mockBid);
@@ -146,7 +146,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await getMostRecentBid(
         mockCtx as unknown as QueryCtx,
-        "a1" as Id<"auctions">
+        "l1" as Id<"lots">
       );
 
       expect(result).toBeNull();
@@ -155,92 +155,91 @@ describe("Proxy Bidding Coverage", () => {
 
   describe("getCurrentHighestBidAmount", () => {
     it("should return currentPrice if no bids", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         currentPrice: 1000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query.mockReturnValue(createMockQuery([]));
 
       const result = await getCurrentHighestBidAmount(
         mockCtx as unknown as QueryCtx,
-        "a1" as Id<"auctions">
+        "l1" as Id<"lots">
       );
 
       expect(result).toBe(1000);
     });
 
     it("should return most recent bid amount if exists", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         currentPrice: 1000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
       const bid = {
         _id: "b1" as Id<"bids">,
         _creationTime: Date.now(),
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         bidderId: "u1",
         amount: 1500,
         status: "valid" as const,
       };
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query.mockReturnValue(createMockQuery([bid]));
 
       const result = await getCurrentHighestBidAmount(
         mockCtx as unknown as QueryCtx,
-        "a1" as Id<"auctions">
+        "l1" as Id<"lots">
       );
 
       expect(result).toBe(1500);
     });
 
-    it("should throw if auction not found", async () => {
+    it("should throw if lot not found", async () => {
       mockCtx.db.get.mockResolvedValue(null);
 
       await expect(
         getCurrentHighestBidAmount(
           mockCtx as unknown as QueryCtx,
-          "a1" as Id<"auctions">
+          "l1" as Id<"lots">
         )
-      ).rejects.toThrow("Auction a1 not found");
+      ).rejects.toThrow("Lot l1 not found");
     });
   });
 
   describe("handleNewBid", () => {
-    it("should throw if auction not found", async () => {
+    it("should throw if lot not found", async () => {
       mockCtx.db.get.mockResolvedValue(null);
 
       await expect(
         handleNewBid(
           mockCtx as unknown as MutationCtx,
-          "a1" as Id<"auctions">,
+          "l1" as Id<"lots">,
           "u1",
           1000
         )
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
 
     it("should throw if bid is below starting price", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         currentPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query.mockReturnValue(createMockQuery([]));
 
       await expect(
         handleNewBid(
           mockCtx as unknown as MutationCtx,
-          "a1" as Id<"auctions">,
+          "l1" as Id<"lots">,
           "u1",
           500
         )
@@ -248,14 +247,13 @@ describe("Proxy Bidding Coverage", () => {
     });
 
     it("should throw if bid is below currentPrice + increment", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
-        status: "active",
         startingPrice: 1000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
       const recentBid: Record<string, unknown> = { amount: 1000 };
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query.mockImplementation((table: string) => {
         if (table === "bids") return createMockQuery([recentBid]);
         return createMockQuery();
@@ -264,7 +262,7 @@ describe("Proxy Bidding Coverage", () => {
       await expect(
         handleNewBid(
           mockCtx as unknown as MutationCtx,
-          "a1" as Id<"auctions">,
+          "l1" as Id<"lots">,
           "u1",
           1050
         )
@@ -272,18 +270,17 @@ describe("Proxy Bidding Coverage", () => {
     });
 
     it("should throw if maxBid is below bidAmount", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
-        status: "active",
         startingPrice: 1000,
-      } as Doc<"auctions">;
-      mockCtx.db.get.mockResolvedValue(auction);
+      } as Doc<"lots">;
+      mockCtx.db.get.mockResolvedValue(lot);
 
       await expect(
         handleNewBid(
           mockCtx as unknown as MutationCtx,
-          "a1" as Id<"auctions">,
+          "l1" as Id<"lots">,
           "u1",
           1100,
           1050
@@ -295,22 +292,20 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should meet minimum increment exactly if maxBidLimit allows", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 100,
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 1100, // Exactly the next required amount
           updatedAt: now - 100,
@@ -324,7 +319,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1000
       );
@@ -333,21 +328,19 @@ describe("Proxy Bidding Coverage", () => {
     });
 
     it("should place bid successfully for first bidder", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         currentPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: Date.now() + 100000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query.mockReturnValue(createMockQuery([]));
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
@@ -356,7 +349,7 @@ describe("Proxy Bidding Coverage", () => {
       expect(result.bidAmount).toBe(1100);
       expect(result.isProxyBid).toBe(false);
       expect(mockCtx.db.insert).toHaveBeenCalledWith("bids", {
-        auctionId: "a1",
+        lotId: "l1",
         bidderId: "u1",
         amount: 1100,
         timestamp: expect.any(Number) as number,
@@ -365,21 +358,19 @@ describe("Proxy Bidding Coverage", () => {
     });
 
     it("should handle proxy bid creation", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: Date.now(),
         currentPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: Date.now() + 100000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query.mockReturnValue(createMockQuery([]));
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100,
         2000
@@ -389,7 +380,7 @@ describe("Proxy Bidding Coverage", () => {
       expect(result.confirmedMaxBid).toBe(2000);
       expect(result.proxyBidActive).toBe(true);
       expect(mockCtx.db.insert).toHaveBeenCalledWith("proxy_bids", {
-        auctionId: "a1",
+        lotId: "l1",
         bidderId: "u1",
         maxBid: 2000,
         updatedAt: expect.any(Number) as number,
@@ -398,29 +389,41 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should handle soft close extension", async () => {
       const now = Date.now();
+      const lot = {
+        _id: "l1" as Id<"lots">,
+        _creationTime: now,
+        auctionId: "a1" as Id<"auctions">,
+        currentPrice: 1000,
+        startingPrice: 1000,
+        sellerId: "u2",
+      } as Doc<"lots">;
       const auction = {
         _id: "a1" as Id<"auctions">,
         _creationTime: now,
-        currentPrice: 1000,
-        status: "active" as const,
-        sellerId: "u2",
+        status: "published" as const,
+        startTime: now - 60000,
         endTime: now + 60000, // Within soft close threshold (120000ms)
       } as Doc<"auctions">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockImplementation((table: string) => {
+        if (table === "lots") return Promise.resolve(lot);
+        if (table === "auctions") return Promise.resolve(auction);
+        return Promise.resolve(null);
+      });
       mockCtx.db.query.mockReturnValue(createMockQuery([]));
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
-        "a1",
+        "lots",
+        "l1",
         expect.objectContaining({
+          extendedEndTime: expect.any(Number) as number,
           isExtended: true,
         })
       );
@@ -428,23 +431,21 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should handle existing proxy outbidding new manual bid (Case A)", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: now,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 100,
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 2000,
           updatedAt: now - 100,
@@ -459,7 +460,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
@@ -471,23 +472,21 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should handle new bidder winning proxy battle (Case B)", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: now,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 100,
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 1500,
           updatedAt: now - 100,
@@ -495,7 +494,7 @@ describe("Proxy Bidding Coverage", () => {
         {
           _id: "p2" as Id<"proxy_bids">,
           _creationTime: now,
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u1",
           maxBid: 2000,
           updatedAt: now,
@@ -509,7 +508,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100,
         2000
@@ -521,23 +520,21 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should break ties using creation time", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: now,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 200,
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 2000,
           updatedAt: now - 200,
@@ -545,7 +542,7 @@ describe("Proxy Bidding Coverage", () => {
         {
           _id: "p2" as Id<"proxy_bids">,
           _creationTime: now - 100,
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u4",
           maxBid: 2000,
           updatedAt: now - 100,
@@ -559,7 +556,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
@@ -573,23 +570,21 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should return null from validateAutoBidAmount if maxBidLimit cannot meet increment", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         _creationTime: now,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 100,
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 1050,
           updatedAt: now - 100,
@@ -603,7 +598,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1000
       );
@@ -618,7 +613,7 @@ describe("Proxy Bidding Coverage", () => {
       const proxyBid = {
         _id: "p1" as Id<"proxy_bids">,
         _creationTime: Date.now(),
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         bidderId: "u1",
         maxBid: 2000,
         updatedAt: Date.now(),
@@ -628,7 +623,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await getProxyBid(
         mockCtx as unknown as QueryCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1"
       );
 
@@ -640,7 +635,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await getProxyBid(
         mockCtx as unknown as QueryCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1"
       );
 
@@ -654,7 +649,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await getMyProxyBidHandler(
         mockCtx as unknown as QueryCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "l1" as Id<"lots"> }
       );
 
       expect(result).toBeNull();
@@ -670,7 +665,7 @@ describe("Proxy Bidding Coverage", () => {
       const proxyBid = {
         _id: "p1" as Id<"proxy_bids">,
         _creationTime: Date.now(),
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         bidderId: "u1",
         maxBid: 2000,
         updatedAt: Date.now(),
@@ -680,7 +675,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await getMyProxyBidHandler(
         mockCtx as unknown as QueryCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "l1" as Id<"lots"> }
       );
 
       expect(result).toEqual(proxyBid);
@@ -696,7 +691,7 @@ describe("Proxy Bidding Coverage", () => {
       mockCtx.db.query.mockReturnValue(mockQuery);
 
       await getMyProxyBidHandler(mockCtx as unknown as QueryCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
       });
 
       expect(mockCtx.db.query).toHaveBeenCalledWith("proxy_bids");
@@ -705,21 +700,18 @@ describe("Proxy Bidding Coverage", () => {
 
   describe("upsertProxyBid through handleNewBid", () => {
     it("should update existing proxy bid", async () => {
-      const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 100000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const existingProxy = {
         _id: "p1" as Id<"proxy_bids">,
         bidderId: "u1",
-        auctionId: "a1",
+        lotId: "l1" as Id<"lots">,
         maxBid: 1500,
       };
 
@@ -730,7 +722,7 @@ describe("Proxy Bidding Coverage", () => {
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100,
         2000
@@ -746,29 +738,36 @@ describe("Proxy Bidding Coverage", () => {
     });
   });
 
-  describe("extendAuctionIfNeeded through handleNewBid", () => {
-    it("should not extend if endTime is missing", async () => {
+  describe("extendLotIfNeeded through handleNewBid", () => {
+    it("should not extend if the parent auction endTime is missing", async () => {
+      const lot = {
+        _id: "l1" as Id<"lots">,
+        currentPrice: 1000,
+        auctionId: "a1" as Id<"auctions">,
+        sellerId: "u2",
+      } as Doc<"lots">;
       const auction = {
         _id: "a1" as Id<"auctions">,
-        currentPrice: 1000,
-        status: "active" as const,
-        sellerId: "u2",
         endTime: undefined, // Missing
-      } as Doc<"auctions">;
+      } as unknown as Doc<"auctions">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockImplementation((table: string) => {
+        if (table === "lots") return Promise.resolve(lot);
+        if (table === "auctions") return Promise.resolve(auction);
+        return Promise.resolve(null);
+      });
       mockCtx.db.query.mockReturnValue(createMockQuery([]));
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
 
       expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
-        "auctions",
-        "a1",
+        "lots",
+        "l1",
         expect.objectContaining({
           isExtended: true,
         })
@@ -779,27 +778,27 @@ describe("Proxy Bidding Coverage", () => {
   describe("resolveProxyBids additional cases", () => {
     it("should handle Case A with second highest proxy", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 200,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 3000,
         },
         {
           _id: "p2" as Id<"proxy_bids">,
           _creationTime: now - 100,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u4",
           maxBid: 2000,
         },
@@ -812,7 +811,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
@@ -824,21 +823,20 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should handle Case A where highestProxy.maxBid < bidAmount + minIncrement", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 200,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 1150, // Higher than current bid (1100) but lower than next required (1200)
         },
@@ -851,7 +849,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
@@ -863,21 +861,20 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should handle Case A where highestProxy.maxBid is exactly bidAmount + minIncrement", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 200,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 1200, // Exactly the next required amount
         },
@@ -890,7 +887,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
@@ -901,27 +898,27 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should handle Case A with manual bid + increment being larger than second highest proxy", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active" as const,
         sellerId: "u2",
-        endTime: now + 1000000,
-      } as Doc<"auctions">;
+      } as Doc<"lots">;
 
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
         {
           _id: "p1" as Id<"proxy_bids">,
           _creationTime: now - 200,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u3",
           maxBid: 5000,
         },
         {
           _id: "p2" as Id<"proxy_bids">,
           _creationTime: now - 100,
+          lotId: "l1" as Id<"lots">,
           bidderId: "u4",
           maxBid: 2000,
         },
@@ -934,7 +931,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         3000 // manual bid is 3000, + 100 increment = 3100. max(3100, 2000+100) = 3100.
       );
@@ -944,18 +941,26 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should return null from resolveProxyBids if Case B validatedAmount <= bidAmount", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active",
-        endTime: now + 100000,
-      } as Doc<"auctions">;
-      mockCtx.db.get.mockResolvedValue(auction);
+      } as Doc<"lots">;
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
-        { bidderId: "u1", maxBid: 1100, _creationTime: now },
-        { bidderId: "u2", maxBid: 1050, _creationTime: now - 100 },
+        {
+          _id: "p1" as Id<"proxy_bids">,
+          bidderId: "u1",
+          maxBid: 1100,
+          _creationTime: now,
+        },
+        {
+          _id: "p2" as Id<"proxy_bids">,
+          bidderId: "u2",
+          maxBid: 1050,
+          _creationTime: now - 100,
+        },
       ]);
       mockCtx.db.query.mockImplementation((table) => {
         if (table === "proxy_bids") return proxyQuery;
@@ -964,7 +969,7 @@ describe("Proxy Bidding Coverage", () => {
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100,
         1100
@@ -977,18 +982,26 @@ describe("Proxy Bidding Coverage", () => {
 
     it("should handle Case B where secondMaxPlusIncrement >= targetAmount", async () => {
       const now = Date.now();
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
         startingPrice: 1000,
-        status: "active",
-        endTime: now + 100000,
-      } as Doc<"auctions">;
-      mockCtx.db.get.mockResolvedValue(auction);
+      } as Doc<"lots">;
+      mockCtx.db.get.mockResolvedValue(lot);
 
       const proxyQuery = createMockQuery([
-        { bidderId: "u1", maxBid: 1200, _creationTime: now }, // highest
-        { bidderId: "u2", maxBid: 1150, _creationTime: now - 100 }, // second highest
+        {
+          _id: "p1" as Id<"proxy_bids">,
+          bidderId: "u1",
+          maxBid: 1200,
+          _creationTime: now,
+        }, // highest
+        {
+          _id: "p2" as Id<"proxy_bids">,
+          bidderId: "u2",
+          maxBid: 1150,
+          _creationTime: now - 100,
+        }, // second highest
       ]);
       mockCtx.db.query.mockImplementation((table) => {
         if (table === "proxy_bids") return proxyQuery;
@@ -1001,7 +1014,7 @@ describe("Proxy Bidding Coverage", () => {
       // 1250 < 1200 is FALSE.
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100,
         1200
@@ -1013,19 +1026,17 @@ describe("Proxy Bidding Coverage", () => {
 
   describe("handleNewBid final return coverage", () => {
     it("should have proxyBidActive false if maxBid == bidAmount", async () => {
-      const auction = {
-        _id: "a1" as Id<"auctions">,
+      const lot = {
+        _id: "l1" as Id<"lots">,
         currentPrice: 1000,
-        status: "active",
         startingPrice: 1000,
-        endTime: Date.now() + 100000,
-      } as Doc<"auctions">;
-      mockCtx.db.get.mockResolvedValue(auction);
+      } as Doc<"lots">;
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query.mockReturnValue(createMockQuery());
 
       const result = await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100,
         1100

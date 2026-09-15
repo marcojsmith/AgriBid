@@ -35,21 +35,38 @@ describe("settleExpiredAuctions mutation", () => {
     vi.resetAllMocks();
   });
 
+  const makeQuery = (results: Record<string, unknown>[] = []) => ({
+    withIndex: vi.fn().mockReturnThis(),
+    filter: vi.fn().mockReturnThis(),
+    collect: vi.fn().mockResolvedValue(results),
+    first: vi.fn().mockResolvedValue(null),
+    unique: vi.fn().mockResolvedValue(null),
+  });
+
+  /**
+   * Builds a table-aware mock context. `lots` returns the assigned lots,
+   * `bids` the bids, and `ctx.db.get` resolves the parent auction.
+   */
   const setupMockCtx = (
-    expiredAuctions: Record<string, unknown>[],
-    bids: Record<string, unknown>[]
+    assignedLots: Record<string, unknown>[],
+    bids: Record<string, unknown>[],
+    parentAuction: Record<string, unknown> | null = {
+      status: "published",
+      endTime: Date.now() - 1000,
+    }
   ) => {
+    const tableResults: Record<string, Record<string, unknown>[]> = {
+      lots: assignedLots,
+      bids,
+      platformFees: [],
+      lotFees: [],
+    };
+
     return {
       db: {
-        query: vi.fn((table: string) => ({
-          withIndex: vi.fn().mockReturnThis(),
-          filter: vi.fn().mockReturnThis(),
-          collect: vi
-            .fn()
-            .mockResolvedValue(table === "auctions" ? expiredAuctions : bids),
-        })),
+        query: vi.fn((table: string) => makeQuery(tableResults[table] ?? [])),
         patch: vi.fn(),
-        get: vi.fn(),
+        get: vi.fn().mockResolvedValue(parentAuction),
         insert: vi.fn(),
         replace: vi.fn(),
         delete: vi.fn(),
@@ -65,17 +82,17 @@ describe("settleExpiredAuctions mutation", () => {
     } as unknown as MockCtxType;
   };
 
-  it("should settle an auction as sold if reserve is met", async () => {
+  it("should settle a lot as sold if reserve is met", async () => {
     const now = Date.now();
-    const auctionId = "a1" as unknown as Id<"auctions">;
+    const lotId = "a1" as unknown as Id<"lots">;
     const bidderId = "b1";
 
-    const expiredAuctions = [
+    const assignedLots = [
       {
-        _id: auctionId,
+        _id: lotId,
+        auctionId: "auction1",
         title: "Test Auction",
-        status: "active",
-        endTime: now - 1000,
+        status: "assigned",
         currentPrice: 1500,
         reservePrice: 1000,
       },
@@ -84,7 +101,7 @@ describe("settleExpiredAuctions mutation", () => {
     const bids = [
       {
         _id: "bid1",
-        auctionId,
+        lotId,
         bidderId,
         amount: 1500,
         timestamp: now - 500,
@@ -92,27 +109,27 @@ describe("settleExpiredAuctions mutation", () => {
       },
     ];
 
-    mockCtx = setupMockCtx(expiredAuctions, bids);
+    mockCtx = setupMockCtx(assignedLots, bids);
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "sold",
       winnerId: bidderId,
       settledAt: expect.any(Number) as number,
     });
   });
 
-  it("should settle an auction as unsold if reserve is not met", async () => {
+  it("should settle a lot as unsold if reserve is not met", async () => {
     const now = Date.now();
-    const auctionId = "a2" as unknown as Id<"auctions">;
+    const lotId = "a2" as unknown as Id<"lots">;
 
-    const expiredAuctions = [
+    const assignedLots = [
       {
-        _id: auctionId,
+        _id: lotId,
+        auctionId: "auction2",
         title: "Test Auction",
-        status: "active",
-        endTime: now - 1000,
+        status: "assigned",
         currentPrice: 500,
         reservePrice: 1000,
       },
@@ -121,7 +138,7 @@ describe("settleExpiredAuctions mutation", () => {
     const bids = [
       {
         _id: "bid2",
-        auctionId,
+        lotId,
         bidderId: "b2",
         amount: 500,
         timestamp: now - 500,
@@ -129,53 +146,55 @@ describe("settleExpiredAuctions mutation", () => {
       },
     ];
 
-    mockCtx = setupMockCtx(expiredAuctions, bids);
+    mockCtx = setupMockCtx(assignedLots, bids);
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "unsold",
       winnerId: undefined,
       settledAt: expect.any(Number) as number,
+      auctionId: undefined,
     });
   });
 
-  it("should settle an auction as unsold if there are no bids", async () => {
+  it("should settle a lot as unsold if there are no bids", async () => {
     const now = Date.now();
-    const auctionId = "a3" as unknown as Id<"auctions">;
+    const lotId = "a3" as unknown as Id<"lots">;
 
-    const expiredAuctions = [
+    const assignedLots = [
       {
-        _id: auctionId,
+        _id: lotId,
+        auctionId: "auction3",
         title: "Test Auction",
-        status: "active",
-        endTime: now - 1000,
+        status: "assigned",
         currentPrice: 100,
         reservePrice: 0, // Reserve is 0 but no bids
       },
     ];
 
-    mockCtx = setupMockCtx(expiredAuctions, []);
+    mockCtx = setupMockCtx(assignedLots, []);
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "unsold",
       winnerId: undefined,
       settledAt: expect.any(Number) as number,
+      auctionId: undefined,
     });
   });
 
   it("should pick the correct winner if there are multiple bids with the same amount", async () => {
     const now = Date.now();
-    const auctionId = "a4" as unknown as Id<"auctions">;
+    const lotId = "a4" as unknown as Id<"lots">;
 
-    const expiredAuctions = [
+    const assignedLots = [
       {
-        _id: auctionId,
+        _id: lotId,
+        auctionId: "auction4",
         title: "Test Auction",
-        status: "active",
-        endTime: now - 1000,
+        status: "assigned",
         currentPrice: 1000,
         reservePrice: 1000,
       },
@@ -184,7 +203,7 @@ describe("settleExpiredAuctions mutation", () => {
     const bids = [
       {
         _id: "bid4a",
-        auctionId,
+        lotId,
         bidderId: "winner",
         amount: 1000,
         timestamp: now - 800, // Earlier bid wins
@@ -192,7 +211,7 @@ describe("settleExpiredAuctions mutation", () => {
       },
       {
         _id: "bid4b",
-        auctionId,
+        lotId,
         bidderId: "loser",
         amount: 1000,
         timestamp: now - 700,
@@ -200,11 +219,11 @@ describe("settleExpiredAuctions mutation", () => {
       },
     ];
 
-    mockCtx = setupMockCtx(expiredAuctions, bids);
+    mockCtx = setupMockCtx(assignedLots, bids);
 
     await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
 
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "sold",
       winnerId: "winner",
       settledAt: expect.any(Number) as number,

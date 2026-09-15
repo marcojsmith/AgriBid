@@ -385,15 +385,17 @@ export const rejectAuction = mutation({
 });
 
 /**
- * Admin mutation to manually close an active auction early.
+ * Admin mutation to manually close an assigned lot early.
+ * Closing one lot does not settle its parent auction container — other lots
+ * in the same auction may still be running.
  * @param ctx - The mutation context.
- * @param args - The arguments for closing an auction.
- * @param args.auctionId - The ID of the auction to close
+ * @param args - The arguments for closing a lot.
+ * @param args.lotId - The ID of the lot to close
  * @returns Promise<EarlyClosureResult>
  */
 export const closeAuctionEarlyHandler = async (
   ctx: MutationCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ): Promise<EarlyClosureResult> => {
   const authResult = await tryRequireAdmin(ctx);
   if (!authResult.authorized) {
@@ -404,26 +406,26 @@ export const closeAuctionEarlyHandler = async (
     };
   }
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) {
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) {
     return {
       success: false,
       finalStatus: "",
-      error: "Auction not found",
+      error: "Lot not found",
     };
   }
 
-  if (auction.status !== "active") {
+  if (lot.status !== "assigned") {
     return {
       success: false,
       finalStatus: "",
-      error: "Auction has already been settled",
+      error: "Lot has already been settled",
     };
   }
 
   const bids = await ctx.db
     .query("bids")
-    .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+    .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
     .collect();
 
   const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
@@ -446,9 +448,7 @@ export const closeAuctionEarlyHandler = async (
   }
 
   const reserveMet =
-    hasBids &&
-    highestBid !== undefined &&
-    highestBid.amount >= auction.reservePrice;
+    hasBids && highestBid !== undefined && highestBid.amount >= lot.reservePrice;
 
   if (hasBids && reserveMet && highestBid) {
     finalStatus = "sold";
@@ -458,32 +458,32 @@ export const closeAuctionEarlyHandler = async (
     finalStatus = "unsold";
   }
 
-  await ctx.db.patch("auctions", auction._id, {
+  await ctx.db.patch("lots", lot._id, {
     status: finalStatus,
     winnerId,
     settledAt: Date.now(),
   });
 
-  await updateCounter(ctx, "auctions", "active", -1);
+  await updateCounter(ctx, "lots", "active", -1);
 
   if (finalStatus === "sold") {
-    await updateCounter(ctx, "auctions", "soldCount", 1);
-    await updateCounter(ctx, "auctions", "salesVolume", winningAmount ?? 0);
-    await calculateAndRecordFees(ctx, auction, winningAmount);
+    await updateCounter(ctx, "lots", "soldCount", 1);
+    await updateCounter(ctx, "lots", "salesVolume", winningAmount ?? 0);
+    await calculateAndRecordFees(ctx, lot, winningAmount);
   }
 
-  await logAuctionSettlementActivity(ctx, auction, finalStatus, winnerId);
+  await logAuctionSettlementActivity(ctx, lot, finalStatus, winnerId);
 
   const authUser = await getAuthUser(ctx);
   const adminId = authUser ? resolveUserId(authUser) : "unknown";
 
   await logAudit(ctx, {
     action: "auction_early_closure",
-    targetId: args.auctionId,
-    targetType: "auction",
+    targetId: args.lotId,
+    targetType: "lot",
     details: JSON.stringify({
       adminId,
-      title: auction.title,
+      title: lot.title,
       finalStatus,
       winnerId,
       winningAmount,
@@ -501,7 +501,7 @@ export const closeAuctionEarlyHandler = async (
 };
 
 export const closeAuctionEarly = mutation({
-  args: { auctionId: v.id("auctions") },
+  args: { lotId: v.id("lots") },
   returns: v.object({
     success: v.boolean(),
     finalStatus: v.string(),

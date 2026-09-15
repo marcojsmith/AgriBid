@@ -92,17 +92,78 @@ describe("Bidding Coverage", () => {
   });
 
   describe("placeBidHandler", () => {
+    const lotFixture = {
+      _id: "l1",
+      auctionId: "a1" as Id<"auctions">,
+      sellerId: "u1",
+      currentPrice: 100,
+      minIncrement: 10,
+    };
+
+    const publishedAuctionFixture = {
+      _id: "a1",
+      status: "published" as const,
+      startTime: Date.now() - 60_000,
+      endTime: Date.now() + 120_000,
+    };
+
+    const mockLotAndAuction = (
+      lot: Record<string, unknown> | null,
+      auction: Record<string, unknown> | null
+    ) => {
+      mockCtx.db.get.mockImplementation((table: string) => {
+        if (table === "lots") return Promise.resolve(lot);
+        if (table === "auctions") return Promise.resolve(auction);
+        return Promise.resolve(null);
+      });
+    };
+
+    it("should throw if lot not found", async () => {
+      const userId = "u1";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockLotAndAuction(null, null);
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+          amount: 100,
+        })
+      ).rejects.toThrow("Lot not found");
+    });
+
+    it("should throw if lot is not assigned to an auction", async () => {
+      const userId = "u1";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockLotAndAuction(
+        { _id: "l1", sellerId: "u1", currentPrice: 100, minIncrement: 10 },
+        null
+      );
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+          amount: 100,
+        })
+      ).rejects.toThrow("Lot is not assigned to an auction");
+    });
+
     it("should throw if auction not found", async () => {
       const userId = "u1";
       vi.mocked(auth.requireVerified).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue(null);
+      mockLotAndAuction(lotFixture, null);
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 100,
         })
       ).rejects.toThrow("Auction not found");
@@ -114,11 +175,14 @@ describe("Bidding Coverage", () => {
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue({ status: "draft" });
+      mockLotAndAuction(lotFixture, {
+        ...publishedAuctionFixture,
+        status: "closed",
+      });
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 100,
         })
       ).rejects.toThrow("Auction not active");
@@ -130,16 +194,14 @@ describe("Bidding Coverage", () => {
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue({
-        status: "active",
-        sellerId: "u1",
+      mockLotAndAuction(lotFixture, {
+        ...publishedAuctionFixture,
         startTime: Date.now() + 60_000,
-        endTime: Date.now() + 120_000,
       });
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 100,
         })
       ).rejects.toThrow("Auction has not started");
@@ -151,30 +213,25 @@ describe("Bidding Coverage", () => {
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "active",
-        sellerId: "u1",
-        startTime: Date.now() - 60_000,
-        endTime: Date.now() + 120_000,
-        currentPrice: 100,
-        minIncrement: 10,
-      });
+      mockLotAndAuction(
+        { ...lotFixture, sellerId: "u1" },
+        publishedAuctionFixture
+      );
       mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
 
       const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         amount: 200,
       });
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "bids",
-        expect.objectContaining({ amount: 200, bidderId: "u2" })
+        expect.objectContaining({ amount: 200, bidderId: "u2", lotId: "l1" })
       );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
-        "a1",
+        "lots",
+        "l1",
         expect.objectContaining({ currentPrice: 200, winnerId: "u2" })
       );
     });
@@ -185,11 +242,11 @@ describe("Bidding Coverage", () => {
         profile: createMockProfile(userId, "seller"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue({ status: "active", sellerId: "u1" });
+      mockLotAndAuction(lotFixture, publishedAuctionFixture);
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 100,
         })
       ).rejects.toThrow("Sellers cannot bid on their own auction");
@@ -201,15 +258,14 @@ describe("Bidding Coverage", () => {
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue({
-        status: "active",
-        sellerId: "u1",
+      mockLotAndAuction(lotFixture, {
+        ...publishedAuctionFixture,
         endTime: Date.now() - 1000,
       });
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 100,
         })
       ).rejects.toThrow("Auction ended");
@@ -221,18 +277,14 @@ describe("Bidding Coverage", () => {
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "active",
-        sellerId: "u1",
-        endTime: Date.now() + 10000,
-        currentPrice: 100,
-        minIncrement: 10,
-      });
+      mockLotAndAuction(
+        { ...lotFixture, sellerId: "u1" },
+        publishedAuctionFixture
+      );
       mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
 
       const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         amount: 200,
       });
 
@@ -247,7 +299,7 @@ describe("Bidding Coverage", () => {
           userId: "u2",
           type: "bid_placed",
           description: expect.stringContaining("Bid placed: R") as string,
-          relatedId: "a1",
+          relatedId: "l1",
           createdAt: expect.any(Number) as number,
         })
       );
@@ -259,11 +311,11 @@ describe("Bidding Coverage", () => {
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
-      mockCtx.db.get.mockResolvedValue(null);
+      mockLotAndAuction(lotFixture, null);
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 100,
         })
       ).rejects.toThrow("Auction not found");
@@ -277,7 +329,7 @@ describe("Bidding Coverage", () => {
       const result = await getMyProxyBidHandler(
         mockCtx as unknown as QueryCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
         }
       );
       expect(result).toBeNull();
@@ -296,7 +348,7 @@ describe("Bidding Coverage", () => {
           _id: "pb1",
           maxBid: 1000,
           bidderId: "u1",
-          auctionId: "a1",
+          lotId: "l1",
           updatedAt: Date.now(),
           _creationTime: Date.now(),
         }),
@@ -305,7 +357,7 @@ describe("Bidding Coverage", () => {
       const result = await getMyProxyBidHandler(
         mockCtx as unknown as QueryCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
         }
       );
       expect(result?.maxBid).toBe(1000);
@@ -314,8 +366,8 @@ describe("Bidding Coverage", () => {
 
   describe("getCurrentHighestBidAmount", () => {
     it("should return currentPrice if no bids", async () => {
-      const auction = { currentPrice: 500 };
-      mockCtx.db.get.mockResolvedValue(auction);
+      const lot = { currentPrice: 500 };
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
@@ -325,38 +377,38 @@ describe("Bidding Coverage", () => {
 
       const result = await getCurrentHighestBidAmount(
         mockCtx as unknown as QueryCtx | MutationCtx,
-        "a1" as Id<"auctions">
+        "l1" as Id<"lots">
       );
       expect(result).toBe(500);
     });
 
-    it("should return 0 if auction not found", async () => {
+    it("should throw if lot not found", async () => {
       mockCtx.db.get.mockResolvedValue(null);
       try {
         await getCurrentHighestBidAmount(
           mockCtx as unknown as QueryCtx | MutationCtx,
-          "a1" as Id<"auctions">
+          "a1" as Id<"lots">
         );
         expect.fail("Should have thrown");
       } catch (error: unknown) {
         expect(
           error instanceof Error ? error.message : String(error)
-        ).toContain("not found");
+        ).toContain("Lot a1 not found");
       }
     });
   });
 
   describe("handleNewBid basic logic", () => {
-    const auction = { _id: "a1", currentPrice: 500, minIncrement: 50 };
+    const lot = { _id: "l1", currentPrice: 500, minIncrement: 50 };
 
     it("should handle first bid", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       // No existing bids, no proxy bids
       mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         500
       );
@@ -367,7 +419,7 @@ describe("Bidding Coverage", () => {
     });
 
     it("should handle outbidding existing bid", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockImplementation((table) => {
         if (table === "bids") {
           return createMockQuery([{ amount: 500, bidderId: "u2" }]);
@@ -377,7 +429,7 @@ describe("Bidding Coverage", () => {
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1050
       );
@@ -389,13 +441,13 @@ describe("Bidding Coverage", () => {
     });
 
     it("should handle new proxy bid", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
 
       // maxBid must be >= amount
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100,
         1500
@@ -408,10 +460,10 @@ describe("Bidding Coverage", () => {
   });
 
   describe("handleNewBid proxy battles", () => {
-    const auction = { _id: "a1", currentPrice: 500, minIncrement: 50 };
+    const lot = { _id: "l1", currentPrice: 500, minIncrement: 50 };
 
     it("should handle new bid against existing proxy bid", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockImplementation((table) => {
         if (table === "bids") {
           return createMockQuery([{ amount: 500, bidderId: "u2" }]);
@@ -426,7 +478,7 @@ describe("Bidding Coverage", () => {
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         600
       );
@@ -439,7 +491,7 @@ describe("Bidding Coverage", () => {
     });
 
     it("should handle new bid outbidding existing proxy", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockImplementation((table) => {
         if (table === "bids") {
           return createMockQuery([{ amount: 500, bidderId: "u2" }]);
@@ -454,7 +506,7 @@ describe("Bidding Coverage", () => {
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1500
       );
@@ -468,15 +520,15 @@ describe("Bidding Coverage", () => {
     });
 
     it("should handle proxy vs proxy", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockImplementation((table) => {
         if (table === "bids") {
           return createMockQuery([{ amount: 500, bidderId: "u2" }]);
         }
         if (table === "proxy_bids") {
           return createMockQuery([
-            { bidderId: "u1", maxBid: 1200, _creationTime: 200 },
-            { bidderId: "u2", maxBid: 1000, _creationTime: 100 },
+            { _id: "p1", bidderId: "u1", maxBid: 1200, _creationTime: 200 },
+            { _id: "p2", bidderId: "u2", maxBid: 1000, _creationTime: 100 },
           ]);
         }
         return createMockQuery([]);
@@ -484,7 +536,7 @@ describe("Bidding Coverage", () => {
 
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         550, // u1 starts with a bid of 550 and max of 1200
         1200
@@ -499,8 +551,8 @@ describe("Bidding Coverage", () => {
         expect.objectContaining({ amount: 1050, bidderId: "u1" })
       );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
-        "a1",
+        "lots",
+        "l1",
         expect.objectContaining({ currentPrice: 1050 })
       );
     });
@@ -512,52 +564,52 @@ describe("Bidding Coverage", () => {
         getMinIncrement({
           startingPrice: 50,
           minIncrement: 50,
-        } as unknown as Doc<"auctions">)
+        } as unknown as Doc<"lots">)
       ).toBe(50);
       expect(
         getMinIncrement({
           startingPrice: 500,
           minIncrement: 50,
-        } as unknown as Doc<"auctions">)
+        } as unknown as Doc<"lots">)
       ).toBe(50);
       expect(
         getMinIncrement({
           startingPrice: 2000,
           minIncrement: 100,
-        } as unknown as Doc<"auctions">)
+        } as unknown as Doc<"lots">)
       ).toBe(100);
       expect(
         getMinIncrement({
           startingPrice: 7000,
           minIncrement: 250,
-        } as unknown as Doc<"auctions">)
+        } as unknown as Doc<"lots">)
       ).toBe(250);
       expect(
         getMinIncrement({
           startingPrice: 20000,
           minIncrement: 500,
-        } as unknown as Doc<"auctions">)
+        } as unknown as Doc<"lots">)
       ).toBe(500);
       expect(
         getMinIncrement({
           startingPrice: 70000,
           minIncrement: 1000,
-        } as unknown as Doc<"auctions">)
+        } as unknown as Doc<"lots">)
       ).toBe(1000);
       expect(
         getMinIncrement({
           startingPrice: 200000,
           minIncrement: 2500,
-        } as unknown as Doc<"auctions">)
+        } as unknown as Doc<"lots">)
       ).toBe(2500);
     });
   });
 
   describe("handleNewBid extra branches", () => {
-    const auction = { _id: "a1", currentPrice: 1000, minIncrement: 100 };
+    const lot = { _id: "l1", currentPrice: 1000, minIncrement: 100 };
 
     it("should handle bid equal to current price + increment exactly", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
@@ -567,14 +619,14 @@ describe("Bidding Coverage", () => {
       });
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
-        "a1",
+        "lots",
+        "l1",
         expect.objectContaining({
           currentPrice: 1100,
         })
@@ -582,7 +634,7 @@ describe("Bidding Coverage", () => {
     });
 
     it("should skip updating currentPrice if new bid is NOT higher than currentPrice", async () => {
-      mockCtx.db.get.mockResolvedValue(auction);
+      mockCtx.db.get.mockResolvedValue(lot);
       mockCtx.db.query = vi.fn().mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
@@ -592,14 +644,14 @@ describe("Bidding Coverage", () => {
       });
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1",
         1100
       );
 
       expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
-        "auctions",
-        "a1",
+        "lots",
+        "l1",
         expect.objectContaining({
           currentPrice: 1000,
         })
@@ -615,14 +667,29 @@ describe("Bidding Coverage", () => {
       });
     };
 
-    const setupAuction = () => {
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "active",
-        sellerId: "u_seller",
-        endTime: Date.now() + 10000,
-        currentPrice: 100,
-        minIncrement: 10,
+    const activeLot = {
+      _id: "l1",
+      auctionId: "a1" as Id<"auctions">,
+      sellerId: "u_seller",
+      currentPrice: 100,
+      minIncrement: 10,
+    };
+
+    const publishedAuction = {
+      _id: "a1",
+      status: "published" as const,
+      startTime: Date.now() - 10_000,
+      endTime: Date.now() + 10_000,
+    };
+
+    const setupLotAndAuction = (
+      lot: Record<string, unknown>,
+      auction: Record<string, unknown>
+    ) => {
+      mockCtx.db.get.mockImplementation((table: string) => {
+        if (table === "lots") return Promise.resolve(lot);
+        if (table === "auctions") return Promise.resolve(auction);
+        return Promise.resolve(null);
       });
     };
 
@@ -664,12 +731,12 @@ describe("Bidding Coverage", () => {
 
     it("should throw when two bids from the same user are within the cooldown window", async () => {
       setupVerifiedUser("u2");
-      setupAuction();
+      setupLotAndAuction(activeLot, publishedAuction);
       mockCooldownQuery({ _id: "bc1", userId: "u2", lastBidAt: Date.now() });
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 200,
         })
       ).rejects.toThrow(
@@ -679,7 +746,7 @@ describe("Bidding Coverage", () => {
 
     it("should allow two bids from the same user spaced beyond the cooldown window", async () => {
       setupVerifiedUser("u2");
-      setupAuction();
+      setupLotAndAuction(activeLot, publishedAuction);
       mockCooldownQuery({
         _id: "bc1",
         userId: "u2",
@@ -687,7 +754,7 @@ describe("Bidding Coverage", () => {
       });
 
       const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         amount: 200,
       });
 
@@ -701,12 +768,12 @@ describe("Bidding Coverage", () => {
 
     it("should allow two bids from different users in quick succession", async () => {
       setupVerifiedUser("u2");
-      setupAuction();
+      setupLotAndAuction(activeLot, publishedAuction);
       // Cooldown row belongs to a different user — u2 has none
       mockCooldownQuery({ _id: "bc1", userId: "u3", lastBidAt: Date.now() });
 
       const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         amount: 200,
       });
 
@@ -719,17 +786,16 @@ describe("Bidding Coverage", () => {
 
     it("should not consume the cooldown when a bid is rejected", async () => {
       setupVerifiedUser("u2");
-      // Ended auction first
-      mockCtx.db.get.mockResolvedValue({
-        status: "active",
-        sellerId: "u_seller",
+      // Assigned to an auction that has already ended
+      setupLotAndAuction(activeLot, {
+        ...publishedAuction,
         endTime: Date.now() - 1000,
       });
       mockCooldownQuery(null);
 
       await expect(
         placeBidHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           amount: 200,
         })
       ).rejects.toThrow("Auction ended");
@@ -740,9 +806,9 @@ describe("Bidding Coverage", () => {
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
 
       // Retry on an active auction now succeeds
-      setupAuction();
+      setupLotAndAuction(activeLot, publishedAuction);
       const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "l1" as Id<"lots">,
         amount: 200,
       });
       expect(result.success).toBe(true);
@@ -759,7 +825,7 @@ describe("Bidding Coverage", () => {
 
       await getProxyBid(
         mockCtx as unknown as QueryCtx,
-        "a1" as Id<"auctions">,
+        "l1" as Id<"lots">,
         "u1"
       );
       expect(mockCtx.db.query).toHaveBeenCalledWith("proxy_bids");

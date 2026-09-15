@@ -30,12 +30,12 @@ export interface HandleNewBidResult {
  * Handler for getting the current user's proxy bid.
  * @param ctx - The query context.
  * @param args - The arguments for the query.
- * @param args.auctionId - The ID of the auction.
+ * @param args.lotId - The ID of the lot.
  * @returns The proxy bid document if found, otherwise null.
  */
 export const getMyProxyBidHandler = async (
   ctx: QueryCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ): Promise<Doc<"proxy_bids"> | null> => {
   const authUser = await getAuthUser(ctx);
   if (!authUser) return null;
@@ -43,23 +43,23 @@ export const getMyProxyBidHandler = async (
 
   return await ctx.db
     .query("proxy_bids")
-    .withIndex("by_bidder_auction", (q) =>
-      q.eq("bidderId", userId).eq("auctionId", args.auctionId)
+    .withIndex("by_bidder_lot", (q) =>
+      q.eq("bidderId", userId).eq("lotId", args.lotId)
     )
     .unique();
 };
 
 /**
- * Gets the current proxy bid for the authenticated user on an auction.
+ * Gets the current proxy bid for the authenticated user on a lot.
  */
 export const getMyProxyBid = query({
-  args: { auctionId: v.id("auctions") },
+  args: { lotId: v.id("lots") },
   returns: v.union(
     v.null(),
     v.object({
       _id: v.id("proxy_bids"),
       _creationTime: v.number(),
-      auctionId: v.id("auctions"),
+      lotId: v.id("lots"),
       bidderId: v.string(),
       maxBid: v.number(),
       updatedAt: v.number(),
@@ -69,91 +69,91 @@ export const getMyProxyBid = query({
 });
 
 /**
- * Calculates the minimum increment for an auction based on its price.
+ * Calculates the minimum increment for a lot based on its price.
  *
- * @param auction - The auction document
+ * @param lot - The lot document
  * @returns The minimum increment amount
  */
-export function getMinIncrement(auction: Doc<"auctions">): number {
+export function getMinIncrement(lot: Doc<"lots">): number {
   return (
-    auction.minIncrement ||
-    (auction.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
+    lot.minIncrement ||
+    (lot.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
       ? SMALL_INCREMENT_AMOUNT
       : LARGE_INCREMENT_AMOUNT)
   );
 }
 
 /**
- * Gets the most recent valid bid for an auction by timestamp.
+ * Gets the most recent valid bid for a lot by timestamp.
  * In a valid bidding sequence, the most recent bid is also the highest bid.
  *
  * @param ctx - Query or Mutation context
- * @param auctionId - ID of the auction
+ * @param lotId - ID of the lot
  * @returns The most recent bid document or null if no bids
  */
 export async function getMostRecentBid(
   ctx: QueryCtx | MutationCtx,
-  auctionId: Id<"auctions">
+  lotId: Id<"lots">
 ): Promise<Doc<"bids"> | null> {
   return await ctx.db
     .query("bids")
-    .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+    .withIndex("by_lot", (q) => q.eq("lotId", lotId))
     .order("desc")
     .filter((q) => q.neq(q.field("status"), "voided"))
     .first();
 }
 
 /**
- * Gets the current highest bid amount for an auction.
- * This is either the amount of the most recent valid bid or the starting price.
+ * Gets the current highest bid amount for a lot.
+ * This is either the amount of the most recent valid bid or the lot's current price.
  *
  * @param ctx - Query or Mutation context
- * @param auctionId - ID of the auction
+ * @param lotId - ID of the lot
  * @returns The highest bid amount
  */
 export async function getCurrentHighestBidAmount(
   ctx: QueryCtx | MutationCtx,
-  auctionId: Id<"auctions">
+  lotId: Id<"lots">
 ): Promise<number> {
-  const auction = await ctx.db.get("auctions", auctionId);
-  if (!auction) {
-    throw new Error(`Auction ${auctionId} not found`);
+  const lot = await ctx.db.get("lots", lotId);
+  if (!lot) {
+    throw new Error(`Lot ${lotId} not found`);
   }
 
-  const mostRecentBid = await getMostRecentBid(ctx, auctionId);
+  const mostRecentBid = await getMostRecentBid(ctx, lotId);
   if (mostRecentBid) {
     return mostRecentBid.amount;
   }
-  return auction.currentPrice;
+  return lot.currentPrice;
 }
 
 /**
- * Validates a potential bid against auction rules.
+ * Validates a potential bid against lot rules.
  * @param ctx - The mutation context.
- * @param auction - The auction document.
+ * @param lot - The lot document.
  * @param bidAmount - The amount of the bid.
  * @param maxBid - Optional maximum bid for proxy bidding.
  */
 async function validateBid(
   ctx: MutationCtx,
-  auction: Doc<"auctions">,
+  lot: Doc<"lots">,
   bidAmount: number,
   maxBid?: number
 ) {
-  const mostRecentBid = await getMostRecentBid(ctx, auction._id);
-  const minIncrement = getMinIncrement(auction);
+  const mostRecentBid = await getMostRecentBid(ctx, lot._id);
+  const minIncrement = getMinIncrement(lot);
 
   // 1. Basic Price Validation
   if (!mostRecentBid) {
-    if (bidAmount < auction.currentPrice) {
+    if (bidAmount < lot.currentPrice) {
       throw new Error(
-        `First bid must be at least R${auction.currentPrice.toString()}`
+        `First bid must be at least R${lot.currentPrice.toString()}`
       );
     }
   } else {
-    if (bidAmount < auction.currentPrice + minIncrement) {
+    if (bidAmount < lot.currentPrice + minIncrement) {
       throw new Error(
-        `Bid amount must be at least R${(auction.currentPrice + minIncrement).toString()}`
+        `Bid amount must be at least R${(lot.currentPrice + minIncrement).toString()}`
       );
     }
   }
@@ -169,20 +169,20 @@ async function validateBid(
 /**
  * Creates or updates a proxy bid for a user.
  * @param ctx - The mutation context.
- * @param auctionId - The ID of the auction.
+ * @param lotId - The ID of the lot.
  * @param bidderId - The ID of the bidder.
  * @param maxBid - The maximum bid amount.
  */
 async function upsertProxyBid(
   ctx: MutationCtx,
-  auctionId: Id<"auctions">,
+  lotId: Id<"lots">,
   bidderId: string,
   maxBid: number
 ) {
   const existingProxy = await ctx.db
     .query("proxy_bids")
-    .withIndex("by_bidder_auction", (q) =>
-      q.eq("bidderId", bidderId).eq("auctionId", auctionId)
+    .withIndex("by_bidder_lot", (q) =>
+      q.eq("bidderId", bidderId).eq("lotId", lotId)
     )
     .unique();
 
@@ -193,7 +193,7 @@ async function upsertProxyBid(
     });
   } else {
     await ctx.db.insert("proxy_bids", {
-      auctionId,
+      lotId,
       bidderId,
       maxBid,
       updatedAt: Date.now(),
@@ -202,19 +202,36 @@ async function upsertProxyBid(
 }
 
 /**
- * Extends the auction endTime if within the soft-close threshold.
+ * Extends the lot's effective end time if within the soft-close threshold.
+ * The extension is per-lot (`lots.extendedEndTime`) and may exceed the parent
+ * auction's own window — that is the point of the anti-snipe soft close.
+ *
  * @param ctx - The mutation context.
- * @param auction - The auction document.
+ * @param lot - The lot document.
  * @param now - The current timestamp.
  */
-async function extendAuctionIfNeeded(
+async function extendLotIfNeeded(
   ctx: MutationCtx,
-  auction: Doc<"auctions">,
+  lot: Doc<"lots">,
   now: number
 ) {
-  if (auction.endTime && auction.endTime - now < SOFT_CLOSE_THRESHOLD_MS) {
-    await ctx.db.patch("auctions", auction._id, {
-      endTime: now + SOFT_CLOSE_THRESHOLD_MS,
+  // A lot without a parent auction is not live, so there is no window to extend.
+  if (lot.auctionId === undefined) {
+    return;
+  }
+
+  const auction = await ctx.db.get("auctions", lot.auctionId);
+  if (!auction) {
+    console.warn(
+      `Lot ${lot._id} references missing auction ${lot.auctionId}`
+    );
+    return;
+  }
+
+  const effectiveLotEndTime = lot.extendedEndTime ?? auction.endTime;
+  if (effectiveLotEndTime - now < SOFT_CLOSE_THRESHOLD_MS) {
+    await ctx.db.patch("lots", lot._id, {
+      extendedEndTime: now + SOFT_CLOSE_THRESHOLD_MS,
       isExtended: true,
     });
   }
@@ -241,30 +258,30 @@ function getValidatedAutoBid(
 }
 
 /**
- * Resolves all active proxy bids for an auction after a new bid is placed.
+ * Resolves all active proxy bids for a lot after a new bid is placed.
  * @param ctx - The mutation context.
- * @param auctionId - The ID of the auction.
+ * @param lotId - The ID of the lot.
  * @param bidderId - The ID of the bidder.
  * @param bidAmount - The amount of the new bid.
  * @returns Result of the proxy bid resolution or null if no proxies are active.
  */
 async function resolveProxyBids(
   ctx: MutationCtx,
-  auctionId: Id<"auctions">,
+  lotId: Id<"lots">,
   bidderId: string,
   bidAmount: number
 ): Promise<HandleNewBidResult | null> {
-  const auction = await ctx.db.get("auctions", auctionId);
-  if (!auction) {
+  const lot = await ctx.db.get("lots", lotId);
+  if (!lot) {
     console.warn(
-      `Attempted to resolve proxy bids for non-existent auction ${auctionId}`
+      `Attempted to resolve proxy bids for non-existent lot ${lotId}`
     );
     return null;
   }
-  const minIncrement = getMinIncrement(auction);
+  const minIncrement = getMinIncrement(lot);
   const allProxyBids = await ctx.db
     .query("proxy_bids")
-    .withIndex("by_auction", (q) => q.eq("auctionId", auctionId))
+    .withIndex("by_lot", (q) => q.eq("lotId", lotId))
     .collect();
 
   // Sort by maxBid descending, then by creationTime ascending (earliest bidder wins tie)
@@ -299,14 +316,14 @@ async function resolveProxyBids(
 
     if (validatedAmount !== null) {
       await ctx.db.insert("bids", {
-        auctionId,
+        lotId,
         bidderId: highestProxy.bidderId,
         amount: validatedAmount,
         timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
         status: "valid",
       });
 
-      await ctx.db.patch("auctions", auctionId, {
+      await ctx.db.patch("lots", lotId, {
         currentPrice: validatedAmount,
         winnerId: highestProxy.bidderId,
       });
@@ -340,14 +357,14 @@ async function resolveProxyBids(
 
     if (validatedAmount !== null && validatedAmount > bidAmount) {
       await ctx.db.insert("bids", {
-        auctionId,
+        lotId,
         bidderId: highestProxy.bidderId,
         amount: validatedAmount,
         timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
         status: "valid",
       });
 
-      await ctx.db.patch("auctions", auctionId, {
+      await ctx.db.patch("lots", lotId, {
         currentPrice: validatedAmount,
         winnerId: highestProxy.bidderId,
       });
@@ -375,7 +392,7 @@ async function resolveProxyBids(
  * Handles the logic for when a new bid is placed, including proxy bidding.
  *
  * @param ctx - Mutation context
- * @param auctionId - ID of the auction
+ * @param lotId - ID of the lot
  * @param bidderId - ID of the bidder (userId)
  * @param bidAmount - Amount of the new bid
  * @param maxBid - Optional max bid for proxy bidding
@@ -383,47 +400,42 @@ async function resolveProxyBids(
  */
 export async function handleNewBid(
   ctx: MutationCtx,
-  auctionId: Id<"auctions">,
+  lotId: Id<"lots">,
   bidderId: string,
   bidAmount: number,
   maxBid?: number
 ): Promise<HandleNewBidResult> {
-  const auction = await ctx.db.get("auctions", auctionId);
-  if (!auction) throw new Error("Auction not found");
+  const lot = await ctx.db.get("lots", lotId);
+  if (!lot) throw new Error("Lot not found");
 
   // 1. Validation
-  await validateBid(ctx, auction, bidAmount, maxBid);
-  const minIncrement = getMinIncrement(auction);
+  await validateBid(ctx, lot, bidAmount, maxBid);
+  const minIncrement = getMinIncrement(lot);
 
   // 2. Proxy Bid Update
   if (maxBid !== undefined) {
-    await upsertProxyBid(ctx, auctionId, bidderId, maxBid);
+    await upsertProxyBid(ctx, lotId, bidderId, maxBid);
   }
 
   // 3. Manual Bid Placement
   const now = Date.now();
   await ctx.db.insert("bids", {
-    auctionId,
+    lotId,
     bidderId,
     amount: bidAmount,
     timestamp: now,
     status: "valid",
   });
 
-  // 4. Update Auction Price and handle Soft Close
-  await ctx.db.patch("auctions", auctionId, {
+  // 4. Update Lot Price and handle Soft Close
+  await ctx.db.patch("lots", lotId, {
     currentPrice: bidAmount,
     winnerId: bidderId,
   });
-  await extendAuctionIfNeeded(ctx, auction, now);
+  await extendLotIfNeeded(ctx, lot, now);
 
   // 5. Proxy Resolution
-  const proxyResult = await resolveProxyBids(
-    ctx,
-    auctionId,
-    bidderId,
-    bidAmount
-  );
+  const proxyResult = await resolveProxyBids(ctx, lotId, bidderId, bidAmount);
   if (proxyResult) return proxyResult;
 
   let finalNextBid: number | null = null;
@@ -442,21 +454,21 @@ export async function handleNewBid(
 }
 
 /**
- * Gets the current proxy bid for a user on an auction.
+ * Gets the current proxy bid for a user on a lot.
  * @param ctx - The query context.
- * @param auctionId - The ID of the auction.
+ * @param lotId - The ID of the lot.
  * @param userId - The ID of the user.
  * @returns The user's proxy bid if found.
  */
 export async function getProxyBid(
   ctx: QueryCtx,
-  auctionId: Id<"auctions">,
+  lotId: Id<"lots">,
   userId: string
 ): Promise<Doc<"proxy_bids"> | null> {
   return await ctx.db
     .query("proxy_bids")
-    .withIndex("by_bidder_auction", (q) =>
-      q.eq("bidderId", userId).eq("auctionId", auctionId)
+    .withIndex("by_bidder_lot", (q) =>
+      q.eq("bidderId", userId).eq("lotId", lotId)
     )
     .unique();
 }

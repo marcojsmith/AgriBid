@@ -424,7 +424,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       });
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(false);
       expect(result.error).toBe("Not authorized");
@@ -437,7 +437,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       });
       vi.mocked(mockCtx.db.get).mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         sellerId: "seller1",
         currentPrice: 1000,
         reservePrice: 500,
@@ -456,9 +456,13 @@ describe("Mutations Branch Coverage Expansion", () => {
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.winnerId).toBe("u1");
+      expect(mockQuery.withIndex).toHaveBeenCalledWith(
+        "by_lot",
+        expect.any(Function)
+      );
     });
 
     it("should handle no bids case", async () => {
@@ -468,13 +472,13 @@ describe("Mutations Branch Coverage Expansion", () => {
       });
       vi.mocked(mockCtx.db.get).mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 500,
       });
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.finalStatus).toBe("unsold");
     });

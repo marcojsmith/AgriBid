@@ -691,11 +691,11 @@ describe("Publish Mutations", () => {
   });
 
   describe("closeAuctionEarlyHandler", () => {
-    it("should close auction and determine winner", async () => {
+    it("should close lot and determine winner", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
         title: "Test",
       });
@@ -709,7 +709,7 @@ describe("Publish Mutations", () => {
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(true);
       expect(result.finalStatus).toBe("sold");
@@ -732,13 +732,13 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
       });
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.finalStatus).toBe("unsold");
       expect(calculateAndRecordFees).not.toHaveBeenCalled();
@@ -754,7 +754,7 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
       });
       mockCtx.db.query.mockReturnValue({
@@ -767,7 +767,7 @@ describe("Publish Mutations", () => {
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.winnerId).toBe("u3"); // earlier timestamp
     });
@@ -776,7 +776,7 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 2000,
       });
       mockCtx.db.query.mockReturnValue({
@@ -790,7 +790,7 @@ describe("Publish Mutations", () => {
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.finalStatus).toBe("unsold");
       expect(result.winnerId).toBeUndefined();
@@ -801,7 +801,7 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
       });
       mockCtx.db.query.mockReturnValue({
@@ -814,7 +814,7 @@ describe("Publish Mutations", () => {
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.finalStatus).toBe("sold");
       expect(result.winnerId).toBe("u3");
@@ -827,7 +827,7 @@ describe("Publish Mutations", () => {
       });
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(false);
       expect(result.error).toBe("Not authorized");
@@ -836,7 +836,7 @@ describe("Publish Mutations", () => {
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
     });
 
-    it("should return error if closeAuctionEarlyHandler receives non-active auction", async () => {
+    it("should return error if closeAuctionEarlyHandler receives non-assigned lot", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
@@ -847,10 +847,10 @@ describe("Publish Mutations", () => {
 
       const result = await closeAuctionEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(false);
-      expect(result.error).toBe("Auction has already been settled");
+      expect(result.error).toBe("Lot has already been settled");
     });
   });
 });
