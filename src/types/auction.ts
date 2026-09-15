@@ -1,11 +1,37 @@
-import type { Doc, Id } from "../../convex/_generated/dataModel";
+import type { FunctionReturnType } from "convex/server";
+
+import type { api } from "../../convex/_generated/api";
 
 /**
- * Auction document with optional denormalized category name for display.
+ * Full lot detail shape returned by `api.auctions.queries.browse.getLotById`.
+ *
+ * Derived from the query's return validator rather than hand-rolled fields, so
+ * it stays in sync with the backend as the lot shape evolves.
  */
-export type AuctionWithCategory = Doc<"auctions"> & {
-  categoryName?: string;
-};
+export type LotDetail = NonNullable<
+  FunctionReturnType<typeof api.auctions.queries.browse.getLotById>
+>;
+
+/**
+ * Compact lot summary shape used in list and grid views.
+ *
+ * Derived from the `getActiveAuctions` paginated page so it matches what list
+ * queries actually return.
+ */
+export type LotSummary = FunctionReturnType<
+  typeof api.auctions.queries.browse.getActiveAuctions
+>["page"][number];
+
+/**
+ * @deprecated Use {@link LotSummary}. Kept as an alias so out-of-scope call
+ * sites that still import this name continue to typecheck.
+ */
+export type AuctionWithCategory = LotSummary;
+
+/**
+ * @deprecated Use {@link LotSummary}.
+ */
+export type AuctionSummary = LotSummary;
 
 /**
  * Represents the images associated with an auction.
@@ -21,26 +47,4 @@ export interface AuctionImages {
   rear?: string;
   /** Additional photos array */
   additional?: string[];
-}
-
-/**
- * Represents a simplified auction summary for grid displays.
- */
-export interface AuctionSummary {
-  _id: Id<"auctions">;
-  _creationTime: number;
-  title: string;
-  make: string;
-  model: string;
-  year: number;
-  currentPrice: number;
-  minIncrement: number;
-  endTime?: number;
-  status: string;
-  images: AuctionImages | string[];
-  location: string;
-  operatingHours: number;
-  sellerId: string;
-  winnerId?: string;
-  bidCount: number;
 }

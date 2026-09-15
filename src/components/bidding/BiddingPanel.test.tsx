@@ -7,10 +7,11 @@ import {
 } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
-import type { Doc, Id } from "convex/_generated/dataModel";
+import type { Id } from "convex/_generated/dataModel";
 import * as convexReact from "convex/react";
 import { toast } from "sonner";
 
+import type { LotDetail } from "@/types/auction";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 import { useSession } from "@/lib/auth-client";
 
@@ -87,11 +88,12 @@ vi.mock("convex/react", () => {
 
 describe("BiddingPanel", () => {
   const mockAuctionBase = {
-    _id: "auction123" as Id<"auctions">,
+    _id: "lot123" as Id<"lots">,
     currentPrice: 50000,
     minIncrement: 500,
     startingPrice: 50000,
-    status: "active",
+    status: "assigned",
+    auctionStatus: "published",
   };
 
   const mockSession = { user: { id: "test-user-id", name: "Test User" } };
@@ -121,9 +123,9 @@ describe("BiddingPanel", () => {
   const getActiveAuction = () =>
     ({
       ...mockAuctionBase,
-      endTime: Date.now() + 100000,
-      status: "active",
-    }) as unknown as Doc<"auctions">;
+      auctionStartTime: Date.now() - 100000,
+      auctionEndTime: Date.now() + 100000,
+    }) as unknown as LotDetail;
 
   it("renders current price and minimum bid correctly", () => {
     const auction = getActiveAuction();
@@ -141,8 +143,8 @@ describe("BiddingPanel", () => {
     const endedAuction = {
       ...mockAuctionBase,
       status: "sold",
-      endTime: Date.now() - 1000,
-    } as unknown as Doc<"auctions">;
+      auctionEndTime: Date.now() - 1000,
+    } as unknown as LotDetail;
     render(
       <BrowserRouter>
         <BiddingPanel auction={endedAuction} />
@@ -178,8 +180,8 @@ describe("BiddingPanel", () => {
       ...mockAuctionBase,
       status: "sold",
       winnerId: "test-user-id",
-      endTime: Date.now() - 1000,
-    } as unknown as Doc<"auctions">;
+      auctionEndTime: Date.now() - 1000,
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -373,9 +375,9 @@ describe("BiddingPanel", () => {
 
     const auction = {
       ...mockAuctionBase,
-      endTime: now + 5000,
-      status: "active",
-    } as unknown as Doc<"auctions">;
+      auctionEndTime: now + 5000,
+      status: "assigned",
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -404,10 +406,10 @@ describe("BiddingPanel", () => {
   it("shows not-started state and hides the bid form when startTime is in the future (#296)", () => {
     const auction = {
       ...mockAuctionBase,
-      status: "active",
-      startTime: Date.now() + 60_000,
-      endTime: Date.now() + 120_000,
-    } as unknown as Doc<"auctions">;
+      status: "assigned",
+      auctionStartTime: Date.now() + 60_000,
+      auctionEndTime: Date.now() + 120_000,
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -425,10 +427,10 @@ describe("BiddingPanel", () => {
   it("shows the live bid form once a scheduled startTime has passed", () => {
     const auction = {
       ...mockAuctionBase,
-      status: "active",
-      startTime: Date.now() - 60_000,
-      endTime: Date.now() + 120_000,
-    } as unknown as Doc<"auctions">;
+      status: "assigned",
+      auctionStartTime: Date.now() - 60_000,
+      auctionEndTime: Date.now() + 120_000,
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -447,7 +449,7 @@ describe("BiddingPanel", () => {
     const extendedAuction = {
       ...auction,
       isExtended: true,
-    } as unknown as Doc<"auctions">;
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -461,12 +463,12 @@ describe("BiddingPanel", () => {
   it("shows reserve not met message when ended and no bids met reserve", () => {
     const endedAuction = {
       ...mockAuctionBase,
-      status: "passed",
+      status: "unsold",
       startingPrice: 50000,
       currentPrice: 60000,
       reservePrice: 100000,
-      endTime: Date.now() - 1000,
-    } as unknown as Doc<"auctions">;
+      auctionEndTime: Date.now() - 1000,
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -480,11 +482,11 @@ describe("BiddingPanel", () => {
   it("shows no bids message when ended and price is starting price", () => {
     const endedAuction = {
       ...mockAuctionBase,
-      status: "passed",
+      status: "unsold",
       startingPrice: 50000,
       currentPrice: 50000,
-      endTime: Date.now() - 1000,
-    } as unknown as Doc<"auctions">;
+      auctionEndTime: Date.now() - 1000,
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -681,9 +683,9 @@ describe("BiddingPanel", () => {
   it("handles auction without endTime gracefully (fallback to ended)", () => {
     const auctionNoEndTime = {
       ...mockAuctionBase,
-      endTime: undefined,
-      status: "active",
-    } as unknown as Doc<"auctions">;
+      auctionEndTime: undefined,
+      status: "assigned",
+    } as unknown as LotDetail;
 
     render(
       <BrowserRouter>
@@ -691,7 +693,7 @@ describe("BiddingPanel", () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/Auction Ended/i)).toBeInTheDocument();
+    expect(screen.getByText(/Auction Closed/i)).toBeInTheDocument();
   });
 
   it("applies correct styles for all combinations of isEnded and isHighlighted", () => {
@@ -724,7 +726,7 @@ describe("BiddingPanel", () => {
     const endedAuction = {
       ...auction,
       status: "sold",
-    } as unknown as Doc<"auctions">;
+    } as unknown as LotDetail;
     vi.mocked(usePriceHighlight).mockReturnValue(true);
     rerender(
       <BrowserRouter>

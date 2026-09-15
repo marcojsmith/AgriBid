@@ -3,9 +3,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
-import type { Doc, Id } from "convex/_generated/dataModel";
+import type { Id } from "convex/_generated/dataModel";
 
 import { useSession } from "@/lib/auth-client";
+import type { LotDetail } from "@/types/auction";
 
 import { AuctionHeader } from "./AuctionHeader";
 
@@ -27,7 +28,7 @@ vi.mock("sonner", () => ({
 }));
 
 const mockAuction = {
-  _id: "a1" as unknown as Id<"auctions">,
+  _id: "a1" as unknown as Id<"lots">,
   _creationTime: 100,
   title: "Test Tractor",
   year: 2022,
@@ -35,7 +36,10 @@ const mockAuction = {
   model: "8R",
   location: "Iowa",
   operatingHours: 500,
-  status: "active" as const,
+  status: "assigned" as const,
+  auctionStatus: "published" as const,
+  auctionStartTime: Date.now() - 60_000,
+  auctionEndTime: Date.now() + 60_000,
   sellerId: "s1",
   categoryId: "c1" as unknown as Id<"equipmentCategories">,
   categoryName: "Tractors",
@@ -43,7 +47,7 @@ const mockAuction = {
   startingPrice: 500,
   currentPrice: 750,
   minIncrement: 50,
-  images: ["img1"],
+  images: { additional: [] as string[] },
 };
 
 const { mockNavigate, mockLocation } = vi.hoisted(() => ({
@@ -81,9 +85,7 @@ describe("AuctionHeader", () => {
   });
 
   const renderComponent = (
-    auction: Doc<"auctions"> & {
-      categoryName?: string;
-    } = mockAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+    auction: LotDetail = mockAuction as unknown as LotDetail
   ) => {
     return render(
       <MemoryRouter>
@@ -108,7 +110,7 @@ describe("AuctionHeader", () => {
   it("hides the subtitle when make or model is missing", () => {
     const noModelAuction = { ...mockAuction, model: undefined };
     renderComponent(
-      noModelAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+      noModelAuction as unknown as LotDetail
     );
     expect(screen.queryByText("2022 John Deere 8R")).not.toBeInTheDocument();
   });
@@ -155,7 +157,7 @@ describe("AuctionHeader", () => {
       isPending: false,
     } as ReturnType<typeof useSession>);
     renderComponent(
-      soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+      soldAuction as unknown as LotDetail
     );
     expect(screen.getByText("You won")).toBeDefined();
     expect(screen.getByText(/Congratulations/i)).toBeDefined();
@@ -172,7 +174,7 @@ describe("AuctionHeader", () => {
       isPending: false,
     } as ReturnType<typeof useSession>);
     renderComponent(
-      soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+      soldAuction as unknown as LotDetail
     );
     expect(screen.getByText("Sold")).toBeDefined();
   });
@@ -180,7 +182,7 @@ describe("AuctionHeader", () => {
   it("shows UNSOLD badge", () => {
     const unsoldAuction = { ...mockAuction, status: "unsold" as const };
     renderComponent(
-      unsoldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+      unsoldAuction as unknown as LotDetail
     );
     expect(screen.getByText("Unsold")).toBeDefined();
   });
@@ -197,7 +199,7 @@ describe("AuctionHeader", () => {
       isPending: false,
     } as ReturnType<typeof useSession>);
     renderComponent(
-      soldAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+      soldAuction as unknown as LotDetail
     );
     expect(screen.getByText("Item Sold")).toBeDefined();
     expect(screen.getByText(/Reserve met/i)).toBeDefined();
@@ -266,7 +268,7 @@ describe("AuctionHeader", () => {
   it("renders UNCATEGORIZED_LABEL when categoryName is missing", () => {
     const noCatAuction = { ...mockAuction, categoryName: undefined };
     renderComponent(
-      noCatAuction as unknown as Doc<"auctions"> & { categoryName?: string }
+      noCatAuction as unknown as LotDetail
     );
     expect(screen.getByText("Uncategorized")).toBeDefined();
   });

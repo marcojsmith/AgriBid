@@ -7,20 +7,23 @@ import { toast } from "sonner";
 import { Clock, MapPin, Gavel, CalendarClock } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
-import { useAuctionStarted } from "@/hooks/useAuctionStarted";
+import {
+  getLotLiveWindow,
+  useLotLiveWindow,
+} from "@/hooks/useLotLiveWindow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BidConfirmation } from "@/components/BidConfirmation";
 import { formatCurrency } from "@/lib/currency";
 import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
-import type { AuctionWithCategory } from "@/types/auction";
+import type { LotSummary } from "@/types/auction";
 
 import { AuctionCardThumbnail } from "./AuctionCardThumbnail";
 import { AuctionCardPrice } from "./AuctionCardPrice";
 
 interface AuctionCardProps {
-  auction: AuctionWithCategory;
+  auction: LotSummary;
   viewMode?: "compact" | "detailed";
   isWatched?: boolean;
 }
@@ -49,6 +52,7 @@ export const AuctionCard = ({
   const [pendingBid, setPendingBid] = useState<number | null>(null);
   // Track local state for watchlist to provide immediate feedback
   const [isWatched, setIsWatched] = useState(initialIsWatched);
+  const liveWindow = useLotLiveWindow(auction);
 
   // Synchronize local state with prop changes from parent (server updates)
   useEffect(() => {
@@ -70,7 +74,7 @@ export const AuctionCard = ({
     }
 
     try {
-      const nowWatched = await toggleWatchlist({ auctionId: auction._id });
+      const nowWatched = await toggleWatchlist({ lotId: auction._id });
       setIsWatched(nowWatched);
       toast.success(
         nowWatched ? "Added to watchlist" : "Removed from watchlist"
@@ -84,8 +88,14 @@ export const AuctionCard = ({
     e.preventDefault();
     e.stopPropagation();
 
-    if (auction.startTime && auction.startTime > Date.now()) {
+    const window = getLotLiveWindow(auction, Date.now());
+    if (window.isUpcoming) {
       toast.error("This auction has not started yet");
+      return;
+    }
+
+    if (!window.isLive) {
+      toast.error("This auction is not open for bidding");
       return;
     }
 
@@ -120,7 +130,7 @@ export const AuctionCard = ({
     setIsConfirmOpen(false);
     setIsBidding(true);
     try {
-      await placeBid({ auctionId: auction._id, amount: pendingBid });
+      await placeBid({ lotId: auction._id, amount: pendingBid });
       toast.success("Bid placed successfully!");
     } catch (error) {
       console.error(error);
@@ -132,31 +142,28 @@ export const AuctionCard = ({
     }
   };
 
-  const images = auction.images;
-  const primaryImage = Array.isArray(images)
-    ? images[0]
-    : (images.front ??
-      images.engine ??
-      images.cabin ??
-      images.rear ??
-      images.additional?.[0]);
+  const { images } = auction;
+  const primaryImage =
+    images.front ??
+    images.engine ??
+    images.cabin ??
+    images.rear ??
+    images.additional[0];
 
   const isCompact = viewMode === "compact";
   /**
-   * Whether the auction is closed (sold or unsold).
-   * This flag controls closed-state rendering branches in AuctionCard.
-   * It is true when auction.status === "sold" or "unsold".
+   * Whether the lot is closed (sold, unsold, rejected, or its auction window
+   * has passed). Controls closed-state rendering branches in AuctionCard.
    */
-  const isClosed = auction.status === "sold" || auction.status === "unsold";
+  const isClosed = liveWindow.isEnded;
   /**
-   * Whether the auction is active but its scheduled startTime hasn't
-   * arrived yet — bidding is blocked server-side until then (#296), so the
-   * card must make this distinguishable from a live, biddable auction.
-   * `useAuctionStarted` self-updates once startTime passes, so this flips
-   * without needing an unrelated re-render.
+   * Whether the lot is assigned to a published auction that hasn't started
+   * yet — bidding is blocked server-side until then, so the card must make
+   * this distinguishable from a live, biddable lot. `useLotLiveWindow`
+   * self-updates as the window boundaries pass.
    */
-  const hasStarted = useAuctionStarted(auction.startTime);
-  const isNotStarted = auction.status === "active" && !hasStarted;
+  const isNotStarted = liveWindow.isUpcoming;
+  const isUnavailable = liveWindow.isUnavailable;
 
   return (
     <Card
@@ -178,9 +185,9 @@ export const AuctionCard = ({
               isCompact={isCompact}
               isWatched={isWatched}
               onWatchlistToggle={handleWatchlistToggle}
-              endTime={auction.endTime}
+              endTime={liveWindow.effectiveEndTime}
               isClosed={isClosed}
-              startTime={auction.startTime}
+              startTime={liveWindow.effectiveStartTime}
               isNotStarted={isNotStarted}
             />
             {isClosed && isCompact && (
@@ -225,7 +232,11 @@ export const AuctionCard = ({
                 }
                 className="font-semibold shadow-lg"
               >
-                {auction.status === "sold" ? "Sold" : "Unsold"}
+                {auction.status === "sold"
+                  ? "Sold"
+                  : auction.status === "unsold"
+                    ? "Unsold"
+                    : "Closed"}
               </Badge>
             </div>
           )}
@@ -251,7 +262,7 @@ export const AuctionCard = ({
                     isCompact ? "text-[10px]" : "text-xs"
                   )}
                 >
-                  {auction.categoryName ?? "Equipment"}
+                  {auction.categoryName}
                 </Badge>
               </div>
               <div className="flex justify-between items-start gap-2">
@@ -293,10 +304,10 @@ export const AuctionCard = ({
             >
               <AuctionCardPrice
                 currentPrice={auction.currentPrice}
-                endTime={auction.endTime}
+                endTime={liveWindow.effectiveEndTime}
                 isCompact={isCompact}
                 isClosed={isClosed}
-                startTime={auction.startTime}
+                startTime={liveWindow.effectiveStartTime}
                 isNotStarted={isNotStarted}
               />
             </CardContent>
@@ -319,15 +330,17 @@ export const AuctionCard = ({
                 : "text-xs h-11 rounded-md"
             )}
             onClick={handleBidInitiate}
-            disabled={isBidding || auction.status !== "active" || isNotStarted}
+            disabled={isBidding || !liveWindow.isLive}
           >
             {isBidding
               ? "..."
-              : isClosed
-                ? "Closed"
-                : isNotStarted
-                  ? "Not Started"
-                  : `Bid ${formatCurrency(auction.currentPrice + auction.minIncrement)}`}
+              : isNotStarted
+                ? "Not Started"
+                : isUnavailable
+                  ? "Unavailable"
+                  : isClosed
+                    ? "Closed"
+                    : `Bid ${formatCurrency(auction.currentPrice + auction.minIncrement)}`}
           </Button>
         </div>
       </div>

@@ -7,7 +7,7 @@ import type { Id } from "convex/_generated/dataModel";
 
 import { useSession } from "@/lib/auth-client";
 import { isValidCallbackUrl } from "@/lib/utils";
-import type { AuctionWithCategory } from "@/types/auction";
+import type { LotSummary } from "@/types/auction";
 
 import { AuctionCard } from "./AuctionCard";
 
@@ -60,7 +60,7 @@ vi.mock("sonner", () => ({
 }));
 
 const mockAuction = {
-  _id: "auction123" as Id<"auctions">,
+  _id: "lot123" as Id<"lots">,
   _creationTime: Date.now(),
   title: "Test Tractor",
   make: "John Deere",
@@ -70,14 +70,16 @@ const mockAuction = {
   minIncrement: 100,
   startingPrice: 1000,
   reservePrice: 2000,
-  endTime: Date.now() + 100000,
-  status: "active",
+  status: "assigned",
+  auctionStatus: "published",
+  auctionStartTime: Date.now() - 60_000,
+  auctionEndTime: Date.now() + 100000,
   location: "Cape Town",
   operatingHours: 500,
   categoryName: "Tractors",
   sellerId: "seller1",
   bidCount: 5,
-  images: { front: "image.jpg" },
+  images: { front: "image.jpg", additional: [] as string[] },
 };
 
 describe("AuctionCard", () => {
@@ -314,7 +316,7 @@ describe("AuctionCard", () => {
   it("handles front image as primary", () => {
     const auction = { ...mockAuction, images: { front: "front.jpg" } };
     renderWithRouter({
-      auction: auction as unknown as AuctionWithCategory,
+      auction: auction as unknown as LotSummary,
     });
     const img = screen.getByAltText(
       `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
@@ -325,7 +327,7 @@ describe("AuctionCard", () => {
   it("handles engine image fallback as primary", () => {
     const auction = { ...mockAuction, images: { engine: "engine.jpg" } };
     renderWithRouter({
-      auction: auction as unknown as AuctionWithCategory,
+      auction: auction as unknown as LotSummary,
     });
     const img = screen.getByAltText(
       `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
@@ -336,7 +338,7 @@ describe("AuctionCard", () => {
   it("handles cabin image fallback as primary", () => {
     const auction = { ...mockAuction, images: { cabin: "cabin.jpg" } };
     renderWithRouter({
-      auction: auction as unknown as AuctionWithCategory,
+      auction: auction as unknown as LotSummary,
     });
     const img = screen.getByAltText(
       `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
@@ -347,7 +349,7 @@ describe("AuctionCard", () => {
   it("handles rear image fallback as primary", () => {
     const auction = { ...mockAuction, images: { rear: "rear.jpg" } };
     renderWithRouter({
-      auction: auction as unknown as AuctionWithCategory,
+      auction: auction as unknown as LotSummary,
     });
     const img = screen.getByAltText(
       `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
@@ -358,7 +360,7 @@ describe("AuctionCard", () => {
   it("handles additional[0] image fallback as primary", () => {
     const auction = { ...mockAuction, images: { additional: ["add1.jpg"] } };
     renderWithRouter({
-      auction: auction as unknown as AuctionWithCategory,
+      auction: auction as unknown as LotSummary,
     });
     const img = screen.getByAltText(
       `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
@@ -367,9 +369,9 @@ describe("AuctionCard", () => {
   });
 
   it("handles no image at all", () => {
-    const auction = { ...mockAuction, images: {} };
+    const auction = { ...mockAuction, images: { additional: [] } };
     renderWithRouter({
-      auction: auction as unknown as AuctionWithCategory,
+      auction: auction as unknown as LotSummary,
     });
     // Should render a placeholder emoji/text instead of img
     expect(screen.getByText("🚜")).toBeInTheDocument();
@@ -398,7 +400,7 @@ describe("AuctionCard", () => {
   it("renders closed and compact state with sold badge", () => {
     const closedAuction = { ...mockAuction, status: "sold" as const };
     renderWithRouter({
-      auction: closedAuction as unknown as AuctionWithCategory,
+      auction: closedAuction as unknown as LotSummary,
       viewMode: "compact",
     });
 
@@ -408,7 +410,7 @@ describe("AuctionCard", () => {
   it("renders closed and compact state with unsold badge", () => {
     const closedAuction = { ...mockAuction, status: "unsold" as const };
     renderWithRouter({
-      auction: closedAuction as unknown as AuctionWithCategory,
+      auction: closedAuction as unknown as LotSummary,
       viewMode: "compact",
     });
 
@@ -418,7 +420,7 @@ describe("AuctionCard", () => {
   it("renders closed and detailed state with Sold badge", () => {
     const closedAuction = { ...mockAuction, status: "sold" as const };
     renderWithRouter({
-      auction: closedAuction as unknown as AuctionWithCategory,
+      auction: closedAuction as unknown as LotSummary,
       viewMode: "detailed",
     });
 
@@ -428,7 +430,7 @@ describe("AuctionCard", () => {
   it("renders closed and detailed state with Unsold badge", () => {
     const closedAuction = { ...mockAuction, status: "unsold" as const };
     renderWithRouter({
-      auction: closedAuction as unknown as AuctionWithCategory,
+      auction: closedAuction as unknown as LotSummary,
       viewMode: "detailed",
     });
 
@@ -437,7 +439,7 @@ describe("AuctionCard", () => {
 
   it("renders active and compact state without closed badges", () => {
     renderWithRouter({
-      auction: mockAuction as unknown as AuctionWithCategory,
+      auction: mockAuction as unknown as LotSummary,
       viewMode: "compact",
     });
 
@@ -447,7 +449,7 @@ describe("AuctionCard", () => {
 
   it("renders active and detailed state without closed badges", () => {
     renderWithRouter({
-      auction: mockAuction as unknown as AuctionWithCategory,
+      auction: mockAuction as unknown as LotSummary,
       viewMode: "detailed",
     });
 
@@ -458,13 +460,13 @@ describe("AuctionCard", () => {
   describe("scheduled (not-started) auctions (#296)", () => {
     const notStartedAuction = {
       ...mockAuction,
-      status: "active" as const,
-      startTime: Date.now() + 60_000,
+      status: "assigned" as const,
+      auctionStartTime: Date.now() + 60_000,
     };
 
     it("shows a 'Scheduled' badge in detailed view", () => {
       renderWithRouter({
-        auction: notStartedAuction as unknown as AuctionWithCategory,
+        auction: notStartedAuction as unknown as LotSummary,
         viewMode: "detailed",
       });
 
@@ -473,7 +475,7 @@ describe("AuctionCard", () => {
 
     it("shows a scheduled icon badge in compact view", () => {
       renderWithRouter({
-        auction: notStartedAuction as unknown as AuctionWithCategory,
+        auction: notStartedAuction as unknown as LotSummary,
         viewMode: "compact",
       });
 
@@ -484,7 +486,7 @@ describe("AuctionCard", () => {
 
     it("disables the bid button and shows 'Not Started'", () => {
       renderWithRouter({
-        auction: notStartedAuction as unknown as AuctionWithCategory,
+        auction: notStartedAuction as unknown as LotSummary,
       });
 
       const bidButton = screen.getByRole("button", { name: "Not Started" });
@@ -493,7 +495,7 @@ describe("AuctionCard", () => {
 
     it("shows a 'Starts in' countdown instead of 'Ends in'", () => {
       renderWithRouter({
-        auction: notStartedAuction as unknown as AuctionWithCategory,
+        auction: notStartedAuction as unknown as LotSummary,
       });
 
       expect(screen.getByText("Starts in")).toBeInTheDocument();
@@ -504,11 +506,11 @@ describe("AuctionCard", () => {
     it("does not show scheduled badges once startTime has passed", () => {
       const startedAuction = {
         ...mockAuction,
-        status: "active" as const,
-        startTime: Date.now() - 60_000,
+        status: "assigned" as const,
+        auctionStartTime: Date.now() - 60_000,
       };
       renderWithRouter({
-        auction: startedAuction as unknown as AuctionWithCategory,
+        auction: startedAuction as unknown as LotSummary,
       });
 
       expect(screen.queryByText("Scheduled")).not.toBeInTheDocument();
@@ -521,10 +523,10 @@ describe("AuctionCard", () => {
       const draftAuction = {
         ...mockAuction,
         status: "draft" as const,
-        startTime: Date.now() + 60_000,
+        auctionStartTime: Date.now() + 60_000,
       };
       renderWithRouter({
-        auction: draftAuction as unknown as AuctionWithCategory,
+        auction: draftAuction as unknown as LotSummary,
       });
 
       expect(screen.queryByText("Scheduled")).not.toBeInTheDocument();
