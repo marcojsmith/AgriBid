@@ -132,7 +132,7 @@ export default function Home() {
   );
 
   // Batch-fetch watched auction IDs to avoid per-card queries
-  const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
+  const watchedAuctionIds = useQuery(api.watchlist.getWatchedLotIds, {});
 
   if (isPending) {
     return <LoadingPage message="Loading..." />;

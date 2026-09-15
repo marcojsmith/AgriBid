@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import type { Doc } from "convex/_generated/dataModel";
 import { Clock, MoreVertical, Eye, AlertCircle, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -39,7 +38,7 @@ import {
 import { formatCurrency } from "@/lib/currency";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import type { AuctionWithCategory } from "@/types/auction";
+import type { LotSummary } from "@/types/auction";
 import { useBulkOperations } from "@/hooks/admin/useBulkOperations";
 
 import { BulkActionDialog } from "./dialogs/BulkActionDialog";
@@ -88,11 +87,7 @@ export default function AdminAuctions() {
     results: allAuctions,
     status: auctionsStatus,
     loadMore: loadMoreAuctions,
-  } = usePaginatedQuery(
-    api.auctions.getAllAuctions,
-    {},
-    { initialNumItems: 50 }
-  );
+  } = usePaginatedQuery(api.auctions.getAllLots, {}, { initialNumItems: 50 });
 
   // Use custom hook for all auction selection and bulk operation state
   const {
@@ -109,9 +104,8 @@ export default function AdminAuctions() {
     handleBulkStatusUpdate,
   } = useBulkOperations();
 
-  const [closingAuction, setClosingAuction] = useState<Doc<"auctions"> | null>(
-    null
-  );
+  const [closingAuction, setClosingAuction] =
+    useState<LotSummary | null>(null);
   const [isClosing, setIsClosing] = useState(false);
 
   const closeAuctionEarly = useMutation(
@@ -122,7 +116,7 @@ export default function AdminAuctions() {
    * Opens the confirmation dialog to force end an auction.
    * @param auction - The auction to close early
    */
-  const handleForceEnd = (auction: Doc<"auctions">): void => {
+  const handleForceEnd = (auction: LotSummary): void => {
     setClosingAuction(auction);
   };
 
@@ -137,7 +131,7 @@ export default function AdminAuctions() {
 
     setIsClosing(true);
     try {
-      const result = await closeAuctionEarly({ auctionId: closingAuction._id });
+      const result = await closeAuctionEarly({ lotId: closingAuction._id });
 
       if (result.success) {
         if (
@@ -167,7 +161,7 @@ export default function AdminAuctions() {
   const filteredAuctions = useMemo(() => {
     // `results` is typed non-nullable but the loading-state path feeds
     // `undefined`, so the empty-array fallback is kept intentionally.
-    const auctions = allAuctions as AuctionWithCategory[] | undefined;
+    const auctions = allAuctions as LotSummary[] | undefined;
     return (auctions ?? []).filter(
       (a) =>
         a.title.toLowerCase().includes(auctionSearch.toLowerCase()) ||
@@ -185,16 +179,28 @@ export default function AdminAuctions() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case "assigned":
         return (
           <Badge className="bg-success/10 text-success border-success/20 font-semibold text-xs">
-            Active
+            Live
+          </Badge>
+        );
+      case "approved":
+        return (
+          <Badge className="bg-primary/10 text-primary border-primary/20 font-semibold text-xs">
+            Approved
           </Badge>
         );
       case "pending_review":
         return (
           <Badge className="bg-warning/10 text-warning border-warning/20 font-semibold text-xs">
             Pending
+          </Badge>
+        );
+      case "draft":
+        return (
+          <Badge className="bg-muted text-muted-foreground font-semibold text-xs">
+            Draft
           </Badge>
         );
       case "sold":
@@ -266,12 +272,12 @@ export default function AdminAuctions() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    setBulkStatusTarget("active");
+                    setBulkStatusTarget("approved");
                   }}
                   disabled={isBulkProcessing}
                   className="font-medium text-xs h-9"
                 >
-                  Mark Active
+                  Approve
                 </Button>
                 <Button
                   size="sm"
@@ -412,9 +418,9 @@ export default function AdminAuctions() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive font-bold rounded-lg gap-2"
-                            disabled={a.status !== "active"}
+                            disabled={a.status !== "assigned"}
                             onClick={() => {
-                              if (a.status === "active") handleForceEnd(a);
+                              if (a.status === "assigned") handleForceEnd(a);
                             }}
                           >
                             <AlertCircle className="h-4 w-4" /> Force End

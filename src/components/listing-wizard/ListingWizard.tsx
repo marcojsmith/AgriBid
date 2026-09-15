@@ -60,7 +60,7 @@ const ListingWizardContent = () => {
   );
   const saveDraft = useMutation(api.auctions.mutations.create.saveDraft);
   const submitForReview = useMutation(
-    api.auctions.mutations.publish.submitForReview
+    api.lots.mutations.lifecycle.submitLotForReview
   );
   const { handleError } = useErrorHandler({ reportToGitHub: true });
 
@@ -227,12 +227,12 @@ const ListingWizardContent = () => {
       if (finalAuctionId) {
         // Persist local edits before publishing
         const savedId = await saveDraft({
-          auctionId: finalAuctionId as Id<"auctions">,
+          auctionId: finalAuctionId as Id<"lots">,
           ...auctionData,
         });
         // Then submit it
         await submitForReview({
-          auctionId: savedId as Id<"auctions">,
+          lotId: savedId as Id<"lots">,
         });
       } else {
         // Create a new auction directly as pending_review

@@ -27,13 +27,17 @@ const { mockApi } = vi.hoisted(() => ({
     auctions: {
       getMyListingsStats: { name: "auctions:getMyListingsStats" },
       mutations: {
-        publish: {
-          submitForReview: {
-            name: "auctions/mutations/publish:submitForReview",
-          },
-        },
         delete: {
           deleteDraft: { name: "auctions/mutations/delete:deleteDraft" },
+        },
+      },
+    },
+    lots: {
+      mutations: {
+        lifecycle: {
+          submitLotForReview: {
+            name: "lots/mutations/lifecycle:submitLotForReview",
+          },
         },
       },
     },
@@ -159,7 +163,7 @@ describe("MyListings Page", () => {
     {
       _id: "listing2",
       title: "Active Combine",
-      status: "active",
+      status: "assigned",
       make: "Case IH",
       model: "Magnum",
       year: 2022,
@@ -224,7 +228,7 @@ describe("MyListings Page", () => {
       loadMore: vi.fn(),
     });
     (useMutation as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.auctions.mutations.publish.submitForReview)
+      if (apiPath === mockApi.lots.mutations.lifecycle.submitLotForReview)
         return mockSubmitForReview;
       if (apiPath === mockApi.auctions.mutations.delete.deleteDraft)
         return mockDeleteDraft;
@@ -305,7 +309,7 @@ describe("MyListings Page", () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockSubmitForReview).toHaveBeenCalledWith({ auctionId: "listing1" });
+    expect(mockSubmitForReview).toHaveBeenCalledWith({ lotId: "listing1" });
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith(
         "Listing submitted for review!"

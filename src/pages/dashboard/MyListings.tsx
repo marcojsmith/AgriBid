@@ -61,8 +61,8 @@ const TYPED_BADGE_VARIANTS = AUCTION_STATUS_BADGE_VARIANTS;
 export default function MyListings() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [deletingId, setDeletingId] = useState<Id<"auctions"> | null>(null);
-  const [publishingId, setPublishingId] = useState<Id<"auctions"> | null>(null);
+  const [deletingId, setDeletingId] = useState<Id<"lots"> | null>(null);
+  const [publishingId, setPublishingId] = useState<Id<"lots"> | null>(null);
 
   const {
     results: listings,
@@ -75,21 +75,29 @@ export default function MyListings() {
   );
 
   const submitForReview = useMutation(
-    api.auctions.mutations.publish.submitForReview
+    api.lots.mutations.lifecycle.submitLotForReview
   );
   const deleteDraft = useMutation(api.auctions.mutations.delete.deleteDraft);
   const listingStats = useQuery(api.auctions.getMyListingsStats);
 
   const filteredListings = useMemo(() => {
     if (statusFilter === "all") return listings;
+    // Both "approved" and "assigned" lots surface as the "active" tab,
+    // mirroring getMyListingsStats's combined bucket.
+    if (statusFilter === "active") {
+      return listings.filter(
+        (listing) =>
+          listing.status === "approved" || listing.status === "assigned"
+      );
+    }
     return listings.filter((listing) => listing.status === statusFilter);
   }, [listings, statusFilter]);
 
-  const handleSubmitForReview = async (auctionId: Id<"auctions">) => {
+  const handleSubmitForReview = async (auctionId: Id<"lots">) => {
     if (publishingId) return;
     setPublishingId(auctionId);
     try {
-      await submitForReview({ auctionId });
+      await submitForReview({ lotId: auctionId });
       toast.success("Listing submitted for review!");
     } catch (error) {
       toast.error(
@@ -100,7 +108,7 @@ export default function MyListings() {
     }
   };
 
-  const handleDeleteDraft = async (auctionId: Id<"auctions">) => {
+  const handleDeleteDraft = async (auctionId: Id<"lots">) => {
     setDeletingId(auctionId);
     try {
       await deleteDraft({ auctionId });

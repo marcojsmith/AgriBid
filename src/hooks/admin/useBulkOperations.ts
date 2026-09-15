@@ -27,14 +27,12 @@ export function useBulkOperations() {
   const [auctionSearch, setAuctionSearch] = useState("");
 
   // Selection state
-  const [selectedAuctions, setSelectedAuctions] = useState<Id<"auctions">[]>(
-    []
-  );
+  const [selectedAuctions, setSelectedAuctions] = useState<Id<"lots">[]>([]);
 
   // Bulk operation state
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkStatusTarget, setBulkStatusTarget] = useState<
-    "active" | "rejected" | "sold" | "unsold" | null
+    "approved" | "rejected" | "sold" | "unsold" | null
   >(null);
 
   // Mutation
@@ -47,7 +45,7 @@ export function useBulkOperations() {
    * Returns whether all, some, or no visible auctions are selected.
    */
   const getSelectionState = useCallback(
-    (auctions: Doc<"auctions">[] = []) => {
+    (auctions: Doc<"lots">[] = []) => {
       const selectedSet = new Set(selectedAuctions);
       const visibleSelectedCount = auctions.filter((a) =>
         selectedSet.has(a._id)
@@ -69,7 +67,7 @@ export function useBulkOperations() {
    * @param auctions - List of visible auctions to select/deselect
    * @param checked - Whether to select all or deselect all
    */
-  const handleSelectAll = (auctions: Doc<"auctions">[], checked: boolean) => {
+  const handleSelectAll = (auctions: Doc<"lots">[], checked: boolean) => {
     if (checked) {
       const visibleIds = auctions.map((a) => a._id);
       setSelectedAuctions((prev) =>
@@ -87,7 +85,7 @@ export function useBulkOperations() {
    * @param selected - Whether the auction should be selected
    */
   const handleToggleSelection = (
-    auctionId: Id<"auctions">,
+    auctionId: Id<"lots">,
     selected: boolean
   ) => {
     setSelectedAuctions((prev) =>

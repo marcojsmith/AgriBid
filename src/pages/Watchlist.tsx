@@ -25,7 +25,7 @@ export default function Watchlist() {
     status,
     loadMore,
   } = usePaginatedQuery(
-    api.watchlist.getWatchedAuctions,
+    api.watchlist.getWatchedLots,
     {},
     { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );

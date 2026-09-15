@@ -356,7 +356,7 @@ export default function Profile() {
     sellerId: userId ?? "",
   });
 
-  const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
+  const watchedAuctionIds = useQuery(api.watchlist.getWatchedLotIds, {});
 
   const activity = useQuery(api.userActivity.getSellerActivity, {
     userId: userId ?? "",
@@ -408,7 +408,9 @@ export default function Profile() {
     );
   }
 
-  const activeListings = listings.filter((l) => l.status === "active");
+  const activeListings = listings.filter(
+    (l) => l.status === "approved" || l.status === "assigned"
+  );
   const soldListings = listings.filter((l) => l.status === "sold");
   // `activity` is undefined while loading; coerce to an array so the feed
   // renders an empty state rather than crashing on a missing result.

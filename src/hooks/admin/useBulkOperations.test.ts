@@ -55,10 +55,10 @@ describe("useBulkOperations hook", () => {
 
     it("should handle partial selection branches", () => {
       const { result } = renderHook(() => useBulkOperations());
-      const auctions = [{ _id: "a1" }, { _id: "a2" }] as Doc<"auctions">[];
+      const auctions = [{ _id: "a1" }, { _id: "a2" }] as Doc<"lots">[];
 
       act(() => {
-        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
+        result.current.handleToggleSelection("a1" as Id<"lots">, true);
       });
 
       const state = result.current.getSelectionState(auctions);
@@ -70,7 +70,7 @@ describe("useBulkOperations hook", () => {
   describe("handleSelectAll branches", () => {
     it("should handle deselect all", () => {
       const { result } = renderHook(() => useBulkOperations());
-      const auctions = [{ _id: "a1" }] as Doc<"auctions">[];
+      const auctions = [{ _id: "a1" }] as Doc<"lots">[];
 
       act(() => {
         result.current.handleSelectAll(auctions, true);
@@ -89,12 +89,12 @@ describe("useBulkOperations hook", () => {
       const { result } = renderHook(() => useBulkOperations());
 
       act(() => {
-        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
+        result.current.handleToggleSelection("a1" as Id<"lots">, true);
       });
       expect(result.current.selectedAuctions).toHaveLength(1);
 
       act(() => {
-        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
+        result.current.handleToggleSelection("a1" as Id<"lots">, true);
       });
       expect(result.current.selectedAuctions).toHaveLength(1);
     });
@@ -103,12 +103,12 @@ describe("useBulkOperations hook", () => {
       const { result } = renderHook(() => useBulkOperations());
 
       act(() => {
-        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
+        result.current.handleToggleSelection("a1" as Id<"lots">, true);
       });
       expect(result.current.selectedAuctions).toHaveLength(1);
 
       act(() => {
-        result.current.handleToggleSelection("a1" as Id<"auctions">, false);
+        result.current.handleToggleSelection("a1" as Id<"lots">, false);
       });
       expect(result.current.selectedAuctions).toHaveLength(0);
     });
@@ -119,7 +119,7 @@ describe("useBulkOperations hook", () => {
       const { result } = renderHook(() => useBulkOperations());
 
       act(() => {
-        result.current.setBulkStatusTarget("active");
+        result.current.setBulkStatusTarget("approved");
       });
       await act(async () => {
         await result.current.handleBulkStatusUpdate();
@@ -128,7 +128,7 @@ describe("useBulkOperations hook", () => {
 
       act(() => {
         result.current.setBulkStatusTarget(null);
-        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
+        result.current.handleToggleSelection("a1" as Id<"lots">, true);
       });
       await act(async () => {
         await result.current.handleBulkStatusUpdate();
@@ -141,8 +141,8 @@ describe("useBulkOperations hook", () => {
       mockBulkUpdate.mockResolvedValue(undefined);
 
       act(() => {
-        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
-        result.current.setBulkStatusTarget("active");
+        result.current.handleToggleSelection("a1" as Id<"lots">, true);
+        result.current.setBulkStatusTarget("approved");
       });
 
       await act(async () => {
@@ -151,10 +151,10 @@ describe("useBulkOperations hook", () => {
 
       expect(mockBulkUpdate).toHaveBeenCalledWith({
         auctionIds: ["a1"],
-        updates: { status: "active" },
+        updates: { status: "approved" },
       });
       expect(toast.success).toHaveBeenCalledWith(
-        "Updated 1 auctions to active"
+        "Updated 1 auctions to approved"
       );
       expect(result.current.selectedAuctions).toHaveLength(0);
       expect(result.current.isBulkProcessing).toBe(false);
@@ -166,8 +166,8 @@ describe("useBulkOperations hook", () => {
       mockBulkUpdate.mockRejectedValue(new Error("Mutation failed"));
 
       act(() => {
-        result.current.handleToggleSelection("a1" as Id<"auctions">, true);
-        result.current.setBulkStatusTarget("active");
+        result.current.handleToggleSelection("a1" as Id<"lots">, true);
+        result.current.setBulkStatusTarget("approved");
       });
 
       await act(async () => {

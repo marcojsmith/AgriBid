@@ -30,13 +30,17 @@ vi.mock("convex/_generated/api", () => ({
             _path: "auctions/mutations/create:generateUploadUrl",
           },
         },
-        publish: {
-          submitForReview: {
-            _path: "auctions/mutations/publish:submitForReview",
-          },
-        },
         delete: {
           deleteUpload: { _path: "auctions/mutations/delete:deleteUpload" },
+        },
+      },
+    },
+    lots: {
+      mutations: {
+        lifecycle: {
+          submitLotForReview: {
+            _path: "lots/mutations/lifecycle:submitLotForReview",
+          },
         },
       },
     },
@@ -139,7 +143,7 @@ describe("ListingWizard Full Coverage", () => {
       if (path === "auctions/mutations/create:createAuction")
         return mockCreateAuction;
       if (path === "auctions/mutations/create:saveDraft") return mockSaveDraft;
-      if (path === "auctions/mutations/publish:submitForReview")
+      if (path === "lots/mutations/lifecycle:submitLotForReview")
         return mockSubmitForReview;
       if (path === "auctions/mutations/create:generateUploadUrl")
         return vi.fn().mockResolvedValue("http://upload.url");
@@ -307,7 +311,7 @@ describe("ListingWizard Full Coverage", () => {
 
     await waitFor(() => {
       expect(mockSaveDraft).toHaveBeenCalled();
-      expect(mockSubmitForReview).toHaveBeenCalledWith({ auctionId: "a1" });
+      expect(mockSubmitForReview).toHaveBeenCalledWith({ lotId: "a1" });
       expect(screen.getByText(/Submission Received/i)).toBeInTheDocument();
     });
   });
@@ -704,7 +708,7 @@ describe("ListingWizard Full Coverage", () => {
         })
       );
       expect(mockSubmitForReview).toHaveBeenCalledWith({
-        auctionId: "a-edit-123",
+        lotId: "a-edit-123",
       });
     });
   });

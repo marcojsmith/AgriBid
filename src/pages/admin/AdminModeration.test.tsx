@@ -40,13 +40,19 @@ vi.mock("react-router-dom", async () => {
 vi.mock("convex/_generated/api", () => ({
   api: {
     auctions: {
-      getPendingAuctions: "auctions:getPendingAuctions",
+      getPendingLots: "auctions:getPendingLots",
       getAllPendingFlags: "auctions:getAllPendingFlags",
       mutations: {
         publish: {
-          approveAuction: "auctions/mutations/publish:approveAuction",
-          rejectAuction: "auctions/mutations/publish:rejectAuction",
           dismissFlag: "auctions/mutations/publish:dismissFlag",
+        },
+      },
+    },
+    lots: {
+      mutations: {
+        lifecycle: {
+          approveLot: "lots/mutations/lifecycle:approveLot",
+          rejectLot: "lots/mutations/lifecycle:rejectLot",
         },
       },
     },
@@ -101,8 +107,8 @@ const mockPendingAuctions = [
 const mockPendingFlags = [
   {
     _id: "f1",
-    auctionId: "a2",
-    auctionTitle: "Flagged Harvester",
+    lotId: "a2",
+    lotTitle: "Flagged Harvester",
     reporterName: "Alice Reporter",
     reason: "misleading",
     details: "The price is too low for this model.",
@@ -135,7 +141,7 @@ describe("AdminModeration Page", () => {
 
     // Default mock implementations
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === "auctions:getPendingAuctions") return mockPendingAuctions;
+      if (apiPath === "auctions:getPendingLots") return mockPendingAuctions;
       if (apiPath === "auctions:getAllPendingFlags") return mockPendingFlags;
       if (apiPath === "profileFlags:getAllPendingProfileFlags")
         return mockPendingProfileFlags;
@@ -145,9 +151,9 @@ describe("AdminModeration Page", () => {
     });
 
     (useMutation as Mock).mockImplementation((apiPath) => {
-      if (apiPath === "auctions/mutations/publish:approveAuction")
+      if (apiPath === "lots/mutations/lifecycle:approveLot")
         return mockApproveMutation;
-      if (apiPath === "auctions/mutations/publish:rejectAuction")
+      if (apiPath === "lots/mutations/lifecycle:rejectLot")
         return mockRejectMutation;
       if (apiPath === "auctions/mutations/publish:dismissFlag")
         return mockDismissFlagMutation;
@@ -166,7 +172,7 @@ describe("AdminModeration Page", () => {
 
   it("renders loading state when queries are undefined", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === "auctions:getPendingAuctions") return undefined;
+      if (apiPath === "auctions:getPendingLots") return undefined;
       if (apiPath === "auctions:getAllPendingFlags") return undefined;
       return undefined;
     });
@@ -178,7 +184,7 @@ describe("AdminModeration Page", () => {
 
   it("renders empty state when there are no pending auctions or flags", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === "auctions:getPendingAuctions") return [];
+      if (apiPath === "auctions:getPendingLots") return [];
       if (apiPath === "auctions:getAllPendingFlags") return [];
       if (apiPath === "profileFlags:getAllPendingProfileFlags") return [];
       if (apiPath === "admin:getAdminStats")
@@ -229,9 +235,9 @@ describe("AdminModeration Page", () => {
     })[0];
     fireEvent.click(approveButton);
 
-    expect(mockApproveMutation).toHaveBeenCalledWith({ auctionId: "a1" });
+    expect(mockApproveMutation).toHaveBeenCalledWith({ lotId: "a1" });
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Auction approved");
+      expect(toast.success).toHaveBeenCalledWith("Lot approved");
     });
   });
 
@@ -244,9 +250,9 @@ describe("AdminModeration Page", () => {
     })[0];
     fireEvent.click(approveButton);
 
-    expect(mockApproveMutation).toHaveBeenCalledWith({ auctionId: "a1" });
+    expect(mockApproveMutation).toHaveBeenCalledWith({ lotId: "a1" });
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Failed to approve auction");
+      expect(toast.error).toHaveBeenCalledWith("Failed to approve lot");
     });
   });
 
@@ -257,9 +263,9 @@ describe("AdminModeration Page", () => {
     const rejectButton = screen.getAllByRole("button", { name: /reject/i })[0];
     fireEvent.click(rejectButton);
 
-    expect(mockRejectMutation).toHaveBeenCalledWith({ auctionId: "a1" });
+    expect(mockRejectMutation).toHaveBeenCalledWith({ lotId: "a1" });
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith("Auction rejected");
+      expect(toast.success).toHaveBeenCalledWith("Lot rejected");
     });
   });
 
@@ -270,9 +276,9 @@ describe("AdminModeration Page", () => {
     const rejectButton = screen.getAllByRole("button", { name: /reject/i })[0];
     fireEvent.click(rejectButton);
 
-    expect(mockRejectMutation).toHaveBeenCalledWith({ auctionId: "a1" });
+    expect(mockRejectMutation).toHaveBeenCalledWith({ lotId: "a1" });
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Failed to reject auction");
+      expect(toast.error).toHaveBeenCalledWith("Failed to reject lot");
     });
   });
 
@@ -306,7 +312,7 @@ describe("AdminModeration Page", () => {
     });
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith(
-        "Flag dismissed - auction restored to active"
+        "Flag dismissed - lot restored to approved"
       );
     });
   });
@@ -413,11 +419,11 @@ describe("AdminModeration Page", () => {
   it("renders outline variant for unknown flag reasons", async () => {
     const unknownFlag = {
       _id: "flag3",
-      auctionId: "a1",
+      lotId: "a1",
       reason: "unknown_reason",
       status: "pending",
       reporterName: "Reporter",
-      auctionTitle: "Auction",
+      lotTitle: "Auction",
       createdAt: Date.now(),
     };
 
@@ -426,7 +432,7 @@ describe("AdminModeration Page", () => {
         // Handle both object and string paths
         const path = typeof apiPath === "string" ? apiPath : apiPath?._path;
         if (path === "auctions:getAllPendingFlags") return [unknownFlag];
-        if (path === "auctions:getPendingAuctions") return [];
+        if (path === "auctions:getPendingLots") return [];
         return [];
       }
     );

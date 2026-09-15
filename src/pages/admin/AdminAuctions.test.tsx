@@ -114,7 +114,7 @@ vi.mock("convex/_generated/api", () => ({
       getAdminStats: "admin:getAdminStats",
     },
     auctions: {
-      getAllAuctions: "auctions:getAllAuctions",
+      getAllLots: "auctions:getAllLots",
       mutations: {
         publish: {
           closeAuctionEarly: "auctions/mutations/publish:closeAuctionEarly",
@@ -149,7 +149,7 @@ const mockAuctions = [
     make: "John Deere",
     model: "7R 330",
     year: 2021,
-    status: "active",
+    status: "assigned",
     currentPrice: 150000,
     reservePrice: 140000,
     endTime: Date.now() + 86400000, // 1 day from now
@@ -238,7 +238,7 @@ describe("AdminAuctions", () => {
     expect(screen.getByText("Old Plow")).toBeInTheDocument();
 
     // Check status badges
-    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("Sold")).toBeInTheDocument();
   });
@@ -310,7 +310,7 @@ describe("AdminAuctions", () => {
 
     await waitFor(() => {
       expect(closeAuctionEarlyMock).toHaveBeenCalledWith({
-        auctionId: "auction1",
+        lotId: "auction1",
       });
       expect(toast.success).toHaveBeenCalledWith(
         expect.stringContaining("Awarded to highest bidder")
@@ -351,7 +351,7 @@ describe("AdminAuctions", () => {
     });
   });
 
-  it("handles bulk status update to active", async () => {
+  it("handles bulk status update to approved", async () => {
     bulkUpdateAuctionsMock.mockResolvedValue({ success: true });
 
     renderComponent();
@@ -360,7 +360,7 @@ describe("AdminAuctions", () => {
     fireEvent.click(selectAllCheckbox);
 
     const markActiveButton = screen.getByRole("button", {
-      name: "Mark Active",
+      name: "Approve",
     });
     fireEvent.click(markActiveButton);
 
@@ -378,10 +378,10 @@ describe("AdminAuctions", () => {
     await waitFor(() => {
       expect(bulkUpdateAuctionsMock).toHaveBeenCalledWith({
         auctionIds: ["auction1", "auction2", "auction3"],
-        updates: { status: "active" },
+        updates: { status: "approved" },
       });
       expect(toast.success).toHaveBeenCalledWith(
-        expect.stringContaining("Updated 3 auctions to active")
+        expect.stringContaining("Updated 3 auctions to approved")
       );
     });
   });
@@ -585,7 +585,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction1",
           title: "Days Left",
-          status: "active",
+          status: "assigned",
           endTime: now + 2 * 86400000 + 5 * 3600000, // 2 days 5 hours
           currentPrice: 100,
           reservePrice: 100,
@@ -596,7 +596,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction2",
           title: "Hours Left",
-          status: "active",
+          status: "assigned",
           endTime: now + 5 * 3600000 + 10 * 60000, // 5 hours 10 mins
           currentPrice: 100,
           reservePrice: 100,
@@ -607,7 +607,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction3",
           title: "Minutes Left",
-          status: "active",
+          status: "assigned",
           endTime: now + 10 * 60000, // 10 mins
           currentPrice: 100,
           reservePrice: 100,
@@ -618,7 +618,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction4",
           title: "Seconds Left",
-          status: "active",
+          status: "assigned",
           endTime: now + 30 * 1000, // 30 secs
           currentPrice: 100,
           reservePrice: 100,
@@ -629,7 +629,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction5",
           title: "Exactly 1 Day",
-          status: "active",
+          status: "assigned",
           endTime: now + 86400000,
           currentPrice: 100,
           reservePrice: 100,
@@ -640,7 +640,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction6",
           title: "Exactly 1 Hour",
-          status: "active",
+          status: "assigned",
           endTime: now + 3600000,
           currentPrice: 100,
           reservePrice: 100,
@@ -651,7 +651,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction7",
           title: "Exactly 1 Minute",
-          status: "active",
+          status: "assigned",
           endTime: now + 60000,
           currentPrice: 100,
           reservePrice: 100,
@@ -662,7 +662,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction8",
           title: "Exactly 1 Second",
-          status: "active",
+          status: "assigned",
           endTime: now + 1000,
           currentPrice: 100,
           reservePrice: 100,
@@ -745,7 +745,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction10",
           title: "1 Day 1 Hour",
-          status: "active",
+          status: "assigned",
           endTime: now + 86400000 + 3600000,
           currentPrice: 100,
           reservePrice: 100,
@@ -756,7 +756,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction11",
           title: "2 Days 1 Hour",
-          status: "active",
+          status: "assigned",
           endTime: now + 2 * 86400000 + 3600000,
           currentPrice: 100,
           reservePrice: 100,
@@ -825,7 +825,7 @@ describe("AdminAuctions", () => {
         {
           _id: "auction_no_reserve",
           title: "No Reserve Met",
-          status: "active",
+          status: "assigned",
           currentPrice: 50,
           reservePrice: 100,
           make: "m",

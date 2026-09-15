@@ -7,7 +7,8 @@ type BadgeVariant = VariantProps<typeof badgeVariants>["variant"];
 export const AUCTION_STATUS_BADGE_VARIANTS: Record<string, BadgeVariant> = {
   draft: "secondary",
   pending_review: "outline",
-  active: "default",
+  approved: "default",
+  assigned: "default",
   sold: "default",
   unsold: "destructive",
   rejected: "destructive",

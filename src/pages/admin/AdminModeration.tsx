@@ -39,14 +39,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface PendingFlag {
-  _id: Id<"auctionFlags">;
+  _id: Id<"lotFlags">;
   _creationTime: number;
-  auctionId: Id<"auctions">;
+  lotId: Id<"lots">;
   reporterId: string;
   reason: "misleading" | "inappropriate" | "suspicious" | "other";
   details?: string;
   status: "pending" | "reviewed" | "dismissed";
-  auctionTitle: string;
+  lotTitle: string;
   reporterName: string;
   createdAt: number;
 }
@@ -71,20 +71,20 @@ interface PendingProfileFlag {
 }
 
 /**
- * Creates a handler for auction actions with consistent error handling.
+ * Creates a handler for lot actions with consistent error handling.
  * @param mutation - The mutation function to call
  * @param successMessage - Message to show on success
  * @param errorMessage - Message to show on error
- * @returns A function that takes an auction ID and performs the action
+ * @returns A function that takes a lot ID and performs the action
  */
-function createAuctionActionHandler(
-  mutation: (args: { auctionId: Id<"auctions"> }) => Promise<unknown>,
+function createLotActionHandler(
+  mutation: (args: { lotId: Id<"lots"> }) => Promise<unknown>,
   successMessage: string,
   errorMessage: string
 ) {
-  return async (id: Id<"auctions">) => {
+  return async (id: Id<"lots">) => {
     try {
-      await mutation({ auctionId: id });
+      await mutation({ lotId: id });
       toast.success(successMessage);
     } catch (err) {
       console.error(err);
@@ -109,18 +109,16 @@ export default function AdminModeration() {
   const [dismissReason, setDismissReason] = useState("");
   const [showDismissDialog, setShowDismissDialog] = useState(false);
 
-  const pendingAuctions = useQuery(api.auctions.getPendingAuctions);
+  const pendingAuctions = useQuery(api.auctions.getPendingLots);
   const allPendingFlags = useQuery(api.auctions.getAllPendingFlags);
   const allPendingProfileFlags = useQuery(
     api.profileFlags.getAllPendingProfileFlags
   );
 
-  const approveAuctionMutation = useMutation(
-    api.auctions.mutations.publish.approveAuction
+  const approveLotMutation = useMutation(
+    api.lots.mutations.lifecycle.approveLot
   );
-  const rejectAuctionMutation = useMutation(
-    api.auctions.mutations.publish.rejectAuction
-  );
+  const rejectLotMutation = useMutation(api.lots.mutations.lifecycle.rejectLot);
   const dismissFlagMutation = useMutation(
     api.auctions.mutations.publish.dismissFlag
   );
@@ -128,16 +126,16 @@ export default function AdminModeration() {
     api.profileFlags.reviewProfileFlag
   );
 
-  const handleApprove = createAuctionActionHandler(
-    approveAuctionMutation,
-    "Auction approved",
-    "Failed to approve auction"
+  const handleApprove = createLotActionHandler(
+    approveLotMutation,
+    "Lot approved",
+    "Failed to approve lot"
   );
 
-  const handleReject = createAuctionActionHandler(
-    rejectAuctionMutation,
-    "Auction rejected",
-    "Failed to reject auction"
+  const handleReject = createLotActionHandler(
+    rejectLotMutation,
+    "Lot rejected",
+    "Failed to reject lot"
   );
 
   const handleDismissFlag = async () => {
@@ -148,7 +146,7 @@ export default function AdminModeration() {
         dismissalReason: dismissReason || undefined,
       });
       if (result.auctionRestored) {
-        toast.success("Flag dismissed - auction restored to active");
+        toast.success("Flag dismissed - lot restored to approved");
       } else {
         toast.success("Flag dismissed");
       }
@@ -245,7 +243,7 @@ export default function AdminModeration() {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <CardTitle className="text-base">
-                          {flag.auctionTitle}
+                          {flag.lotTitle}
                         </CardTitle>
                         <CardDescription>
                           Reported by {flag.reporterName}
@@ -275,7 +273,7 @@ export default function AdminModeration() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => navigate(`/auction/${flag.auctionId}`)}
+                        onClick={() => navigate(`/auction/${flag.lotId}`)}
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
                         View
@@ -430,9 +428,9 @@ export default function AdminModeration() {
               ) : (
                 <>
                   Are you sure you want to dismiss this flag?
-                  {selectedFlag?.auctionTitle && (
+                  {selectedFlag?.lotTitle && (
                     <span className="block mt-2">
-                      Auction: <strong>{selectedFlag.auctionTitle}</strong>
+                      Lot: <strong>{selectedFlag.lotTitle}</strong>
                     </span>
                   )}
                 </>
