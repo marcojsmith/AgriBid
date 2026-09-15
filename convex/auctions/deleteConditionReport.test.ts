@@ -36,7 +36,7 @@ describe("deleteConditionReport mutation", () => {
   };
 
   it("should allow owner to delete condition report", async () => {
-    const auctionId = "a1" as Id<"auctions">;
+    const auctionId = "a1" as Id<"lots">;
     const userId = "user1";
     const storageId = "s1" as Id<"_storage">;
 
@@ -57,13 +57,13 @@ describe("deleteConditionReport mutation", () => {
 
     expect(result.success).toBe(true);
     expect(storageDeleteMock).toHaveBeenCalledWith(storageId);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", auctionId, {
       conditionReportUrl: undefined,
     });
   });
 
   it("should fail if not authorized (not owner)", async () => {
-    const auctionId = "a1" as Id<"auctions">;
+    const auctionId = "a1" as Id<"lots">;
     const sellerId = "owner";
     const reporterId = "not_owner";
 
@@ -81,7 +81,7 @@ describe("deleteConditionReport mutation", () => {
 
     await expect(
       deleteConditionReportHandler(mockCtx, { auctionId })
-    ).rejects.toThrow("You can only modify your own auctions");
+    ).rejects.toThrow("You can only modify your own lots");
   });
 
   it("should fail if auction not found", async () => {
@@ -93,7 +93,7 @@ describe("deleteConditionReport mutation", () => {
 
     await expect(
       deleteConditionReportHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        auctionId: "a1" as Id<"lots">,
       })
     ).rejects.toThrow(ConvexError);
   });

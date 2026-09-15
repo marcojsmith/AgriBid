@@ -78,7 +78,7 @@ describe("deleteDraft mutation", () => {
 
   it("should delete a draft auction successfully", async () => {
     const userId = "user123";
-    const auctionId = "auction123" as unknown as Id<"auctions">;
+    const auctionId = "auction123" as unknown as Id<"lots">;
     const mockAuction = {
       _id: auctionId,
       sellerId: userId,
@@ -96,7 +96,7 @@ describe("deleteDraft mutation", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", auctionId);
+    expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", auctionId);
 
     // Check that counters were updated
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
@@ -125,9 +125,9 @@ describe("deleteDraft mutation", () => {
 
     await expect(
       deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "nonexistent" as unknown as Id<"auctions">,
+        auctionId: "nonexistent" as unknown as Id<"lots">,
       })
-    ).rejects.toThrow("Auction not found");
+    ).rejects.toThrow("Lot not found");
   });
 
   it("should fail if not in draft status", async () => {
@@ -142,8 +142,8 @@ describe("deleteDraft mutation", () => {
 
     await expect(
       deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as unknown as Id<"auctions">,
+        auctionId: "a1" as unknown as Id<"lots">,
       })
-    ).rejects.toThrow("Only draft auctions can be deleted");
+    ).rejects.toThrow("Only draft lots can be deleted");
   });
 });

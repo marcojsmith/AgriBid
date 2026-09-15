@@ -27,8 +27,8 @@ import {
 
 interface SellerInfoProps {
   sellerId: string;
-  /** Optional auction the conversation is about, linked to the message. */
-  auctionId?: Id<"auctions">;
+  /** Optional lot the conversation is about, linked to the message. */
+  lotId?: Id<"lots">;
   /** True when the viewer is the seller; the Message button stays disabled. */
   isOwnListing?: boolean;
 }
@@ -38,13 +38,13 @@ interface SellerInfoProps {
  *
  * @param props - Component props.
  * @param props.sellerId - The ID of the seller to display information for.
- * @param props.auctionId - Optional auction ID used to link a started conversation to the auction.
+ * @param props.lotId - Optional lot ID used to link a started conversation to the lot.
  * @param props.isOwnListing - True when the viewer is the seller themselves; disables the Message button instead of offering an action that would fail server-side.
  * @returns The rendered seller info card.
  */
 export const SellerInfo = ({
   sellerId,
-  auctionId,
+  lotId,
   isOwnListing = false,
 }: SellerInfoProps) => {
   const seller = useQuery(api.auctions.getSellerInfo, { sellerId });
@@ -67,7 +67,7 @@ export const SellerInfo = ({
       const conversationId = await startConversation({
         recipientId: sellerId,
         initialMessage: message,
-        auctionId,
+        lotId,
       });
       toast.success("Message sent");
       setMessageDialogOpen(false);

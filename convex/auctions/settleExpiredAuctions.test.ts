@@ -159,7 +159,6 @@ describe("settleExpiredAuctions mutation", () => {
   });
 
   it("should settle a lot as unsold if there are no bids", async () => {
-    const now = Date.now();
     const lotId = "a3" as unknown as Id<"lots">;
 
     const assignedLots = [

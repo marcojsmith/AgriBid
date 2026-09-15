@@ -190,7 +190,7 @@ describe("Admin Statistics", () => {
     const auctionsInsert = insertCalls.find(
       (call: unknown[]) =>
         call[0] === "counters" &&
-        (call[1] as { name?: string } | undefined)?.name === "auctions"
+        (call[1] as { name?: string } | undefined)?.name === "lots"
     );
     expect(auctionsInsert).toBeDefined();
     const insertedData = auctionsInsert?.[1] as {

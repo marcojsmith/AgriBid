@@ -188,7 +188,7 @@ describe("Mutations Branch Coverage Expansion", () => {
         } as unknown as Parameters<typeof createAuctionHandler>[1]
       );
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         expect.objectContaining({
           minIncrement: 500,
         })
@@ -251,7 +251,7 @@ describe("Mutations Branch Coverage Expansion", () => {
             images: {},
           } as unknown as Parameters<typeof saveDraftHandler>[1]
         )
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
 
     it("should validate before publish if status is pending_review", async () => {
@@ -281,15 +281,15 @@ describe("Mutations Branch Coverage Expansion", () => {
   });
 
   describe("updateAuctionHandler branches", () => {
-    it("should throw if auction not found", async () => {
+    it("should throw if lot not found", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       vi.mocked(mockCtx.db.get).mockResolvedValue(null);
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: {},
         })
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
 
     it("should handle legacy array images when merging", async () => {
@@ -302,7 +302,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       });
 
       await updateAuctionHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        auctionId: "a1" as Id<"lots">,
         updates: { images: { cabin: "img3" } },
       });
 
@@ -313,7 +313,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       }) as Record<string, unknown>;
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           images: expectedImages,
@@ -337,13 +337,13 @@ describe("Mutations Branch Coverage Expansion", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(vi.fn());
 
       await deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        auctionId: "a1" as Id<"lots">,
       });
       expect(spy).toHaveBeenCalledWith(
         expect.stringContaining("Failed to delete condition report"),
         expect.any(Error)
       );
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "a1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", "a1");
       spy.mockRestore();
     });
   });
@@ -484,8 +484,8 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
   });
 
-  describe("bulk update auctions handler branches", () => {
-    it("should skip missing auctions", async () => {
+  describe("bulk update lots handler branches", () => {
+    it("should skip missing lots", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin1",
       } as unknown as Awaited<ReturnType<typeof auth.requireAdmin>>);
@@ -494,32 +494,33 @@ describe("Mutations Branch Coverage Expansion", () => {
       const result = await bulkUpdateAuctionsHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionIds: ["a1" as Id<"auctions">],
-          updates: { status: "active" },
+          auctionIds: ["a1" as Id<"lots">],
+          updates: { status: "approved" },
         }
       );
       expect(result.skipped).toContain("a1");
       expect(result.updated).toHaveLength(0);
     });
 
-    it("should skip if validation fails for active status", async () => {
+    it("should update a found lot even with an empty title (no title validation on this mutation)", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin1",
       } as unknown as Awaited<ReturnType<typeof auth.requireAdmin>>);
       vi.mocked(mockCtx.db.get).mockResolvedValue({
         _id: "a1",
         status: "pending_review",
-        title: "", // Invalid for active
+        title: "",
       });
 
       const result = await bulkUpdateAuctionsHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionIds: ["a1" as Id<"auctions">],
-          updates: { status: "active" },
+          auctionIds: ["a1" as Id<"lots">],
+          updates: { status: "approved" },
         }
       );
-      expect(result.skipped).toContain("a1");
+      expect(result.updated).toContain("a1");
+      expect(result.skipped).toHaveLength(0);
     });
   });
 });

@@ -172,15 +172,15 @@ export const deleteCategoryHandler = async (
     );
   }
 
-  // Check if category is used by any auctions
-  const usedByAuction = await ctx.db
-    .query("auctions")
+  // Check if category is used by any lots
+  const usedByLot = await ctx.db
+    .query("lots")
     .withIndex("by_category", (q) => q.eq("categoryId", args.id))
     .first();
 
-  if (usedByAuction) {
+  if (usedByLot) {
     throw new ConvexError(
-      "Cannot delete category as it is currently linked to auction listings."
+      "Cannot delete category as it is currently linked to lot listings."
     );
   }
 
@@ -197,7 +197,7 @@ export const deleteCategory = mutation({
  *
  * 1. Activates all metadata entries.
  * 2. Maps legacy 'category' string to 'categoryId' based on equipmentCategories table.
- * 3. Updates auctions to use proper categoryId where possible.
+ * 3. Updates lots to use proper categoryId where possible.
  *
  * @param ctx - Mutation context
  * @returns Statistics about the migration
@@ -235,23 +235,24 @@ export const fixMetadataHandler = async (ctx: MutationCtx) => {
     metadataFixed++;
   }
 
-  // 3. Fix Auctions (Legacy data might be missing categoryId)
-  const auctions = await ctx.db.query("auctions").collect();
+  // 3. Fix lots (legacy data might be missing categoryId). The return field is
+  // kept as `auctionsFixed` for backward compatibility with the admin UI.
+  const lots = await ctx.db.query("lots").collect();
   let auctionsFixed = 0;
 
-  for (const auction of auctions) {
-    if (!auction.categoryId) {
+  for (const lot of lots) {
+    if (!lot.categoryId) {
       // Find matching metadata to infer category - use make AND model for better accuracy
-      const matches = metadata.filter((m) => m.make === auction.make);
+      const matches = metadata.filter((m) => m.make === lot.make);
 
       // If multiple matches by make, try to narrow down by model
       let match = matches.length === 1 ? matches[0] : null;
-      if (matches.length > 1 && auction.model) {
-        match = matches.find((m) => m.models.includes(auction.model)) ?? null;
+      if (matches.length > 1 && lot.model) {
+        match = matches.find((m) => m.models.includes(lot.model)) ?? null;
       }
 
       if (match?.categoryId) {
-        await ctx.db.patch("auctions", auction._id, {
+        await ctx.db.patch("lots", lot._id, {
           categoryId: match.categoryId,
         });
         auctionsFixed++;

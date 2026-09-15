@@ -17,7 +17,7 @@ describe("updateConditionReportHandler", () => {
   };
 
   const mockAuction = {
-    _id: "auction_123" as Id<"auctions">,
+    _id: "auction_123" as Id<"lots">,
     sellerId: "user_123",
     status: "draft",
     conditionReportUrl: "old_storage_id" as Id<"_storage">,
@@ -34,7 +34,7 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.patch.mockResolvedValue(undefined);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 
@@ -44,9 +44,9 @@ describe("updateConditionReportHandler", () => {
     );
 
     expect(result).toEqual({ success: true });
-    expect(mockCtx.db.get).toHaveBeenCalledWith("auctions", "auction_123");
+    expect(mockCtx.db.get).toHaveBeenCalledWith("lots", "auction_123");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("old_storage_id");
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "auction_123", {
       conditionReportUrl: "new_storage_id",
     });
   });
@@ -57,29 +57,29 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.patch.mockResolvedValue(undefined);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 
     await updateConditionReportHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.storage.delete).not.toHaveBeenCalled();
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "auction_123", {
       conditionReportUrl: "new_storage_id",
     });
   });
 
-  it("should throw 'Auction not found' when db.get returns null", async () => {
+  it("should throw 'Lot not found' when db.get returns null", async () => {
     mockCtx.db.get.mockResolvedValue(null);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 
     await expect(
       updateConditionReportHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("Auction not found");
+    ).rejects.toThrow("Lot not found");
   });
 
   it("should throw if user does not own the auction", async () => {
@@ -87,12 +87,12 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.get.mockResolvedValue(auctionOtherOwner);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 
     await expect(
       updateConditionReportHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("You can only modify your own auctions");
+    ).rejects.toThrow("You can only modify your own lots");
   });
 });

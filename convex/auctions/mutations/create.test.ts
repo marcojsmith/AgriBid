@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
 import { updateCounter } from "../../admin_utils";
-import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from "../../constants";
+import { MS_PER_MINUTE } from "../../constants";
 import {
   createAuctionHandler,
   saveDraftHandler,
@@ -15,7 +15,7 @@ type SaveDraftArgs = Parameters<typeof saveDraftHandler>[1];
 type PartialDraftArgs = Partial<SaveDraftArgs> & {
   title?: string;
   images?: { front?: string; additional?: string[] };
-  auctionId?: Id<"auctions">;
+  auctionId?: Id<"lots">;
   startingPrice?: number;
   durationDays?: number;
 };
@@ -239,77 +239,26 @@ describe("Create Mutations", () => {
       ).rejects.toThrow("Additional images limit exceeded (max 6)");
     });
 
-    it("should throw if durationDays is invalid", async () => {
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, {
-          ...validArgs,
-          durationDays: 0,
-        })
-      ).rejects.toThrow("Invalid duration");
-
-      await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, {
-          ...validArgs,
-          durationDays: 366,
-        })
-      ).rejects.toThrow("Invalid duration");
-    });
-
-    it("should reject startTime 2 min in the past for non-draft", async () => {
+    it("should ignore legacy durationDays/startTime (lots do not own a schedule)", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
-      const pastTime = Date.now() - 2 * MS_PER_MINUTE;
-      await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, {
-          ...validArgs,
-          isDraft: false,
-          startTime: pastTime,
-        })
-      ).rejects.toThrow("cannot be more than 1 minute in the past");
-    });
-
-    it("should reject startTime 2 years in the future for non-draft", async () => {
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
-      const futureTime = Date.now() + 2 * 365 * MS_PER_DAY;
-      await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, {
-          ...validArgs,
-          isDraft: false,
-          startTime: futureTime,
-        })
-      ).rejects.toThrow("cannot be more than 1 year in the future");
-    });
-
-    it("should accept startTime 30 days in the future for non-draft", async () => {
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
-      const futureTime = Date.now() + 30 * MS_PER_DAY;
       const result = await createAuctionHandler(
         mockCtx as unknown as MutationCtx,
         {
           ...validArgs,
           isDraft: false,
-          startTime: futureTime,
+          startTime: Date.now() - 2 * MS_PER_MINUTE,
         }
       );
       expect(result).toBeDefined();
-    });
 
-    it("should allow past startTime for draft", async () => {
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
-      const pastTime = Date.now() - MS_PER_HOUR;
-      const result = await createAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          ...validArgs,
-          isDraft: true,
-          startTime: pastTime,
-        }
+      const insertCall = mockCtx.db.insert.mock.calls.find(
+        (call) => call[0] === "lots"
       );
-      expect(result).toBeDefined();
+      expect(insertCall).toBeDefined();
+      const inserted = insertCall?.[1] as Record<string, unknown>;
+      expect(inserted).not.toHaveProperty("startTime");
+      expect(inserted).not.toHaveProperty("durationDays");
     });
   });
 
@@ -325,7 +274,7 @@ describe("Create Mutations", () => {
       );
       expect(result).toBe("id");
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         expect.objectContaining({
           title: "T",
           images: { front: "img1", additional: [] },
@@ -344,14 +293,14 @@ describe("Create Mutations", () => {
       const result = await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           title: "T",
           images: { front: "img1" },
         } as PartialDraftArgs as SaveDraftArgs
       );
       expect(result).toBe("a1");
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           title: "T",
@@ -360,19 +309,19 @@ describe("Create Mutations", () => {
       );
     });
 
-    it("should throw if auction not found", async () => {
+    it("should throw if lot not found", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"auctions">,
+            auctionId: "a1" as Id<"lots">,
             title: "T",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
         )
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
 
     it("should throw if not owner", async () => {
@@ -386,12 +335,12 @@ describe("Create Mutations", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"auctions">,
+            auctionId: "a1" as Id<"lots">,
             title: "T",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
         )
-      ).rejects.toThrow("You can only modify your own auctions");
+      ).rejects.toThrow("You can only modify your own lots");
     });
 
     it("should validate pending_review draft before saving", async () => {
@@ -401,43 +350,19 @@ describe("Create Mutations", () => {
         _id: "a1",
         sellerId: userId,
         status: "pending_review",
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
 
       // Should fail because title is missing in this update
       await expect(
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"auctions">,
+            auctionId: "a1" as Id<"lots">,
             title: "",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
         )
-      ).rejects.toThrow("Title is required before publishing");
-    });
-
-    it("should throw if durationDays is invalid", async () => {
-      await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            durationDays: 0,
-            title: "Test",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
-      ).rejects.toThrow("Invalid duration");
-
-      await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            durationDays: 366,
-            title: "Test",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
-      ).rejects.toThrow("Invalid duration");
+      ).rejects.toThrow("Title is required before submitting");
     });
 
     it("should truncate additional images in saveDraftHandler", async () => {
@@ -452,7 +377,7 @@ describe("Create Mutations", () => {
       );
       expect(result).toBe("id");
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         expect.objectContaining({
           images: expect.objectContaining({
             additional: ["1", "2", "3", "4", "5", "6"],
@@ -475,18 +400,18 @@ describe("Create Mutations", () => {
       ).rejects.toThrow("Invalid auctionId provided");
     });
 
-    it("should throw if validAuctionId provided but auction missing", async () => {
+    it("should throw if valid lot id provided but lot missing", async () => {
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"auctions">,
+            auctionId: "a1" as Id<"lots">,
             title: "Test",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
         )
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
 
     it("should set minIncrement based on startingPrice", async () => {
@@ -500,7 +425,7 @@ describe("Create Mutations", () => {
         } as PartialDraftArgs as SaveDraftArgs
       );
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         expect.objectContaining({ minIncrement: 100 })
       );
 
@@ -514,7 +439,7 @@ describe("Create Mutations", () => {
         } as PartialDraftArgs as SaveDraftArgs
       );
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         expect.objectContaining({ minIncrement: 500 })
       );
     });
@@ -530,14 +455,14 @@ describe("Create Mutations", () => {
       await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           title: "Updated Draft",
           startingPrice: 20000,
           images: { front: "img1" },
         } as PartialDraftArgs as SaveDraftArgs
       );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           minIncrement: 500,
@@ -557,7 +482,7 @@ describe("Create Mutations", () => {
       await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           title: "Updated Draft",
           images: { front: "img1" },
         } as PartialDraftArgs as SaveDraftArgs
@@ -565,7 +490,7 @@ describe("Create Mutations", () => {
 
       expect(updateCounter).not.toHaveBeenCalledWith(
         expect.anything(),
-        "auctions",
+        "lots",
         "draft",
         1
       );
@@ -584,13 +509,13 @@ describe("Create Mutations", () => {
 
       expect(updateCounter).toHaveBeenCalledWith(
         expect.anything(),
-        "auctions",
+        "lots",
         "draft",
         1
       );
     });
 
-    it("should reject startTime 2 min in the past on pending_review", async () => {
+    it("should ignore a supplied startTime on pending_review (no lot schedule)", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
@@ -601,17 +526,23 @@ describe("Create Mutations", () => {
         startingPrice: 1000,
         reservePrice: 2000,
         images: { front: "img1" },
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
       const pastTime = Date.now() - 2 * MS_PER_MINUTE;
-      await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            auctionId: "a1" as Id<"auctions">,
-            startTime: pastTime,
-          } as PartialDraftArgs as SaveDraftArgs
-        )
-      ).rejects.toThrow("cannot be more than 1 minute in the past");
+      await saveDraftHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"lots">,
+          startTime: pastTime,
+        } as PartialDraftArgs as SaveDraftArgs
+      );
+
+      const patchCall = mockCtx.db.patch.mock.calls.find(
+        (call) => call[0] === "lots"
+      );
+      expect(patchCall).toBeDefined();
+      expect(patchCall?.[2] as Record<string, unknown>).not.toHaveProperty(
+        "startTime"
+      );
     });
   });
 

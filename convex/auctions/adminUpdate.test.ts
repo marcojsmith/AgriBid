@@ -35,8 +35,8 @@ describe("adminUpdateAuction mutation", () => {
     };
   });
 
-  it("should update an auction as admin", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+  it("should update a lot as admin", async () => {
+    const auctionId = "auction123" as Id<"lots">;
     const mockAuction = {
       _id: auctionId,
       status: "pending_review",
@@ -50,27 +50,27 @@ describe("adminUpdateAuction mutation", () => {
       mockCtx as unknown as MutationCtx,
       {
         auctionId,
-        updates: { status: "active" },
+        updates: { status: "approved" },
       }
     );
 
     expect(result.success).toBe(true);
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "auctions",
+      "lots",
       auctionId,
-      expect.objectContaining({ status: "active" })
+      expect.objectContaining({ status: "approved" })
     );
   });
 
-  it("should throw error if auction not found", async () => {
-    const auctionId = "invalid" as Id<"auctions">;
+  it("should throw error if lot not found", async () => {
+    const auctionId = "invalid" as Id<"lots">;
     mockCtx.db.get.mockResolvedValue(null);
 
     await expect(
       adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
         auctionId,
-        updates: { status: "active" },
+        updates: { status: "approved" },
       })
-    ).rejects.toThrow("Auction not found");
+    ).rejects.toThrow("Lot not found");
   });
 });

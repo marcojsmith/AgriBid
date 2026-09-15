@@ -319,7 +319,7 @@ export default function Profile() {
       const conversationId = await startConversation({
         recipientId: userId,
         initialMessage: contactMessage,
-        auctionId: undefined,
+        lotId: undefined,
       });
       toast.success("Message sent");
       setContactDialogOpen(false);

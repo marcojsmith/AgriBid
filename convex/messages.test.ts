@@ -100,7 +100,7 @@ describe("startConversation mutation", () => {
       {
         recipientId: "user_seller",
         initialMessage: "Hi, is the tractor still available?",
-        auctionId: "auction1" as Id<"auctions">,
+        lotId: "auction1" as Id<"lots">,
       }
     );
 
@@ -110,7 +110,7 @@ describe("startConversation mutation", () => {
       expect.objectContaining({
         buyerId: "user_buyer",
         sellerId: "user_seller",
-        auctionId: "auction1",
+        lotId: "auction1",
       })
     );
     expect(mockCtx.db.insert).toHaveBeenCalledWith(
@@ -218,14 +218,14 @@ describe("startConversation mutation", () => {
     await startConversationHandler(mockCtx as unknown as MutationCtx, {
       recipientId: "user_seller",
       initialMessage: "Now asking about a different auction",
-      auctionId: "auction_new" as Id<"auctions">,
+      lotId: "auction_new" as Id<"lots">,
     });
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
       "conversations",
       "conv_existing",
       expect.objectContaining({
-        auctionId: "auction_new",
+        lotId: "auction_new",
         lastMessageAt: expect.any(Number) as number,
       })
     );

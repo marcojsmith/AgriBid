@@ -54,28 +54,25 @@ export function isEditableStatus(status: string): status is EditableStatus {
 }
 
 /**
- * Ensures an auction can be edited (must be in draft or pending_review).
- * @param auction - The auction document to check.
+ * Ensures a lot can be edited (must be in draft or pending_review).
+ * @param lot - The lot document to check.
  */
-export function assertEditable(auction: Doc<"auctions">): void {
-  if (!isEditableStatus(auction.status)) {
+export function assertEditable(lot: Doc<"lots">): void {
+  if (!isEditableStatus(lot.status)) {
     throw new ConvexError(
-      `Only ${EDITABLE_STATUSES.join(" or ")} auctions can be edited`
+      `Only ${EDITABLE_STATUSES.join(" or ")} lots can be edited`
     );
   }
 }
 
 /**
- * Ensures the caller owns the auction.
- * @param auction - The auction document to check.
+ * Ensures the caller owns the lot.
+ * @param lot - The lot document to check.
  * @param userId - The ID of the user to check ownership against.
  */
-export function assertOwnership(
-  auction: Doc<"auctions">,
-  userId: string
-): void {
-  if (auction.sellerId !== userId) {
-    throw new ConvexError("You can only modify your own auctions");
+export function assertOwnership(lot: Doc<"lots">, userId: string): void {
+  if (lot.sellerId !== userId) {
+    throw new ConvexError("You can only modify your own lots");
   }
 }
 

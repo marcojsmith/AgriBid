@@ -60,7 +60,7 @@ describe("updateAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
@@ -70,7 +70,7 @@ describe("updateAuction mutation", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "auction_123", {
       title: "New Title",
     });
   });
@@ -81,7 +81,7 @@ describe("updateAuction mutation", () => {
     );
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
@@ -102,13 +102,13 @@ describe("updateAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
     await expect(
       updateAuctionHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("You can only modify your own auctions");
+    ).rejects.toThrow("You can only modify your own lots");
   });
 
   it("should throw an error if the auction is not in draft or pending_review", async () => {
@@ -123,13 +123,13 @@ describe("updateAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
     await expect(
       updateAuctionHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("Only draft or pending_review auctions can be edited");
+    ).rejects.toThrow("Only draft or pending_review lots can be edited");
   });
 });
 
@@ -174,14 +174,14 @@ describe("bulkUpdateAuctionsHandler", () => {
     });
 
     const args = {
-      auctionIds: ["auction_1" as Id<"auctions">],
+      auctionIds: ["auction_1" as Id<"lots">],
       updates: { startingPrice: 500 },
     };
 
     await bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "auctions",
+      "lots",
       "auction_1",
       expect.objectContaining({
         currentPrice: 500,
@@ -235,7 +235,7 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"auctions">,
+      auctionId: "auction_123" as Id<"lots">,
       storageId: "new_storage" as Id<"_storage">,
     };
 
@@ -245,7 +245,7 @@ describe("updateConditionReportHandler", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_123", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "auction_123", {
       conditionReportUrl: "new_storage",
     });
   });
@@ -285,14 +285,14 @@ describe("adminUpdateAuctionHandler", () => {
     });
 
     const args = {
-      auctionId: "auction_1" as Id<"auctions">,
+      auctionId: "auction_1" as Id<"lots">,
       updates: { startingPrice: 20000 },
     };
 
     await adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "auctions",
+      "lots",
       "auction_1",
       expect.objectContaining({
         currentPrice: 20000,

@@ -501,7 +501,7 @@ export default function AuctionDetail() {
 
             <SellerInfo
               sellerId={auction.sellerId}
-              auctionId={auction.auctionId}
+              lotId={auction._id}
               isOwnListing={isOwner}
             />
           </div>

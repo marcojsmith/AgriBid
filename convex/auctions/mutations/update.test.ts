@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
-import { MS_PER_DAY } from "../../constants";
 import {
   updateAuctionHandler,
   adminUpdateAuctionHandler,
@@ -90,7 +89,7 @@ describe("Update Mutations", () => {
 
   describe("updateAuctionHandler", () => {
     const updateArgs = {
-      auctionId: "a1" as Id<"auctions">,
+      auctionId: "a1" as Id<"lots">,
       updates: {
         title: "Updated Title",
         startingPrice: 5000,
@@ -105,7 +104,7 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { front: "img1" },
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
@@ -114,7 +113,7 @@ describe("Update Mutations", () => {
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           title: "Updated Title",
@@ -131,19 +130,19 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: ["img1", "img2"], // Legacy array format
-      } as unknown as Doc<"auctions">);
+      } as unknown as Doc<"lots">);
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: { title: "New", images: {} },
         }
       );
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           images: expect.objectContaining({
@@ -162,19 +161,19 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: [],
-      } as unknown as Doc<"auctions">);
+      } as unknown as Doc<"lots">);
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: { title: "New", images: { front: "new-img" } },
         }
       );
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           images: { front: "new-img" },
@@ -190,19 +189,19 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { front: "old-img" },
-      } as unknown as Doc<"auctions">);
+      } as unknown as Doc<"lots">);
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: { images: { engine: "engine-img" } },
         }
       );
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           images: { front: "old-img", engine: "engine-img" },
@@ -215,7 +214,7 @@ describe("Update Mutations", () => {
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, updateArgs)
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
 
     it("should throw if not owner", async () => {
@@ -225,11 +224,11 @@ describe("Update Mutations", () => {
         _id: "a1",
         sellerId: "other_user",
         status: "draft",
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, updateArgs)
-      ).rejects.toThrow("You can only modify your own auctions");
+      ).rejects.toThrow("You can only modify your own lots");
     });
 
     it("should throw if not editable", async () => {
@@ -238,12 +237,12 @@ describe("Update Mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
         sellerId: userId,
-        status: "active",
-      } as Doc<"auctions">);
+        status: "assigned",
+      } as Doc<"lots">);
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, updateArgs)
-      ).rejects.toThrow("Only draft or pending_review auctions can be edited");
+      ).rejects.toThrow("Only draft or pending_review lots can be edited");
     });
 
     it("should throw if too many additional images", async () => {
@@ -254,11 +253,11 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { additional: ["1", "2", "3"] },
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: {
             images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
           },
@@ -266,24 +265,7 @@ describe("Update Mutations", () => {
       ).rejects.toThrow("Additional images limit exceeded");
     });
 
-    it("should throw if invalid durationDays", async () => {
-      const userId = "u1";
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        sellerId: userId,
-        status: "draft",
-      } as Doc<"auctions">);
-
-      await expect(
-        updateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-          updates: { durationDays: 0 },
-        })
-      ).rejects.toThrow("Invalid duration");
-    });
-
-    it("should validate pending_review auction update", async () => {
+    it("should validate pending_review lot update", async () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
       mockCtx.db.get.mockResolvedValue({
@@ -295,11 +277,11 @@ describe("Update Mutations", () => {
         startingPrice: 100,
         reservePrice: 200,
         images: { front: "img1" },
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: { title: "" },
         })
       ).rejects.toThrow("Title is required");
@@ -314,38 +296,45 @@ describe("Update Mutations", () => {
       const result = await adminUpdateAuctionHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: { title: "New Title" },
         }
       );
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "a1", {
         title: "New Title",
       });
     });
 
-    it("should validate if status is set to active", async () => {
+    it("should update a lot's status as admin", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
 
-      // Should throw because endTime is missing in the merged state
-      await expect(
-        adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-          updates: { status: "active" },
-        })
-      ).rejects.toThrow("Cannot set status to 'active' without endTime");
+      const result = await adminUpdateAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          auctionId: "a1" as Id<"lots">,
+          updates: { status: "approved" },
+        }
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "lots",
+        "a1",
+        expect.objectContaining({ status: "approved" })
+      );
     });
 
     it("should reset hiddenByFlags when status changes from pending_review", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
       await adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
-        updates: { status: "active", endTime: Date.now() + 1000 },
+        auctionId: "a1" as Id<"lots">,
+        updates: { status: "assigned" },
       });
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           hiddenByFlags: false,
@@ -353,53 +342,15 @@ describe("Update Mutations", () => {
       );
     });
 
-    it("should throw if auction not found", async () => {
+    it("should throw if lot not found", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           updates: { title: "New" },
         })
-      ).rejects.toThrow("Auction not found");
-    });
-
-    it("should reject startTime 2 years in the past for non-draft", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
-      const pastTime = Date.now() - 2 * 365 * MS_PER_DAY;
-      await expect(
-        adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-          updates: { startTime: pastTime },
-        })
-      ).rejects.toThrow("cannot be more than 1 year in the past");
-    });
-
-    it("should reject startTime 11 years in the future for non-draft", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
-      const futureTime = Date.now() + 11 * 365 * MS_PER_DAY;
-      await expect(
-        adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-          updates: { startTime: futureTime },
-        })
-      ).rejects.toThrow("cannot be more than 10 years in the future");
-    });
-
-    it("should accept startTime 5 years in the future for non-draft", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "pending_review" });
-      const futureTime = Date.now() + 5 * 365 * MS_PER_DAY;
-      const result = await adminUpdateAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-          updates: { startTime: futureTime },
-        }
-      );
-      expect(result.success).toBe(true);
+      ).rejects.toThrow("Lot not found");
     });
   });
 
@@ -416,21 +367,21 @@ describe("Update Mutations", () => {
       const result = await bulkUpdateAuctionsHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionIds: ["a1" as Id<"auctions">],
-          updates: { status: "active", endTime: Date.now() + 100000 },
+          auctionIds: ["a1" as Id<"lots">],
+          updates: { status: "assigned" },
         }
       );
       expect(result.updated).toContain("a1");
     });
 
-    it("should handle missing auctions in bulk update", async () => {
+    it("should handle missing lots in bulk update", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue(null);
       const result = await bulkUpdateAuctionsHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionIds: ["a1" as Id<"auctions">],
-          updates: { status: "active", endTime: Date.now() + 100000 },
+          auctionIds: ["a1" as Id<"lots">],
+          updates: { status: "assigned" },
         }
       );
       expect(result.skipped).toContain("a1");
@@ -438,33 +389,13 @@ describe("Update Mutations", () => {
 
     it("should throw if bulk update size exceeded", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      const ids = Array(51).fill("a1" as Id<"auctions">) as Id<"auctions">[];
+      const ids = Array(51).fill("a1" as Id<"lots">) as Id<"lots">[];
       await expect(
         bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, {
           auctionIds: ids,
-          updates: { status: "active" },
+          updates: { status: "assigned" },
         })
       ).rejects.toThrow("Bulk update exceeds limit");
-    });
-
-    it("should skip auctions with invalid startTime in bulk update", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "pending_review",
-        title: "Test",
-        sellerId: "u1",
-      });
-      const pastTime = Date.now() - 2 * 365 * MS_PER_DAY;
-      const result = await bulkUpdateAuctionsHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          auctionIds: ["a1" as Id<"auctions">],
-          updates: { startTime: pastTime },
-        }
-      );
-      expect(result.skipped).toContain("a1");
-      expect(result.updated).not.toContain("a1");
     });
   });
 
@@ -481,12 +412,12 @@ describe("Update Mutations", () => {
       const result = await updateConditionReportHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          auctionId: "a1" as Id<"lots">,
           storageId: "s1" as Id<"_storage">,
         }
       );
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "a1", {
         conditionReportUrl: "s1",
       });
     });
@@ -502,11 +433,11 @@ describe("Update Mutations", () => {
       });
 
       await updateConditionReportHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        auctionId: "a1" as Id<"lots">,
         storageId: "new-s" as Id<"_storage">,
       });
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("old-s");
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "a1", {
         conditionReportUrl: "new-s",
       });
     });

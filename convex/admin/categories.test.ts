@@ -372,7 +372,7 @@ describe("deleteCategory", () => {
           return equipmentQuery as unknown as ReturnType<
             MutationCtx["db"]["query"]
           >;
-        if (table === "auctions")
+        if (table === "lots")
           return auctionQuery as unknown as ReturnType<
             MutationCtx["db"]["query"]
           >;
@@ -480,7 +480,7 @@ describe("deleteCategory", () => {
       deleteCategoryHandler(mockCtx, {
         id: "cat_123" as Id<"equipmentCategories">,
       })
-    ).rejects.toThrow(/currently linked to auction listings/);
+    ).rejects.toThrow(/currently linked to lot listings/);
   });
 
   it("should reject non-admin users", async () => {
@@ -556,7 +556,7 @@ describe("fixMetadata", () => {
               MutationCtx["db"]["query"]
             >
           );
-        } else if (table === "auctions") {
+        } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue(
             auctions as unknown as ReturnType<MutationCtx["db"]["query"]>
           );
@@ -635,7 +635,7 @@ describe("fixMetadata", () => {
               categoryId: undefined,
             },
           ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
-        } else if (table === "auctions") {
+        } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue(
             [] as unknown as ReturnType<MutationCtx["db"]["query"]>
           );
@@ -682,7 +682,7 @@ describe("fixMetadata", () => {
           baseQuery.collect.mockResolvedValue(
             metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
           );
-        } else if (table === "auctions") {
+        } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
               _id: "auction_1",
@@ -706,7 +706,7 @@ describe("fixMetadata", () => {
     const result = await fixMetadataHandler(mockCtx);
 
     expect(result.auctionsFixed).toBe(1);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "auction_1", {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "auction_1", {
       categoryId: "cat_1",
     });
   });
@@ -744,7 +744,7 @@ describe("fixMetadata", () => {
           baseQuery.collect.mockResolvedValue(
             metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
           );
-        } else if (table === "auctions") {
+        } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
               _id: "auction_1",
@@ -791,7 +791,7 @@ describe("fixMetadata", () => {
               categoryId: "cat_1" as Id<"equipmentCategories">,
             },
           ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
-        } else if (table === "auctions") {
+        } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
               _id: "auction_1",
@@ -842,7 +842,7 @@ describe("fixMetadata", () => {
           baseQuery.collect.mockResolvedValue(
             metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
           );
-        } else if (table === "auctions") {
+        } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
               _id: "auction_1",
