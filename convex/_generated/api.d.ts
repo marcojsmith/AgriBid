@@ -48,6 +48,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_encryption from "../lib/encryption.js";
 import type * as lib_storage from "../lib/storage.js";
 import type * as messages from "../messages.js";
+import type * as migrations_multiLotAuctions from "../migrations/multiLotAuctions.js";
 import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
 import type * as profileFlags from "../profileFlags.js";
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   "lib/encryption": typeof lib_encryption;
   "lib/storage": typeof lib_storage;
   messages: typeof messages;
+  "migrations/multiLotAuctions": typeof migrations_multiLotAuctions;
   notifications: typeof notifications;
   presence: typeof presence;
   profileFlags: typeof profileFlags;
