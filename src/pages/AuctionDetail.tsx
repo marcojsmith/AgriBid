@@ -182,6 +182,9 @@ export default function AuctionDetail() {
   const canonical = buildCanonical(`/auction/${id}`);
 
   const auctionImageUrls = getAuctionImageUrls(auction.images);
+  // eslint-disable-next-line react-hooks/purity -- Date.now() drives a one-time render decision, not memoized state; same pattern as BiddingPanel.tsx
+  const now = Date.now();
+  const auctionNotYetStarted = !!auction.startTime && auction.startTime > now;
   const ogImage = auctionImageUrls.at(0) ?? DEFAULT_OG_IMAGE;
 
   const productSchema = {
@@ -276,7 +279,7 @@ export default function AuctionDetail() {
         <div className="lg:col-span-8 space-y-8">
           <AuctionHeader auction={auction} />
 
-          {auction.startTime && (
+          {auctionNotYetStarted && auction.startTime && (
             <div className="flex items-center gap-2 text-sm font-medium bg-primary/5 border border-primary/20 rounded-md px-4 py-3">
               <CalendarClock className="h-4 w-4 text-primary shrink-0" />
               <span className="text-xs text-primary">
@@ -474,7 +477,6 @@ export default function AuctionDetail() {
                 auction.sellerId === session.user.id) && (
                 <FeeBreakdown
                   auctionId={auction._id}
-                  userId={session.user.id}
                   isWinner={auction.winnerId === session.user.id}
                   isSeller={auction.sellerId === session.user.id}
                 />

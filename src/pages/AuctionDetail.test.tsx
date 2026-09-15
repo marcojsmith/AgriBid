@@ -232,6 +232,24 @@ describe("AuctionDetail Page", () => {
     expect(screen.getByTestId("mobile-bid-bar")).toBeInTheDocument();
   });
 
+  it("shows the 'Auction Starts' banner when startTime is in the future", () => {
+    (useQuery as Mock).mockReturnValue({
+      ...mockAuction,
+      startTime: Date.now() + 60_000,
+    });
+    renderPage();
+    expect(screen.getByText(/Auction Starts:/i)).toBeInTheDocument();
+  });
+
+  it("hides the 'Auction Starts' banner once startTime has passed", () => {
+    (useQuery as Mock).mockReturnValue({
+      ...mockAuction,
+      startTime: Date.now() - 60_000,
+    });
+    renderPage();
+    expect(screen.queryByText(/Auction Starts:/i)).not.toBeInTheDocument();
+  });
+
   it("renders invalid id state", () => {
     (useParams as Mock).mockReturnValue({ id: undefined });
     renderPage();

@@ -28,7 +28,6 @@ describe("FeeBreakdown", () => {
     const { container } = render(
       <FeeBreakdown
         auctionId={mockAuctionId}
-        userId="user123"
         isWinner={true}
         isSeller={false}
       />
@@ -41,7 +40,6 @@ describe("FeeBreakdown", () => {
     const { container } = render(
       <FeeBreakdown
         auctionId={mockAuctionId}
-        userId="user123"
         isWinner={true}
         isSeller={false}
       />
@@ -71,7 +69,6 @@ describe("FeeBreakdown", () => {
     const { container } = render(
       <FeeBreakdown
         auctionId={mockAuctionId}
-        userId="user123"
         isWinner={false}
         isSeller={false}
       />
@@ -94,7 +91,6 @@ describe("FeeBreakdown", () => {
     render(
       <FeeBreakdown
         auctionId={mockAuctionId}
-        userId="user123"
         isWinner={true}
         isSeller={false}
       />
@@ -118,7 +114,6 @@ describe("FeeBreakdown", () => {
     render(
       <FeeBreakdown
         auctionId={mockAuctionId}
-        userId="user123"
         isWinner={false}
         isSeller={true}
       />
@@ -147,12 +142,7 @@ describe("FeeBreakdown", () => {
       ],
     });
     render(
-      <FeeBreakdown
-        auctionId={mockAuctionId}
-        userId="user123"
-        isWinner={true}
-        isSeller={true}
-      />
+      <FeeBreakdown auctionId={mockAuctionId} isWinner={true} isSeller={true} />
     );
     expect(screen.getByText("Your Fees (as Buyer)")).toBeInTheDocument();
     expect(screen.getByText("Your Fees (as Seller)")).toBeInTheDocument();
@@ -179,7 +169,6 @@ describe("FeeBreakdown", () => {
     render(
       <FeeBreakdown
         auctionId={mockAuctionId}
-        userId="user123"
         isWinner={true}
         isSeller={false}
       />
@@ -208,7 +197,6 @@ describe("FeeBreakdown", () => {
     render(
       <FeeBreakdown
         auctionId={mockAuctionId}
-        userId="user123"
         isWinner={false}
         isSeller={true}
       />
@@ -219,12 +207,7 @@ describe("FeeBreakdown", () => {
   it('passes "skip" to useQuery when auctionId is undefined', () => {
     mockUseQuery.mockReturnValue({ buyerFees: [], sellerFees: [] });
     render(
-      <FeeBreakdown
-        auctionId={undefined}
-        userId="user123"
-        isWinner={true}
-        isSeller={false}
-      />
+      <FeeBreakdown auctionId={undefined} isWinner={true} isSeller={false} />
     );
     expect(mockUseQuery).toHaveBeenCalledWith(
       "admin:getAuctionFeesForUser",

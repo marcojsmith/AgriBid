@@ -64,6 +64,7 @@ export const BiddingPanel = ({
   const isEnded =
     auction.status !== "active" ||
     (auction.endTime ? auction.endTime <= Date.now() : true);
+  const isNotStarted = !!auction.startTime && auction.startTime > Date.now();
   const nextMinBid = auction.currentPrice + auction.minIncrement;
 
   const isHighlighted = usePriceHighlight(auction.currentPrice);
@@ -187,6 +188,13 @@ export const BiddingPanel = ({
       return;
     }
 
+    if (auction.startTime && auction.startTime > Date.now()) {
+      toast.error("This auction has not started yet");
+      setIsConfirmOpen(false);
+      setPendingBid({ amount: 0 });
+      return;
+    }
+
     setIsConfirmOpen(false);
     setIsBidding(true);
 
@@ -232,7 +240,7 @@ export const BiddingPanel = ({
             <span className="text-4xl font-bold tabular-nums text-primary tracking-tighter">
               {formatCurrency(auction.currentPrice)}
             </span>
-            {!isEnded && (
+            {!isEnded && !isNotStarted && (
               <Badge
                 variant="outline"
                 className="bg-primary/5 text-primary border-primary/20 animate-pulse"
@@ -244,15 +252,26 @@ export const BiddingPanel = ({
         </div>
         <div className="text-right space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
-            Time Remaining
+            {isNotStarted ? "Starts In" : "Time Remaining"}
           </p>
           <div className="text-xl font-bold">
-            <CountdownTimer endTime={auction.endTime} />
+            <CountdownTimer
+              endTime={isNotStarted ? auction.startTime : auction.endTime}
+            />
           </div>
         </div>
       </div>
 
-      {isEnded ? (
+      {isNotStarted ? (
+        <div className="bg-muted/50 border border-dashed rounded-md p-6 text-center">
+          <p className="font-medium text-muted-foreground text-sm">
+            Bidding Not Yet Open
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            This auction will open for bidding once it starts.
+          </p>
+        </div>
+      ) : isEnded ? (
         <div className="bg-muted/50 border border-dashed rounded-md p-6 text-center">
           <p className="font-medium text-muted-foreground text-sm">
             Auction Ended

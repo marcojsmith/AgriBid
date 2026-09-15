@@ -401,6 +401,47 @@ describe("BiddingPanel", () => {
     });
   });
 
+  it("shows not-started state and hides the bid form when startTime is in the future (#296)", () => {
+    const auction = {
+      ...mockAuctionBase,
+      status: "active",
+      startTime: Date.now() + 60_000,
+      endTime: Date.now() + 120_000,
+    } as unknown as Doc<"auctions">;
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Bidding Not Yet Open/i)).toBeInTheDocument();
+    expect(screen.getByText(/Starts In/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Place Bid/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the live bid form once a scheduled startTime has passed", () => {
+    const auction = {
+      ...mockAuctionBase,
+      status: "active",
+      startTime: Date.now() - 60_000,
+      endTime: Date.now() + 120_000,
+    } as unknown as Doc<"auctions">;
+
+    render(
+      <BrowserRouter>
+        <BiddingPanel auction={auction} />
+      </BrowserRouter>
+    );
+
+    expect(screen.queryByText(/Bidding Not Yet Open/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Place Bid/i })
+    ).toBeInTheDocument();
+  });
+
   it("shows soft close extended alert", () => {
     const auction = getActiveAuction();
     const extendedAuction = {

@@ -89,4 +89,16 @@ describe("AuctionCardThumbnail", () => {
       "https://example.com/replacement.jpg"
     );
   });
+
+  it("shows a 'Starts' countdown to startTime in compact mode when isNotStarted (#296)", () => {
+    render(
+      <AuctionCardThumbnail
+        {...defaultProps}
+        isCompact={true}
+        isNotStarted={true}
+        startTime={Date.now() + 60_000}
+      />
+    );
+    expect(screen.getByText("Starts")).toBeInTheDocument();
+  });
 });

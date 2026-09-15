@@ -16,6 +16,8 @@ interface AuctionCardThumbnailProps {
   onWatchlistToggle: (e: React.MouseEvent) => Promise<void>;
   endTime?: number;
   isClosed: boolean;
+  startTime?: number;
+  isNotStarted?: boolean;
 }
 
 /**
@@ -31,6 +33,8 @@ interface AuctionCardThumbnailProps {
  * @param props.onWatchlistToggle - Click handler invoked when the watchlist (heart) button is pressed
  * @param props.endTime - End timestamp in milliseconds since the Unix epoch used by the countdown display
  * @param props.isClosed - Whether the auction is closed; when true the countdown is hidden
+ * @param props.startTime - Scheduled start timestamp in milliseconds; used for the countdown when the auction hasn't started
+ * @param props.isNotStarted - Whether the auction's scheduled start is still in the future
  * @returns The JSX element representing the auction thumbnail
  */
 export function AuctionCardThumbnail({
@@ -43,6 +47,8 @@ export function AuctionCardThumbnail({
   onWatchlistToggle,
   endTime,
   isClosed,
+  startTime,
+  isNotStarted = false,
 }: AuctionCardThumbnailProps) {
   // Track the URL that failed to load so the placeholder renders instead of a
   // broken image, and a swap to a different URL recovers automatically
@@ -119,9 +125,19 @@ export function AuctionCardThumbnail({
 
       {/* Timer - Under Image */}
       {isCompact && !isClosed && (
-        <div className="bg-muted/30 flex items-center justify-center px-2 border-r h-12 border-t">
+        <div
+          className={cn(
+            "flex items-center justify-center px-2 border-r h-12 border-t gap-1",
+            isNotStarted ? "bg-warning/10" : "bg-muted/30"
+          )}
+        >
+          {isNotStarted && (
+            <span className="text-[10px] font-semibold text-warning uppercase tracking-wide">
+              Starts
+            </span>
+          )}
           <div className="font-bold whitespace-nowrap leading-none text-sm sm:text-base">
-            <CountdownTimer endTime={endTime} />
+            <CountdownTimer endTime={isNotStarted ? startTime : endTime} />
           </div>
         </div>
       )}

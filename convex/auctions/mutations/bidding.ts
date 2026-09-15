@@ -50,6 +50,11 @@ export const placeBidHandler = async (
   if (!auction) throw new ConvexError("Auction not found");
   if (auction.status !== "active") throw new ConvexError("Auction not active");
 
+  // Reject bids placed before the auction's scheduled start (issue #296).
+  if (auction.startTime && auction.startTime > Date.now()) {
+    throw new ConvexError("Auction has not started");
+  }
+
   // Prevent sellers from bidding on their own auction
   if (auction.sellerId === userId) {
     throw new ConvexError("Sellers cannot bid on their own auction");

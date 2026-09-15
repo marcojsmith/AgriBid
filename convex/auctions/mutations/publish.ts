@@ -320,7 +320,11 @@ export const approveAuctionHandler = async (
     );
   }
 
-  const startTime = Date.now();
+  // Honour a seller-scheduled future start; clamp a stale/past one to now
+  // instead of always overwriting it (issue #296).
+  const now = Date.now();
+  const startTime =
+    auction.startTime && auction.startTime > now ? auction.startTime : now;
   const durationMs = durationDays * MS_PER_DAY;
   const endTime = startTime + durationMs;
 

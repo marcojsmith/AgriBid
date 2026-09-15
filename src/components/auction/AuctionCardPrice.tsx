@@ -8,6 +8,8 @@ interface AuctionCardPriceProps {
   endTime?: number;
   isCompact: boolean;
   isClosed: boolean;
+  startTime?: number;
+  isNotStarted?: boolean;
 }
 
 /**
@@ -18,6 +20,8 @@ interface AuctionCardPriceProps {
  * @param props.endTime - Optional auction end timestamp in milliseconds used to initialise the countdown
  * @param props.isCompact - If `true`, nothing is rendered
  * @param props.isClosed - If `true`, the countdown is hidden (auction is sold or unsold)
+ * @param props.startTime - Scheduled start timestamp in milliseconds; used for the countdown when the auction hasn't started
+ * @param props.isNotStarted - If `true`, shows a "Starts in" countdown to `startTime` instead of "Ends in"
  * @returns The rendered price-and-countdown markup, or `null` when `isCompact` is `true`.
  */
 export function AuctionCardPrice({
@@ -25,6 +29,8 @@ export function AuctionCardPrice({
   endTime,
   isCompact,
   isClosed,
+  startTime,
+  isNotStarted = false,
 }: AuctionCardPriceProps) {
   const isHighlighted = usePriceHighlight(currentPrice);
 
@@ -39,16 +45,22 @@ export function AuctionCardPrice({
             : "border-transparent"
         }`}
       >
-        <p className="text-muted-foreground font-medium text-xs">Current bid</p>
+        <p className="text-muted-foreground font-medium text-xs">
+          {isNotStarted ? "Starting price" : "Current bid"}
+        </p>
         <p className="font-bold tabular-nums text-primary tracking-tight leading-none text-2xl md:text-3xl">
           {formatCurrency(currentPrice)}
         </p>
       </div>
       {!isClosed && (
         <div className="text-right">
-          <p className="text-xs text-muted-foreground font-medium">Ends in</p>
+          <p
+            className={`text-xs font-medium ${isNotStarted ? "text-warning" : "text-muted-foreground"}`}
+          >
+            {isNotStarted ? "Starts in" : "Ends in"}
+          </p>
           <div className="text-sm font-bold">
-            <CountdownTimer endTime={endTime} />
+            <CountdownTimer endTime={isNotStarted ? startTime : endTime} />
           </div>
         </div>
       )}

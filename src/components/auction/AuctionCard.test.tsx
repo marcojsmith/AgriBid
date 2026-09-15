@@ -454,4 +454,80 @@ describe("AuctionCard", () => {
     expect(screen.queryByText("Sold")).not.toBeInTheDocument();
     expect(screen.queryByText("Unsold")).not.toBeInTheDocument();
   });
+
+  describe("scheduled (not-started) auctions (#296)", () => {
+    const notStartedAuction = {
+      ...mockAuction,
+      status: "active" as const,
+      startTime: Date.now() + 60_000,
+    };
+
+    it("shows a 'Scheduled' badge in detailed view", () => {
+      renderWithRouter({
+        auction: notStartedAuction as unknown as AuctionWithCategory,
+        viewMode: "detailed",
+      });
+
+      expect(screen.getByText("Scheduled")).toBeInTheDocument();
+    });
+
+    it("shows a scheduled icon badge in compact view", () => {
+      renderWithRouter({
+        auction: notStartedAuction as unknown as AuctionWithCategory,
+        viewMode: "compact",
+      });
+
+      expect(
+        screen.getByLabelText("Scheduled auction, not yet started")
+      ).toBeInTheDocument();
+    });
+
+    it("disables the bid button and shows 'Not Started'", () => {
+      renderWithRouter({
+        auction: notStartedAuction as unknown as AuctionWithCategory,
+      });
+
+      const bidButton = screen.getByRole("button", { name: "Not Started" });
+      expect(bidButton).toBeDisabled();
+    });
+
+    it("shows a 'Starts in' countdown instead of 'Ends in'", () => {
+      renderWithRouter({
+        auction: notStartedAuction as unknown as AuctionWithCategory,
+      });
+
+      expect(screen.getByText("Starts in")).toBeInTheDocument();
+      expect(screen.queryByText("Ends in")).not.toBeInTheDocument();
+      expect(screen.getByText("Starting price")).toBeInTheDocument();
+    });
+
+    it("does not show scheduled badges once startTime has passed", () => {
+      const startedAuction = {
+        ...mockAuction,
+        status: "active" as const,
+        startTime: Date.now() - 60_000,
+      };
+      renderWithRouter({
+        auction: startedAuction as unknown as AuctionWithCategory,
+      });
+
+      expect(screen.queryByText("Scheduled")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Bid R 1/i })
+      ).not.toBeDisabled();
+    });
+
+    it("does not treat a future startTime as scheduled for non-active auctions", () => {
+      const draftAuction = {
+        ...mockAuction,
+        status: "draft" as const,
+        startTime: Date.now() + 60_000,
+      };
+      renderWithRouter({
+        auction: draftAuction as unknown as AuctionWithCategory,
+      });
+
+      expect(screen.queryByText("Scheduled")).not.toBeInTheDocument();
+    });
+  });
 });
