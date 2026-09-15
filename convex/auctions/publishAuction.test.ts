@@ -97,7 +97,7 @@ describe("publishAuction mutation", () => {
 
     await expect(
       publishAuctionHandler(mockCtx as unknown as MutationCtx, args)
-    ).rejects.toThrow("You can only modify your own auctions");
+    ).rejects.toThrow("You can only modify your own lots");
   });
 
   it("should throw an error if the auction is not in draft status", async () => {

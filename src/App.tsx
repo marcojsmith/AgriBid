@@ -13,6 +13,9 @@ const Sell = lazy(() => import("./pages/Sell"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminModeration = lazy(() => import("./pages/admin/AdminModeration"));
 const AdminAuctions = lazy(() => import("./pages/admin/AdminAuctions"));
+const AdminSales = lazy(() => import("./pages/admin/AdminSales"));
+const AdminSaleDetail = lazy(() => import("./pages/admin/AdminSaleDetail"));
+const AuctionGallery = lazy(() => import("./pages/AuctionGallery"));
 const AdminMarketplace = lazy(() => import("./pages/admin/AdminMarketplace"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
@@ -68,12 +71,13 @@ const PageLoader = () => (
  * - "/sellers/:userId/listings/sold" → SellerListings (past sales)
  * - "/sell" → Sell
  * - "/faq" → FAQ
+ * - "/auctions" → AuctionGallery (public gallery of past/present auction events)
  * - "/watchlist" → Watchlist (protected, allowedRole="any")
  * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
  * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
  * - "/admin/*" → Admin sub-routes (protected, allowedRole="admin")
  *   - /admin, /admin/dashboard, /admin/moderation
- *   - /admin/marketplace, /admin/auctions, /admin/users
+ *   - /admin/marketplace, /admin/auctions, /admin/sales, /admin/sales/:id, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
  *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq, /admin/fees
  * - "/kyc" → KYC (protected, allowedRole="any")
@@ -105,6 +109,7 @@ function App() {
             />
             <Route path="/sell" element={<Sell />} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path="/auctions" element={<AuctionGallery />} />
             <Route
               path="/watchlist"
               element={
@@ -166,6 +171,22 @@ function App() {
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAuctions />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/sales"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminSales />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/sales/:id"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminSaleDetail />
                 </RoleProtectedRoute>
               }
             />

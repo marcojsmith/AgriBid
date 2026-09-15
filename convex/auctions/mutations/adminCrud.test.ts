@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
 import {
-  createAuctionHandler,
+  createAuctionEventHandler,
   updateAuctionHandler,
   publishAuctionContainerHandler,
   closeAuctionContainerHandler,
-  createAuction,
+  createAuctionEvent,
   updateAuction,
   publishAuctionContainer,
   closeAuctionContainer,
@@ -74,7 +74,7 @@ describe("Auction container CRUD mutations", () => {
   describe("Exports", () => {
     it("registers all mutations against their handlers", () => {
       const getHandler = (m: unknown) => (m as { handler: unknown }).handler;
-      expect(getHandler(createAuction)).toBe(createAuctionHandler);
+      expect(getHandler(createAuctionEvent)).toBe(createAuctionEventHandler);
       expect(getHandler(updateAuction)).toBe(updateAuctionHandler);
       expect(getHandler(publishAuctionContainer)).toBe(
         publishAuctionContainerHandler
@@ -85,9 +85,9 @@ describe("Auction container CRUD mutations", () => {
     });
   });
 
-  describe("createAuctionHandler", () => {
+  describe("createAuctionEventHandler", () => {
     it("creates a draft auction", async () => {
-      const result = await createAuctionHandler(
+      const result = await createAuctionEventHandler(
         mockCtx as unknown as MutationCtx,
         { title: "Spring Sale", startTime: 1000, endTime: 2000 }
       );
@@ -109,7 +109,7 @@ describe("Auction container CRUD mutations", () => {
 
     it("rejects an endTime that is not after startTime", async () => {
       await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, {
+        createAuctionEventHandler(mockCtx as unknown as MutationCtx, {
           title: "Bad",
           startTime: 2000,
           endTime: 2000,
@@ -124,7 +124,7 @@ describe("Auction container CRUD mutations", () => {
       );
 
       await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, {
+        createAuctionEventHandler(mockCtx as unknown as MutationCtx, {
           title: "Bad",
           startTime: 1000,
           endTime: 2000,

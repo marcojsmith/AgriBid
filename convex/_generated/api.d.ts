@@ -36,6 +36,7 @@ import type * as auctions_queries from "../auctions/queries.js";
 import type * as auctions_queries_admin from "../auctions/queries/admin.js";
 import type * as auctions_queries_bids from "../auctions/queries/bids.js";
 import type * as auctions_queries_browse from "../auctions/queries/browse.js";
+import type * as auctions_queries_events from "../auctions/queries/events.js";
 import type * as auctions_queries_index from "../auctions/queries/index.js";
 import type * as auctions_queries_listings from "../auctions/queries/listings.js";
 import type * as auctions_queries_shared from "../auctions/queries/shared.js";
@@ -99,6 +100,7 @@ declare const fullApi: ApiFromModules<{
   "auctions/queries/admin": typeof auctions_queries_admin;
   "auctions/queries/bids": typeof auctions_queries_bids;
   "auctions/queries/browse": typeof auctions_queries_browse;
+  "auctions/queries/events": typeof auctions_queries_events;
   "auctions/queries/index": typeof auctions_queries_index;
   "auctions/queries/listings": typeof auctions_queries_listings;
   "auctions/queries/shared": typeof auctions_queries_shared;

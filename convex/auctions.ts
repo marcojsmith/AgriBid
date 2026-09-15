@@ -35,6 +35,14 @@ export {
   getAllPendingFlags,
 } from "./auctions/queries";
 
+// Re-export auction (scheduled sale container) event queries
+export {
+  getAllAuctionEvents,
+  getAuctionEventById,
+  getPublishedAuctionEvents,
+  getAssignmentCandidates,
+} from "./auctions/queries/events";
+
 // Re-export mutations from the new modular structure
 export {
   generateUploadUrl,

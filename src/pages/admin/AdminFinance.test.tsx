@@ -45,6 +45,7 @@ vi.mock("lucide-react", () => ({
   Building2: () => <div data-testid="building2-icon" />,
   Menu: () => <div data-testid="menu-icon" />,
   X: () => <div data-testid="x-icon" />,
+  CalendarClock: () => <div data-testid="calendar-clock-icon" />,
 }));
 
 describe("AdminFinance Page", () => {

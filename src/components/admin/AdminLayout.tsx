@@ -20,6 +20,7 @@ import {
   Building2,
   Menu,
   X,
+  CalendarClock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -89,6 +90,7 @@ const SIDEBAR_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { label: "Moderation", icon: ShieldCheck, path: "/admin/moderation" },
   { label: "Auctions", icon: Hammer, path: "/admin/auctions" },
+  { label: "Auction Events", icon: CalendarClock, path: "/admin/sales" },
   { label: "Live Monitor", icon: Gavel, path: "/admin/marketplace" },
   { label: "Users", icon: Users, path: "/admin/users" },
   { label: "Finance", icon: DollarSign, path: "/admin/finance" },

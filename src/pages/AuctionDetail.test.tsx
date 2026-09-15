@@ -163,7 +163,7 @@ vi.mock("@/components/bidding/BidHistory", () => ({
 
 interface CapturedSellerInfoProps {
   sellerId?: string;
-  auctionId?: string;
+  lotId?: string;
   isOwnListing?: boolean;
 }
 
@@ -199,7 +199,10 @@ describe("AuctionDetail Page", () => {
       additional: ["add.jpg"],
     },
     conditionReportUrl: "https://example.com/report.pdf",
-    status: "active",
+    status: "assigned",
+    auctionStatus: "published",
+    auctionStartTime: Date.now() - 60_000,
+    auctionEndTime: Date.now() + 100_000,
   };
 
   const mockFlagAuction = vi.fn();
@@ -235,7 +238,7 @@ describe("AuctionDetail Page", () => {
   it("shows the 'Auction Starts' banner when startTime is in the future", () => {
     (useQuery as Mock).mockReturnValue({
       ...mockAuction,
-      startTime: Date.now() + 60_000,
+      auctionStartTime: Date.now() + 60_000,
     });
     renderPage();
     expect(screen.getByText(/Auction Starts:/i)).toBeInTheDocument();
@@ -244,7 +247,7 @@ describe("AuctionDetail Page", () => {
   it("hides the 'Auction Starts' banner once startTime has passed", () => {
     (useQuery as Mock).mockReturnValue({
       ...mockAuction,
-      startTime: Date.now() - 60_000,
+      auctionStartTime: Date.now() - 60_000,
     });
     renderPage();
     expect(screen.queryByText(/Auction Starts:/i)).not.toBeInTheDocument();
@@ -288,7 +291,7 @@ describe("AuctionDetail Page", () => {
 
     await waitFor(() => {
       expect(mockFlagAuction).toHaveBeenCalledWith({
-        auctionId: "auction1",
+        lotId: "auction1",
         reason: "misleading",
         details: "Some details",
       });
@@ -397,7 +400,7 @@ describe("AuctionDetail Page", () => {
 
     await waitFor(() => {
       expect(mockFlagAuction).toHaveBeenCalledWith({
-        auctionId: "auction1",
+        lotId: "auction1",
         reason: "inappropriate",
         details: undefined,
       });
@@ -489,7 +492,7 @@ describe("AuctionDetail Page", () => {
     expect(screen.getByText("No description provided.")).toBeInTheDocument();
   });
 
-  it("passes auctionId and isOwnListing=false to SellerInfo for non-owners", () => {
+  it("passes lotId and isOwnListing=false to SellerInfo for non-owners", () => {
     (useSession as Mock).mockReturnValue({
       data: { user: { id: "buyer1" } },
       isPending: false,
@@ -498,7 +501,7 @@ describe("AuctionDetail Page", () => {
 
     expect(sellerInfoPropsRef.current).toEqual({
       sellerId: "seller1",
-      auctionId: "auction1",
+      lotId: "auction1",
       isOwnListing: false,
     });
   });
@@ -512,7 +515,7 @@ describe("AuctionDetail Page", () => {
 
     expect(sellerInfoPropsRef.current).toEqual({
       sellerId: "seller1",
-      auctionId: "auction1",
+      lotId: "auction1",
       isOwnListing: true,
     });
   });

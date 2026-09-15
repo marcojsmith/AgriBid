@@ -6,7 +6,7 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 /**
- * Arguments accepted by {@link createAuctionHandler}.
+ * Arguments accepted by {@link createAuctionEventHandler}.
  */
 export interface CreateAuctionArgs {
   title: string;
@@ -53,7 +53,7 @@ async function getAcceptedBid(
  * @param args - Auction container fields.
  * @returns The id of the newly created auction.
  */
-export const createAuctionHandler = async (
+export const createAuctionEventHandler = async (
   ctx: MutationCtx,
   args: CreateAuctionArgs
 ): Promise<Id<"auctions">> => {
@@ -84,7 +84,7 @@ export const createAuctionHandler = async (
 /**
  * Create an auction (container) (admin only).
  */
-export const createAuction = mutation({
+export const createAuctionEvent = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
@@ -95,7 +95,7 @@ export const createAuction = mutation({
     defaultSellerCommissionPct: v.optional(v.number()),
   },
   returns: v.id("auctions"),
-  handler: createAuctionHandler,
+  handler: createAuctionEventHandler,
 });
 
 /**
