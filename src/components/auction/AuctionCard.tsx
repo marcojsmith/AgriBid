@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Clock, MapPin, Gavel, CalendarClock } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
+import { useAuctionStarted } from "@/hooks/useAuctionStarted";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,11 +152,11 @@ export const AuctionCard = ({
    * Whether the auction is active but its scheduled startTime hasn't
    * arrived yet — bidding is blocked server-side until then (#296), so the
    * card must make this distinguishable from a live, biddable auction.
+   * `useAuctionStarted` self-updates once startTime passes, so this flips
+   * without needing an unrelated re-render.
    */
-  const isNotStarted =
-    auction.status === "active" &&
-    !!auction.startTime &&
-    auction.startTime > Date.now();
+  const hasStarted = useAuctionStarted(auction.startTime);
+  const isNotStarted = auction.status === "active" && !hasStarted;
 
   return (
     <Card

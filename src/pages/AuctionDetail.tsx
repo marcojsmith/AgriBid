@@ -20,6 +20,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { AuctionCard } from "@/components/auction/AuctionCard";
 import { FeeBreakdown } from "@/components/auction/FeeBreakdown";
 import { useSession } from "@/lib/auth-client";
+import { useAuctionStarted } from "@/hooks/useAuctionStarted";
 import {
   buildTitle,
   buildCanonical,
@@ -106,6 +107,7 @@ export default function AuctionDetail() {
   const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
 
   const isOwner = session?.user.id === auction?.sellerId;
+  const hasStarted = useAuctionStarted(auction?.startTime);
 
   const handleFlagAuction = async () => {
     if (!flagReason) {
@@ -182,9 +184,7 @@ export default function AuctionDetail() {
   const canonical = buildCanonical(`/auction/${id}`);
 
   const auctionImageUrls = getAuctionImageUrls(auction.images);
-  // eslint-disable-next-line react-hooks/purity -- Date.now() drives a one-time render decision, not memoized state; same pattern as BiddingPanel.tsx
-  const now = Date.now();
-  const auctionNotYetStarted = !!auction.startTime && auction.startTime > now;
+  const auctionNotYetStarted = !!auction.startTime && !hasStarted;
   const ogImage = auctionImageUrls.at(0) ?? DEFAULT_OG_IMAGE;
 
   const productSchema = {

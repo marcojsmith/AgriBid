@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
+import { useAuctionStarted } from "@/hooks/useAuctionStarted";
 
 import { BidForm } from "./BidForm";
 
@@ -64,7 +65,8 @@ export const BiddingPanel = ({
   const isEnded =
     auction.status !== "active" ||
     (auction.endTime ? auction.endTime <= Date.now() : true);
-  const isNotStarted = !!auction.startTime && auction.startTime > Date.now();
+  const hasStarted = useAuctionStarted(auction.startTime);
+  const isNotStarted = !!auction.startTime && !hasStarted;
   const nextMinBid = auction.currentPrice + auction.minIncrement;
 
   const isHighlighted = usePriceHighlight(auction.currentPrice);
