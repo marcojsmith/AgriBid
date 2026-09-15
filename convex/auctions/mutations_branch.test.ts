@@ -349,23 +349,23 @@ describe("Mutations Branch Coverage Expansion", () => {
   });
 
   describe("flagAuctionHandler branches", () => {
-    it("should throw if flagging own auction", async () => {
+    it("should throw if flagging own lot", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       vi.mocked(mockCtx.db.get).mockResolvedValue({ sellerId: "u1" });
       await expect(
         flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "l1" as Id<"lots">,
           reason: "other",
         })
-      ).rejects.toThrow("You cannot flag your own auction");
+      ).rejects.toThrow("You cannot flag your own lot");
     });
 
-    it("should not hide if status is not active even if threshold met", async () => {
+    it("should not hide if status is not approved even if threshold met", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u3");
       vi.mocked(mockCtx.db.get).mockResolvedValue({
-        _id: "a1",
+        _id: "l1",
         sellerId: "u1",
-        status: "pending_review", // Not active
+        status: "pending_review", // Not approved
       });
 
       const mockQuery = {
@@ -381,7 +381,7 @@ describe("Mutations Branch Coverage Expansion", () => {
 
       const result = await flagAuctionHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions">, reason: "other" }
+        { lotId: "l1" as Id<"lots">, reason: "other" }
       );
       expect(result.hideTriggered).toBe(false);
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
@@ -399,14 +399,14 @@ describe("Mutations Branch Coverage Expansion", () => {
           return Promise.resolve({
             _id: "f1",
             status: "pending",
-            auctionId: "a1",
+            lotId: "l1",
           });
         return Promise.resolve(null);
       }) as unknown as typeof mockCtx.db.get);
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
 
       await dismissFlagHandler(mockCtx as unknown as MutationCtx, {
-        flagId: "f1" as Id<"auctionFlags">,
+        flagId: "f1" as Id<"lotFlags">,
       });
       const expectedDetails = expect.objectContaining({
         details: expect.stringContaining('"adminId":"unknown"') as string,

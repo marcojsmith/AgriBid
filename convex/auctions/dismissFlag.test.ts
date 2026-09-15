@@ -37,20 +37,20 @@ describe("dismissFlag mutation", () => {
     } as unknown as MutationCtx;
   };
 
-  it("should allow an admin to dismiss a flag and restore the auction", async () => {
-    const flagId = "flag123" as Id<"auctionFlags">;
-    const auctionId = "auction123" as Id<"auctions">;
+  it("should allow an admin to dismiss a flag and restore the lot", async () => {
+    const flagId = "flag123" as Id<"lotFlags">;
+    const lotId = "lot123" as Id<"lots">;
 
     const flagDoc = {
       _id: flagId,
       _creationTime: Date.now(),
-      auctionId,
+      lotId,
       status: "pending",
       reason: "other",
     };
 
-    const auctionDoc = {
-      _id: auctionId,
+    const lotDoc = {
+      _id: lotId,
       _creationTime: Date.now(),
       status: "pending_review",
       hiddenByFlags: true,
@@ -68,9 +68,9 @@ describe("dismissFlag mutation", () => {
           return Promise.resolve(
             flagDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
           );
-        if (id === auctionId)
+        if (id === lotId)
           return Promise.resolve(
-            auctionDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
+            lotDoc as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
           );
         return Promise.resolve(null);
       }
@@ -90,22 +90,22 @@ describe("dismissFlag mutation", () => {
 
     expect(result.success).toBe(true);
     expect(result.auctionRestored).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctionFlags", flagId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lotFlags", flagId, {
       status: "dismissed",
     });
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
-      status: "active",
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
+      status: "approved",
       hiddenByFlags: false,
     });
     expect(adminUtils.updateCounter).toHaveBeenCalledWith(
       mockCtx,
-      "auctions",
+      "lots",
       "pending",
       -1
     );
     expect(adminUtils.updateCounter).toHaveBeenCalledWith(
       mockCtx,
-      "auctions",
+      "lots",
       "active",
       1
     );
@@ -122,12 +122,12 @@ describe("dismissFlag mutation", () => {
     vi.mocked(auth.getCallerRole).mockResolvedValue("user");
 
     await expect(
-      dismissFlagHandler(mockCtx, { flagId: "f1" as Id<"auctionFlags"> })
+      dismissFlagHandler(mockCtx, { flagId: "f1" as Id<"lotFlags"> })
     ).rejects.toThrow("Not authorized: Admin privileges required");
   });
 
   it("should throw error if flag not found", async () => {
-    const flagId = "flag123" as Id<"auctionFlags">;
+    const flagId = "flag123" as Id<"lotFlags">;
     mockCtx = setupMockCtx();
     vi.mocked(mockCtx.db.get).mockResolvedValue(null);
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
@@ -138,7 +138,7 @@ describe("dismissFlag mutation", () => {
   });
 
   it("should fail if flag is already reviewed", async () => {
-    const flagId = "flag123" as Id<"auctionFlags">;
+    const flagId = "flag123" as Id<"lotFlags">;
     const flagDoc = {
       _id: flagId,
       status: "dismissed",

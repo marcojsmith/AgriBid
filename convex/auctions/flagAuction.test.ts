@@ -46,16 +46,16 @@ describe("flagAuction mutation", () => {
     } as unknown as MockCtxType;
   };
 
-  it("should allow a user to flag an auction", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+  it("should allow a user to flag a lot", async () => {
+    const lotId = "lot123" as Id<"lots">;
     const reporterId = "user_reporter";
     const sellerId = "user_seller";
 
-    const auctionDoc = {
-      _id: auctionId,
+    const lotDoc = {
+      _id: lotId,
       sellerId,
-      title: "Test Auction",
-      status: "active",
+      title: "Test Lot",
+      status: "approved",
     };
 
     const mockQuery = {
@@ -64,11 +64,11 @@ describe("flagAuction mutation", () => {
     };
 
     mockCtx = setupMockCtx(mockQuery);
-    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(reporterId);
 
     const result = await flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-      auctionId,
+      lotId,
       reason: "suspicious",
       details: "Looks fake",
     });
@@ -76,9 +76,9 @@ describe("flagAuction mutation", () => {
     expect(result.success).toBe(true);
     expect(result.hideTriggered).toBe(false);
     expect(mockCtx.db.insert).toHaveBeenCalledWith(
-      "auctionFlags",
+      "lotFlags",
       expect.objectContaining({
-        auctionId,
+        lotId,
         reporterId,
         reason: "suspicious",
         details: "Looks fake",
@@ -88,15 +88,15 @@ describe("flagAuction mutation", () => {
   });
 
   it("should trigger auto-hide when threshold is reached", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "lot123" as Id<"lots">;
     const reporterId = "user_reporter_3";
     const sellerId = "user_seller";
 
-    const auctionDoc = {
-      _id: auctionId,
+    const lotDoc = {
+      _id: lotId,
       sellerId,
       title: "To Be Hidden",
-      status: "active",
+      status: "approved",
     };
 
     // Existing pending flags (threshold is 3, so 2 existing + 1 new = 3)
@@ -111,28 +111,28 @@ describe("flagAuction mutation", () => {
     };
 
     mockCtx = setupMockCtx(mockQuery);
-    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(reporterId);
 
     const result = await flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-      auctionId,
+      lotId,
       reason: "other",
     });
 
     expect(result.hideTriggered).toBe(true);
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", auctionId, {
+    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "pending_review",
       hiddenByFlags: true,
     });
     expect(adminUtils.updateCounter).toHaveBeenCalledWith(
       mockCtx as unknown as MutationCtx,
-      "auctions",
+      "lots",
       "active",
       -1
     );
     expect(adminUtils.updateCounter).toHaveBeenCalledWith(
       mockCtx as unknown as MutationCtx,
-      "auctions",
+      "lots",
       "pending",
       1
     );
@@ -144,48 +144,48 @@ describe("flagAuction mutation", () => {
     );
   });
 
-  it("should throw error if auction not found", async () => {
-    const auctionId = "nonexistent" as Id<"auctions">;
+  it("should throw error if lot not found", async () => {
+    const lotId = "nonexistent" as Id<"lots">;
     mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(null);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
 
     await expect(
       flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         reason: "other",
       })
     ).rejects.toThrow(ConvexError);
   });
 
-  it("should fail if user flags their own auction", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+  it("should fail if user flags their own lot", async () => {
+    const lotId = "lot123" as Id<"lots">;
     const userId = "user_seller";
 
-    const auctionDoc = {
-      _id: auctionId,
+    const lotDoc = {
+      _id: lotId,
       sellerId: userId,
-      title: "My Auction",
+      title: "My Lot",
     };
 
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
     await expect(
       flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         reason: "other",
       })
-    ).rejects.toThrow("You cannot flag your own auction");
+    ).rejects.toThrow("You cannot flag your own lot");
   });
 
-  it("should fail if user already flagged the auction", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+  it("should fail if user already flagged the lot", async () => {
+    const lotId = "lot123" as Id<"lots">;
     const userId = "user1";
 
-    const auctionDoc = {
-      _id: auctionId,
+    const lotDoc = {
+      _id: lotId,
       sellerId: "other_user",
     };
 
@@ -197,14 +197,14 @@ describe("flagAuction mutation", () => {
     };
 
     mockCtx = setupMockCtx(mockQuery);
-    mockCtx.db.get.mockResolvedValue(auctionDoc);
+    mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
     await expect(
       flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         reason: "other",
       })
-    ).rejects.toThrow("You have already flagged this auction");
+    ).rejects.toThrow("You have already flagged this lot");
   });
 });

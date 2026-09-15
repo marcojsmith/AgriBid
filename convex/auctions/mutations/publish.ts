@@ -107,11 +107,11 @@ export const publishAuction = mutation({
 });
 
 /**
- * Flag an auction for review.
- * Auto-hides auction if it receives enough flags.
+ * Flag a lot for review.
+ * Auto-hides the lot if it receives enough flags.
  * @param ctx - The mutation context.
- * @param args - The arguments for flagging an auction.
- * @param args.auctionId - The ID of the auction to flag
+ * @param args - The arguments for flagging a lot.
+ * @param args.lotId - The ID of the lot to flag
  * @param args.reason - The reason for flagging
  * @param args.details - Optional additional details
  * @returns Promise<{ success: boolean; hideTriggered: boolean }>
@@ -119,25 +119,25 @@ export const publishAuction = mutation({
 export const flagAuctionHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionId: Id<"auctions">;
+    lotId: Id<"lots">;
     reason: "misleading" | "inappropriate" | "suspicious" | "other";
     details?: string;
   }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) {
-    throw new ConvexError("Auction not found");
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) {
+    throw new ConvexError("Lot not found");
   }
 
-  if (auction.sellerId === userId) {
-    throw new ConvexError("You cannot flag your own auction");
+  if (lot.sellerId === userId) {
+    throw new ConvexError("You cannot flag your own lot");
   }
 
   const existingFlags = await ctx.db
-    .query("auctionFlags")
-    .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+    .query("lotFlags")
+    .withIndex("by_lot", (q) => q.eq("lotId", args.lotId))
     .collect();
 
   const userHasFlagged = existingFlags.some(
@@ -145,11 +145,11 @@ export const flagAuctionHandler = async (
   );
 
   if (userHasFlagged) {
-    throw new ConvexError("You have already flagged this auction");
+    throw new ConvexError("You have already flagged this lot");
   }
 
-  await ctx.db.insert("auctionFlags", {
-    auctionId: args.auctionId,
+  await ctx.db.insert("lotFlags", {
+    lotId: args.lotId,
     reporterId: userId,
     reason: args.reason,
     details: args.details,
@@ -161,22 +161,22 @@ export const flagAuctionHandler = async (
 
   const pendingFlags = existingFlags.filter((f) => f.status === "pending");
   if (pendingFlags.length + 1 >= AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
-    if (auction.status === "active") {
-      await ctx.db.patch("auctions", args.auctionId, {
+    if (lot.status === "approved") {
+      await ctx.db.patch("lots", args.lotId, {
         status: "pending_review",
         hiddenByFlags: true,
       });
 
-      await updateCounter(ctx, "auctions", "active", -1);
-      await updateCounter(ctx, "auctions", "pending", 1);
+      await updateCounter(ctx, "lots", "active", -1);
+      await updateCounter(ctx, "lots", "pending", 1);
 
       hideTriggered = true;
     }
 
     await logAudit(ctx, {
       action: "AUTO_HIDE_AUCTION_FLAGS",
-      targetId: args.auctionId,
-      targetType: "auction",
+      targetId: args.lotId,
+      targetType: "lot",
       details: JSON.stringify({
         flagCount: pendingFlags.length + 1,
         threshold: AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
@@ -191,7 +191,7 @@ export const flagAuctionHandler = async (
 
 export const flagAuction = mutation({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     reason: v.union(
       v.literal("misleading"),
       v.literal("inappropriate"),
@@ -215,7 +215,7 @@ export const flagAuction = mutation({
 export const dismissFlagHandler = async (
   ctx: MutationCtx,
   args: {
-    flagId: Id<"auctionFlags">;
+    flagId: Id<"lotFlags">;
     dismissalReason?: string;
   }
 ) => {
@@ -224,7 +224,7 @@ export const dismissFlagHandler = async (
     throw new Error("Not authorized: Admin privileges required");
   }
 
-  const flag = await ctx.db.get("auctionFlags", args.flagId);
+  const flag = await ctx.db.get("lotFlags", args.flagId);
   if (!flag) {
     throw new ConvexError("Flag not found");
   }
@@ -233,29 +233,29 @@ export const dismissFlagHandler = async (
     throw new ConvexError("Flag has already been reviewed");
   }
 
-  await ctx.db.patch("auctionFlags", args.flagId, {
+  await ctx.db.patch("lotFlags", args.flagId, {
     status: "dismissed",
   });
 
   let auctionRestored = false;
 
-  const auction = await ctx.db.get("auctions", flag.auctionId);
-  if (auction?.status === "pending_review" && auction.hiddenByFlags === true) {
+  const lot = await ctx.db.get("lots", flag.lotId);
+  if (lot?.status === "pending_review" && lot.hiddenByFlags === true) {
     const remainingFlags = await ctx.db
-      .query("auctionFlags")
-      .withIndex("by_auction_status", (q) =>
-        q.eq("auctionId", flag.auctionId).eq("status", "pending")
+      .query("lotFlags")
+      .withIndex("by_lot_status", (q) =>
+        q.eq("lotId", flag.lotId).eq("status", "pending")
       )
       .collect();
 
     if (remainingFlags.length < AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
-      await ctx.db.patch("auctions", flag.auctionId, {
-        status: "active",
+      await ctx.db.patch("lots", flag.lotId, {
+        status: "approved",
         hiddenByFlags: false,
       });
 
-      await updateCounter(ctx, "auctions", "pending", -1);
-      await updateCounter(ctx, "auctions", "active", 1);
+      await updateCounter(ctx, "lots", "pending", -1);
+      await updateCounter(ctx, "lots", "active", 1);
 
       auctionRestored = true;
     }
@@ -267,10 +267,10 @@ export const dismissFlagHandler = async (
   await logAudit(ctx, {
     action: "DISMISS_FLAG",
     targetId: args.flagId,
-    targetType: "auctionFlag",
+    targetType: "lotFlag",
     details: JSON.stringify({
       adminId,
-      auctionId: flag.auctionId,
+      lotId: flag.lotId,
       reason: flag.reason,
       dismissalReason: args.dismissalReason,
       auctionRestored,
@@ -282,7 +282,7 @@ export const dismissFlagHandler = async (
 
 export const dismissFlag = mutation({
   args: {
-    flagId: v.id("auctionFlags"),
+    flagId: v.id("lotFlags"),
     dismissalReason: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean(), auctionRestored: v.boolean() }),
