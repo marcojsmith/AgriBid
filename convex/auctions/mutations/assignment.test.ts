@@ -90,7 +90,54 @@ describe("Lot assignment mutations", () => {
       expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
         auctionId: "a1",
         status: "assigned",
+        resolvedBuyerPremiumPct: undefined,
+        resolvedSellerCommissionPct: undefined,
       });
+    });
+
+    it("snapshots the auction fee defaults onto the lot at assignment", async () => {
+      mockCtx.db.get
+        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
+        .mockResolvedValueOnce({
+          ...auctionDoc,
+          defaultBuyerPremiumPct: 0.05,
+          defaultSellerCommissionPct: 0.03,
+        } as unknown as Doc<"auctions">);
+
+      const result = await assignLotToAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { lotId: "l1" as Id<"lots">, auctionId: "a1" as Id<"auctions"> }
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
+        auctionId: "a1",
+        status: "assigned",
+        resolvedBuyerPremiumPct: 0.05,
+        resolvedSellerCommissionPct: 0.03,
+      });
+    });
+
+    it("copies undefined defaults so later auction edits cannot leak in", async () => {
+      mockCtx.db.get
+        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
+        .mockResolvedValueOnce({
+          ...auctionDoc,
+          defaultBuyerPremiumPct: undefined,
+          defaultSellerCommissionPct: undefined,
+        } as unknown as Doc<"auctions">);
+
+      await assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      const patchArgs = mockCtx.db.patch.mock.calls[0]?.[2] as Record<
+        string,
+        unknown
+      >;
+      expect(patchArgs).toHaveProperty("resolvedBuyerPremiumPct", undefined);
+      expect(patchArgs).toHaveProperty("resolvedSellerCommissionPct", undefined);
     });
 
     it("throws when the lot is missing", async () => {

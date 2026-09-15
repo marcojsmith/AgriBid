@@ -41,8 +41,8 @@ export { getAllFaqItems } from "./faq";
 export {
   getPlatformFees,
   getFeeStats,
-  getAuctionFees,
-  getAuctionFeesForUser,
+  getLotFees,
+  getLotFeesForUser,
 } from "./fees";
 
 // --- Bid Monitoring ---

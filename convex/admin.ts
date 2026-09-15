@@ -39,8 +39,8 @@ export {
   getAllFaqItems,
   getPlatformFees,
   getFeeStats,
-  getAuctionFees,
-  getAuctionFeesForUser,
+  getLotFees,
+  getLotFeesForUser,
 } from "./admin/queries";
 
 // Re-export mutation functions

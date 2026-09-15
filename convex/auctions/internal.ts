@@ -13,10 +13,66 @@ import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
 /**
+ * A fee line item derived from a lot's auction-level defaults (the values
+ * snapshotted onto the lot at assignment time).
+ */
+export interface ResolvedDefaultFee {
+  appliedTo: "buyer" | "seller";
+  rate: number;
+  calculatedAmount: number;
+}
+
+/**
+ * Compute the buyer/seller fee line items implied by a lot's snapshotted
+ * auction fee defaults (`resolvedBuyerPremiumPct`/`resolvedSellerCommissionPct`).
+ *
+ * These amounts are intentionally NOT persisted to `lotFees`: that table's
+ * `feeId` is a required FK to a real `platformFees` row, and auction defaults
+ * are not `platformFees` rows. Keeping the amounts derived (rather than writing
+ * fake ledger rows) also makes settlement idempotent by construction — there is
+ * nothing to double-insert on a re-run. The read-side fee queries surface them
+ * alongside the persisted `platformFees`-sourced rows.
+ *
+ * @param lot - The lot whose resolved defaults should be applied.
+ * @param salePrice - The price the percentages are applied to.
+ * @returns Zero, one, or two fee line items (buyer and/or seller).
+ */
+export function computeResolvedDefaultFees(
+  lot: Doc<"lots">,
+  salePrice: number
+): ResolvedDefaultFee[] {
+  const fees: ResolvedDefaultFee[] = [];
+
+  if (lot.resolvedBuyerPremiumPct !== undefined) {
+    fees.push({
+      appliedTo: "buyer",
+      rate: lot.resolvedBuyerPremiumPct,
+      calculatedAmount:
+        Math.round(salePrice * lot.resolvedBuyerPremiumPct * 100) / 100,
+    });
+  }
+
+  if (lot.resolvedSellerCommissionPct !== undefined) {
+    fees.push({
+      appliedTo: "seller",
+      rate: lot.resolvedSellerCommissionPct,
+      calculatedAmount:
+        Math.round(salePrice * lot.resolvedSellerCommissionPct * 100) / 100,
+    });
+  }
+
+  return fees;
+}
+
+/**
  * Calculate fees for a lot and persist them to the database.
  * Evaluates all active platform fees and creates lotFee records
  * based on each fee's configuration (percentage or fixed, buyer/seller/both).
  * Includes an idempotency guard to skip duplicate inserts.
+ *
+ * The lot's snapshotted auction fee defaults (`resolvedBuyerPremiumPct`/
+ * `resolvedSellerCommissionPct`) are also calculated and included in the audit
+ * total, but are not persisted to `lotFees` — see `computeResolvedDefaultFees`.
  *
  * @param ctx - The mutation context for database operations.
  * @param lot - The lot document to calculate fees for.
@@ -35,11 +91,13 @@ export async function calculateAndRecordFees(
     .withIndex("by_active", (q) => q.eq("isActive", true))
     .collect();
 
-  if (activeFees.length === 0) {
+  const salePrice = salesVolume ?? lot.currentPrice;
+  const defaultFees = computeResolvedDefaultFees(lot, salePrice);
+
+  if (activeFees.length === 0 && defaultFees.length === 0) {
     return;
   }
 
-  const salePrice = salesVolume ?? lot.currentPrice;
   const now = Date.now();
   let totalFees = 0;
 
@@ -107,6 +165,10 @@ export async function calculateAndRecordFees(
         totalFees += calculatedAmount;
       }
     }
+  }
+
+  for (const fee of defaultFees) {
+    totalFees += fee.calculatedAmount;
   }
 
   if (totalFees > 0) {

@@ -167,7 +167,7 @@ export const getFinancialStats = query({
       const parsed = cursor ? parseInt(cursor, 10) : 0;
       const startIndex = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 
-      const [recentSoldAuctions, totalSoldCount, allAuctionFees] =
+      const [recentSoldAuctions, totalSoldCount, allLotFees] =
         await Promise.all([
           ctx.db
             .query("auctions")
@@ -179,7 +179,7 @@ export const getFinancialStats = query({
               .query("auctions")
               .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
           ),
-          ctx.db.query("auctionFees").collect(),
+          ctx.db.query("lotFees").collect(),
         ]);
 
       const auctionFeeMap = new Map<
@@ -194,14 +194,20 @@ export const getFinancialStats = query({
       let buyerFeesTotal = 0;
       let sellerFeesTotal = 0;
 
-      for (const fee of allAuctionFees) {
+      for (const fee of allLotFees) {
         if (fee.appliedTo === "buyer") {
           buyerFeesTotal += fee.calculatedAmount;
         } else {
           sellerFeesTotal += fee.calculatedAmount;
         }
 
-        const existing = auctionFeeMap.get(fee.auctionId);
+        // Fees are lot-scoped; recentSales are auction containers, so roll each
+        // lot fee up to its parent auction.
+        const lot = await ctx.db.get("lots", fee.lotId);
+        const auctionId = lot?.auctionId;
+        if (auctionId === undefined) continue;
+
+        const existing = auctionFeeMap.get(auctionId);
         if (existing) {
           existing.push({
             feeName: fee.feeName,
@@ -209,7 +215,7 @@ export const getFinancialStats = query({
             amount: fee.calculatedAmount,
           });
         } else {
-          auctionFeeMap.set(fee.auctionId, [
+          auctionFeeMap.set(auctionId, [
             {
               feeName: fee.feeName,
               appliedTo: fee.appliedTo,

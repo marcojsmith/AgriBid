@@ -11,6 +11,11 @@ import type { MutationCtx } from "../../_generated/server";
  * The target auction does not need to be published yet: admins may pre-stage
  * lots into a `draft` auction before publishing it.
  *
+ * Snapshots the auction's fee defaults (`defaultBuyerPremiumPct`/
+ * `defaultSellerCommissionPct`) onto the lot's `resolvedBuyerPremiumPct`/
+ * `resolvedSellerCommissionPct` fields so later auction edits cannot
+ * retroactively change this lot's fees (issue #318).
+ *
  * @param ctx - Mutation context.
  * @param args - The lot and target auction ids.
  * @param args.lotId - The approved lot to assign.
@@ -37,9 +42,13 @@ export const assignLotToAuctionHandler = async (
     throw new ConvexError("Auction not found");
   }
 
+  // Resolve the auction's fee defaults onto the lot now, so later edits to the
+  // auction's defaults cannot change an already-assigned lot's fees (issue #318).
   await ctx.db.patch("lots", args.lotId, {
     auctionId: args.auctionId,
     status: "assigned",
+    resolvedBuyerPremiumPct: auction.defaultBuyerPremiumPct,
+    resolvedSellerCommissionPct: auction.defaultSellerCommissionPct,
   });
   await adjustLotStatusCounters(ctx, "approved", "assigned");
 

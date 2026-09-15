@@ -76,6 +76,9 @@ export default defineSchema({
     ),
     auctionId: v.optional(v.id("auctions")),
     extendedEndTime: v.optional(v.number()), // effectiveLotEndTime = extendedEndTime ?? auction.endTime
+    // Snapshot of the parent auction's fee defaults at assignment time, so later auction edits don't change an already-assigned lot's fees.
+    resolvedBuyerPremiumPct: v.optional(v.number()),
+    resolvedSellerCommissionPct: v.optional(v.number()),
     winnerId: v.optional(v.union(v.string(), v.null())),
     images: v.union(
       v.object({

@@ -5,6 +5,7 @@ import {
   cleanupDraftsHandler,
   settleExpiredAuctionsHandler,
 } from "./internal";
+import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
 
 vi.mock("../admin_utils", () => ({
@@ -72,6 +73,10 @@ describe("Internal Logic Coverage", () => {
   /**
    * Builds a table-aware query mock so each `ctx.db.query(table)` call returns
    * sensible results for the table being read, independent of call order.
+   * @param lots - Rows returned for the `lots` table.
+   * @param bids - Rows returned for the `bids` table.
+   * @param fees - Rows returned for the `platformFees` table.
+   * @param existingFee - Row returned for the `lotFees` table lookup.
    */
   const setupTableQuery = (
     lots: Record<string, unknown>[] = [],
@@ -505,6 +510,68 @@ describe("Internal Logic Coverage", () => {
           salePrice: expect.any(Number) as number,
           calculatedAmount: expect.any(Number) as number,
           createdAt: expect.any(Number) as number,
+        })
+      );
+    });
+
+    it("records the resolved auction-default fees in the audit total without persisting ledger rows", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+        resolvedBuyerPremiumPct: 0.05,
+        resolvedSellerCommissionPct: 0.03,
+      };
+
+      setupTableQuery([], [], [], null);
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockLot as never
+      );
+
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({
+          action: "CALCULATE_FEES",
+          details: expect.stringContaining("80.00") as string,
+        })
+      );
+    });
+
+    it("combines platformFees-sourced and resolved auction-default fees", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+        resolvedBuyerPremiumPct: 0.05,
+      };
+      const mockFee = {
+        _id: "f1",
+        name: "Seller Commission",
+        feeType: "percentage",
+        value: 0.05,
+        appliesTo: "seller",
+        isActive: true,
+      };
+
+      setupTableQuery([], [], [mockFee], null);
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockLot as never
+      );
+
+      // Only the platformFee is persisted; the auction default is not.
+      expect(mockCtx.db.insert).toHaveBeenCalledTimes(1);
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({
+          action: "CALCULATE_FEES",
+          details: expect.stringContaining("100.00") as string,
         })
       );
     });
