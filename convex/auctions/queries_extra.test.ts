@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import * as auth from "../lib/auth";
 import {
   getActiveAuctionsHandler,
-  getAuctionBidsHandler,
+  getLotBidsHandler,
   getMyBidsHandler,
 } from "./queries";
 import type { QueryCtx } from "../_generated/server";
@@ -25,15 +25,15 @@ vi.mock("../lib/auth", () => ({
 
 vi.mock("./helpers", () => {
   return {
-    toAuctionSummary: vi.fn((_ctx: unknown, a: Doc<"auctions">) =>
+    toLotSummary: vi.fn((_ctx: unknown, a: Doc<"lots">) =>
       Promise.resolve({ _id: a._id, title: a.title, status: a.status })
     ),
-    AuctionSummaryValidator: v.object({
+    LotSummaryValidator: v.object({
       _id: v.string(),
       title: v.string(),
       status: v.string(),
     }),
-    AuctionDetailValidator: v.any(),
+    LotDetailValidator: v.any(),
     BidValidator: v.any(),
   };
 });
@@ -130,32 +130,24 @@ describe("Queries Extra Coverage", () => {
     expect(queryMock.order).toHaveBeenCalledWith("desc");
   });
 
-  it("hits line 341: toAuctionSummary inside search block", async () => {
-    queryMock.paginate.mockResolvedValue({
-      page: [
-        {
-          _id: "a1",
-          title: "tractor",
-          status: "active",
-          make: "m",
-          model: "m",
-          year: 2020,
-        },
-      ],
-      isDone: true,
-      continueCursor: "",
-    });
+  it("hits line 341: toLotSummary inside search block", async () => {
     queryMock.take.mockResolvedValue([
       {
         _id: "a1",
         title: "tractor",
-        status: "active",
+        status: "assigned",
         currentPrice: 100,
         make: "m",
         model: "m",
         year: 2020,
+        auctionId: "auction1",
       },
     ]);
+    vi.mocked(mockCtx.db.get).mockResolvedValue({
+      startTime: 0,
+      endTime: Date.now() + 100_000,
+      status: "published",
+    } as unknown as Doc<"auctions">);
     const result = await getActiveAuctionsHandler(
       mockCtx as unknown as QueryCtx,
       {
@@ -167,21 +159,23 @@ describe("Queries Extra Coverage", () => {
     expect(result.page[0].title).toBe("tractor");
   });
 
-  it("hits line 369: toAuctionSummary inside standard block", async () => {
-    queryMock.paginate.mockResolvedValue({
-      page: [
-        {
-          _id: "a1",
-          title: "tractor",
-          status: "active",
-          make: "m",
-          model: "m",
-          year: 2020,
-        },
-      ],
-      isDone: true,
-      continueCursor: "",
-    });
+  it("hits line 369: toLotSummary inside standard block", async () => {
+    queryMock.take.mockResolvedValue([
+      {
+        _id: "a1",
+        title: "tractor",
+        status: "assigned",
+        make: "m",
+        model: "m",
+        year: 2020,
+        auctionId: "auction1",
+      },
+    ]);
+    vi.mocked(mockCtx.db.get).mockResolvedValue({
+      startTime: 0,
+      endTime: Date.now() + 100_000,
+      status: "published",
+    } as unknown as Doc<"auctions">);
     const result = await getActiveAuctionsHandler(
       mockCtx as unknown as QueryCtx,
       {
@@ -191,12 +185,12 @@ describe("Queries Extra Coverage", () => {
     expect(result.page).toHaveLength(1);
   });
 
-  it("hits line 543: Anonymous bidder when user not found in getAuctionBidsHandler", async () => {
+  it("hits line 543: Anonymous bidder when user not found in getLotBidsHandler", async () => {
     queryMock.paginate.mockResolvedValue({
       page: [
         {
           _id: "b1",
-          auctionId: "a1",
+          lotId: "a1",
           bidderId: "user_not_found_123",
           amount: 100,
           timestamp: 100,
@@ -207,14 +201,14 @@ describe("Queries Extra Coverage", () => {
     });
     vi.mocked(mockCtx.db.get).mockResolvedValue({
       sellerId: "seller",
-    } as unknown as Doc<"auctions">);
+    } as unknown as Doc<"lots">);
     vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
       profile: { role: "admin" },
     } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
     vi.mocked(queryMock.unique).mockResolvedValue(null);
 
-    const result = await getAuctionBidsHandler(mockCtx as unknown as QueryCtx, {
-      auctionId: "a1" as Id<"auctions">,
+    const result = await getLotBidsHandler(mockCtx as unknown as QueryCtx, {
+      lotId: "a1" as Id<"lots">,
       paginationOpts: { numItems: 10, cursor: null },
     });
     expect(result.page[0].bidderName).toBe("Anonymous");
@@ -228,20 +222,20 @@ describe("Queries Extra Coverage", () => {
     } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
-    // mock bids and auctions to have something to paginate
+    // mock bids and lots to have something to paginate
     queryMock.collect.mockResolvedValue([
-      { auctionId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
-      { auctionId: "a2", amount: 200, bidderId: "u1", timestamp: 200 },
+      { lotId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
+      { lotId: "a2", amount: 200, bidderId: "u1", timestamp: 200 },
     ]);
     vi.mocked(mockCtx.db.get).mockImplementation(
       (_table: unknown, id: unknown) => {
         return {
           _id: id,
-          status: "active",
+          status: "assigned",
           currentPrice: id === "a1" ? 100 : 200,
           winnerId: "u1",
           title: id,
-        } as unknown as Doc<"auctions">;
+        } as unknown as Doc<"lots">;
       }
     );
 
@@ -263,15 +257,15 @@ describe("Queries Extra Coverage", () => {
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
     queryMock.collect.mockResolvedValue([
-      { auctionId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
+      { lotId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
     ]);
     vi.mocked(mockCtx.db.get).mockResolvedValue({
       _id: "a1",
-      status: "active",
+      status: "assigned",
       currentPrice: 100,
       winnerId: "u1",
       title: "a1",
-    } as unknown as Doc<"auctions">);
+    } as unknown as Doc<"lots">);
 
     const result = await getMyBidsHandler(mockCtx as unknown as QueryCtx, {
       paginationOpts: { numItems: 1, cursor: "100" },

@@ -42,13 +42,13 @@ export async function getSellerRatingSummary(
 }
 
 /**
- * Handler for submitting a review for a completed auction.
- * Only the auction winner may review, and only once per auction, no
- * earlier than 7 days after the auction was settled.
+ * Handler for submitting a review for a completed lot.
+ * Only the lot winner may review, and only once per lot, no
+ * earlier than 7 days after the lot was settled.
  *
  * @param ctx - Mutation context
- * @param args - Arguments including auctionId, rating, and optional comment
- * @param args.auctionId - The ID of the auction to review
+ * @param args - Arguments including lotId, rating, and optional comment
+ * @param args.lotId - The ID of the lot to review
  * @param args.rating - Integer rating between 1 and 5
  * @param args.comment - Optional review comment
  * @returns Object with success boolean
@@ -56,27 +56,27 @@ export async function getSellerRatingSummary(
 export const submitReviewHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionId: Id<"auctions">;
+    lotId: Id<"lots">;
     rating: number;
     comment?: string;
   }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) {
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) {
     throw new ConvexError("Auction not found");
   }
 
-  if (auction.winnerId !== userId) {
+  if (lot.winnerId !== userId) {
     throw new ConvexError("Only the auction winner can leave a review");
   }
 
-  if (auction.status !== "sold") {
+  if (lot.status !== "sold") {
     throw new ConvexError("Auction is not completed");
   }
 
-  const settledAt = auction.settledAt ?? auction.endTime;
+  const settledAt = lot.settledAt ?? lot.endTime;
   if (settledAt !== undefined && Date.now() - settledAt < REVIEW_COOLDOWN_MS) {
     throw new ConvexError(
       "Reviews can be left starting 7 days after the sale completes."
@@ -89,8 +89,8 @@ export const submitReviewHandler = async (
 
   const existingReview = await ctx.db
     .query("reviews")
-    .withIndex("by_auction_reviewer", (q) =>
-      q.eq("auctionId", args.auctionId).eq("reviewerId", userId)
+    .withIndex("by_lot_reviewer", (q) =>
+      q.eq("lotId", args.lotId).eq("reviewerId", userId)
     )
     .unique();
 
@@ -99,9 +99,9 @@ export const submitReviewHandler = async (
   }
 
   await ctx.db.insert("reviews", {
-    auctionId: args.auctionId,
+    lotId: args.lotId,
     reviewerId: userId,
-    revieweeId: auction.sellerId,
+    revieweeId: lot.sellerId,
     rating: args.rating,
     comment: args.comment,
     createdAt: Date.now(),
@@ -111,13 +111,13 @@ export const submitReviewHandler = async (
 };
 
 /**
- * Submit a review for a completed auction.
- * Only the auction winner can review, once per auction, and only from
- * 7 days after the auction was settled.
+ * Submit a review for a completed lot.
+ * Only the lot winner can review, once per lot, and only from
+ * 7 days after the lot was settled.
  */
 export const submitReview = mutation({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     rating: v.number(),
     comment: v.optional(v.string()),
   },
@@ -212,7 +212,7 @@ export const getSellerReviewsHandler = async (
       return {
         _id: review._id,
         _creationTime: review._creationTime,
-        auctionId: review.auctionId,
+        lotId: review.lotId,
         rating: review.rating,
         comment: review.comment,
         response: review.response,
@@ -245,7 +245,7 @@ export const getSellerReviews = query({
       v.object({
         _id: v.id("reviews"),
         _creationTime: v.number(),
-        auctionId: v.id("auctions"),
+        lotId: v.id("lots"),
         rating: v.number(),
         comment: v.optional(v.string()),
         response: v.optional(

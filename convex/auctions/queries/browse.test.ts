@@ -86,7 +86,7 @@ describe("getSellerInfoHandler", () => {
     mockCtx.db.query.mockImplementation((table: string) => {
       queryCallCount++;
       if (table === "profiles") return mockProfileQuery;
-      if (table === "auctions") {
+      if (table === "lots") {
         if (queryCallCount === 2) return mockSoldAuctionsQuery;
         if (queryCallCount === 3) return mockActiveAuctionsQuery;
         return mockSoldAuctionsQuery;
@@ -158,7 +158,7 @@ describe("getSellerInfoHandler", () => {
     mockCtx.db.query.mockImplementation((table: string) => {
       queryCallCount++;
       if (table === "profiles") return mockProfileQuery;
-      if (table === "auctions") {
+      if (table === "lots") {
         if (queryCallCount === 2) return mockSoldAuctionsQuery;
         if (queryCallCount === 3) return mockActiveAuctionsQuery;
         return mockSoldAuctionsQuery;
@@ -226,7 +226,7 @@ describe("getSellerInfoHandler", () => {
     mockCtx.db.query.mockImplementation((table: string) => {
       queryCallCount++;
       if (table === "profiles") return mockProfileQuery;
-      if (table === "auctions") {
+      if (table === "lots") {
         if (queryCallCount === 2) return mockSoldAuctionsQuery;
         if (queryCallCount === 3) return mockActiveAuctionsQuery;
         return mockSoldAuctionsQuery;
@@ -252,9 +252,9 @@ describe("getSellerInfoHandler", () => {
 });
 
 describe("getSellerListingsHandler", () => {
-  const mockAuctionDocs = [
-    { _id: "auction1", title: "Active Tractor", status: "active" },
-    { _id: "auction2", title: "Sold Baler", status: "sold" },
+  const mockLotDocs = [
+    { _id: "lot1", title: "Active Tractor", status: "assigned" },
+    { _id: "lot2", title: "Sold Baler", status: "sold" },
   ];
 
   let mockCtx: {
@@ -299,7 +299,7 @@ describe("getSellerListingsHandler", () => {
         return mockListingsQuery;
       }),
       paginate: vi.fn().mockResolvedValue({
-        page: mockAuctionDocs,
+        page: mockLotDocs,
         isDone: true,
         continueCursor: "",
       }),
@@ -334,16 +334,16 @@ describe("getSellerListingsHandler", () => {
     expect(qMock.eq).toHaveBeenCalledWith("sellerId", "user123");
     expect(qMock.field).toHaveBeenCalledWith("status");
     expect(qMock.or).toHaveBeenCalled();
-    expect(qMock.eq).toHaveBeenCalledWith(expect.anything(), "active");
+    expect(qMock.eq).toHaveBeenCalledWith(expect.anything(), "assigned");
     expect(qMock.eq).toHaveBeenCalledWith(expect.anything(), "sold");
 
     expect(result.page).toHaveLength(2);
-    expect(result.page.map((a) => a._id)).toEqual(["auction1", "auction2"]);
+    expect(result.page.map((a) => a._id)).toEqual(["lot1", "lot2"]);
     expect(result.totalCount).toBe(2);
     expect(result.isDone).toBe(true);
   });
 
-  it("should use by_seller_status index with active status when statusFilter is active", async () => {
+  it("should use by_seller_status index with assigned status when statusFilter is active", async () => {
     const result = await getSellerListingsHandler(
       mockCtx as unknown as QueryCtx,
       {
@@ -362,7 +362,7 @@ describe("getSellerListingsHandler", () => {
       expect.any(Function)
     );
     expect(qMock.eq).toHaveBeenCalledWith("sellerId", "user123");
-    expect(qMock.eq).toHaveBeenCalledWith("status", "active");
+    expect(qMock.eq).toHaveBeenCalledWith("status", "assigned");
 
     expect(result.page).toHaveLength(2);
     expect(result.totalCount).toBe(2);

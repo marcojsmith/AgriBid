@@ -3,9 +3,9 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
 import {
   getActiveAuctionsHandler,
-  getAuctionBidsHandler,
+  getLotBidsHandler,
   getMyBidsHandler,
-  getAuctionFlagsHandler,
+  getLotFlagsHandler,
   getAllPendingFlagsHandler,
   getMyListingsCountHandler,
 } from "./queries";
@@ -27,14 +27,14 @@ vi.mock("../_generated/server", () => {
 });
 
 vi.mock("./helpers", () => ({
-  toAuctionSummary: vi.fn((_ctx, a) =>
+  toLotSummary: vi.fn((_ctx, a) =>
     Promise.resolve({ ...a, categoryName: "Unknown" })
   ),
-  toAuctionDetail: vi.fn((_ctx, a) =>
+  toLotDetail: vi.fn((_ctx, a) =>
     Promise.resolve({ ...a, categoryName: "Unknown" })
   ),
-  AuctionSummaryValidator: v.any(),
-  AuctionDetailValidator: v.any(),
+  LotSummaryValidator: v.any(),
+  LotDetailValidator: v.any(),
   BidValidator: v.any(),
 }));
 
@@ -200,11 +200,17 @@ describe("Queries Branch Coverage Expansion", () => {
         return Promise.resolve(
           new Array(1000).fill({
             _id: "a1",
-            status: "active",
+            status: "assigned",
             title: "tractor",
+            auctionId: "auction1",
           }) as unknown[]
         );
       });
+      vi.mocked(dbGetMock).mockResolvedValue({
+        status: "published",
+        startTime: 0,
+        endTime: Date.now() + 100_000,
+      } as unknown as Doc<"auctions">);
       const result = await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
@@ -223,9 +229,24 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("should handle manual pagination cursor in search", async () => {
       vi.mocked(queryMock.take).mockResolvedValue([
-        { _id: "a1", status: "active", title: "tractor" },
-        { _id: "a2", status: "active", title: "tractor" },
+        {
+          _id: "a1",
+          status: "assigned",
+          title: "tractor",
+          auctionId: "auction1",
+        },
+        {
+          _id: "a2",
+          status: "assigned",
+          title: "tractor",
+          auctionId: "auction1",
+        },
       ]);
+      vi.mocked(dbGetMock).mockResolvedValue({
+        status: "published",
+        startTime: 0,
+        endTime: Date.now() + 100_000,
+      } as unknown as Doc<"auctions">);
       const result = await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 1, cursor: "1" },
         search: "tractor",
@@ -244,19 +265,26 @@ describe("Queries Branch Coverage Expansion", () => {
 
       const result = await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
+        statusFilter: "closed",
       });
       expect(result.totalCount).toBe("1000+");
     });
 
-    it("should cover maxHours branch in matchesAuctionFilter with undefined operatingHours", async () => {
+    it("should cover maxHours branch in matchesLotFilter with undefined operatingHours", async () => {
       vi.mocked(queryMock.take).mockResolvedValue([
         {
           _id: "a1",
-          status: "active",
+          status: "assigned",
           title: "tractor",
           operatingHours: undefined,
+          auctionId: "auction1",
         },
       ]);
+      vi.mocked(dbGetMock).mockResolvedValue({
+        status: "published",
+        startTime: 0,
+        endTime: Date.now() + 100_000,
+      } as unknown as Doc<"auctions">);
       const result = await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
@@ -266,16 +294,19 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should cover pagination and mapping in getActiveAuctionsHandler", async () => {
-      vi.mocked(queryMock.paginate).mockResolvedValue({
-        page: [{ _id: "a1", status: "active", title: "Tractor" }],
-        isDone: true,
-        continueCursor: "",
-      });
+      vi.mocked(queryMock.take).mockResolvedValue([
+        {
+          _id: "a1",
+          status: "assigned",
+          title: "Tractor",
+          auctionId: "auction1",
+        },
+      ]);
       vi.mocked(dbGetMock).mockResolvedValue({
-        _id: "cat1" as Id<"equipmentCategories">,
-        name: "Tractor Category",
-        isActive: true,
-      } as unknown as Doc<"equipmentCategories">);
+        status: "published",
+        startTime: 0,
+        endTime: Date.now() + 100_000,
+      } as unknown as Doc<"auctions">);
 
       const result = await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -317,14 +348,14 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
-          auctionId: "a1",
+          lotId: "a1",
           bidderId: "u1",
           amount: 100,
           timestamp: 100,
           status: "placed",
         },
         {
-          auctionId: "a2",
+          lotId: "a2",
           bidderId: "u1",
           amount: 200,
           timestamp: 200,
@@ -335,15 +366,15 @@ describe("Queries Branch Coverage Expansion", () => {
         (_table: string, id: string) => {
           if (id === "a1")
             return Promise.resolve({
-              _id: id as Id<"auctions">,
-              status: "active",
-              endTime: 2000,
-            } as unknown as Doc<"auctions">);
+              _id: id as Id<"lots">,
+              status: "assigned",
+              auctionEndTime: 2000,
+            } as unknown as Doc<"lots">);
           return Promise.resolve({
-            _id: id as Id<"auctions">,
-            status: "active",
-            endTime: 1000,
-          } as unknown as Doc<"auctions">);
+            _id: id as Id<"lots">,
+            status: "assigned",
+            auctionEndTime: 1000,
+          } as unknown as Doc<"lots">);
         }
       );
 
@@ -367,14 +398,14 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
-          auctionId: "a1",
+          lotId: "a1",
           bidderId: "u1",
           amount: 100,
           timestamp: 100,
           status: "placed",
         },
         {
-          auctionId: "a2",
+          lotId: "a2",
           bidderId: "u1",
           amount: 200,
           timestamp: 200,
@@ -385,15 +416,15 @@ describe("Queries Branch Coverage Expansion", () => {
         (_table: string, id: string) => {
           if (id === "a1")
             return Promise.resolve({
-              _id: id as Id<"auctions">,
-              status: "active",
-              endTime: undefined,
-            } as unknown as Doc<"auctions">);
+              _id: id as Id<"lots">,
+              status: "assigned",
+              auctionEndTime: undefined,
+            } as unknown as Doc<"lots">);
           return Promise.resolve({
-            _id: id as Id<"auctions">,
-            status: "active",
-            endTime: 1000,
-          } as unknown as Doc<"auctions">);
+            _id: id as Id<"lots">,
+            status: "assigned",
+            auctionEndTime: 1000,
+          } as unknown as Doc<"lots">);
         }
       );
 
@@ -405,18 +436,18 @@ describe("Queries Branch Coverage Expansion", () => {
     });
   });
 
-  describe("getAuctionBidsHandler additional branches", () => {
+  describe("getLotBidsHandler additional branches", () => {
     it("should reveal bidder name to seller", async () => {
       const longBidderId = "user_1234567890";
       vi.mocked(queryMock.paginate).mockResolvedValue({
-        page: [{ _id: "b1", bidderId: longBidderId, auctionId: "a1" }],
+        page: [{ _id: "b1", bidderId: longBidderId, lotId: "a1" }],
         isDone: true,
         continueCursor: "",
       });
       vi.mocked(dbGetMock).mockResolvedValue({
-        _id: "a1" as Id<"auctions">,
+        _id: "a1" as Id<"lots">,
         sellerId: "seller1",
-      } as unknown as Doc<"auctions">);
+      } as unknown as Doc<"lots">);
       vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
         userId: "seller1",
         profile: { role: "seller" } as unknown as Doc<"profiles">,
@@ -436,17 +467,17 @@ describe("Queries Branch Coverage Expansion", () => {
         name: "Real Name",
       });
 
-      const result = await getAuctionBidsHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
+      const result = await getLotBidsHandler(mockCtx, {
+        lotId: "a1" as Id<"lots">,
         paginationOpts: { numItems: 10, cursor: null },
       });
       expect(result.page[0].bidderName).toBe("Real Name");
     });
 
-    it("should handle user not found in getAuctionBidsHandler", async () => {
+    it("should handle user not found in getLotBidsHandler", async () => {
       const longBidderId = "user_1234567890";
       vi.mocked(queryMock.paginate).mockResolvedValue({
-        page: [{ _id: "b1", bidderId: longBidderId, auctionId: "a1" }],
+        page: [{ _id: "b1", bidderId: longBidderId, lotId: "a1" }],
         isDone: true,
         continueCursor: "",
       });
@@ -465,8 +496,8 @@ describe("Queries Branch Coverage Expansion", () => {
       } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
       vi.mocked(queryMock.unique).mockResolvedValue(null);
 
-      const result = await getAuctionBidsHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
+      const result = await getLotBidsHandler(mockCtx, {
+        lotId: "a1" as Id<"lots">,
         paginationOpts: { numItems: 10, cursor: null },
       });
       expect(result.page[0].bidderName).toBe("Anonymous");
@@ -486,14 +517,19 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should cover search mapping branch with matching items", async () => {
-      vi.mocked(queryMock.paginate).mockResolvedValue({
-        page: [{ _id: "a1", status: "active", title: "Tractor" }],
-        isDone: true,
-        continueCursor: "",
-      });
       vi.mocked(queryMock.take).mockResolvedValue([
-        { _id: "a1", status: "active", title: "Tractor" },
+        {
+          _id: "a1",
+          status: "assigned",
+          title: "Tractor",
+          auctionId: "auction1",
+        },
       ]);
+      vi.mocked(dbGetMock).mockResolvedValue({
+        status: "published",
+        startTime: 0,
+        endTime: Date.now() + 100_000,
+      } as unknown as Doc<"auctions">);
 
       const result = await getActiveAuctionsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -520,14 +556,14 @@ describe("Queries Branch Coverage Expansion", () => {
         console.log("Mock collect called");
         return Promise.resolve([
           {
-            auctionId: "a1",
+            lotId: "a1",
             bidderId: "u1",
             amount: 100,
             timestamp: 100,
             status: "placed",
           },
           {
-            auctionId: "a2",
+            lotId: "a2",
             bidderId: "u1",
             amount: 200,
             timestamp: 200,
@@ -540,8 +576,8 @@ describe("Queries Branch Coverage Expansion", () => {
           console.log("Mock db.get called with:", id);
           return Promise.resolve({
             _id: id,
-            status: "active",
-          } as unknown as Doc<"auctions">);
+            status: "assigned",
+          } as unknown as Doc<"lots">);
         }
       );
 
@@ -582,17 +618,17 @@ describe("Queries Branch Coverage Expansion", () => {
   });
 
   describe("admin and shared queries additional branches", () => {
-    it("getAuctionFlagsHandler should handle missing reporter user", async () => {
+    it("getLotFlagsHandler should handle missing reporter user", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin",
       } as AuthUser);
       queryMock.collect.mockResolvedValue([
-        { _id: "f1", reporterId: "r1", auctionId: "a1" },
+        { _id: "f1", reporterId: "r1", lotId: "a1" },
       ]);
       vi.mocked(queryMock.unique).mockResolvedValue(null);
 
-      const result = await getAuctionFlagsHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
+      const result = await getLotFlagsHandler(mockCtx, {
+        lotId: "a1" as Id<"lots">,
       });
       expect(result[0].reporterName).toBe("Unknown User");
     });
@@ -602,23 +638,27 @@ describe("Queries Branch Coverage Expansion", () => {
         _id: "admin",
       } as AuthUser);
       queryMock.collect.mockResolvedValue([
-        { _id: "f1", reporterId: "r1", auctionId: "a1", status: "pending" },
+        { _id: "f1", reporterId: "r1", lotId: "a1", status: "pending" },
       ]);
       dbGetMock.mockResolvedValue(null); // Missing auction
       vi.mocked(queryMock.unique).mockResolvedValue(null); // Missing reporter profile
 
       const result = await getAllPendingFlagsHandler(mockCtx);
-      expect(result[0].auctionTitle).toBe("Unknown Auction");
+      expect(result[0].lotTitle).toBe("Unknown Auction");
       expect(result[0].reporterName).toBe("Unknown User");
     });
 
     it("statusesForFilter coverage in shared", async () => {
       const { statusesForFilter } = await import("./queries");
-      expect(statusesForFilter("active")).toEqual(["active"]);
+      expect(statusesForFilter("active")).toEqual(["assigned"]);
       expect(statusesForFilter("closed")).toEqual(["sold", "unsold"]);
-      expect(statusesForFilter("all")).toEqual(["active", "sold", "unsold"]);
+      expect(statusesForFilter("all")).toEqual([
+        "assigned",
+        "sold",
+        "unsold",
+      ]);
       expect(statusesForFilter("invalid" as unknown as StatusFilter)).toEqual([
-        "active",
+        "assigned",
         "sold",
         "unsold",
       ]);
@@ -769,13 +809,13 @@ describe("Queries Branch Coverage Expansion", () => {
     });
   });
 
-  describe("getAuctionBidsHandler branches", () => {
+  describe("getLotBidsHandler branches", () => {
     it("should not treat unauthenticated caller as seller when auction is missing", async () => {
       // Regression: isSeller used to be `auction?.sellerId === auth?.userId`,
       // which evaluated true (undefined === undefined) when the auction doc
       // was missing and the caller was unauthenticated, leaking bidder names.
       vi.mocked(queryMock.paginate).mockResolvedValue({
-        page: [{ _id: "b1", bidderId: "u1", auctionId: "a1" }],
+        page: [{ _id: "b1", bidderId: "u1", lotId: "a1" }],
         isDone: true,
         continueCursor: "",
       });
@@ -787,8 +827,8 @@ describe("Queries Branch Coverage Expansion", () => {
         name: "Real Name",
       });
 
-      const result = await getAuctionBidsHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
+      const result = await getLotBidsHandler(mockCtx, {
+        lotId: "a1" as Id<"lots">,
         paginationOpts: { numItems: 10, cursor: null },
       });
 
@@ -798,7 +838,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("should handle user found but with no name (line 546)", async () => {
       vi.mocked(queryMock.paginate).mockResolvedValue({
-        page: [{ _id: "b1", bidderId: "u1", auctionId: "a1" }],
+        page: [{ _id: "b1", bidderId: "u1", lotId: "a1" }],
         isDone: true,
         continueCursor: "",
       });
@@ -819,8 +859,8 @@ describe("Queries Branch Coverage Expansion", () => {
         _id: "u1" as unknown as Id<"profiles">,
         userId: "u1",
       });
-      const result = await getAuctionBidsHandler(mockCtx, {
-        auctionId: "a1" as Id<"auctions">,
+      const result = await getLotBidsHandler(mockCtx, {
+        lotId: "a1" as Id<"lots">,
         paginationOpts: { numItems: 10, cursor: null },
       });
       expect(result.page[0].bidderName).toBe("Anonymous");
@@ -828,7 +868,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("should fallback to Anonymous if bidderName is missing from map (line 564)", async () => {
       vi.mocked(queryMock.paginate).mockResolvedValue({
-        page: [{ _id: "b1", bidderId: "u1", auctionId: "a1" }],
+        page: [{ _id: "b1", bidderId: "u1", lotId: "a1" }],
         isDone: true,
         continueCursor: "",
       });
@@ -856,8 +896,8 @@ describe("Queries Branch Coverage Expansion", () => {
         .mockReturnValue(undefined);
 
       try {
-        const result = await getAuctionBidsHandler(mockCtx, {
-          auctionId: "a1" as Id<"auctions">,
+        const result = await getLotBidsHandler(mockCtx, {
+          lotId: "a1" as Id<"lots">,
           paginationOpts: { numItems: 10, cursor: null },
         });
 
@@ -882,21 +922,21 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
-          auctionId: "a1",
+          lotId: "a1",
           bidderId: "u1",
           amount: 100,
           timestamp: 100,
           status: "placed",
         },
         {
-          auctionId: "a1",
+          lotId: "a1",
           bidderId: "u1",
           amount: 150,
           timestamp: 50,
           status: "placed",
         },
         {
-          auctionId: "a1",
+          lotId: "a1",
           bidderId: "u1",
           amount: 50,
           timestamp: 150,
@@ -904,11 +944,11 @@ describe("Queries Branch Coverage Expansion", () => {
         },
       ]);
       vi.mocked(dbGetMock).mockResolvedValue({
-        _id: "a1" as Id<"auctions">,
-        status: "active",
+        _id: "a1" as Id<"lots">,
+        status: "assigned",
         currentPrice: 150,
         winnerId: "u1",
-      } as unknown as Doc<"auctions">);
+      } as unknown as Doc<"lots">);
 
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -930,7 +970,7 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
       vi.mocked(queryMock.collect).mockResolvedValue([
         {
-          auctionId: "a1",
+          lotId: "a1",
           bidderId: "u1",
           amount: 100,
           timestamp: 100,

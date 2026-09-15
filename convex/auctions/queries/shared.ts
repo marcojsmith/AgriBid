@@ -4,12 +4,12 @@ import { query } from "../../_generated/server";
 import type { QueryCtx } from "../../_generated/server";
 import { getAuthUser, resolveUserId } from "../../lib/auth";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { AuctionSummaryValidator } from "../helpers";
+import { LotSummaryValidator } from "../helpers";
 
 export { paginationOptsValidator, type PaginationOptions };
 export { query };
 export type { QueryCtx };
-export { AuctionSummaryValidator };
+export { LotSummaryValidator };
 
 /**
  * Bid statistics for a single auction.
@@ -42,15 +42,15 @@ export interface GlobalUserBidStats {
 
 /**
  * Result of calculating user bid statistics.
- * Contains global aggregates and per-auction breakdowns.
+ * Contains global aggregates and per-lot breakdowns.
  */
 export interface CalculateUserBidStatsResult {
-  /** Aggregated statistics across all auctions */
+  /** Aggregated statistics across all lots */
   globalStats: GlobalUserBidStats;
-  /** Map of auctionId to bid stats for that auction */
+  /** Map of lotId to bid stats for that lot */
   auctionStatsMap: Map<string, AuctionBidStats>;
-  /** Map of auctionId to auction document (may be null if auction deleted) */
-  auctionsMap: Map<string, Doc<"auctions"> | null>;
+  /** Map of lotId to lot document (may be null if lot deleted) */
+  auctionsMap: Map<string, Doc<"lots"> | null>;
 }
 
 export const ZERO_AUCTION_STATS: GlobalUserBidStats = {
@@ -61,11 +61,11 @@ export const ZERO_AUCTION_STATS: GlobalUserBidStats = {
 };
 
 /**
- * Calculates bid statistics for a user across all their auctions.
- * Returns global stats and maps of auction stats and auction documents.
+ * Calculates bid statistics for a user across all their lots.
+ * Returns global stats and maps of lot stats and lot documents.
  *
- * This function uses lightweight aggregations to avoid loading all bids and auctions
- * when only global stats are needed. For detailed per-auction stats, it still loads
+ * This function uses lightweight aggregations to avoid loading all bids and lots
+ * when only global stats are needed. For detailed per-lot stats, it still loads
  * the necessary data but does so more efficiently.
  *
  * @param ctx - Convex Query context
@@ -84,7 +84,7 @@ export async function calculateUserBidStats(
     .query("bids")
     .withIndex("by_bidder", (q) => q.eq("bidderId", userId))
     .filter((q) => q.neq(q.field("status"), "voided"))) {
-    const stats = auctionStatsMap.get(bid.auctionId) ?? {
+    const stats = auctionStatsMap.get(bid.lotId) ?? {
       lastBidTimestamp: 0,
       highestBid: 0,
       bidCount: 0,
@@ -96,7 +96,7 @@ export async function calculateUserBidStats(
     if (bid.timestamp > stats.lastBidTimestamp) {
       stats.lastBidTimestamp = bid.timestamp;
     }
-    auctionStatsMap.set(bid.auctionId, stats);
+    auctionStatsMap.set(bid.lotId, stats);
   }
 
   const globalStats: GlobalUserBidStats = {
@@ -105,13 +105,13 @@ export async function calculateUserBidStats(
     outbidCount: 0,
     totalExposure: 0,
   };
-  const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"auctions">[];
+  const auctionIds = Array.from(auctionStatsMap.keys()) as Id<"lots">[];
 
-  // Only load auctions that the user has bid on, in chunks to avoid overwhelming the database
+  // Only load lots that the user has bid on, in chunks to avoid overwhelming the database
   const CHUNK_SIZE = 100;
   const auctionEntries: {
-    id: Id<"auctions">;
-    auction: Doc<"auctions"> | null;
+    id: Id<"lots">;
+    auction: Doc<"lots"> | null;
   }[] = [];
 
   for (let i = 0; i < auctionIds.length; i += CHUNK_SIZE) {
@@ -119,13 +119,13 @@ export async function calculateUserBidStats(
     const chunkEntries = await Promise.all(
       chunk.map(async (id) => ({
         id,
-        auction: await ctx.db.get("auctions", id),
+        auction: await ctx.db.get("lots", id),
       }))
     );
     auctionEntries.push(...chunkEntries);
   }
 
-  const auctionsMap = new Map<string, Doc<"auctions"> | null>();
+  const auctionsMap = new Map<string, Doc<"lots"> | null>();
 
   for (const { id, auction } of auctionEntries) {
     auctionsMap.set(id, auction);
@@ -133,7 +133,7 @@ export async function calculateUserBidStats(
     const stats = auctionStatsMap.get(id);
     if (!stats) continue;
 
-    if (auction.status === "active") {
+    if (auction.status === "assigned") {
       globalStats.totalActive++;
       const isWinning =
         stats.highestBid === auction.currentPrice &&
@@ -150,22 +150,26 @@ export async function calculateUserBidStats(
   return { globalStats, auctionStatsMap, auctionsMap };
 }
 
-/** Auction status values for public auctions */
-export type AuctionStatus = "active" | "sold" | "unsold";
+/** Lot status values surfaced by the public browse filters */
+export type LotStatus = "assigned" | "sold" | "unsold";
 
-/** Filter options for auction status queries */
+/** Filter options for lot status queries */
 export type StatusFilter = "active" | "closed" | "all";
 
 /**
- * Converts StatusFilter to array of AuctionStatus values.
+ * Converts StatusFilter to array of stored lot statuses.
+ *
+ * A lot is "active" when it is `assigned` to a published, in-window parent
+ * auction — that window check happens at query time, so this only maps the
+ * filter to the underlying stored statuses.
  *
  * @param filter - The status filter to convert
- * @returns Array of auction statuses
+ * @returns Array of lot statuses
  */
-export function statusesForFilter(filter: StatusFilter): AuctionStatus[] {
-  if (filter === "active") return ["active"];
+export function statusesForFilter(filter: StatusFilter): LotStatus[] {
+  if (filter === "active") return ["assigned"];
   if (filter === "closed") return ["sold", "unsold"];
-  return ["active", "sold", "unsold"];
+  return ["assigned", "sold", "unsold"];
 }
 
 /**

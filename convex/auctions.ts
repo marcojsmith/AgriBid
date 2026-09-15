@@ -14,24 +14,24 @@
 
 // Re-export all query functions
 export {
-  getPendingAuctions,
+  getPendingLots,
   getActiveAuctions,
   getActiveMakes,
   getRelatedAuctions,
-  getAuctionById,
-  getAuctionBids,
-  getAuctionBidCount,
+  getLotById,
+  getLotBids,
+  getLotBidCount,
   getEquipmentMetadata,
   getCategories,
   getSellerInfo,
   getSellerListings,
-  getAllAuctions,
+  getAllLots,
   getMyBids,
   getMyBidsCount,
   getMyListings,
   getMyListingsCount,
   getMyListingsStats,
-  getAuctionFlags,
+  getLotFlags,
   getAllPendingFlags,
 } from "./auctions/queries";
 
@@ -77,8 +77,8 @@ export { settleExpiredAuctions, cleanupDrafts } from "./auctions/internal";
 // Re-export helpers and validators
 export {
   resolveImageUrls,
-  AuctionSummaryValidator,
-  toAuctionSummary,
-  AuctionDetailValidator,
+  LotSummaryValidator,
+  toLotSummary,
+  LotDetailValidator,
 } from "./auctions/helpers";
 export type { RawImages } from "./auctions/helpers";

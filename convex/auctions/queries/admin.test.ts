@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { getAuctionFlagsHandler, getAllPendingFlagsHandler } from "./admin";
+import { getLotFlagsHandler, getAllPendingFlagsHandler } from "./admin";
 import * as auth from "../../lib/auth";
 import type { QueryCtx } from "../../_generated/server";
 import type { Doc, Id } from "../../_generated/dataModel";
@@ -31,9 +31,9 @@ describe("Admin Queries - Auction Flags", () => {
     };
   });
 
-  describe("getAuctionFlagsHandler", () => {
+  describe("getLotFlagsHandler", () => {
     const setupDbMocks = (
-      mockFlags: Doc<"auctionFlags">[],
+      mockFlags: Doc<"lotFlags">[],
       reporterProfile: unknown
     ) => {
       const mockFlagsQuery = {
@@ -58,13 +58,13 @@ describe("Admin Queries - Auction Flags", () => {
       const mockFlags = [
         {
           _id: "f1",
-          auctionId: "a1",
+          lotId: "a1",
           reporterId: "u2",
           reason: "misleading",
           status: "pending",
           createdAt: Date.now(),
         },
-      ] as Doc<"auctionFlags">[];
+      ] as Doc<"lotFlags">[];
 
       setupDbMocks(mockFlags, {
         _id: "p2",
@@ -72,9 +72,9 @@ describe("Admin Queries - Auction Flags", () => {
         name: "John Doe",
       } as unknown as Doc<"profiles">);
 
-      const result = await getAuctionFlagsHandler(
+      const result = await getLotFlagsHandler(
         mockCtx as unknown as QueryCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
 
       expect(result).toHaveLength(1);
@@ -87,19 +87,19 @@ describe("Admin Queries - Auction Flags", () => {
       const mockFlags = [
         {
           _id: "f1",
-          auctionId: "a1",
+          lotId: "a1",
           reporterId: "u2",
           reason: "misleading",
           status: "pending",
           createdAt: Date.now(),
         },
-      ] as Doc<"auctionFlags">[];
+      ] as Doc<"lotFlags">[];
 
       setupDbMocks(mockFlags, null);
 
-      const result = await getAuctionFlagsHandler(
+      const result = await getLotFlagsHandler(
         mockCtx as unknown as QueryCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
 
       expect(result).toHaveLength(1);
@@ -112,22 +112,22 @@ describe("Admin Queries - Auction Flags", () => {
       const mockFlags = [
         {
           _id: "f1",
-          auctionId: "a1",
+          lotId: "a1",
           reporterId: "u2",
           reason: "misleading",
           status: "pending",
           createdAt: Date.now(),
         },
-      ] as Doc<"auctionFlags">[];
+      ] as Doc<"lotFlags">[];
 
       setupDbMocks(mockFlags, {
         _id: "p2",
         userId: "u2",
       } as unknown as Doc<"profiles">);
 
-      const result = await getAuctionFlagsHandler(
+      const result = await getLotFlagsHandler(
         mockCtx as unknown as QueryCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
 
       expect(result).toHaveLength(1);
@@ -140,7 +140,7 @@ describe("Admin Queries - Auction Flags", () => {
       const mockFlags = [
         {
           _id: "f1",
-          auctionId: "a1",
+          lotId: "a1",
           reporterId: "u2",
           reason: "misleading",
           status: "pending",
@@ -148,13 +148,13 @@ describe("Admin Queries - Auction Flags", () => {
         },
         {
           _id: "f2",
-          auctionId: "a1",
+          lotId: "a1",
           reporterId: "u2",
           reason: "inappropriate",
           status: "reviewed",
           createdAt: Date.now(),
         },
-      ] as Doc<"auctionFlags">[];
+      ] as Doc<"lotFlags">[];
 
       const mockProfileQuery = setupDbMocks(mockFlags, {
         _id: "p2",
@@ -162,9 +162,9 @@ describe("Admin Queries - Auction Flags", () => {
         name: "Reporter Name",
       } as unknown as Doc<"profiles">);
 
-      const result = await getAuctionFlagsHandler(
+      const result = await getLotFlagsHandler(
         mockCtx as unknown as QueryCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
 
       expect(result).toHaveLength(2);
@@ -179,8 +179,8 @@ describe("Admin Queries - Auction Flags", () => {
       );
 
       await expect(
-        getAuctionFlagsHandler(mockCtx as unknown as QueryCtx, {
-          auctionId: "a1" as Id<"auctions">,
+        getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
+          lotId: "a1" as Id<"lots">,
         })
       ).rejects.toThrow("unauthorized");
 
@@ -195,13 +195,13 @@ describe("Admin Queries - Auction Flags", () => {
       const mockFlags = [
         {
           _id: "f1",
-          auctionId: "a1",
+          lotId: "a1",
           reporterId: "u2",
           reason: "misleading",
           status: "pending",
           createdAt: Date.now(),
         },
-      ] as Doc<"auctionFlags">[];
+      ] as Doc<"lotFlags">[];
 
       const mockQuery = {
         withIndex: vi.fn().mockReturnThis(),
@@ -229,7 +229,7 @@ describe("Admin Queries - Auction Flags", () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].auctionTitle).toBe("Test Auction");
+      expect(result[0].lotTitle).toBe("Test Auction");
       expect(result[0].reporterName).toBe("Reporter Name");
     });
 
@@ -239,13 +239,13 @@ describe("Admin Queries - Auction Flags", () => {
       const mockFlags = [
         {
           _id: "f1",
-          auctionId: "a1",
+          lotId: "a1",
           reporterId: "u2",
           reason: "misleading",
           status: "pending",
           createdAt: Date.now(),
         },
-      ] as Doc<"auctionFlags">[];
+      ] as Doc<"lotFlags">[];
 
       const mockQuery = {
         withIndex: vi.fn().mockReturnThis(),
@@ -273,7 +273,7 @@ describe("Admin Queries - Auction Flags", () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0].auctionTitle).toBe("Unknown Auction");
+      expect(result[0].lotTitle).toBe("Unknown Auction");
     });
 
     it("should throw unauthorized error when user is not admin", async () => {

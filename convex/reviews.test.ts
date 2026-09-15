@@ -52,12 +52,12 @@ describe("submitReview mutation", () => {
   };
 
   it("should allow the auction winner to submit a review for a sold auction", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
     const sellerId = "user_seller";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId,
       winnerId,
       status: "sold",
@@ -76,7 +76,7 @@ describe("submitReview mutation", () => {
     const result = await submitReviewHandler(
       mockCtx as unknown as MutationCtx,
       {
-        auctionId,
+        lotId,
         rating: 5,
         comment: "Great tractor",
       }
@@ -86,7 +86,7 @@ describe("submitReview mutation", () => {
     expect(mockCtx.db.insert).toHaveBeenCalledWith(
       "reviews",
       expect.objectContaining({
-        auctionId,
+        lotId,
         reviewerId: winnerId,
         revieweeId: sellerId,
         rating: 5,
@@ -96,24 +96,24 @@ describe("submitReview mutation", () => {
   });
 
   it("should throw if auction not found", async () => {
-    const auctionId = "nonexistent" as Id<"auctions">;
+    const lotId = "nonexistent" as Id<"lots">;
     mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(null);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
 
     await expect(
       submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         rating: 5,
       })
     ).rejects.toThrow(ConvexError);
   });
 
   it("should reject a non-winner", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId: "user_actual_winner",
       status: "sold",
@@ -125,18 +125,18 @@ describe("submitReview mutation", () => {
 
     await expect(
       submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         rating: 5,
       })
     ).rejects.toThrow("Only the auction winner can leave a review");
   });
 
   it("should reject when the auction is not sold", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "active",
@@ -148,18 +148,18 @@ describe("submitReview mutation", () => {
 
     await expect(
       submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         rating: 5,
       })
     ).rejects.toThrow("Auction is not completed");
   });
 
   it.each([0, 6, 3.5])("should reject invalid rating %s", async (rating) => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "sold",
@@ -171,18 +171,18 @@ describe("submitReview mutation", () => {
 
     await expect(
       submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         rating,
       })
     ).rejects.toThrow("Rating must be an integer between 1 and 5");
   });
 
   it("should reject a duplicate review by the same reviewer", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "sold",
@@ -199,18 +199,18 @@ describe("submitReview mutation", () => {
 
     await expect(
       submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         rating: 5,
       })
     ).rejects.toThrow("You have already reviewed this auction");
   });
 
   it("should reject a review within the 7-day cooldown after settlement", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "sold",
@@ -223,7 +223,7 @@ describe("submitReview mutation", () => {
 
     await expect(
       submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         rating: 5,
       })
     ).rejects.toThrow(
@@ -232,11 +232,11 @@ describe("submitReview mutation", () => {
   });
 
   it("should accept a review at exactly 7 days after settlement", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "sold",
@@ -254,7 +254,7 @@ describe("submitReview mutation", () => {
 
     const result = await submitReviewHandler(
       mockCtx as unknown as MutationCtx,
-      { auctionId, rating: 4 }
+      { lotId, rating: 4 }
     );
 
     expect(result.success).toBe(true);
@@ -262,11 +262,11 @@ describe("submitReview mutation", () => {
   });
 
   it("should accept a review just over 7 days after settlement", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "sold",
@@ -284,18 +284,18 @@ describe("submitReview mutation", () => {
 
     const result = await submitReviewHandler(
       mockCtx as unknown as MutationCtx,
-      { auctionId, rating: 5 }
+      { lotId, rating: 5 }
     );
 
     expect(result.success).toBe(true);
   });
 
   it("should reject within the cooldown when only endTime exists (legacy auction)", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "sold",
@@ -308,7 +308,7 @@ describe("submitReview mutation", () => {
 
     await expect(
       submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+        lotId,
         rating: 5,
       })
     ).rejects.toThrow(
@@ -317,11 +317,11 @@ describe("submitReview mutation", () => {
   });
 
   it("should allow a review for a sold auction with no settlement timestamp", async () => {
-    const auctionId = "auction123" as Id<"auctions">;
+    const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";
 
     const auctionDoc = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: "user_seller",
       winnerId,
       status: "sold",
@@ -338,7 +338,7 @@ describe("submitReview mutation", () => {
 
     const result = await submitReviewHandler(
       mockCtx as unknown as MutationCtx,
-      { auctionId, rating: 5 }
+      { lotId, rating: 5 }
     );
 
     expect(result.success).toBe(true);
@@ -501,7 +501,7 @@ describe("getSellerReviews query", () => {
       {
         _id: "review1",
         _creationTime: 100,
-        auctionId: "auction1",
+        lotId: "auction1",
         reviewerId: "user1",
         revieweeId: "seller1",
         rating: 5,
@@ -512,7 +512,7 @@ describe("getSellerReviews query", () => {
       {
         _id: "review2",
         _creationTime: 200,
-        auctionId: "auction2",
+        lotId: "auction2",
         reviewerId: "user2",
         revieweeId: "seller1",
         rating: 4,
@@ -558,7 +558,7 @@ describe("getSellerReviews query", () => {
     expect(result.page[0]).toEqual({
       _id: "review1",
       _creationTime: 100,
-      auctionId: "auction1",
+      lotId: "auction1",
       rating: 5,
       comment: "Excellent",
       createdAt: 1000,
@@ -576,7 +576,7 @@ describe("getSellerReviews query", () => {
       {
         _id: "review1",
         _creationTime: 100,
-        auctionId: "auction1",
+        lotId: "auction1",
         reviewerId: "ghost_user",
         revieweeId: "seller1",
         rating: 3,

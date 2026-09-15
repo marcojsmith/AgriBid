@@ -116,10 +116,16 @@ export async function resolveImageUrls(
 }
 
 /**
- * Validator for a compact auction summary suitable for list views.
+ * Validator for a compact lot summary suitable for list views.
+ *
+ * The legacy `startTime`/`endTime` fields are the lot's own (superseded)
+ * timestamps kept for backward compatibility. The canonical live window lives
+ * on the parent auction and is surfaced as `auctionStartTime`/`auctionEndTime`
+ * (plus `auctionStatus`), with `extendedEndTime` carrying any per-lot soft-close
+ * extension so the effective end is `extendedEndTime ?? auctionEndTime`.
  */
-export const AuctionSummaryValidator = v.object({
-  _id: v.id("auctions"),
+export const LotSummaryValidator = v.object({
+  _id: v.id("lots"),
   _creationTime: v.number(),
   title: v.string(),
   make: v.string(),
@@ -138,6 +144,13 @@ export const AuctionSummaryValidator = v.object({
   durationDays: v.optional(v.number()),
   sellerId: v.string(),
   status: v.string(),
+  auctionId: v.optional(v.id("auctions")),
+  auctionStartTime: v.optional(v.number()),
+  auctionEndTime: v.optional(v.number()),
+  auctionStatus: v.optional(
+    v.union(v.literal("draft"), v.literal("published"), v.literal("closed"))
+  ),
+  extendedEndTime: v.optional(v.number()),
   winnerId: v.optional(v.union(v.string(), v.null())),
   description: v.optional(v.string()),
   conditionReportUrl: v.optional(v.string()),
@@ -159,7 +172,7 @@ export const AuctionSummaryValidator = v.object({
 export const BidValidator = v.object({
   _id: v.id("bids"),
   _creationTime: v.number(),
-  auctionId: v.id("auctions"),
+  lotId: v.id("lots"),
   bidderId: v.string(),
   amount: v.number(),
   timestamp: v.number(),
@@ -168,60 +181,69 @@ export const BidValidator = v.object({
 });
 
 /**
- * Create a compact auction summary for list views.
+ * Create a compact lot summary for list views.
  *
  * Resolves image references into accessible URLs and selects only the necessary
- * fields required for displaying an auction in a list or grid view.
+ * fields required for displaying a lot in a list or grid view. Also resolves
+ * the parent auction (if assigned) so the effective live window can be rendered
+ * without a second round-trip per card.
  *
- * @param ctx - Query context used to resolve image URLs
- * @param auction - Full auction document to convert into a summary
- * @returns An object with selected auction fields and an `images` object whose entries are resolved URLs for `front`, `engine`, `cabin`, `rear` and an `additional` array of resolved URLs
+ * @param ctx - Query context used to resolve image URLs and the parent auction
+ * @param lot - Full lot document to convert into a summary
+ * @returns An object with selected lot fields, the parent auction's window, and an `images` object whose entries are resolved URLs for `front`, `engine`, `cabin`, `rear` and an `additional` array of resolved URLs
  */
-export async function toAuctionSummary(
-  ctx: QueryCtx,
-  auction: Doc<"auctions">
-) {
-  const category = auction.categoryId
-    ? await ctx.db.get("equipmentCategories", auction.categoryId)
-    : null;
+export async function toLotSummary(ctx: QueryCtx, lot: Doc<"lots">) {
+  const [category, auction] = await Promise.all([
+    lot.categoryId
+      ? ctx.db.get("equipmentCategories", lot.categoryId)
+      : Promise.resolve(null),
+    lot.auctionId
+      ? ctx.db.get("auctions", lot.auctionId)
+      : Promise.resolve(null),
+  ]);
 
   return {
-    _id: auction._id,
-    _creationTime: auction._creationTime,
-    title: auction.title,
-    description: auction.description,
-    make: auction.make,
-    model: auction.model,
-    year: auction.year,
-    currentPrice: auction.currentPrice,
-    startingPrice: auction.startingPrice,
-    minIncrement: auction.minIncrement,
-    startTime: auction.startTime,
-    endTime: auction.endTime,
-    durationDays: auction.durationDays,
-    status: auction.status,
-    reservePrice: auction.reservePrice,
-    operatingHours: auction.operatingHours,
-    location: auction.location,
-    categoryId: auction.categoryId,
+    _id: lot._id,
+    _creationTime: lot._creationTime,
+    title: lot.title,
+    description: lot.description,
+    make: lot.make,
+    model: lot.model,
+    year: lot.year,
+    currentPrice: lot.currentPrice,
+    startingPrice: lot.startingPrice,
+    minIncrement: lot.minIncrement,
+    startTime: lot.startTime,
+    endTime: lot.endTime,
+    durationDays: lot.durationDays,
+    status: lot.status,
+    auctionId: lot.auctionId,
+    auctionStartTime: auction?.startTime,
+    auctionEndTime: auction?.endTime,
+    auctionStatus: auction?.status,
+    extendedEndTime: lot.extendedEndTime,
+    reservePrice: lot.reservePrice,
+    operatingHours: lot.operatingHours,
+    location: lot.location,
+    categoryId: lot.categoryId,
     // Intentionally `||` not `??`: an empty string category name also means "no category"
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
     categoryName: category?.name || "Unknown",
-    sellerId: auction.sellerId,
-    winnerId: auction.winnerId,
-    conditionReportUrl: auction.conditionReportUrl,
-    isExtended: auction.isExtended,
-    seedId: auction.seedId,
-    conditionChecklist: auction.conditionChecklist,
-    images: await resolveImageUrls(ctx.storage, auction.images, { limit: 0 }),
+    sellerId: lot.sellerId,
+    winnerId: lot.winnerId,
+    conditionReportUrl: lot.conditionReportUrl,
+    isExtended: lot.isExtended,
+    seedId: lot.seedId,
+    conditionChecklist: lot.conditionChecklist,
+    images: await resolveImageUrls(ctx.storage, lot.images, { limit: 0 }),
   };
 }
 
 /**
- * Validator for a full auction document with resolved URLs.
+ * Validator for a full lot document with resolved URLs.
  */
-export const AuctionDetailValidator = v.object({
-  _id: v.id("auctions"),
+export const LotDetailValidator = v.object({
+  _id: v.id("lots"),
   _creationTime: v.number(),
   title: v.string(),
   make: v.string(),
@@ -250,6 +272,13 @@ export const AuctionDetailValidator = v.object({
   minIncrement: v.number(),
   startTime: v.optional(v.number()),
   endTime: v.optional(v.number()),
+  auctionId: v.optional(v.id("auctions")),
+  auctionStartTime: v.optional(v.number()),
+  auctionEndTime: v.optional(v.number()),
+  auctionStatus: v.optional(
+    v.union(v.literal("draft"), v.literal("published"), v.literal("closed"))
+  ),
+  extendedEndTime: v.optional(v.number()),
   isExtended: v.optional(v.boolean()),
   winnerId: v.optional(v.union(v.string(), v.null())),
   seedId: v.optional(v.string()),
@@ -257,60 +286,68 @@ export const AuctionDetailValidator = v.object({
 });
 
 /**
- * Create a full auction object with image references resolved to accessible URLs.
+ * Create a full lot object with image references resolved to accessible URLs.
  * The returned object includes a sellerEmail string (resolved from the seller lookup)
- * in addition to the described images transformation.
+ * and the parent auction's window, in addition to the described images transformation.
  *
  * @param ctx - Query context providing storage used to resolve image references
- * @param auction - Auction document to convert
- * @returns The same auction object with resolved images and seller details.
+ * @param lot - Lot document to convert
+ * @returns The same lot object with resolved images, seller details, and parent auction window.
  * sellerEmail may be undefined if no seller is found.
  */
-export async function toAuctionDetail(ctx: QueryCtx, auction: Doc<"auctions">) {
-  const [sellerProfile, category, identity] = await Promise.all([
+export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
+  const [sellerProfile, category, identity, auction] = await Promise.all([
     ctx.db
       .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", auction.sellerId))
+      .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
       .unique(),
-    auction.categoryId
-      ? ctx.db.get("equipmentCategories", auction.categoryId)
-      : null,
+    lot.categoryId
+      ? ctx.db.get("equipmentCategories", lot.categoryId)
+      : Promise.resolve(null),
     ctx.auth.getUserIdentity(),
+    lot.auctionId
+      ? ctx.db.get("auctions", lot.auctionId)
+      : Promise.resolve(null),
   ]);
   const isAuthenticated = identity !== null;
 
   return {
-    _id: auction._id,
-    _creationTime: auction._creationTime,
-    title: auction.title,
-    description: auction.description,
-    make: auction.make,
-    model: auction.model,
-    year: auction.year,
-    operatingHours: auction.operatingHours,
-    location: auction.location,
-    categoryId: auction.categoryId,
+    _id: lot._id,
+    _creationTime: lot._creationTime,
+    title: lot.title,
+    description: lot.description,
+    make: lot.make,
+    model: lot.model,
+    year: lot.year,
+    operatingHours: lot.operatingHours,
+    location: lot.location,
+    categoryId: lot.categoryId,
     // Intentionally `||` not `??`: an empty string category name also means "no category"
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
     categoryName: category?.name || "Unknown",
-    startingPrice: auction.startingPrice,
-    reservePrice: auction.reservePrice,
-    durationDays: auction.durationDays,
-    currentPrice: auction.currentPrice,
-    minIncrement: auction.minIncrement,
-    startTime: auction.startTime,
-    endTime: auction.endTime,
-    status: auction.status,
-    sellerId: auction.sellerId,
+    startingPrice: lot.startingPrice,
+    reservePrice: lot.reservePrice,
+    durationDays: lot.durationDays,
+    currentPrice: lot.currentPrice,
+    minIncrement: lot.minIncrement,
+    startTime: lot.startTime,
+    endTime: lot.endTime,
+    auctionId: lot.auctionId,
+    auctionStartTime: auction?.startTime,
+    auctionEndTime: auction?.endTime,
+    auctionStatus: auction?.status,
+    extendedEndTime: lot.extendedEndTime,
+    status: lot.status,
+    sellerId: lot.sellerId,
     sellerEmail: isAuthenticated
       ? (sellerProfile?.email ?? undefined)
       : undefined,
-    winnerId: auction.winnerId,
-    isExtended: auction.isExtended,
-    seedId: auction.seedId,
-    conditionReportUrl: auction.conditionReportUrl,
-    conditionChecklist: auction.conditionChecklist,
-    images: await resolveImageUrls(ctx.storage, auction.images),
+    winnerId: lot.winnerId,
+    isExtended: lot.isExtended,
+    seedId: lot.seedId,
+    conditionReportUrl: lot.conditionReportUrl,
+    conditionChecklist: lot.conditionChecklist,
+    images: await resolveImageUrls(ctx.storage, lot.images),
   };
 }
 

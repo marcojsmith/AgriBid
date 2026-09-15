@@ -22,7 +22,7 @@ import type { Id } from "./_generated/dataModel";
  * @param args.subject - The subject of the ticket
  * @param args.message - The message content
  * @param args.priority - The priority level (low, medium, high)
- * @param args.auctionId - Optional auction ID associated with the ticket
+ * @param args.lotId - Optional lot ID associated with the ticket
  * @returns Promise<Id<"supportTickets">>
  */
 export const createTicketHandler = async (
@@ -31,7 +31,7 @@ export const createTicketHandler = async (
     subject: string;
     message: string;
     priority: "low" | "medium" | "high";
-    auctionId?: Id<"auctions">;
+    lotId?: Id<"lots">;
   }
 ) => {
   const authUser = await requireAuth(ctx);
@@ -63,7 +63,7 @@ export const createTicketHandler = async (
     subject,
     message,
     priority: args.priority,
-    auctionId: args.auctionId,
+    lotId: args.lotId,
     status: "open",
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -83,7 +83,7 @@ export const createTicket = mutation({
     subject: v.string(),
     message: v.string(),
     priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
-    auctionId: v.optional(v.id("auctions")),
+    lotId: v.optional(v.id("lots")),
   },
   returns: v.id("supportTickets"),
   handler: createTicketHandler,
@@ -162,7 +162,7 @@ export const getMyTickets = query({
         _id: v.id("supportTickets"),
         _creationTime: v.number(),
         userId: v.string(),
-        auctionId: v.optional(v.id("auctions")),
+        lotId: v.optional(v.id("lots")),
         subject: v.string(),
         message: v.string(),
         status: v.union(
