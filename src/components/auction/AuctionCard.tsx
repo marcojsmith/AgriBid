@@ -4,9 +4,10 @@ import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Clock, MapPin, Gavel } from "lucide-react";
+import { Clock, MapPin, Gavel, CalendarClock } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
+import { useAuctionStarted } from "@/hooks/useAuctionStarted";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +84,11 @@ export const AuctionCard = ({
     e.preventDefault();
     e.stopPropagation();
 
+    if (auction.startTime && auction.startTime > Date.now()) {
+      toast.error("This auction has not started yet");
+      return;
+    }
+
     if (!session) {
       toast.info("Please sign in to place a bid");
       const rawUrl = `/auction/${auction._id}`;
@@ -142,6 +148,15 @@ export const AuctionCard = ({
    * It is true when auction.status === "sold" or "unsold".
    */
   const isClosed = auction.status === "sold" || auction.status === "unsold";
+  /**
+   * Whether the auction is active but its scheduled startTime hasn't
+   * arrived yet — bidding is blocked server-side until then (#296), so the
+   * card must make this distinguishable from a live, biddable auction.
+   * `useAuctionStarted` self-updates once startTime passes, so this flips
+   * without needing an unrelated re-render.
+   */
+  const hasStarted = useAuctionStarted(auction.startTime);
+  const isNotStarted = auction.status === "active" && !hasStarted;
 
   return (
     <Card
@@ -165,6 +180,8 @@ export const AuctionCard = ({
               onWatchlistToggle={handleWatchlistToggle}
               endTime={auction.endTime}
               isClosed={isClosed}
+              startTime={auction.startTime}
+              isNotStarted={isNotStarted}
             />
             {isClosed && isCompact && (
               <div className="absolute top-1.5 right-1.5 z-10">
@@ -187,6 +204,17 @@ export const AuctionCard = ({
                 </div>
               </div>
             )}
+            {isNotStarted && isCompact && (
+              <div className="absolute top-1.5 right-1.5 z-10">
+                <div
+                  className="rounded-full flex items-center justify-center shadow-lg bg-warning text-warning-foreground h-6 w-6"
+                  role="img"
+                  aria-label="Scheduled auction, not yet started"
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                </div>
+              </div>
+            )}
           </div>
 
           {isClosed && !isCompact && (
@@ -198,6 +226,15 @@ export const AuctionCard = ({
                 className="font-semibold shadow-lg"
               >
                 {auction.status === "sold" ? "Sold" : "Unsold"}
+              </Badge>
+            </div>
+          )}
+
+          {isNotStarted && !isCompact && (
+            <div className="absolute top-3 right-3 z-10">
+              <Badge className="font-semibold shadow-lg bg-warning text-warning-foreground gap-1">
+                <CalendarClock className="h-3 w-3" />
+                Scheduled
               </Badge>
             </div>
           )}
@@ -259,6 +296,8 @@ export const AuctionCard = ({
                 endTime={auction.endTime}
                 isCompact={isCompact}
                 isClosed={isClosed}
+                startTime={auction.startTime}
+                isNotStarted={isNotStarted}
               />
             </CardContent>
           </div>
@@ -280,13 +319,15 @@ export const AuctionCard = ({
                 : "text-xs h-11 rounded-md"
             )}
             onClick={handleBidInitiate}
-            disabled={isBidding || auction.status !== "active"}
+            disabled={isBidding || auction.status !== "active" || isNotStarted}
           >
             {isBidding
               ? "..."
               : isClosed
                 ? "Closed"
-                : `Bid ${formatCurrency(auction.currentPrice + auction.minIncrement)}`}
+                : isNotStarted
+                  ? "Not Started"
+                  : `Bid ${formatCurrency(auction.currentPrice + auction.minIncrement)}`}
           </Button>
         </div>
       </div>

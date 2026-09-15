@@ -10,13 +10,11 @@ import { formatCurrency } from "@/lib/currency";
 /**
  * Component displaying fee breakdown for auction participants.
  * @param auctionId - The ID of the auction
- * @param userId - The ID of the current user
  * @param isWinner - Whether the user won the auction
  * @param isSeller - Whether the user is the seller
  */
 interface FeeBreakdownProps {
   auctionId: Id<"auctions"> | undefined;
-  userId: string;
   isWinner: boolean;
   isSeller: boolean;
 }
@@ -25,20 +23,18 @@ interface FeeBreakdownProps {
  * Displays the fee breakdown for a sold auction to the winner or seller.
  * @param props - The component props.
  * @param props.auctionId - The ID of the auction.
- * @param props.userId - The ID of the user viewing the fees.
  * @param props.isWinner - Whether the user is the auction winner.
  * @param props.isSeller - Whether the user is the auction seller.
  * @returns The FeeBreakdown React component or null if no fees.
  */
 export function FeeBreakdown({
   auctionId,
-  userId,
   isWinner,
   isSeller,
 }: FeeBreakdownProps): React.JSX.Element | null {
   const fees = useQuery(
     api.admin.getAuctionFeesForUser,
-    auctionId ? { auctionId, userId } : "skip"
+    auctionId ? { auctionId } : "skip"
   );
 
   if (!fees || (fees.buyerFees.length === 0 && fees.sellerFees.length === 0)) {

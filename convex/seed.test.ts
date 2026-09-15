@@ -237,7 +237,7 @@ describe("Seed Coverage", () => {
 
       await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
 
-      expect(mockDb.rows("auctions").length).toBe(20);
+      expect(mockDb.rows("auctions").length).toBe(22);
       expect(mockDb.rows("bids").length).toBeGreaterThan(0);
       expect(mockDb.rows("reviews").length).toBe(3);
       expect(mockDb.rows("platformFees").length).toBe(2);
@@ -296,7 +296,7 @@ describe("Seed Coverage", () => {
 
       await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
 
-      expect(mockDb.rows("auctions").length).toBe(20);
+      expect(mockDb.rows("auctions").length).toBe(22);
       expect(mockDb.rows("bids").length).toBeGreaterThan(0);
       expect(mockDb.rows("proxy_bids").length).toBe(2);
       expect(mockDb.rows("reviews").length).toBe(3);

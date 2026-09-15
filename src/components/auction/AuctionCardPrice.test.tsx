@@ -50,4 +50,18 @@ describe("AuctionCardPrice", () => {
     );
     expect(screen.getByText("Ends in")).toBeInTheDocument();
   });
+
+  it("shows 'Starts in' and 'Starting price' when isNotStarted is true (#296)", () => {
+    render(
+      <AuctionCardPrice
+        {...defaultProps}
+        isNotStarted={true}
+        startTime={Date.now() + 60_000}
+      />
+    );
+    expect(screen.getByText("Starts in")).toBeInTheDocument();
+    expect(screen.getByText("Starting price")).toBeInTheDocument();
+    expect(screen.queryByText("Ends in")).not.toBeInTheDocument();
+    expect(screen.queryByText("Current bid")).not.toBeInTheDocument();
+  });
 });

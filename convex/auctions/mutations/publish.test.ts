@@ -567,6 +567,59 @@ describe("Publish Mutations", () => {
       );
     });
 
+    it("should honour a future seller-scheduled startTime (#296)", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      const futureStart = Date.now() + 1000 * 60 * 60 * 24; // 1 day out
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+        startTime: futureStart,
+      });
+
+      const result = await approveAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
+        "a1",
+        expect.objectContaining({
+          status: "active",
+          startTime: futureStart,
+        })
+      );
+    });
+
+    it("should clamp a past startTime to now instead of preserving it (#296)", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
+      const pastStart = Date.now() - 1000 * 60 * 60 * 24; // 1 day ago
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "pending_review",
+        durationDays: 7,
+        startTime: pastStart,
+      });
+
+      const before = Date.now();
+      const result = await approveAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+      const after = Date.now();
+
+      expect(result.success).toBe(true);
+      const patchCall = mockCtx.db.patch.mock.calls.find(
+        (call) => call[0] === "auctions" && call[1] === "a1"
+      );
+      const patchedStartTime = (
+        patchCall?.[2] as { startTime: number } | undefined
+      )?.startTime;
+      expect(patchedStartTime).toBeGreaterThanOrEqual(before);
+      expect(patchedStartTime).toBeLessThanOrEqual(after);
+    });
+
     it("should throw if duration below minimum", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({

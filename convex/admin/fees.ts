@@ -2,7 +2,7 @@ import { v } from "convex/values";
 
 import { query, mutation } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
-import { requireAdmin } from "../lib/auth";
+import { requireAdmin, getAuthUser, resolveUserId } from "../lib/auth";
 import { logAudit } from "../admin_utils";
 import type { Id } from "../_generated/dataModel";
 
@@ -471,17 +471,85 @@ export const getAuctionFees = query({
 });
 
 /**
- * Returns auction fees for a specific user (winner or seller).
- * @param auctionId - ID of the auction
- * @param userId - ID of the user requesting fees
+ * Returns auction fees for the authenticated caller (winner or seller).
+ * @param ctx - Query context
+ * @param args - Handler arguments
+ * @param args.auctionId - ID of the auction
  * @returns Object with buyerFees and sellerFees arrays containing feeName, feeType, rate, calculatedAmount
- * Authorization: returns empty arrays if caller is neither auction winner nor seller.
+ * Authorization: returns empty arrays if caller is unauthenticated or is neither auction winner nor seller.
  * Side effects: read-only query; filters out inactive platform fees.
  */
+export const getAuctionFeesForUserHandler = async (
+  ctx: QueryCtx,
+  args: { auctionId: Id<"auctions"> }
+) => {
+  const authUser = await getAuthUser(ctx);
+  if (!authUser) {
+    return { buyerFees: [], sellerFees: [] };
+  }
+  const callerId = resolveUserId(authUser);
+
+  const auction = await ctx.db.get("auctions", args.auctionId);
+
+  if (!auction) {
+    throw new Error("Auction not found");
+  }
+
+  if (auction.winnerId !== callerId && auction.sellerId !== callerId) {
+    return { buyerFees: [], sellerFees: [] };
+  }
+
+  const fees = await ctx.db
+    .query("auctionFees")
+    .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+    .collect();
+
+  const activeFeeIds = (
+    await ctx.db
+      .query("platformFees")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .collect()
+  ).map((f) => f._id);
+
+  const buyerFees: {
+    feeName: string;
+    feeType: "percentage" | "fixed";
+    rate: number;
+    calculatedAmount: number;
+  }[] = [];
+  const sellerFees: {
+    feeName: string;
+    feeType: "percentage" | "fixed";
+    rate: number;
+    calculatedAmount: number;
+  }[] = [];
+
+  for (const fee of fees) {
+    if (!activeFeeIds.includes(fee.feeId)) continue;
+
+    const platformFee = await ctx.db.get("platformFees", fee.feeId);
+    if (!platformFee) continue;
+
+    const feeData = {
+      feeName: fee.feeName,
+      feeType: fee.feeType,
+      rate: fee.rate,
+      calculatedAmount: fee.calculatedAmount,
+    };
+
+    if (fee.appliedTo === "buyer") {
+      buyerFees.push(feeData);
+    } else {
+      sellerFees.push(feeData);
+    }
+  }
+
+  return { buyerFees, sellerFees };
+};
+
 export const getAuctionFeesForUser = query({
   args: {
     auctionId: v.id("auctions"),
-    userId: v.string(),
   },
   returns: v.object({
     buyerFees: v.array(
@@ -501,62 +569,5 @@ export const getAuctionFeesForUser = query({
       })
     ),
   }),
-  handler: async (ctx, args) => {
-    const auction = await ctx.db.get("auctions", args.auctionId);
-
-    if (!auction) {
-      throw new Error("Auction not found");
-    }
-
-    if (auction.winnerId !== args.userId && auction.sellerId !== args.userId) {
-      return { buyerFees: [], sellerFees: [] };
-    }
-
-    const fees = await ctx.db
-      .query("auctionFees")
-      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
-      .collect();
-
-    const activeFeeIds = (
-      await ctx.db
-        .query("platformFees")
-        .withIndex("by_active", (q) => q.eq("isActive", true))
-        .collect()
-    ).map((f) => f._id);
-
-    const buyerFees: {
-      feeName: string;
-      feeType: "percentage" | "fixed";
-      rate: number;
-      calculatedAmount: number;
-    }[] = [];
-    const sellerFees: {
-      feeName: string;
-      feeType: "percentage" | "fixed";
-      rate: number;
-      calculatedAmount: number;
-    }[] = [];
-
-    for (const fee of fees) {
-      if (!activeFeeIds.includes(fee.feeId)) continue;
-
-      const platformFee = await ctx.db.get("platformFees", fee.feeId);
-      if (!platformFee) continue;
-
-      const feeData = {
-        feeName: fee.feeName,
-        feeType: fee.feeType,
-        rate: fee.rate,
-        calculatedAmount: fee.calculatedAmount,
-      };
-
-      if (fee.appliedTo === "buyer") {
-        buyerFees.push(feeData);
-      } else {
-        sellerFees.push(feeData);
-      }
-    }
-
-    return { buyerFees, sellerFees };
-  },
+  handler: getAuctionFeesForUserHandler,
 });

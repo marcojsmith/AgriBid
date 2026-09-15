@@ -124,6 +124,61 @@ describe("Bidding Coverage", () => {
       ).rejects.toThrow("Auction not active");
     });
 
+    it("should throw if the auction's scheduled startTime is in the future (#296)", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockCtx.db.get.mockResolvedValue({
+        status: "active",
+        sellerId: "u1",
+        startTime: Date.now() + 60_000,
+        endTime: Date.now() + 120_000,
+      });
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          amount: 100,
+        })
+      ).rejects.toThrow("Auction has not started");
+    });
+
+    it("should allow bidding once the scheduled startTime has passed", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        status: "active",
+        sellerId: "u1",
+        startTime: Date.now() - 60_000,
+        endTime: Date.now() + 120_000,
+        currentPrice: 100,
+        minIncrement: 10,
+      });
+      mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
+
+      const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        amount: 200,
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "bids",
+        expect.objectContaining({ amount: 200, bidderId: "u2" })
+      );
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
+        "a1",
+        expect.objectContaining({ currentPrice: 200, winnerId: "u2" })
+      );
+    });
+
     it("should throw if seller bids on own auction", async () => {
       const userId = "u1";
       vi.mocked(auth.requireVerified).mockResolvedValue({
