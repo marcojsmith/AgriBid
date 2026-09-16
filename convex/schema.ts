@@ -58,9 +58,6 @@ export default defineSchema({
     startingPrice: v.number(),
     currentPrice: v.number(),
     minIncrement: v.number(),
-    // Legacy: superseded by the parent `auctions` row and dropped after migration.
-    startTime: v.optional(v.number()),
-    endTime: v.optional(v.number()),
     settledAt: v.optional(v.number()), // When the lot was settled (sold/unsold)
     durationDays: v.optional(v.number()),
     sellerId: v.string(),
@@ -109,11 +106,10 @@ export default defineSchema({
     .index("by_seller", ["sellerId"])
     .index("by_seller_status", ["sellerId", "status"])
     .index("by_category", ["categoryId"])
-    .index("by_end_time", ["endTime"])
     .index("by_seedId", ["seedId"])
     .index("by_status_make", ["status", "make"])
     .index("by_status_year", ["status", "year"])
-    .index("by_status_endTime", ["status", "endTime"])
+    .index("by_status_settledAt", ["status", "settledAt"])
     .index("by_auctionId", ["auctionId"])
     .index("by_status_auctionId", ["status", "auctionId"])
     .searchIndex("search_title", {

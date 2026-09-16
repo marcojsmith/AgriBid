@@ -52,7 +52,6 @@ import type * as lib_storage from "../lib/storage.js";
 import type * as lots_mutations_helpers from "../lots/mutations/helpers.js";
 import type * as lots_mutations_lifecycle from "../lots/mutations/lifecycle.js";
 import type * as messages from "../messages.js";
-import type * as migrations_multiLotAuctions from "../migrations/multiLotAuctions.js";
 import type * as notifications from "../notifications.js";
 import type * as presence from "../presence.js";
 import type * as profileFlags from "../profileFlags.js";
@@ -115,7 +114,6 @@ declare const fullApi: ApiFromModules<{
   "lots/mutations/helpers": typeof lots_mutations_helpers;
   "lots/mutations/lifecycle": typeof lots_mutations_lifecycle;
   messages: typeof messages;
-  "migrations/multiLotAuctions": typeof migrations_multiLotAuctions;
   notifications: typeof notifications;
   presence: typeof presence;
   profileFlags: typeof profileFlags;
