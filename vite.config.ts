@@ -20,10 +20,19 @@ export default defineConfig(({ mode }) => {
   const certPath = path.join(certDir, `${certName}.crt`);
 
   /* eslint-disable security/detect-non-literal-fs-filename -- certName comes from the local developer's own .env.local, not external input */
-  const https =
-    fs.existsSync(keyPath) && fs.existsSync(certPath)
-      ? { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) }
-      : undefined;
+  const readCertFile = (filePath: string): Buffer | undefined => {
+    try {
+      if (!fs.statSync(filePath).isFile()) return undefined;
+      fs.accessSync(filePath, fs.constants.R_OK);
+      return fs.readFileSync(filePath);
+    } catch {
+      return undefined;
+    }
+  };
+
+  const key = readCertFile(keyPath);
+  const cert = readCertFile(certPath);
+  const https = key && cert ? { key, cert } : undefined;
   /* eslint-enable security/detect-non-literal-fs-filename */
 
   return {
