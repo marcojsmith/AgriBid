@@ -73,7 +73,7 @@ describe("cleanupDrafts mutation", () => {
     };
 
     mockCtx.db.query = vi.fn().mockImplementation((table) => {
-      if (table === "auctions") {
+      if (table === "lots") {
         return makeQueryChainMock([mockDraft]);
       }
       return makeQueryChainMock();
@@ -85,11 +85,11 @@ describe("cleanupDrafts mutation", () => {
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage_front");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage_extra1");
 
-    expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "draft_123");
+    expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", "draft_123");
     expect(mockCtx.db.insert).toHaveBeenCalledWith(
       "auditLogs",
       expect.objectContaining({
-        action: "CLEANUP_DRAFT_AUCTIONS",
+        action: "CLEANUP_DRAFT_LOTS",
         adminId: "SYSTEM",
       })
     );
@@ -106,7 +106,7 @@ describe("cleanupDrafts mutation", () => {
     vi.mocked(auth.getAuthUser).mockResolvedValue(null);
 
     mockCtx.db.query = vi.fn().mockImplementation((table) => {
-      if (table === "auctions") return makeQueryChainMock([mockDraft]);
+      if (table === "lots") return makeQueryChainMock([mockDraft]);
       return makeQueryChainMock();
     });
 
@@ -118,7 +118,7 @@ describe("cleanupDrafts mutation", () => {
       "auditLogs",
       expect.objectContaining({
         adminId: "SYSTEM",
-        action: "CLEANUP_DRAFT_AUCTIONS",
+        action: "CLEANUP_DRAFT_LOTS",
       })
     );
   });
@@ -142,7 +142,7 @@ describe("cleanupDrafts mutation", () => {
     vi.mocked(auth.getAuthUser).mockResolvedValue(mockUser);
 
     mockCtx.db.query = vi.fn().mockImplementation((table) => {
-      if (table === "auctions") return makeQueryChainMock([mockDraft]);
+      if (table === "lots") return makeQueryChainMock([mockDraft]);
       return makeQueryChainMock();
     });
 
@@ -154,14 +154,14 @@ describe("cleanupDrafts mutation", () => {
       "auditLogs",
       expect.objectContaining({
         adminId: "admin_user_id",
-        action: "CLEANUP_DRAFT_AUCTIONS",
+        action: "CLEANUP_DRAFT_LOTS",
       })
     );
   });
 
   it("should do nothing if no old drafts exist", async () => {
     mockCtx.db.query = vi.fn().mockImplementation((table) => {
-      if (table === "auctions") {
+      if (table === "lots") {
         return makeQueryChainMock([]);
       }
       return makeQueryChainMock();

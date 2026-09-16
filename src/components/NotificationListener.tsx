@@ -20,7 +20,7 @@ export const NotificationListener = () => {
   const myBidsData = useQuery(api.auctions.getMyBids, {
     paginationOpts: { numItems: 20, cursor: null },
   });
-  const watchedData = useQuery(api.watchlist.getWatchedAuctions, {
+  const watchedData = useQuery(api.watchlist.getWatchedLots, {
     paginationOpts: { numItems: 20, cursor: null },
   });
 

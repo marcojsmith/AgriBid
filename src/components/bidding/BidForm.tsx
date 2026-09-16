@@ -1,6 +1,5 @@
 // app/src/components/bidding/BidForm.tsx
 import { useState, useEffect, useRef } from "react";
-import type { Doc } from "convex/_generated/dataModel";
 import {
   TrendingUp,
   ArrowUpCircle,
@@ -9,13 +8,14 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+import type { LotDetail } from "@/types/auction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/currency";
 
 interface BidFormProps {
-  /** The auction document containing current pricing and status */
-  auction: Doc<"auctions">;
+  /** The lot detail containing current pricing and status */
+  auction: LotDetail;
   /** Callback triggered when a bid amount is submitted */
   onBid: (amount: number, maxBid?: number, autoBidEnabled?: boolean) => void;
   /** Loading state during bid submission */
@@ -31,8 +31,8 @@ interface BidFormProps {
 /**
  * Interactive bid form for custom and quick bid submissions with proxy bidding support.
  *
- * @param props - Component props including auction data and handlers
- * @param props.auction - The auction document containing current pricing and status
+ * @param props - Component props including lot data and handlers
+ * @param props.auction - The lot detail containing current pricing and status
  * @param props.onBid - Callback triggered when a bid amount is submitted
  * @param props.isLoading - Loading state during bid submission
  * @param props.isBidFormEnabled - Whether the bid form is active; defaults to true

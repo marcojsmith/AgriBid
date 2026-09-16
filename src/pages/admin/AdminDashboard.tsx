@@ -125,20 +125,20 @@ function AdminDashboardContent() {
           linkLabel="Manage Accounts"
         />
 
-        {/* Auctions Card */}
+        {/* Lots Card */}
         <SummaryCard
-          title="Auctions"
+          title="Lots"
           icon={<Hammer className="h-5 w-5" />}
           stats={[
             {
               label: "Active Live",
-              value: adminStats.activeAuctions,
+              value: adminStats.activeLots,
               color: "text-primary",
             },
             { label: "Active Watch", value: adminStats.activeWatch },
-            { label: "Total Created", value: adminStats.totalAuctions },
+            { label: "Total Created", value: adminStats.totalLots },
           ]}
-          link="/admin/auctions"
+          link="/admin/lots"
           linkLabel="Manage Inventory"
         />
 

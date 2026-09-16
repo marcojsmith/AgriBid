@@ -55,14 +55,30 @@ type StatusFilter =
 const TYPED_BADGE_VARIANTS = AUCTION_STATUS_BADGE_VARIANTS;
 
 /**
+ * Effective closing time for a lot: per-lot soft-close extension when set,
+ * otherwise the parent auction's end time. Replaces the superseded legacy
+ * `lots.endTime` field.
+ * @param lot - Lot summary or detail.
+ * @param lot.extendedEndTime - Per-lot soft-close extension, if any.
+ * @param lot.auctionEndTime - Parent auction's end time, if assigned.
+ * @returns The effective end timestamp in milliseconds, or undefined if unknown.
+ */
+function effectiveLotEndTime(lot: {
+  extendedEndTime?: number;
+  auctionEndTime?: number;
+}): number | undefined {
+  return lot.extendedEndTime ?? lot.auctionEndTime;
+}
+
+/**
  * Dashboard page for users to manage their own auction listings.
  * @returns React component
  */
 export default function MyListings() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [deletingId, setDeletingId] = useState<Id<"auctions"> | null>(null);
-  const [publishingId, setPublishingId] = useState<Id<"auctions"> | null>(null);
+  const [deletingId, setDeletingId] = useState<Id<"lots"> | null>(null);
+  const [publishingId, setPublishingId] = useState<Id<"lots"> | null>(null);
 
   const {
     results: listings,
@@ -75,21 +91,29 @@ export default function MyListings() {
   );
 
   const submitForReview = useMutation(
-    api.auctions.mutations.publish.submitForReview
+    api.lots.mutations.lifecycle.submitLotForReview
   );
   const deleteDraft = useMutation(api.auctions.mutations.delete.deleteDraft);
   const listingStats = useQuery(api.auctions.getMyListingsStats);
 
   const filteredListings = useMemo(() => {
     if (statusFilter === "all") return listings;
+    // Both "approved" and "assigned" lots surface as the "active" tab,
+    // mirroring getMyListingsStats's combined bucket.
+    if (statusFilter === "active") {
+      return listings.filter(
+        (listing) =>
+          listing.status === "approved" || listing.status === "assigned"
+      );
+    }
     return listings.filter((listing) => listing.status === statusFilter);
   }, [listings, statusFilter]);
 
-  const handleSubmitForReview = async (auctionId: Id<"auctions">) => {
+  const handleSubmitForReview = async (lotId: Id<"lots">) => {
     if (publishingId) return;
-    setPublishingId(auctionId);
+    setPublishingId(lotId);
     try {
-      await submitForReview({ auctionId });
+      await submitForReview({ lotId });
       toast.success("Listing submitted for review!");
     } catch (error) {
       toast.error(
@@ -100,10 +124,10 @@ export default function MyListings() {
     }
   };
 
-  const handleDeleteDraft = async (auctionId: Id<"auctions">) => {
-    setDeletingId(auctionId);
+  const handleDeleteDraft = async (lotId: Id<"lots">) => {
+    setDeletingId(lotId);
     try {
-      await deleteDraft({ auctionId });
+      await deleteDraft({ lotId });
       toast.success("Draft deleted successfully");
     } catch (error) {
       toast.error(
@@ -117,7 +141,7 @@ export default function MyListings() {
   const handleEdit = (auction: (typeof listings)[0]) => {
     // Save to local storage and redirect to /sell?edit=ID
     const draftData: ListingFormData = {
-      auctionId: auction._id,
+      lotId: auction._id,
       year: auction.year,
       categoryId: auction.categoryId ?? "",
       // If we don't have a categoryId, we can't trust the make/model hierarchy
@@ -314,8 +338,10 @@ export default function MyListings() {
                     </span>
                   </span>
                   <span>
-                    {auction.endTime
-                      ? new Date(auction.endTime).toLocaleDateString("en-ZA")
+                    {effectiveLotEndTime(auction) !== undefined
+                      ? new Date(
+                          effectiveLotEndTime(auction) ?? 0
+                        ).toLocaleDateString("en-ZA")
                       : "—"}
                   </span>
                 </div>

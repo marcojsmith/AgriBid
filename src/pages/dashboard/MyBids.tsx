@@ -39,10 +39,11 @@ interface StatusDisplay {
 }
 
 /**
- * Allowed statuses for an auction.
+ * Allowed statuses for a lot.
  * - `draft`: Listing is being created, not yet published.
  * - `pending_review`: Submitted and awaiting admin approval.
- * - `active`: Auction is currently open for bidding.
+ * - `approved`: Approved by an admin, not yet assigned to an auction.
+ * - `assigned`: Assigned to an auction and currently open for bidding.
  * - `sold`: Auction ended with a winning bid meeting reserve.
  * - `unsold`: Auction ended without meeting reserve or no bids.
  * - `rejected`: Admin rejected the listing.
@@ -50,7 +51,8 @@ interface StatusDisplay {
 type AuctionStatus =
   | "draft"
   | "pending_review"
-  | "active"
+  | "approved"
+  | "assigned"
   | "sold"
   | "unsold"
   | "rejected";
@@ -77,8 +79,10 @@ interface Auction {
   bidCount: number;
   /** The current lifecycle status of the auction. */
   status: AuctionStatus;
-  /** The epoch timestamp (ms) when the auction ends, if applicable. */
-  endTime?: number;
+  /** The parent auction's scheduled end timestamp (ms), if assigned. */
+  auctionEndTime?: number;
+  /** Per-lot anti-snipe extended end timestamp (ms), if set. */
+  extendedEndTime?: number;
   /** True if the user is currently the highest bidder on an active auction. */
   isWinning: boolean;
   /** True if the auction is sold and the user is the winner. */
@@ -103,7 +107,8 @@ type MyBidsPage = FunctionReturnType<
 const AUCTION_STATUSES: readonly AuctionStatus[] = [
   "draft",
   "pending_review",
-  "active",
+  "approved",
+  "assigned",
   "sold",
   "unsold",
   "rejected",
@@ -210,9 +215,9 @@ export default function MyBids() {
 
     // Filter
     if (filter === "winning") {
-      result = result.filter((a) => a.isWinning && a.status === "active");
+      result = result.filter((a) => a.isWinning && a.status === "assigned");
     } else if (filter === "outbid") {
-      result = result.filter((a) => a.isOutbid && a.status === "active");
+      result = result.filter((a) => a.isOutbid && a.status === "assigned");
     } else if (filter === "ended") {
       result = result.filter(
         (a) => a.status === "sold" || a.status === "unsold"
@@ -420,19 +425,24 @@ export default function MyBids() {
                       </Badge>
                     </div>
 
-                    {auction.status === "active" && auction.endTime != null && (
-                      <div className="absolute bottom-2 right-2">
-                        <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 shadow-lg">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-2.5 w-2.5 text-white" />
-                            <CountdownTimer
-                              endTime={auction.endTime}
-                              className="text-xs text-white"
-                            />
+                    {auction.status === "assigned" &&
+                      (auction.extendedEndTime ?? auction.auctionEndTime) !=
+                        null && (
+                        <div className="absolute bottom-2 right-2">
+                          <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 shadow-lg">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-2.5 w-2.5 text-white" />
+                              <CountdownTimer
+                                endTime={
+                                  auction.extendedEndTime ??
+                                  auction.auctionEndTime
+                                }
+                                className="text-xs text-white"
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
 
                   {/* Content Section */}
@@ -465,19 +475,19 @@ export default function MyBids() {
                       </div>
                       <div className="space-y-0.5 text-right border-l border-border/10 pl-3">
                         <p className="text-xs text-muted-foreground font-semibold">
-                          {auction.status === "active" ? "Next Min" : "Final"}
+                          {auction.status === "assigned" ? "Next Min" : "Final"}
                         </p>
                         <p
                           className={cn(
                             "font-bold text-sm tracking-tight tabular-nums",
-                            auction.status === "active"
+                            auction.status === "assigned"
                               ? "text-primary"
                               : auction.isWon
                                 ? "text-green-600"
                                 : "text-foreground"
                           )}
                         >
-                          {auction.status === "active"
+                          {auction.status === "assigned"
                             ? formatCurrency(nextMinBid)
                             : formatCurrency(auction.currentPrice)}
                         </p>
@@ -502,7 +512,7 @@ export default function MyBids() {
                               <TrendingUp className="h-3 w-3" />
                               Raise Bid
                             </span>
-                          ) : auction.status === "active" ? (
+                          ) : auction.status === "assigned" ? (
                             "View Details"
                           ) : (
                             "View Results"

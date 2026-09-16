@@ -4,13 +4,13 @@ import {
   paginationOptsValidator,
   query,
   type QueryCtx,
-  AuctionSummaryValidator,
+  LotSummaryValidator,
   getAuthenticatedUserId,
   unauthenticatedPaginatedResult,
   type PaginationOptions,
 } from "./shared";
 import type { Doc } from "../../_generated/dataModel";
-import { toAuctionSummary } from "../helpers";
+import { toLotSummary } from "../helpers";
 import { countQuery } from "../../admin_utils";
 
 /**
@@ -29,21 +29,21 @@ export const getMyListingsHandler = async (
   if (!userId) return { ...unauthenticatedPaginatedResult(), page: [] };
 
   const listingsQuery = ctx.db
-    .query("auctions")
+    .query("lots")
     .withIndex("by_seller", (q) => q.eq("sellerId", userId));
 
   const [results, totalCount] = await Promise.all([
     listingsQuery.paginate(args.paginationOpts),
     countQuery(
       ctx.db
-        .query("auctions")
+        .query("lots")
         .withIndex("by_seller", (q) => q.eq("sellerId", userId))
     ),
   ]);
 
   const page = await Promise.all(
     results.page.map(
-      async (auction: Doc<"auctions">) => await toAuctionSummary(ctx, auction)
+      async (lot: Doc<"lots">) => await toLotSummary(ctx, lot)
     )
   );
 
@@ -63,7 +63,7 @@ export const getMyListingsHandler = async (
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
-    page: v.array(AuctionSummaryValidator),
+    page: v.array(LotSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
@@ -97,21 +97,25 @@ export const getMyListingsCountHandler = async (
   let baseQuery;
 
   if (args.status && args.status !== "all") {
-    const status = args.status as
+    // The UI's "active" filter maps to a lot's stored `assigned` status.
+    const status = (args.status === "active"
+      ? "assigned"
+      : args.status) as
       | "draft"
       | "pending_review"
-      | "active"
+      | "approved"
+      | "assigned"
       | "sold"
       | "unsold"
       | "rejected";
     baseQuery = ctx.db
-      .query("auctions")
+      .query("lots")
       .withIndex("by_seller_status", (q) =>
         q.eq("sellerId", userId).eq("status", status)
       );
   } else {
     baseQuery = ctx.db
-      .query("auctions")
+      .query("lots")
       .withIndex("by_seller", (q) => q.eq("sellerId", userId));
   }
 
@@ -150,7 +154,7 @@ export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
     };
 
   const listings = await ctx.db
-    .query("auctions")
+    .query("lots")
     .withIndex("by_seller", (q) => q.eq("sellerId", userId))
     .collect();
 
@@ -172,7 +176,9 @@ export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
       case "pending_review":
         stats.pending_review++;
         break;
-      case "active":
+      case "approved":
+      case "assigned":
+        // Both pre-sale states surface as "active" in the seller dashboard.
         stats.active++;
         break;
       case "sold":

@@ -15,42 +15,44 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/currency";
 
 interface BidHistoryProps {
-  auctionId: Id<"auctions">;
+  lotId: Id<"lots">;
 }
 
 const PAGE_SIZE = 20;
 
 /**
- * Renders a paginated history of bids for a specific auction within an accordion.
+ * Renders a paginated history of bids for a specific lot within an accordion.
  *
- * This component fetches paginated bids using `usePaginatedQuery(api.auctions.getAuctionBids)`
- * and the total bid count via `useQuery(api.auctions.getAuctionBidCount)`. It initially
+ * This component fetches paginated bids using `usePaginatedQuery(api.auctions.queries.bids.getLotBids)`
+ * and the total bid count via `useQuery(api.auctions.queries.bids.getLotBidCount)`. It initially
  * loads `initialNumItems` (PAGE_SIZE) bids and allows loading more via the `loadMore` function.
  *
  * The "Highest" badge logic identifies the leading bid by comparing each bid's amount
- * against the auction's `currentPrice`. Since the backend enforces a minimum increment
+ * against the lot's `currentPrice`. Since the backend enforces a minimum increment
  * and ensures `currentPrice` always reflects the most recent valid bid, this global
  * comparison is robust even across paginated results.
  *
  * @param props - The component props
- * @param props.auctionId - The unique identifier of the auction
+ * @param props.lotId - The unique identifier of the lot
  * @returns The rendered bid history component
  */
-export const BidHistory = ({ auctionId }: BidHistoryProps) => {
-  const auction = useQuery(api.auctions.getAuctionById, { auctionId });
-  const highestBidAmount = auction?.currentPrice ?? -1;
+export const BidHistory = ({ lotId }: BidHistoryProps) => {
+  const lot = useQuery(api.auctions.queries.browse.getLotById, { lotId });
+  const highestBidAmount = lot?.currentPrice ?? -1;
 
   const {
     results: bids,
     status,
     loadMore,
   } = usePaginatedQuery(
-    api.auctions.getAuctionBids,
-    { auctionId },
+    api.auctions.queries.bids.getLotBids,
+    { lotId },
     { initialNumItems: PAGE_SIZE }
   );
 
-  const totalBids = useQuery(api.auctions.getAuctionBidCount, { auctionId });
+  const totalBids = useQuery(api.auctions.queries.bids.getLotBidCount, {
+    lotId,
+  });
 
   const anonymizeName = (name: string) => {
     if (!name) return "Anonymous";

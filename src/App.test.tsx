@@ -29,6 +29,7 @@ vi.mock("./pages/Login", () => mockPage("login"));
 vi.mock("./pages/Watchlist", () => mockPage("watchlist"));
 vi.mock("./pages/admin/AdminDashboard", () => mockPage("admin-dashboard"));
 vi.mock("./pages/admin/AdminModeration", () => mockPage("admin-moderation"));
+vi.mock("./pages/admin/AdminLots", () => mockPage("admin-lots"));
 vi.mock("./pages/admin/AdminAuctions", () => mockPage("admin-auctions"));
 vi.mock("./pages/admin/AdminUsers", () => mockPage("admin-users"));
 vi.mock("./pages/admin/AdminFinance", () => mockPage("admin-finance"));
@@ -127,6 +128,11 @@ describe("App Routing", () => {
     expect(
       await screen.findByTestId("admin-moderation-page")
     ).toBeInTheDocument();
+  });
+
+  it("renders AdminLots for /admin/lots", async () => {
+    renderApp("/admin/lots");
+    expect(await screen.findByTestId("admin-lots-page")).toBeInTheDocument();
   });
 
   it("renders AdminAuctions for /admin/auctions", async () => {

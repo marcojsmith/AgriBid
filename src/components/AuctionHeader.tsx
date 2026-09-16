@@ -1,13 +1,14 @@
 // app/src/components/AuctionHeader.tsx
 import { useState } from "react";
 import { MapPin, Calendar, HardDrive, Heart, Gavel } from "lucide-react";
-import type { Doc } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
+import type { LotDetail } from "@/types/auction";
 import { useSession } from "@/lib/auth-client";
+import { useLotLiveWindow } from "@/hooks/useLotLiveWindow";
 import { Badge } from "@/components/ui/badge";
 import { UNCATEGORIZED_LABEL } from "@/lib/constants";
 import { cn, isValidCallbackUrl } from "@/lib/utils";
@@ -15,14 +16,14 @@ import { cn, isValidCallbackUrl } from "@/lib/utils";
 import { Button } from "./ui/button";
 
 interface AuctionHeaderProps {
-  auction: Doc<"auctions"> & { categoryName?: string };
+  auction: LotDetail;
 }
 
 /**
  * Component for rendering the header of an auction listing.
  *
  * @param props - Component props
- * @param props.auction - The auction document
+ * @param props.auction - The lot detail
  * @returns The rendered auction header
  */
 export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
@@ -30,10 +31,12 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isWatched = useQuery(api.watchlist.isWatched, {
-    auctionId: auction._id,
+    lotId: auction._id,
   });
   const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
   const [isToggling, setIsToggling] = useState(false);
+  const liveWindow = useLotLiveWindow(auction);
+  const canWatch = liveWindow.isLive || liveWindow.isUpcoming;
 
   const isWinner =
     !!session?.user.id &&
@@ -56,7 +59,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
 
     setIsToggling(true);
     try {
-      const nowWatched = await toggleWatchlist({ auctionId: auction._id });
+      const nowWatched = await toggleWatchlist({ lotId: auction._id });
       toast.success(
         nowWatched ? "Added to watchlist" : "Removed from watchlist"
       );
@@ -75,7 +78,6 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
           className="font-medium bg-primary/5 text-primary border-primary/20 text-[10px]"
         >
           {/* Intentionally `||` not `??`: an empty string category name also means "no category" */}
-          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above */}
           {auction.categoryName || UNCATEGORIZED_LABEL}
         </Badge>
         <Badge variant="secondary" className="font-medium">
@@ -98,7 +100,6 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
           </Badge>
         )}
       </div>
-
       <div className="flex justify-between items-start gap-4">
         <div className="flex-1 min-w-0 space-y-1">
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground leading-snug">
@@ -110,7 +111,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
             </p>
           )}
         </div>
-        {auction.status === "active" && (
+        {canWatch && (
           <Button
             variant="outline"
             size="lg"

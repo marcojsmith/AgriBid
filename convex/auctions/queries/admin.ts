@@ -5,87 +5,83 @@ import {
   paginationOptsValidator,
   query,
   type QueryCtx,
-  AuctionSummaryValidator,
+  LotSummaryValidator,
 } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { toAuctionSummary } from "../helpers";
+import { toLotSummary } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { countQuery } from "../../admin_utils";
 
 /**
- * Returns all auctions pending review (admin only).
+ * Returns all lots pending review (admin only).
  *
  * @param ctx - Convex Query context
- * @returns Array of pending auctions
+ * @returns Array of pending lots
  */
-export const getPendingAuctionsHandler = async (ctx: QueryCtx) => {
+export const getPendingLotsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
-  const auctions = await ctx.db
-    .query("auctions")
+  const lots = await ctx.db
+    .query("lots")
     .withIndex("by_status", (q) => q.eq("status", "pending_review"))
     .collect();
 
-  return await Promise.all(
-    auctions.map((auction) => toAuctionSummary(ctx, auction))
-  );
+  return await Promise.all(lots.map((lot) => toLotSummary(ctx, lot)));
 };
 
 /**
- * Query: Get pending review auctions (admin only).
+ * Query: Get pending review lots (admin only).
  * Args: (none)
  *
- * @returns Array of pending auctions
+ * @returns Array of pending lots
  */
-export const getPendingAuctions = query({
+export const getPendingLots = query({
   args: {},
-  returns: v.array(AuctionSummaryValidator),
-  handler: getPendingAuctionsHandler,
+  returns: v.array(LotSummaryValidator),
+  handler: getPendingLotsHandler,
 });
 
 /**
- * Returns paginated list of all auctions (admin only).
+ * Returns paginated list of all lots (admin only).
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
  * @param args.paginationOpts - Pagination options
- * @returns Paginated all auctions
+ * @returns Paginated all lots
  */
-export const getAllAuctionsHandler = async (
+export const getAllLotsHandler = async (
   ctx: QueryCtx,
   args: { paginationOpts: PaginationOptions }
 ) => {
   await requireAdmin(ctx);
 
-  const auctionsQuery = ctx.db.query("auctions");
-  const [auctionsResult, totalCount] = await Promise.all([
-    auctionsQuery.order("desc").paginate(args.paginationOpts),
-    countQuery(ctx.db.query("auctions")),
+  const lotsQuery = ctx.db.query("lots");
+  const [lotsResult, totalCount] = await Promise.all([
+    lotsQuery.order("desc").paginate(args.paginationOpts),
+    countQuery(ctx.db.query("lots")),
   ]);
 
   return {
-    ...auctionsResult,
+    ...lotsResult,
     totalCount,
     page: await Promise.all(
-      auctionsResult.page.map(
-        async (auction: Doc<"auctions">) => await toAuctionSummary(ctx, auction)
-      )
+      lotsResult.page.map(async (lot: Doc<"lots">) => await toLotSummary(ctx, lot))
     ),
   };
 };
 
 /**
- * Query: Get all auctions (admin only).
+ * Query: Get all lots (admin only).
  * Args: paginationOpts
  *
- * @returns Paginated all auctions
+ * @returns Paginated all lots
  */
-export const getAllAuctions = query({
+export const getAllLots = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(AuctionSummaryValidator),
+    page: v.array(LotSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),
@@ -98,31 +94,31 @@ export const getAllAuctions = query({
     ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
-  handler: getAllAuctionsHandler,
+  handler: getAllLotsHandler,
 });
 
 /**
- * Returns all flags for a specific auction with reporter names (admin only).
+ * Returns all flags for a specific lot with reporter names (admin only).
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
- * @param args.auctionId - The auction ID
- * @returns Array of auction flags with reporter names
+ * @param args.lotId - The lot ID
+ * @returns Array of lot flags with reporter names
  */
-export const getAuctionFlagsHandler = async (
+export const getLotFlagsHandler = async (
   ctx: QueryCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ) => {
   await requireAdmin(ctx);
 
   const flags = await ctx.db
-    .query("auctionFlags")
-    .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+    .query("lotFlags")
+    .withIndex("by_lot", (q) => q.eq("lotId", args.lotId))
     .order("desc")
     .collect();
 
   const uniqueReporterIds = Array.from(
-    new Set(flags.map((f: Doc<"auctionFlags">) => f.reporterId))
+    new Set(flags.map((f: Doc<"lotFlags">) => f.reporterId))
   );
   const reporterNames = new Map<string, string>();
 
@@ -136,25 +132,25 @@ export const getAuctionFlagsHandler = async (
     })
   );
 
-  return flags.map((flag: Doc<"auctionFlags">) => ({
+  return flags.map((flag: Doc<"lotFlags">) => ({
     ...flag,
     reporterName: reporterNames.get(flag.reporterId) ?? "Unknown User",
   }));
 };
 
 /**
- * Query: Get auction flags (admin only).
- * Args: auctionId
+ * Query: Get lot flags (admin only).
+ * Args: lotId
  *
- * @returns Array of auction flags
+ * @returns Array of lot flags
  */
-export const getAuctionFlags = query({
-  args: { auctionId: v.id("auctions") },
+export const getLotFlags = query({
+  args: { lotId: v.id("lots") },
   returns: v.array(
     v.object({
-      _id: v.id("auctionFlags"),
+      _id: v.id("lotFlags"),
       _creationTime: v.number(),
-      auctionId: v.id("auctions"),
+      lotId: v.id("lots"),
       reporterId: v.string(),
       reason: v.union(
         v.literal("misleading"),
@@ -172,37 +168,37 @@ export const getAuctionFlags = query({
       reporterName: v.string(),
     })
   ),
-  handler: getAuctionFlagsHandler,
+  handler: getLotFlagsHandler,
 });
 
 /**
- * Returns all pending flags across all auctions (admin only).
+ * Returns all pending flags across all lots (admin only).
  *
  * @param ctx - Convex Query context
- * @returns Array of pending flags with auction titles and reporter names
+ * @returns Array of pending flags with lot titles and reporter names
  */
 export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
   const flags = await ctx.db
-    .query("auctionFlags")
+    .query("lotFlags")
     .withIndex("by_status", (q) => q.eq("status", "pending"))
     .order("desc")
     .collect();
 
-  const uniqueAuctionIds = Array.from(
-    new Set(flags.map((f: Doc<"auctionFlags">) => f.auctionId))
+  const uniqueLotIds = Array.from(
+    new Set(flags.map((f: Doc<"lotFlags">) => f.lotId))
   );
-  const auctionTitles = new Map<string, string>();
+  const lotTitles = new Map<string, string>();
   const uniqueReporterIds = Array.from(
-    new Set(flags.map((f: Doc<"auctionFlags">) => f.reporterId))
+    new Set(flags.map((f: Doc<"lotFlags">) => f.reporterId))
   );
   const reporterNames = new Map<string, string>();
 
   await Promise.all([
-    ...uniqueAuctionIds.map(async (auctionId) => {
-      const auction = await ctx.db.get("auctions", auctionId);
-      auctionTitles.set(auctionId, auction?.title ?? "Unknown Auction");
+    ...uniqueLotIds.map(async (lotId) => {
+      const lot = await ctx.db.get("lots", lotId);
+      lotTitles.set(lotId, lot?.title ?? "Unknown Auction");
     }),
     ...uniqueReporterIds.map(async (reporterId) => {
       const profile = await ctx.db
@@ -213,9 +209,9 @@ export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
     }),
   ]);
 
-  return flags.map((flag: Doc<"auctionFlags">) => ({
+  return flags.map((flag: Doc<"lotFlags">) => ({
     ...flag,
-    auctionTitle: auctionTitles.get(flag.auctionId) ?? "Unknown Auction",
+    lotTitle: lotTitles.get(flag.lotId) ?? "Unknown Auction",
     reporterName: reporterNames.get(flag.reporterId) ?? "Unknown Reporter",
   }));
 };
@@ -230,9 +226,9 @@ export const getAllPendingFlags = query({
   args: {},
   returns: v.array(
     v.object({
-      _id: v.id("auctionFlags"),
+      _id: v.id("lotFlags"),
       _creationTime: v.number(),
-      auctionId: v.id("auctions"),
+      lotId: v.id("lots"),
       reporterId: v.string(),
       reason: v.union(
         v.literal("misleading"),
@@ -247,7 +243,7 @@ export const getAllPendingFlags = query({
         v.literal("dismissed")
       ),
       createdAt: v.number(),
-      auctionTitle: v.string(),
+      lotTitle: v.string(),
       reporterName: v.string(),
     })
   ),

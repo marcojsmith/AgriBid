@@ -12,8 +12,12 @@ describe("AUCTION_STATUS_BADGE_VARIANTS", () => {
     expect(AUCTION_STATUS_BADGE_VARIANTS.draft).toBe("secondary");
   });
 
-  it("maps active to default", () => {
-    expect(AUCTION_STATUS_BADGE_VARIANTS.active).toBe("default");
+  it("maps approved to default", () => {
+    expect(AUCTION_STATUS_BADGE_VARIANTS.approved).toBe("default");
+  });
+
+  it("maps assigned to default", () => {
+    expect(AUCTION_STATUS_BADGE_VARIANTS.assigned).toBe("default");
   });
 
   it("maps sold to default", () => {

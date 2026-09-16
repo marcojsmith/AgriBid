@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   calculateAndRecordFees,
   cleanupDraftsHandler,
-  settleExpiredAuctionsHandler,
+  settleExpiredLotsHandler,
 } from "./internal";
+import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
 
 vi.mock("../admin_utils", () => ({
@@ -15,6 +16,7 @@ vi.mock("../admin_utils", () => ({
 interface MockCtxType {
   db: {
     query: ReturnType<typeof vi.fn>;
+    get: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
     insert: ReturnType<typeof vi.fn>;
     patch: ReturnType<typeof vi.fn>;
@@ -68,11 +70,56 @@ const mockQuery = (): QueryMock => {
 describe("Internal Logic Coverage", () => {
   let mockCtx: MockCtxType;
 
+  /**
+   * Builds a table-aware query mock so each `ctx.db.query(table)` call returns
+   * sensible results for the table being read, independent of call order.
+   * @param lots - Rows returned for the `lots` table.
+   * @param bids - Rows returned for the `bids` table.
+   * @param fees - Rows returned for the `platformFees` table.
+   * @param existingFee - Row returned for the `lotFees` table lookup.
+   */
+  const setupTableQuery = (
+    lots: Record<string, unknown>[] = [],
+    bids: Record<string, unknown>[] = [],
+    fees: Record<string, unknown>[] = [],
+    existingFee: Record<string, unknown> | null = null
+  ) => {
+    mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
+      if (table === "lots") {
+        return Object.assign(mockQuery(), {
+          collect: vi.fn().mockResolvedValue(lots),
+        });
+      }
+      if (table === "bids") {
+        return Object.assign(mockQuery(), {
+          collect: vi.fn().mockResolvedValue(bids),
+        });
+      }
+      if (table === "platformFees") {
+        return Object.assign(mockQuery(), {
+          collect: vi.fn().mockResolvedValue(fees),
+        });
+      }
+      if (table === "lotFees") {
+        return Object.assign(mockQuery(), {
+          first: vi.fn().mockResolvedValue(existingFee),
+        });
+      }
+      return mockQuery();
+    });
+  };
+
   beforeEach(() => {
     vi.resetAllMocks();
     mockCtx = {
       db: {
         query: vi.fn(mockQuery),
+        get: vi
+          .fn()
+          .mockResolvedValue({
+            status: "published",
+            endTime: Date.now() - 1000,
+          }),
         delete: vi.fn(),
         insert: vi.fn(),
         patch: vi.fn(),
@@ -110,7 +157,7 @@ describe("Internal Logic Coverage", () => {
         expect.stringContaining("Failed to delete condition report"),
         expect.anything()
       );
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "d1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", "d1");
 
       spy.mockRestore();
     });
@@ -135,7 +182,7 @@ describe("Internal Logic Coverage", () => {
 
       expect(result.errors).toBe(1);
       expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to delete draft auction"),
+        expect.stringContaining("Failed to delete draft lot"),
         expect.anything()
       );
 
@@ -143,15 +190,16 @@ describe("Internal Logic Coverage", () => {
     });
   });
 
-  describe("settleExpiredAuctionsHandler", () => {
-    it("should settle expired auction as sold if reserve met and has bids", async () => {
-      const mockAuction = {
+  describe("settleExpiredLotsHandler", () => {
+    it("should settle expired lot as sold if reserve met and has bids", async () => {
+      const mockLot = {
         _id: "a1",
         title: "Test",
         sellerId: "seller1",
         currentPrice: 1000,
         reservePrice: 500,
-        status: "active",
+        status: "assigned",
+        auctionId: "auction1",
       };
       const mockBid = {
         bidderId: "u1",
@@ -160,38 +208,12 @@ describe("Internal Logic Coverage", () => {
         timestamp: 100,
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockAuction]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockBid]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        );
+      setupTableQuery([mockLot], [mockBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           status: "sold",
@@ -219,12 +241,13 @@ describe("Internal Logic Coverage", () => {
     });
 
     it("should handle lower bid in tie-break reduce", async () => {
-      const mockAuction = {
+      const mockLot = {
         _id: "a1",
         title: "Test",
         currentPrice: 1000,
         reservePrice: 500,
-        status: "active",
+        status: "assigned",
+        auctionId: "auction1",
       };
       const highBid = {
         bidderId: "u1",
@@ -239,48 +262,12 @@ describe("Internal Logic Coverage", () => {
         timestamp: 200,
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockAuction]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([highBid, lowBid]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        );
+      setupTableQuery([mockLot], [highBid, lowBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           status: "sold",
@@ -289,13 +276,14 @@ describe("Internal Logic Coverage", () => {
       );
     });
 
-    it("should settle expired auction as unsold if reserve not met", async () => {
-      const mockAuction = {
+    it("should settle expired lot as unsold if reserve not met", async () => {
+      const mockLot = {
         _id: "a1",
         title: "Test",
         currentPrice: 400,
         reservePrice: 500,
-        status: "active",
+        status: "assigned",
+        auctionId: "auction1",
       };
       const mockBid = {
         bidderId: "u1",
@@ -304,26 +292,16 @@ describe("Internal Logic Coverage", () => {
         timestamp: 100,
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockAuction]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockBid]),
-          })
-        );
+      setupTableQuery([mockLot], [mockBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           status: "unsold",
+          auctionId: undefined,
         })
       );
       expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
@@ -333,12 +311,13 @@ describe("Internal Logic Coverage", () => {
     });
 
     it("should skip voided bids when settling", async () => {
-      const mockAuction = {
+      const mockLot = {
         _id: "a1",
         title: "Test",
         currentPrice: 1000,
         reservePrice: 500,
-        status: "active",
+        status: "assigned",
+        auctionId: "auction1",
       };
       const mockBid = {
         bidderId: "u1",
@@ -347,26 +326,16 @@ describe("Internal Logic Coverage", () => {
         timestamp: 100,
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockAuction]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockBid]),
-          })
-        );
+      setupTableQuery([mockLot], [mockBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           status: "unsold",
+          auctionId: undefined,
         })
       );
       expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
@@ -375,41 +344,27 @@ describe("Internal Logic Coverage", () => {
       );
     });
 
-    it("should settle auction as unsold when no bids exist", async () => {
-      const mockAuction = {
+    it("should settle lot as unsold when no bids exist", async () => {
+      const mockLot = {
         _id: "a1",
         title: "Test Auction",
         currentPrice: 1000,
         reservePrice: 500,
-        status: "active",
+        status: "assigned",
+        auctionId: "auction1",
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockAuction]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([]),
-          })
-        );
+      setupTableQuery([mockLot], []);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           status: "unsold",
           winnerId: undefined,
+          auctionId: undefined,
         })
       );
       expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
@@ -419,12 +374,13 @@ describe("Internal Logic Coverage", () => {
     });
 
     it("should handle tie-break - earlier timestamp wins", async () => {
-      const mockAuction = {
+      const mockLot = {
         _id: "a1",
         title: "Test",
         currentPrice: 1000,
         reservePrice: 500,
-        status: "active",
+        status: "assigned",
+        auctionId: "auction1",
       };
       const earlierBid = {
         bidderId: "u1",
@@ -439,43 +395,112 @@ describe("Internal Logic Coverage", () => {
         timestamp: 200,
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockAuction]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([laterBid, earlierBid]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        );
+      setupTableQuery([mockLot], [laterBid, earlierBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
+        "lots",
         "a1",
         expect.objectContaining({
           status: "sold",
           winnerId: "u1",
         })
+      );
+    });
+
+    /**
+     * Builds a query mock that returns distinct rows for the two `lots`
+     * indexes used during settlement/auto-close.
+     *
+     * @param auctions - Rows returned for the `auctions` table.
+     * @param byStatusLots - Rows for `lots` queried by the `by_status` index.
+     * @param byAuctionLots - Rows for `lots` queried by `by_status_auctionId`.
+     */
+    const setupCloseQuery = (
+      auctions: Record<string, unknown>[],
+      byStatusLots: Record<string, unknown>[],
+      byAuctionLots: Record<string, unknown>[]
+    ) => {
+      mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
+        const q = mockQuery();
+        if (table === "auctions") {
+          q.collect.mockResolvedValue(auctions);
+          return q;
+        }
+        if (table === "lots") {
+          q.withIndex = vi.fn((index: string, cb?: (i: IndexQuery) => void) => {
+            if (cb) {
+              cb({
+                eq: vi.fn().mockReturnThis(),
+                lte: vi.fn().mockReturnThis(),
+                gt: vi.fn().mockReturnThis(),
+                lt: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+              });
+            }
+            q.collect.mockResolvedValue(
+              index === "by_status" ? byStatusLots : byAuctionLots
+            );
+            return q;
+          });
+        }
+        return q;
+      });
+    };
+
+    it("auto-closes a completed auction with no remaining assigned lots", async () => {
+      const auction = {
+        _id: "auc1",
+        status: "published",
+        endTime: Date.now() - 1000,
+      };
+      setupCloseQuery([auction], [], []);
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
+        "auc1",
+        expect.objectContaining({ status: "closed" })
+      );
+    });
+
+    it("leaves an auction open while assigned lots remain", async () => {
+      const auction = {
+        _id: "auc1",
+        status: "published",
+        endTime: Date.now() - 1000,
+      };
+      setupCloseQuery(
+        [auction],
+        [],
+        [{ _id: "l1", status: "assigned", auctionId: "auc1" }]
+      );
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "auctions",
+        "auc1",
+        expect.anything()
+      );
+    });
+
+    it("does not close an auction whose window has not elapsed", async () => {
+      const auction = {
+        _id: "auc2",
+        status: "published",
+        endTime: Date.now() + 100_000,
+      };
+      setupCloseQuery([auction], [], []);
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "auctions",
+        "auc2",
+        expect.anything()
       );
     });
   });
@@ -511,13 +536,13 @@ describe("Internal Logic Coverage", () => {
 
       await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
 
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "d1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", "d1");
     });
   });
 
   describe("calculateAndRecordFees idempotency", () => {
-    it("should skip insert when auctionFee record already exists", async () => {
-      const mockAuction = {
+    it("should skip insert when lotFee record already exists", async () => {
+      const mockLot = {
         _id: "a1",
         title: "Test",
         currentPrice: 1000,
@@ -531,36 +556,25 @@ describe("Internal Logic Coverage", () => {
         appliesTo: "seller",
         isActive: true,
       };
-      const existingAuctionFee = {
+      const existingLotFee = {
         _id: "af1",
-        auctionId: "a1",
+        lotId: "a1",
         feeId: "f1",
         appliedTo: "seller",
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockFee]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(existingAuctionFee),
-          })
-        );
+      setupTableQuery([], [], [mockFee], existingLotFee);
 
       await calculateAndRecordFees(
         mockCtx as unknown as MutationCtx,
-        mockAuction as never
+        mockLot as never
       );
 
       expect(mockCtx.db.insert).not.toHaveBeenCalled();
     });
 
-    it("should insert auctionFee when no existing record found", async () => {
-      const mockAuction = {
+    it("should insert lotFee when no existing record found", async () => {
+      const mockLot = {
         _id: "a1",
         title: "Test",
         currentPrice: 1000,
@@ -575,28 +589,17 @@ describe("Internal Logic Coverage", () => {
         isActive: true,
       };
 
-      mockCtx.db.query = vi
-        .fn()
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            collect: vi.fn().mockResolvedValue([mockFee]),
-          })
-        )
-        .mockReturnValueOnce(
-          Object.assign(mockQuery(), {
-            first: vi.fn().mockResolvedValue(null),
-          })
-        );
+      setupTableQuery([], [], [mockFee], null);
 
       await calculateAndRecordFees(
         mockCtx as unknown as MutationCtx,
-        mockAuction as never
+        mockLot as never
       );
 
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "auctionFees",
+        "lotFees",
         expect.objectContaining({
-          auctionId: "a1",
+          lotId: "a1",
           feeId: "f1",
           feeName: expect.any(String) as string,
           appliedTo: "seller",
@@ -605,6 +608,68 @@ describe("Internal Logic Coverage", () => {
           salePrice: expect.any(Number) as number,
           calculatedAmount: expect.any(Number) as number,
           createdAt: expect.any(Number) as number,
+        })
+      );
+    });
+
+    it("records the resolved auction-default fees in the audit total without persisting ledger rows", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+        resolvedBuyerPremiumPct: 0.05,
+        resolvedSellerCommissionPct: 0.03,
+      };
+
+      setupTableQuery([], [], [], null);
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockLot as never
+      );
+
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({
+          action: "CALCULATE_FEES",
+          details: expect.stringContaining("80.00") as string,
+        })
+      );
+    });
+
+    it("combines platformFees-sourced and resolved auction-default fees", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+        resolvedBuyerPremiumPct: 0.05,
+      };
+      const mockFee = {
+        _id: "f1",
+        name: "Seller Commission",
+        feeType: "percentage",
+        value: 0.05,
+        appliesTo: "seller",
+        isActive: true,
+      };
+
+      setupTableQuery([], [], [mockFee], null);
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockLot as never
+      );
+
+      // Only the platformFee is persisted; the auction default is not.
+      expect(mockCtx.db.insert).toHaveBeenCalledTimes(1);
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({
+          action: "CALCULATE_FEES",
+          details: expect.stringContaining("100.00") as string,
         })
       );
     });

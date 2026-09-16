@@ -1,17 +1,17 @@
 // app/src/components/bidding/MobileBidBar.tsx
-import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
-import type { Doc } from "convex/_generated/dataModel";
 
+import type { LotDetail } from "@/types/auction";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/auth-client";
 import { formatCurrency } from "@/lib/currency";
+import { useLotLiveWindow } from "@/hooks/useLotLiveWindow";
 
 interface MobileBidBarProps {
-  /** The auction document to display the current price and status for */
-  auction: Doc<"auctions">;
+  /** The lot detail to display the current price and status for */
+  auction: LotDetail;
 }
 
 /**
@@ -20,24 +20,20 @@ interface MobileBidBarProps {
  * bidding panel is visible instead.
  *
  * Behavior:
- * - Ended/closed auctions show a status label with no action.
+ * - Ended/closed lots show a status label with no action.
+ * - Not-yet-assigned lots show a "not yet available" label with no action.
  * - Logged-in, unverified users get a "Verify to bid" link to `/kyc`.
  * - Everyone else gets a "Place bid" button that scrolls to the bidding panel.
  *
  * @param props - Component props
- * @param props.auction - The auction document
+ * @param props.auction - The lot detail
  * @returns The rendered mobile bid bar
  */
 export const MobileBidBar = ({ auction }: MobileBidBarProps) => {
   const { data: session } = useSession();
   const userData = useQuery(api.users.getMyProfile);
 
-  // Read once at mount to keep the render pure; the authoritative live signal
-  // is auction.status, which Convex keeps in sync
-  const [now] = useState(() => Date.now());
-  const isEnded =
-    auction.status !== "active" ||
-    (auction.endTime ? auction.endTime <= now : true);
+  const liveWindow = useLotLiveWindow(auction);
 
   // Mirrors BiddingPanel's verification checks: only treat the user as
   // unverified once the profile query has actually resolved
@@ -46,7 +42,7 @@ export const MobileBidBar = ({ auction }: MobileBidBarProps) => {
     ? false
     : (userData?.profile?.isVerified ?? false);
   const needsVerification =
-    !isProfileLoading && !isVerified && !!session && !isEnded;
+    !isProfileLoading && !isVerified && !!session && liveWindow.isLive;
 
   /**
    * Scrolls the page to the desktop bidding panel where the existing
@@ -73,11 +69,15 @@ export const MobileBidBar = ({ auction }: MobileBidBarProps) => {
           </p>
         </div>
 
-        {isEnded ? (
+        {liveWindow.isEnded ? (
           <span className="text-sm font-medium text-muted-foreground shrink-0">
-            {auction.status !== "active"
-              ? `Auction ${auction.status}`
-              : "Auction ended"}
+            {auction.status === "assigned"
+              ? "Auction ended"
+              : `Auction ${auction.status}`}
+          </span>
+        ) : liveWindow.isUnavailable ? (
+          <span className="text-sm font-medium text-muted-foreground shrink-0">
+            Not yet available
           </span>
         ) : needsVerification ? (
           <Button className="shrink-0 rounded-md font-semibold" asChild>

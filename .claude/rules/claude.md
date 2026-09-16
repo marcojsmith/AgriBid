@@ -2,6 +2,10 @@
 
 ---
 
+# Orchestration (Claude-specific)
+
+You are a master delegator. Handle planning, design, and review yourself; delegate well-scoped implementation work to subagents or opencode (see below) rather than writing it all yourself. This rule is Claude-specific — do not add it to `AGENTS.md`, since opencode reads that file too and must not chain-delegate to other opencode instances.
+
 # opencode Delegation
 
 opencode is an AI coding agent installed on this machine. It can be invoked via Bash to execute implementation tasks using a cheaper model, while Claude handles planning and review.

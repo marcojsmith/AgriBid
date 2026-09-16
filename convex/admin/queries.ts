@@ -41,16 +41,16 @@ export { getAllFaqItems } from "./faq";
 export {
   getPlatformFees,
   getFeeStats,
-  getAuctionFees,
-  getAuctionFeesForUser,
+  getLotFees,
+  getLotFeesForUser,
 } from "./fees";
 
 // --- Bid Monitoring ---
 
 /**
- * Query recent bids across all auctions.
+ * Query recent bids across all lots.
  *
- * Returns a paginated list with auction titles for context.
+ * Returns a paginated list with lot titles for context.
  * Only accessible to admin users.
  */
 export const getRecentBids = query({
@@ -60,7 +60,7 @@ export const getRecentBids = query({
       v.object({
         _id: v.id("bids"),
         _creationTime: v.number(),
-        auctionId: v.id("auctions"),
+        lotId: v.id("lots"),
         bidderId: v.string(),
         amount: v.number(),
         timestamp: v.number(),
@@ -105,44 +105,46 @@ export const getRecentBids = query({
       };
     }
 
-    const uniqueAuctionIds = [
-      ...new Set(bidsResult.page.map((b) => b.auctionId)),
+    const uniqueLotIds = [
+      ...new Set(bidsResult.page.map((b) => b.lotId)),
     ];
 
-    const auctionMap = new Map<
-      Id<"auctions">,
-      Doc<"auctions"> | null | { _error: true }
+    const lotMap = new Map<
+      Id<"lots">,
+      Doc<"lots"> | null | { _error: true }
     >();
-    const failedAuctionIds: Id<"auctions">[] = [];
+    const failedLotIds: Id<"lots">[] = [];
     await Promise.all(
-      uniqueAuctionIds.map(async (id) => {
+      uniqueLotIds.map(async (id) => {
         try {
-          const auction = await ctx.db.get("auctions", id);
-          auctionMap.set(id, auction);
+          const lot = await ctx.db.get("lots", id);
+          lotMap.set(id, lot);
         } catch {
-          failedAuctionIds.push(id);
-          auctionMap.set(id, { _error: true });
+          failedLotIds.push(id);
+          lotMap.set(id, { _error: true });
         }
       })
     );
 
-    if (failedAuctionIds.length > 0) {
+    if (failedLotIds.length > 0) {
       console.error(
-        `Admin Monitor: Failed to fetch auction context for ${String(failedAuctionIds.length)} IDs:`,
-        failedAuctionIds.slice(0, 5)
+        `Admin Monitor: Failed to fetch lot context for ${String(failedLotIds.length)} IDs:`,
+        failedLotIds.slice(0, 5)
       );
     }
 
     const page = bidsResult.page.map((bid) => {
-      const auction = auctionMap.get(bid.auctionId);
+      const lot = lotMap.get(bid.lotId);
       let auctionTitle: string | undefined;
       let auctionLookupStatus: "FOUND" | "NOT_FOUND" | "ERROR" = "NOT_FOUND";
 
-      if (auction) {
-        if ("_error" in auction) {
+      if (lot) {
+        if ("_error" in lot) {
           auctionLookupStatus = "ERROR";
         } else {
-          auctionTitle = auction.title;
+          // Field names are legacy (`auctionTitle`/`auctionLookupStatus`) and
+          // now carry lot data; kept for compatibility with BidMonitor.
+          auctionTitle = lot.title;
           auctionLookupStatus = "FOUND";
         }
       }
@@ -180,7 +182,7 @@ export const getTickets = query({
         _id: v.id("supportTickets"),
         _creationTime: v.number(),
         userId: v.string(),
-        auctionId: v.optional(v.id("auctions")),
+        lotId: v.optional(v.id("lots")),
         subject: v.string(),
         message: v.string(),
         status: v.string(),

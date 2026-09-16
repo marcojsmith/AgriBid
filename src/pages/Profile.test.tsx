@@ -171,7 +171,7 @@ const { mockApi } = vi.hoisted(() => ({
       getSellerReviews: { name: "reviews:getSellerReviews" },
     },
     watchlist: {
-      getWatchedAuctionIds: { name: "watchlist:getWatchedAuctionIds" },
+      getWatchedLotIds: { name: "watchlist:getWatchedLotIds" },
     },
     profileFlags: {
       reportProfile: { name: "profileFlags:reportProfile" },
@@ -223,7 +223,7 @@ describe("Profile Page", () => {
   };
 
   const mockListings = [
-    { _id: "auction1", title: "Active Tractor", status: "active" },
+    { _id: "auction1", title: "Active Tractor", status: "assigned" },
     { _id: "auction2", title: "Sold Baler", status: "sold" },
   ];
 
@@ -255,7 +255,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
       if (apiPath === mockApi.userActivity.getSellerActivity) return [];
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
+      if (apiPath === mockApi.watchlist.getWatchedLotIds)
         return ["auction1"];
       return null;
     });
@@ -343,7 +343,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -364,7 +364,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo)
         return singleReviewSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -383,7 +383,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -401,7 +401,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return ratedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -418,7 +418,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile)
         return { ...mockMyProfile, userId: "other", _id: "other" };
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -440,7 +440,7 @@ describe("Profile Page", () => {
         if (apiPath === mockApi.users.getMyProfile)
           return { ...mockMyProfile, userId: "other", _id: "other" };
         if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
-        if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+        if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
         return null;
       });
     };
@@ -555,7 +555,7 @@ describe("Profile Page", () => {
         if (apiPath === mockApi.users.getMyProfile)
           return { ...mockMyProfile, userId: "other", _id: "other" };
         if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
-        if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+        if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
         return null;
       });
     };
@@ -628,7 +628,7 @@ describe("Profile Page", () => {
         expect(mockStartConversation).toHaveBeenCalledWith({
           recipientId: "user1",
           initialMessage: "Hi, is the tractor still available?",
-          auctionId: undefined,
+          lotId: undefined,
         });
         expect(toast.success).toHaveBeenCalledWith("Message sent");
         expect(screen.getByTestId("messages-thread")).toBeInTheDocument();
@@ -706,7 +706,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return sellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
     (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
@@ -800,7 +800,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
       if (apiPath === mockApi.userActivity.getSellerActivity) return undefined;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -857,7 +857,7 @@ describe("Profile Page", () => {
           },
         ];
       }
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -897,7 +897,7 @@ describe("Profile Page", () => {
           },
         ];
       }
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -925,7 +925,7 @@ describe("Profile Page", () => {
           },
         ];
       }
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -960,7 +960,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return verifiedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -983,7 +983,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo)
         return unverifiedFieldsSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1007,7 +1007,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mixedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1053,7 +1053,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return undefined;
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return undefined;
       return null;
     });
 
@@ -1069,7 +1069,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return sellerInfoNoBio;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1090,7 +1090,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo)
         return sellerInfoNoLocation;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1110,7 +1110,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile)
         return { userId: "other", _id: "other" };
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
     renderProfile("user1");
@@ -1262,7 +1262,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo)
         return shortNameSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
+      if (apiPath === mockApi.watchlist.getWatchedLotIds)
         return ["auction1"];
       return null;
     });
@@ -1281,7 +1281,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo)
         return unverifiedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1301,7 +1301,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return noAvgSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1318,7 +1318,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return noNameSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1343,7 +1343,7 @@ describe("Profile Page", () => {
           },
         ];
       }
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1361,7 +1361,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo)
         return unverifiedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1378,7 +1378,7 @@ describe("Profile Page", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return adminSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -1418,7 +1418,7 @@ describe("Profile Page", () => {
         return { ...mockMyProfile, userId: "other", _id: "other" };
       if (apiPath === mockApi.auctions.getSellerInfo)
         return unverifiedSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 

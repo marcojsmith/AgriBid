@@ -24,19 +24,23 @@ vi.mock("convex/_generated/api", () => ({
       getEquipmentMetadata: { _path: "auctions:getEquipmentMetadata" },
       mutations: {
         create: {
-          createAuction: { _path: "auctions/mutations/create:createAuction" },
+          createLot: { _path: "auctions/mutations/create:createLot" },
           saveDraft: { _path: "auctions/mutations/create:saveDraft" },
           generateUploadUrl: {
             _path: "auctions/mutations/create:generateUploadUrl",
           },
         },
-        publish: {
-          submitForReview: {
-            _path: "auctions/mutations/publish:submitForReview",
-          },
-        },
         delete: {
           deleteUpload: { _path: "auctions/mutations/delete:deleteUpload" },
+        },
+      },
+    },
+    lots: {
+      mutations: {
+        lifecycle: {
+          submitLotForReview: {
+            _path: "lots/mutations/lifecycle:submitLotForReview",
+          },
         },
       },
     },
@@ -136,10 +140,10 @@ describe("ListingWizard Full Coverage", () => {
 
     (useMutation as Mock).mockImplementation((apiFunc: { _path: string }) => {
       const path = apiFunc._path;
-      if (path === "auctions/mutations/create:createAuction")
+      if (path === "auctions/mutations/create:createLot")
         return mockCreateAuction;
       if (path === "auctions/mutations/create:saveDraft") return mockSaveDraft;
-      if (path === "auctions/mutations/publish:submitForReview")
+      if (path === "lots/mutations/lifecycle:submitLotForReview")
         return mockSubmitForReview;
       if (path === "auctions/mutations/create:generateUploadUrl")
         return vi.fn().mockResolvedValue("http://upload.url");
@@ -291,10 +295,10 @@ describe("ListingWizard Full Coverage", () => {
   });
 
   it("submits an existing draft (edit mode) successfully", async () => {
-    // Manually set draft with auctionId in localStorage
+    // Manually set draft with lotId in localStorage
     localStorage.setItem(
       "agribid_listing_draft",
-      JSON.stringify({ auctionId: "a1", title: "Existing" })
+      JSON.stringify({ lotId: "a1", title: "Existing" })
     );
 
     renderWizard();
@@ -307,7 +311,7 @@ describe("ListingWizard Full Coverage", () => {
 
     await waitFor(() => {
       expect(mockSaveDraft).toHaveBeenCalled();
-      expect(mockSubmitForReview).toHaveBeenCalledWith({ auctionId: "a1" });
+      expect(mockSubmitForReview).toHaveBeenCalledWith({ lotId: "a1" });
       expect(screen.getByText(/Submission Received/i)).toBeInTheDocument();
     });
   });
@@ -489,7 +493,7 @@ describe("ListingWizard Full Coverage", () => {
     });
   });
 
-  it("saves auctionId to form data after first server-side draft save", async () => {
+  it("saves lotId to form data after first server-side draft save", async () => {
     renderWizard();
     fillStep1();
     fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
@@ -525,8 +529,8 @@ describe("ListingWizard Full Coverage", () => {
       expect(mockSaveDraft).toHaveBeenCalled();
       const saved = JSON.parse(
         localStorage.getItem("agribid_listing_draft") ?? "{}"
-      ) as { auctionId?: string };
-      expect(saved.auctionId).toBe("new-id-123");
+      ) as { lotId?: string };
+      expect(saved.lotId).toBe("new-id-123");
     });
   });
 
@@ -567,7 +571,7 @@ describe("ListingWizard Full Coverage", () => {
   });
 
   it("prevents handleSaveDraft when isSubmitting is true", async () => {
-    // We can simulate isSubmitting by making createAuction a long-running promise
+    // We can simulate isSubmitting by making createLot a long-running promise
     renderWizard();
     await fillAllSteps();
 
@@ -679,13 +683,13 @@ describe("ListingWizard Full Coverage", () => {
       expect(mockSaveDraft).toHaveBeenCalled();
       const saved = JSON.parse(
         originalGetItem.call(localStorage, "agribid_listing_draft") ?? "{}"
-      ) as { auctionId?: string };
-      expect(saved.auctionId).toBe("new-id-999");
+      ) as { lotId?: string };
+      expect(saved.lotId).toBe("new-id-999");
     });
     localStorage.getItem = originalGetItem;
   });
 
-  it("uses editingAuctionId from search params for submission", async () => {
+  it("uses editingLotId from search params for submission", async () => {
     // Mock search params with 'edit'
     mockSearchParams.set("edit", "a-edit-123");
 
@@ -700,11 +704,11 @@ describe("ListingWizard Full Coverage", () => {
     await waitFor(() => {
       expect(mockSaveDraft).toHaveBeenCalledWith(
         expect.objectContaining({
-          auctionId: "a-edit-123",
+          lotId: "a-edit-123",
         })
       );
       expect(mockSubmitForReview).toHaveBeenCalledWith({
-        auctionId: "a-edit-123",
+        lotId: "a-edit-123",
       });
     });
   });

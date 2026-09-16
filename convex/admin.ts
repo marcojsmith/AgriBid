@@ -39,8 +39,8 @@ export {
   getAllFaqItems,
   getPlatformFees,
   getFeeStats,
-  getAuctionFees,
-  getAuctionFeesForUser,
+  getLotFees,
+  getLotFeesForUser,
 } from "./admin/queries";
 
 // Re-export mutation functions
@@ -48,7 +48,7 @@ export {
   voidBid,
   resolveTicket,
   createAnnouncement,
-  syncAuctionWinners,
+  syncLotWinners,
   reviewKYC,
   initializeCounters,
   updateSystemConfig,

@@ -27,19 +27,17 @@ export function useBulkOperations() {
   const [auctionSearch, setAuctionSearch] = useState("");
 
   // Selection state
-  const [selectedAuctions, setSelectedAuctions] = useState<Id<"auctions">[]>(
-    []
-  );
+  const [selectedAuctions, setSelectedAuctions] = useState<Id<"lots">[]>([]);
 
   // Bulk operation state
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkStatusTarget, setBulkStatusTarget] = useState<
-    "active" | "rejected" | "sold" | "unsold" | null
+    "approved" | "rejected" | "sold" | "unsold" | null
   >(null);
 
   // Mutation
   const bulkUpdateAuctionsMutation = useMutation(
-    api.auctions.mutations.update.bulkUpdateAuctions
+    api.auctions.mutations.update.bulkUpdateLots
   );
 
   /**
@@ -47,7 +45,7 @@ export function useBulkOperations() {
    * Returns whether all, some, or no visible auctions are selected.
    */
   const getSelectionState = useCallback(
-    (auctions: Doc<"auctions">[] = []) => {
+    (auctions: Doc<"lots">[] = []) => {
       const selectedSet = new Set(selectedAuctions);
       const visibleSelectedCount = auctions.filter((a) =>
         selectedSet.has(a._id)
@@ -69,7 +67,7 @@ export function useBulkOperations() {
    * @param auctions - List of visible auctions to select/deselect
    * @param checked - Whether to select all or deselect all
    */
-  const handleSelectAll = (auctions: Doc<"auctions">[], checked: boolean) => {
+  const handleSelectAll = (auctions: Doc<"lots">[], checked: boolean) => {
     if (checked) {
       const visibleIds = auctions.map((a) => a._id);
       setSelectedAuctions((prev) =>
@@ -86,10 +84,7 @@ export function useBulkOperations() {
    * @param auctionId - The ID of the auction to toggle
    * @param selected - Whether the auction should be selected
    */
-  const handleToggleSelection = (
-    auctionId: Id<"auctions">,
-    selected: boolean
-  ) => {
+  const handleToggleSelection = (auctionId: Id<"lots">, selected: boolean) => {
     setSelectedAuctions((prev) =>
       selected
         ? prev.includes(auctionId)
@@ -109,11 +104,11 @@ export function useBulkOperations() {
     setIsBulkProcessing(true);
     try {
       await bulkUpdateAuctionsMutation({
-        auctionIds: selectedAuctions,
+        lotIds: selectedAuctions,
         updates: { status: bulkStatusTarget },
       });
       toast.success(
-        `Updated ${String(selectedAuctions.length)} auctions to ${bulkStatusTarget}`
+        `Updated ${String(selectedAuctions.length)} lots to ${bulkStatusTarget}`
       );
       setSelectedAuctions([]);
       setBulkStatusTarget(null);

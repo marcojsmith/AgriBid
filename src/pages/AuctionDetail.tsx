@@ -20,7 +20,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { AuctionCard } from "@/components/auction/AuctionCard";
 import { FeeBreakdown } from "@/components/auction/FeeBreakdown";
 import { useSession } from "@/lib/auth-client";
-import { useAuctionStarted } from "@/hooks/useAuctionStarted";
+import { useLotLiveWindow } from "@/hooks/useLotLiveWindow";
 import {
   buildTitle,
   buildCanonical,
@@ -93,21 +93,29 @@ export default function AuctionDetail() {
   const [conditionReportOpen, setConditionReportOpen] = useState(false);
 
   const auction = useQuery(
-    api.auctions.getAuctionById,
-    id ? { auctionId: id as Id<"auctions"> } : "skip"
+    api.auctions.queries.browse.getLotById,
+    id ? { lotId: id as Id<"lots"> } : "skip"
   );
 
   const relatedAuctions = useQuery(
-    api.auctions.getRelatedAuctions,
+    api.auctions.getRelatedLots,
     auction?.make ? { make: auction.make, excludeId: auction._id } : "skip"
   );
 
-  const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
+  const watchedLotIds = useQuery(api.watchlist.getWatchedLotIds, {});
 
-  const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
+  const flagLot = useMutation(api.auctions.mutations.publish.flagLot);
 
   const isOwner = session?.user.id === auction?.sellerId;
-  const hasStarted = useAuctionStarted(auction?.startTime);
+  const liveWindow = useLotLiveWindow(
+    auction ?? {
+      status: "draft",
+      auctionStatus: undefined,
+      auctionStartTime: undefined,
+      auctionEndTime: undefined,
+      extendedEndTime: undefined,
+    }
+  );
 
   const handleFlagAuction = async () => {
     if (!flagReason) {
@@ -117,8 +125,8 @@ export default function AuctionDetail() {
 
     try {
       const normalizedDetails = flagDetails.trim() || undefined;
-      const result = await flagAuction({
-        auctionId: id as Id<"auctions">,
+      const result = await flagLot({
+        lotId: id as Id<"lots">,
         reason: flagReason,
         details: normalizedDetails,
       });
@@ -184,7 +192,7 @@ export default function AuctionDetail() {
   const canonical = buildCanonical(`/auction/${id}`);
 
   const auctionImageUrls = getAuctionImageUrls(auction.images);
-  const auctionNotYetStarted = !!auction.startTime && !hasStarted;
+  const auctionNotYetStarted = liveWindow.isUpcoming;
   const ogImage = auctionImageUrls.at(0) ?? DEFAULT_OG_IMAGE;
 
   const productSchema = {
@@ -199,12 +207,11 @@ export default function AuctionDetail() {
       url: canonical,
       priceCurrency: "ZAR",
       price: auction.currentPrice,
-      availability:
-        auction.status === "active"
-          ? "https://schema.org/InStock"
-          : "https://schema.org/SoldOut",
-      validThrough: auction.endTime
-        ? new Date(auction.endTime).toISOString()
+      availability: liveWindow.isLive
+        ? "https://schema.org/InStock"
+        : "https://schema.org/SoldOut",
+      validThrough: liveWindow.effectiveEndTime
+        ? new Date(liveWindow.effectiveEndTime).toISOString()
         : undefined,
       seller: { "@type": "Organization", name: SITE_NAME },
       ...(auction.location
@@ -222,15 +229,15 @@ export default function AuctionDetail() {
     },
   };
 
-  const eventSchema = auction.startTime
+  const eventSchema = liveWindow.effectiveStartTime
     ? {
         "@context": "https://schema.org",
         "@type": "Event",
         name: auction.title,
         description: auction.description ?? metaDescription,
-        startDate: new Date(auction.startTime).toISOString(),
-        ...(auction.endTime
-          ? { endDate: new Date(auction.endTime).toISOString() }
+        startDate: new Date(liveWindow.effectiveStartTime).toISOString(),
+        ...(liveWindow.effectiveEndTime
+          ? { endDate: new Date(liveWindow.effectiveEndTime).toISOString() }
           : {}),
         eventStatus: "https://schema.org/EventScheduled",
         eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
@@ -258,7 +265,7 @@ export default function AuctionDetail() {
         <meta name="twitter:image" content={ogImage} />
         <meta
           name="robots"
-          content={auction.status === "active" ? "index, follow" : "noindex"}
+          content={liveWindow.isLive ? "index, follow" : "noindex"}
         />
         <script type="application/ld+json">
           {JSON.stringify(productSchema)}
@@ -279,12 +286,12 @@ export default function AuctionDetail() {
         <div className="lg:col-span-8 space-y-8">
           <AuctionHeader auction={auction} />
 
-          {auctionNotYetStarted && auction.startTime && (
+          {auctionNotYetStarted && auction.auctionStartTime && (
             <div className="flex items-center gap-2 text-sm font-medium bg-primary/5 border border-primary/20 rounded-md px-4 py-3">
               <CalendarClock className="h-4 w-4 text-primary shrink-0" />
               <span className="text-xs text-primary">
                 Auction Starts:{" "}
-                {new Date(auction.startTime).toLocaleString("en-ZA", {
+                {new Date(auction.auctionStartTime).toLocaleString("en-ZA", {
                   dateStyle: "medium",
                   timeStyle: "short",
                 })}
@@ -450,9 +457,7 @@ export default function AuctionDetail() {
                     key={related._id}
                     auction={related}
                     viewMode="compact"
-                    isWatched={
-                      watchedAuctionIds?.includes(related._id) ?? false
-                    }
+                    isWatched={watchedLotIds?.includes(related._id) ?? false}
                   />
                 ))}
               </div>
@@ -476,7 +481,7 @@ export default function AuctionDetail() {
               (auction.winnerId === session.user.id ||
                 auction.sellerId === session.user.id) && (
                 <FeeBreakdown
-                  auctionId={auction._id}
+                  lotId={auction._id}
                   isWinner={auction.winnerId === session.user.id}
                   isSeller={auction.sellerId === session.user.id}
                 />
@@ -489,12 +494,12 @@ export default function AuctionDetail() {
               <h2 className="text-sm font-semibold text-muted-foreground mb-4">
                 Bid History
               </h2>
-              <BidHistory auctionId={auction._id} />
+              <BidHistory lotId={auction._id} />
             </section>
 
             <SellerInfo
               sellerId={auction.sellerId}
-              auctionId={auction._id}
+              lotId={auction._id}
               isOwnListing={isOwner}
             />
           </div>

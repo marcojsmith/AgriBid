@@ -9,20 +9,20 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { AuctionSummaryValidator, toAuctionSummary } from "./auctions";
+import { LotSummaryValidator, toLotSummary } from "./auctions";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import type { Id, Doc } from "./_generated/dataModel";
 
 /**
- * Handler for toggling an auction in the user's watchlist.
+ * Handler for toggling a lot in the user's watchlist.
  * @param ctx - Convex mutation context
  * @param args - Handler arguments
- * @param args.auctionId - ID of the auction to toggle
+ * @param args.lotId - ID of the lot to toggle
  * @returns Promise<boolean>
  */
 export const toggleWatchlistHandler = async (
   ctx: MutationCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ) => {
   const authUser = await requireAuth(ctx);
   const userId = resolveUserId(authUser);
@@ -30,8 +30,8 @@ export const toggleWatchlistHandler = async (
 
   const existing = await ctx.db
     .query("watchlist")
-    .withIndex("by_user_auction", (q) =>
-      q.eq("userId", userId).eq("auctionId", args.auctionId)
+    .withIndex("by_user_lot", (q) =>
+      q.eq("userId", userId).eq("lotId", args.lotId)
     )
     .first();
 
@@ -41,31 +41,31 @@ export const toggleWatchlistHandler = async (
   } else {
     await ctx.db.insert("watchlist", {
       userId,
-      auctionId: args.auctionId,
+      lotId: args.lotId,
     });
     return true; // Now watched
   }
 };
 
 /**
- * Toggle an auction in the user's watchlist.
+ * Toggle a lot in the user's watchlist.
  */
 export const toggleWatchlist = mutation({
-  args: { auctionId: v.id("auctions") },
+  args: { lotId: v.id("lots") },
   returns: v.boolean(),
   handler: toggleWatchlistHandler,
 });
 
 /**
- * Handler for checking if an auction is watched.
+ * Handler for checking if a lot is watched.
  * @param ctx - Convex query context
  * @param args - Handler arguments
- * @param args.auctionId - ID of the auction to check
+ * @param args.lotId - ID of the lot to check
  * @returns Promise<boolean>
  */
 export const isWatchedHandler = async (
   ctx: QueryCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ) => {
   try {
     const authUser = await getAuthUser(ctx);
@@ -75,37 +75,37 @@ export const isWatchedHandler = async (
 
     const existing = await ctx.db
       .query("watchlist")
-      .withIndex("by_user_auction", (q) =>
-        q.eq("userId", userId).eq("auctionId", args.auctionId)
+      .withIndex("by_user_lot", (q) =>
+        q.eq("userId", userId).eq("lotId", args.lotId)
       )
       .first();
 
     return !!existing;
   } catch (err) {
     if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-      console.error(`isWatched failure for auction ${args.auctionId}:`, err);
+      console.error(`isWatched failure for lot ${args.lotId}:`, err);
     }
     return false;
   }
 };
 
 /**
- * Check if a specific auction is in the current user's watchlist.
+ * Check if a specific lot is in the current user's watchlist.
  */
 export const isWatched = query({
-  args: { auctionId: v.id("auctions") },
+  args: { lotId: v.id("lots") },
   returns: v.boolean(),
   handler: isWatchedHandler,
 });
 
 /**
- * Handler for getting watched auctions.
+ * Handler for getting watched lots.
  * @param ctx - Convex query context
  * @param args - Handler arguments
  * @param args.paginationOpts - Convex pagination options
- * @returns Promise<PaginatedAuctions>
+ * @returns Promise<PaginatedLots>
  */
-export const getWatchedAuctionsHandler = async (
+export const getWatchedLotsHandler = async (
   ctx: QueryCtx,
   args: { paginationOpts: PaginationOptions }
 ) => {
@@ -136,9 +136,9 @@ export const getWatchedAuctionsHandler = async (
 
     const page = await Promise.all(
       watchlist.page.map(async (item: Doc<"watchlist">) => {
-        const auction = await ctx.db.get("auctions", item.auctionId);
-        if (!auction) return null;
-        return await toAuctionSummary(ctx, auction);
+        const lot = await ctx.db.get("lots", item.lotId);
+        if (!lot) return null;
+        return await toLotSummary(ctx, lot);
       })
     );
 
@@ -148,7 +148,7 @@ export const getWatchedAuctionsHandler = async (
     };
   } catch (err) {
     if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-      console.error("getWatchedAuctions failure:", err);
+      console.error("getWatchedLots failure:", err);
     }
     return {
       page: [],
@@ -161,33 +161,33 @@ export const getWatchedAuctionsHandler = async (
 };
 
 /**
- * Retrieve all auctions in the current user's watchlist.
+ * Retrieve all lots in the current user's watchlist.
  */
-export const getWatchedAuctions = query({
+export const getWatchedLots = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
-    page: v.array(AuctionSummaryValidator),
+    page: v.array(LotSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(v.union(v.string(), v.null())),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
-  handler: getWatchedAuctionsHandler,
+  handler: getWatchedLotsHandler,
 });
 
 /**
- * Handler for getting watched auction IDs.
+ * Handler for getting watched lot IDs.
  * @param ctx - Convex query context
- * @returns Promise<Id<"auctions">[]>
+ * @returns Promise<Id<"lots">[]>
  */
-export const getWatchedAuctionIdsHandler = async (ctx: QueryCtx) => {
+export const getWatchedLotIdsHandler = async (ctx: QueryCtx) => {
   try {
     const authUser = await getAuthUser(ctx);
     if (!authUser) return [];
     const userId = resolveUserId(authUser);
     if (!userId) return [];
 
-    const results: Id<"auctions">[] = [];
+    const results: Id<"lots">[] = [];
     let cursor: string | null = null;
     let isDone = false;
     let pageCount = 0;
@@ -199,9 +199,7 @@ export const getWatchedAuctionIdsHandler = async (ctx: QueryCtx) => {
         .withIndex("by_user", (q) => q.eq("userId", userId))
         .paginate({ numItems: 100, cursor });
 
-      results.push(
-        ...page.page.map((item: Doc<"watchlist">) => item.auctionId)
-      );
+      results.push(...page.page.map((item: Doc<"watchlist">) => item.lotId));
       cursor = page.continueCursor;
       isDone = page.isDone;
       pageCount++;
@@ -209,24 +207,24 @@ export const getWatchedAuctionIdsHandler = async (ctx: QueryCtx) => {
 
     if (!isDone) {
       console.warn(
-        `getWatchedAuctionIds truncated after ${String(MAX_PAGES)} pages`
+        `getWatchedLotIds truncated after ${String(MAX_PAGES)} pages`
       );
     }
 
     return results;
   } catch (err) {
     if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {
-      console.error("getWatchedAuctionIds failure:", err);
+      console.error("getWatchedLotIds failure:", err);
     }
     return [];
   }
 };
 
 /**
- * Batch-fetch the set of all watched auction IDs for the current user.
+ * Batch-fetch the set of all watched lot IDs for the current user.
  */
-export const getWatchedAuctionIds = query({
+export const getWatchedLotIds = query({
   args: {},
-  returns: v.array(v.id("auctions")),
-  handler: getWatchedAuctionIdsHandler,
+  returns: v.array(v.id("lots")),
+  handler: getWatchedLotIdsHandler,
 });

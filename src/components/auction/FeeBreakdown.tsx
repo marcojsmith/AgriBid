@@ -9,32 +9,32 @@ import { formatCurrency } from "@/lib/currency";
 
 /**
  * Component displaying fee breakdown for auction participants.
- * @param auctionId - The ID of the auction
- * @param isWinner - Whether the user won the auction
+ * @param lotId - The ID of the lot
+ * @param isWinner - Whether the user won the lot
  * @param isSeller - Whether the user is the seller
  */
 interface FeeBreakdownProps {
-  auctionId: Id<"auctions"> | undefined;
+  lotId: Id<"lots"> | undefined;
   isWinner: boolean;
   isSeller: boolean;
 }
 
 /**
- * Displays the fee breakdown for a sold auction to the winner or seller.
+ * Displays the fee breakdown for a sold lot to the winner or seller.
  * @param props - The component props.
- * @param props.auctionId - The ID of the auction.
- * @param props.isWinner - Whether the user is the auction winner.
- * @param props.isSeller - Whether the user is the auction seller.
+ * @param props.lotId - The ID of the lot.
+ * @param props.isWinner - Whether the user is the lot winner.
+ * @param props.isSeller - Whether the user is the lot seller.
  * @returns The FeeBreakdown React component or null if no fees.
  */
 export function FeeBreakdown({
-  auctionId,
+  lotId,
   isWinner,
   isSeller,
 }: FeeBreakdownProps): React.JSX.Element | null {
   const fees = useQuery(
-    api.admin.getAuctionFeesForUser,
-    auctionId ? { auctionId } : "skip"
+    api.admin.getLotFeesForUser,
+    lotId ? { lotId } : "skip"
   );
 
   if (!fees || (fees.buyerFees.length === 0 && fees.sellerFees.length === 0)) {

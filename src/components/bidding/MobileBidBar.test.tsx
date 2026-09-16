@@ -2,10 +2,10 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { useQuery } from "convex/react";
-import type { Doc } from "convex/_generated/dataModel";
+import type { Id } from "convex/_generated/dataModel";
 
+import type { LotDetail } from "@/types/auction";
 import { useSession } from "@/lib/auth-client";
-import { createMockAuction } from "@/test/factories";
 
 import { MobileBidBar } from "./MobileBidBar";
 
@@ -17,7 +17,37 @@ vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
 }));
 
-const renderComponent = (auction: Doc<"auctions">) =>
+/**
+ * Builds a lot-detail test fixture. Defaults to a live, biddable lot.
+ *
+ * @param overrides - Fields to override on the base fixture
+ * @returns A lot detail fixture
+ */
+const createMockLot = (overrides: Partial<LotDetail> = {}): LotDetail =>
+  ({
+    _id: "lot123" as Id<"lots">,
+    _creationTime: Date.now(),
+    title: "Test Lot",
+    make: "John Deere",
+    model: "5075E",
+    year: 2020,
+    operatingHours: 1500,
+    location: "Iowa, USA",
+    categoryName: "Tractors",
+    startingPrice: 45000,
+    reservePrice: 50000,
+    currentPrice: 47500,
+    minIncrement: 100,
+    sellerId: "seller123",
+    status: "assigned",
+    auctionStatus: "published",
+    auctionStartTime: Date.now() - 60_000,
+    auctionEndTime: Date.now() + 60_000,
+    images: { additional: [] },
+    ...overrides,
+  }) as unknown as LotDetail;
+
+const renderComponent = (auction: LotDetail) =>
   render(
     <MemoryRouter>
       <MobileBidBar auction={auction} />
@@ -40,13 +70,13 @@ describe("MobileBidBar", () => {
   });
 
   it("shows the current bid price", () => {
-    renderComponent(createMockAuction());
+    renderComponent(createMockLot());
     expect(screen.getByText(/Current bid/i)).toBeInTheDocument();
     expect(screen.getByText(/47[,.\s\u00A0\u202F]*500/)).toBeInTheDocument();
   });
 
   it("shows status text without an action button for a closed auction", () => {
-    renderComponent(createMockAuction({ status: "sold" }));
+    renderComponent(createMockLot({ status: "sold" }));
 
     expect(screen.getByText(/Auction sold/i)).toBeInTheDocument();
     expect(
@@ -58,9 +88,8 @@ describe("MobileBidBar", () => {
   });
 
   it("shows ended text without an action button when the end time has passed", () => {
-    const auction = createMockAuction({
-      status: "active",
-      endTime: Date.now() - 1000,
+    const auction = createMockLot({
+      auctionEndTime: Date.now() - 1000,
     });
     renderComponent(auction);
 
@@ -75,7 +104,7 @@ describe("MobileBidBar", () => {
       profile: { isVerified: false, kycStatus: "none" },
     });
 
-    renderComponent(createMockAuction());
+    renderComponent(createMockLot());
 
     const verifyLink = screen.getByRole("link", { name: /verify to bid/i });
     expect(verifyLink).toHaveAttribute("href", "/kyc");
@@ -85,7 +114,7 @@ describe("MobileBidBar", () => {
   });
 
   it("shows a Place bid button that scrolls to the bidding panel for verified users", () => {
-    renderComponent(createMockAuction());
+    renderComponent(createMockLot());
 
     const placeBidButton = screen.getByRole("button", {
       name: /place bid/i,
@@ -103,7 +132,7 @@ describe("MobileBidBar", () => {
       isPending: false,
     } as ReturnType<typeof useSession>);
 
-    renderComponent(createMockAuction());
+    renderComponent(createMockLot());
 
     expect(
       screen.getByRole("button", { name: /place bid/i })
@@ -116,7 +145,7 @@ describe("MobileBidBar", () => {
   it("shows a Place bid button while the profile query is still loading", () => {
     vi.mocked(useQuery).mockReturnValue(undefined);
 
-    renderComponent(createMockAuction());
+    renderComponent(createMockLot());
 
     expect(
       screen.getByRole("button", { name: /place bid/i })

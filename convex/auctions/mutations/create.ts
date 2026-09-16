@@ -10,22 +10,17 @@ import { normalizeImages } from "../../lib/storage";
 import { updateCounter } from "../../admin_utils";
 import { logActivity } from "../../userActivity";
 import {
-  validateAuctionBeforePublish,
-  assertOwnership,
-  assertEditable,
-  type AuctionValidationInput,
-} from "./helpers";
-import { validateStartTimeBounds } from "../helpers";
+  assertLotEditable,
+  assertLotOwnership,
+  validateLotBeforeSubmit,
+} from "../../lots/mutations/helpers";
 import {
   MAX_ADDITIONAL_IMAGES,
-  AUCTION_MIN_DURATION_DAYS,
-  AUCTION_MAX_DURATION_DAYS,
-  AUCTION_DEFAULT_DURATION_DAYS,
   PRICE_THRESHOLD_FOR_INCREMENT,
   SMALL_INCREMENT_AMOUNT,
   LARGE_INCREMENT_AMOUNT,
 } from "../../constants";
-import type { Id, Doc } from "../../_generated/dataModel";
+import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 /**
@@ -45,21 +40,21 @@ export const generateUploadUrl = mutation({
 });
 
 /**
- * Handler for creating a new auction.
+ * Handler for creating a new lot.
  * @param ctx - The mutation context.
- * @param args - The arguments for creating an auction.
- * @param args.title - The title of the auction.
- * @param args.categoryId - The ID of the category for the auction.
+ * @param args - The arguments for creating a lot.
+ * @param args.title - The title of the listing.
+ * @param args.categoryId - The ID of the category for the listing.
  * @param args.make - The make of the equipment.
  * @param args.model - The model of the equipment.
  * @param args.year - The year of the equipment.
  * @param args.operatingHours - The operating hours of the equipment.
  * @param args.location - The location of the equipment.
- * @param args.description - The description of the auction.
- * @param args.startingPrice - The starting price of the auction.
- * @param args.reservePrice - The reserve price of the auction.
- * @param args.durationDays - The duration of the auction in days.
- * @param args.images - The images for the auction.
+ * @param args.description - The description of the listing.
+ * @param args.startingPrice - The starting price of the listing.
+ * @param args.reservePrice - The reserve price of the listing.
+ * @param args.durationDays - Legacy listing duration; accepted but not persisted on the lot.
+ * @param args.images - The images for the listing.
  * @param args.images.front - The front image of the equipment.
  * @param args.images.engine - The engine image of the equipment.
  * @param args.images.cabin - The cabin image of the equipment.
@@ -71,11 +66,11 @@ export const generateUploadUrl = mutation({
  * @param args.conditionChecklist.tires - The condition of the tires.
  * @param args.conditionChecklist.serviceHistory - The service history of the equipment.
  * @param args.conditionChecklist.notes - Additional notes on the condition.
- * @param args.isDraft - Whether the auction is a draft.
- * @param args.startTime - Optional Unix timestamp (ms) at which the auction should open for bidding. Omit to start immediately upon activation.
- * @returns Promise<Id<"auctions">>
+ * @param args.isDraft - Whether the listing is a draft.
+ * @param args.startTime - Legacy scheduling field; accepted but not persisted on the lot.
+ * @returns Promise<Id<"lots">>
  */
-export const createAuctionHandler = async (
+export const createLotHandler = async (
   ctx: MutationCtx,
   args: {
     title: string;
@@ -109,27 +104,13 @@ export const createAuctionHandler = async (
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const { durationDays, isDraft, startTime, ...restArgs } = args;
+  const { isDraft } = args;
 
-  if (
-    durationDays < AUCTION_MIN_DURATION_DAYS ||
-    durationDays > AUCTION_MAX_DURATION_DAYS
-  ) {
-    throw new ConvexError(
-      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
-    );
-  }
-
-  if (
-    restArgs.images.additional &&
-    restArgs.images.additional.length > MAX_ADDITIONAL_IMAGES
-  ) {
+  const images = { ...args.images };
+  if (images.additional && images.additional.length > MAX_ADDITIONAL_IMAGES) {
     if (isDraft) {
       // If draft, truncate to max allowed
-      restArgs.images.additional = restArgs.images.additional.slice(
-        0,
-        MAX_ADDITIONAL_IMAGES
-      );
+      images.additional = images.additional.slice(0, MAX_ADDITIONAL_IMAGES);
     } else {
       throw new ConvexError(
         `Additional images limit exceeded (max ${MAX_ADDITIONAL_IMAGES.toString()})`
@@ -143,27 +124,35 @@ export const createAuctionHandler = async (
     throw new ConvexError("Invalid categoryId: Category not found");
   }
 
-  const images = normalizeImages(restArgs.images);
+  const normalizedImages = normalizeImages(images);
   const status = isDraft ? "draft" : "pending_review";
 
   if (!isDraft) {
-    const validationInput: AuctionValidationInput = {
+    validateLotBeforeSubmit({
       title: args.title,
       description: args.description,
       startingPrice: args.startingPrice,
       reservePrice: args.reservePrice,
-      images,
-    };
-    validateAuctionBeforePublish(validationInput);
+      images: normalizedImages,
+    });
   }
 
-  if (startTime !== undefined && !isDraft) {
-    validateStartTimeBounds(startTime, false);
-  }
-
-  const auctionId = await ctx.db.insert("auctions", {
-    ...restArgs,
-    images,
+  // A lot does not own a schedule; the parent auction does. `durationDays` and
+  // `startTime` are accepted for backward compatibility with the listing
+  // wizard but intentionally not persisted on the lot.
+  const lotId = await ctx.db.insert("lots", {
+    title: args.title,
+    categoryId: args.categoryId,
+    make: args.make,
+    model: args.model,
+    year: args.year,
+    operatingHours: args.operatingHours,
+    location: args.location,
+    description: args.description,
+    startingPrice: args.startingPrice,
+    reservePrice: args.reservePrice,
+    images: normalizedImages,
+    conditionChecklist: args.conditionChecklist,
     sellerId: userId,
     status,
     currentPrice: args.startingPrice,
@@ -171,37 +160,35 @@ export const createAuctionHandler = async (
       args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
-    durationDays: durationDays,
-    ...(startTime !== undefined ? { startTime } : {}),
   });
 
-  await updateCounter(ctx, "auctions", "total", 1);
+  await updateCounter(ctx, "lots", "total", 1);
   if (status === "pending_review") {
-    await updateCounter(ctx, "auctions", "pending", 1);
+    await updateCounter(ctx, "lots", "pending", 1);
   } else {
-    await updateCounter(ctx, "auctions", "draft", 1);
+    await updateCounter(ctx, "lots", "draft", 1);
   }
 
-  // A draft isn't a real "listing" event yet — only log when the auction is
+  // A draft isn't a real "listing" event yet — only log when the lot is
   // actually submitted for review at creation time. Drafts that are submitted
-  // later get their `listing_created` entry from publishAuctionHandler.
+  // later get their `listing_created` entry from the lot submit handler.
   if (status !== "draft") {
     await logActivity(ctx, {
       userId,
       type: "listing_created",
       description: `Listing created: ${args.title}`,
-      relatedId: auctionId,
+      relatedId: lotId,
     });
   }
 
-  return auctionId;
+  return lotId;
 };
 
 /**
- * Generic auction creation mutation.
- * Supports creating either a draft or a pending_review auction.
+ * Generic lot creation mutation.
+ * Supports creating either a draft or a pending_review lot.
  */
-export const createAuction = mutation({
+export const createLot = mutation({
   args: {
     title: v.string(),
     categoryId: v.id("equipmentCategories"),
@@ -231,28 +218,28 @@ export const createAuction = mutation({
     isDraft: v.optional(v.boolean()),
     startTime: v.optional(v.number()),
   },
-  returns: v.id("auctions"),
-  handler: createAuctionHandler,
+  returns: v.id("lots"),
+  handler: createLotHandler,
 });
 
 /**
- * Handler for saving a draft auction.
- * Allows partial updates for draft auctions, enabling users to save incomplete work.
+ * Handler for saving a draft lot.
+ * Allows partial updates for draft lots, enabling users to save incomplete work.
  * @param ctx - The mutation context.
  * @param args - The arguments for saving a draft.
- * @param args.auctionId - The ID of the auction to update (optional).
- * @param args.title - The title of the auction (optional for drafts).
- * @param args.categoryId - The ID of the category for the auction (optional for drafts).
+ * @param args.lotId - The ID of the lot to update (optional).
+ * @param args.title - The title of the listing (optional for drafts).
+ * @param args.categoryId - The ID of the category for the listing (optional for drafts).
  * @param args.make - The make of the equipment (optional for drafts).
  * @param args.model - The model of the equipment (optional for drafts).
  * @param args.year - The year of the equipment (optional for drafts).
  * @param args.operatingHours - The operating hours of the equipment (optional for drafts).
  * @param args.location - The location of the equipment (optional for drafts).
- * @param args.description - The description of the auction (optional for drafts).
- * @param args.startingPrice - The starting price of the auction (optional for drafts).
- * @param args.reservePrice - The reserve price of the auction (optional for drafts).
- * @param args.durationDays - The duration of the auction in days (optional for drafts).
- * @param args.images - The images for the auction (optional for drafts).
+ * @param args.description - The description of the listing (optional for drafts).
+ * @param args.startingPrice - The starting price of the listing (optional for drafts).
+ * @param args.reservePrice - The reserve price of the listing (optional for drafts).
+ * @param args.durationDays - Legacy listing duration; accepted but not persisted on the lot.
+ * @param args.images - The images for the listing (optional for drafts).
  * @param args.images.front - The front image of the equipment.
  * @param args.images.engine - The engine image of the equipment.
  * @param args.images.cabin - The cabin image of the equipment.
@@ -264,13 +251,13 @@ export const createAuction = mutation({
  * @param args.conditionChecklist.tires - The condition of the tires.
  * @param args.conditionChecklist.serviceHistory - The service history of the equipment.
  * @param args.conditionChecklist.notes - Additional notes on the condition.
- * @param args.startTime - Optional Unix timestamp (ms) at which the auction should open for bidding. Omit to start immediately upon activation.
- * @returns Promise<Id<"auctions">>
+ * @param args.startTime - Legacy scheduling field; accepted but not persisted on the lot.
+ * @returns Promise<Id<"lots">>
  */
 export const saveDraftHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionId?: string;
+    lotId?: string;
     title?: string;
     categoryId?: Id<"equipmentCategories">;
     make?: string;
@@ -301,17 +288,7 @@ export const saveDraftHandler = async (
 ) => {
   const { userId } = await requireVerified(ctx);
 
-  const { auctionId, durationDays, startTime, ...restArgs } = args;
-
-  if (
-    durationDays !== undefined &&
-    (durationDays < AUCTION_MIN_DURATION_DAYS ||
-      durationDays > AUCTION_MAX_DURATION_DAYS)
-  ) {
-    throw new ConvexError(
-      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
-    );
-  }
+  const { lotId, ...restArgs } = args;
 
   // Enforce image cap for additional images
   if (
@@ -326,47 +303,44 @@ export const saveDraftHandler = async (
 
   const images = restArgs.images ? normalizeImages(restArgs.images) : undefined;
 
-  let validAuctionId: Id<"auctions"> | null = null;
-  if (auctionId) {
-    validAuctionId = ctx.db.normalizeId("auctions", auctionId);
-    if (!validAuctionId) {
-      throw new ConvexError("Invalid auctionId provided");
+  let validLotId: Id<"lots"> | null = null;
+  if (lotId) {
+    validLotId = ctx.db.normalizeId("lots", lotId);
+    if (!validLotId) {
+      throw new ConvexError("Invalid lotId provided");
     }
   }
 
-  if (validAuctionId) {
-    const existing = await ctx.db.get("auctions", validAuctionId);
+  if (validLotId) {
+    const existing = await ctx.db.get("lots", validLotId);
     if (!existing) {
-      throw new ConvexError("Auction not found");
+      throw new ConvexError("Lot not found");
     }
-    assertOwnership(existing, userId);
-    assertEditable(existing);
+    assertLotOwnership(existing, userId);
+    assertLotEditable(existing);
 
     if (existing.status === "pending_review") {
       const mergedState = {
         ...existing,
         ...restArgs,
         ...(images && { images }),
-      } as Doc<"auctions">;
-      validateAuctionBeforePublish(mergedState);
+      };
+      validateLotBeforeSubmit(mergedState);
     }
 
+    // `durationDays` and `startTime` are legacy scheduling fields the lot no
+    // longer owns, so they are dropped from the patch.
     const patchData: Record<string, unknown> = Object.fromEntries(
       (Object.entries(restArgs) as [string, unknown][]).filter(
-        ([key, value]) => key !== "images" && value !== undefined
+        ([key, value]) =>
+          key !== "images" &&
+          key !== "durationDays" &&
+          key !== "startTime" &&
+          value !== undefined
       )
     );
     if (images !== undefined) {
       patchData.images = images;
-    }
-    if (durationDays !== undefined) {
-      patchData.durationDays = durationDays;
-    }
-    if (startTime !== undefined) {
-      if (existing.status !== "draft") {
-        validateStartTimeBounds(startTime, false);
-      }
-      patchData.startTime = startTime;
     }
     if (restArgs.startingPrice !== undefined) {
       patchData.currentPrice = restArgs.startingPrice;
@@ -376,9 +350,9 @@ export const saveDraftHandler = async (
           : LARGE_INCREMENT_AMOUNT;
     }
 
-    await ctx.db.patch("auctions", validAuctionId, patchData);
+    await ctx.db.patch("lots", validLotId, patchData);
 
-    return validAuctionId;
+    return validLotId;
   }
 
   // For new drafts, we need at least title and images
@@ -389,7 +363,7 @@ export const saveDraftHandler = async (
     throw new ConvexError("Images are required to create a new draft");
   }
 
-  const newAuctionId = await ctx.db.insert("auctions", {
+  const newLotId = await ctx.db.insert("lots", {
     title: args.title,
     ...(args.categoryId && { categoryId: args.categoryId }),
     make: args.make ?? "",
@@ -404,7 +378,6 @@ export const saveDraftHandler = async (
     ...(args.conditionChecklist && {
       conditionChecklist: args.conditionChecklist,
     }),
-    ...(startTime !== undefined ? { startTime } : {}),
     sellerId: userId,
     status: "draft",
     currentPrice: args.startingPrice ?? 0,
@@ -412,23 +385,22 @@ export const saveDraftHandler = async (
       (args.startingPrice ?? 0) < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
-    durationDays: durationDays ?? AUCTION_DEFAULT_DURATION_DAYS,
   });
 
-  await updateCounter(ctx, "auctions", "total", 1);
-  await updateCounter(ctx, "auctions", "draft", 1);
+  await updateCounter(ctx, "lots", "total", 1);
+  await updateCounter(ctx, "lots", "draft", 1);
 
-  return newAuctionId;
+  return newLotId;
 };
 
 /**
- * Save or update a draft auction.
- * Creates new draft if no auctionId provided, otherwise updates existing draft.
+ * Save or update a draft lot.
+ * Creates new draft if no lotId provided, otherwise updates existing draft.
  * All fields except those required for new draft creation are optional to support partial saves.
  */
 export const saveDraft = mutation({
   args: {
-    auctionId: v.optional(v.string()),
+    lotId: v.optional(v.string()),
     title: v.optional(v.string()),
     categoryId: v.optional(v.id("equipmentCategories")),
     make: v.optional(v.string()),
@@ -460,6 +432,6 @@ export const saveDraft = mutation({
     ),
     startTime: v.optional(v.number()),
   },
-  returns: v.id("auctions"),
+  returns: v.id("lots"),
   handler: saveDraftHandler,
 });

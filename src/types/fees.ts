@@ -35,21 +35,21 @@ export interface PlatformFee extends Doc<"platformFees"> {
 }
 
 /**
- * Represents a fee actually applied to a specific auction at settlement.
+ * Represents a fee actually applied to a specific lot at settlement.
  * Distinct from PlatformFee which is the configuration template.
- * @property auctionId - The auction this fee applies to
+ * @property lotId - The lot this fee applies to
  * @property feeId - Reference to the platform fee configuration
  * @property feeName - Snapshot of the fee name at calculation time
  * @property appliedTo - Which party pays this specific fee record
  * @property feeType - Calculation method used
  * @property rate - The numeric rate/fee value used
- * @property salePrice - The final sale price of the auction
+ * @property salePrice - The final sale price of the lot
  * @property calculatedAmount - The calculated fee amount
  * @property createdAt - When this fee was calculated
- * When a PlatformFee has appliesTo="both", two AuctionFee records are created (one for buyer, one for seller)
+ * When a PlatformFee has appliesTo="both", two LotFee records are created (one for buyer, one for seller)
  */
-export interface AuctionFee extends Doc<"auctionFees"> {
-  auctionId: Id<"auctions">;
+export interface LotFee extends Doc<"lotFees"> {
+  lotId: Id<"lots">;
   feeId: Id<"platformFees">;
   feeName: string;
   appliedTo: "buyer" | "seller";

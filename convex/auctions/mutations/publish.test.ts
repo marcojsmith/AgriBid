@@ -2,19 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
 import {
-  publishAuctionHandler,
-  flagAuctionHandler,
+  flagLotHandler,
   dismissFlagHandler,
-  approveAuctionHandler,
-  rejectAuctionHandler,
-  closeAuctionEarlyHandler,
-  submitForReview,
-  publishAuction,
-  flagAuction,
+  closeLotEarlyHandler,
+  flagLot,
   dismissFlag,
-  approveAuction,
-  rejectAuction,
-  closeAuctionEarly,
+  closeLotEarly,
 } from "./publish";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
@@ -83,7 +76,6 @@ vi.mock("../../lib/auth", () => {
 
 vi.mock("../../admin_utils", () => ({
   updateCounter: vi.fn(),
-  adjustStatusCounters: vi.fn(),
   logAudit: vi.fn(),
 }));
 
@@ -149,149 +141,50 @@ describe("Publish Mutations", () => {
 
   describe("Exports and Registration", () => {
     it("should export all mutations with correct handlers", () => {
-      expect(submitForReview).toBeDefined();
-      expect(publishAuction).toBeDefined();
-      expect(flagAuction).toBeDefined();
+      expect(flagLot).toBeDefined();
       expect(dismissFlag).toBeDefined();
-      expect(approveAuction).toBeDefined();
-      expect(rejectAuction).toBeDefined();
-      expect(closeAuctionEarly).toBeDefined();
+      expect(closeLotEarly).toBeDefined();
 
       // Basic sanity check that they point to the right handlers
       // In Convex, mutation objects have a handler property if they are created via mutation({..., handler})
       const getHandler = (m: unknown) => (m as { handler: unknown }).handler;
 
-      expect(getHandler(submitForReview)).toBe(publishAuctionHandler);
-      expect(getHandler(publishAuction)).toBe(publishAuctionHandler);
-      expect(getHandler(flagAuction)).toBe(flagAuctionHandler);
+      expect(getHandler(flagLot)).toBe(flagLotHandler);
       expect(getHandler(dismissFlag)).toBe(dismissFlagHandler);
-      expect(getHandler(approveAuction)).toBe(approveAuctionHandler);
-      expect(getHandler(rejectAuction)).toBe(rejectAuctionHandler);
-      expect(getHandler(closeAuctionEarly)).toBe(closeAuctionEarlyHandler);
+      expect(getHandler(closeLotEarly)).toBe(closeLotEarlyHandler);
     });
   });
 
-  describe("publishAuctionHandler", () => {
-    it("should throw if auction not found", async () => {
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      mockCtx.db.get.mockResolvedValue(null);
-      await expect(
-        publishAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-        })
-      ).rejects.toThrow("Auction not found");
-    });
-
-    it("should publish draft successfully", async () => {
+  describe("flagLotHandler", () => {
+    it("should flag lot", async () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        sellerId: userId,
-        status: "draft",
-        title: "Title",
-        description: "Desc",
-        startingPrice: 100,
-        reservePrice: 200,
-        images: { front: "img1" },
-      } as Doc<"auctions">);
+      mockCtx.db.get.mockResolvedValue({ _id: "l1", sellerId: "u2" });
 
-      const result = await publishAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
-      );
-
-      expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
-        status: "pending_review",
+      const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "misleading",
       });
-      expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "userActivity",
-        expect.objectContaining({
-          userId: "u1",
-          type: "listing_created",
-          description: "Listing created: Title",
-          relatedId: "a1",
-          createdAt: expect.any(Number) as number,
-        })
-      );
-    });
-
-    it("should handle array-based image validation in publish", async () => {
-      const userId = "u1";
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        sellerId: userId,
-        status: "draft",
-        title: "Title",
-        description: "Desc",
-        startingPrice: 100,
-        reservePrice: 200,
-        images: ["img1"], // Legacy array format
-      } as unknown as Doc<"auctions">);
-
-      const result = await publishAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
-      );
-
-      expect(result.success).toBe(true);
-    });
-
-    it("should throw if not draft", async () => {
-      const userId = "u1";
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        sellerId: userId,
-        status: "active",
-      } as Doc<"auctions">);
-
-      await expect(
-        publishAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-        })
-      ).rejects.toThrow("Only draft auctions can be published");
-    });
-  });
-
-  describe("flagAuctionHandler", () => {
-    it("should flag auction", async () => {
-      const userId = "u1";
-      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", sellerId: "u2" });
-
-      const result = await flagAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-          reason: "misleading",
-        }
-      );
       expect(result.success).toBe(true);
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "auctionFlags",
+        "lotFlags",
         expect.objectContaining({ reason: "misleading" })
       );
     });
 
-    it("should flag auction with null status when auction status is undefined", async () => {
+    it("should flag lot with null status when lot status is undefined", async () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
       mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
+        _id: "l1",
         sellerId: "u2",
         status: undefined,
       });
 
-      const result = await flagAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-          reason: "misleading",
-        }
-      );
+      const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "misleading",
+      });
       expect(result.success).toBe(true);
     });
 
@@ -299,9 +192,9 @@ describe("Publish Mutations", () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
       mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
+        _id: "l1",
         sellerId: "u2",
-        status: "active",
+        status: "approved",
       });
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
@@ -310,13 +203,10 @@ describe("Publish Mutations", () => {
           .mockResolvedValue([{ reporterId: "u3", status: "pending" }]),
       });
 
-      const result = await flagAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-          reason: "misleading",
-        }
-      );
+      const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "misleading",
+      });
       expect(result.hideTriggered).toBe(false);
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
     });
@@ -325,9 +215,9 @@ describe("Publish Mutations", () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
       mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
+        _id: "l1",
         sellerId: "u2",
-        status: "active",
+        status: "approved",
       });
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
@@ -337,32 +227,29 @@ describe("Publish Mutations", () => {
         ]),
       });
 
-      const result = await flagAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-          reason: "misleading",
-        }
-      );
+      const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "misleading",
+      });
       expect(result.hideTriggered).toBe(true);
     });
 
-    it("should throw if flagging own auction", async () => {
+    it("should throw if flagging own lot", async () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", sellerId: userId });
+      mockCtx.db.get.mockResolvedValue({ _id: "l1", sellerId: userId });
       await expect(
-        flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+        flagLotHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
           reason: "misleading",
         })
-      ).rejects.toThrow("You cannot flag your own auction");
+      ).rejects.toThrow("You cannot flag your own lot");
     });
 
     it("should throw if already flagged", async () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
-      mockCtx.db.get.mockResolvedValue({ _id: "a1", sellerId: "u2" });
+      mockCtx.db.get.mockResolvedValue({ _id: "l1", sellerId: "u2" });
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
         collect: vi
@@ -370,20 +257,20 @@ describe("Publish Mutations", () => {
           .mockResolvedValue([{ reporterId: userId, status: "pending" }]),
       });
       await expect(
-        flagAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+        flagLotHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
           reason: "misleading",
         })
-      ).rejects.toThrow("You have already flagged this auction");
+      ).rejects.toThrow("You have already flagged this lot");
     });
 
     it("should auto-hide if threshold reached", async () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
       mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
+        _id: "l1",
         sellerId: "u2",
-        status: "active",
+        status: "approved",
       });
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
@@ -393,15 +280,12 @@ describe("Publish Mutations", () => {
         ]),
       });
 
-      const result = await flagAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          auctionId: "a1" as Id<"auctions">,
-          reason: "misleading",
-        }
-      );
+      const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "misleading",
+      });
       expect(result.hideTriggered).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
         status: "pending_review",
         hiddenByFlags: true,
       });
@@ -418,42 +302,42 @@ describe("Publish Mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         _id: "f1",
         status: "pending",
-        auctionId: "a1",
+        lotId: "l1",
         reason: "other",
       });
 
       const result = await dismissFlagHandler(
         mockCtx as unknown as MutationCtx,
-        { flagId: "f1" as Id<"auctionFlags"> }
+        { flagId: "f1" as Id<"lotFlags"> }
       );
       expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctionFlags", "f1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lotFlags", "f1", {
         status: "dismissed",
       });
     });
 
-    it("should restore auction if flags below threshold", async () => {
+    it("should restore lot if flags below threshold", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       mockCtx.db.get
         .mockResolvedValueOnce({
           _id: "f1",
           status: "pending",
-          auctionId: "a1",
+          lotId: "l1",
           reason: "other",
         }) // flag
         .mockResolvedValueOnce({
-          _id: "a1",
+          _id: "l1",
           status: "pending_review",
           hiddenByFlags: true,
-        }); // auction
+        }); // lot
 
       const result = await dismissFlagHandler(
         mockCtx as unknown as MutationCtx,
-        { flagId: "f1" as Id<"auctionFlags"> }
+        { flagId: "f1" as Id<"lotFlags"> }
       );
       expect(result.auctionRestored).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
-        status: "active",
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
+        status: "approved",
         hiddenByFlags: false,
       });
     });
@@ -462,22 +346,22 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("user");
       await expect(
         dismissFlagHandler(mockCtx as unknown as MutationCtx, {
-          flagId: "f1" as Id<"auctionFlags">,
+          flagId: "f1" as Id<"lotFlags">,
         })
       ).rejects.toThrow("Admin privileges required");
     });
 
-    it("should not restore auction when remaining flags still above threshold", async () => {
+    it("should not restore lot when remaining flags still above threshold", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       mockCtx.db.get
         .mockResolvedValueOnce({
           _id: "f1",
           status: "pending",
-          auctionId: "a1",
+          lotId: "l1",
           reason: "other",
         })
         .mockResolvedValueOnce({
-          _id: "a1",
+          _id: "l1",
           status: "pending_review",
           hiddenByFlags: true,
         });
@@ -493,209 +377,63 @@ describe("Publish Mutations", () => {
 
       const result = await dismissFlagHandler(
         mockCtx as unknown as MutationCtx,
-        { flagId: "f1" as Id<"auctionFlags"> }
+        { flagId: "f1" as Id<"lotFlags"> }
       );
       expect(result.auctionRestored).toBe(false);
     });
 
-    it("should not restore auction when hiddenByFlags is false", async () => {
+    it("should not restore lot when hiddenByFlags is false", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       mockCtx.db.get
         .mockResolvedValueOnce({
           _id: "f1",
           status: "pending",
-          auctionId: "a1",
+          lotId: "l1",
           reason: "other",
         })
         .mockResolvedValueOnce({
-          _id: "a1",
+          _id: "l1",
           status: "pending_review",
           hiddenByFlags: false,
         });
 
       const result = await dismissFlagHandler(
         mockCtx as unknown as MutationCtx,
-        { flagId: "f1" as Id<"auctionFlags"> }
+        { flagId: "f1" as Id<"lotFlags"> }
       );
       expect(result.auctionRestored).toBe(false);
       expect(mockCtx.db.query).not.toHaveBeenCalled();
     });
 
-    it("should not restore auction when status is not pending_review", async () => {
+    it("should not restore lot when status is not pending_review", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       mockCtx.db.get
         .mockResolvedValueOnce({
           _id: "f1",
           status: "pending",
-          auctionId: "a1",
+          lotId: "l1",
           reason: "other",
         })
         .mockResolvedValueOnce({
-          _id: "a1",
-          status: "active",
+          _id: "l1",
+          status: "assigned",
           hiddenByFlags: true,
         });
 
       const result = await dismissFlagHandler(
         mockCtx as unknown as MutationCtx,
-        { flagId: "f1" as Id<"auctionFlags"> }
+        { flagId: "f1" as Id<"lotFlags"> }
       );
       expect(result.auctionRestored).toBe(false);
     });
   });
 
-  describe("approveAuctionHandler", () => {
-    it("should approve auction", async () => {
+  describe("closeLotEarlyHandler", () => {
+    it("should close lot and determine winner", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "pending_review",
-        durationDays: 7,
-      });
-
-      const result = await approveAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
-      );
-      expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
-        "a1",
-        expect.objectContaining({
-          status: "active",
-        })
-      );
-    });
-
-    it("should honour a future seller-scheduled startTime (#296)", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      const futureStart = Date.now() + 1000 * 60 * 60 * 24; // 1 day out
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "pending_review",
-        durationDays: 7,
-        startTime: futureStart,
-      });
-
-      const result = await approveAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
-      );
-      expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
-        "a1",
-        expect.objectContaining({
-          status: "active",
-          startTime: futureStart,
-        })
-      );
-    });
-
-    it("should clamp a past startTime to now instead of preserving it (#296)", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      const pastStart = Date.now() - 1000 * 60 * 60 * 24; // 1 day ago
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "pending_review",
-        durationDays: 7,
-        startTime: pastStart,
-      });
-
-      const before = Date.now();
-      const result = await approveAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
-      );
-      const after = Date.now();
-
-      expect(result.success).toBe(true);
-      const patchCall = mockCtx.db.patch.mock.calls.find(
-        (call) => call[0] === "auctions" && call[1] === "a1"
-      );
-      const patchedStartTime = (
-        patchCall?.[2] as { startTime: number } | undefined
-      )?.startTime;
-      expect(patchedStartTime).toBeGreaterThanOrEqual(before);
-      expect(patchedStartTime).toBeLessThanOrEqual(after);
-    });
-
-    it("should throw if duration below minimum", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "pending_review",
-        durationDays: 7,
-      });
-
-      await expect(
-        approveAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-          durationDays: 0,
-        })
-      ).rejects.toThrow("Invalid duration");
-    });
-
-    it("should throw if duration above maximum", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "pending_review",
-        durationDays: 7,
-      });
-
-      await expect(
-        approveAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-          durationDays: 400,
-        })
-      ).rejects.toThrow("Invalid duration");
-    });
-  });
-
-  describe("rejectAuctionHandler", () => {
-    it("should reject auction", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "pending_review",
-      });
-
-      const result = await rejectAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
-      );
-      expect(result.success).toBe(true);
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "auctions",
-        "a1",
-        expect.objectContaining({
-          status: "rejected",
-        })
-      );
-    });
-
-    it("should throw if auction not in pending_review", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "active",
-      });
-
-      await expect(
-        rejectAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
-        })
-      ).rejects.toThrow("Only auctions in pending_review can be rejected");
-    });
-  });
-
-  describe("closeAuctionEarlyHandler", () => {
-    it("should close auction and determine winner", async () => {
-      vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      mockCtx.db.get.mockResolvedValue({
-        _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
         title: "Test",
       });
@@ -707,9 +445,9 @@ describe("Publish Mutations", () => {
         ]),
       });
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(true);
       expect(result.finalStatus).toBe("sold");
@@ -732,13 +470,13 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
       });
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.finalStatus).toBe("unsold");
       expect(calculateAndRecordFees).not.toHaveBeenCalled();
@@ -754,7 +492,7 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
       });
       mockCtx.db.query.mockReturnValue({
@@ -765,9 +503,9 @@ describe("Publish Mutations", () => {
         ]),
       });
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.winnerId).toBe("u3"); // earlier timestamp
     });
@@ -776,7 +514,7 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 2000,
       });
       mockCtx.db.query.mockReturnValue({
@@ -788,9 +526,9 @@ describe("Publish Mutations", () => {
           ]),
       });
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.finalStatus).toBe("unsold");
       expect(result.winnerId).toBeUndefined();
@@ -801,7 +539,7 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
-        status: "active",
+        status: "assigned",
         reservePrice: 1000,
       });
       mockCtx.db.query.mockReturnValue({
@@ -812,9 +550,9 @@ describe("Publish Mutations", () => {
         ]),
       });
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.finalStatus).toBe("sold");
       expect(result.winnerId).toBe("u3");
@@ -825,9 +563,9 @@ describe("Publish Mutations", () => {
         authorized: false,
         error: "Not authorized",
       });
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(false);
       expect(result.error).toBe("Not authorized");
@@ -836,7 +574,7 @@ describe("Publish Mutations", () => {
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
     });
 
-    it("should return error if closeAuctionEarlyHandler receives non-active auction", async () => {
+    it("should return error if closeLotEarlyHandler receives non-assigned lot", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
@@ -845,12 +583,12 @@ describe("Publish Mutations", () => {
         title: "Test",
       });
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(false);
-      expect(result.error).toBe("Auction has already been settled");
+      expect(result.error).toBe("Lot has already been settled");
     });
   });
 });

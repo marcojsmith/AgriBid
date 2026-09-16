@@ -5,7 +5,7 @@
  * - Bid moderation: voidBid
  * - Support: resolveTicket
  * - Announcements: createAnnouncement
- * - Maintenance: syncAuctionWinners
+ * - Maintenance: syncLotWinners
  *
  * Re-exports from specialized sub-modules:
  * - kyc.ts: reviewKYC
@@ -50,10 +50,10 @@ export {
 // --- Bid Moderation ---
 
 /**
- * Mark a bid as voided and recalculate auction pricing.
+ * Mark a bid as voided and recalculate lot pricing.
  *
  * - Marks the bid as voided
- * - Recalculates the auction's current price to the next highest valid bid
+ * - Recalculates the lot's current price to the next highest valid bid
  * - Reverts to starting price if no valid bids exist
  * - Logs the action for audit
  *
@@ -71,36 +71,34 @@ export const voidBid = mutation({
 
     await ctx.db.patch("bids", args.bidId, { status: "voided" });
 
-    const auction = await ctx.db.get("auctions", bid.auctionId);
-    if (!auction) throw new Error("Auction not found");
+    const lot = await ctx.db.get("lots", bid.lotId);
+    if (!lot) throw new Error("Lot not found");
 
     const latestValidBid = await ctx.db
       .query("bids")
-      .withIndex("by_auction", (q) => q.eq("auctionId", bid.auctionId))
+      .withIndex("by_lot", (q) => q.eq("lotId", bid.lotId))
       .order("desc")
       .filter((q) => q.neq(q.field("status"), "voided"))
       .filter((q) => q.neq(q.field("_id"), bid._id))
       .first();
 
-    const newPrice = latestValidBid
-      ? latestValidBid.amount
-      : auction.startingPrice;
+    const newPrice = latestValidBid ? latestValidBid.amount : lot.startingPrice;
     const newWinnerId = latestValidBid ? latestValidBid.bidderId : null;
 
     const patchData: { currentPrice: number; winnerId?: string | null } = {
       currentPrice: newPrice,
     };
-    if (auction.winnerId !== newWinnerId) {
+    if (lot.winnerId !== newWinnerId) {
       patchData.winnerId = newWinnerId;
     }
 
-    await ctx.db.patch("auctions", bid.auctionId, patchData);
+    await ctx.db.patch("lots", bid.lotId, patchData);
 
     await logAudit(ctx, {
       action: "VOID_BID",
       targetId: args.bidId,
       targetType: "bid",
-      details: `Reason: ${args.reason}. New Price: ${String(newPrice)}${auction.winnerId !== newWinnerId ? `. Winner recalculated to ${String(newWinnerId)}` : ""}`,
+      details: `Reason: ${args.reason}. New Price: ${String(newPrice)}${lot.winnerId !== newWinnerId ? `. Winner recalculated to ${String(newWinnerId)}` : ""}`,
     });
 
     return { success: true };
@@ -206,14 +204,14 @@ export const createAnnouncement = mutation({
 // --- Maintenance ---
 
 /**
- * Maintenance mutation to synchronize winnerId with the highest bidder for all auctions.
+ * Maintenance mutation to synchronize winnerId with the highest bidder for all lots.
  *
- * Processes auctions in batches to avoid runtime/memory limits.
- * Returns a cursor if more auctions need processing.
+ * Processes lots in batches to avoid runtime/memory limits.
+ * Returns a cursor if more lots need processing.
  *
  * Only accessible to admin users.
  */
-export const syncAuctionWinners = mutation({
+export const syncLotWinners = mutation({
   args: {
     cursor: v.optional(v.string()),
     batchSize: v.optional(v.number()),
@@ -232,27 +230,27 @@ export const syncAuctionWinners = mutation({
       Math.min(Math.floor(args.batchSize ?? 50) || 50, 100)
     );
 
-    const auctionsQuery = ctx.db.query("auctions");
+    const lotsQuery = ctx.db.query("lots");
 
-    const results = await auctionsQuery.paginate({
+    const results = await lotsQuery.paginate({
       numItems: batchSize,
       cursor: args.cursor ?? null,
     });
 
     let updatedCount = 0;
 
-    for (const auction of results.page) {
+    for (const lot of results.page) {
       const highestBid = await ctx.db
         .query("bids")
-        .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+        .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
         .order("desc")
         .filter((q) => q.neq(q.field("status"), "voided"))
         .first();
 
       const currentWinnerId = highestBid ? highestBid.bidderId : null;
 
-      if (auction.winnerId !== currentWinnerId) {
-        await ctx.db.patch("auctions", auction._id, {
+      if (lot.winnerId !== currentWinnerId) {
+        await ctx.db.patch("lots", lot._id, {
           winnerId: currentWinnerId,
         });
         updatedCount++;
@@ -263,8 +261,8 @@ export const syncAuctionWinners = mutation({
       await logAudit(ctx, {
         action: "SYNC_AUCTION_WINNERS_BATCH",
         targetId: "batch",
-        targetType: "auction",
-        details: `Processed batch of ${String(results.page.length)} auctions, updated ${String(updatedCount)} winners.`,
+        targetType: "lot",
+        details: `Processed batch of ${String(results.page.length)} lots, updated ${String(updatedCount)} winners.`,
       });
     }
 

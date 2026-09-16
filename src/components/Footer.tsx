@@ -9,6 +9,7 @@ import {
   Mail,
   Phone,
   MapPin,
+  CalendarClock,
 } from "lucide-react";
 
 import { useBranding } from "@/hooks/useBranding";
@@ -43,6 +44,7 @@ export const Footer = () => {
     {
       title: "Platform",
       links: [
+        { name: "Auctions", href: "/auctions", icon: CalendarClock },
         { name: "How it Works", href: "/faq", icon: BookOpen },
         { name: "Safety & Trust", href: "#", icon: ShieldCheck },
         { name: "Auction Rules", href: "#", icon: Scale },

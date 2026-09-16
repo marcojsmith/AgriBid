@@ -22,6 +22,32 @@ export default defineSchema({
 
   auctions: defineTable({
     title: v.string(),
+    description: v.optional(v.string()),
+    bannerImage: v.optional(v.id("_storage")),
+    startTime: v.number(),
+    endTime: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("closed")
+    ),
+    // Auction-wide defaults, inherited by lots unless a lot overrides at assignment time (see task 5 / fees rework)
+    defaultBuyerPremiumPct: v.optional(v.number()),
+    defaultSellerCommissionPct: v.optional(v.number()),
+    createdBy: v.string(), // admin userId
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_startTime", ["startTime"])
+    .index("by_status_startTime", ["status", "startTime"])
+    .searchIndex("search_title", {
+      searchField: "title",
+      filterFields: ["status"],
+    }),
+
+  lots: defineTable({
+    title: v.string(),
     make: v.string(),
     model: v.string(),
     year: v.number(),
@@ -32,19 +58,27 @@ export default defineSchema({
     startingPrice: v.number(),
     currentPrice: v.number(),
     minIncrement: v.number(),
+    // Legacy: superseded by the parent `auctions` row and dropped after migration.
     startTime: v.optional(v.number()),
     endTime: v.optional(v.number()),
-    settledAt: v.optional(v.number()), // When the auction was settled (sold/unsold)
+    settledAt: v.optional(v.number()), // When the lot was settled (sold/unsold)
     durationDays: v.optional(v.number()),
     sellerId: v.string(),
+    // `live` is not stored: liveness is derived at query time from `auctionId` + the parent auction's window.
     status: v.union(
       v.literal("draft"),
       v.literal("pending_review"),
-      v.literal("active"),
+      v.literal("approved"),
+      v.literal("assigned"),
       v.literal("sold"),
       v.literal("unsold"),
       v.literal("rejected")
     ),
+    auctionId: v.optional(v.id("auctions")),
+    extendedEndTime: v.optional(v.number()), // effectiveLotEndTime = extendedEndTime ?? auction.endTime
+    // Snapshot of the parent auction's fee defaults at assignment time, so later auction edits don't change an already-assigned lot's fees.
+    resolvedBuyerPremiumPct: v.optional(v.number()),
+    resolvedSellerCommissionPct: v.optional(v.number()),
     winnerId: v.optional(v.union(v.string(), v.null())),
     images: v.union(
       v.object({
@@ -80,6 +114,8 @@ export default defineSchema({
     .index("by_status_make", ["status", "make"])
     .index("by_status_year", ["status", "year"])
     .index("by_status_endTime", ["status", "endTime"])
+    .index("by_auctionId", ["auctionId"])
+    .index("by_status_auctionId", ["status", "auctionId"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["status"],
@@ -92,9 +128,9 @@ export default defineSchema({
       filterFields: ["status", "model"],
     }),
 
-  // Auction flagging system for community moderation
-  auctionFlags: defineTable({
-    auctionId: v.id("auctions"),
+  // Lot flagging system for community moderation
+  lotFlags: defineTable({
+    lotId: v.id("lots"),
     reporterId: v.string(),
     reason: v.union(
       v.literal("misleading"),
@@ -110,10 +146,10 @@ export default defineSchema({
     ),
     createdAt: v.number(),
   })
-    .index("by_auction", ["auctionId"])
+    .index("by_lot", ["lotId"])
     .index("by_reporter", ["reporterId"])
     .index("by_status", ["status"])
-    .index("by_auction_status", ["auctionId", "status"]),
+    .index("by_lot_status", ["lotId", "status"]),
 
   // Profile reporting system for community moderation
   profileFlags: defineTable({
@@ -140,9 +176,9 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_reported_status", ["reportedUserId", "status"]),
 
-  // Seller reviews left by auction winners
+  // Seller reviews left by lot winners
   reviews: defineTable({
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     reviewerId: v.string(), // buyer userId (the auction winner)
     revieweeId: v.string(), // seller userId
     rating: v.number(), // integer 1-5, validated in the mutation handler
@@ -152,18 +188,18 @@ export default defineSchema({
   })
     .index("by_reviewee", ["revieweeId"])
     .index("by_reviewee_createdAt", ["revieweeId", "createdAt"])
-    .index("by_auction_reviewer", ["auctionId", "reviewerId"]),
+    .index("by_lot_reviewer", ["lotId", "reviewerId"]),
 
   bids: defineTable({
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     bidderId: v.string(),
     amount: v.number(),
     timestamp: v.number(),
     status: v.optional(v.union(v.literal("valid"), v.literal("voided"))), // Bid integrity
   })
-    .index("by_auction", ["auctionId", "timestamp"])
+    .index("by_lot", ["lotId", "timestamp"])
     .index("by_bidder", ["bidderId"])
-    .index("by_bidder_auction", ["bidderId", "auctionId"])
+    .index("by_bidder_lot", ["bidderId", "lotId"])
     .index("by_timestamp", ["timestamp"]),
 
   // Per-user bid cooldown state (issue #283). One row per user, keyed by the
@@ -175,14 +211,14 @@ export default defineSchema({
   }).index("by_userId", ["userId"]),
 
   proxy_bids: defineTable({
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     bidderId: v.string(),
     maxBid: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_auction", ["auctionId"])
-    .index("by_bidder_auction", ["bidderId", "auctionId"])
-    .index("by_auction_maxBid", ["auctionId", "maxBid", "updatedAt"]),
+    .index("by_lot", ["lotId"])
+    .index("by_bidder_lot", ["bidderId", "lotId"])
+    .index("by_lot_maxBid", ["lotId", "maxBid", "updatedAt"]),
 
   // Application Profiles (Links Auth User to App Metadata)
   profiles: defineTable({
@@ -235,7 +271,7 @@ export default defineSchema({
 
   supportTickets: defineTable({
     userId: v.string(),
-    auctionId: v.optional(v.id("auctions")),
+    lotId: v.optional(v.id("lots")),
     subject: v.string(),
     message: v.string(),
     status: v.union(
@@ -313,7 +349,7 @@ export default defineSchema({
   conversations: defineTable({
     buyerId: v.string(),
     sellerId: v.string(),
-    auctionId: v.optional(v.id("auctions")),
+    lotId: v.optional(v.id("lots")),
     lastMessageAt: v.number(),
     createdAt: v.number(),
   })
@@ -334,10 +370,10 @@ export default defineSchema({
 
   watchlist: defineTable({
     userId: v.string(),
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
   })
     .index("by_user", ["userId"])
-    .index("by_user_auction", ["userId", "auctionId"]),
+    .index("by_user_lot", ["userId", "lotId"]),
 
   presence: defineTable({
     userId: v.string(),
@@ -431,9 +467,9 @@ export default defineSchema({
     .index("by_appliesTo", ["appliesTo"])
     .index("by_sortOrder", ["sortOrder"]),
 
-  // Auction Fee Ledger - records fees calculated at settlement
-  auctionFees: defineTable({
-    auctionId: v.id("auctions"),
+  // Lot Fee Ledger - records fees calculated per lot at settlement
+  lotFees: defineTable({
+    lotId: v.id("lots"),
     feeId: v.id("platformFees"),
     feeName: v.string(),
     appliedTo: v.union(v.literal("buyer"), v.literal("seller")),
@@ -443,10 +479,10 @@ export default defineSchema({
     calculatedAmount: v.number(),
     createdAt: v.number(),
   })
-    .index("by_auction", ["auctionId"])
+    .index("by_lot", ["lotId"])
     .index("by_appliedTo", ["appliedTo"])
     .index("by_feeId", ["feeId"])
-    .index("by_auction_fee_applied", ["auctionId", "feeId", "appliedTo"]),
+    .index("by_lot_fee_applied", ["lotId", "feeId", "appliedTo"]),
 
   // Error Reports Queue (captured errors sent to GitHub)
   errorReports: defineTable({

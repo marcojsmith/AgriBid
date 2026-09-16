@@ -12,7 +12,7 @@ vi.mock("convex/server", () => ({
 vi.mock("./_generated/api", () => ({
   internal: {
     auctions: {
-      settleExpiredAuctions: "settleExpiredAuctions",
+      settleExpiredLots: "settleExpiredLots",
       cleanupDrafts: "cleanupDrafts",
     },
     presence: {
@@ -36,7 +36,7 @@ describe("Crons Coverage", () => {
     expect(crons.interval).toHaveBeenCalledWith(
       "settle expired auctions",
       { minutes: 1 },
-      "settleExpiredAuctions"
+      "settleExpiredLots"
     );
 
     expect(crons.daily).toHaveBeenCalledWith(

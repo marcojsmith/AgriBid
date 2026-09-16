@@ -60,7 +60,7 @@ export async function safeDelete(
 }
 
 /**
- * Deletes all storage items associated with auction images.
+ * Deletes all storage items associated with lot images.
  * Silently handles missing or already-deleted storage items.
  *
  * @param ctx - Mutation context with storage access
@@ -68,12 +68,12 @@ export async function safeDelete(
  */
 export async function deleteAuctionImages(
   ctx: MutationCtx,
-  images: AuctionImages | Doc<"auctions">["images"]
+  images: AuctionImages | Doc<"lots">["images"]
 ): Promise<void> {
   // Legacy documents may hold null/undefined despite the declared parameter type.
   const legacyImages = images as
     | AuctionImages
-    | Doc<"auctions">["images"]
+    | Doc<"lots">["images"]
     | null
     | undefined;
   let storageIds: string[] = [];

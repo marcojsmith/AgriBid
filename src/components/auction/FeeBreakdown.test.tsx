@@ -11,12 +11,12 @@ vi.mock("lucide-react", () => ({
 const { mockUseQuery } = vi.hoisted(() => ({ mockUseQuery: vi.fn() }));
 vi.mock("convex/react", () => ({ useQuery: mockUseQuery }));
 vi.mock("convex/_generated/api", () => ({
-  api: { admin: { getAuctionFeesForUser: "admin:getAuctionFeesForUser" } },
+  api: { admin: { getLotFeesForUser: "admin:getLotFeesForUser" } },
 }));
 
 import { FeeBreakdown } from "./FeeBreakdown";
 
-const mockAuctionId = "auction123" as Id<"auctions">;
+const mockLotId = "lot123" as Id<"lots">;
 
 describe("FeeBreakdown", () => {
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe("FeeBreakdown", () => {
     mockUseQuery.mockReturnValue(undefined);
     const { container } = render(
       <FeeBreakdown
-        auctionId={mockAuctionId}
+        lotId={mockLotId}
         isWinner={true}
         isSeller={false}
       />
@@ -39,7 +39,7 @@ describe("FeeBreakdown", () => {
     mockUseQuery.mockReturnValue({ buyerFees: [], sellerFees: [] });
     const { container } = render(
       <FeeBreakdown
-        auctionId={mockAuctionId}
+        lotId={mockLotId}
         isWinner={true}
         isSeller={false}
       />
@@ -68,7 +68,7 @@ describe("FeeBreakdown", () => {
     });
     const { container } = render(
       <FeeBreakdown
-        auctionId={mockAuctionId}
+        lotId={mockLotId}
         isWinner={false}
         isSeller={false}
       />
@@ -90,7 +90,7 @@ describe("FeeBreakdown", () => {
     });
     render(
       <FeeBreakdown
-        auctionId={mockAuctionId}
+        lotId={mockLotId}
         isWinner={true}
         isSeller={false}
       />
@@ -113,7 +113,7 @@ describe("FeeBreakdown", () => {
     });
     render(
       <FeeBreakdown
-        auctionId={mockAuctionId}
+        lotId={mockLotId}
         isWinner={false}
         isSeller={true}
       />
@@ -142,7 +142,7 @@ describe("FeeBreakdown", () => {
       ],
     });
     render(
-      <FeeBreakdown auctionId={mockAuctionId} isWinner={true} isSeller={true} />
+      <FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={true} />
     );
     expect(screen.getByText("Your Fees (as Buyer)")).toBeInTheDocument();
     expect(screen.getByText("Your Fees (as Seller)")).toBeInTheDocument();
@@ -168,7 +168,7 @@ describe("FeeBreakdown", () => {
     });
     render(
       <FeeBreakdown
-        auctionId={mockAuctionId}
+        lotId={mockLotId}
         isWinner={true}
         isSeller={false}
       />
@@ -196,7 +196,7 @@ describe("FeeBreakdown", () => {
     });
     render(
       <FeeBreakdown
-        auctionId={mockAuctionId}
+        lotId={mockLotId}
         isWinner={false}
         isSeller={true}
       />
@@ -204,13 +204,13 @@ describe("FeeBreakdown", () => {
     expect(screen.getByText(/R\s*600/)).toBeInTheDocument();
   });
 
-  it('passes "skip" to useQuery when auctionId is undefined', () => {
+  it('passes "skip" to useQuery when lotId is undefined', () => {
     mockUseQuery.mockReturnValue({ buyerFees: [], sellerFees: [] });
     render(
-      <FeeBreakdown auctionId={undefined} isWinner={true} isSeller={false} />
+      <FeeBreakdown lotId={undefined} isWinner={true} isSeller={false} />
     );
     expect(mockUseQuery).toHaveBeenCalledWith(
-      "admin:getAuctionFeesForUser",
+      "admin:getLotFeesForUser",
       "skip"
     );
   });

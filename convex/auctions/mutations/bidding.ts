@@ -17,7 +17,7 @@ export const BID_COOLDOWN_MS = 1000;
  * Handler for placing a bid.
  * @param ctx - Mutation context
  * @param args - Arguments for placing a bid
- * @param args.auctionId - The ID of the auction
+ * @param args.lotId - The ID of the lot being bid on
  * @param args.amount - The bid amount
  * @param args.maxBid - Optional maximum bid for proxy bidding
  * @returns The result of the bid placement
@@ -25,7 +25,7 @@ export const BID_COOLDOWN_MS = 1000;
 export const placeBidHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionId: Id<"auctions">;
+    lotId: Id<"lots">;
     amount: number;
     maxBid?: number;
   }
@@ -46,29 +46,40 @@ export const placeBidHandler = async (
     );
   }
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) throw new ConvexError("Lot not found");
+
+  // A lot can only be bid on while assigned to a published auction.
+  if (lot.auctionId === undefined) {
+    throw new ConvexError("Lot is not assigned to an auction");
+  }
+
+  const auction = await ctx.db.get("auctions", lot.auctionId);
   if (!auction) throw new ConvexError("Auction not found");
-  if (auction.status !== "active") throw new ConvexError("Auction not active");
+  if (auction.status !== "published") {
+    throw new ConvexError("Auction not active");
+  }
 
   // Reject bids placed before the auction's scheduled start (issue #296).
-  if (auction.startTime && auction.startTime > Date.now()) {
+  if (auction.startTime > Date.now()) {
     throw new ConvexError("Auction has not started");
   }
 
-  // Prevent sellers from bidding on their own auction
-  if (auction.sellerId === userId) {
+  // Prevent sellers from bidding on their own lot
+  if (lot.sellerId === userId) {
     throw new ConvexError("Sellers cannot bid on their own auction");
   }
 
-  // Check if auction has expired
-  if (!auction.endTime || auction.endTime <= Date.now()) {
+  // Anti-snipe extensions push the lot's own end time past the auction window.
+  const effectiveLotEndTime = lot.extendedEndTime ?? auction.endTime;
+  if (effectiveLotEndTime <= Date.now()) {
     throw new ConvexError("Auction ended");
   }
 
   // Use handleNewBid for all bidding logic (including proxy and regular)
   const result = await handleNewBid(
     ctx,
-    args.auctionId,
+    args.lotId,
     userId,
     args.amount,
     args.maxBid
@@ -88,7 +99,7 @@ export const placeBidHandler = async (
     userId,
     type: "bid_placed",
     description: `Bid placed: R${args.amount.toLocaleString("en-ZA")}`,
-    relatedId: args.auctionId,
+    relatedId: args.lotId,
   });
 
   return {
@@ -105,7 +116,7 @@ export const placeBidHandler = async (
  */
 export const placeBid = mutation({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     amount: v.number(),
     maxBid: v.optional(v.number()), // Optional max bid for proxy bidding
   },

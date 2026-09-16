@@ -81,7 +81,7 @@ describe("AdminMarketplace Page", () => {
     totalUsers: 150,
     liveUsers: 12,
     pendingReview: 5,
-    totalAuctions: 45,
+    totalLots: 45,
     status: "healthy",
   };
 

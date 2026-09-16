@@ -4,12 +4,18 @@ import { query, mutation } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { requireAdmin, getAuthUser, resolveUserId } from "../lib/auth";
 import { logAudit } from "../admin_utils";
+import { computeResolvedDefaultFees } from "../auctions/internal";
 import type { Id } from "../_generated/dataModel";
 
 const MIN_PERCENTAGE = 0.0001;
 const MAX_PERCENTAGE = 1.0;
 const MAX_FIXED_FEE = 1000000;
 const MAX_NAME_LENGTH = 100;
+
+// Display names for fee line items derived from a lot's snapshotted auction
+// defaults (they have no `platformFees` row to draw a name from).
+const RESOLVED_BUYER_FEE_NAME = "Auction Buyer Premium";
+const RESOLVED_SELLER_FEE_NAME = "Auction Seller Commission";
 
 function validateFeeValue(feeType: string, value: number): void {
   if (feeType === "percentage") {
@@ -307,7 +313,7 @@ export const updatePlatformFee = mutation({
 
 /**
  * Soft-deletes a platform fee by marking it inactive.
- * Historical auctionFee records referencing this fee will remain.
+ * Historical lotFee records referencing this fee will remain.
  * @requires Admin authentication
  * @param feeId - ID of the fee to delete
  * @returns { success: boolean } on success
@@ -393,7 +399,7 @@ export const getFeeStats = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const allAuctionFees = await ctx.db.query("auctionFees").collect();
+    const allLotFees = await ctx.db.query("lotFees").collect();
 
     let totalFeesCollected = 0;
     let buyerFeesTotal = 0;
@@ -401,7 +407,7 @@ export const getFeeStats = query({
 
     const feeMap = new Map<string, { totalAmount: number; count: number }>();
 
-    for (const fee of allAuctionFees) {
+    for (const fee of allLotFees) {
       totalFeesCollected += fee.calculatedAmount;
 
       if (fee.appliedTo === "buyer") {
@@ -439,15 +445,15 @@ export const getFeeStats = query({
   },
 });
 
-export const getAuctionFees = query({
+export const getLotFees = query({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
   },
   returns: v.array(
     v.object({
-      _id: v.id("auctionFees"),
+      _id: v.id("lotFees"),
       _creationTime: v.number(),
-      auctionId: v.id("auctions"),
+      lotId: v.id("lots"),
       feeId: v.id("platformFees"),
       feeName: v.string(),
       appliedTo: v.union(v.literal("buyer"), v.literal("seller")),
@@ -462,8 +468,8 @@ export const getAuctionFees = query({
     await requireAdmin(ctx);
 
     const fees = await ctx.db
-      .query("auctionFees")
-      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .query("lotFees")
+      .withIndex("by_lot", (q) => q.eq("lotId", args.lotId))
       .collect();
 
     return fees;
@@ -471,17 +477,23 @@ export const getAuctionFees = query({
 });
 
 /**
- * Returns auction fees for the authenticated caller (winner or seller).
+ * Returns lot fees for the authenticated caller (winner or seller).
  * @param ctx - Query context
  * @param args - Handler arguments
- * @param args.auctionId - ID of the auction
+ * @param args.lotId - ID of the lot
  * @returns Object with buyerFees and sellerFees arrays containing feeName, feeType, rate, calculatedAmount
- * Authorization: returns empty arrays if caller is unauthenticated or is neither auction winner nor seller.
+ * Authorization: returns empty arrays if caller is unauthenticated or is neither lot winner nor seller.
  * Side effects: read-only query; filters out inactive platform fees.
+ *
+ * In addition to the persisted `platformFees`-sourced `lotFees` rows, this
+ * merges the amounts derived from the lot's snapshotted auction fee defaults
+ * (`resolvedBuyerPremiumPct`/`resolvedSellerCommissionPct`) applied to the
+ * lot's current (or, once settled, final) `currentPrice`. See
+ * `computeResolvedDefaultFees` for why those are not persisted.
  */
-export const getAuctionFeesForUserHandler = async (
+export const getLotFeesForUserHandler = async (
   ctx: QueryCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ) => {
   const authUser = await getAuthUser(ctx);
   if (!authUser) {
@@ -489,19 +501,19 @@ export const getAuctionFeesForUserHandler = async (
   }
   const callerId = resolveUserId(authUser);
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
+  const lot = await ctx.db.get("lots", args.lotId);
 
-  if (!auction) {
-    throw new Error("Auction not found");
+  if (!lot) {
+    throw new Error("Lot not found");
   }
 
-  if (auction.winnerId !== callerId && auction.sellerId !== callerId) {
+  if (lot.winnerId !== callerId && lot.sellerId !== callerId) {
     return { buyerFees: [], sellerFees: [] };
   }
 
   const fees = await ctx.db
-    .query("auctionFees")
-    .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+    .query("lotFees")
+    .withIndex("by_lot", (q) => q.eq("lotId", args.lotId))
     .collect();
 
   const activeFeeIds = (
@@ -544,12 +556,32 @@ export const getAuctionFeesForUserHandler = async (
     }
   }
 
+  // Merge the lot's snapshotted auction-default fees. `currentPrice` holds the
+  // final sale price once a lot is settled, and the current high bid beforehand.
+  for (const fee of computeResolvedDefaultFees(lot, lot.currentPrice)) {
+    const feeData = {
+      feeName:
+        fee.appliedTo === "buyer"
+          ? RESOLVED_BUYER_FEE_NAME
+          : RESOLVED_SELLER_FEE_NAME,
+      feeType: "percentage" as const,
+      rate: fee.rate,
+      calculatedAmount: fee.calculatedAmount,
+    };
+
+    if (fee.appliedTo === "buyer") {
+      buyerFees.push(feeData);
+    } else {
+      sellerFees.push(feeData);
+    }
+  }
+
   return { buyerFees, sellerFees };
 };
 
-export const getAuctionFeesForUser = query({
+export const getLotFeesForUser = query({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
   },
   returns: v.object({
     buyerFees: v.array(
@@ -569,5 +601,5 @@ export const getAuctionFeesForUser = query({
       })
     ),
   }),
-  handler: getAuctionFeesForUserHandler,
+  handler: getLotFeesForUserHandler,
 });

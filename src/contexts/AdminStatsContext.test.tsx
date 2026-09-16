@@ -14,8 +14,8 @@ vi.mock("convex/react", () => ({
 
 describe("AdminStatsContext", () => {
   const mockStats = {
-    totalAuctions: 100,
-    activeAuctions: 50,
+    totalLots: 100,
+    activeLots: 50,
     pendingReview: 10,
     totalUsers: 1000,
     verifiedSellers: 200,
@@ -45,7 +45,7 @@ describe("AdminStatsContext", () => {
 
       const TestComponent = () => {
         const stats = useAdminStats();
-        return <div>{stats?.totalAuctions}</div>;
+        return <div>{stats?.totalLots}</div>;
       };
 
       const { container } = render(

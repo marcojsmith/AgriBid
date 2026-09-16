@@ -91,12 +91,12 @@ const mockSeller = {
 };
 
 interface SellerInfoTestProps {
-  auctionId?: string;
+  lotId?: string;
   isOwnListing?: boolean;
 }
 
 const renderSellerInfo = ({
-  auctionId,
+  lotId,
   isOwnListing,
 }: SellerInfoTestProps = {}) => {
   return render(
@@ -107,7 +107,7 @@ const renderSellerInfo = ({
           element={
             <SellerInfo
               sellerId="seller123"
-              auctionId={auctionId as Id<"auctions"> | undefined}
+              lotId={lotId as Id<"lots"> | undefined}
               isOwnListing={isOwnListing}
             />
           }
@@ -235,7 +235,7 @@ describe("SellerInfo", () => {
         mockStartConversation
       );
 
-      renderSellerInfo({ auctionId: "auction1" });
+      renderSellerInfo({ lotId: "auction1" });
 
       fireEvent.click(
         screen.getByRole("button", { name: /message verified farmer/i })
@@ -249,14 +249,14 @@ describe("SellerInfo", () => {
         expect(mockStartConversation).toHaveBeenCalledWith({
           recipientId: "seller123",
           initialMessage: "Hi, is the tractor still available?",
-          auctionId: "auction1",
+          lotId: "auction1",
         });
         expect(toast.success).toHaveBeenCalledWith("Message sent");
         expect(screen.getByTestId("messages-thread")).toBeInTheDocument();
       });
     });
 
-    it("omits auctionId when none is provided", async () => {
+    it("omits lotId when none is provided", async () => {
       const mockStartConversation = vi.fn().mockResolvedValue("conv_new_123");
       vi.mocked(convexReact.useMutation as Mock).mockReturnValue(
         mockStartConversation
@@ -276,7 +276,7 @@ describe("SellerInfo", () => {
         expect(mockStartConversation).toHaveBeenCalledWith({
           recipientId: "seller123",
           initialMessage: "Hello",
-          auctionId: undefined,
+          lotId: undefined,
         });
       });
     });

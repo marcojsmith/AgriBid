@@ -124,7 +124,7 @@ async function insertMessageAndNotify(
  * Handler for starting (or reusing) a conversation with another user.
  * The caller is the buyer/initiator. If a conversation already exists between
  * the two users (in either direction) it is reused (re-pointed at a newly
- * supplied `auctionId`, if any), otherwise a new one is created; the initial
+ * supplied `lotId`, if any), otherwise a new one is created; the initial
  * message is inserted either way via the shared rate-limited, notifying
  * `insertMessageAndNotify` path.
  *
@@ -132,7 +132,7 @@ async function insertMessageAndNotify(
  * @param args - Arguments for starting a conversation
  * @param args.recipientId - The userId of the seller being contacted
  * @param args.initialMessage - The first message content (must be non-blank)
- * @param args.auctionId - Optional auction the conversation is about
+ * @param args.lotId - Optional lot the conversation is about
  * @returns The conversation ID
  * @throws ConvexError when the sender exceeds the per-minute message rate limit
  */
@@ -141,7 +141,7 @@ export const startConversationHandler = async (
   args: {
     recipientId: string;
     initialMessage: string;
-    auctionId?: Id<"auctions">;
+    lotId?: Id<"lots">;
   }
 ): Promise<Id<"conversations">> => {
   const buyerId = await getAuthenticatedUserId(ctx);
@@ -187,17 +187,17 @@ export const startConversationHandler = async (
   let conversationId: Id<"conversations">;
   if (existing) {
     conversationId = existing._id;
-    // Re-point the reused thread at the newly supplied auction (if any)
-    // without ever clearing an existing auctionId with an explicit undefined.
+    // Re-point the reused thread at the newly supplied lot (if any)
+    // without ever clearing an existing lotId with an explicit undefined.
     await ctx.db.patch("conversations", conversationId, {
       lastMessageAt: now,
-      ...(args.auctionId ? { auctionId: args.auctionId } : {}),
+      ...(args.lotId ? { lotId: args.lotId } : {}),
     });
   } else {
     conversationId = await ctx.db.insert("conversations", {
       buyerId,
       sellerId: args.recipientId,
-      auctionId: args.auctionId,
+      lotId: args.lotId,
       lastMessageAt: now,
       createdAt: now,
     });
@@ -224,7 +224,7 @@ export const startConversation = mutation({
   args: {
     recipientId: v.string(),
     initialMessage: v.string(),
-    auctionId: v.optional(v.id("auctions")),
+    lotId: v.optional(v.id("lots")),
   },
   returns: v.id("conversations"),
   handler: startConversationHandler,
@@ -367,7 +367,7 @@ export const getConversationsHandler = async (
         _creationTime: conversation._creationTime,
         buyerId: conversation.buyerId,
         sellerId: conversation.sellerId,
-        auctionId: conversation.auctionId,
+        lotId: conversation.lotId,
         lastMessageAt: conversation.lastMessageAt,
         createdAt: conversation.createdAt,
         otherParticipantId,
@@ -402,7 +402,7 @@ export const getConversations = query({
         _creationTime: v.number(),
         buyerId: v.string(),
         sellerId: v.string(),
-        auctionId: v.optional(v.id("auctions")),
+        lotId: v.optional(v.id("lots")),
         lastMessageAt: v.number(),
         createdAt: v.number(),
         otherParticipantId: v.string(),

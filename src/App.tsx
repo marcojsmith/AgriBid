@@ -12,7 +12,15 @@ const AuctionDetail = lazy(() => import("./pages/AuctionDetail"));
 const Sell = lazy(() => import("./pages/Sell"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminModeration = lazy(() => import("./pages/admin/AdminModeration"));
+const AdminLots = lazy(() => import("./pages/admin/AdminLots"));
 const AdminAuctions = lazy(() => import("./pages/admin/AdminAuctions"));
+const AdminAuctionDetail = lazy(
+  () => import("./pages/admin/AdminAuctionDetail")
+);
+const AuctionGallery = lazy(() => import("./pages/AuctionGallery"));
+const AuctionContainerDetail = lazy(
+  () => import("./pages/AuctionContainerDetail")
+);
 const AdminMarketplace = lazy(() => import("./pages/admin/AdminMarketplace"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
@@ -68,12 +76,14 @@ const PageLoader = () => (
  * - "/sellers/:userId/listings/sold" → SellerListings (past sales)
  * - "/sell" → Sell
  * - "/faq" → FAQ
+ * - "/auctions" → AuctionGallery (public gallery of past/present auctions)
+ * - "/auctions/:id" → AuctionContainerDetail (public lot list for one auction)
  * - "/watchlist" → Watchlist (protected, allowedRole="any")
  * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
  * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
  * - "/admin/*" → Admin sub-routes (protected, allowedRole="admin")
  *   - /admin, /admin/dashboard, /admin/moderation
- *   - /admin/marketplace, /admin/auctions, /admin/users
+ *   - /admin/marketplace, /admin/lots, /admin/auctions, /admin/auctions/:id, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
  *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq, /admin/fees
  * - "/kyc" → KYC (protected, allowedRole="any")
@@ -105,6 +115,8 @@ function App() {
             />
             <Route path="/sell" element={<Sell />} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path="/auctions" element={<AuctionGallery />} />
+            <Route path="/auctions/:id" element={<AuctionContainerDetail />} />
             <Route
               path="/watchlist"
               element={
@@ -162,10 +174,26 @@ function App() {
               }
             />
             <Route
+              path="/admin/lots"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminLots />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/auctions"
               element={
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAuctions />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/auctions/:id"
+              element={
+                <RoleProtectedRoute allowedRole="admin">
+                  <AdminAuctionDetail />
                 </RoleProtectedRoute>
               }
             />

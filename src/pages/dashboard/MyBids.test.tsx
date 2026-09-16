@@ -132,7 +132,7 @@ describe("MyBids Page", () => {
       minIncrement: 100,
       myHighestBid: 3000,
       bidCount: 5,
-      status: "active",
+      status: "assigned",
       endTime: Date.now() + 10000,
       isWinning: true,
       isWon: false,
@@ -150,7 +150,7 @@ describe("MyBids Page", () => {
       minIncrement: 100,
       myHighestBid: 2000,
       bidCount: 3,
-      status: "active",
+      status: "assigned",
       endTime: Date.now() + 20000,
       isWinning: false,
       isWon: false,
@@ -455,7 +455,7 @@ describe("MyBids Page", () => {
     renderMyBids();
 
     // Click "Ended" filter when there are no ended auctions
-    const noEndedAuctions = mockAuctions.filter((a) => a.status === "active");
+    const noEndedAuctions = mockAuctions.filter((a) => a.status === "assigned");
     (usePaginatedQuery as Mock).mockReturnValue({
       results: noEndedAuctions,
       status: "Exhausted",

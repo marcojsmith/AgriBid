@@ -3,10 +3,10 @@ import React, { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import type { Doc } from "convex/_generated/dataModel";
 import { Gavel, Info, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
+import type { LotDetail } from "@/types/auction";
 import { BidConfirmation } from "@/components/BidConfirmation";
 import { Badge } from "@/components/ui/badge";
 import { CountdownTimer } from "@/components/CountdownTimer";
@@ -17,13 +17,35 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
-import { useAuctionStarted } from "@/hooks/useAuctionStarted";
+import {
+  getLotLiveWindow,
+  useLotLiveWindow,
+} from "@/hooks/useLotLiveWindow";
 
 import { BidForm } from "./BidForm";
 
 interface BiddingPanelProps {
-  auction: Doc<"auctions">;
+  auction: LotDetail;
 }
+
+const UNAVAILABLE_COPY: Record<string, { title: string; description: string }> =
+  {
+    draft: {
+      title: "Listing Draft",
+      description:
+        "This listing is still being prepared and is not yet available for bidding.",
+    },
+    pending_review: {
+      title: "Under Review",
+      description:
+        "This listing is being reviewed by our team before it can be published.",
+    },
+    approved: {
+      title: "Awaiting Auction",
+      description:
+        "This item has been approved and is awaiting assignment to an auction.",
+    },
+  };
 
 /**
  * Bidding panel component for auction detail pages.
@@ -33,7 +55,7 @@ interface BiddingPanelProps {
  * part of the public bidding API.
  *
  * @param props - The component props
- * @param props.auction - The auction object containing all auction data (status, currentPrice, minIncrement, endTime, etc.)
+ * @param props.auction - The lot detail object (status, currentPrice, minIncrement, joined auction window, etc.)
  * @returns A React element rendering the bidding panel with bid form and confirmation
  */
 export const BiddingPanel = ({
@@ -43,7 +65,7 @@ export const BiddingPanel = ({
   const userData = useQuery(api.users.getMyProfile);
   const myProxyBid = useQuery(
     api.auctions.getMyProxyBid,
-    session ? { auctionId: auction._id } : "skip"
+    session ? { lotId: auction._id } : "skip"
   );
   const location = useLocation();
   const navigate = useNavigate();
@@ -62,11 +84,7 @@ export const BiddingPanel = ({
     },
   });
 
-  const isEnded =
-    auction.status !== "active" ||
-    (auction.endTime ? auction.endTime <= Date.now() : true);
-  const hasStarted = useAuctionStarted(auction.startTime);
-  const isNotStarted = !!auction.startTime && !hasStarted;
+  const liveWindow = useLotLiveWindow(auction);
   const nextMinBid = auction.currentPrice + auction.minIncrement;
 
   const isHighlighted = usePriceHighlight(auction.currentPrice);
@@ -78,7 +96,51 @@ export const BiddingPanel = ({
     : (userData?.profile?.isVerified ?? false);
   const kycStatus = isProfileLoading ? undefined : userData?.profile?.kycStatus;
 
-  if (auction.status !== "active") {
+  if (liveWindow.isUnavailable) {
+    const copy =
+      UNAVAILABLE_COPY[auction.status] ?? UNAVAILABLE_COPY.draft;
+
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="text-center space-y-2">
+          <Badge
+            variant="outline"
+            className="font-semibold px-4 py-1.5 text-xs mb-2"
+          >
+            {copy.title}
+          </Badge>
+          <h3 className="text-3xl font-semibold tabular-nums text-primary tracking-tighter">
+            {formatCurrency(auction.startingPrice)}
+          </h3>
+          <p className="text-xs font-medium text-muted-foreground">
+            Starting Price
+          </p>
+        </div>
+
+        <div className="bg-muted/30 border rounded-md p-6 text-center space-y-4">
+          <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+            <Info className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div className="space-y-1">
+            <p className="font-semibold text-sm">Not Yet Available</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              {copy.description}
+            </p>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          className="w-full h-14 rounded-md font-medium border"
+          asChild
+        >
+          <Link to="/">Explore Other Auctions</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (liveWindow.isEnded) {
     const isWon = session?.user.id === auction.winnerId;
 
     return (
@@ -178,20 +240,15 @@ export const BiddingPanel = ({
   const handleBidConfirm = async () => {
     if (!pendingBid.amount) return;
 
-    // Fresh check for auction end state to prevent late bids
-    const freshIsEnded =
-      auction.status !== "active" ||
-      (auction.endTime ? auction.endTime <= Date.now() : true);
+    // Fresh check for auction window state to prevent late/early bids
+    const freshWindow = getLotLiveWindow(auction, Date.now());
 
-    if (freshIsEnded) {
-      toast.error("This auction has ended");
-      setIsConfirmOpen(false);
-      setPendingBid({ amount: 0 });
-      return;
-    }
-
-    if (auction.startTime && auction.startTime > Date.now()) {
-      toast.error("This auction has not started yet");
+    if (!freshWindow.isLive) {
+      toast.error(
+        freshWindow.isUpcoming
+          ? "This auction has not started yet"
+          : "This auction has ended"
+      );
       setIsConfirmOpen(false);
       setPendingBid({ amount: 0 });
       return;
@@ -202,7 +259,7 @@ export const BiddingPanel = ({
 
     try {
       const result = await placeBid({
-        auctionId: auction._id,
+        lotId: auction._id,
         amount: pendingBid.amount,
         maxBid: pendingBid.maxBid,
       });
@@ -234,7 +291,7 @@ export const BiddingPanel = ({
           </p>
           <div
             className={`flex items-baseline gap-2 rounded-md p-2 border transition-colors duration-700 ${
-              !isEnded && isHighlighted
+              isHighlighted
                 ? "bg-success/10 border-success/30"
                 : "border-transparent"
             }`}
@@ -242,7 +299,7 @@ export const BiddingPanel = ({
             <span className="text-4xl font-bold tabular-nums text-primary tracking-tighter">
               {formatCurrency(auction.currentPrice)}
             </span>
-            {!isEnded && !isNotStarted && (
+            {liveWindow.isLive && (
               <Badge
                 variant="outline"
                 className="bg-primary/5 text-primary border-primary/20 animate-pulse"
@@ -254,32 +311,27 @@ export const BiddingPanel = ({
         </div>
         <div className="text-right space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
-            {isNotStarted ? "Starts In" : "Time Remaining"}
+            {liveWindow.isUpcoming ? "Starts In" : "Time Remaining"}
           </p>
           <div className="text-xl font-bold">
             <CountdownTimer
-              endTime={isNotStarted ? auction.startTime : auction.endTime}
+              endTime={
+                liveWindow.isUpcoming
+                  ? liveWindow.effectiveStartTime
+                  : liveWindow.effectiveEndTime
+              }
             />
           </div>
         </div>
       </div>
 
-      {isNotStarted ? (
+      {liveWindow.isUpcoming ? (
         <div className="bg-muted/50 border border-dashed rounded-md p-6 text-center">
           <p className="font-medium text-muted-foreground text-sm">
             Bidding Not Yet Open
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             This auction will open for bidding once it starts.
-          </p>
-        </div>
-      ) : isEnded ? (
-        <div className="bg-muted/50 border border-dashed rounded-md p-6 text-center">
-          <p className="font-medium text-muted-foreground text-sm">
-            Auction Ended
-          </p>
-          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            Final Price: {formatCurrency(auction.currentPrice)}
           </p>
         </div>
       ) : (

@@ -352,33 +352,36 @@ export const placeBid = mutation({
 });
 ```
 
-#### Query: `getActiveAuctions`
+#### Query: `getActiveLots`
 
 ```typescript
-export const getActiveAuctions = query({
+export const getActiveLots = query({
   args: {},
   handler: async (ctx) => {
+    // Lots live in `lots`; a lot is "active" when it is `assigned` and its
+    // parent auction is `published` and currently in-window (liveness is
+    // derived, not stored). See convex/auctions/queries/browse.ts.
     return await ctx.db
-      .query("auctions")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .query("lots")
+      .withIndex("by_status", (q) => q.eq("status", "assigned"))
       .collect();
   },
 });
 ```
 
-#### Scheduled Function: `settleAuctions`
+#### Scheduled Function: `settleExpiredLots`
 
 ```typescript
-// convex/cron.ts
+// convex/crons.ts
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
 crons.interval(
-  "settle_auctions",
+  "settle expired auctions",
   { minutes: 1 }, // Check every minute
-  internal.auctions.settleExpiredAuctions
+  internal.auctions.settleExpiredLots
 );
 
 export default crons;
@@ -455,8 +458,8 @@ export default crons;
      - Check bid > currentPrice
      - Implement "soft close" (extend by 2 min if bid in final 2 min)
      - Update auction's currentPrice and endTime
-   - Query `getActiveAuctions` filtered by status
-   - Scheduled function (cron) to settle expired auctions every minute
+   - Query `getActiveLots` derived from lots + their parent auction window
+   - Scheduled function (cron) to settle expired lots every minute
 
 4. **Frontend Components (React + TypeScript)**
    - **Home Page**:

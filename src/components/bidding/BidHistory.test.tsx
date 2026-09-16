@@ -13,15 +13,21 @@ vi.mock("convex/react", () => ({
 vi.mock("convex/_generated/api", () => ({
   api: {
     auctions: {
-      getAuctionById: { _path: "auctions:getAuctionById" },
-      getAuctionBidCount: { _path: "auctions:getAuctionBidCount" },
-      getAuctionBids: { _path: "auctions:getAuctionBids" },
+      queries: {
+        browse: {
+          getLotById: { _path: "auctions/queries/browse:getLotById" },
+        },
+        bids: {
+          getLotBidCount: { _path: "auctions/queries/bids:getLotBidCount" },
+          getLotBids: { _path: "auctions/queries/bids:getLotBids" },
+        },
+      },
     },
   },
 }));
 
 describe("BidHistory", () => {
-  const mockAuctionId = "auction123" as Id<"auctions">;
+  const mockLotId = "lot123" as Id<"lots">;
   const mockBids = [
     {
       _id: "bid1",
@@ -40,9 +46,9 @@ describe("BidHistory", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useQuery as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef._path === "auctions:getAuctionById")
+      if (apiRef._path === "auctions/queries/browse:getLotById")
         return { currentPrice: 2000 };
-      if (apiRef._path === "auctions:getAuctionBidCount") return 2;
+      if (apiRef._path === "auctions/queries/bids:getLotBidCount") return 2;
       return null;
     });
     (usePaginatedQuery as Mock).mockReturnValue({
@@ -59,7 +65,7 @@ describe("BidHistory", () => {
       loadMore: vi.fn(),
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     // Open accordion
     fireEvent.click(screen.getByText(/Bid History/i));
 
@@ -69,7 +75,7 @@ describe("BidHistory", () => {
   });
 
   it("renders bid list", () => {
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.getByText("J*** D**")).toBeInTheDocument();
@@ -79,7 +85,7 @@ describe("BidHistory", () => {
   });
 
   it("anonymizes names correctly", () => {
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.getByText("J*** D**")).toBeInTheDocument();
@@ -92,7 +98,7 @@ describe("BidHistory", () => {
       loadMore: vi.fn(),
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.getByText(/Load More Bids/i)).toBeInTheDocument();
@@ -113,7 +119,7 @@ describe("BidHistory", () => {
       loadMore: vi.fn(),
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.getByText("Anonymous")).toBeInTheDocument();
@@ -134,7 +140,7 @@ describe("BidHistory", () => {
       loadMore: vi.fn(),
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.getByText("A B")).toBeInTheDocument();
@@ -147,7 +153,7 @@ describe("BidHistory", () => {
       loadMore: vi.fn(),
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -160,7 +166,7 @@ describe("BidHistory", () => {
       loadMore: vi.fn(),
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -168,11 +174,11 @@ describe("BidHistory", () => {
 
   it("handles auction fallback for highest bid amount", () => {
     (useQuery as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef._path === "auctions:getAuctionById") return null;
+      if (apiRef._path === "auctions/queries/browse:getLotById") return null;
       return null;
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     // Should render without crashing, highestBidAmount should be -1
@@ -181,11 +187,11 @@ describe("BidHistory", () => {
 
   it("handles missing totalBids", () => {
     (useQuery as Mock).mockImplementation((apiRef: { _path: string }) => {
-      if (apiRef._path === "auctions:getAuctionBidCount") return undefined;
+      if (apiRef._path === "auctions/queries/bids:getLotBidCount") return undefined;
       return null;
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     expect(screen.queryByText(/Showing/i)).not.toBeInTheDocument();
@@ -199,7 +205,7 @@ describe("BidHistory", () => {
       loadMore,
     });
 
-    render(<BidHistory auctionId={mockAuctionId} />);
+    render(<BidHistory lotId={mockLotId} />);
     fireEvent.click(screen.getByText(/Bid History/i));
 
     fireEvent.click(screen.getByText(/Load More Bids/i));

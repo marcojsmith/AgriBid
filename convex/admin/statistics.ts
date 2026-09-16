@@ -20,16 +20,16 @@ import { MS_PER_DAY } from "../constants";
 const RECENT_DAYS_THRESHOLD = 7;
 
 /**
- * Computes total sold auction sums and counts via cursor-based pagination.
+ * Computes total sold lot sums and counts via cursor-based pagination.
  *
- * Full pagination is required because sold auctions can exceed Convex's single-query
- * document limit (~8192). This helper pages through all sold auctions to accurately
+ * Full pagination is required because sold lots can exceed Convex's single-query
+ * document limit (~8192). This helper pages through all sold lots to accurately
  * compute salesVolume and soldCount without truncation.
  *
  * @param ctx - Convex mutation or query context used for DB operations
- * @returns Promise resolving to { sum: total currentPrice, count: number of sold auctions }
+ * @returns Promise resolving to { sum: total currentPrice, count: number of sold lots }
  */
-async function computeSoldAuctions(
+async function computeSoldLots(
   ctx: MutationCtx | QueryCtx
 ): Promise<{ sum: number; count: number }> {
   let sum = 0;
@@ -38,11 +38,11 @@ async function computeSoldAuctions(
   let isDone = false;
   while (!isDone) {
     const page = await ctx.db
-      .query("auctions")
+      .query("lots")
       .withIndex("by_status", (q) => q.eq("status", "sold"))
       .paginate({ numItems: 500, cursor });
-    for (const a of page.page) {
-      sum += a.currentPrice;
+    for (const lot of page.page) {
+      sum += lot.currentPrice;
       count++;
     }
     cursor = page.continueCursor;
@@ -107,7 +107,7 @@ export const getFinancialStats = query({
     recentSales: v.object({
       page: v.array(
         v.object({
-          id: v.id("auctions"),
+          id: v.id("lots"),
           title: v.string(),
           amount: v.number(),
           fees: v.array(
@@ -133,7 +133,7 @@ export const getFinancialStats = query({
     await requireAdmin(ctx);
 
     try {
-      const counter = await getCounter(ctx, "auctions");
+      const counter = await getCounter(ctx, "lots");
       const salesVolume = counter?.salesVolume;
       const soldCount = counter?.soldCount;
 
@@ -143,7 +143,7 @@ export const getFinancialStats = query({
 
       if (salesVolume == null || soldCount == null) {
         partialResults = true;
-        const computed = await computeSoldAuctions(ctx);
+        const computed = await computeSoldLots(ctx);
         totalSalesVolume = computed.sum;
         auctionCount = computed.count;
       } else {
@@ -151,12 +151,12 @@ export const getFinancialStats = query({
         auctionCount = soldCount;
         const liveSoldCount = await countQuery(
           ctx.db
-            .query("auctions")
+            .query("lots")
             .withIndex("by_status", (q) => q.eq("status", "sold"))
         );
         if (liveSoldCount !== soldCount) {
           partialResults = true;
-          const computed = await computeSoldAuctions(ctx);
+          const computed = await computeSoldLots(ctx);
           totalSalesVolume = computed.sum;
           auctionCount = computed.count;
         }
@@ -167,22 +167,21 @@ export const getFinancialStats = query({
       const parsed = cursor ? parseInt(cursor, 10) : 0;
       const startIndex = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 
-      const [recentSoldAuctions, totalSoldCount, allAuctionFees] =
-        await Promise.all([
+      const [recentSoldLots, totalSoldCount, allLotFees] = await Promise.all([
+        ctx.db
+          .query("lots")
+          .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+          .order("desc")
+          .take(startIndex + numItems),
+        countQuery(
           ctx.db
-            .query("auctions")
+            .query("lots")
             .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
-            .order("desc")
-            .take(startIndex + numItems),
-          countQuery(
-            ctx.db
-              .query("auctions")
-              .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
-          ),
-          ctx.db.query("auctionFees").collect(),
-        ]);
+        ),
+        ctx.db.query("lotFees").collect(),
+      ]);
 
-      const auctionFeeMap = new Map<
+      const lotFeeMap = new Map<
         string,
         {
           feeName: string;
@@ -194,14 +193,16 @@ export const getFinancialStats = query({
       let buyerFeesTotal = 0;
       let sellerFeesTotal = 0;
 
-      for (const fee of allAuctionFees) {
+      for (const fee of allLotFees) {
         if (fee.appliedTo === "buyer") {
           buyerFeesTotal += fee.calculatedAmount;
         } else {
           sellerFeesTotal += fee.calculatedAmount;
         }
 
-        const existing = auctionFeeMap.get(fee.auctionId);
+        // Fees and recentSales are both lot-scoped, so they key directly on
+        // the lot id.
+        const existing = lotFeeMap.get(fee.lotId);
         if (existing) {
           existing.push({
             feeName: fee.feeName,
@@ -209,7 +210,7 @@ export const getFinancialStats = query({
             amount: fee.calculatedAmount,
           });
         } else {
-          auctionFeeMap.set(fee.auctionId, [
+          lotFeeMap.set(fee.lotId, [
             {
               feeName: fee.feeName,
               appliedTo: fee.appliedTo,
@@ -221,12 +222,12 @@ export const getFinancialStats = query({
 
       const totalFeesCollected = buyerFeesTotal + sellerFeesTotal;
 
-      const allSales = recentSoldAuctions.map((a) => ({
-        id: a._id,
-        title: a.title,
-        amount: a.currentPrice,
-        fees: auctionFeeMap.get(a._id) ?? [],
-        date: a.endTime ?? 0,
+      const allSales = recentSoldLots.map((lot) => ({
+        id: lot._id,
+        title: lot.title,
+        amount: lot.currentPrice,
+        fees: lotFeeMap.get(lot._id) ?? [],
+        date: lot.settledAt ?? 0,
       }));
 
       const page = allSales.slice(startIndex);
@@ -265,24 +266,36 @@ export const initializeCountersHandler = async (ctx: MutationCtx) => {
   await requireAdmin(ctx);
 
   const [
-    totalAuctions,
-    activeAuctions,
-    pendingAuctions,
+    totalLots,
+    approvedLots,
+    assignedLots,
+    pendingLots,
+    draftLots,
     totalUsers,
     verifiedSellers,
     kycPending,
     activeWatch,
   ] = await Promise.all([
-    countQuery(ctx.db.query("auctions")),
+    countQuery(ctx.db.query("lots")),
     countQuery(
       ctx.db
-        .query("auctions")
-        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .query("lots")
+        .withIndex("by_status", (q) => q.eq("status", "approved"))
     ),
     countQuery(
       ctx.db
-        .query("auctions")
+        .query("lots")
+        .withIndex("by_status", (q) => q.eq("status", "assigned"))
+    ),
+    countQuery(
+      ctx.db
+        .query("lots")
         .withIndex("by_status", (q) => q.eq("status", "pending_review"))
+    ),
+    countQuery(
+      ctx.db
+        .query("lots")
+        .withIndex("by_status", (q) => q.eq("status", "draft"))
     ),
     countUsers(ctx),
     countUsers(ctx, { isVerified: true }),
@@ -290,13 +303,19 @@ export const initializeCountersHandler = async (ctx: MutationCtx) => {
     countQuery(ctx.db.query("watchlist")),
   ]);
 
-  const { sum: soldSum, count: soldCount } = await computeSoldAuctions(ctx);
+  // Step-3 counter semantics: `approved` and `assigned` lots are both live.
+  const activeLots = approvedLots + assignedLots;
+
+  const { sum: soldSum, count: soldCount } = await computeSoldLots(ctx);
 
   await Promise.all([
-    upsertCounter(ctx, "auctions", {
-      total: totalAuctions,
-      active: activeAuctions,
-      pending: pendingAuctions,
+    // The global item counter is `lots` (mirrors step-3's adjustLotStatusCounters).
+    // No `auctions` container counter is written because nothing reads one.
+    upsertCounter(ctx, "lots", {
+      total: totalLots,
+      active: activeLots,
+      pending: pendingLots,
+      draft: draftLots,
       salesVolume: soldSum,
       soldCount,
     }),
@@ -331,9 +350,9 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
   try {
-    const [auctionCounter, profileCounter, watchlistCounter, liveUsers] =
+    const [lotCounter, profileCounter, watchlistCounter, liveUsers] =
       await Promise.all([
-        getCounter(ctx, "auctions"),
+        getCounter(ctx, "lots"),
         getCounter(ctx, "profiles"),
         getCounter(ctx, "watchlist"),
         countOnlineUsers(ctx),
@@ -341,7 +360,7 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
 
     // If counters are missing, we return zeros but log a warning
     let status: "partial" | "healthy" = "healthy";
-    if (!auctionCounter || !profileCounter || !watchlistCounter) {
+    if (!lotCounter || !profileCounter || !watchlistCounter) {
       console.warn(
         "Admin stats: Some counters are missing. Run initializeCounters."
       );
@@ -349,9 +368,9 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
     }
 
     return {
-      totalAuctions: auctionCounter?.total ?? 0,
-      activeAuctions: auctionCounter?.active ?? 0,
-      pendingReview: auctionCounter?.pending ?? 0,
+      totalLots: lotCounter?.total ?? 0,
+      activeLots: lotCounter?.active ?? 0,
+      pendingReview: lotCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
       verifiedSellers: profileCounter?.verified ?? 0,
       kycPending: profileCounter?.pending ?? 0,
@@ -372,8 +391,8 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
 export const getAdminStats = query({
   args: {},
   returns: v.object({
-    totalAuctions: v.number(),
-    activeAuctions: v.number(),
+    totalLots: v.number(),
+    activeLots: v.number(),
     pendingReview: v.number(),
     totalUsers: v.number(),
     verifiedSellers: v.number(),

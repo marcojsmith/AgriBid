@@ -39,7 +39,6 @@ vi.mock("../../lib/auth", () => {
 
 vi.mock("../../admin_utils", () => ({
   updateCounter: vi.fn(),
-  adjustStatusCounters: vi.fn(),
   logAudit: vi.fn(),
 }));
 
@@ -116,17 +115,17 @@ describe("Delete Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { front: "img1" },
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
 
       const result = await deleteDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "a1" as Id<"lots">,
         }
       );
 
       expect(result.success).toBe(true);
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "a1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", "a1");
     });
 
     it("should throw if not draft", async () => {
@@ -135,14 +134,14 @@ describe("Delete Mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
         sellerId: userId,
-        status: "active",
-      } as Doc<"auctions">);
+        status: "approved",
+      } as Doc<"lots">);
 
       await expect(
         deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "a1" as Id<"lots">,
         })
-      ).rejects.toThrow("Only draft auctions can be deleted");
+      ).rejects.toThrow("Only draft lots can be deleted");
     });
 
     it("should handle condition report deletion failure gracefully", async () => {
@@ -153,18 +152,18 @@ describe("Delete Mutations", () => {
         sellerId: userId,
         status: "draft",
         conditionReportUrl: "ref1",
-      } as Doc<"auctions">);
+      } as Doc<"lots">);
       mockCtx.storage.delete.mockRejectedValue(new Error("Storage Error"));
 
       const spy = vi.spyOn(console, "warn").mockImplementation(vi.fn());
 
       const result = await deleteDraftHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
 
       expect(result.success).toBe(true);
-      expect(mockCtx.db.delete).toHaveBeenCalledWith("auctions", "a1");
+      expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", "a1");
       expect(spy).toHaveBeenCalledWith(
         expect.stringContaining("Failed to delete condition report"),
         expect.anything()
@@ -177,9 +176,9 @@ describe("Delete Mutations", () => {
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "a1" as Id<"lots">,
         })
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
   });
 
@@ -196,11 +195,11 @@ describe("Delete Mutations", () => {
 
       const result = await deleteConditionReportHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(true);
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("s1");
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "a1", {
         conditionReportUrl: undefined,
       });
     });
@@ -210,9 +209,9 @@ describe("Delete Mutations", () => {
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         deleteConditionReportHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "a1" as Id<"lots">,
         })
-      ).rejects.toThrow("Auction not found");
+      ).rejects.toThrow("Lot not found");
     });
 
     it("should warn if delete fails", async () => {
@@ -229,11 +228,11 @@ describe("Delete Mutations", () => {
 
       const result = await deleteConditionReportHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"auctions"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(true);
       expect(spy).toHaveBeenCalled();
-      expect(mockCtx.db.patch).toHaveBeenCalledWith("auctions", "a1", {
+      expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "a1", {
         conditionReportUrl: undefined,
       });
       spy.mockRestore();

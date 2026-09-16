@@ -4,44 +4,44 @@ import {
   paginationOptsValidator,
   query,
   type QueryCtx,
-  AuctionSummaryValidator,
+  LotSummaryValidator,
   calculateUserBidStats,
   getAuthenticatedUserId,
   unauthenticatedPaginatedResult,
   type PaginationOptions,
 } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { BidValidator, toAuctionSummary } from "../helpers";
+import { BidValidator, toLotSummary } from "../helpers";
 import { countQuery } from "../../admin_utils";
 import { getAuthenticatedProfile } from "../../lib/auth";
 
 /**
- * Returns paginated bids for an auction with bidder names.
+ * Returns paginated bids for a lot with bidder names.
  * Hides real bidder names unless user is admin or seller.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
- * @param args.auctionId - The auction ID to fetch bids for
+ * @param args.lotId - The lot ID to fetch bids for
  * @param args.paginationOpts - Pagination options
  * @returns Paginated bids with bidder names
  */
-export const getAuctionBidsHandler = async (
+export const getLotBidsHandler = async (
   ctx: QueryCtx,
   args: {
-    auctionId: Id<"auctions">;
+    lotId: Id<"lots">;
     paginationOpts: PaginationOptions;
   }
 ) => {
   const bidsQuery = ctx.db
     .query("bids")
-    .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId));
+    .withIndex("by_lot", (q) => q.eq("lotId", args.lotId));
 
   const [bidsResult, totalCount] = await Promise.all([
     bidsQuery.order("desc").paginate(args.paginationOpts),
     countQuery(
       ctx.db
         .query("bids")
-        .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+        .withIndex("by_lot", (q) => q.eq("lotId", args.lotId))
     ),
   ]);
 
@@ -52,12 +52,12 @@ export const getAuctionBidsHandler = async (
   );
   const bidderNames = new Map<string, string>();
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
+  const lot = await ctx.db.get("lots", args.lotId);
   const auth = await getAuthenticatedProfile(ctx);
   const isAdmin = auth?.profile?.role === "admin";
-  // Guard against undefined === undefined: a missing auction doc combined
+  // Guard against undefined === undefined: a missing lot doc combined
   // with an unauthenticated caller must never mark the caller as the seller.
-  const isSeller = Boolean(auction && auction.sellerId === auth?.userId);
+  const isSeller = Boolean(lot && lot.sellerId === auth?.userId);
 
   await Promise.all(
     uniqueBidderIds.map(async (bidderId) => {
@@ -97,14 +97,14 @@ export const getAuctionBidsHandler = async (
 };
 
 /**
- * Query: Get paginated auction bids with bidder names.
- * Args: auctionId, paginationOpts
+ * Query: Get paginated lot bids with bidder names.
+ * Args: lotId, paginationOpts
  *
  * @returns Paginated bids with bidder names
  */
-export const getAuctionBids = query({
+export const getLotBids = query({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
@@ -121,48 +121,48 @@ export const getAuctionBids = query({
     ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
-  handler: getAuctionBidsHandler,
+  handler: getLotBidsHandler,
 });
 
 /**
- * Returns the total bid count for an auction.
+ * Returns the total bid count for a lot.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
- * @param args.auctionId - The auction ID
+ * @param args.lotId - The lot ID
  * @returns The bid count
  */
-export const getAuctionBidCountHandler = async (
+export const getLotBidCountHandler = async (
   ctx: QueryCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ) => {
   return await countQuery(
     ctx.db
       .query("bids")
-      .withIndex("by_auction", (q) => q.eq("auctionId", args.auctionId))
+      .withIndex("by_lot", (q) => q.eq("lotId", args.lotId))
   );
 };
 
 /**
- * Query: Get auction bid count.
- * Args: auctionId
+ * Query: Get lot bid count.
+ * Args: lotId
  *
  * @returns The bid count
  */
-export const getAuctionBidCount = query({
-  args: { auctionId: v.id("auctions") },
+export const getLotBidCount = query({
+  args: { lotId: v.id("lots") },
   returns: v.number(),
-  handler: getAuctionBidCountHandler,
+  handler: getLotBidCountHandler,
 });
 
 /**
- * Returns paginated list of auctions the current user has bid on with bid stats.
+ * Returns paginated list of lots the current user has bid on with bid stats.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
  * @param args.paginationOpts - Pagination options
  * @param args.sort - Sort order (recent or ending)
- * @returns Paginated user bids with auction details
+ * @returns Paginated user bids with lot details
  */
 export const getMyBidsHandler = async (
   ctx: QueryCtx,
@@ -180,23 +180,23 @@ export const getMyBidsHandler = async (
   );
 
   const allAuctionSummaries = await Promise.all(
-    Array.from(auctionStatsMap.entries()).map(async ([auctionId, stats]) => {
-      const auction = auctionsMap.get(auctionId);
-      if (!auction) return null;
+    Array.from(auctionStatsMap.entries()).map(async ([lotId, stats]) => {
+      const lot = auctionsMap.get(lotId);
+      if (!lot) return null;
 
-      const summary = await toAuctionSummary(ctx, auction);
+      const summary = await toLotSummary(ctx, lot);
       const isWinning =
-        auction.status === "active" &&
-        stats.highestBid === auction.currentPrice &&
-        auction.winnerId === userId;
+        lot.status === "assigned" &&
+        stats.highestBid === lot.currentPrice &&
+        lot.winnerId === userId;
 
       return {
         ...summary,
         myHighestBid: stats.highestBid,
         isWinning,
-        isWon: auction.status === "sold" && auction.winnerId === userId,
-        isOutbid: auction.status === "active" && !isWinning,
-        isCancelled: auction.status === "rejected",
+        isWon: lot.status === "sold" && lot.winnerId === userId,
+        isOutbid: lot.status === "assigned" && !isWinning,
+        isCancelled: lot.status === "rejected",
         bidAmount: stats.highestBid,
         bidTimestamp: stats.lastBidTimestamp,
         lastBidTimestamp: stats.lastBidTimestamp,
@@ -212,8 +212,10 @@ export const getMyBidsHandler = async (
   const sortBy = args.sort ?? "recent";
   validAuctions.sort((a, b) => {
     if (sortBy === "ending") {
-      const timeA = a.endTime ?? Number.MAX_SAFE_INTEGER;
-      const timeB = b.endTime ?? Number.MAX_SAFE_INTEGER;
+      const timeA =
+        a.extendedEndTime ?? a.auctionEndTime ?? Number.MAX_SAFE_INTEGER;
+      const timeB =
+        b.extendedEndTime ?? b.auctionEndTime ?? Number.MAX_SAFE_INTEGER;
       return timeA - timeB;
     }
     return b.lastBidTimestamp - a.lastBidTimestamp;
@@ -245,7 +247,7 @@ export const getMyBidsHandler = async (
 };
 
 /**
- * Query: Get user's bid history with auction details.
+ * Query: Get user's bid history with lot details.
  * Args: paginationOpts, sort (recent|ending)
  *
  * @returns Paginated bid results
@@ -258,7 +260,7 @@ export const getMyBids = query({
   returns: v.object({
     page: v.array(
       v.object({
-        ...AuctionSummaryValidator.fields,
+        ...LotSummaryValidator.fields,
         myHighestBid: v.number(),
         isWinning: v.boolean(),
         isWon: v.boolean(),

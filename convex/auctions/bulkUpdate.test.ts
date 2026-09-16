@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { bulkUpdateAuctionsHandler } from "./mutations/update";
+import { bulkUpdateLotsHandler } from "./mutations/update";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { Id } from "../_generated/dataModel";
@@ -34,7 +34,7 @@ interface MockCtx {
   runAction: unknown;
 }
 
-describe("bulkUpdateAuctions mutation", () => {
+describe("bulkUpdateLots mutation", () => {
   let mockCtx: MockCtx;
 
   beforeEach(() => {
@@ -56,15 +56,15 @@ describe("bulkUpdateAuctions mutation", () => {
     } as unknown as MockCtx;
   };
 
-  it("should update multiple auctions successfully", async () => {
-    const id1 = "a1" as Id<"auctions">;
-    const id2 = "a2" as Id<"auctions">;
+  it("should update multiple lots successfully", async () => {
+    const id1 = "a1" as Id<"lots">;
+    const id2 = "a2" as Id<"lots">;
 
     const auction1 = { _id: id1, status: "pending_review" };
     const auction2 = { _id: id2, status: "pending_review" };
 
     mockCtx = setupMockCtx();
-    mockCtx.db.get.mockImplementation((_table: string, id: Id<"auctions">) => {
+    mockCtx.db.get.mockImplementation((_table: string, id: Id<"lots">) => {
       if (id === id1) return auction1;
       if (id === id2) return auction2;
       return null;
@@ -75,11 +75,11 @@ describe("bulkUpdateAuctions mutation", () => {
       userId: "admin",
     });
 
-    const result = await bulkUpdateAuctionsHandler(
+    const result = await bulkUpdateLotsHandler(
       mockCtx as unknown as MutationCtx,
       {
-        auctionIds: [id1, id2],
-        updates: { status: "active", endTime: Date.now() + 10000 },
+        lotIds: [id1, id2],
+        updates: { status: "approved" },
       }
     );
 
@@ -87,30 +87,30 @@ describe("bulkUpdateAuctions mutation", () => {
     expect(result.updated).toContain(id1);
     expect(result.updated).toContain(id2);
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "auctions",
+      "lots",
       id1,
-      expect.objectContaining({ status: "active" })
+      expect.objectContaining({ status: "approved" })
     );
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
-      "auctions",
+      "lots",
       id2,
-      expect.objectContaining({ status: "active" })
+      expect.objectContaining({ status: "approved" })
     );
 
     // Status counters should be adjusted for both
     expect(adminUtils.updateCounter).toHaveBeenCalledWith(
       mockCtx as unknown as MutationCtx,
-      "auctions",
+      "lots",
       "pending",
       -1
     );
     expect(adminUtils.updateCounter).toHaveBeenCalledWith(
       mockCtx as unknown as MutationCtx,
-      "auctions",
+      "lots",
       "active",
       1
     );
-    expect(adminUtils.updateCounter).toHaveBeenCalledTimes(4); // 2 per auction
+    expect(adminUtils.updateCounter).toHaveBeenCalledTimes(4); // 2 per lot
   });
 
   it("should fail if not an admin", async () => {
@@ -118,9 +118,9 @@ describe("bulkUpdateAuctions mutation", () => {
     vi.mocked(auth.requireAdmin).mockRejectedValue(new Error("Unauthorized"));
 
     await expect(
-      bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, {
-        auctionIds: ["a1" as Id<"auctions">],
-        updates: { status: "active" },
+      bulkUpdateLotsHandler(mockCtx as unknown as MutationCtx, {
+        lotIds: ["a1" as Id<"lots">],
+        updates: { status: "approved" },
       })
     ).rejects.toThrow("Unauthorized");
   });
@@ -135,9 +135,9 @@ describe("bulkUpdateAuctions mutation", () => {
     const manyIds = Array(51).fill("a1");
 
     await expect(
-      bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, {
-        auctionIds: manyIds as Id<"auctions">[],
-        updates: { status: "active" },
+      bulkUpdateLotsHandler(mockCtx as unknown as MutationCtx, {
+        lotIds: manyIds as Id<"lots">[],
+        updates: { status: "approved" },
       })
     ).rejects.toThrow(/exceeds limit/);
   });

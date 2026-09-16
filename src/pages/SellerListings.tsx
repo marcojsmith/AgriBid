@@ -39,7 +39,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
     sellerId: userId ?? "",
   });
 
-  const watchedAuctionIds = useQuery(api.watchlist.getWatchedAuctionIds, {});
+  const watchedAuctionIds = useQuery(api.watchlist.getWatchedLotIds, {});
 
   const {
     results: listings,

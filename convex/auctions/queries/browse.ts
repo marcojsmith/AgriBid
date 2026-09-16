@@ -4,10 +4,10 @@ import type { PaginationOptions } from "convex/server";
 import { paginationOptsValidator, query, type QueryCtx } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
 import {
-  toAuctionSummary,
-  AuctionSummaryValidator,
-  toAuctionDetail,
-  AuctionDetailValidator,
+  toLotSummary,
+  LotSummaryValidator,
+  toLotDetail,
+  LotDetailValidator,
 } from "../helpers";
 import { getAuthenticatedProfile } from "../../lib/auth";
 import { countQuery } from "../../admin_utils";
@@ -16,7 +16,7 @@ import { MAX_RESULTS_CAP } from "../../constants";
 
 type StatusFilter = "active" | "closed" | "all";
 
-/** Arguments for getActiveAuctions query */
+/** Arguments for getActiveLots query */
 // Type alias (not interface): Convex derives the query's FunctionReference args
 // type from this handler args type — interfaces break that inference.
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- see comment above
@@ -34,79 +34,107 @@ export type ActiveAuctionsArgs = {
 
 function statusesForFilter(
   filter: StatusFilter
-): ("active" | "sold" | "unsold")[] {
-  if (filter === "active") return ["active"];
+): ("assigned" | "sold" | "unsold")[] {
+  if (filter === "active") return ["assigned"];
   if (filter === "closed") return ["sold", "unsold"];
-  return ["active", "sold", "unsold"];
+  return ["assigned", "sold", "unsold"];
 }
 
 /**
- * Manual filter check for auctions.
+ * Determines whether a lot is currently live and biddable.
+ *
+ * A lot is live when it is `assigned` to a parent auction that is `published`
+ * and whose effective window is currently open
+ * (`auctionStartTime <= now < extendedEndTime ?? auctionEndTime`).
+ *
+ * @param ctx - Convex Query context used to resolve the parent auction
+ * @param lot - The lot document to check
+ * @returns True if the lot is live and biddable
+ */
+async function isLotLive(ctx: QueryCtx, lot: Doc<"lots">): Promise<boolean> {
+  if (lot.status !== "assigned" || !lot.auctionId) return false;
+
+  const auction = await ctx.db.get("auctions", lot.auctionId);
+  if (auction?.status !== "published") return false;
+
+  const now = Date.now();
+  const effectiveEndTime = lot.extendedEndTime ?? auction.endTime;
+  return auction.startTime <= now && now < effectiveEndTime;
+}
+
+/**
+ * Manual filter check for lots.
  * Used when database-level filtering is limited (e.g., after search).
  *
- * @param auction - The auction document to check
+ * @param lot - The lot document to check
  * @param args - Filter arguments to match against
- * @returns True if the auction matches all filter criteria
+ * @returns True if the lot matches all filter criteria
  */
-function matchesAuctionFilter(
-  auction: Doc<"auctions">,
+function matchesLotFilter(
+  lot: Doc<"lots">,
   args: Partial<ActiveAuctionsArgs>
 ): boolean {
-  if (args.make !== undefined && auction.make !== args.make) return false;
-  if (args.minYear !== undefined && auction.year < args.minYear) return false;
-  if (args.maxYear !== undefined && auction.year > args.maxYear) return false;
-  if (args.minPrice !== undefined && auction.currentPrice < args.minPrice)
+  if (args.make !== undefined && lot.make !== args.make) return false;
+  if (args.minYear !== undefined && lot.year < args.minYear) return false;
+  if (args.maxYear !== undefined && lot.year > args.maxYear) return false;
+  if (args.minPrice !== undefined && lot.currentPrice < args.minPrice)
     return false;
-  if (args.maxPrice !== undefined && auction.currentPrice > args.maxPrice)
+  if (args.maxPrice !== undefined && lot.currentPrice > args.maxPrice)
     return false;
-  if (args.maxHours !== undefined && auction.operatingHours > args.maxHours)
+  if (args.maxHours !== undefined && lot.operatingHours > args.maxHours)
     return false;
   return true;
 }
 
 /**
- * Returns paginated active auctions with optional filtering.
+ * Returns paginated active lots with optional filtering.
  * Supports search, make, year range, price range, and hours filtering.
+ *
+ * "Active" is derived at query time: a lot must be `assigned` to a published,
+ * currently in-window parent auction. Because that requires joining the parent
+ * auction, active queries (and searches) are filtered in memory after an
+ * indexed scan bounded by MAX_RESULTS_CAP, then paginated manually.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments including pagination options and filters
- * @returns Paginated auction results with total count
+ * @returns Paginated lot results with total count
  */
-export const getActiveAuctionsHandler = async (
+export const getActiveLotsHandler = async (
   ctx: QueryCtx,
   args: ActiveAuctionsArgs
 ) => {
   const statusFilter = args.statusFilter ?? ("active" as StatusFilter);
   const statuses = statusesForFilter(statusFilter);
+  const requiresWindowCheck = statusFilter === "active";
 
   const getBaseQuery = () => {
-    const auctionsQuery = ctx.db.query("auctions");
+    const lotsQuery = ctx.db.query("lots");
 
     if (args.search) {
       if (statuses.length === 1) {
-        return auctionsQuery.withSearchIndex("search_title", (q) =>
+        return lotsQuery.withSearchIndex("search_title", (q) =>
           q.search("title", args.search ?? "").eq("status", statuses[0])
         );
       }
-      return auctionsQuery.withSearchIndex("search_title_simple", (q) =>
+      return lotsQuery.withSearchIndex("search_title_simple", (q) =>
         q.search("title", args.search ?? "")
       );
     }
 
     if (args.make) {
       if (statuses.length === 1) {
-        return auctionsQuery.withIndex("by_status_make", (q) =>
+        return lotsQuery.withIndex("by_status_make", (q) =>
           q.eq("status", statuses[0]).eq("make", args.make ?? "")
         );
       }
-      return auctionsQuery
+      return lotsQuery
         .order("desc")
         .filter((q) => q.eq(q.field("make"), args.make ?? ""));
     }
 
     if (args.minYear !== undefined || args.maxYear !== undefined) {
       if (statuses.length === 1) {
-        return auctionsQuery.withIndex("by_status_year", (q) => {
+        return lotsQuery.withIndex("by_status_year", (q) => {
           if (args.minYear !== undefined && args.maxYear !== undefined) {
             return q
               .eq("status", statuses[0])
@@ -119,15 +147,15 @@ export const getActiveAuctionsHandler = async (
           return q.eq("status", statuses[0]).lte("year", args.maxYear ?? 0);
         });
       }
-      return auctionsQuery.order("desc");
+      return lotsQuery.order("desc");
     }
 
     if (statuses.length === 1) {
-      return auctionsQuery
+      return lotsQuery
         .withIndex("by_status", (q) => q.eq("status", statuses[0]))
         .order("desc");
     }
-    return auctionsQuery.order("desc");
+    return lotsQuery.order("desc");
   };
 
   const getFilteredQuery = () => {
@@ -159,14 +187,18 @@ export const getActiveAuctionsHandler = async (
     });
   };
 
-  if (args.search) {
-    // For search, we fetch all potentially matching items (up to cap) and filter them manually.
-    // This ensures accurate totalCount and non-empty pages when filters are combined with search.
-    const allSearchResults = await getFilteredQuery().take(MAX_RESULTS_CAP + 1);
+  if (requiresWindowCheck || args.search) {
+    // For active/search we fetch all potentially matching items (up to cap) and
+    // filter them manually, so the derived liveness check and accurate
+    // totalCount/non-empty pages are preserved when filters are combined.
+    const allResults = await getFilteredQuery().take(MAX_RESULTS_CAP + 1);
 
-    const filteredResults = allSearchResults.filter((auction) =>
-      matchesAuctionFilter(auction, args)
-    );
+    const filteredResults: Doc<"lots">[] = [];
+    for (const lot of allResults) {
+      if (!matchesLotFilter(lot, args)) continue;
+      if (requiresWindowCheck && !(await isLotLive(ctx, lot))) continue;
+      filteredResults.push(lot);
+    }
 
     const totalCount =
       filteredResults.length > MAX_RESULTS_CAP
@@ -184,7 +216,7 @@ export const getActiveAuctionsHandler = async (
     );
 
     const page = await Promise.all(
-      paginatedSlice.map((auction) => toAuctionSummary(ctx, auction))
+      paginatedSlice.map((lot) => toLotSummary(ctx, lot))
     );
 
     const nextIndex = startIndex + numItems;
@@ -204,7 +236,7 @@ export const getActiveAuctionsHandler = async (
   ]);
 
   const page = await Promise.all(
-    results.page.map((auction) => toAuctionSummary(ctx, auction))
+    results.page.map((lot) => toLotSummary(ctx, lot))
   );
 
   const finalTotalCount = totalCount > 1000 ? "1000+" : totalCount;
@@ -217,12 +249,12 @@ export const getActiveAuctionsHandler = async (
 };
 
 /**
- * Query: Get paginated list of active auctions with filtering.
+ * Query: Get paginated list of active lots with filtering.
  * Args: paginationOpts, search, make, minYear, maxYear, minPrice, maxPrice, maxHours, statusFilter
  *
- * @returns Paginated auction results
+ * @returns Paginated lot results
  */
-export const getActiveAuctions = query({
+export const getActiveLots = query({
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
@@ -237,7 +269,7 @@ export const getActiveAuctions = query({
     ),
   },
   returns: v.object({
-    page: v.array(AuctionSummaryValidator),
+    page: v.array(LotSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     pageStatus: v.optional(
@@ -250,37 +282,41 @@ export const getActiveAuctions = query({
     splitCursor: v.optional(v.union(v.string(), v.null())),
     totalCount: v.union(v.number(), v.string()),
   }),
-  handler: getActiveAuctionsHandler,
+  handler: getActiveLotsHandler,
 });
 
 /**
- * Returns up to 4 active auctions with the same make, excluding the given auction.
- * Used for the "More from this make" related auctions section on AuctionDetail.
+ * Returns up to 4 active lots with the same make, excluding the given lot.
+ * Used for the "More from this make" related lots section on LotDetail.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
  * @param args.make - Equipment make to match
- * @param args.excludeId - Auction ID to exclude (the current auction)
- * @returns Array of matching auction summaries (max 4)
+ * @param args.excludeId - Lot ID to exclude (the current lot)
+ * @returns Array of matching lot summaries (max 4)
  */
-export const getRelatedAuctions = query({
+export const getRelatedLots = query({
   args: {
     make: v.string(),
-    excludeId: v.id("auctions"),
+    excludeId: v.id("lots"),
   },
-  returns: v.array(AuctionSummaryValidator),
+  returns: v.array(LotSummaryValidator),
   handler: async (ctx, args) => {
-    const auctions = await ctx.db
-      .query("auctions")
+    const candidates = await ctx.db
+      .query("lots")
       .withIndex("by_status_make", (q) =>
-        q.eq("status", "active").eq("make", args.make)
+        q.eq("status", "assigned").eq("make", args.make)
       )
       .filter((q) => q.neq(q.field("_id"), args.excludeId))
-      .take(4);
+      .take(MAX_RESULTS_CAP + 1);
 
-    return Promise.all(
-      auctions.map((auction) => toAuctionSummary(ctx, auction))
-    );
+    const related: Doc<"lots">[] = [];
+    for (const lot of candidates) {
+      if (await isLotLive(ctx, lot)) related.push(lot);
+      if (related.length >= 4) break;
+    }
+
+    return Promise.all(related.map((lot) => toLotSummary(ctx, lot)));
   },
 });
 
@@ -317,47 +353,46 @@ export const getActiveMakes = query({
 });
 
 /**
- * Returns a single auction by ID with full details including all images and seller email.
- * Returns null if auction not found or not accessible (non-public auctions require auth).
+ * Returns a single lot by ID with full details including all images and seller email.
+ * Returns null if the lot is not found or not accessible (non-public lots require auth).
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
- * @param args.auctionId - The auction ID to fetch
- * @returns The auction with full details or null if not found
+ * @param args.lotId - The lot ID to fetch
+ * @returns The lot with full details or null if not found
  */
-export const getAuctionByIdHandler = async (
+export const getLotByIdHandler = async (
   ctx: QueryCtx,
-  args: { auctionId: Id<"auctions"> }
+  args: { lotId: Id<"lots"> }
 ) => {
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) return null;
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) return null;
 
-  const PUBLIC_STATUSES = ["active", "sold", "unsold"];
-  if (!PUBLIC_STATUSES.includes(auction.status)) {
+  const PUBLIC_STATUSES = ["assigned", "sold", "unsold"];
+  if (!PUBLIC_STATUSES.includes(lot.status)) {
     const auth = await getAuthenticatedProfile(ctx);
     if (!auth?.profile) return null;
 
     const isAdmin = auth.profile.role === "admin";
     const isOwner =
-      auction.sellerId === auth.authUser._id ||
-      auction.sellerId === auth.userId;
+      lot.sellerId === auth.authUser._id || lot.sellerId === auth.userId;
 
     if (!isAdmin && !isOwner) return null;
   }
 
-  return await toAuctionDetail(ctx, auction);
+  return await toLotDetail(ctx, lot);
 };
 
 /**
- * Query: Get auction by ID with full details.
- * Args: auctionId
+ * Query: Get lot by ID with full details.
+ * Args: lotId
  *
- * @returns Auction detail or null
+ * @returns Lot detail or null
  */
-export const getAuctionById = query({
-  args: { auctionId: v.id("auctions") },
-  returns: v.union(v.null(), AuctionDetailValidator),
-  handler: getAuctionByIdHandler,
+export const getLotById = query({
+  args: { lotId: v.id("lots") },
+  returns: v.union(v.null(), LotDetailValidator),
+  handler: getLotByIdHandler,
 });
 
 /**
@@ -381,19 +416,19 @@ export const getSellerInfoHandler = async (
 
   if (!profile) return null;
 
-  const [soldAuctions, activeAuctions, bidsPlaced, { avgRating, reviewCount }] =
+  const [soldLots, activeLots, bidsPlaced, { avgRating, reviewCount }] =
     await Promise.all([
       ctx.db
-        .query("auctions")
+        .query("lots")
         .withIndex("by_seller_status", (q) =>
           q.eq("sellerId", sellerId).eq("status", "sold")
         )
         .collect(),
       countQuery(
         ctx.db
-          .query("auctions")
+          .query("lots")
           .withIndex("by_seller_status", (q) =>
-            q.eq("sellerId", sellerId).eq("status", "active")
+            q.eq("sellerId", sellerId).eq("status", "assigned")
           )
       ),
       countQuery(
@@ -404,16 +439,14 @@ export const getSellerInfoHandler = async (
       getSellerRatingSummary(ctx, sellerId),
     ]);
 
-  const soldAuctionsCount = soldAuctions.length;
-  const activeListingsCount = activeAuctions;
-  const totalSoldPrice = soldAuctions.reduce(
-    (sum, auction) => sum + auction.currentPrice,
+  const soldLotsCount = soldLots.length;
+  const activeListingsCount = activeLots;
+  const totalSoldPrice = soldLots.reduce(
+    (sum, lot) => sum + lot.currentPrice,
     0
   );
   const avgSalePrice =
-    soldAuctionsCount > 0
-      ? Math.round(totalSoldPrice / soldAuctionsCount)
-      : undefined;
+    soldLotsCount > 0 ? Math.round(totalSoldPrice / soldLotsCount) : undefined;
 
   return {
     name: profile.name,
@@ -421,9 +454,9 @@ export const getSellerInfoHandler = async (
     kycStatus: profile.kycStatus,
     role: profile.role,
     createdAt: profile.createdAt,
-    itemsSold: soldAuctionsCount,
+    itemsSold: soldLotsCount,
     activeListings: activeListingsCount,
-    totalListings: soldAuctionsCount + activeListingsCount,
+    totalListings: soldLotsCount + activeListingsCount,
     bio: profile.bio,
     companyName: profile.companyName,
     location: profile.location,
@@ -485,6 +518,8 @@ export const getSellerInfo = query({
  * (via the `by_seller_status` index); otherwise both active and sold listings
  * are returned (via the `by_seller` index with an in-memory status filter).
  *
+ * The public "active" filter maps to a lot's stored `assigned` status.
+ *
  * @param ctx - Convex Query context
  * @param args - Query arguments
  * @param args.userId - The seller's user ID
@@ -504,17 +539,21 @@ export const getSellerListingsHandler = async (
 
   const getListingsQuery = () => {
     if (statusFilter !== undefined) {
+      const status = statusFilter === "active" ? "assigned" : "sold";
       return ctx.db
-        .query("auctions")
+        .query("lots")
         .withIndex("by_seller_status", (q) =>
-          q.eq("sellerId", userId).eq("status", statusFilter)
+          q.eq("sellerId", userId).eq("status", status)
         );
     }
     return ctx.db
-      .query("auctions")
+      .query("lots")
       .withIndex("by_seller", (q) => q.eq("sellerId", userId))
       .filter((q) =>
-        q.or(q.eq(q.field("status"), "active"), q.eq(q.field("status"), "sold"))
+        q.or(
+          q.eq(q.field("status"), "assigned"),
+          q.eq(q.field("status"), "sold")
+        )
       );
   };
 
@@ -524,9 +563,7 @@ export const getSellerListingsHandler = async (
   ]);
 
   const page = await Promise.all(
-    results.page.map(
-      async (auction: Doc<"auctions">) => await toAuctionSummary(ctx, auction)
-    )
+    results.page.map(async (lot: Doc<"lots">) => await toLotSummary(ctx, lot))
   );
 
   return {
@@ -549,7 +586,7 @@ export const getSellerListings = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(AuctionSummaryValidator),
+    page: v.array(LotSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),

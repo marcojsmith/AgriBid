@@ -12,7 +12,7 @@ const crons = cronJobs();
 crons.interval(
   "settle expired auctions",
   { minutes: 1 },
-  internal.auctions.settleExpiredAuctions
+  internal.auctions.settleExpiredLots
 );
 
 /**

@@ -24,7 +24,7 @@ const { mockApi } = vi.hoisted(() => ({
       getSellerListings: { name: "auctions:getSellerListings" },
     },
     watchlist: {
-      getWatchedAuctionIds: { name: "watchlist:getWatchedAuctionIds" },
+      getWatchedLotIds: { name: "watchlist:getWatchedLotIds" },
     },
   },
 }));
@@ -65,7 +65,7 @@ describe("SellerListings Page", () => {
     vi.clearAllMocks();
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds)
+      if (apiPath === mockApi.watchlist.getWatchedLotIds)
         return ["auction1"];
       return null;
     });
@@ -118,7 +118,7 @@ describe("SellerListings Page", () => {
   it("falls back to 'this seller' when sellerInfo is unavailable", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.auctions.getSellerInfo) return null;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return [];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
       return null;
     });
 
@@ -223,7 +223,7 @@ describe("SellerListings Page", () => {
   it("handles watchedAuctionIds being undefined", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedAuctionIds) return undefined;
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return undefined;
       return null;
     });
 

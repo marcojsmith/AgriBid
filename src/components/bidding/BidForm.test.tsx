@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Doc } from "convex/_generated/dataModel";
+
+import type { LotDetail } from "@/types/auction";
 
 import { BidForm } from "./BidForm";
 
@@ -9,7 +10,7 @@ const mockAuction = {
   currentPrice: 1000,
   minIncrement: 100,
   status: "active",
-} as unknown as Doc<"auctions">;
+} as unknown as LotDetail;
 
 describe("BidForm", () => {
   const mockOnBid = vi.fn();
@@ -137,7 +138,7 @@ describe("BidForm", () => {
     const updatedAuction = { ...mockAuction, currentPrice: 1500 };
     rerender(
       <BidForm
-        auction={updatedAuction as unknown as Doc<"auctions">}
+        auction={updatedAuction as unknown as LotDetail}
         onBid={mockOnBid}
         isLoading={false}
       />

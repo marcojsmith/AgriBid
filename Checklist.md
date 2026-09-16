@@ -55,32 +55,32 @@
 
 ### Convex Queries
 
-- [x] `getActiveAuctions` - fetch all active auctions
-- [x] `getAuctionById` - fetch single auction with full details
+- [x] `getActiveLots` - fetch all active lots (liveness derived from parent auction window)
+- [x] `getLotById` - fetch single lot with full details
 - [x] `getUserAuctions` - fetch auctions by seller (with status filter) -> `getMyListings`
-- [x] `getAuctionBids` - fetch bid history for an auction
+- [x] `getLotBids` - fetch bid history for a lot
 - [x] `getUserBids` - fetch bids placed by a user -> `getMyBids`
-- [x] `getWatchlist` - fetch user's watched auctions -> `getWatchedAuctions`
-- [x] `searchAuctions` - implement search/filter logic (integrated into getActiveAuctions)
+- [x] `getWatchlist` - fetch user's watched auctions -> `getWatchedLots`
+- [x] `searchAuctions` - implement search/filter logic (integrated into getActiveLots)
 - [x] Implement pagination for all list-based queries (#82)
 - [x] Optimize `readReceipts` with batching to avoid N+1 patterns (#66)
 
 ### Convex Mutations
 
-- [x] `createAuction` - create new auction
-- [x] `updateAuction` - edit draft auction
-- [x] `publishAuction` - change status from "draft" to "active"
+- [x] `createAuction` - create new auction -> `createLot` (seller) / `createAuction` (admin container)
+- [x] `updateAuction` - edit draft auction -> `updateLot`
+- [x] `publishAuction` - change status from "draft" to "pending_review" -> `submitLotForReview`
 - [x] `placeBid` - place a bid with soft close logic
-- [x] `approveAuction` - admin approval to set active status
+- [x] `approveAuction` - admin approval to set active status -> `approveLot`
 - [x] `generateUploadUrl` - for Convex File Storage
 - [x] `setProxyBid` - set maximum auto-bid amount (Integrated into placeBid)
 - [x] `addToWatchlist` / `removeFromWatchlist` -> `toggleWatchlist`
 - [x] `uploadConditionReport` - upload PDF to Convex Storage
-- [x] `flagAuction` - report suspicious listing (buyer/admin)
+- [x] `flagAuction` - report suspicious listing (buyer/admin) -> `flagLot`
 
 ### Scheduled Functions (Cron)
 
-- [x] `settleExpiredAuctions` - run every 1 minute
+- [x] `settleExpiredLots` - run every 1 minute
 - [x] `cleanupDrafts` - run daily to delete old drafts (>30 days)
 
 ### Convex Actions (External API Calls)

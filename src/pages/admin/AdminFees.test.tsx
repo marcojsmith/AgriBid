@@ -31,6 +31,7 @@ vi.mock("lucide-react", () => ({
   Activity: () => <span />,
   Menu: () => <span />,
   X: () => <span />,
+  CalendarClock: () => <span />,
 }));
 
 import AdminFees from "./AdminFees";

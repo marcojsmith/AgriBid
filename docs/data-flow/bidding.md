@@ -346,61 +346,35 @@ sold   unsold
 ```typescript
 // app/convex/auctions/internal.ts
 
-export const settleExpiredAuctions = internalMutation({
+export const settleExpiredLots = internalMutation({
+  args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now();
-
-    // Find all active auctions that have ended
-    const expiredAuctions = await ctx.db
-      .query("auctions")
-      .withIndex("by_status_endTime", (q) =>
-        q.eq("status", "active").lt("endTime", now)
-      )
+    const assignedLots = await ctx.db
+      .query("lots")
+      .withIndex("by_status", (q) => q.eq("status", "assigned"))
       .collect();
 
-    for (const auction of expiredAuctions) {
-      // Get highest bid
-      const highestBid = await ctx.db
-        .query("bids")
-        .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
-        .order("desc")
-        .first();
+    for (const lot of assignedLots) {
+      const auction = lot.auctionId
+        ? await ctx.db.get("auctions", lot.auctionId)
+        : null;
 
-      if (highestBid && auction.currentPrice >= auction.reservePrice) {
-        // Sold
-        await ctx.db.patch(auction._id, {
-          status: "sold",
-          winnerId: highestBid.bidderId,
-        });
+      // Liveness is derived: settle only while the parent auction is
+      // `published` and the lot's effective end time has passed.
+      const effectiveEnd = lot.extendedEndTime ?? auction?.endTime ?? 0;
+      if (auction?.status !== "published" || effectiveEnd > now) continue;
 
-        // Notify winner and seller
-        await createNotification(
-          auction.sellerId,
-          "success",
-          "Your item sold!",
-          `Sold for ${auction.currentPrice}`
-        );
-        await createNotification(
-          highestBid.bidderId,
-          "success",
-          "You won!",
-          `Won for ${auction.currentPrice}`
-        );
-      } else {
-        // Unsold
-        await ctx.db.patch(auction._id, {
-          status: "unsold",
-        });
-
-        // Notify seller
-        await createNotification(
-          auction.sellerId,
-          "info",
-          "Auction ended",
-          "Your item did not meet reserve"
-        );
-      }
+      // `settleLot` resolves the highest valid bid (sold if reserve met),
+      // patches the lot, records fees and logs activity. Unsold lots are
+      // returned to the pool (`auctionId` cleared) for reassignment.
+      await settleLot(ctx, lot, now);
     }
+
+    // Retire containers whose window elapsed with no lots left to settle.
+    await closeCompletedAuctions(ctx, now);
+    return null;
   },
 });
 ```

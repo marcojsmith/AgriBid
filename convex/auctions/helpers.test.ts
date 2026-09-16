@@ -1,11 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import {
-  resolveImageUrls,
-  toAuctionSummary,
-  toAuctionDetail,
-  validateAuctionStatus,
-} from "./helpers";
+import { resolveImageUrls, toLotSummary, toLotDetail } from "./helpers";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -132,7 +127,7 @@ describe("resolveImageUrls", () => {
   });
 });
 
-describe("toAuctionSummary", () => {
+describe("toLotSummary", () => {
   let mockCtx: QueryCtx;
 
   beforeEach(() => {
@@ -148,8 +143,8 @@ describe("toAuctionSummary", () => {
     } as unknown as QueryCtx;
   };
 
-  const createMockAuction = (): Doc<"auctions"> => ({
-    _id: "auction_123" as Id<"auctions">,
+  const createMockLot = (): Doc<"lots"> => ({
+    _id: "lot_123" as Id<"lots">,
     _creationTime: Date.now(),
     title: "Test Auction",
     description: "Test description",
@@ -162,7 +157,7 @@ describe("toAuctionSummary", () => {
     startTime: Date.now(),
     endTime: Date.now() + 86400000,
     durationDays: 7,
-    status: "active",
+    status: "assigned",
     reservePrice: 45000,
     operatingHours: 1200,
     location: "Iowa, USA",
@@ -190,9 +185,9 @@ describe("toAuctionSummary", () => {
   it("should transform auction to summary format", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category);
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionSummary(mockCtx, auction);
+    const result = await toLotSummary(mockCtx, auction);
 
     expect(result._id).toBe(auction._id);
     expect(result.title).toBe("Test Auction");
@@ -203,18 +198,18 @@ describe("toAuctionSummary", () => {
 
   it("should handle missing category", async () => {
     mockCtx = setupMockCtx(null);
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionSummary(mockCtx, auction);
+    const result = await toLotSummary(mockCtx, auction);
 
     expect(result.categoryName).toBe("Unknown");
   });
 
   it("should handle category found but missing name", async () => {
     mockCtx = setupMockCtx({ _id: "cat_123" });
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionSummary(mockCtx, auction);
+    const result = await toLotSummary(mockCtx, auction);
 
     expect(result.categoryName).toBe("Unknown");
   });
@@ -222,9 +217,9 @@ describe("toAuctionSummary", () => {
   it("should include all required fields", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category);
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionSummary(mockCtx, auction);
+    const result = await toLotSummary(mockCtx, auction);
 
     expect(result).toHaveProperty("_id");
     expect(result).toHaveProperty("_creationTime");
@@ -242,15 +237,45 @@ describe("toAuctionSummary", () => {
   it("should apply limit of 0 to additional images", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category);
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionSummary(mockCtx, auction);
+    const result = await toLotSummary(mockCtx, auction);
 
     expect(result.images.additional).toEqual([]);
   });
+
+  it("should include the parent auction window when the lot is assigned", async () => {
+    const category = { _id: "cat_123", name: "Tractors", isActive: true };
+    const auctionDoc = {
+      _id: "auction_1",
+      title: "Spring Sale",
+      startTime: 1000,
+      endTime: 5000,
+      status: "published",
+    };
+    mockCtx = {
+      db: {
+        get: vi.fn((table: string) =>
+          Promise.resolve(table === "auctions" ? auctionDoc : category)
+        ),
+      },
+      storage: {},
+    } as unknown as QueryCtx;
+    const lot = createMockLot();
+    lot.auctionId = "auction_1" as Id<"auctions">;
+    lot.extendedEndTime = 8000;
+
+    const result = await toLotSummary(mockCtx, lot);
+
+    expect(result.auctionId).toBe("auction_1");
+    expect(result.auctionStartTime).toBe(1000);
+    expect(result.auctionEndTime).toBe(5000);
+    expect(result.auctionStatus).toBe("published");
+    expect(result.extendedEndTime).toBe(8000);
+  });
 });
 
-describe("toAuctionDetail", () => {
+describe("toLotDetail", () => {
   let mockCtx: QueryCtx;
 
   beforeEach(() => {
@@ -286,8 +311,8 @@ describe("toAuctionDetail", () => {
     email: "seller@example.com",
   });
 
-  const createMockAuction = (): Doc<"auctions"> => ({
-    _id: "auction_123" as Id<"auctions">,
+  const createMockLot = (): Doc<"lots"> => ({
+    _id: "lot_123" as Id<"lots">,
     _creationTime: Date.now(),
     title: "Test Auction",
     description: "Test description",
@@ -300,7 +325,7 @@ describe("toAuctionDetail", () => {
     startTime: Date.now(),
     endTime: Date.now() + 86400000,
     durationDays: 7,
-    status: "active",
+    status: "assigned",
     reservePrice: 45000,
     operatingHours: 1200,
     location: "Iowa, USA",
@@ -328,9 +353,9 @@ describe("toAuctionDetail", () => {
   it("should transform auction to detail format with seller email for authenticated users", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category, true, createMockSellerProfile());
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionDetail(mockCtx, auction);
+    const result = await toLotDetail(mockCtx, auction);
 
     expect(result._id).toBe(auction._id);
     expect(result.title).toBe("Test Auction");
@@ -342,9 +367,9 @@ describe("toAuctionDetail", () => {
   it("should not include seller email for unauthenticated users", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category, false, createMockSellerProfile());
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionDetail(mockCtx, auction);
+    const result = await toLotDetail(mockCtx, auction);
 
     expect(result.sellerEmail).toBeUndefined();
   });
@@ -356,18 +381,18 @@ describe("toAuctionDetail", () => {
       userId: "seller_123",
       name: "Test Seller",
     });
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionDetail(mockCtx, auction);
+    const result = await toLotDetail(mockCtx, auction);
 
     expect(result.sellerEmail).toBeUndefined();
   });
 
   it("should handle missing category", async () => {
     mockCtx = setupMockCtx(null, true);
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionDetail(mockCtx, auction);
+    const result = await toLotDetail(mockCtx, auction);
 
     expect(result.categoryName).toBe("Unknown");
   });
@@ -375,9 +400,9 @@ describe("toAuctionDetail", () => {
   it("should include all required fields", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category, true);
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionDetail(mockCtx, auction);
+    const result = await toLotDetail(mockCtx, auction);
 
     expect(result).toHaveProperty("_id");
     expect(result).toHaveProperty("_creationTime");
@@ -398,9 +423,9 @@ describe("toAuctionDetail", () => {
   it("should resolve all image slots including additional", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category, true);
-    const auction = createMockAuction();
+    const auction = createMockLot();
 
-    const result = await toAuctionDetail(mockCtx, auction);
+    const result = await toLotDetail(mockCtx, auction);
 
     expect(result.images.front).toBeDefined();
     expect(result.images.engine).toBeDefined();
@@ -412,34 +437,11 @@ describe("toAuctionDetail", () => {
   it("should handle seller not found gracefully", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category, true);
-    const auction = createMockAuction();
+    const auction = createMockLot();
     auction.sellerId = "nonexistent_seller";
 
-    const result = await toAuctionDetail(mockCtx, auction);
+    const result = await toLotDetail(mockCtx, auction);
 
     expect(result.sellerEmail).toBeUndefined();
-  });
-});
-
-describe("validateAuctionStatus", () => {
-  it("should throw if status is active but endTime is missing", () => {
-    expect(() => {
-      validateAuctionStatus({ status: "pending_review" }, "active");
-    }).toThrow("Cannot set status to 'active' without endTime");
-  });
-
-  it("should not throw if status is active and endTime is present", () => {
-    expect(() => {
-      validateAuctionStatus(
-        { status: "pending_review", endTime: Date.now() },
-        "active"
-      );
-    }).not.toThrow();
-  });
-
-  it("should not throw for other status transitions", () => {
-    expect(() => {
-      validateAuctionStatus({ status: "draft" }, "pending_review");
-    }).not.toThrow();
   });
 });

@@ -4,24 +4,43 @@ import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { safeDelete } from "../../lib/storage";
 import { logAudit } from "../../admin_utils";
-import { validateAuctionStatus, validateStartTimeBounds } from "../helpers";
 import {
   MAX_ADDITIONAL_IMAGES,
-  AUCTION_MIN_DURATION_DAYS,
-  AUCTION_MAX_DURATION_DAYS,
   PRICE_THRESHOLD_FOR_INCREMENT,
   SMALL_INCREMENT_AMOUNT,
   LARGE_INCREMENT_AMOUNT,
   MAX_BULK_UPDATE_SIZE,
 } from "../../constants";
 import {
-  assertOwnership,
-  assertEditable,
-  validateAuctionBeforePublish,
-  adjustStatusCounters,
-} from "./helpers";
+  assertLotOwnership,
+  assertLotEditable,
+  validateLotBeforeSubmit,
+  adjustLotStatusCounters,
+} from "../../lots/mutations/helpers";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
+
+/**
+ * Lot statuses an admin may set through the legacy bulk/update mutations.
+ */
+type AdminLotStatus =
+  | "draft"
+  | "pending_review"
+  | "approved"
+  | "assigned"
+  | "sold"
+  | "unsold"
+  | "rejected";
+
+const ADMIN_LOT_STATUS_UNION = v.union(
+  v.literal("draft"),
+  v.literal("pending_review"),
+  v.literal("approved"),
+  v.literal("assigned"),
+  v.literal("sold"),
+  v.literal("unsold"),
+  v.literal("rejected")
+);
 
 /**
  * Interface for auction update data to ensure type safety.
@@ -58,33 +77,35 @@ export interface AuctionUpdates {
 }
 
 /**
- * Handler for updating an existing auction.
+ * Handler for updating an existing lot.
  * Performs validation, ownership checks, and recomputes derived fields.
  *
  * @param ctx - Mutation context
- * @param args - Arguments including auctionId and updates
- * @param args.auctionId - The ID of the auction to update
- * @param args.updates - The updates to apply to the auction
+ * @param args - Arguments including the lot id and updates
+ * @param args.lotId - The ID of the lot to update
+ * @param args.updates - The updates to apply to the lot
  * @returns Object with success boolean
  */
-export const updateAuctionHandler = async (
+export const updateLotHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionId: Id<"auctions">;
+    lotId: Id<"lots">;
     updates: AuctionUpdates;
   }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) {
-    throw new ConvexError("Auction not found");
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) {
+    throw new ConvexError("Lot not found");
   }
 
-  assertOwnership(auction, userId);
-  assertEditable(auction);
+  assertLotOwnership(lot, userId);
+  assertLotEditable(lot);
 
   const updates: AuctionUpdates = { ...args.updates };
+  // A lot does not own its schedule; drop the legacy field rather than patch it.
+  delete updates.durationDays;
 
   // If startingPrice is updated, recompute derived fields
   if (updates.startingPrice !== undefined) {
@@ -95,28 +116,18 @@ export const updateAuctionHandler = async (
         : LARGE_INCREMENT_AMOUNT;
   }
 
-  if (
-    updates.durationDays !== undefined &&
-    (updates.durationDays < AUCTION_MIN_DURATION_DAYS ||
-      updates.durationDays > AUCTION_MAX_DURATION_DAYS)
-  ) {
-    throw new ConvexError(
-      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
-    );
-  }
-
   // Merge images if provided to prevent overwriting other slots
   if (updates.images) {
     let existingImages: Record<string, string | string[] | undefined> = {};
-    if (Array.isArray(auction.images)) {
-      if (auction.images.length > 0) {
-        existingImages.front = auction.images[0];
-        if (auction.images.length > 1) {
-          existingImages.additional = auction.images.slice(1);
+    if (Array.isArray(lot.images)) {
+      if (lot.images.length > 0) {
+        existingImages.front = lot.images[0];
+        if (lot.images.length > 1) {
+          existingImages.additional = lot.images.slice(1);
         }
       }
     } else {
-      existingImages = auction.images as Record<
+      existingImages = lot.images as Record<
         string,
         string | string[] | undefined
       >;
@@ -137,27 +148,25 @@ export const updateAuctionHandler = async (
     updates.images = mergedImages;
   }
 
-  if (auction.status === "pending_review") {
-    const mergedState = {
-      ...auction,
-      title: updates.title ?? auction.title,
-      description: updates.description ?? auction.description,
-      startingPrice: updates.startingPrice ?? auction.startingPrice,
-      reservePrice: updates.reservePrice ?? auction.reservePrice,
-      images: updates.images ?? auction.images,
-    };
-    validateAuctionBeforePublish(mergedState);
+  if (lot.status === "pending_review") {
+    validateLotBeforeSubmit({
+      title: updates.title ?? lot.title,
+      description: updates.description ?? lot.description,
+      startingPrice: updates.startingPrice ?? lot.startingPrice,
+      reservePrice: updates.reservePrice ?? lot.reservePrice,
+      images: updates.images ?? lot.images,
+    });
   }
 
-  await ctx.db.patch("auctions", args.auctionId, updates);
+  await ctx.db.patch("lots", args.lotId, updates);
 
   await logAudit(ctx, {
     action: "SELLER_UPDATE_AUCTION",
-    targetId: args.auctionId,
-    targetType: "auction",
+    targetId: args.lotId,
+    targetType: "lot",
     details: JSON.stringify({
       sellerId: userId,
-      previousStatus: auction.status,
+      previousStatus: lot.status,
       updates: Object.keys(updates),
     }),
   });
@@ -166,12 +175,12 @@ export const updateAuctionHandler = async (
 };
 
 /**
- * Update an auction. Only allowed for draft or pending_review status.
- * Once active, sold, or unsold - auction is locked from seller edits.
+ * Update a lot. Only allowed for draft or pending_review status.
+ * Once approved, assigned, sold, or unsold - the lot is locked from seller edits.
  */
-export const updateAuction = mutation({
+export const updateLot = mutation({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     updates: v.object({
       title: v.optional(v.string()),
       categoryId: v.optional(v.id("equipmentCategories")),
@@ -205,17 +214,17 @@ export const updateAuction = mutation({
     }),
   },
   returns: v.object({ success: v.boolean() }),
-  handler: updateAuctionHandler,
+  handler: updateLotHandler,
 });
 
 /**
- * Handler for admin-initiated auction updates.
+ * Handler for admin-initiated lot updates.
  *
  * @param ctx - Mutation context
- * @param args - Arguments including auctionId and updates
- * @param args.auctionId - The ID of the auction to update
+ * @param args - Arguments including the lot id and updates
+ * @param args.lotId - The ID of the lot to update
  * @param args.updates - The updates to apply
- * @param args.updates.title - New title for the auction
+ * @param args.updates.title - New title for the lot
  * @param args.updates.categoryId - New category ID
  * @param args.updates.make - New make
  * @param args.updates.model - New model
@@ -226,15 +235,13 @@ export const updateAuction = mutation({
  * @param args.updates.startingPrice - New starting price
  * @param args.updates.reservePrice - New reserve price
  * @param args.updates.status - New status
- * @param args.updates.startTime - New start time
- * @param args.updates.endTime - New end time
  * @param args.updates.currentPrice - New current price
  * @returns Object with success boolean
  */
-export const adminUpdateAuctionHandler = async (
+export const adminUpdateLotHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionId: Id<"auctions">;
+    lotId: Id<"lots">;
     updates: {
       title?: string;
       categoryId?: Id<"equipmentCategories">;
@@ -246,38 +253,18 @@ export const adminUpdateAuctionHandler = async (
       description?: string;
       startingPrice?: number;
       reservePrice?: number;
-      status?:
-        | "draft"
-        | "pending_review"
-        | "active"
-        | "sold"
-        | "unsold"
-        | "rejected";
-      startTime?: number;
-      endTime?: number;
+      status?: AdminLotStatus;
       currentPrice?: number;
     };
   }
 ) => {
   await requireAdmin(ctx);
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) throw new ConvexError("Auction not found");
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) throw new ConvexError("Lot not found");
 
-  const oldStatus = auction.status;
+  const oldStatus = lot.status;
   const newStatus = args.updates.status;
-
-  if (newStatus === "active") {
-    const patched = { ...auction, ...args.updates };
-    try {
-      validateAuctionStatus(patched, newStatus);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new ConvexError(`Cannot activate auction: ${error.message}`);
-      }
-      throw error;
-    }
-  }
 
   const patchData: typeof args.updates & {
     hiddenByFlags?: boolean;
@@ -294,10 +281,10 @@ export const adminUpdateAuctionHandler = async (
     patchData.hiddenByFlags = false;
   }
 
-  // If admin updates startingPrice for pre-live auctions, recompute derived fields
+  // If admin updates startingPrice for pre-live lots, recompute derived fields
   if (
     args.updates.startingPrice !== undefined &&
-    (auction.status === "draft" || auction.status === "pending_review")
+    (lot.status === "draft" || lot.status === "pending_review")
   ) {
     patchData.currentPrice = args.updates.startingPrice;
     patchData.minIncrement =
@@ -306,29 +293,25 @@ export const adminUpdateAuctionHandler = async (
         : LARGE_INCREMENT_AMOUNT;
   }
 
-  if (args.updates.startTime !== undefined && auction.status !== "draft") {
-    validateStartTimeBounds(args.updates.startTime, true);
-  }
-
-  await ctx.db.patch("auctions", args.auctionId, patchData);
+  await ctx.db.patch("lots", args.lotId, patchData);
 
   if (newStatus && oldStatus !== newStatus) {
-    await adjustStatusCounters(ctx, oldStatus, newStatus);
+    await adjustLotStatusCounters(ctx, oldStatus, newStatus);
   }
 
   await logAudit(ctx, {
     action: "UPDATE_AUCTION",
-    targetId: args.auctionId,
-    targetType: "auction",
+    targetId: args.lotId,
+    targetType: "lot",
     details: JSON.stringify(args.updates),
   });
 
   return { success: true };
 };
 
-export const adminUpdateAuction = mutation({
+export const adminUpdateLot = mutation({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     updates: v.object({
       title: v.optional(v.string()),
       categoryId: v.optional(v.id("equipmentCategories")),
@@ -340,80 +323,49 @@ export const adminUpdateAuction = mutation({
       description: v.optional(v.string()),
       startingPrice: v.optional(v.number()),
       reservePrice: v.optional(v.number()),
-      status: v.optional(
-        v.union(
-          v.literal("draft"),
-          v.literal("pending_review"),
-          v.literal("active"),
-          v.literal("sold"),
-          v.literal("unsold"),
-          v.literal("rejected")
-        )
-      ),
-      startTime: v.optional(v.number()),
-      endTime: v.optional(v.number()),
+      status: v.optional(ADMIN_LOT_STATUS_UNION),
       currentPrice: v.optional(v.number()),
     }),
   },
   returns: v.object({ success: v.boolean() }),
-  handler: adminUpdateAuctionHandler,
+  handler: adminUpdateLotHandler,
 });
 
 /**
- * Bulk update multiple auctions (admin only).
+ * Bulk update multiple lots (admin only).
  * @param ctx - The mutation context.
  * @param args - The arguments for bulk update.
- * @param args.auctionIds - The IDs of the auctions to update
+ * @param args.lotIds - The IDs of the lots to update
  * @param args.updates - The updates to apply
  * @param args.updates.status - New status
- * @param args.updates.startTime - New start time
- * @param args.updates.endTime - New end time
  * @param args.updates.startingPrice - New starting price
- * @returns Promise<{ success: boolean; updated: Id<"auctions">[]; skipped: Id<"auctions">[] }>
+ * @returns Promise<{ success: boolean; updated: Id<"lots">[]; skipped: Id<"lots">[] }>
  */
-export const bulkUpdateAuctionsHandler = async (
+export const bulkUpdateLotsHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionIds: Id<"auctions">[];
+    lotIds: Id<"lots">[];
     updates: {
-      status?:
-        | "draft"
-        | "pending_review"
-        | "active"
-        | "sold"
-        | "unsold"
-        | "rejected";
-      startTime?: number;
-      endTime?: number;
+      status?: AdminLotStatus;
       startingPrice?: number;
     };
   }
 ) => {
   await requireAdmin(ctx);
 
-  if (args.auctionIds.length > MAX_BULK_UPDATE_SIZE) {
+  if (args.lotIds.length > MAX_BULK_UPDATE_SIZE) {
     throw new ConvexError(
-      `Bulk update exceeds limit of ${MAX_BULK_UPDATE_SIZE.toString()} auctions`
+      `Bulk update exceeds limit of ${MAX_BULK_UPDATE_SIZE.toString()} lots`
     );
   }
 
-  const updated: Id<"auctions">[] = [];
-  const skipped: Id<"auctions">[] = [];
-  for (const id of args.auctionIds) {
-    const auction = await ctx.db.get("auctions", id);
-    if (auction) {
-      const oldStatus = auction.status;
+  const updated: Id<"lots">[] = [];
+  const skipped: Id<"lots">[] = [];
+  for (const id of args.lotIds) {
+    const lot = await ctx.db.get("lots", id);
+    if (lot) {
+      const oldStatus = lot.status;
       const newStatus = args.updates.status;
-
-      if (newStatus === "active") {
-        const patched = { ...auction, ...args.updates };
-        try {
-          validateAuctionStatus(patched, newStatus);
-        } catch {
-          skipped.push(id);
-          continue;
-        }
-      }
 
       const patchData: typeof args.updates & {
         currentPrice?: number;
@@ -422,7 +374,7 @@ export const bulkUpdateAuctionsHandler = async (
       } = { ...args.updates };
       if (
         args.updates.startingPrice !== undefined &&
-        (auction.status === "draft" || auction.status === "pending_review")
+        (lot.status === "draft" || lot.status === "pending_review")
       ) {
         patchData.currentPrice = args.updates.startingPrice;
         patchData.minIncrement =
@@ -438,20 +390,11 @@ export const bulkUpdateAuctionsHandler = async (
         patchData.hiddenByFlags = false;
       }
 
-      if (args.updates.startTime !== undefined && auction.status !== "draft") {
-        try {
-          validateStartTimeBounds(args.updates.startTime, true);
-        } catch {
-          skipped.push(id);
-          continue;
-        }
-      }
-
-      await ctx.db.patch("auctions", id, patchData);
+      await ctx.db.patch("lots", id, patchData);
       updated.push(id);
 
       if (newStatus && oldStatus !== newStatus) {
-        await adjustStatusCounters(ctx, oldStatus, newStatus);
+        await adjustLotStatusCounters(ctx, oldStatus, newStatus);
       }
     } else {
       skipped.push(id);
@@ -460,11 +403,11 @@ export const bulkUpdateAuctionsHandler = async (
 
   await logAudit(ctx, {
     action: "BULK_UPDATE_AUCTIONS",
-    targetId: args.auctionIds.join(","),
-    targetType: "auction",
+    targetId: args.lotIds.join(","),
+    targetType: "lot",
     targetCount: updated.length,
     details: JSON.stringify({
-      requestedCount: args.auctionIds.length,
+      requestedCount: args.lotIds.length,
       updatedCount: updated.length,
       skippedCount: skipped.length,
       updates: Object.keys(args.updates),
@@ -475,61 +418,50 @@ export const bulkUpdateAuctionsHandler = async (
   return { success: true, updated, skipped };
 };
 
-export const bulkUpdateAuctions = mutation({
+export const bulkUpdateLots = mutation({
   args: {
-    auctionIds: v.array(v.id("auctions")),
+    lotIds: v.array(v.id("lots")),
     updates: v.object({
-      status: v.optional(
-        v.union(
-          v.literal("draft"),
-          v.literal("pending_review"),
-          v.literal("active"),
-          v.literal("sold"),
-          v.literal("unsold"),
-          v.literal("rejected")
-        )
-      ),
-      startTime: v.optional(v.number()),
-      endTime: v.optional(v.number()),
+      status: v.optional(ADMIN_LOT_STATUS_UNION),
       startingPrice: v.optional(v.number()),
     }),
   },
   returns: v.object({
     success: v.boolean(),
-    updated: v.array(v.id("auctions")),
-    skipped: v.array(v.id("auctions")),
+    updated: v.array(v.id("lots")),
+    skipped: v.array(v.id("lots")),
   }),
-  handler: bulkUpdateAuctionsHandler,
+  handler: bulkUpdateLotsHandler,
 });
 
 /**
- * Handler for updating an auction's condition report.
+ * Handler for updating a lot's condition report.
  *
  * @param ctx - Mutation context
- * @param args - Arguments including auctionId and typed storageId
- * @param args.auctionId - The ID of the auction
+ * @param args - Arguments including the lot id and typed storageId
+ * @param args.lotId - The ID of the lot
  * @param args.storageId - The storage ID of the report
  * @returns Object with success boolean
  */
 export const updateConditionReportHandler = async (
   ctx: MutationCtx,
-  args: { auctionId: Id<"auctions">; storageId: Id<"_storage"> }
+  args: { lotId: Id<"lots">; storageId: Id<"_storage"> }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) {
-    throw new ConvexError("Auction not found");
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) {
+    throw new ConvexError("Lot not found");
   }
 
-  assertOwnership(auction, userId);
-  assertEditable(auction);
+  assertLotOwnership(lot, userId);
+  assertLotEditable(lot);
 
-  if (auction.conditionReportUrl) {
-    await safeDelete(ctx, auction.conditionReportUrl, "old condition report");
+  if (lot.conditionReportUrl) {
+    await safeDelete(ctx, lot.conditionReportUrl, "old condition report");
   }
 
-  await ctx.db.patch("auctions", args.auctionId, {
+  await ctx.db.patch("lots", args.lotId, {
     conditionReportUrl: args.storageId,
   });
 
@@ -537,11 +469,11 @@ export const updateConditionReportHandler = async (
 };
 
 /**
- * Upload a condition report PDF for an auction.
+ * Upload a condition report PDF for a lot.
  */
 export const uploadConditionReport = mutation({
   args: {
-    auctionId: v.id("auctions"),
+    lotId: v.id("lots"),
     storageId: v.id("_storage"),
   },
   returns: v.object({ success: v.boolean() }),

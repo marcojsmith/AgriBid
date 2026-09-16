@@ -123,7 +123,7 @@ describe("Admin Statistics", () => {
 
     expect(stats).toMatchObject({
       status: "healthy",
-      totalAuctions: 10,
+      totalLots: 10,
     });
   });
 
@@ -190,7 +190,7 @@ describe("Admin Statistics", () => {
     const auctionsInsert = insertCalls.find(
       (call: unknown[]) =>
         call[0] === "counters" &&
-        (call[1] as { name?: string } | undefined)?.name === "auctions"
+        (call[1] as { name?: string } | undefined)?.name === "lots"
     );
     expect(auctionsInsert).toBeDefined();
     const insertedData = auctionsInsert?.[1] as {
@@ -500,8 +500,8 @@ describe("Admin Statistics", () => {
 
     const result = await getAdminStatsHandler(mockCtx as unknown as QueryCtx);
 
-    expect(result.totalAuctions).toBe(100);
-    expect(result.activeAuctions).toBe(50);
+    expect(result.totalLots).toBe(100);
+    expect(result.activeLots).toBe(50);
     expect(result.status).toBe("healthy");
   });
 });

@@ -3,8 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   toggleWatchlistHandler,
   isWatchedHandler,
-  getWatchedAuctionsHandler,
-  getWatchedAuctionIdsHandler,
+  getWatchedLotsHandler,
+  getWatchedLotIdsHandler,
 } from "./watchlist";
 import * as auth from "./lib/auth";
 import * as auctions from "./auctions";
@@ -18,10 +18,10 @@ vi.mock("./lib/auth", () => ({
 }));
 
 vi.mock("./auctions", () => ({
-  toAuctionSummary: vi.fn((_ctx: unknown, a: { _id: unknown }) =>
+  toLotSummary: vi.fn((_ctx: unknown, a: { _id: unknown }) =>
     Promise.resolve({ _id: a._id, title: "Auction" })
   ),
-  AuctionSummaryValidator: { fields: {} },
+  LotSummaryValidator: { fields: {} },
 }));
 
 interface MockQuery {
@@ -84,7 +84,7 @@ describe("Watchlist Coverage", () => {
 
       await expect(
         toggleWatchlistHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "a1" as Id<"lots">,
         })
       ).rejects.toThrow("Unable to determine user ID");
     });
@@ -99,7 +99,7 @@ describe("Watchlist Coverage", () => {
       const result = await toggleWatchlistHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "a1" as Id<"lots">,
         }
       );
       expect(result).toBe(false);
@@ -116,13 +116,13 @@ describe("Watchlist Coverage", () => {
       const result = await toggleWatchlistHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"auctions">,
+          lotId: "a1" as Id<"lots">,
         }
       );
       expect(result).toBe(true);
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "watchlist",
-        expect.objectContaining({ auctionId: "a1" })
+        expect.objectContaining({ lotId: "a1" })
       );
     });
   });
@@ -136,7 +136,7 @@ describe("Watchlist Coverage", () => {
       queryMock.first.mockResolvedValue({ _id: "w1" });
 
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "a1" as Id<"lots">,
       });
       expect(result).toBe(true);
     });
@@ -144,7 +144,7 @@ describe("Watchlist Coverage", () => {
     it("should return false if not authenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "a1" as Id<"lots">,
       });
       expect(result).toBe(false);
     });
@@ -155,7 +155,7 @@ describe("Watchlist Coverage", () => {
       } as unknown as { _id: string });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "a1" as Id<"lots">,
       });
       expect(result).toBe(false);
     });
@@ -166,7 +166,7 @@ describe("Watchlist Coverage", () => {
         // intentional no-op: silences the expected error log under test
       });
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "a1" as Id<"lots">,
       });
       expect(result).toBe(false);
       expect(spy).toHaveBeenCalled();
@@ -181,7 +181,7 @@ describe("Watchlist Coverage", () => {
         // intentional no-op: test asserts Unauthenticated errors are never logged
       });
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
-        auctionId: "a1" as Id<"auctions">,
+        lotId: "a1" as Id<"lots">,
       });
       expect(result).toBe(false);
       expect(spy).not.toHaveBeenCalled();
@@ -189,13 +189,13 @@ describe("Watchlist Coverage", () => {
     });
   });
 
-  describe("getWatchedAuctionsHandler", () => {
+  describe("getWatchedLotsHandler", () => {
     it("should return empty if resolveUserId returns null", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
       } as unknown as { _id: string });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
-      const result = await getWatchedAuctionsHandler(
+      const result = await getWatchedLotsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
       );
@@ -204,7 +204,7 @@ describe("Watchlist Coverage", () => {
 
     it("should return empty if not authenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
-      const result = await getWatchedAuctionsHandler(
+      const result = await getWatchedLotsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
       );
@@ -217,17 +217,17 @@ describe("Watchlist Coverage", () => {
       } as unknown as { _id: string });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.paginate.mockResolvedValue({
-        page: [{ auctionId: "a1" as Id<"auctions"> }],
+        page: [{ lotId: "a1" as Id<"lots"> }],
         isDone: true,
         continueCursor: "next",
       });
 
-      const result = await getWatchedAuctionsHandler(
+      const result = await getWatchedLotsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
       );
       expect(result.page).toHaveLength(1);
-      expect(auctions.toAuctionSummary).toHaveBeenCalled();
+      expect(auctions.toLotSummary).toHaveBeenCalled();
     });
 
     it("should filter out missing auctions", async () => {
@@ -236,13 +236,13 @@ describe("Watchlist Coverage", () => {
       } as unknown as { _id: string });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.paginate.mockResolvedValue({
-        page: [{ auctionId: "a1" as Id<"auctions"> }],
+        page: [{ lotId: "a1" as Id<"lots"> }],
         isDone: true,
         continueCursor: "next",
       });
       mockCtx.db.get.mockResolvedValue(null);
 
-      const result = await getWatchedAuctionsHandler(
+      const result = await getWatchedLotsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
       );
@@ -254,7 +254,7 @@ describe("Watchlist Coverage", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {
         // intentional no-op: silences the expected error log under test
       });
-      const result = await getWatchedAuctionsHandler(
+      const result = await getWatchedLotsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
       );
@@ -270,7 +270,7 @@ describe("Watchlist Coverage", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {
         // intentional no-op: test asserts Unauthenticated errors are never logged
       });
-      const result = await getWatchedAuctionsHandler(
+      const result = await getWatchedLotsHandler(
         mockCtx as unknown as QueryCtx,
         { paginationOpts: { numItems: 10, cursor: null } }
       );
@@ -280,13 +280,13 @@ describe("Watchlist Coverage", () => {
     });
   });
 
-  describe("getWatchedAuctionIdsHandler", () => {
+  describe("getWatchedLotIdsHandler", () => {
     it("should return empty if resolveUserId returns null", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
       } as unknown as { _id: string });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
-      const result = await getWatchedAuctionIdsHandler(
+      const result = await getWatchedLotIdsHandler(
         mockCtx as unknown as QueryCtx
       );
       expect(result).toHaveLength(0);
@@ -300,17 +300,17 @@ describe("Watchlist Coverage", () => {
 
       queryMock.paginate
         .mockResolvedValueOnce({
-          page: [{ auctionId: "a1" as Id<"auctions"> }],
+          page: [{ lotId: "a1" as Id<"lots"> }],
           isDone: false,
           continueCursor: "c1",
         })
         .mockResolvedValueOnce({
-          page: [{ auctionId: "a2" as Id<"auctions"> }],
+          page: [{ lotId: "a2" as Id<"lots"> }],
           isDone: true,
           continueCursor: "c2",
         });
 
-      const result = await getWatchedAuctionIdsHandler(
+      const result = await getWatchedLotIdsHandler(
         mockCtx as unknown as QueryCtx
       );
       expect(result).toEqual(["a1", "a2"]);
@@ -323,7 +323,7 @@ describe("Watchlist Coverage", () => {
       } as unknown as { _id: string });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.paginate.mockResolvedValue({
-        page: [{ auctionId: "a" as Id<"auctions"> }],
+        page: [{ lotId: "a" as Id<"lots"> }],
         isDone: false,
         continueCursor: "c",
       });
@@ -331,7 +331,7 @@ describe("Watchlist Coverage", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {
         // intentional no-op: silences the expected truncation warning
       });
-      const result = await getWatchedAuctionIdsHandler(
+      const result = await getWatchedLotIdsHandler(
         mockCtx as unknown as QueryCtx
       );
       expect(result).toHaveLength(10); // MAX_PAGES
@@ -346,7 +346,7 @@ describe("Watchlist Coverage", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {
         // intentional no-op: silences the expected error log under test
       });
-      const result = await getWatchedAuctionIdsHandler(
+      const result = await getWatchedLotIdsHandler(
         mockCtx as unknown as QueryCtx
       );
       expect(result).toHaveLength(0);
@@ -361,7 +361,7 @@ describe("Watchlist Coverage", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {
         // intentional no-op: test asserts Unauthenticated errors are never logged
       });
-      const result = await getWatchedAuctionIdsHandler(
+      const result = await getWatchedLotIdsHandler(
         mockCtx as unknown as QueryCtx
       );
       expect(result).toHaveLength(0);

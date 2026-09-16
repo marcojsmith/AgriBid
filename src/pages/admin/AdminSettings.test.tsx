@@ -34,7 +34,7 @@ describe("AdminSettings Page", () => {
     totalUsers: 100,
     liveUsers: 5,
     pendingReview: 2,
-    activeAuctions: 10,
+    activeLots: 10,
   };
 
   beforeEach(() => {
