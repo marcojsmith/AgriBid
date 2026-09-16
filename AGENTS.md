@@ -25,7 +25,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 
 **URLs:** Dev: `https://localhost:5173` · Dev (Tailscale): `https://trio5700x.taila18a1c.ts.net:5173` · Prod: `https://agribid.vercel.app`
 
-The dev server runs HTTPS using a Tailscale-issued cert for this machine's MagicDNS name (`vite.config.ts` loads it from `certs/`, which is git-ignored). Regenerate with `tailscale cert trio5700x.taila18a1c.ts.net` if it expires. The cert matches `trio5700x.taila18a1c.ts.net`, so that URL is warning-free on every tailnet device; `https://localhost:5173` works but shows a name-mismatch warning.
+The dev server runs HTTPS using a Tailscale-issued cert for this machine's MagicDNS name (`vite.config.ts` loads it from `certs/`, which is git-ignored). Regenerate with `tailscale cert --cert-file certs/trio5700x.taila18a1c.ts.net.crt --key-file certs/trio5700x.taila18a1c.ts.net.key trio5700x.taila18a1c.ts.net` if it expires. The cert matches `trio5700x.taila18a1c.ts.net`, so that URL is warning-free on every tailnet device; `https://localhost:5173` works but shows a name-mismatch warning.
 
 When sharing local dev-server changes for review, give the Tailscale URL (`https://trio5700x.taila18a1c.ts.net:5173`) instead of `localhost` so it's reachable from any device on the tailnet (`vite.config.ts` already sets `host: true`).
 
