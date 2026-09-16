@@ -170,13 +170,13 @@ export const getFinancialStats = query({
       const [recentSoldLots, totalSoldCount, allLotFees] = await Promise.all([
         ctx.db
           .query("lots")
-          .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+          .withIndex("by_status_settledAt", (q) => q.eq("status", "sold"))
           .order("desc")
           .take(startIndex + numItems),
         countQuery(
           ctx.db
             .query("lots")
-            .withIndex("by_status_endTime", (q) => q.eq("status", "sold"))
+            .withIndex("by_status_settledAt", (q) => q.eq("status", "sold"))
         ),
         ctx.db.query("lotFees").collect(),
       ]);

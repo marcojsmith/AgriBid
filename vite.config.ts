@@ -54,31 +54,6 @@ export default defineConfig(({ mode }) => {
         ),
       },
     },
-    build: {
-      rollupOptions: {
-        output: {
-          codeSplitting: {
-            groups: [
-              {
-                name: "vendor-react",
-                test: /node_modules[\\/](react|react-dom|react-router-dom)[\\/]/,
-              },
-              {
-                name: "vendor-convex",
-                test: /node_modules[\\/]convex[\\/]/,
-              },
-              {
-                name: "vendor-clerk",
-                test: /node_modules[\\/]@clerk[\\/]clerk-react[\\/]/,
-              },
-              {
-                name: "vendor-ui",
-                test: /node_modules[\\/](lucide-react|@radix-ui[\\/]react-accordion|@radix-ui[\\/]react-alert-dialog|@radix-ui[\\/]react-dialog|@radix-ui[\\/]react-slot|sonner)[\\/]/,
-              },
-            ],
-          },
-        },
-      },
-    },
+    build: {},
   };
 });
