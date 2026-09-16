@@ -23,9 +23,13 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)                                             |
 | `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)                                              |
 
-**URLs:** Dev: `https://localhost:5173` · Dev (Tailscale): `https://100.95.66.9:5173` · Prod: `https://agribid.vercel.app`
+**URLs:** Dev: `https://localhost:5173` · Dev (Tailscale): `https://trio5700x.taila18a1c.ts.net:5173` · Prod: `https://agribid.vercel.app`
 
-When sharing local dev-server changes for review, give the Tailscale URL (`https://100.95.66.9:5173`) instead of `localhost` so it's reachable from any device on the tailnet (`vite.config.ts` already sets `host: true`).
+The dev server runs HTTPS using a Tailscale-issued cert for this machine's MagicDNS name (`vite.config.ts` loads it from `certs/`, which is git-ignored). Regenerate with `tailscale cert trio5700x.taila18a1c.ts.net` if it expires. The cert matches `trio5700x.taila18a1c.ts.net`, so that URL is warning-free on every tailnet device; `https://localhost:5173` works but shows a name-mismatch warning.
+
+When sharing local dev-server changes for review, give the Tailscale URL (`https://trio5700x.taila18a1c.ts.net:5173`) instead of `localhost` so it's reachable from any device on the tailnet (`vite.config.ts` already sets `host: true`).
+
+**Clerk note:** Clerk blocks sign-in requests whose origin isn't allow-listed (`403` from Cloudflare, and the Google button silently does nothing). Any origin you use — `https://localhost:5173`, `https://trio5700x.taila18a1c.ts.net:5173` — must be added under Clerk Dashboard → Configure → API Keys → Allowed origins.
 
 ---
 
@@ -35,7 +39,6 @@ When sharing local dev-server changes for review, give the Tailscale URL (`https
 - **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
 - Create tests before starting a new feature or fixing a bug.
 - When encountering lint or typesafety errors or warns, correct these where possible.
-- You are a master delegator and make use of subagents where possible.
 - There are many tests, run tests ONLY for specific files (e.g. `bun run test --run path/to/directory/file.ts`) where possible instead of running `bun run test`.
 - Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
 - If you spot something important — an incorrect import, a structural issue, a potential improvement — raise it, even if unrelated to the current task.

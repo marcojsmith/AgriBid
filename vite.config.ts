@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "path";
 
 import { defineConfig } from "vite";
@@ -5,6 +6,19 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 import pkg from "./package.json" with { type: "json" };
+
+// TLS cert issued by `tailscale cert` for the MagicDNS name of this machine.
+// Enables a trusted HTTPS dev server reachable from any device on the tailnet,
+// and a secure browser context (required by Clerk's dev-browser handshake).
+const certDir = path.resolve(import.meta.dirname, "./certs");
+const certName = "trio5700x.taila18a1c.ts.net";
+const keyPath = path.join(certDir, `${certName}.key`);
+const certPath = path.join(certDir, `${certName}.crt`);
+
+const https =
+  fs.existsSync(keyPath) && fs.existsSync(certPath)
+    ? { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) }
+    : undefined;
 
 export default defineConfig(() => {
   return {
@@ -14,6 +28,7 @@ export default defineConfig(() => {
     },
     server: {
       host: true,
+      https,
       proxy: {},
     },
     resolve: {
