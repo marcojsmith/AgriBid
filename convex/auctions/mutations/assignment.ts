@@ -42,6 +42,10 @@ export const assignLotToAuctionHandler = async (
     throw new ConvexError("Auction not found");
   }
 
+  if (auction.status === "closed") {
+    throw new ConvexError("Cannot assign lots to a closed auction");
+  }
+
   // Resolve the auction's fee defaults onto the lot now, so later edits to the
   // auction's defaults cannot change an already-assigned lot's fees (issue #318).
   await ctx.db.patch("lots", args.lotId, {

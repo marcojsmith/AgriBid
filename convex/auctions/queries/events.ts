@@ -11,7 +11,7 @@ import type { Id } from "../../_generated/dataModel";
  * Validator for an auction (scheduled sale container) with a resolved banner
  * image URL.
  */
-export const AuctionEventValidator = v.object({
+export const AuctionValidator = v.object({
   _id: v.id("auctions"),
   _creationTime: v.number(),
   title: v.string(),
@@ -32,7 +32,14 @@ export const AuctionEventValidator = v.object({
   lotCount: v.number(),
 });
 
-/** Raw auction container document shape consumed by {@link toAuctionEvent}. */
+/**
+ * Auction container with its lots, used by the public container-detail page.
+ */
+export const AuctionWithLotsValidator = AuctionValidator.extend({
+  lots: v.array(LotSummaryValidator),
+});
+
+/** Raw auction container document shape consumed by {@link toAuction}. */
 interface AuctionContainerDoc {
   _id: Id<"auctions">;
   _creationTime: number;
@@ -57,7 +64,7 @@ interface AuctionContainerDoc {
  * @param auction - The auction container document.
  * @returns The auction with a resolved banner URL and lot count.
  */
-async function toAuctionEvent(ctx: QueryCtx, auction: AuctionContainerDoc) {
+async function toAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
   const [bannerImageUrl, lots] = await Promise.all([
     resolveUrlCached(ctx.storage, auction.bannerImage),
     ctx.db
@@ -88,19 +95,19 @@ async function toAuctionEvent(ctx: QueryCtx, auction: AuctionContainerDoc) {
  * Returns every auction container, newest first (admin only).
  *
  * @param ctx - Convex Query context.
- * @returns Array of auction events with resolved banner URLs and lot counts.
+ * @returns Array of auctions with resolved banner URLs and lot counts.
  */
-export const getAllAuctionEventsHandler = async (ctx: QueryCtx) => {
+export const getAllAuctionsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
   const auctions = await ctx.db.query("auctions").order("desc").collect();
-  return await Promise.all(auctions.map((a) => toAuctionEvent(ctx, a)));
+  return await Promise.all(auctions.map((a) => toAuction(ctx, a)));
 };
 
-export const getAllAuctionEvents = query({
+export const getAllAuctions = query({
   args: {},
-  returns: v.array(AuctionEventValidator),
-  handler: getAllAuctionEventsHandler,
+  returns: v.array(AuctionValidator),
+  handler: getAllAuctionsHandler,
 });
 
 /**
@@ -110,9 +117,9 @@ export const getAllAuctionEvents = query({
  * @param ctx - Convex Query context.
  * @param args - Handler arguments.
  * @param args.auctionId - The auction container id.
- * @returns The auction event, or null if it doesn't exist.
+ * @returns The auction, or null if it doesn't exist.
  */
-export const getAuctionEventByIdHandler = async (
+export const getAuctionByIdHandler = async (
   ctx: QueryCtx,
   args: { auctionId: Id<"auctions"> }
 ) => {
@@ -120,13 +127,13 @@ export const getAuctionEventByIdHandler = async (
 
   const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction) return null;
-  return await toAuctionEvent(ctx, auction);
+  return await toAuction(ctx, auction);
 };
 
-export const getAuctionEventById = query({
+export const getAuctionById = query({
   args: { auctionId: v.id("auctions") },
-  returns: v.union(AuctionEventValidator, v.null()),
-  handler: getAuctionEventByIdHandler,
+  returns: v.union(AuctionValidator, v.null()),
+  handler: getAuctionByIdHandler,
 });
 
 /**
@@ -135,9 +142,9 @@ export const getAuctionEventById = query({
  * publicly.
  *
  * @param ctx - Convex Query context.
- * @returns Array of published/closed auction events with resolved banners.
+ * @returns Array of published/closed auctions with resolved banners.
  */
-export const getPublishedAuctionEventsHandler = async (ctx: QueryCtx) => {
+export const getPublishedAuctionsHandler = async (ctx: QueryCtx) => {
   const published = await ctx.db
     .query("auctions")
     .withIndex("by_status", (q) => q.eq("status", "published"))
@@ -151,13 +158,50 @@ export const getPublishedAuctionEventsHandler = async (ctx: QueryCtx) => {
     (a, b) => b.startTime - a.startTime
   );
 
-  return await Promise.all(all.map((a) => toAuctionEvent(ctx, a)));
+  return await Promise.all(all.map((a) => toAuction(ctx, a)));
 };
 
-export const getPublishedAuctionEvents = query({
+export const getPublishedAuctions = query({
   args: {},
-  returns: v.array(AuctionEventValidator),
-  handler: getPublishedAuctionEventsHandler,
+  returns: v.array(AuctionValidator),
+  handler: getPublishedAuctionsHandler,
+});
+
+/**
+ * Returns a single published or closed auction container together with its
+ * lots, for the public container-detail page. Draft containers are never
+ * exposed publicly.
+ *
+ * @param ctx - Convex Query context.
+ * @param args - Handler arguments.
+ * @param args.auctionId - The auction container id.
+ * @returns The auction with its lots, or null if missing or still a draft.
+ */
+export const getPublishedAuctionHandler = async (
+  ctx: QueryCtx,
+  args: { auctionId: Id<"auctions"> }
+) => {
+  const auction = await ctx.db.get("auctions", args.auctionId);
+  if (!auction || auction.status === "draft") return null;
+
+  const [auctionView, lots] = await Promise.all([
+    toAuction(ctx, auction),
+    ctx.db
+      .query("lots")
+      .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
+      .collect(),
+  ]);
+
+  return {
+    ...auctionView,
+    lots: await Promise.all(lots.map((lot) => toLotSummary(ctx, lot))),
+  };
+};
+
+export const getPublishedAuction = query({
+  args: { auctionId: v.id("auctions") },
+  returns: v.union(AuctionWithLotsValidator, v.null()),
+  handler: getPublishedAuctionHandler,
 });
 
 /**

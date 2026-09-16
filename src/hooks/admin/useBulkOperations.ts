@@ -37,7 +37,7 @@ export function useBulkOperations() {
 
   // Mutation
   const bulkUpdateAuctionsMutation = useMutation(
-    api.auctions.mutations.update.bulkUpdateAuctions
+    api.auctions.mutations.update.bulkUpdateLots
   );
 
   /**
@@ -84,10 +84,7 @@ export function useBulkOperations() {
    * @param auctionId - The ID of the auction to toggle
    * @param selected - Whether the auction should be selected
    */
-  const handleToggleSelection = (
-    auctionId: Id<"lots">,
-    selected: boolean
-  ) => {
+  const handleToggleSelection = (auctionId: Id<"lots">, selected: boolean) => {
     setSelectedAuctions((prev) =>
       selected
         ? prev.includes(auctionId)
@@ -107,11 +104,11 @@ export function useBulkOperations() {
     setIsBulkProcessing(true);
     try {
       await bulkUpdateAuctionsMutation({
-        auctionIds: selectedAuctions,
+        lotIds: selectedAuctions,
         updates: { status: bulkStatusTarget },
       });
       toast.success(
-        `Updated ${String(selectedAuctions.length)} auctions to ${bulkStatusTarget}`
+        `Updated ${String(selectedAuctions.length)} lots to ${bulkStatusTarget}`
       );
       setSelectedAuctions([]);
       setBulkStatusTarget(null);

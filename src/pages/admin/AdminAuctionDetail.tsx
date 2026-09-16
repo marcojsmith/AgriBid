@@ -1,4 +1,4 @@
-// app/src/pages/admin/AdminSaleDetail.tsx
+// app/src/pages/admin/AdminAuctionDetail.tsx
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
@@ -20,14 +20,14 @@ import { getErrorMessage } from "@/lib/utils";
  * event: lists lots already assigned (with an unassign action) and approved
  * lots still awaiting assignment (with an assign action).
  *
- * @returns The AdminSaleDetail page component.
+ * @returns The AdminAuctionDetail page component.
  */
-export default function AdminSaleDetail() {
+export default function AdminAuctionDetail() {
   const { id } = useParams<{ id: string }>();
   const auctionId = id as Id<"auctions"> | undefined;
 
   const event = useQuery(
-    api.auctions.getAuctionEventById,
+    api.auctions.getAuctionById,
     auctionId ? { auctionId } : "skip"
   );
   const candidates = useQuery(
@@ -71,7 +71,7 @@ export default function AdminSaleDetail() {
 
   if (event === undefined || candidates === undefined) {
     return (
-      <AdminLayout title="Auction Event" subtitle="Manage Lot Assignments">
+      <AdminLayout title="Auction" subtitle="Manage Lot Assignments">
         <div className="h-64 flex items-center justify-center">
           <LoadingIndicator />
         </div>
@@ -81,12 +81,12 @@ export default function AdminSaleDetail() {
 
   if (event === null) {
     return (
-      <AdminLayout title="Auction Event" subtitle="Manage Lot Assignments">
+      <AdminLayout title="Auction" subtitle="Manage Lot Assignments">
         <div className="max-w-lg mx-auto py-24 text-center space-y-4">
           <h1 className="text-2xl font-bold">Auction Not Found</h1>
           <Button asChild variant="outline">
-            <Link to="/admin/sales">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Auction Events
+            <Link to="/admin/auctions">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Auctions
             </Link>
           </Button>
         </div>
@@ -98,8 +98,8 @@ export default function AdminSaleDetail() {
     <AdminLayout title={event.title} subtitle="Manage Lot Assignments">
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
         <Button asChild variant="ghost" size="sm" className="gap-2 -ml-2">
-          <Link to="/admin/sales">
-            <ArrowLeft className="h-4 w-4" /> Back to Auction Events
+          <Link to="/admin/auctions">
+            <ArrowLeft className="h-4 w-4" /> Back to Auctions
           </Link>
         </Button>
 
@@ -159,7 +159,8 @@ export default function AdminSaleDetail() {
 
           <section className="space-y-3">
             <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">
-              Approved &amp; Awaiting Assignment ({candidates.unassigned.length})
+              Approved &amp; Awaiting Assignment ({candidates.unassigned.length}
+              )
             </h2>
             {candidates.unassigned.length === 0 ? (
               <Card className="p-8 text-center text-sm text-muted-foreground border border-dashed">

@@ -5,7 +5,7 @@
  * - Bid moderation: voidBid
  * - Support: resolveTicket
  * - Announcements: createAnnouncement
- * - Maintenance: syncAuctionWinners
+ * - Maintenance: syncLotWinners
  *
  * Re-exports from specialized sub-modules:
  * - kyc.ts: reviewKYC
@@ -211,7 +211,7 @@ export const createAnnouncement = mutation({
  *
  * Only accessible to admin users.
  */
-export const syncAuctionWinners = mutation({
+export const syncLotWinners = mutation({
   args: {
     cursor: v.optional(v.string()),
     batchSize: v.optional(v.number()),

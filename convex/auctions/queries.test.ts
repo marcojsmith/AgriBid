@@ -11,7 +11,7 @@ describe("Auctions Queries Re-exports", () => {
     expect(queries.getMyBids).toBeDefined();
     expect(queries.getPendingLots).toBeDefined();
     expect(queries.getMyListings).toBeDefined();
-    expect(queries.getActiveAuctions).toBeDefined();
+    expect(queries.getActiveLots).toBeDefined();
     expect(queries.getAllLots).toBeDefined();
     expect(queries.getCategories).toBeDefined();
   });
@@ -43,14 +43,14 @@ describe("Auctions Queries Re-exports", () => {
     // Call one of the handlers to prove it's connected
     const result = await (
       queries as unknown as {
-        getActiveAuctionsHandler: (
+        getActiveLotsHandler: (
           ctx: unknown,
           args: {
             paginationOpts: { numItems: number; cursor: string | null };
           }
         ) => Promise<unknown>;
       }
-    ).getActiveAuctionsHandler(mockCtx, {
+    ).getActiveLotsHandler(mockCtx, {
       paginationOpts: { numItems: 10, cursor: null },
     });
     expect(result).toBeDefined();
@@ -60,7 +60,7 @@ describe("Auctions Queries Re-exports", () => {
 /**
  * Behavioral test coverage for these queries is implemented in:
  * - convex/auctions/queries/admin.test.ts (getPendingLots, getAllLots, getCategories, and other admin queries)
- * - convex/auctions/queries/browse.test.ts (getLotById, getActiveAuctions)
+ * - convex/auctions/queries/browse.test.ts (getLotById, getActiveLots)
  * - convex/auctions/queries/bids.test.ts (getMyBids)
  * - convex/auctions/queries/listings.test.ts (getMyListings)
  */

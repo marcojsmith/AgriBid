@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   calculateAndRecordFees,
   cleanupDraftsHandler,
-  settleExpiredAuctionsHandler,
+  settleExpiredLotsHandler,
 } from "./internal";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
@@ -116,7 +116,10 @@ describe("Internal Logic Coverage", () => {
         query: vi.fn(mockQuery),
         get: vi
           .fn()
-          .mockResolvedValue({ status: "published", endTime: Date.now() - 1000 }),
+          .mockResolvedValue({
+            status: "published",
+            endTime: Date.now() - 1000,
+          }),
         delete: vi.fn(),
         insert: vi.fn(),
         patch: vi.fn(),
@@ -187,7 +190,7 @@ describe("Internal Logic Coverage", () => {
     });
   });
 
-  describe("settleExpiredAuctionsHandler", () => {
+  describe("settleExpiredLotsHandler", () => {
     it("should settle expired lot as sold if reserve met and has bids", async () => {
       const mockLot = {
         _id: "a1",
@@ -207,7 +210,7 @@ describe("Internal Logic Coverage", () => {
 
       setupTableQuery([mockLot], [mockBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
@@ -261,7 +264,7 @@ describe("Internal Logic Coverage", () => {
 
       setupTableQuery([mockLot], [highBid, lowBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
@@ -291,7 +294,7 @@ describe("Internal Logic Coverage", () => {
 
       setupTableQuery([mockLot], [mockBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
@@ -325,7 +328,7 @@ describe("Internal Logic Coverage", () => {
 
       setupTableQuery([mockLot], [mockBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
@@ -353,7 +356,7 @@ describe("Internal Logic Coverage", () => {
 
       setupTableQuery([mockLot], []);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
@@ -394,7 +397,7 @@ describe("Internal Logic Coverage", () => {
 
       setupTableQuery([mockLot], [laterBid, earlierBid]);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
@@ -403,6 +406,101 @@ describe("Internal Logic Coverage", () => {
           status: "sold",
           winnerId: "u1",
         })
+      );
+    });
+
+    /**
+     * Builds a query mock that returns distinct rows for the two `lots`
+     * indexes used during settlement/auto-close.
+     *
+     * @param auctions - Rows returned for the `auctions` table.
+     * @param byStatusLots - Rows for `lots` queried by the `by_status` index.
+     * @param byAuctionLots - Rows for `lots` queried by `by_status_auctionId`.
+     */
+    const setupCloseQuery = (
+      auctions: Record<string, unknown>[],
+      byStatusLots: Record<string, unknown>[],
+      byAuctionLots: Record<string, unknown>[]
+    ) => {
+      mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
+        const q = mockQuery();
+        if (table === "auctions") {
+          q.collect.mockResolvedValue(auctions);
+          return q;
+        }
+        if (table === "lots") {
+          q.withIndex = vi.fn((index: string, cb?: (i: IndexQuery) => void) => {
+            if (cb) {
+              cb({
+                eq: vi.fn().mockReturnThis(),
+                lte: vi.fn().mockReturnThis(),
+                gt: vi.fn().mockReturnThis(),
+                lt: vi.fn().mockReturnThis(),
+                gte: vi.fn().mockReturnThis(),
+              });
+            }
+            q.collect.mockResolvedValue(
+              index === "by_status" ? byStatusLots : byAuctionLots
+            );
+            return q;
+          });
+        }
+        return q;
+      });
+    };
+
+    it("auto-closes a completed auction with no remaining assigned lots", async () => {
+      const auction = {
+        _id: "auc1",
+        status: "published",
+        endTime: Date.now() - 1000,
+      };
+      setupCloseQuery([auction], [], []);
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
+        "auc1",
+        expect.objectContaining({ status: "closed" })
+      );
+    });
+
+    it("leaves an auction open while assigned lots remain", async () => {
+      const auction = {
+        _id: "auc1",
+        status: "published",
+        endTime: Date.now() - 1000,
+      };
+      setupCloseQuery(
+        [auction],
+        [],
+        [{ _id: "l1", status: "assigned", auctionId: "auc1" }]
+      );
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "auctions",
+        "auc1",
+        expect.anything()
+      );
+    });
+
+    it("does not close an auction whose window has not elapsed", async () => {
+      const auction = {
+        _id: "auc2",
+        status: "published",
+        endTime: Date.now() + 100_000,
+      };
+      setupCloseQuery([auction], [], []);
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "auctions",
+        "auc2",
+        expect.anything()
       );
     });
   });

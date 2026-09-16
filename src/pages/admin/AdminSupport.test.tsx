@@ -71,8 +71,8 @@ const mockPaginatedTickets = {
 };
 
 const mockAdminStatsValue: AdminStats = {
-  totalAuctions: 50,
-  activeAuctions: 20,
+  totalLots: 50,
+  activeLots: 20,
   pendingReview: 5,
   totalUsers: 100,
   verifiedSellers: 10,

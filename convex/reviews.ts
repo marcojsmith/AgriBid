@@ -76,7 +76,7 @@ export const submitReviewHandler = async (
     throw new ConvexError("Auction is not completed");
   }
 
-  const settledAt = lot.settledAt ?? lot.endTime;
+  const settledAt = lot.settledAt;
   if (settledAt !== undefined && Date.now() - settledAt < REVIEW_COOLDOWN_MS) {
     throw new ConvexError(
       "Reviews can be left starting 7 days after the sale completes."

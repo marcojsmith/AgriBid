@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import {
-  getAllAuctionEventsHandler,
-  getAuctionEventByIdHandler,
-  getPublishedAuctionEventsHandler,
+  getAllAuctionsHandler,
+  getAuctionByIdHandler,
+  getPublishedAuctionsHandler,
+  getPublishedAuctionHandler,
   getAssignmentCandidatesHandler,
 } from "./events";
 import * as auth from "../../lib/auth";
@@ -55,7 +56,7 @@ describe("Auction event queries", () => {
     };
   });
 
-  describe("getAllAuctionEventsHandler", () => {
+  describe("getAllAuctionsHandler", () => {
     it("requires admin and returns auctions with resolved banners and lot counts", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "admin1" });
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(
@@ -75,7 +76,7 @@ describe("Auction event queries", () => {
         return lotsQuery;
       });
 
-      const result = await getAllAuctionEventsHandler(
+      const result = await getAllAuctionsHandler(
         mockCtx as unknown as QueryCtx
       );
 
@@ -90,12 +91,13 @@ describe("Auction event queries", () => {
     });
   });
 
-  describe("getAuctionEventByIdHandler", () => {
+  // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret
+  describe("getAuctionByIdHandler", () => {
     it("returns null when the auction doesn't exist", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "admin1" });
       mockCtx.db.get.mockResolvedValue(null);
 
-      const result = await getAuctionEventByIdHandler(
+      const result = await getAuctionByIdHandler(
         mockCtx as unknown as QueryCtx,
         { auctionId: "missing" as Id<"auctions"> }
       );
@@ -113,7 +115,7 @@ describe("Auction event queries", () => {
       };
       mockCtx.db.query.mockReturnValue(lotsQuery);
 
-      const result = await getAuctionEventByIdHandler(
+      const result = await getAuctionByIdHandler(
         mockCtx as unknown as QueryCtx,
         { auctionId: "a1" as Id<"auctions"> }
       );
@@ -122,11 +124,16 @@ describe("Auction event queries", () => {
     });
   });
 
-  describe("getPublishedAuctionEventsHandler", () => {
+  // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret
+  describe("getPublishedAuctionsHandler", () => {
     it("does not require admin and merges published + closed auctions sorted by startTime desc", async () => {
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
 
-      const published = { ...auctionRow, _id: "a1" as Id<"auctions">, startTime: 1000 };
+      const published = {
+        ...auctionRow,
+        _id: "a1" as Id<"auctions">,
+        startTime: 1000,
+      };
       const closed = {
         ...auctionRow,
         _id: "a2" as Id<"auctions">,
@@ -150,9 +157,11 @@ describe("Auction event queries", () => {
                 },
               });
               return {
-                collect: vi.fn().mockResolvedValue(
-                  captured.status === "published" ? [published] : [closed]
-                ),
+                collect: vi
+                  .fn()
+                  .mockResolvedValue(
+                    captured.status === "published" ? [published] : [closed]
+                  ),
               };
             }),
           };
@@ -160,12 +169,59 @@ describe("Auction event queries", () => {
         return lotsQuery;
       });
 
-      const result = await getPublishedAuctionEventsHandler(
+      const result = await getPublishedAuctionsHandler(
         mockCtx as unknown as QueryCtx
       );
 
       expect(auth.requireAdmin).not.toHaveBeenCalled();
       expect(result.map((r) => r._id)).toEqual(["a2", "a1"]);
+    });
+  });
+
+  // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret
+  describe("getPublishedAuctionHandler", () => {
+    it("returns null for a missing auction", async () => {
+      mockCtx.db.get.mockResolvedValue(null);
+
+      const result = await getPublishedAuctionHandler(
+        mockCtx as unknown as QueryCtx,
+        { auctionId: "missing" as Id<"auctions"> }
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null for a draft auction", async () => {
+      mockCtx.db.get.mockResolvedValue({ ...auctionRow, status: "draft" });
+
+      const result = await getPublishedAuctionHandler(
+        mockCtx as unknown as QueryCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it("returns the auction with its lots without requiring admin", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+      mockCtx.db.get.mockResolvedValue(auctionRow);
+      const lots = [
+        { _id: "l1" as Id<"lots">, status: "assigned", images: {} },
+        { _id: "l2" as Id<"lots">, status: "sold", images: {} },
+      ];
+      const lotsQuery = {
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue(lots),
+      };
+      mockCtx.db.query.mockReturnValue(lotsQuery);
+
+      const result = await getPublishedAuctionHandler(
+        mockCtx as unknown as QueryCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+
+      expect(auth.requireAdmin).not.toHaveBeenCalled();
+      expect(result?.lots.map((lot) => lot._id)).toEqual(["l1", "l2"]);
     });
   });
 
@@ -188,26 +244,25 @@ describe("Auction event queries", () => {
       mockCtx.db.query.mockImplementation((table: string) => {
         if (table === "lots") {
           return {
-            withIndex: vi.fn(
-              (_idx: string, cb: (q: unknown) => unknown) => {
-                const captured: Record<string, unknown> = {};
-                cb({
-                  eq: (field: string, value: unknown) => {
-                    captured[field] = value;
-                    return captured;
-                  },
-                });
-                return {
-                  collect: vi
-                    .fn()
-                    .mockResolvedValue(
-                      "status" in captured && captured.status === "approved"
-                        ? [approvedLot]
-                        : [assignedLot]
-                    ),
-                };
-              }
-            ),
+            withIndex: vi.fn((_idx: string, cb: (q: unknown) => unknown) => {
+              const captured: Record<string, unknown> = {};
+              cb({
+                eq: (field: string, value: unknown) => {
+                  // eslint-disable-next-line security/detect-object-injection -- field is a query-builder arg captured in this test mock, not user input
+                  captured[field] = value;
+                  return captured;
+                },
+              });
+              return {
+                collect: vi
+                  .fn()
+                  .mockResolvedValue(
+                    "status" in captured && captured.status === "approved"
+                      ? [approvedLot]
+                      : [assignedLot]
+                  ),
+              };
+            }),
           };
         }
         return { get: vi.fn() };

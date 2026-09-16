@@ -4,7 +4,10 @@ import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { deleteAuctionImages, safeDelete } from "../../lib/storage";
 import { logAudit, updateCounter } from "../../admin_utils";
-import { assertLotOwnership, assertLotEditable } from "../../lots/mutations/helpers";
+import {
+  assertLotOwnership,
+  assertLotEditable,
+} from "../../lots/mutations/helpers";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
@@ -44,16 +47,16 @@ export const deleteUpload = mutation({
  *
  * @param ctx - Mutation context
  * @param args - Arguments including the lot id
- * @param args.auctionId - The ID of the lot to delete (legacy arg name, lot id)
+ * @param args.lotId - The ID of the lot to delete
  * @returns Object with success boolean
  */
 export const deleteDraftHandler = async (
   ctx: MutationCtx,
-  args: { auctionId: Id<"lots"> }
+  args: { lotId: Id<"lots"> }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const lot = await ctx.db.get("lots", args.auctionId);
+  const lot = await ctx.db.get("lots", args.lotId);
   if (!lot) {
     throw new ConvexError("Lot not found");
   }
@@ -70,13 +73,13 @@ export const deleteDraftHandler = async (
     await safeDelete(ctx, lot.conditionReportUrl, "condition report");
   }
 
-  await ctx.db.delete("lots", args.auctionId);
+  await ctx.db.delete("lots", args.lotId);
   await updateCounter(ctx, "lots", "draft", -1);
   await updateCounter(ctx, "lots", "total", -1);
 
   await logAudit(ctx, {
     action: "DELETE_DRAFT",
-    targetId: args.auctionId,
+    targetId: args.lotId,
     targetType: "lot",
     details: JSON.stringify({
       sellerId: userId,
@@ -91,7 +94,7 @@ export const deleteDraftHandler = async (
  * Delete a draft lot.
  */
 export const deleteDraft = mutation({
-  args: { auctionId: v.id("lots") },
+  args: { lotId: v.id("lots") },
   returns: v.object({ success: v.boolean() }),
   handler: deleteDraftHandler,
 });
@@ -100,16 +103,16 @@ export const deleteDraft = mutation({
  * Delete a condition report from a lot.
  * @param ctx - The mutation context.
  * @param args - The arguments for the deletion.
- * @param args.auctionId - The ID of the lot (legacy arg name, lot id)
+ * @param args.lotId - The ID of the lot
  * @returns Promise<{ success: boolean }>
  */
 export const deleteConditionReportHandler = async (
   ctx: MutationCtx,
-  args: { auctionId: Id<"lots"> }
+  args: { lotId: Id<"lots"> }
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
-  const lot = await ctx.db.get("lots", args.auctionId);
+  const lot = await ctx.db.get("lots", args.lotId);
   if (!lot) {
     throw new ConvexError("Lot not found");
   }
@@ -121,7 +124,7 @@ export const deleteConditionReportHandler = async (
     await safeDelete(ctx, lot.conditionReportUrl, "condition report");
   }
 
-  await ctx.db.patch("lots", args.auctionId, {
+  await ctx.db.patch("lots", args.lotId, {
     conditionReportUrl: undefined,
   });
 
@@ -129,7 +132,7 @@ export const deleteConditionReportHandler = async (
 };
 
 export const deleteConditionReport = mutation({
-  args: { auctionId: v.id("lots") },
+  args: { lotId: v.id("lots") },
   returns: v.object({ success: v.boolean() }),
   handler: deleteConditionReportHandler,
 });

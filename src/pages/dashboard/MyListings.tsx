@@ -55,6 +55,22 @@ type StatusFilter =
 const TYPED_BADGE_VARIANTS = AUCTION_STATUS_BADGE_VARIANTS;
 
 /**
+ * Effective closing time for a lot: per-lot soft-close extension when set,
+ * otherwise the parent auction's end time. Replaces the superseded legacy
+ * `lots.endTime` field.
+ * @param lot - Lot summary or detail.
+ * @param lot.extendedEndTime - Per-lot soft-close extension, if any.
+ * @param lot.auctionEndTime - Parent auction's end time, if assigned.
+ * @returns The effective end timestamp in milliseconds, or undefined if unknown.
+ */
+function effectiveLotEndTime(lot: {
+  extendedEndTime?: number;
+  auctionEndTime?: number;
+}): number | undefined {
+  return lot.extendedEndTime ?? lot.auctionEndTime;
+}
+
+/**
  * Dashboard page for users to manage their own auction listings.
  * @returns React component
  */
@@ -93,11 +109,11 @@ export default function MyListings() {
     return listings.filter((listing) => listing.status === statusFilter);
   }, [listings, statusFilter]);
 
-  const handleSubmitForReview = async (auctionId: Id<"lots">) => {
+  const handleSubmitForReview = async (lotId: Id<"lots">) => {
     if (publishingId) return;
-    setPublishingId(auctionId);
+    setPublishingId(lotId);
     try {
-      await submitForReview({ lotId: auctionId });
+      await submitForReview({ lotId });
       toast.success("Listing submitted for review!");
     } catch (error) {
       toast.error(
@@ -108,10 +124,10 @@ export default function MyListings() {
     }
   };
 
-  const handleDeleteDraft = async (auctionId: Id<"lots">) => {
-    setDeletingId(auctionId);
+  const handleDeleteDraft = async (lotId: Id<"lots">) => {
+    setDeletingId(lotId);
     try {
-      await deleteDraft({ auctionId });
+      await deleteDraft({ lotId });
       toast.success("Draft deleted successfully");
     } catch (error) {
       toast.error(
@@ -125,7 +141,7 @@ export default function MyListings() {
   const handleEdit = (auction: (typeof listings)[0]) => {
     // Save to local storage and redirect to /sell?edit=ID
     const draftData: ListingFormData = {
-      auctionId: auction._id,
+      lotId: auction._id,
       year: auction.year,
       categoryId: auction.categoryId ?? "",
       // If we don't have a categoryId, we can't trust the make/model hierarchy
@@ -322,8 +338,10 @@ export default function MyListings() {
                     </span>
                   </span>
                   <span>
-                    {auction.endTime
-                      ? new Date(auction.endTime).toLocaleDateString("en-ZA")
+                    {effectiveLotEndTime(auction) !== undefined
+                      ? new Date(
+                          effectiveLotEndTime(auction) ?? 0
+                        ).toLocaleDateString("en-ZA")
                       : "—"}
                   </span>
                 </div>

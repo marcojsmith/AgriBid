@@ -117,7 +117,7 @@ export default function Home() {
     status: auctionsStatus,
     loadMore,
   } = usePaginatedQuery(
-    api.auctions.getActiveAuctions,
+    api.auctions.getActiveLots,
     {
       search: searchQuery,
       make,

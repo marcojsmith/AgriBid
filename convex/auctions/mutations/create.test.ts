@@ -4,7 +4,7 @@ import * as auth from "../../lib/auth";
 import { updateCounter } from "../../admin_utils";
 import { MS_PER_MINUTE } from "../../constants";
 import {
-  createAuctionHandler,
+  createLotHandler,
   saveDraftHandler,
   generateUploadUrlHandler,
 } from "./create";
@@ -15,7 +15,7 @@ type SaveDraftArgs = Parameters<typeof saveDraftHandler>[1];
 type PartialDraftArgs = Partial<SaveDraftArgs> & {
   title?: string;
   images?: { front?: string; additional?: string[] };
-  auctionId?: Id<"lots">;
+  lotId?: Id<"lots">;
   startingPrice?: number;
   durationDays?: number;
 };
@@ -50,7 +50,6 @@ vi.mock("../../lib/auth", () => {
 
 vi.mock("../../admin_utils", () => ({
   updateCounter: vi.fn(),
-  adjustStatusCounters: vi.fn(),
   logAudit: vi.fn(),
 }));
 
@@ -97,7 +96,7 @@ describe("Create Mutations", () => {
     });
   });
 
-  describe("createAuctionHandler", () => {
+  describe("createLotHandler", () => {
     const validArgs = {
       title: "Test",
       categoryId: "cat1" as Id<"equipmentCategories">,
@@ -123,7 +122,7 @@ describe("Create Mutations", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
 
-      const result = await createAuctionHandler(
+      const result = await createLotHandler(
         mockCtx as unknown as MutationCtx,
         validArgs
       );
@@ -135,7 +134,7 @@ describe("Create Mutations", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
 
-      const auctionId = await createAuctionHandler(
+      const lotId = await createLotHandler(
         mockCtx as unknown as MutationCtx,
         validArgs
       );
@@ -146,7 +145,7 @@ describe("Create Mutations", () => {
           userId: "u1",
           type: "listing_created",
           description: "Listing created: Test",
-          relatedId: auctionId,
+          relatedId: lotId,
           createdAt: expect.any(Number) as number,
         })
       );
@@ -156,7 +155,7 @@ describe("Create Mutations", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
 
-      await createAuctionHandler(mockCtx as unknown as MutationCtx, {
+      await createLotHandler(mockCtx as unknown as MutationCtx, {
         ...validArgs,
         isDraft: true,
       });
@@ -171,7 +170,7 @@ describe("Create Mutations", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, validArgs)
+        createLotHandler(mockCtx as unknown as MutationCtx, validArgs)
       ).rejects.toThrow("Category not found");
     });
 
@@ -181,10 +180,7 @@ describe("Create Mutations", () => {
 
       const argsWithoutTitle = { ...validArgs, title: "", isDraft: false };
       await expect(
-        createAuctionHandler(
-          mockCtx as unknown as MutationCtx,
-          argsWithoutTitle
-        )
+        createLotHandler(mockCtx as unknown as MutationCtx, argsWithoutTitle)
       ).rejects.toThrow("Title is required");
     });
 
@@ -194,10 +190,7 @@ describe("Create Mutations", () => {
 
       const argsWithoutImages = { ...validArgs, images: {}, isDraft: false };
       await expect(
-        createAuctionHandler(
-          mockCtx as unknown as MutationCtx,
-          argsWithoutImages
-        )
+        createLotHandler(mockCtx as unknown as MutationCtx, argsWithoutImages)
       ).rejects.toThrow("At least one image is required");
     });
 
@@ -206,7 +199,7 @@ describe("Create Mutations", () => {
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
       const args = { ...validArgs, description: "", isDraft: false };
       await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, args)
+        createLotHandler(mockCtx as unknown as MutationCtx, args)
       ).rejects.toThrow("Description is required");
     });
 
@@ -215,7 +208,7 @@ describe("Create Mutations", () => {
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
       const args = { ...validArgs, startingPrice: 0, isDraft: false };
       await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, args)
+        createLotHandler(mockCtx as unknown as MutationCtx, args)
       ).rejects.toThrow("Starting price must be greater than zero");
     });
 
@@ -224,7 +217,7 @@ describe("Create Mutations", () => {
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
       const args = { ...validArgs, reservePrice: 0, isDraft: false };
       await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, args)
+        createLotHandler(mockCtx as unknown as MutationCtx, args)
       ).rejects.toThrow("Reserve price must be greater than zero");
     });
 
@@ -235,21 +228,18 @@ describe("Create Mutations", () => {
         images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
       };
       await expect(
-        createAuctionHandler(mockCtx as unknown as MutationCtx, args)
+        createLotHandler(mockCtx as unknown as MutationCtx, args)
       ).rejects.toThrow("Additional images limit exceeded (max 6)");
     });
 
     it("should ignore legacy durationDays/startTime (lots do not own a schedule)", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
-      const result = await createAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          ...validArgs,
-          isDraft: false,
-          startTime: Date.now() - 2 * MS_PER_MINUTE,
-        }
-      );
+      const result = await createLotHandler(mockCtx as unknown as MutationCtx, {
+        ...validArgs,
+        isDraft: false,
+        startTime: Date.now() - 2 * MS_PER_MINUTE,
+      });
       expect(result).toBeDefined();
 
       const insertCall = mockCtx.db.insert.mock.calls.find(
@@ -293,7 +283,7 @@ describe("Create Mutations", () => {
       const result = await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
           title: "T",
           images: { front: "img1" },
         } as PartialDraftArgs as SaveDraftArgs
@@ -316,7 +306,7 @@ describe("Create Mutations", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"lots">,
+            lotId: "a1" as Id<"lots">,
             title: "T",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
@@ -335,7 +325,7 @@ describe("Create Mutations", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"lots">,
+            lotId: "a1" as Id<"lots">,
             title: "T",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
@@ -357,7 +347,7 @@ describe("Create Mutations", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"lots">,
+            lotId: "a1" as Id<"lots">,
             title: "",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
@@ -386,18 +376,18 @@ describe("Create Mutations", () => {
       );
     });
 
-    it("should throw if invalid auctionId provided", async () => {
+    it("should throw if invalid lotId provided", async () => {
       mockCtx.db.normalizeId.mockReturnValue(null);
       await expect(
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "invalid",
+            lotId: "invalid",
             title: "Test",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
         )
-      ).rejects.toThrow("Invalid auctionId provided");
+      ).rejects.toThrow("Invalid lotId provided");
     });
 
     it("should throw if valid lot id provided but lot missing", async () => {
@@ -406,7 +396,7 @@ describe("Create Mutations", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1" as Id<"lots">,
+            lotId: "a1" as Id<"lots">,
             title: "Test",
             images: { front: "img1" },
           } as PartialDraftArgs as SaveDraftArgs
@@ -455,7 +445,7 @@ describe("Create Mutations", () => {
       await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
           title: "Updated Draft",
           startingPrice: 20000,
           images: { front: "img1" },
@@ -482,7 +472,7 @@ describe("Create Mutations", () => {
       await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
           title: "Updated Draft",
           images: { front: "img1" },
         } as PartialDraftArgs as SaveDraftArgs
@@ -531,7 +521,7 @@ describe("Create Mutations", () => {
       await saveDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
           startTime: pastTime,
         } as PartialDraftArgs as SaveDraftArgs
       );

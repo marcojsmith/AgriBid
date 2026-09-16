@@ -36,8 +36,8 @@ vi.mock("@/hooks/useAdminStats", async (importOriginal) => {
 });
 
 const mockStats = {
-  totalAuctions: 150,
-  activeAuctions: 45,
+  totalLots: 150,
+  activeLots: 45,
   pendingReview: 5,
   totalUsers: 1000,
   verifiedSellers: 200,

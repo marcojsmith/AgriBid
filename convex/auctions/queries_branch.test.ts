@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
 import {
-  getActiveAuctionsHandler,
+  getActiveLotsHandler,
   getLotBidsHandler,
   getMyBidsHandler,
   getLotFlagsHandler,
@@ -165,9 +165,9 @@ describe("Queries Branch Coverage Expansion", () => {
     });
   });
 
-  describe("getActiveAuctionsHandler branches", () => {
+  describe("getActiveLotsHandler branches", () => {
     it("should handle statusFilter 'all' which leads to statusesForFilter default branch", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         statusFilter: "all",
       });
@@ -175,21 +175,21 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should handle search with statuses.length > 1", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
       });
     });
 
     it("should handle make with statuses.length > 1", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         make: "John Deere",
       });
     });
 
     it("should handle year filter without single status", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         minYear: 2020,
       });
@@ -211,7 +211,7 @@ describe("Queries Branch Coverage Expansion", () => {
         startTime: 0,
         endTime: Date.now() + 100_000,
       } as unknown as Doc<"auctions">);
-      const result = await getActiveAuctionsHandler(mockCtx, {
+      const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
       });
@@ -219,7 +219,7 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should handle minYear only filter with single status", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         statusFilter: "active",
         minYear: 2020,
@@ -247,7 +247,7 @@ describe("Queries Branch Coverage Expansion", () => {
         startTime: 0,
         endTime: Date.now() + 100_000,
       } as unknown as Doc<"auctions">);
-      const result = await getActiveAuctionsHandler(mockCtx, {
+      const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 1, cursor: "1" },
         search: "tractor",
       });
@@ -263,7 +263,7 @@ describe("Queries Branch Coverage Expansion", () => {
       });
       vi.mocked(countQuery).mockResolvedValue(1001);
 
-      const result = await getActiveAuctionsHandler(mockCtx, {
+      const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         statusFilter: "closed",
       });
@@ -285,7 +285,7 @@ describe("Queries Branch Coverage Expansion", () => {
         startTime: 0,
         endTime: Date.now() + 100_000,
       } as unknown as Doc<"auctions">);
-      const result = await getActiveAuctionsHandler(mockCtx, {
+      const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
         maxHours: 100,
@@ -293,7 +293,7 @@ describe("Queries Branch Coverage Expansion", () => {
       expect(result.page).toHaveLength(1);
     });
 
-    it("should cover pagination and mapping in getActiveAuctionsHandler", async () => {
+    it("should cover pagination and mapping in getActiveLotsHandler", async () => {
       vi.mocked(queryMock.take).mockResolvedValue([
         {
           _id: "a1",
@@ -308,7 +308,7 @@ describe("Queries Branch Coverage Expansion", () => {
         endTime: Date.now() + 100_000,
       } as unknown as Doc<"auctions">);
 
-      const result = await getActiveAuctionsHandler(mockCtx, {
+      const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
       });
       expect(result.page).toHaveLength(1);
@@ -316,7 +316,7 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should cover price and hours filters in getFilteredQuery", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         minPrice: 100,
         maxPrice: 1000,
@@ -326,7 +326,7 @@ describe("Queries Branch Coverage Expansion", () => {
     });
 
     it("should cover default listing when statuses.length > 1", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         statusFilter: "closed",
       });
@@ -506,7 +506,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
   describe("Queries Branch Expansion Part 2", () => {
     it("should cover return statusQuery branch in getBaseQuery", async () => {
-      await getActiveAuctionsHandler(mockCtx, {
+      await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         statusFilter: "active",
       });
@@ -531,7 +531,7 @@ describe("Queries Branch Coverage Expansion", () => {
         endTime: Date.now() + 100_000,
       } as unknown as Doc<"auctions">);
 
-      const result = await getActiveAuctionsHandler(mockCtx, {
+      const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "Tractor",
         statusFilter: "active",
@@ -652,11 +652,7 @@ describe("Queries Branch Coverage Expansion", () => {
       const { statusesForFilter } = await import("./queries");
       expect(statusesForFilter("active")).toEqual(["assigned"]);
       expect(statusesForFilter("closed")).toEqual(["sold", "unsold"]);
-      expect(statusesForFilter("all")).toEqual([
-        "assigned",
-        "sold",
-        "unsold",
-      ]);
+      expect(statusesForFilter("all")).toEqual(["assigned", "sold", "unsold"]);
       expect(statusesForFilter("invalid" as unknown as StatusFilter)).toEqual([
         "assigned",
         "sold",

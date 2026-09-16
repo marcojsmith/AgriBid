@@ -38,7 +38,7 @@ export interface ListingImages {
  */
 export interface ListingFormData {
   /** The Convex document ID if this draft has been saved to the server */
-  auctionId?: string;
+  lotId?: string;
   /** Manufacturing year of the equipment */
   year: number;
   /** Equipment category ID */

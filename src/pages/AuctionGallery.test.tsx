@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { HelmetProvider } from "react-helmet-async";
+import { MemoryRouter } from "react-router-dom";
 import { useQuery } from "convex/react";
 
 import AuctionGallery from "./AuctionGallery";
@@ -12,8 +13,8 @@ vi.mock("convex/react", () => ({
 vi.mock("convex/_generated/api", () => ({
   api: {
     auctions: {
-      getPublishedAuctionEvents: {
-        name: "auctions:getPublishedAuctionEvents",
+      getPublishedAuctions: {
+        name: "auctions:getPublishedAuctions",
       },
     },
   },
@@ -27,7 +28,9 @@ describe("AuctionGallery Page", () => {
   const renderPage = () =>
     render(
       <HelmetProvider>
-        <AuctionGallery />
+        <MemoryRouter>
+          <AuctionGallery />
+        </MemoryRouter>
       </HelmetProvider>
     );
 
@@ -80,5 +83,24 @@ describe("AuctionGallery Page", () => {
     renderPage();
     expect(screen.getByText("Past Sale")).toBeInTheDocument();
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
+  });
+
+  it("links each card to its container detail page", () => {
+    (useQuery as Mock).mockReturnValue([
+      {
+        _id: "a1",
+        title: "Spring Sale",
+        bannerImageUrl: undefined,
+        startTime: Date.now() - 1000,
+        endTime: Date.now() + 100000,
+        status: "published",
+        lotCount: 3,
+      },
+    ]);
+    renderPage();
+    expect(screen.getByRole("link", { name: /Spring Sale/i })).toHaveAttribute(
+      "href",
+      "/auctions/a1"
+    );
   });
 });

@@ -1,12 +1,30 @@
-import { v, ConvexError } from "convex/values";
+import { v, ConvexError, type Infer } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin, resolveUserId } from "../../lib/auth";
+import { settleLot } from "../internal";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 /**
- * Arguments accepted by {@link createAuctionEventHandler}.
+ * Validator for the fields accepted by {@link createAuction}.
+ *
+ * Shared between the mutation definition and {@link createAuctionHandler}'s
+ * argument type (via `Infer`) so Convex can infer the generated
+ * `FunctionReference`'s args correctly.
+ */
+const createAuctionArgs = v.object({
+  title: v.string(),
+  description: v.optional(v.string()),
+  bannerImage: v.optional(v.id("_storage")),
+  startTime: v.number(),
+  endTime: v.number(),
+  defaultBuyerPremiumPct: v.optional(v.number()),
+  defaultSellerCommissionPct: v.optional(v.number()),
+});
+
+/**
+ * Arguments accepted by {@link createAuctionHandler}.
  */
 export interface CreateAuctionArgs {
   title: string;
@@ -53,9 +71,9 @@ async function getAcceptedBid(
  * @param args - Auction container fields.
  * @returns The id of the newly created auction.
  */
-export const createAuctionEventHandler = async (
+export const createAuctionHandler = async (
   ctx: MutationCtx,
-  args: CreateAuctionArgs
+  args: Infer<typeof createAuctionArgs>
 ): Promise<Id<"auctions">> => {
   const authUser = await requireAdmin(ctx);
   const userId = resolveUserId(authUser) ?? authUser._id;
@@ -84,18 +102,10 @@ export const createAuctionEventHandler = async (
 /**
  * Create an auction (container) (admin only).
  */
-export const createAuctionEvent = mutation({
-  args: {
-    title: v.string(),
-    description: v.optional(v.string()),
-    bannerImage: v.optional(v.id("_storage")),
-    startTime: v.number(),
-    endTime: v.number(),
-    defaultBuyerPremiumPct: v.optional(v.number()),
-    defaultSellerCommissionPct: v.optional(v.number()),
-  },
+export const createAuction = mutation({
+  args: createAuctionArgs,
   returns: v.id("auctions"),
-  handler: createAuctionEventHandler,
+  handler: createAuctionHandler,
 });
 
 /**
@@ -244,8 +254,9 @@ export const publishAuctionContainer = mutation({
 
 /**
  * Admin closes a published auction container.
- * Transitions `published -> closed`. Lot settlement is handled separately in
- * step 4; this only flips the container status.
+ * Transitions `published -> closed`. Any lots still `assigned` in the container
+ * are settled first (reserve met -> `sold`, otherwise `unsold` and returned to
+ * the reassignment pool) so closing can never strand lots in `assigned`.
  *
  * @param ctx - Mutation context.
  * @param args - Arguments including the auction id.
@@ -267,10 +278,21 @@ export const closeAuctionContainerHandler = async (
     throw new ConvexError("Only published auctions can be closed");
   }
 
-  // Lot settlement is handled separately in step 4; only close the container.
+  const now = Date.now();
+  const assignedLots = await ctx.db
+    .query("lots")
+    .withIndex("by_status_auctionId", (q) =>
+      q.eq("status", "assigned").eq("auctionId", args.auctionId)
+    )
+    .collect();
+
+  for (const lot of assignedLots) {
+    await settleLot(ctx, lot, now);
+  }
+
   await ctx.db.patch("auctions", args.auctionId, {
     status: "closed",
-    updatedAt: Date.now(),
+    updatedAt: now,
   });
 
   return { success: true };

@@ -1,4 +1,4 @@
-// app/src/pages/admin/sales/AuctionEventFormDialog.tsx
+// app/src/pages/admin/auctions/AuctionFormDialog.tsx
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -20,23 +20,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { getErrorMessage } from "@/lib/utils";
 
-interface AuctionEventFormDialogProps {
+interface AuctionFormDialogProps {
   open: boolean;
   auctionId: Id<"auctions"> | null;
   onOpenChange: (open: boolean) => void;
 }
 
-/** Mirrors convex/auctions/mutations/adminCrud.ts's CreateAuctionArgs. */
-interface CreateAuctionEventArgs {
-  title: string;
-  description?: string;
-  bannerImage?: Id<"_storage">;
-  startTime: number;
-  endTime: number;
-  defaultBuyerPremiumPct?: number;
-  defaultSellerCommissionPct?: number;
-}
-
+/** Field values collected by the auction create/edit form. */
 interface FormState {
   title: string;
   description: string;
@@ -76,22 +66,19 @@ function toLocalInputValue(ms: number): string {
  * @param props.onOpenChange - Callback invoked when the dialog's open state changes.
  * @returns The dialog element.
  */
-export function AuctionEventFormDialog({
+export function AuctionFormDialog({
   open,
   auctionId,
   onOpenChange,
-}: AuctionEventFormDialogProps) {
+}: AuctionFormDialogProps) {
   const existing = useQuery(
-    api.auctions.getAuctionEventById,
+    api.auctions.getAuctionById,
     auctionId ? { auctionId } : "skip"
   );
 
-  // The generated FunctionReference for this mutation infers `never` args
-  // (a known Convex codegen quirk with this particular export); call it
-  // through an explicit signature matching the backend's CreateAuctionArgs.
-  const createAuctionEvent = useMutation(
-    api.auctions.mutations.adminCrud.createAuctionEvent
-  ) as unknown as (args: CreateAuctionEventArgs) => Promise<Id<"auctions">>;
+  const createAuction = useMutation(
+    api.auctions.mutations.adminCrud.createAuction
+  );
   const updateAuction = useMutation(
     api.auctions.mutations.adminCrud.updateAuction
   );
@@ -181,7 +168,7 @@ export function AuctionEventFormDialog({
         });
         toast.success("Auction updated");
       } else {
-        await createAuctionEvent({
+        await createAuction({
           title,
           description: form.description.trim() || undefined,
           bannerImage: uploadedStorageId as Id<"_storage"> | undefined,
@@ -208,7 +195,7 @@ export function AuctionEventFormDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {auctionId ? "Edit Auction Event" : "New Auction Event"}
+            {auctionId ? "Edit Auction" : "New Auction"}
           </DialogTitle>
           <DialogDescription>
             Schedule a sale window and, optionally, default buyer/seller fee
@@ -285,9 +272,7 @@ export function AuctionEventFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="event-buyer-pct">
-                Default Buyer Premium (%)
-              </Label>
+              <Label htmlFor="event-buyer-pct">Default Buyer Premium (%)</Label>
               <Input
                 id="event-buyer-pct"
                 type="number"

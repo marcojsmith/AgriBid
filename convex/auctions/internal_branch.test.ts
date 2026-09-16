@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { settleExpiredAuctionsHandler, cleanupDraftsHandler } from "./internal";
+import { settleExpiredLotsHandler, cleanupDraftsHandler } from "./internal";
 
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
@@ -43,6 +43,9 @@ describe("Internal Mutations Branch Coverage", () => {
   /**
    * Builds a table-aware query mock. `lots`/`bids` return the supplied rows,
    * every other table returns an empty result set.
+   *
+   * @param lots - Rows returned for queries against the `lots` table.
+   * @param bids - Rows returned for queries against the `bids` table.
    */
   const setupTableQuery = (
     lots: Record<string, unknown>[] = [],
@@ -96,14 +99,14 @@ describe("Internal Mutations Branch Coverage", () => {
     };
   });
 
-  describe("settleExpiredAuctionsHandler", () => {
+  describe("settleExpiredLotsHandler", () => {
     it("queries assigned lots by status", async () => {
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.query).toHaveBeenCalledWith("lots");
     });
   });
 
-  describe("settleExpiredAuctionsHandler reduce branches", () => {
+  describe("settleExpiredLotsHandler reduce branches", () => {
     it("handles amount equal and timestamp higher in reduce", async () => {
       const lot = {
         _id: "a1" as Id<"lots">,
@@ -120,7 +123,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       setupTableQuery([lot], bids);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
         "a1",
@@ -146,7 +149,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       setupTableQuery([lot], bids);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
         "a1",
@@ -172,7 +175,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       setupTableQuery([lot], bids);
 
-      await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
         "a1",

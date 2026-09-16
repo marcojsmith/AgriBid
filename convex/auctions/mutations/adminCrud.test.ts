@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
 import {
-  createAuctionEventHandler,
+  createAuctionHandler,
   updateAuctionHandler,
   publishAuctionContainerHandler,
   closeAuctionContainerHandler,
-  createAuctionEvent,
+  createAuction,
   updateAuction,
   publishAuctionContainer,
   closeAuctionContainer,
@@ -24,6 +24,12 @@ vi.mock("../../lib/auth", () => ({
   requireAdmin: vi.fn(),
   resolveUserId: vi.fn(),
 }));
+
+const { settleLot } = vi.hoisted(() => ({
+  settleLot: vi.fn().mockResolvedValue("unsold"),
+}));
+
+vi.mock("../internal", () => ({ settleLot }));
 
 interface MockDb {
   get: ReturnType<typeof vi.fn>;
@@ -74,7 +80,7 @@ describe("Auction container CRUD mutations", () => {
   describe("Exports", () => {
     it("registers all mutations against their handlers", () => {
       const getHandler = (m: unknown) => (m as { handler: unknown }).handler;
-      expect(getHandler(createAuctionEvent)).toBe(createAuctionEventHandler);
+      expect(getHandler(createAuction)).toBe(createAuctionHandler);
       expect(getHandler(updateAuction)).toBe(updateAuctionHandler);
       expect(getHandler(publishAuctionContainer)).toBe(
         publishAuctionContainerHandler
@@ -85,9 +91,9 @@ describe("Auction container CRUD mutations", () => {
     });
   });
 
-  describe("createAuctionEventHandler", () => {
+  describe("createAuctionHandler", () => {
     it("creates a draft auction", async () => {
-      const result = await createAuctionEventHandler(
+      const result = await createAuctionHandler(
         mockCtx as unknown as MutationCtx,
         { title: "Spring Sale", startTime: 1000, endTime: 2000 }
       );
@@ -109,7 +115,7 @@ describe("Auction container CRUD mutations", () => {
 
     it("rejects an endTime that is not after startTime", async () => {
       await expect(
-        createAuctionEventHandler(mockCtx as unknown as MutationCtx, {
+        createAuctionHandler(mockCtx as unknown as MutationCtx, {
           title: "Bad",
           startTime: 2000,
           endTime: 2000,
@@ -124,7 +130,7 @@ describe("Auction container CRUD mutations", () => {
       );
 
       await expect(
-        createAuctionEventHandler(mockCtx as unknown as MutationCtx, {
+        createAuctionHandler(mockCtx as unknown as MutationCtx, {
           title: "Bad",
           startTime: 1000,
           endTime: 2000,
@@ -189,9 +195,7 @@ describe("Auction container CRUD mutations", () => {
       );
       mockCtx.db.query.mockImplementation((table: string) => {
         if (table === "lots") return makeQuery([assignedLot]);
-        return makeQuery([
-          { amount: 1500, timestamp: 1500, status: "valid" },
-        ]);
+        return makeQuery([{ amount: 1500, timestamp: 1500, status: "valid" }]);
       });
 
       await expect(
@@ -243,6 +247,7 @@ describe("Auction container CRUD mutations", () => {
     });
   });
 
+  // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret
   describe("publishAuctionContainerHandler", () => {
     it("publishes a draft auction", async () => {
       mockCtx.db.get.mockResolvedValue(
@@ -326,6 +331,38 @@ describe("Auction container CRUD mutations", () => {
       );
 
       expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
+        "a1",
+        expect.objectContaining({ status: "closed" })
+      );
+    });
+
+    it("settles assigned lots before closing the container", async () => {
+      const assignedLots = [
+        { _id: "l1", status: "assigned", auctionId: "a1" },
+        { _id: "l2", status: "assigned", auctionId: "a1" },
+      ];
+      mockCtx.db.get.mockResolvedValue({
+        ...baseAuction,
+        status: "published",
+      } as unknown as Doc<"auctions">);
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots" ? makeQuery(assignedLots) : makeQuery([])
+      );
+
+      const result = await closeAuctionContainerHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+
+      expect(result.success).toBe(true);
+      expect(settleLot).toHaveBeenCalledTimes(2);
+      expect(settleLot).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({ _id: "l1" }),
+        expect.any(Number) as number
+      );
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "auctions",
         "a1",

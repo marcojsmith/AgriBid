@@ -137,7 +137,10 @@ describe("Lot assignment mutations", () => {
         unknown
       >;
       expect(patchArgs).toHaveProperty("resolvedBuyerPremiumPct", undefined);
-      expect(patchArgs).toHaveProperty("resolvedSellerCommissionPct", undefined);
+      expect(patchArgs).toHaveProperty(
+        "resolvedSellerCommissionPct",
+        undefined
+      );
     });
 
     it("throws when the lot is missing", async () => {
@@ -176,6 +179,22 @@ describe("Lot assignment mutations", () => {
           auctionId: "a1" as Id<"auctions">,
         })
       ).rejects.toThrow("Auction not found");
+    });
+
+    it("rejects assigning a lot to a closed auction", async () => {
+      mockCtx.db.get
+        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
+        .mockResolvedValueOnce({
+          ...auctionDoc,
+          status: "closed",
+        } as unknown as Doc<"auctions">);
+
+      await expect(
+        assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Cannot assign lots to a closed auction");
     });
 
     it("propagates a non-admin rejection", async () => {

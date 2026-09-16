@@ -22,7 +22,7 @@ vi.mock("convex/_generated/api", () => ({
     auctions: {
       mutations: {
         update: {
-          bulkUpdateAuctions: "auctions/mutations/update:bulkUpdateAuctions",
+          bulkUpdateLots: "auctions/mutations/update:bulkUpdateLots",
         },
       },
     },
@@ -35,7 +35,7 @@ describe("useBulkOperations hook", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(useMutation).mockImplementation(((apiPath: string) => {
-      if (apiPath === "auctions/mutations/update:bulkUpdateAuctions")
+      if (apiPath === "auctions/mutations/update:bulkUpdateLots")
         return mockBulkUpdate;
       return vi.fn();
     }) as unknown as typeof useMutation);
@@ -150,12 +150,10 @@ describe("useBulkOperations hook", () => {
       });
 
       expect(mockBulkUpdate).toHaveBeenCalledWith({
-        auctionIds: ["a1"],
+        lotIds: ["a1"],
         updates: { status: "approved" },
       });
-      expect(toast.success).toHaveBeenCalledWith(
-        "Updated 1 auctions to approved"
-      );
+      expect(toast.success).toHaveBeenCalledWith("Updated 1 lots to approved");
       expect(result.current.selectedAuctions).toHaveLength(0);
       expect(result.current.isBulkProcessing).toBe(false);
       expect(result.current.bulkStatusTarget).toBe(null);

@@ -30,7 +30,6 @@ interface MockCtxType {
 
 vi.mock("../lib/auth", () => ({
   getAuthenticatedUserId: vi.fn(),
-  assertOwnership: vi.fn(),
   getAuthUser: vi.fn().mockResolvedValue({ id: "user123" }),
   resolveUserId: vi.fn((user: { id: string }) => user.id),
 }));
@@ -78,9 +77,9 @@ describe("deleteDraft mutation", () => {
 
   it("should delete a draft auction successfully", async () => {
     const userId = "user123";
-    const auctionId = "auction123" as unknown as Id<"lots">;
+    const lotId = "auction123" as unknown as Id<"lots">;
     const mockAuction = {
-      _id: auctionId,
+      _id: lotId,
       sellerId: userId,
       status: "draft",
       title: "Draft Tractor",
@@ -92,11 +91,11 @@ describe("deleteDraft mutation", () => {
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
     const result = await deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-      auctionId,
+      lotId,
     });
 
     expect(result.success).toBe(true);
-    expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", auctionId);
+    expect(mockCtx.db.delete).toHaveBeenCalledWith("lots", lotId);
 
     // Check that counters were updated
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
@@ -125,7 +124,7 @@ describe("deleteDraft mutation", () => {
 
     await expect(
       deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "nonexistent" as unknown as Id<"lots">,
+        lotId: "nonexistent" as unknown as Id<"lots">,
       })
     ).rejects.toThrow("Lot not found");
   });
@@ -142,7 +141,7 @@ describe("deleteDraft mutation", () => {
 
     await expect(
       deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as unknown as Id<"lots">,
+        lotId: "a1" as unknown as Id<"lots">,
       })
     ).rejects.toThrow("Only draft lots can be deleted");
   });

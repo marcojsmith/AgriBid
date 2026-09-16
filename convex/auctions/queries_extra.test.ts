@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 import * as auth from "../lib/auth";
 import {
-  getActiveAuctionsHandler,
+  getActiveLotsHandler,
   getLotBidsHandler,
   getMyBidsHandler,
 } from "./queries";
@@ -123,7 +123,7 @@ describe("Queries Extra Coverage", () => {
       isDone: true,
       continueCursor: "",
     });
-    await getActiveAuctionsHandler(mockCtx as unknown as QueryCtx, {
+    await getActiveLotsHandler(mockCtx as unknown as QueryCtx, {
       paginationOpts: { numItems: 10, cursor: null },
       statusFilter: "all",
     });
@@ -148,13 +148,10 @@ describe("Queries Extra Coverage", () => {
       endTime: Date.now() + 100_000,
       status: "published",
     } as unknown as Doc<"auctions">);
-    const result = await getActiveAuctionsHandler(
-      mockCtx as unknown as QueryCtx,
-      {
-        paginationOpts: { numItems: 10, cursor: null },
-        search: "tractor",
-      }
-    );
+    const result = await getActiveLotsHandler(mockCtx as unknown as QueryCtx, {
+      paginationOpts: { numItems: 10, cursor: null },
+      search: "tractor",
+    });
     expect(result.page).toHaveLength(1);
     expect(result.page[0].title).toBe("tractor");
   });
@@ -176,12 +173,9 @@ describe("Queries Extra Coverage", () => {
       endTime: Date.now() + 100_000,
       status: "published",
     } as unknown as Doc<"auctions">);
-    const result = await getActiveAuctionsHandler(
-      mockCtx as unknown as QueryCtx,
-      {
-        paginationOpts: { numItems: 10, cursor: null },
-      }
-    );
+    const result = await getActiveLotsHandler(mockCtx as unknown as QueryCtx, {
+      paginationOpts: { numItems: 10, cursor: null },
+    });
     expect(result.page).toHaveLength(1);
   });
 

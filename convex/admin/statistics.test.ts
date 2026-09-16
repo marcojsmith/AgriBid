@@ -123,7 +123,7 @@ describe("Admin Statistics", () => {
 
     expect(stats).toMatchObject({
       status: "healthy",
-      totalAuctions: 10,
+      totalLots: 10,
     });
   });
 
@@ -500,8 +500,8 @@ describe("Admin Statistics", () => {
 
     const result = await getAdminStatsHandler(mockCtx as unknown as QueryCtx);
 
-    expect(result.totalAuctions).toBe(100);
-    expect(result.activeAuctions).toBe(50);
+    expect(result.totalLots).toBe(100);
+    expect(result.activeLots).toBe(50);
     expect(result.status).toBe("healthy");
   });
 });

@@ -112,13 +112,13 @@ This document lists all features that have been implemented in the AgriBid platf
 
 - **Status**: ✅ Complete
 - **Description**: Marks auction as sold only if reserve is met
-- **Location**: `app/convex/auctions/internal.ts` (settleExpiredAuctions function)
+- **Location**: `app/convex/auctions/internal.ts` (settleExpiredLots function)
 
 ### Winner/Seller Notifications
 
 - **Status**: ✅ Complete
 - **Description**: Automatic notifications when auction ends
-- **Location**: `app/convex/auctions/internal.ts` (settleExpiredAuctions function)
+- **Location**: `app/convex/auctions/internal.ts` (settleExpiredLots function)
 
 ---
 
@@ -172,7 +172,7 @@ This document lists all features that have been implemented in the AgriBid platf
 
 - **Status**: ✅ Complete
 - **Description**: Notification when auction ends with result
-- **Location**: `app/convex/auctions/internal.ts` (settleExpiredAuctions function)
+- **Location**: `app/convex/auctions/internal.ts` (settleExpiredLots function)
 
 ### Notifications Page
 

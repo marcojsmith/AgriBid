@@ -25,9 +25,10 @@ vi.mock("@/lib/currency", () => ({
 
 describe("ModerationCard", () => {
   const mockAuction = {
-    _id: "auction-1" as Id<"auctions">,
+    _id: "lot-1" as Id<"lots">,
     _creationTime: 1704067200000,
     title: "John Deere 8R",
+    description: undefined,
     make: "John Deere",
     model: "8R 410",
     year: 2022,
@@ -38,9 +39,25 @@ describe("ModerationCard", () => {
     startingPrice: 150000,
     currentPrice: 150000,
     minIncrement: 500,
+    durationDays: undefined,
     sellerId: "seller-1",
     status: "pending_review" as const,
-    images: ["https://example.com/image.jpg"],
+    auctionId: undefined,
+    auctionStartTime: undefined,
+    auctionEndTime: undefined,
+    auctionStatus: undefined,
+    extendedEndTime: undefined,
+    winnerId: undefined,
+    conditionReportUrl: undefined,
+    isExtended: undefined,
+    seedId: undefined,
+    images: {
+      front: "https://example.com/image.jpg",
+      engine: undefined,
+      cabin: undefined,
+      rear: undefined,
+      additional: [],
+    },
     categoryName: "Tractors",
     conditionChecklist: {
       engine: true,
@@ -153,7 +170,13 @@ describe("ModerationCard", () => {
   it("renders with no images", () => {
     const noImageAuction = {
       ...mockAuction,
-      images: [] as unknown as typeof mockAuction.images,
+      images: {
+        front: undefined,
+        engine: undefined,
+        cabin: undefined,
+        rear: undefined,
+        additional: [],
+      },
     };
     render(
       <ModerationCard
@@ -167,7 +190,7 @@ describe("ModerationCard", () => {
   });
 
   it("renders with unknown category", () => {
-    const noCategoryAuction = { ...mockAuction, categoryName: undefined };
+    const noCategoryAuction = { ...mockAuction, categoryName: "" };
     render(
       <ModerationCard
         auction={noCategoryAuction}

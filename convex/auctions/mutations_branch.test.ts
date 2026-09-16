@@ -1,16 +1,13 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { ConvexError } from "convex/values";
 
-import { createAuctionHandler, saveDraftHandler } from "./mutations/create";
-import {
-  updateAuctionHandler,
-  bulkUpdateAuctionsHandler,
-} from "./mutations/update";
+import { createLotHandler, saveDraftHandler } from "./mutations/create";
+import { updateLotHandler, bulkUpdateLotsHandler } from "./mutations/update";
 import { deleteDraftHandler, deleteUploadHandler } from "./mutations/delete";
 import {
-  flagAuctionHandler,
+  flagLotHandler,
   dismissFlagHandler,
-  closeAuctionEarlyHandler,
+  closeLotEarlyHandler,
 } from "./mutations/publish";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
@@ -121,14 +118,14 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
   });
 
-  describe("createAuctionHandler branches", () => {
+  describe("createLotHandler branches", () => {
     it("should throw for invalid duration (<= 0)", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       await expect(
-        createAuctionHandler(
+        createLotHandler(
           mockCtx as unknown as MutationCtx,
           { durationDays: 0 } as unknown as Parameters<
-            typeof createAuctionHandler
+            typeof createLotHandler
           >[1]
         )
       ).rejects.toThrow(ConvexError);
@@ -137,10 +134,10 @@ describe("Mutations Branch Coverage Expansion", () => {
     it("should throw for invalid duration (> 365)", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       await expect(
-        createAuctionHandler(
+        createLotHandler(
           mockCtx as unknown as MutationCtx,
           { durationDays: 366 } as unknown as Parameters<
-            typeof createAuctionHandler
+            typeof createLotHandler
           >[1]
         )
       ).rejects.toThrow(ConvexError);
@@ -149,12 +146,12 @@ describe("Mutations Branch Coverage Expansion", () => {
     it("should throw if additional images exceed limit", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       await expect(
-        createAuctionHandler(
+        createLotHandler(
           mockCtx as unknown as MutationCtx,
           {
             durationDays: 7,
             images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
-          } as unknown as Parameters<typeof createAuctionHandler>[1]
+          } as unknown as Parameters<typeof createLotHandler>[1]
         )
       ).rejects.toThrow("Additional images limit exceeded (max 6)");
     });
@@ -163,13 +160,13 @@ describe("Mutations Branch Coverage Expansion", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       vi.mocked(mockCtx.db.get).mockResolvedValue(null);
       await expect(
-        createAuctionHandler(
+        createLotHandler(
           mockCtx as unknown as MutationCtx,
           {
             durationDays: 7,
             categoryId: "c1" as Id<"equipmentCategories">,
             images: {},
-          } as unknown as Parameters<typeof createAuctionHandler>[1]
+          } as unknown as Parameters<typeof createLotHandler>[1]
         )
       ).rejects.toThrow("Invalid categoryId: Category not found");
     });
@@ -177,7 +174,7 @@ describe("Mutations Branch Coverage Expansion", () => {
     it("should use different minIncrement for high starting price", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       vi.mocked(mockCtx.db.get).mockResolvedValue({ _id: "c1" });
-      await createAuctionHandler(
+      await createLotHandler(
         mockCtx as unknown as MutationCtx,
         {
           durationDays: 7,
@@ -185,7 +182,7 @@ describe("Mutations Branch Coverage Expansion", () => {
           startingPrice: 15000,
           images: {},
           isDraft: true,
-        } as unknown as Parameters<typeof createAuctionHandler>[1]
+        } as unknown as Parameters<typeof createLotHandler>[1]
       );
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "lots",
@@ -218,7 +215,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       expect(insertCall.images.additional).toHaveLength(6);
     });
 
-    it("should throw if auctionId is invalid (normalizeId returns null)", async () => {
+    it("should throw if lotId is invalid (normalizeId returns null)", async () => {
       vi.mocked(auth.requireVerified).mockResolvedValue({
         userId: "u1",
       } as unknown as Awaited<ReturnType<typeof auth.requireVerified>>);
@@ -228,12 +225,12 @@ describe("Mutations Branch Coverage Expansion", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "bad",
+            lotId: "bad",
             durationDays: 7,
             images: {},
           } as unknown as Parameters<typeof saveDraftHandler>[1]
         )
-      ).rejects.toThrow("Invalid auctionId provided");
+      ).rejects.toThrow("Invalid lotId provided");
     });
 
     it("should throw if existing auction is not found", async () => {
@@ -246,7 +243,7 @@ describe("Mutations Branch Coverage Expansion", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1",
+            lotId: "a1",
             durationDays: 7,
             images: {},
           } as unknown as Parameters<typeof saveDraftHandler>[1]
@@ -270,7 +267,7 @@ describe("Mutations Branch Coverage Expansion", () => {
         saveDraftHandler(
           mockCtx as unknown as MutationCtx,
           {
-            auctionId: "a1",
+            lotId: "a1",
             durationDays: 7,
             title: "",
             images: {},
@@ -280,13 +277,13 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
   });
 
-  describe("updateAuctionHandler branches", () => {
+  describe("updateLotHandler branches", () => {
     it("should throw if lot not found", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       vi.mocked(mockCtx.db.get).mockResolvedValue(null);
       await expect(
-        updateAuctionHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"lots">,
+        updateLotHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1" as Id<"lots">,
           updates: {},
         })
       ).rejects.toThrow("Lot not found");
@@ -301,8 +298,8 @@ describe("Mutations Branch Coverage Expansion", () => {
         images: ["img1", "img2"], // Legacy format
       });
 
-      await updateAuctionHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"lots">,
+      await updateLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "a1" as Id<"lots">,
         updates: { images: { cabin: "img3" } },
       });
 
@@ -337,7 +334,7 @@ describe("Mutations Branch Coverage Expansion", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(vi.fn());
 
       await deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-        auctionId: "a1" as Id<"lots">,
+        lotId: "a1" as Id<"lots">,
       });
       expect(spy).toHaveBeenCalledWith(
         expect.stringContaining("Failed to delete condition report"),
@@ -348,12 +345,12 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
   });
 
-  describe("flagAuctionHandler branches", () => {
+  describe("flagLotHandler branches", () => {
     it("should throw if flagging own lot", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       vi.mocked(mockCtx.db.get).mockResolvedValue({ sellerId: "u1" });
       await expect(
-        flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+        flagLotHandler(mockCtx as unknown as MutationCtx, {
           lotId: "l1" as Id<"lots">,
           reason: "other",
         })
@@ -379,10 +376,10 @@ describe("Mutations Branch Coverage Expansion", () => {
         mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
       );
 
-      const result = await flagAuctionHandler(
-        mockCtx as unknown as MutationCtx,
-        { lotId: "l1" as Id<"lots">, reason: "other" }
-      );
+      const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "other",
+      });
       expect(result.hideTriggered).toBe(false);
       expect(mockCtx.db.patch).not.toHaveBeenCalled();
     });
@@ -416,13 +413,13 @@ describe("Mutations Branch Coverage Expansion", () => {
     });
   });
 
-  describe("closeAuctionEarlyHandler branches", () => {
+  describe("closeLotEarlyHandler branches", () => {
     it("should handle UnauthorizedError variant", async () => {
       vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
         authorized: false,
         error: "Not authorized",
       });
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
         { lotId: "a1" as Id<"lots"> }
       );
@@ -454,7 +451,7 @@ describe("Mutations Branch Coverage Expansion", () => {
         mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
       );
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
         { lotId: "a1" as Id<"lots"> }
       );
@@ -476,7 +473,7 @@ describe("Mutations Branch Coverage Expansion", () => {
         reservePrice: 500,
       });
 
-      const result = await closeAuctionEarlyHandler(
+      const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
         { lotId: "a1" as Id<"lots"> }
       );
@@ -491,10 +488,10 @@ describe("Mutations Branch Coverage Expansion", () => {
       } as unknown as Awaited<ReturnType<typeof auth.requireAdmin>>);
       vi.mocked(mockCtx.db.get).mockResolvedValue(null);
 
-      const result = await bulkUpdateAuctionsHandler(
+      const result = await bulkUpdateLotsHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionIds: ["a1" as Id<"lots">],
+          lotIds: ["a1" as Id<"lots">],
           updates: { status: "approved" },
         }
       );
@@ -512,10 +509,10 @@ describe("Mutations Branch Coverage Expansion", () => {
         title: "",
       });
 
-      const result = await bulkUpdateAuctionsHandler(
+      const result = await bulkUpdateLotsHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionIds: ["a1" as Id<"lots">],
+          lotIds: ["a1" as Id<"lots">],
           updates: { status: "approved" },
         }
       );

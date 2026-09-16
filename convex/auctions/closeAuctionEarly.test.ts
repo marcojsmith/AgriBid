@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { closeAuctionEarlyHandler } from "./mutations/publish";
+import { closeLotEarlyHandler } from "./mutations/publish";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
@@ -51,7 +51,7 @@ interface MockUser {
   _creationTime?: number;
 }
 
-describe("closeAuctionEarly mutation", () => {
+describe("closeLotEarly mutation", () => {
   let mockCtx: MockCtx;
 
   beforeEach(() => {
@@ -106,7 +106,7 @@ describe("closeAuctionEarly mutation", () => {
     } as MockUser);
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       { lotId }
     );
@@ -157,7 +157,7 @@ describe("closeAuctionEarly mutation", () => {
       user: { _id: "admin", userId: "admin" },
     });
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       { lotId }
     );
@@ -178,7 +178,7 @@ describe("closeAuctionEarly mutation", () => {
       error: "Not authorized",
     });
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       {
         lotId: "a1" as Id<"lots">,
@@ -196,7 +196,7 @@ describe("closeAuctionEarly mutation", () => {
       user: { _id: "admin", userId: "admin" },
     });
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       {
         lotId: "a1" as Id<"lots">,
@@ -250,7 +250,7 @@ describe("closeAuctionEarly mutation", () => {
     } as MockUser);
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       { lotId }
     );
@@ -277,7 +277,7 @@ describe("closeAuctionEarly mutation", () => {
       user: { _id: "admin", userId: "admin" },
     });
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       { lotId }
     );
@@ -309,7 +309,7 @@ describe("closeAuctionEarly mutation", () => {
       user: { _id: "admin", userId: "admin" },
     });
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       { lotId }
     );
@@ -363,7 +363,7 @@ describe("closeAuctionEarly mutation", () => {
     } as MockUser);
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
 
-    const result = await closeAuctionEarlyHandler(
+    const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
       { lotId }
     );

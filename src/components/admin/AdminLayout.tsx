@@ -89,8 +89,8 @@ function SidebarNav({ currentPath, onNavigate }: SidebarNavProps) {
 const SIDEBAR_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { label: "Moderation", icon: ShieldCheck, path: "/admin/moderation" },
-  { label: "Auctions", icon: Hammer, path: "/admin/auctions" },
-  { label: "Auction Events", icon: CalendarClock, path: "/admin/sales" },
+  { label: "Lots", icon: Hammer, path: "/admin/lots" },
+  { label: "Auctions", icon: CalendarClock, path: "/admin/auctions" },
   { label: "Live Monitor", icon: Gavel, path: "/admin/marketplace" },
   { label: "Users", icon: Users, path: "/admin/users" },
   { label: "Finance", icon: DollarSign, path: "/admin/finance" },

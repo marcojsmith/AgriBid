@@ -35,6 +35,7 @@ When sharing local dev-server changes for review, give the Tailscale URL (`https
 - **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
 - Create tests before starting a new feature or fixing a bug.
 - When encountering lint or typesafety errors or warns, correct these where possible.
+- You are a master delegator and make use of subagents where possible.
 - There are many tests, run tests ONLY for specific files (e.g. `bun run test --run path/to/directory/file.ts`) where possible instead of running `bun run test`.
 - Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
 - If you spot something important — an incorrect import, a structural issue, a potential improvement — raise it, even if unrelated to the current task.

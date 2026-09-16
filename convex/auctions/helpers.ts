@@ -1,14 +1,8 @@
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 
 import type { QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
-import {
-  STARTTIME_MAX_PAST_MS,
-  STARTTIME_MAX_FUTURE_MS,
-  STARTTIME_ADMIN_MAX_PAST_MS,
-  STARTTIME_ADMIN_MAX_FUTURE_MS,
-} from "../constants";
 
 export interface RawImages {
   front?: string;
@@ -139,8 +133,6 @@ export const LotSummaryValidator = v.object({
   startingPrice: v.number(),
   currentPrice: v.number(),
   minIncrement: v.number(),
-  startTime: v.optional(v.number()),
-  endTime: v.optional(v.number()),
   durationDays: v.optional(v.number()),
   sellerId: v.string(),
   status: v.string(),
@@ -213,8 +205,6 @@ export async function toLotSummary(ctx: QueryCtx, lot: Doc<"lots">) {
     currentPrice: lot.currentPrice,
     startingPrice: lot.startingPrice,
     minIncrement: lot.minIncrement,
-    startTime: lot.startTime,
-    endTime: lot.endTime,
     durationDays: lot.durationDays,
     status: lot.status,
     auctionId: lot.auctionId,
@@ -270,8 +260,6 @@ export const LotDetailValidator = v.object({
   status: v.string(),
   currentPrice: v.number(),
   minIncrement: v.number(),
-  startTime: v.optional(v.number()),
-  endTime: v.optional(v.number()),
   auctionId: v.optional(v.id("auctions")),
   auctionStartTime: v.optional(v.number()),
   auctionEndTime: v.optional(v.number()),
@@ -330,8 +318,6 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     durationDays: lot.durationDays,
     currentPrice: lot.currentPrice,
     minIncrement: lot.minIncrement,
-    startTime: lot.startTime,
-    endTime: lot.endTime,
     auctionId: lot.auctionId,
     auctionStartTime: auction?.startTime,
     auctionEndTime: auction?.endTime,
@@ -349,58 +335,4 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     conditionChecklist: lot.conditionChecklist,
     images: await resolveImageUrls(ctx.storage, lot.images),
   };
-}
-
-/**
- * Validate that an auction record contains required fields for a target status.
- * @param auction - The auction record to validate
- * @param auction.status - Current status of the auction
- * @param auction.endTime - Optional Unix timestamp (ms) when the auction ends
- * @param newStatus - Target status to validate against the auction record
- */
-export function validateAuctionStatus(
-  auction: { status: string; endTime?: number | null },
-  newStatus: string
-): void {
-  if (newStatus === "active" && !auction.endTime) {
-    throw new Error(
-      "Cannot set status to 'active' without endTime. Use approveAuction or provide endTime in the update."
-    );
-  }
-}
-
-/**
- * Validates startTime bounds for auction scheduling.
- * Sellers have stricter limits than admins.
- *
- * @param startTime - Unix timestamp (ms) to validate
- * @param isAdminAction - Whether this is an admin action (broader limits)
- */
-export function validateStartTimeBounds(
-  startTime: number,
-  isAdminAction: boolean
-): void {
-  const now = Date.now();
-  const maxPast = isAdminAction
-    ? STARTTIME_ADMIN_MAX_PAST_MS
-    : STARTTIME_MAX_PAST_MS;
-  const maxFuture = isAdminAction
-    ? STARTTIME_ADMIN_MAX_FUTURE_MS
-    : STARTTIME_MAX_FUTURE_MS;
-
-  if (startTime < now - maxPast) {
-    throw new ConvexError(
-      isAdminAction
-        ? "startTime cannot be more than 1 year in the past"
-        : "startTime cannot be more than 1 minute in the past"
-    );
-  }
-
-  if (startTime > now + maxFuture) {
-    throw new ConvexError(
-      isAdminAction
-        ? "startTime cannot be more than 10 years in the future"
-        : "startTime cannot be more than 1 year in the future"
-    );
-  }
 }

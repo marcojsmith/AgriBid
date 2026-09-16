@@ -48,7 +48,7 @@ export {
   voidBid,
   resolveTicket,
   createAnnouncement,
-  syncAuctionWinners,
+  syncLotWinners,
   reviewKYC,
   initializeCounters,
   updateSystemConfig,

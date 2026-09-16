@@ -44,7 +44,7 @@ export const Footer = () => {
     {
       title: "Platform",
       links: [
-        { name: "Auction Events", href: "/auctions", icon: CalendarClock },
+        { name: "Auctions", href: "/auctions", icon: CalendarClock },
         { name: "How it Works", href: "/faq", icon: BookOpen },
         { name: "Safety & Trust", href: "#", icon: ShieldCheck },
         { name: "Auction Rules", href: "#", icon: Scale },

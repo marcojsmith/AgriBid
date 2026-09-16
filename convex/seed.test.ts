@@ -202,6 +202,7 @@ describe("Seed Coverage", () => {
   function snapshotCounts(): Record<string, number> {
     const tables = [
       "auctions",
+      "lots",
       "bids",
       "proxy_bids",
       "profiles",
@@ -211,7 +212,7 @@ describe("Seed Coverage", () => {
       "notifications",
       "supportTickets",
       "userActivity",
-      "auctionFees",
+      "lotFees",
       "platformFees",
       "counters",
     ];
@@ -228,7 +229,7 @@ describe("Seed Coverage", () => {
         handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {})
       ).rejects.toThrow("Mock seller profile not found");
 
-      expect(mockDb.rows("auctions").length).toBe(0);
+      expect(mockDb.rows("lots").length).toBe(0);
     });
 
     it("seeds the full showcase via the Clerk-synced mock seller", async () => {
@@ -237,11 +238,12 @@ describe("Seed Coverage", () => {
 
       await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
 
-      expect(mockDb.rows("auctions").length).toBe(22);
+      expect(mockDb.rows("auctions").length).toBe(7);
+      expect(mockDb.rows("lots").length).toBe(22);
       expect(mockDb.rows("bids").length).toBeGreaterThan(0);
       expect(mockDb.rows("reviews").length).toBe(3);
       expect(mockDb.rows("platformFees").length).toBe(2);
-      expect(mockDb.rows("auctionFees").length).toBe(6);
+      expect(mockDb.rows("lotFees").length).toBe(6);
 
       // The Clerk-synced profiles are reused, and no synthetic mock seller
       // stand-in is created when the real profile exists.
@@ -296,11 +298,12 @@ describe("Seed Coverage", () => {
 
       await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
 
-      expect(mockDb.rows("auctions").length).toBe(22);
+      expect(mockDb.rows("auctions").length).toBe(7);
+      expect(mockDb.rows("lots").length).toBe(22);
       expect(mockDb.rows("bids").length).toBeGreaterThan(0);
       expect(mockDb.rows("proxy_bids").length).toBe(2);
       expect(mockDb.rows("reviews").length).toBe(3);
-      expect(mockDb.rows("auctionFees").length).toBe(6);
+      expect(mockDb.rows("lotFees").length).toBe(6);
       expect(mockDb.rows("platformFees").length).toBe(2);
       expect(mockDb.rows("watchlist").length).toBe(6);
       expect(mockDb.rows("conversations").length).toBe(3);
@@ -308,18 +311,16 @@ describe("Seed Coverage", () => {
       expect(mockDb.rows("notifications").length).toBe(4);
       expect(mockDb.rows("supportTickets").length).toBe(3);
       expect(mockDb.rows("userActivity").length).toBeGreaterThan(0);
-      expect(mockDb.rows("auctionFlags").length).toBe(1);
+      expect(mockDb.rows("lotFlags").length).toBe(1);
       expect(mockDb.rows("profileFlags").length).toBe(1);
       expect(mockDb.rows("counters").length).toBeGreaterThan(0);
 
-      const soldAuctions = mockDb
-        .rows("auctions")
-        .filter((a) => a.status === "sold");
-      expect(soldAuctions.length).toBe(3);
+      const soldLots = mockDb.rows("lots").filter((l) => l.status === "sold");
+      expect(soldLots.length).toBe(3);
       expect(
-        soldAuctions.every(
-          (a) =>
-            typeof a.winnerId === "string" && typeof a.settledAt === "number"
+        soldLots.every(
+          (l) =>
+            typeof l.winnerId === "string" && typeof l.settledAt === "number"
         )
       ).toBe(true);
 

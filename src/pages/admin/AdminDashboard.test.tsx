@@ -106,9 +106,9 @@ describe("AdminDashboard Page", () => {
     liveUsers: 10,
     totalUsers: 100,
     verifiedSellers: 50,
-    activeAuctions: 20,
+    activeLots: 20,
     activeWatch: 15,
-    totalAuctions: 200,
+    totalLots: 200,
     pendingReview: 5,
     kycPending: 3,
   };
@@ -178,7 +178,7 @@ describe("AdminDashboard Page", () => {
     const kycPendingItem = screen.getByText(/KYC Pending: 3/i);
     expect(kycPendingItem).toBeInTheDocument();
     expect(kycPendingItem).toHaveClass("text-yellow-600");
-    expect(screen.getByText("Auctions")).toBeInTheDocument();
+    expect(screen.getByText("Lots")).toBeInTheDocument();
     expect(screen.getByText("Moderation")).toBeInTheDocument();
     expect(screen.getByText("Financials")).toBeInTheDocument();
     expect(screen.getByText("Support")).toBeInTheDocument();

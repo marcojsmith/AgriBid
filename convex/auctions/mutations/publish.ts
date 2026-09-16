@@ -2,7 +2,6 @@ import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import {
-  requireAdmin,
   tryRequireAdmin,
   getAuthenticatedUserId,
   getCallerRole,
@@ -10,19 +9,7 @@ import {
   resolveUserId,
 } from "../../lib/auth";
 import { logAudit, updateCounter } from "../../admin_utils";
-import { logActivity } from "../../userActivity";
-import {
-  validateAuctionBeforePublish,
-  adjustStatusCounters,
-  assertOwnership,
-} from "./helpers";
-import {
-  AUCTION_DEFAULT_DURATION_DAYS,
-  AUCTION_MIN_DURATION_DAYS,
-  AUCTION_MAX_DURATION_DAYS,
-  AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
-  MS_PER_DAY,
-} from "../../constants";
+import { AUCTION_FLAG_AUTO_HIDE_THRESHOLD } from "../../constants";
 import type { Id, Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import {
@@ -31,7 +18,7 @@ import {
 } from "../internal";
 
 /**
- * Result type for closeAuctionEarly mutation.
+ * Result type for closeLotEarly mutation.
  */
 export interface EarlyClosureResult {
   success: boolean;
@@ -40,71 +27,6 @@ export interface EarlyClosureResult {
   winningAmount?: number;
   error?: string;
 }
-
-/**
- * Handler for publishing a draft auction.
- * Validates required content before transitioning to review.
- *
- * @param ctx - Mutation context
- * @param args - Arguments including auctionId
- * @param args.auctionId - The ID of the auction to publish
- * @returns Object with success boolean
- */
-export const publishAuctionHandler = async (
-  ctx: MutationCtx,
-  args: { auctionId: Id<"auctions"> }
-) => {
-  const userId = await getAuthenticatedUserId(ctx);
-
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) {
-    throw new ConvexError("Auction not found");
-  }
-
-  assertOwnership(auction, userId);
-
-  if (auction.status !== "draft") {
-    throw new ConvexError("Only draft auctions can be published");
-  }
-
-  // Validate required fields before allowing publish
-  validateAuctionBeforePublish(auction);
-
-  await ctx.db.patch("auctions", args.auctionId, { status: "pending_review" });
-
-  await adjustStatusCounters(ctx, "draft", "pending_review");
-
-  // Auctions created as non-drafts never reach this handler, so each auction
-  // gets exactly one `listing_created` entry (the other path is in
-  // createAuctionHandler).
-  await logActivity(ctx, {
-    userId,
-    type: "listing_created",
-    description: `Listing created: ${auction.title}`,
-    relatedId: args.auctionId,
-  });
-
-  return { success: true };
-};
-
-/**
- * Submit a draft auction for admin review.
- * Transitions draft -> pending_review
- */
-export const submitForReview = mutation({
-  args: { auctionId: v.id("auctions") },
-  returns: v.object({ success: v.boolean() }),
-  handler: publishAuctionHandler,
-});
-
-/**
- * Alias for submitForReview.
- */
-export const publishAuction = mutation({
-  args: { auctionId: v.id("auctions") },
-  returns: v.object({ success: v.boolean() }),
-  handler: publishAuctionHandler,
-});
 
 /**
  * Flag a lot for review.
@@ -116,7 +38,7 @@ export const publishAuction = mutation({
  * @param args.details - Optional additional details
  * @returns Promise<{ success: boolean; hideTriggered: boolean }>
  */
-export const flagAuctionHandler = async (
+export const flagLotHandler = async (
   ctx: MutationCtx,
   args: {
     lotId: Id<"lots">;
@@ -189,7 +111,7 @@ export const flagAuctionHandler = async (
   return { success: true, hideTriggered };
 };
 
-export const flagAuction = mutation({
+export const flagLot = mutation({
   args: {
     lotId: v.id("lots"),
     reason: v.union(
@@ -201,7 +123,7 @@ export const flagAuction = mutation({
     details: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean(), hideTriggered: v.boolean() }),
-  handler: flagAuctionHandler,
+  handler: flagLotHandler,
 });
 
 /**
@@ -290,101 +212,6 @@ export const dismissFlag = mutation({
 });
 
 /**
- * Approve an auction for publication.
- * @param ctx - The mutation context.
- * @param args - The arguments for approving an auction.
- * @param args.auctionId - The ID of the auction to approve
- * @param args.durationDays - Optional override for auction duration
- * @returns Promise<{ success: boolean }>
- */
-export const approveAuctionHandler = async (
-  ctx: MutationCtx,
-  args: { auctionId: Id<"auctions">; durationDays?: number }
-) => {
-  await requireAdmin(ctx);
-
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) throw new ConvexError("Auction not found");
-  if (auction.status !== "pending_review") {
-    throw new ConvexError("Only auctions in pending_review can be approved");
-  }
-
-  const durationDays =
-    args.durationDays ?? auction.durationDays ?? AUCTION_DEFAULT_DURATION_DAYS;
-  if (
-    durationDays < AUCTION_MIN_DURATION_DAYS ||
-    durationDays > AUCTION_MAX_DURATION_DAYS
-  ) {
-    throw new ConvexError(
-      `Invalid duration: must be between ${AUCTION_MIN_DURATION_DAYS.toString()} and ${AUCTION_MAX_DURATION_DAYS.toString()} days`
-    );
-  }
-
-  // Honour a seller-scheduled future start; clamp a stale/past one to now
-  // instead of always overwriting it (issue #296).
-  const now = Date.now();
-  const startTime =
-    auction.startTime && auction.startTime > now ? auction.startTime : now;
-  const durationMs = durationDays * MS_PER_DAY;
-  const endTime = startTime + durationMs;
-
-  await ctx.db.patch("auctions", args.auctionId, {
-    status: "active",
-    startTime,
-    endTime,
-    hiddenByFlags: false,
-  });
-
-  await updateCounter(ctx, "auctions", "pending", -1);
-  await updateCounter(ctx, "auctions", "active", 1);
-
-  return { success: true };
-};
-
-export const approveAuction = mutation({
-  args: { auctionId: v.id("auctions"), durationDays: v.optional(v.number()) },
-  returns: v.object({ success: v.boolean() }),
-  handler: approveAuctionHandler,
-});
-
-/**
- * Reject an auction during review.
- * @param ctx - The mutation context.
- * @param args - The arguments for rejecting an auction.
- * @param args.auctionId - The ID of the auction to reject
- * @returns Promise<{ success: boolean }>
- */
-export const rejectAuctionHandler = async (
-  ctx: MutationCtx,
-  args: { auctionId: Id<"auctions"> }
-) => {
-  await requireAdmin(ctx);
-
-  const auction = await ctx.db.get("auctions", args.auctionId);
-  if (!auction) throw new ConvexError("Auction not found");
-  if (auction.status !== "pending_review") {
-    throw new ConvexError("Only auctions in pending_review can be rejected");
-  }
-
-  await ctx.db.patch("auctions", args.auctionId, {
-    status: "rejected",
-    startTime: undefined,
-    endTime: undefined,
-    hiddenByFlags: false,
-  });
-
-  await updateCounter(ctx, "auctions", "pending", -1);
-
-  return { success: true };
-};
-
-export const rejectAuction = mutation({
-  args: { auctionId: v.id("auctions") },
-  returns: v.object({ success: v.boolean() }),
-  handler: rejectAuctionHandler,
-});
-
-/**
  * Admin mutation to manually close an assigned lot early.
  * Closing one lot does not settle its parent auction container — other lots
  * in the same auction may still be running.
@@ -393,7 +220,7 @@ export const rejectAuction = mutation({
  * @param args.lotId - The ID of the lot to close
  * @returns Promise<EarlyClosureResult>
  */
-export const closeAuctionEarlyHandler = async (
+export const closeLotEarlyHandler = async (
   ctx: MutationCtx,
   args: { lotId: Id<"lots"> }
 ): Promise<EarlyClosureResult> => {
@@ -448,7 +275,9 @@ export const closeAuctionEarlyHandler = async (
   }
 
   const reserveMet =
-    hasBids && highestBid !== undefined && highestBid.amount >= lot.reservePrice;
+    hasBids &&
+    highestBid !== undefined &&
+    highestBid.amount >= lot.reservePrice;
 
   if (hasBids && reserveMet && highestBid) {
     finalStatus = "sold";
@@ -500,7 +329,7 @@ export const closeAuctionEarlyHandler = async (
   };
 };
 
-export const closeAuctionEarly = mutation({
+export const closeLotEarly = mutation({
   args: { lotId: v.id("lots") },
   returns: v.object({
     success: v.boolean(),
@@ -509,5 +338,5 @@ export const closeAuctionEarly = mutation({
     winningAmount: v.optional(v.number()),
     error: v.optional(v.string()),
   }),
-  handler: closeAuctionEarlyHandler,
+  handler: closeLotEarlyHandler,
 });

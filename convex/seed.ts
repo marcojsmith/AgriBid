@@ -7,9 +7,11 @@ import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCallerRole } from "./lib/auth";
 import { updateCounter } from "./admin_utils";
+import { getLotCounterKey } from "./lots/mutations/helpers";
 
 type SeedTableNames =
   | "auctions"
+  | "lots"
   | "bids"
   | "profiles"
   | "watchlist"
@@ -23,9 +25,9 @@ type SeedTableNames =
   | "notifications"
   | "supportTickets"
   | "userActivity"
-  | "auctionFlags"
+  | "lotFlags"
   | "profileFlags"
-  | "auctionFees";
+  | "lotFees";
 
 const MOCK_IMAGE_URLS = {
   JD_FRONT:
@@ -98,7 +100,7 @@ const MOCK_ADMIN_EMAIL = "admin@agribid.com";
  */
 const MOCK_SELLER_FALLBACK_USER_ID = "mock-seller";
 
-/** Synthetic buyer identities that bid on, watch and discuss mock auctions. */
+/** Synthetic buyer identities that bid on, watch and discuss mock lots. */
 const MOCK_BUYER_IDS = [
   "mock-buyer-1",
   "mock-buyer-2",
@@ -166,7 +168,25 @@ const MOCK_EXTRA_SELLER_PROFILES = [
   },
 ];
 
-interface MockAuction {
+/** Default fee snapshot used for every seeded auction event. */
+const MOCK_DEFAULT_BUYER_PREMIUM_PCT = 0.02;
+const MOCK_DEFAULT_SELLER_COMMISSION_PCT = 0.05;
+
+/**
+ * One scheduled sale container. Lots reference it via `auctionEventSeedId`.
+ * Mirrors the `auctions` (container) table shape from `convex/schema.ts`.
+ */
+interface MockAuctionEvent {
+  seedId: string;
+  title: string;
+  description: string;
+  status: "draft" | "published" | "closed";
+  startTime: number;
+  endTime: number;
+}
+
+/** One piece of equipment. Mirrors the `lots` table shape. */
+interface MockLot {
   seedId: string;
   title: string;
   categoryId: Id<"equipmentCategories">;
@@ -180,12 +200,19 @@ interface MockAuction {
   startingPrice: number;
   currentPrice: number;
   minIncrement: number;
-  startTime?: number;
-  endTime?: number;
   settledAt?: number;
   winnerId?: string | null;
   sellerId: string;
-  status: "draft" | "pending_review" | "active" | "sold" | "unsold";
+  status:
+    | "draft"
+    | "pending_review"
+    | "approved"
+    | "assigned"
+    | "sold"
+    | "unsold"
+    | "rejected";
+  /** seedId of the MockAuctionEvent this lot belongs to, or undefined if unassigned. */
+  auctionEventSeedId?: string;
   images: {
     front: string;
     engine: string;
@@ -208,9 +235,9 @@ interface MockMessagePlan {
 }
 
 /**
- * Ascending bid amounts for every active mock auction. The last amount of
- * each list equals that auction's `currentPrice` and every step respects the
- * auction's `minIncrement`.
+ * Ascending bid amounts for every live/scheduled mock lot. The last amount of
+ * each list equals that lot's `currentPrice` and every step respects the
+ * lot's `minIncrement`.
  */
 const ACTIVE_BID_AMOUNTS: Record<string, number[]> = {
   "jd-8r-410": [260000, 267500, 275000],
@@ -227,7 +254,7 @@ const ACTIVE_BID_AMOUNTS: Record<string, number[]> = {
   "bell-l1206e": [123500, 127000, 130500, 134000],
 };
 
-/** Winning bid sequences for sold auctions; the last bid is the winner. */
+/** Winning bid sequences for sold lots; the last bid is the winner. */
 const SOLD_BID_PLANS: {
   seedId: string;
   bids: { bidderId: string; amount: number }[];
@@ -260,7 +287,7 @@ const SOLD_BID_PLANS: {
   },
 ];
 
-/** Reviews left by the winning buyers of sold mock auctions. */
+/** Reviews left by the winning buyers of sold mock lots. */
 const REVIEW_PLANS: {
   seedId: string;
   reviewerId: string;
@@ -304,7 +331,7 @@ const REVIEW_PLANS: {
   },
 ];
 
-/** Mock buyers watching active mock auctions. */
+/** Mock buyers watching live mock lots. */
 const WATCHLIST_PLANS: { userId: string; seedId: string }[] = [
   { userId: "mock-buyer-1", seedId: "case-axial-flow-8250" },
   { userId: "mock-buyer-2", seedId: "jd-8r-410" },
@@ -321,14 +348,14 @@ const CONVERSATION_PLANS: {
   buyerId: string;
   /** {@link MOCK_SELLER_KEY} or a synthetic seller userId. */
   sellerId: string;
-  auctionSeedId: string;
+  lotSeedId: string;
   startedDaysAgo: number;
   messages: MockMessagePlan[];
 }[] = [
   {
     buyerId: "mock-buyer-1",
     sellerId: "mock-seller-2",
-    auctionSeedId: "jd-s780",
+    lotSeedId: "jd-s780",
     startedDaysAgo: 2,
     messages: [
       {
@@ -362,7 +389,7 @@ const CONVERSATION_PLANS: {
   {
     buyerId: "mock-buyer-4",
     sellerId: "mock-seller-3",
-    auctionSeedId: "nh-speedrower-260",
+    lotSeedId: "nh-speedrower-260",
     startedDaysAgo: 3,
     messages: [
       {
@@ -390,7 +417,7 @@ const CONVERSATION_PLANS: {
   {
     buyerId: "mock-buyer-6",
     sellerId: MOCK_SELLER_KEY,
-    auctionSeedId: "jd-r4038",
+    lotSeedId: "jd-r4038",
     startedDaysAgo: 1,
     messages: [
       {
@@ -536,22 +563,22 @@ async function ensureMockSellerProfile(ctx: MutationCtx): Promise<void> {
 }
 
 /**
- * Inserts a realistic ascending bid history for one auction (skipped when the
- * auction already has bids, keeping reseeds idempotent). Timestamps are
+ * Inserts a realistic ascending bid history for one lot (skipped when the
+ * lot already has bids, keeping reseeds idempotent). Timestamps are
  * spread evenly between `windowStart` and `windowEnd`.
  *
  * @param ctx - Mutation context.
- * @param auction - The auction to seed bids for.
+ * @param lot - The lot to seed bids for.
  * @param plan - Bid amounts, bidders and the time window to spread over.
  */
 async function seedMockBids(
   ctx: MutationCtx,
-  auction: Doc<"auctions">,
+  lot: Doc<"lots">,
   plan: MockBidPlan
 ): Promise<void> {
   const existingBid = await ctx.db
     .query("bids")
-    .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+    .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
     .first();
   if (existingBid) return;
 
@@ -564,7 +591,7 @@ async function seedMockBids(
       plan.windowStart + (plan.windowEnd - plan.windowStart) * fraction
     );
     await ctx.db.insert("bids", {
-      auctionId: auction._id,
+      lotId: lot._id,
       bidderId: bid.bidderId,
       amount: bid.amount,
       timestamp,
@@ -575,14 +602,18 @@ async function seedMockBids(
 
 /**
  * Populates the database with the full showcase dataset: categories, equipment
- * metadata, mock users, auctions, and every related record (bids, proxy bids,
- * reviews, auction fees, watchlist, conversations, notifications, support
- * tickets, user activity and moderation flags), followed by FAQ and counters.
+ * metadata, mock users, auction events, lots, and every related record (bids,
+ * proxy bids, reviews, lot fees, watchlist, conversations, notifications,
+ * support tickets, user activity and moderation flags), followed by FAQ and
+ * counters.
  *
  * Idempotent: rows with a natural unique key (categories, metadata, profiles,
- * auctions, bids, reviews, watchlist, conversations, proxy bids, auction fees)
+ * lots, bids, reviews, watchlist, conversations, proxy bids, lot fees)
  * are only inserted when absent. Records without one (notifications, support
  * tickets, user activity, flags) are only seeded while their table is empty.
+ * Auction event containers are looked up by a manual `seedId` scan (the
+ * `auctions` table has no `by_seedId` index; this only runs during seeding,
+ * over a handful of rows, so a `.collect()` + `.find()` is fine).
  *
  * @param ctx - Mutation context.
  */
@@ -863,6 +894,12 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     });
   }
 
+  // The auction events created below need a `createdBy` admin userId; fall
+  // back to the mock admin's email-derived id, or a system placeholder if no
+  // admin profile has synced yet (mirrors the migration's `system:migration`
+  // convention for system-authored rows).
+  const auctionEventCreatorId = adminProfile?.userId ?? "system:seed";
+
   // 2.75. Insert Synthetic Mock Users (display-only, bypassing Clerk sign-in)
   for (const buyer of MOCK_BUYER_PROFILES) {
     const existing = await ctx.db
@@ -936,8 +973,131 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     });
   }
 
-  // 3. Seed Mock Auctions
-  const mockAuctions: MockAuction[] = [
+  // 3. Seed Auction Events (scheduled sale containers)
+  const mockAuctionEvents: MockAuctionEvent[] = [
+    {
+      seedId: "harvest-clearance-august",
+      title: "Harvest Equipment — August Clearance",
+      description:
+        "Closed sale of combines and planters from the August clearance round.",
+      status: "closed",
+      startTime: now - 13 * MS_PER_DAY,
+      endTime: now - 2 * MS_PER_DAY,
+    },
+    {
+      seedId: "construction-utility-september",
+      title: "Construction & Utility — September Clearance",
+      description:
+        "Closed sale of excavation and utility equipment from the September clearance round.",
+      status: "closed",
+      startTime: now - 15 * MS_PER_DAY,
+      endTime: now - 2 * MS_PER_DAY,
+    },
+    {
+      seedId: "telehandler-closeout",
+      title: "Telehandler Closeout",
+      description: "Closed single-lot telehandler closeout sale.",
+      status: "closed",
+      startTime: now - 10 * MS_PER_DAY,
+      endTime: now - MS_PER_DAY,
+    },
+    {
+      seedId: "row-crop-tractor-sale",
+      title: "Row Crop Tractor Sale",
+      description:
+        "Live sale featuring row crop tractors from multiple sellers.",
+      status: "published",
+      startTime: now - 3 * MS_PER_DAY,
+      endTime: now + 6 * MS_PER_DAY,
+    },
+    {
+      seedId: "harvest-field-equipment-sale",
+      title: "Harvest & Field Equipment Sale",
+      description:
+        "Live sale featuring combines, sprayers, planters, tillage and forage equipment.",
+      status: "published",
+      startTime: now - 3 * MS_PER_DAY,
+      endTime: now + 6 * MS_PER_DAY,
+    },
+    {
+      seedId: "material-handling-sale",
+      title: "Material Handling Sale",
+      description: "Live sale featuring telehandlers and wheel loaders.",
+      status: "published",
+      startTime: now - 4 * MS_PER_DAY,
+      endTime: now + MS_PER_DAY,
+    },
+    {
+      seedId: "row-crop-tractor-sale-next-round",
+      title: "Row Crop Tractor Sale — Next Round",
+      description:
+        "Scheduled future sale. Bidding opens once the window starts — dev fixture for issue #296 (pre-start bidding gate).",
+      status: "published",
+      startTime: now + 2 * MS_PER_HOUR,
+      endTime: now + 2 * MS_PER_HOUR + 4 * MS_PER_DAY,
+    },
+  ];
+
+  for (const event of mockAuctionEvents) {
+    const existingEvents = await ctx.db.query("auctions").collect();
+    const existing = existingEvents.find((a) => a.title === event.title);
+
+    if (!existing) {
+      await ctx.db.insert("auctions", {
+        title: event.title,
+        description: event.description,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        status: event.status,
+        defaultBuyerPremiumPct: MOCK_DEFAULT_BUYER_PREMIUM_PCT,
+        defaultSellerCommissionPct: MOCK_DEFAULT_SELLER_COMMISSION_PCT,
+        createdBy: auctionEventCreatorId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.patch("auctions", existing._id, {
+        description: event.description,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        status: event.status,
+        defaultBuyerPremiumPct: MOCK_DEFAULT_BUYER_PREMIUM_PCT,
+        defaultSellerCommissionPct: MOCK_DEFAULT_SELLER_COMMISSION_PCT,
+        updatedAt: now,
+      });
+    }
+  }
+
+  // 3.1. Index the seeded auction events by their (title-matched) seedId for lot assignment
+  const allEvents = await ctx.db.query("auctions").collect();
+  const eventsByTitle = new Map<string, Doc<"auctions">>();
+  for (const event of allEvents) {
+    eventsByTitle.set(event.title, event);
+  }
+  const eventBySeedId = new Map<string, Doc<"auctions">>();
+  for (const plan of mockAuctionEvents) {
+    const doc = eventsByTitle.get(plan.title);
+    if (!doc) {
+      throw new Error(`Missing seeded auction event "${plan.seedId}"`);
+    }
+    eventBySeedId.set(plan.seedId, doc);
+  }
+
+  /**
+   * Helper to look up a seeded auction event by its seedId, throwing if not found.
+   * @param seedId - The stable seed identifier of the auction event.
+   * @returns The auction event document.
+   */
+  const getEventBySeedId = (seedId: string): Doc<"auctions"> => {
+    const event = eventBySeedId.get(seedId);
+    if (!event) {
+      throw new Error(`Missing seeded auction event "${seedId}"`);
+    }
+    return event;
+  };
+
+  // 3.2. Seed Mock Lots
+  const mockLots: MockLot[] = [
     {
       seedId: "jd-8r-410",
       title: "John Deere 8R 410 — Row Crop Titan",
@@ -953,10 +1113,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 250000,
       currentPrice: 275000,
       minIncrement: 5000,
-      startTime: now - MS_PER_DAY,
-      endTime: now + 3 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale",
       images: {
         front: MOCK_IMAGE_URLS.JD_FRONT,
         engine: MOCK_IMAGE_URLS.JD_ENGINE,
@@ -979,10 +1138,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 200000,
       currentPrice: 215000,
       minIncrement: 2500,
-      startTime: now - 2 * MS_PER_DAY,
-      endTime: now + 4 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1005,10 +1163,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 150000,
       currentPrice: 165000,
       minIncrement: 2000,
-      startTime: now - MS_PER_DAY,
-      endTime: now + 5 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale",
       images: {
         front: MOCK_IMAGE_URLS.NH_FRONT,
         engine: MOCK_IMAGE_URLS.NH_ENGINE,
@@ -1031,10 +1188,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 140000,
       currentPrice: 143000,
       minIncrement: 1500,
-      startTime: now - 3 * MS_PER_DAY,
-      endTime: now + 2 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale",
       images: {
         front: MOCK_IMAGE_URLS.MF_FRONT,
         engine: MOCK_IMAGE_URLS.MF_ENGINE,
@@ -1057,10 +1213,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 300000,
       currentPrice: 325000,
       minIncrement: 10000,
-      startTime: now - MS_PER_DAY,
-      endTime: now + 6 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale",
       images: {
         front: MOCK_IMAGE_URLS.FENDT_FRONT,
         engine: MOCK_IMAGE_URLS.FENDT_ENGINE,
@@ -1083,12 +1238,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 180000,
       currentPrice: 205000,
       minIncrement: 2500,
-      startTime: now - 12 * MS_PER_DAY,
-      endTime: now - 2 * MS_PER_DAY,
       settledAt: now - 2 * MS_PER_DAY,
       winnerId: "mock-buyer-1",
       sellerId: "mock-seller-2",
-      status: "sold" as const,
+      status: "sold",
+      auctionEventSeedId: "harvest-clearance-august",
       images: {
         front: MOCK_IMAGE_URLS.JD_FRONT,
         engine: MOCK_IMAGE_URLS.JD_ENGINE,
@@ -1111,10 +1265,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 220000,
       currentPrice: 236000,
       minIncrement: 4000,
-      startTime: now - MS_PER_DAY,
-      endTime: now + 4 * MS_PER_DAY,
       sellerId: "mock-seller-3",
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "harvest-field-equipment-sale",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1137,10 +1290,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 170000,
       currentPrice: 184000,
       minIncrement: 3500,
-      startTime: now - 2 * MS_PER_DAY,
-      endTime: now + 3 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "harvest-field-equipment-sale",
       images: {
         front: MOCK_IMAGE_URLS.JD_FRONT,
         engine: MOCK_IMAGE_URLS.JD_ENGINE,
@@ -1163,10 +1315,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 95000,
       currentPrice: 103000,
       minIncrement: 2000,
-      startTime: now - MS_PER_DAY,
-      endTime: now + 5 * MS_PER_DAY,
       sellerId: "mock-seller-2",
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "harvest-field-equipment-sale",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1189,12 +1340,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 80000,
       currentPrice: 96000,
       minIncrement: 2000,
-      startTime: now - 13 * MS_PER_DAY,
-      endTime: now - 3 * MS_PER_DAY,
       settledAt: now - 3 * MS_PER_DAY,
       winnerId: "mock-buyer-2",
       sellerId: "mock-seller-3",
-      status: "sold" as const,
+      status: "sold",
+      auctionEventSeedId: "harvest-clearance-august",
       images: {
         front: MOCK_IMAGE_URLS.JD_FRONT,
         engine: MOCK_IMAGE_URLS.JD_ENGINE,
@@ -1217,10 +1367,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 40000,
       currentPrice: 44500,
       minIncrement: 1500,
-      startTime: now - 3 * MS_PER_DAY,
-      endTime: now + 2 * MS_PER_DAY,
       sellerId: "mock-seller-2",
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "harvest-field-equipment-sale",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1243,10 +1392,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 55000,
       currentPrice: 61000,
       minIncrement: 1500,
-      startTime: now - 2 * MS_PER_DAY,
-      endTime: now + 6 * MS_PER_DAY,
       sellerId: "mock-seller-3",
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "harvest-field-equipment-sale",
       images: {
         front: MOCK_IMAGE_URLS.NH_FRONT,
         engine: MOCK_IMAGE_URLS.NH_ENGINE,
@@ -1269,12 +1417,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 18000,
       currentPrice: 18000,
       minIncrement: 500,
-      startTime: now - 9 * MS_PER_DAY,
-      endTime: now - 2 * MS_PER_DAY,
       settledAt: now - 2 * MS_PER_DAY,
       winnerId: null,
       sellerId: "mock-seller-3",
-      status: "unsold" as const,
+      status: "unsold",
+      auctionEventSeedId: "construction-utility-september",
       images: {
         front: MOCK_IMAGE_URLS.MF_FRONT,
         engine: MOCK_IMAGE_URLS.MF_ENGINE,
@@ -1297,10 +1444,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 70000,
       currentPrice: 78000,
       minIncrement: 2000,
-      startTime: now - MS_PER_DAY,
-      endTime: now + 2 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "material-handling-sale",
       images: {
         front: MOCK_IMAGE_URLS.FENDT_FRONT,
         engine: MOCK_IMAGE_URLS.FENDT_ENGINE,
@@ -1323,12 +1469,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 60000,
       currentPrice: 60000,
       minIncrement: 1500,
-      startTime: now - 10 * MS_PER_DAY,
-      endTime: now - MS_PER_DAY,
       settledAt: now - MS_PER_DAY,
       winnerId: null,
       sellerId: "mock-seller-2",
-      status: "unsold" as const,
+      status: "unsold",
+      auctionEventSeedId: "telehandler-closeout",
       images: {
         front: MOCK_IMAGE_URLS.NH_FRONT,
         engine: MOCK_IMAGE_URLS.NH_ENGINE,
@@ -1351,10 +1496,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 120000,
       currentPrice: 134000,
       minIncrement: 3500,
-      startTime: now - 4 * MS_PER_DAY,
-      endTime: now + MS_PER_DAY,
       sellerId: "mock-seller-3",
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "material-handling-sale",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1377,12 +1521,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       startingPrice: 100000,
       currentPrice: 118000,
       minIncrement: 2000,
-      startTime: now - 15 * MS_PER_DAY,
-      endTime: now - 5 * MS_PER_DAY,
       settledAt: now - 5 * MS_PER_DAY,
       winnerId: "mock-buyer-3",
       sellerId: "mock-seller-2",
-      status: "sold" as const,
+      status: "sold",
+      auctionEventSeedId: "construction-utility-september",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1400,13 +1543,13 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       operatingHours: 700,
       location: "Ames, IA",
       description:
-        "2021 6120M utility tractor with CommandQuad 24/24 transmission, 440R loader-ready package and low hours. Awaiting admin approval before going live.",
+        "2021 6120M utility tractor with CommandQuad 24/24 transmission, 440R loader-ready package and low hours. Awaiting admin approval before being assigned to a sale.",
       reservePrice: 95000,
       startingPrice: 65000,
       currentPrice: 65000,
       minIncrement: 1000,
       sellerId: "mock-seller-3",
-      status: "pending_review" as const,
+      status: "pending_review",
       images: {
         front: MOCK_IMAGE_URLS.JD_FRONT,
         engine: MOCK_IMAGE_URLS.JD_ENGINE,
@@ -1424,13 +1567,13 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       operatingHours: 2100,
       location: "Springfield, OH",
       description:
-        "Puma 155 with CVX continuously variable transmission, AFS Pro 700 display and 4 remote hydraulics. Submitted for review — expected to list shortly.",
+        "Puma 155 with CVX continuously variable transmission, AFS Pro 700 display and 4 remote hydraulics. Submitted for review — expected to be assigned to a sale shortly.",
       reservePrice: 88000,
       startingPrice: 60000,
       currentPrice: 60000,
       minIncrement: 1000,
       sellerId: sellerId,
-      status: "pending_review" as const,
+      status: "pending_review",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1454,7 +1597,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       currentPrice: 50000,
       minIncrement: 1000,
       sellerId: sellerId,
-      status: "draft" as const,
+      status: "draft",
       images: {
         front: MOCK_IMAGE_URLS.MF_FRONT,
         engine: MOCK_IMAGE_URLS.MF_ENGINE,
@@ -1472,15 +1615,14 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       operatingHours: 450,
       location: "Moline, IL",
       description:
-        "Approved and scheduled for a seller-chosen start time. Bidding opens shortly — dev fixture for issue #296 (pre-start bidding gate).",
+        "Approved and assigned to a future sale window. Bidding opens shortly — dev fixture for issue #296 (pre-start bidding gate).",
       reservePrice: 385000,
       startingPrice: 250000,
       currentPrice: 250000,
       minIncrement: 5000,
-      startTime: now + 2 * MS_PER_HOUR,
-      endTime: now + 2 * MS_PER_HOUR + 3 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale-next-round",
       images: {
         front: MOCK_IMAGE_URLS.JD_FRONT,
         engine: MOCK_IMAGE_URLS.JD_ENGINE,
@@ -1498,15 +1640,14 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       operatingHours: 820,
       location: "Racine, WI",
       description:
-        "Approved and scheduled for a seller-chosen start time. Bidding opens tomorrow — dev fixture for issue #296 (pre-start bidding gate).",
+        "Approved and assigned to a future sale window. Bidding opens once the sale starts — dev fixture for issue #296 (pre-start bidding gate).",
       reservePrice: 320000,
       startingPrice: 200000,
       currentPrice: 200000,
       minIncrement: 2500,
-      startTime: now + MS_PER_DAY,
-      endTime: now + MS_PER_DAY + 4 * MS_PER_DAY,
       sellerId: sellerId,
-      status: "active" as const,
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale-next-round",
       images: {
         front: MOCK_IMAGE_URLS.CASE_FRONT,
         engine: MOCK_IMAGE_URLS.CASE_ENGINE,
@@ -1516,50 +1657,66 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     },
   ];
 
-  for (const auction of mockAuctions) {
+  for (const lot of mockLots) {
     const existing = await ctx.db
-      .query("auctions")
-      .withIndex("by_seedId", (q) => q.eq("seedId", auction.seedId))
+      .query("lots")
+      .withIndex("by_seedId", (q) => q.eq("seedId", lot.seedId))
       .first();
 
-    const auctionData = {
-      ...auction,
-      description: auction.description || "No description provided.",
+    const event = lot.auctionEventSeedId
+      ? getEventBySeedId(lot.auctionEventSeedId)
+      : undefined;
+
+    const { auctionEventSeedId, ...lotFields } = lot;
+    void auctionEventSeedId;
+    // Snapshot the parent event's fee defaults onto the lot, mirroring the
+    // lot-assignment mutation's behavior (issue #318): once assigned, later
+    // edits to the event's defaults must not change this lot's fees.
+    const lotData = {
+      ...lotFields,
+      description: lot.description || "No description provided.",
+      auctionId: event?._id,
+      resolvedBuyerPremiumPct: event
+        ? MOCK_DEFAULT_BUYER_PREMIUM_PCT
+        : undefined,
+      resolvedSellerCommissionPct: event
+        ? MOCK_DEFAULT_SELLER_COMMISSION_PCT
+        : undefined,
     };
 
     if (!existing) {
-      await ctx.db.insert("auctions", auctionData);
+      await ctx.db.insert("lots", lotData);
     } else {
-      await ctx.db.patch("auctions", existing._id, auctionData);
+      await ctx.db.patch("lots", existing._id, lotData);
     }
   }
 
-  // 3.5. Index the seeded auctions for related-record seeding
-  const auctionsBySeedId = new Map<string, Doc<"auctions">>();
-  for (const auction of await ctx.db.query("auctions").collect()) {
-    if (auction.seedId) {
-      auctionsBySeedId.set(auction.seedId, auction);
+  // 3.3. Index the seeded lots for related-record seeding
+  const lotsBySeedId = new Map<string, Doc<"lots">>();
+  for (const lot of await ctx.db.query("lots").collect()) {
+    if (lot.seedId) {
+      lotsBySeedId.set(lot.seedId, lot);
     }
   }
 
   /**
-   * Helper to look up a seeded auction by its seedId, throwing if not found.
-   * @param seedId - The stable seed identifier of the auction.
-   * @returns The auction document.
+   * Helper to look up a seeded lot by its seedId, throwing if not found.
+   * @param seedId - The stable seed identifier of the lot.
+   * @returns The lot document.
    */
-  const getAuctionBySeedId = (seedId: string): Doc<"auctions"> => {
-    const auction = auctionsBySeedId.get(seedId);
-    if (!auction) {
-      throw new Error(`Missing seeded auction "${seedId}"`);
+  const getLotBySeedId = (seedId: string): Doc<"lots"> => {
+    const lot = lotsBySeedId.get(seedId);
+    if (!lot) {
+      throw new Error(`Missing seeded lot "${seedId}"`);
     }
-    return auction;
+    return lot;
   };
 
-  // 3.6. Seed bids for active auctions (skipped when bids already exist)
+  // 3.4. Seed bids for live/scheduled lots (skipped when bids already exist)
   for (const [idx, [seedId, amounts]] of Object.entries(
     ACTIVE_BID_AMOUNTS
   ).entries()) {
-    const auction = getAuctionBySeedId(seedId);
+    const lot = getLotBySeedId(seedId);
     const buyerPool = [
       ...MOCK_BUYER_IDS.slice(idx),
       ...MOCK_BUYER_IDS.slice(0, idx),
@@ -1568,25 +1725,25 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       const bidderId = buyerPool.shift() ?? MOCK_BUYER_IDS[0];
       return { bidderId, amount };
     });
-    await seedMockBids(ctx, auction, {
+    await seedMockBids(ctx, lot, {
       bids,
       windowStart: now - MS_PER_DAY,
       windowEnd: now - MS_PER_HOUR,
     });
   }
 
-  // 3.7. Seed winning bid sequences for sold auctions
+  // 3.5. Seed winning bid sequences for sold lots
   for (const plan of SOLD_BID_PLANS) {
-    const auction = getAuctionBySeedId(plan.seedId);
-    const end = auction.endTime ?? now;
-    await seedMockBids(ctx, auction, {
+    const lot = getLotBySeedId(plan.seedId);
+    const end = lot.settledAt ?? now;
+    await seedMockBids(ctx, lot, {
       bids: plan.bids,
       windowStart: end - 2 * MS_PER_DAY,
       windowEnd: end,
     });
   }
 
-  // 3.8. Seed proxy bids for a couple of active auctions
+  // 3.6. Seed proxy bids for a couple of live lots
   const proxyBidPlans: {
     seedId: string;
     bidderId: string;
@@ -1600,16 +1757,16 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     },
   ];
   for (const plan of proxyBidPlans) {
-    const auction = getAuctionBySeedId(plan.seedId);
+    const lot = getLotBySeedId(plan.seedId);
     const existingProxy = await ctx.db
       .query("proxy_bids")
-      .withIndex("by_bidder_auction", (q) =>
-        q.eq("bidderId", plan.bidderId).eq("auctionId", auction._id)
+      .withIndex("by_bidder_lot", (q) =>
+        q.eq("bidderId", plan.bidderId).eq("lotId", lot._id)
       )
       .unique();
     if (!existingProxy) {
       await ctx.db.insert("proxy_bids", {
-        auctionId: auction._id,
+        lotId: lot._id,
         bidderId: plan.bidderId,
         maxBid: plan.maxBid,
         updatedAt: now,
@@ -1617,23 +1774,23 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     }
   }
 
-  // 3.9. Seed reviews from the winning buyers of sold auctions
+  // 3.7. Seed reviews from the winning buyers of sold lots
   for (const plan of REVIEW_PLANS) {
-    const auction = getAuctionBySeedId(plan.seedId);
+    const lot = getLotBySeedId(plan.seedId);
     const existingReview = await ctx.db
       .query("reviews")
-      .withIndex("by_auction_reviewer", (q) =>
-        q.eq("auctionId", auction._id).eq("reviewerId", plan.reviewerId)
+      .withIndex("by_lot_reviewer", (q) =>
+        q.eq("lotId", lot._id).eq("reviewerId", plan.reviewerId)
       )
       .unique();
     if (existingReview) continue;
 
     const createdAt =
-      (auction.settledAt ?? now) + plan.daysAfterSettlement * MS_PER_DAY;
+      (lot.settledAt ?? now) + plan.daysAfterSettlement * MS_PER_DAY;
     await ctx.db.insert("reviews", {
-      auctionId: auction._id,
+      lotId: lot._id,
       reviewerId: plan.reviewerId,
-      revieweeId: auction.sellerId,
+      revieweeId: lot.sellerId,
       rating: plan.rating,
       comment: plan.comment,
       ...(plan.response
@@ -1648,7 +1805,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     });
   }
 
-  // 3.10. Seed auction fee ledger rows for sold auctions
+  // 3.8. Seed lot fee ledger rows for sold lots
   const sellerFee = await ctx.db
     .query("platformFees")
     .withIndex("by_appliesTo", (q) => q.eq("appliesTo", "seller"))
@@ -1660,17 +1817,17 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
 
   if (sellerFee && buyerFee) {
     for (const plan of SOLD_BID_PLANS) {
-      const auction = getAuctionBySeedId(plan.seedId);
+      const lot = getLotBySeedId(plan.seedId);
       const existingFeeRow = await ctx.db
-        .query("auctionFees")
-        .withIndex("by_auction", (q) => q.eq("auctionId", auction._id))
+        .query("lotFees")
+        .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
         .first();
       if (existingFeeRow) continue;
 
-      const salePrice = auction.currentPrice;
-      const settledAt = auction.settledAt ?? now;
-      await ctx.db.insert("auctionFees", {
-        auctionId: auction._id,
+      const salePrice = lot.currentPrice;
+      const settledAt = lot.settledAt ?? now;
+      await ctx.db.insert("lotFees", {
+        lotId: lot._id,
         feeId: sellerFee._id,
         feeName: sellerFee.name,
         appliedTo: "seller",
@@ -1680,8 +1837,8 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         calculatedAmount: Math.round((salePrice * sellerFee.value) / 100),
         createdAt: settledAt,
       });
-      await ctx.db.insert("auctionFees", {
-        auctionId: auction._id,
+      await ctx.db.insert("lotFees", {
+        lotId: lot._id,
         feeId: buyerFee._id,
         feeName: buyerFee.name,
         appliedTo: "buyer",
@@ -1694,26 +1851,26 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     }
   }
 
-  // 3.11. Seed watchlist entries on active auctions
+  // 3.9. Seed watchlist entries on live lots
   for (const plan of WATCHLIST_PLANS) {
-    const auction = getAuctionBySeedId(plan.seedId);
+    const lot = getLotBySeedId(plan.seedId);
     const existingEntry = await ctx.db
       .query("watchlist")
-      .withIndex("by_user_auction", (q) =>
-        q.eq("userId", plan.userId).eq("auctionId", auction._id)
+      .withIndex("by_user_lot", (q) =>
+        q.eq("userId", plan.userId).eq("lotId", lot._id)
       )
       .first();
     if (!existingEntry) {
       await ctx.db.insert("watchlist", {
         userId: plan.userId,
-        auctionId: auction._id,
+        lotId: lot._id,
       });
     }
   }
 
-  // 3.12. Seed buyer/seller conversations with message threads
+  // 3.10. Seed buyer/seller conversations with message threads
   for (const plan of CONVERSATION_PLANS) {
-    const auction = getAuctionBySeedId(plan.auctionSeedId);
+    const lot = getLotBySeedId(plan.lotSeedId);
     const sellerIdForConversation =
       plan.sellerId === MOCK_SELLER_KEY ? sellerId : plan.sellerId;
 
@@ -1729,7 +1886,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     const conversationId = await ctx.db.insert("conversations", {
       buyerId: plan.buyerId,
       sellerId: sellerIdForConversation,
-      auctionId: auction._id,
+      lotId: lot._id,
       lastMessageAt: startedAt,
       createdAt: startedAt,
     });
@@ -1751,12 +1908,12 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     await ctx.db.patch("conversations", conversationId, { lastMessageAt });
   }
 
-  // 3.13. Seed notifications (only while the table is empty)
+  // 3.11. Seed notifications (only while the table is empty)
   const existingNotification = await ctx.db.query("notifications").first();
   if (!existingNotification) {
-    const jd8r = getAuctionBySeedId("jd-8r-410");
-    const jdS780 = getAuctionBySeedId("jd-s780");
-    const speedrower = getAuctionBySeedId("nh-speedrower-260");
+    const jd8r = getLotBySeedId("jd-8r-410");
+    const jdS780 = getLotBySeedId("jd-s780");
+    const speedrower = getLotBySeedId("nh-speedrower-260");
 
     const notificationPlans: {
       recipientId: string;
@@ -1781,7 +1938,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         type: "warning",
         title: "You've been outbid",
         message: `Someone outbid you on ${jd8r.title}. Place a higher bid to stay in the running.`,
-        link: `/auctions/${jd8r._id}`,
+        link: `/auction/${jd8r._id}`,
         isRead: false,
         createdAt: now - 5 * MS_PER_HOUR,
       },
@@ -1790,7 +1947,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         type: "success",
         title: "Auction won",
         message: `Congratulations — you won ${jdS780.title}.`,
-        link: `/auctions/${jdS780._id}`,
+        link: `/auction/${jdS780._id}`,
         isRead: true,
         createdAt: (jdS780.settledAt ?? now) + MS_PER_HOUR,
       },
@@ -1798,8 +1955,8 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         recipientId: "mock-seller-3",
         type: "success",
         title: "Listing approved",
-        message: `Your listing ${speedrower.title} has been approved and is now live.`,
-        link: `/auctions/${speedrower._id}`,
+        message: `Your listing ${speedrower.title} has been approved and assigned to a sale.`,
+        link: `/auction/${speedrower._id}`,
         isRead: false,
         createdAt: now - 2 * MS_PER_DAY,
       },
@@ -1810,15 +1967,15 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     }
   }
 
-  // 3.14. Seed support tickets (only while the table is empty)
+  // 3.12. Seed support tickets (only while the table is empty)
   const existingTicket = await ctx.db.query("supportTickets").first();
   if (!existingTicket) {
-    const bellLoader = getAuctionBySeedId("bell-l1206e");
-    const cat320 = getAuctionBySeedId("cat-320-gc");
+    const bellLoader = getLotBySeedId("bell-l1206e");
+    const cat320 = getLotBySeedId("cat-320-gc");
 
     const ticketPlans: {
       userId: string;
-      auctionId?: Id<"auctions">;
+      lotId?: Id<"lots">;
       subject: string;
       message: string;
       priority: "low" | "medium" | "high";
@@ -1828,7 +1985,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     }[] = [
       {
         userId: "mock-buyer-5",
-        auctionId: bellLoader._id,
+        lotId: bellLoader._id,
         subject: "Payment details for Bell L1206E",
         message:
           "I won the loader auction yesterday but haven't received payment or collection details from the seller yet.",
@@ -1839,7 +1996,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       },
       {
         userId: "mock-buyer-3",
-        auctionId: cat320._id,
+        lotId: cat320._id,
         subject: "Incorrect hours listed on Cat 320 GC",
         message:
           "The listing showed 3,400 operating hours, but the hour meter reads closer to 4,100 on inspection.",
@@ -1852,7 +2009,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         userId: "mock-seller-2",
         subject: "Editing a live listing",
         message:
-          "Can I update the reserve price while my auction is still running?",
+          "Can I update the reserve price while my lot is still awaiting review?",
         priority: "low",
         status: "resolved",
         createdDaysAgo: 6,
@@ -1863,7 +2020,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     for (const plan of ticketPlans) {
       await ctx.db.insert("supportTickets", {
         userId: plan.userId,
-        auctionId: plan.auctionId,
+        lotId: plan.lotId,
         subject: plan.subject,
         message: plan.message,
         priority: plan.priority,
@@ -1874,7 +2031,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     }
   }
 
-  // 3.15. Seed the per-user activity feeds (only while the table is empty)
+  // 3.13. Seed the per-user activity feeds (only while the table is empty)
   const existingActivity = await ctx.db.query("userActivity").first();
   if (!existingActivity) {
     const mockUsers: { userId: string; createdDaysAgo: number }[] = [
@@ -1905,57 +2062,61 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       });
     }
 
-    for (const auction of mockAuctions) {
-      const auctionDoc = getAuctionBySeedId(auction.seedId);
+    for (const lot of mockLots) {
+      const lotDoc = getLotBySeedId(lot.seedId);
+      const parentEvent = lot.auctionEventSeedId
+        ? getEventBySeedId(lot.auctionEventSeedId)
+        : undefined;
       await ctx.db.insert("userActivity", {
-        userId: auction.sellerId,
+        userId: lot.sellerId,
         type: "listing_created",
-        description: `Created listing: ${auction.title}`,
-        relatedId: auctionDoc._id,
-        createdAt: auction.startTime ?? now - MS_PER_DAY,
+        description: `Created listing: ${lot.title}`,
+        relatedId: lotDoc._id,
+        createdAt: parentEvent?.startTime ?? now - MS_PER_DAY,
       });
     }
 
     const allSeededBids = await ctx.db.query("bids").collect();
-    const topBidByAuction = new Map<Id<"auctions">, Doc<"bids">>();
+    const topBidByLot = new Map<Id<"lots">, Doc<"bids">>();
     for (const bid of allSeededBids) {
-      const current = topBidByAuction.get(bid.auctionId);
+      const current = topBidByLot.get(bid.lotId);
       if (!current || bid.timestamp > current.timestamp) {
-        topBidByAuction.set(bid.auctionId, bid);
+        topBidByLot.set(bid.lotId, bid);
       }
     }
-    for (const [auctionId, bid] of topBidByAuction) {
-      const auction = await ctx.db.get("auctions", auctionId);
-      if (!auction) continue;
+    for (const [lotId, bid] of topBidByLot) {
+      const lot = await ctx.db.get("lots", lotId);
+      if (!lot) continue;
       await ctx.db.insert("userActivity", {
         userId: bid.bidderId,
         type: "bid_placed",
-        description: `Placed a bid of $${bid.amount.toLocaleString()} on ${auction.title}`,
-        relatedId: auctionId,
+        description: `Placed a bid of $${bid.amount.toLocaleString()} on ${lot.title}`,
+        relatedId: lotId,
         createdAt: bid.timestamp,
       });
     }
 
     for (const plan of SOLD_BID_PLANS) {
-      const auction = getAuctionBySeedId(plan.seedId);
+      const lot = getLotBySeedId(plan.seedId);
       const winningBid = plan.bids[plan.bids.length - 1];
-      if (!winningBid) continue;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- guards against an empty SOLD_BID_PLANS.bids entry, which TS can't see without noUncheckedIndexedAccess
+      if (winningBid === undefined) continue;
       await ctx.db.insert("userActivity", {
         userId: winningBid.bidderId,
         type: "bid_won",
-        description: `Won the auction for ${auction.title}`,
-        relatedId: auction._id,
-        createdAt: auction.settledAt ?? now,
+        description: `Won the auction for ${lot.title}`,
+        relatedId: lot._id,
+        createdAt: lot.settledAt ?? now,
       });
     }
   }
 
-  // 3.16. Seed one pending auction flag (only while the table is empty)
-  const existingAuctionFlag = await ctx.db.query("auctionFlags").first();
-  if (!existingAuctionFlag) {
-    const flaggedAuction = getAuctionBySeedId("jcb-541-70");
-    await ctx.db.insert("auctionFlags", {
-      auctionId: flaggedAuction._id,
+  // 3.14. Seed one pending lot flag (only while the table is empty)
+  const existingLotFlag = await ctx.db.query("lotFlags").first();
+  if (!existingLotFlag) {
+    const flaggedLot = getLotBySeedId("jcb-541-70");
+    await ctx.db.insert("lotFlags", {
+      lotId: flaggedLot._id,
       reporterId: "mock-buyer-4",
       reason: "misleading",
       details:
@@ -1965,7 +2126,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     });
   }
 
-  // 3.17. Seed one profile flag (only while the table is empty)
+  // 3.15. Seed one profile flag (only while the table is empty)
   const existingProfileFlag = await ctx.db.query("profileFlags").first();
   if (!existingProfileFlag) {
     await ctx.db.insert("profileFlags", {
@@ -1984,22 +2145,22 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     {
       question: "How do I register to bid on AgriBid?",
       answer:
-        "Create a free account, then complete KYC (Know Your Customer) verification under your profile. Once approved, you can bid on any active auction.",
+        "Create a free account, then complete KYC (Know Your Customer) verification under your profile. Once approved, you can bid on any live auction.",
     },
     {
       question: "How does the bidding process work?",
       answer:
-        "Each auction lists a starting price and minimum bid increment. Place your bid before the countdown timer reaches zero. The highest bid when the timer expires wins — if the reserve price has been met.",
+        "Each lot lists a starting price and minimum bid increment. Place your bid before the auction's countdown timer reaches zero. The highest bid when the timer expires wins — if the reserve price has been met.",
     },
     {
       question: "What is a reserve price?",
       answer:
-        "A reserve price is the minimum amount the seller is willing to accept. If bidding does not reach the reserve, the auction closes as 'Unsold' and no sale is concluded.",
+        "A reserve price is the minimum amount the seller is willing to accept. If bidding does not reach the reserve, the lot closes as 'Unsold' and no sale is concluded.",
     },
     {
       question: "How do I list equipment for auction?",
       answer:
-        "Navigate to the Sell page, complete the listing form with equipment details, photos, and pricing, then submit for admin review. Approved listings go live automatically.",
+        "Navigate to the Sell page, complete the listing form with equipment details, photos, and pricing, then submit for admin review. Approved listings are assigned to an upcoming sale by an admin.",
     },
     {
       question: "What payment methods are accepted?",
@@ -2030,23 +2191,31 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   }
 
   // 5. Update Metrics (Counters)
-  // Recalculate everything to ensure consistency after seeding
+  // Recalculate everything to ensure consistency after seeding, mirroring
+  // convex/lots/mutations/helpers.ts's getLotCounterKey mapping exactly.
 
-  // Auctions
-  const allAuctions = await ctx.db.query("auctions").collect();
-  await updateCounter(ctx, "auctions", "total", allAuctions.length, true);
+  // Lots
+  const allLots = await ctx.db.query("lots").collect();
+  await updateCounter(ctx, "lots", "total", allLots.length, true);
   await updateCounter(
     ctx,
-    "auctions",
+    "lots",
     "active",
-    allAuctions.filter((a) => a.status === "active").length,
+    allLots.filter((l) => getLotCounterKey(l.status) === "active").length,
     true
   );
   await updateCounter(
     ctx,
-    "auctions",
+    "lots",
+    "pending",
+    allLots.filter((l) => getLotCounterKey(l.status) === "pending").length,
+    true
+  );
+  await updateCounter(
+    ctx,
+    "lots",
     "draft",
-    allAuctions.filter((a) => a.status === "draft").length,
+    allLots.filter((l) => getLotCounterKey(l.status) === "draft").length,
     true
   );
 
@@ -2054,13 +2223,14 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   const allBids = await ctx.db.query("bids").collect();
   await updateCounter(ctx, "bids", "total", allBids.length, true);
 
-  const salesVolume = allAuctions
-    .filter((a) => a.status === "sold" && a.currentPrice)
-    .reduce((sum, a) => sum + (a.currentPrice || 0), 0);
-  const soldCount = allAuctions.filter((a) => a.status === "sold").length;
+  const soldLots = allLots.filter((l) => l.status === "sold");
+  const salesVolume = soldLots.reduce(
+    (sum, l) => sum + (l.currentPrice || 0),
+    0
+  );
 
-  await updateCounter(ctx, "auctions", "salesVolume", salesVolume, true);
-  await updateCounter(ctx, "auctions", "soldCount", soldCount, true);
+  await updateCounter(ctx, "lots", "salesVolume", salesVolume, true);
+  await updateCounter(ctx, "lots", "soldCount", soldLots.length, true);
 
   // Profiles
   const allProfiles = await ctx.db.query("profiles").collect();
@@ -2131,6 +2301,7 @@ export const runSeed = mutation({
     if (args.clear) {
       const tablesToClear: SeedTableNames[] = [
         "auctions",
+        "lots",
         "bids",
         "proxy_bids",
         "watchlist",
@@ -2140,9 +2311,9 @@ export const runSeed = mutation({
         "notifications",
         "supportTickets",
         "userActivity",
-        "auctionFlags",
+        "lotFlags",
         "profileFlags",
-        "auctionFees",
+        "lotFees",
         "counters",
         "equipmentMetadata",
         "equipmentCategories",
@@ -2173,13 +2344,14 @@ export const clearAuctions = mutation({
     // 1. Sweep and delete all bids first to avoid nested loops/long mutations
     const totalBidsDeleted = await clearTable(ctx, "bids");
 
-    // 2. Delete auctions in batches
+    // 2. Delete lots and auction events in batches
+    const lotsCount = await clearTable(ctx, "lots");
     const auctionsCount = await clearTable(ctx, "auctions");
 
     console.log(
-      `Cleared ${auctionsCount.toString()} auctions and ${totalBidsDeleted.toString()} bids.`
+      `Cleared ${auctionsCount.toString()} auction events, ${lotsCount.toString()} lots and ${totalBidsDeleted.toString()} bids.`
     );
-    return auctionsCount;
+    return auctionsCount + lotsCount;
   },
 });
 
@@ -2195,6 +2367,7 @@ export const clearAllData = mutation({
 
     const appTables: SeedTableNames[] = [
       "auctions",
+      "lots",
       "bids",
       "profiles",
       "watchlist",
@@ -2235,6 +2408,7 @@ export const weeklyReset = internalMutation({
   handler: async (ctx) => {
     const tablesToClear: SeedTableNames[] = [
       "auctions",
+      "lots",
       "bids",
       "proxy_bids",
       "watchlist",
@@ -2244,9 +2418,9 @@ export const weeklyReset = internalMutation({
       "notifications",
       "supportTickets",
       "userActivity",
-      "auctionFlags",
+      "lotFlags",
       "profileFlags",
-      "auctionFees",
+      "lotFees",
       "counters",
     ];
     for (const tableName of tablesToClear) {

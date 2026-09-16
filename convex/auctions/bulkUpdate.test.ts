@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { bulkUpdateAuctionsHandler } from "./mutations/update";
+import { bulkUpdateLotsHandler } from "./mutations/update";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { Id } from "../_generated/dataModel";
@@ -34,7 +34,7 @@ interface MockCtx {
   runAction: unknown;
 }
 
-describe("bulkUpdateAuctions mutation", () => {
+describe("bulkUpdateLots mutation", () => {
   let mockCtx: MockCtx;
 
   beforeEach(() => {
@@ -75,10 +75,10 @@ describe("bulkUpdateAuctions mutation", () => {
       userId: "admin",
     });
 
-    const result = await bulkUpdateAuctionsHandler(
+    const result = await bulkUpdateLotsHandler(
       mockCtx as unknown as MutationCtx,
       {
-        auctionIds: [id1, id2],
+        lotIds: [id1, id2],
         updates: { status: "approved" },
       }
     );
@@ -118,8 +118,8 @@ describe("bulkUpdateAuctions mutation", () => {
     vi.mocked(auth.requireAdmin).mockRejectedValue(new Error("Unauthorized"));
 
     await expect(
-      bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, {
-        auctionIds: ["a1" as Id<"lots">],
+      bulkUpdateLotsHandler(mockCtx as unknown as MutationCtx, {
+        lotIds: ["a1" as Id<"lots">],
         updates: { status: "approved" },
       })
     ).rejects.toThrow("Unauthorized");
@@ -135,8 +135,8 @@ describe("bulkUpdateAuctions mutation", () => {
     const manyIds = Array(51).fill("a1");
 
     await expect(
-      bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, {
-        auctionIds: manyIds as Id<"lots">[],
+      bulkUpdateLotsHandler(mockCtx as unknown as MutationCtx, {
+        lotIds: manyIds as Id<"lots">[],
         updates: { status: "approved" },
       })
     ).rejects.toThrow(/exceeds limit/);

@@ -201,7 +201,9 @@ export const inspect = internalQuery({
     const sampleKeys: Record<string, string[]> = {};
     for (const name of tableNames) {
       const rows = await db.query(name).take(DEFAULT_SCAN_LIMIT);
+      // eslint-disable-next-line security/detect-object-injection -- name comes from the fixed tableNames literal above, not user input
       counts[name] = rows.length;
+      // eslint-disable-next-line security/detect-object-injection -- name comes from the fixed tableNames literal above, not user input
       sampleKeys[name] = rows[0] ? Object.keys(rows[0]).sort() : [];
     }
 
@@ -213,6 +215,7 @@ export const inspect = internalQuery({
     const legacyStatuses: Record<string, number> = {};
     for (const doc of legacy) {
       const status = (doc as unknown as LegacyAuction).status;
+      // eslint-disable-next-line security/detect-object-injection -- status is a bounded enum value from the legacy row, not user input
       legacyStatuses[status] = (legacyStatuses[status] ?? 0) + 1;
     }
 
@@ -258,7 +261,8 @@ export const migrate = internalMutation({
       const startTime = auction.startTime ?? createdAt;
       const endTime =
         auction.endTime ??
-        startTime + (auction.durationDays ?? DEFAULT_DURATION_DAYS) * MS_PER_DAY;
+        startTime +
+          (auction.durationDays ?? DEFAULT_DURATION_DAYS) * MS_PER_DAY;
 
       const containerId = await db.insert("auctions", {
         title: auction.title,
@@ -305,9 +309,6 @@ export const migrate = internalMutation({
         lotDoc.conditionReportUrl = auction.conditionReportUrl;
       if (auction.conditionChecklist !== undefined)
         lotDoc.conditionChecklist = auction.conditionChecklist;
-      // Legacy start/end are intentionally retained until a later cleanup task.
-      if (auction.startTime !== undefined) lotDoc.startTime = auction.startTime;
-      if (auction.endTime !== undefined) lotDoc.endTime = auction.endTime;
 
       const lotId = await db.insert("lots", lotDoc);
       lotsCreated += 1;
@@ -359,6 +360,46 @@ export const migrate = internalMutation({
       feesCopied,
       flagsCopied,
       remainingLegacy,
+    };
+  },
+});
+
+/**
+ * Remove the superseded `startTime`/`endTime` fields from every `lots` row.
+ *
+ * These were carried over from the old per-item auctions and are no longer read
+ * anywhere in the app (liveness comes from the parent auction's window). Safe
+ * to re-run. Run once per deployment after `migrate`, immediately before the
+ * fields are dropped from `convex/schema.ts`.
+ *
+ * @param ctx - Convex mutation context.
+ * @returns Counts of scanned/cleared rows and whether the scan completed.
+ */
+export const clearLegacyLotWindows = internalMutation({
+  args: {},
+  returns: v.object({
+    scanned: v.number(),
+    cleared: v.number(),
+    done: v.boolean(),
+  }),
+  handler: async (ctx) => {
+    const db = rawDb(ctx);
+    const lots = await db.query("lots").take(DEFAULT_SCAN_LIMIT);
+    let cleared = 0;
+
+    for (const lot of lots) {
+      if (lot.startTime === undefined && lot.endTime === undefined) continue;
+      await db.patch("lots", String(lot._id), {
+        startTime: undefined,
+        endTime: undefined,
+      });
+      cleared += 1;
+    }
+
+    return {
+      scanned: lots.length,
+      cleared,
+      done: lots.length < DEFAULT_SCAN_LIMIT,
     };
   },
 });
@@ -429,6 +470,7 @@ async function copyLedgerTable(
     for (const [key, value] of Object.entries(row)) {
       if (key === "_id" || key === "_creationTime" || key === "auctionId")
         continue;
+      // eslint-disable-next-line security/detect-object-injection -- key comes from Object.entries(row) on a known document shape, not user input
       rest[key] = value;
     }
     await db.insert(toTable, { ...rest, lotId });
@@ -488,13 +530,15 @@ export const verify = internalQuery({
 
     for (const table of FK_TABLES) {
       const rows = await db.query(table).take(DEFAULT_SCAN_LIMIT);
+      // eslint-disable-next-line security/detect-object-injection -- table comes from the fixed FK_TABLES literal, not user input
       fkTableCounts[table] = rows.length;
-      fkWithLotId[table] = rows.filter(
-        (doc) => doc.lotId !== undefined
-      ).length;
+      // eslint-disable-next-line security/detect-object-injection -- table comes from the fixed FK_TABLES literal, not user input
+      fkWithLotId[table] = rows.filter((doc) => doc.lotId !== undefined).length;
+      // eslint-disable-next-line security/detect-object-injection -- table comes from the fixed FK_TABLES literal, not user input
       fkWithOldAuctionId[table] = rows.filter(
         (doc) => doc.auctionId !== undefined
       ).length;
+      // eslint-disable-next-line security/detect-object-injection -- table comes from the fixed FK_TABLES literal, not user input
       fkDanglingLotId[table] = rows.filter((doc) => {
         const lotId = doc.lotId;
         return lotId !== undefined && !lotIds.has(lotId as string);
@@ -504,6 +548,7 @@ export const verify = internalQuery({
     const ledgerTablesWithOldFields: Record<string, number> = {};
     for (const table of ["auctionFees", "auctionFlags"]) {
       const rows = await db.query(table).take(DEFAULT_SCAN_LIMIT);
+      // eslint-disable-next-line security/detect-object-injection -- table comes from the fixed literal array above, not user input
       ledgerTablesWithOldFields[table] = rows.length;
     }
 

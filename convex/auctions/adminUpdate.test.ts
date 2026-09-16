@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { adminUpdateAuctionHandler } from "./mutations/update";
+import { adminUpdateLotHandler } from "./mutations/update";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
@@ -22,7 +22,7 @@ interface MockCtxType {
   };
 }
 
-describe("adminUpdateAuction mutation", () => {
+describe("adminUpdateLot mutation", () => {
   let mockCtx: MockCtxType;
 
   beforeEach(() => {
@@ -36,9 +36,9 @@ describe("adminUpdateAuction mutation", () => {
   });
 
   it("should update a lot as admin", async () => {
-    const auctionId = "auction123" as Id<"lots">;
+    const lotId = "auction123" as Id<"lots">;
     const mockAuction = {
-      _id: auctionId,
+      _id: lotId,
       status: "pending_review",
       title: "Test Auction",
       endTime: Date.now() + 86400000,
@@ -46,10 +46,10 @@ describe("adminUpdateAuction mutation", () => {
 
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
-    const result = await adminUpdateAuctionHandler(
+    const result = await adminUpdateLotHandler(
       mockCtx as unknown as MutationCtx,
       {
-        auctionId,
+        lotId,
         updates: { status: "approved" },
       }
     );
@@ -57,18 +57,18 @@ describe("adminUpdateAuction mutation", () => {
     expect(result.success).toBe(true);
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
       "lots",
-      auctionId,
+      lotId,
       expect.objectContaining({ status: "approved" })
     );
   });
 
   it("should throw error if lot not found", async () => {
-    const auctionId = "invalid" as Id<"lots">;
+    const lotId = "invalid" as Id<"lots">;
     mockCtx.db.get.mockResolvedValue(null);
 
     await expect(
-      adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, {
-        auctionId,
+      adminUpdateLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId,
         updates: { status: "approved" },
       })
     ).rejects.toThrow("Lot not found");

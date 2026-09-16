@@ -9,7 +9,7 @@ import {
   type AuctionImages,
 } from "@/lib/auction-utils";
 import { formatCurrency } from "@/lib/currency";
-import type { AuctionWithCategory } from "@/types/auction";
+import type { LotSummary } from "@/types/auction";
 
 import { ConditionItem } from "./ConditionItem";
 
@@ -29,7 +29,7 @@ export function ModerationCard({
   onReject,
   onView,
 }: {
-  auction: AuctionWithCategory;
+  auction: LotSummary;
   onApprove: () => void;
   onReject: () => void;
   onView: () => void;
@@ -68,8 +68,6 @@ export function ModerationCard({
                   variant="outline"
                   className="font-medium border-primary/20 bg-primary/5 text-primary py-0 h-6 text-xs"
                 >
-                  {/* Intentionally `||` not `??`: an empty string category name also means "no category" */}
-                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above */}
                   {auction.categoryName || "Unknown"}
                 </Badge>
                 <Badge

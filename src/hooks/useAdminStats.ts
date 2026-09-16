@@ -1,8 +1,8 @@
 import { createTypedContext } from "../contexts/createTypedContext";
 
 export interface AdminStats {
-  totalAuctions: number;
-  activeAuctions: number;
+  totalLots: number;
+  activeLots: number;
   pendingReview: number;
   totalUsers: number;
   verifiedSellers: number;

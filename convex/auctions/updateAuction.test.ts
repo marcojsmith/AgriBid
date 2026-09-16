@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import {
-  updateAuctionHandler,
-  bulkUpdateAuctionsHandler,
+  updateLotHandler,
+  bulkUpdateLotsHandler,
   updateConditionReportHandler,
-  adminUpdateAuctionHandler,
+  adminUpdateLotHandler,
 } from "./mutations/update";
 import * as auth from "../lib/auth";
 import type { MutationCtx } from "../_generated/server";
@@ -20,10 +20,9 @@ vi.mock("../lib/auth", () => ({
 
 vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
-  adjustStatusCounters: vi.fn(),
 }));
 
-describe("updateAuction mutation", () => {
+describe("updateLot mutation", () => {
   let mockCtx: {
     db: {
       get: ReturnType<typeof vi.fn>;
@@ -60,11 +59,11 @@ describe("updateAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
-    const result = await updateAuctionHandler(
+    const result = await updateLotHandler(
       mockCtx as unknown as MutationCtx,
       args
     );
@@ -81,12 +80,12 @@ describe("updateAuction mutation", () => {
     );
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
     await expect(
-      updateAuctionHandler(mockCtx as unknown as MutationCtx, args)
+      updateLotHandler(mockCtx as unknown as MutationCtx, args)
     ).rejects.toThrow("Not authenticated");
   });
 
@@ -102,12 +101,12 @@ describe("updateAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
     await expect(
-      updateAuctionHandler(mockCtx as unknown as MutationCtx, args)
+      updateLotHandler(mockCtx as unknown as MutationCtx, args)
     ).rejects.toThrow("You can only modify your own lots");
   });
 
@@ -123,17 +122,17 @@ describe("updateAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       updates: { title: "New Title" },
     };
 
     await expect(
-      updateAuctionHandler(mockCtx as unknown as MutationCtx, args)
+      updateLotHandler(mockCtx as unknown as MutationCtx, args)
     ).rejects.toThrow("Only draft or pending_review lots can be edited");
   });
 });
 
-describe("bulkUpdateAuctionsHandler", () => {
+describe("bulkUpdateLotsHandler", () => {
   let mockCtx: {
     db: {
       get: ReturnType<typeof vi.fn>;
@@ -174,11 +173,11 @@ describe("bulkUpdateAuctionsHandler", () => {
     });
 
     const args = {
-      auctionIds: ["auction_1" as Id<"lots">],
+      lotIds: ["auction_1" as Id<"lots">],
       updates: { startingPrice: 500 },
     };
 
-    await bulkUpdateAuctionsHandler(mockCtx as unknown as MutationCtx, args);
+    await bulkUpdateLotsHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
       "lots",
@@ -235,7 +234,7 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.get.mockResolvedValue(mockAuction);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       storageId: "new_storage" as Id<"_storage">,
     };
 
@@ -251,7 +250,7 @@ describe("updateConditionReportHandler", () => {
   });
 });
 
-describe("adminUpdateAuctionHandler", () => {
+describe("adminUpdateLotHandler", () => {
   let mockCtx: {
     db: {
       get: ReturnType<typeof vi.fn>;
@@ -285,11 +284,11 @@ describe("adminUpdateAuctionHandler", () => {
     });
 
     const args = {
-      auctionId: "auction_1" as Id<"lots">,
+      lotId: "auction_1" as Id<"lots">,
       updates: { startingPrice: 20000 },
     };
 
-    await adminUpdateAuctionHandler(mockCtx as unknown as MutationCtx, args);
+    await adminUpdateLotHandler(mockCtx as unknown as MutationCtx, args);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith(
       "lots",

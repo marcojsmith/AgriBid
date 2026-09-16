@@ -290,32 +290,6 @@ describe("submitReview mutation", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should reject within the cooldown when only endTime exists (legacy auction)", async () => {
-    const lotId = "auction123" as Id<"lots">;
-    const winnerId = "user_winner";
-
-    const auctionDoc = {
-      _id: lotId,
-      sellerId: "user_seller",
-      winnerId,
-      status: "sold",
-      endTime: Date.now() - 2 * DAY_MS,
-    };
-
-    mockCtx = setupMockCtx();
-    mockCtx.db.get.mockResolvedValue(auctionDoc);
-    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
-
-    await expect(
-      submitReviewHandler(mockCtx as unknown as MutationCtx, {
-        lotId,
-        rating: 5,
-      })
-    ).rejects.toThrow(
-      "Reviews can be left starting 7 days after the sale completes."
-    );
-  });
-
   it("should allow a review for a sold auction with no settlement timestamp", async () => {
     const lotId = "auction123" as Id<"lots">;
     const winnerId = "user_winner";

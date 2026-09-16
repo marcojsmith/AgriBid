@@ -53,11 +53,9 @@ const ListingWizardContent = () => {
   const [searchParams] = useSearchParams();
   // Intentionally `||` not `??`: an empty "edit=" query param must also be treated as "not editing"
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
-  const editingAuctionId = searchParams.get("edit") || undefined;
+  const editingLotId = searchParams.get("edit") || undefined;
 
-  const createAuction = useMutation(
-    api.auctions.mutations.create.createAuction
-  );
+  const createLot = useMutation(api.auctions.mutations.create.createLot);
   const saveDraft = useMutation(api.auctions.mutations.create.saveDraft);
   const submitForReview = useMutation(
     api.lots.mutations.lifecycle.submitLotForReview
@@ -107,9 +105,9 @@ const ListingWizardContent = () => {
       // Only sync with server if we have a categoryId, otherwise just keep it local
       if (formData.categoryId) {
         id = await saveDraft({
-          auctionId:
-            editingAuctionId ??
-            (formData.auctionId as Id<"auctions"> | undefined) ??
+          lotId:
+            editingLotId ??
+            (formData.lotId as Id<"lots"> | undefined) ??
             undefined,
           title: formData.title,
           categoryId: formData.categoryId as Id<"equipmentCategories">,
@@ -137,9 +135,9 @@ const ListingWizardContent = () => {
       setDraftSaved(true);
       toast.success("Draft saved successfully!");
 
-      // Update in-memory state with the new auctionId if it was just created
-      if (!formData.auctionId && id) {
-        updateField("auctionId", id);
+      // Update in-memory state with the new lotId if it was just created
+      if (!formData.lotId && id) {
+        updateField("lotId", id);
         // Also update localStorage immediately so subsequent saves use the ID
         const savedDraftJson = localStorage.getItem("agribid_listing_draft");
         const currentDraft = (
@@ -148,7 +146,7 @@ const ListingWizardContent = () => {
 
         localStorage.setItem(
           "agribid_listing_draft",
-          JSON.stringify({ ...currentDraft, auctionId: id })
+          JSON.stringify({ ...currentDraft, lotId: id })
         );
       }
     } catch (error) {
@@ -167,7 +165,7 @@ const ListingWizardContent = () => {
    * Handles the final listing submission.
    * - Prevents double-submit via submissionState guard
    * - Validates all steps before submission
-   * - Calls createAuction or submitForReview mutation
+   * - Calls createLot or submitForReview mutation
    * - Updates submission state and navigates on success
    * - Shows error toast on failure
    *
@@ -222,12 +220,12 @@ const ListingWizardContent = () => {
         startTime: formData.startTime,
       };
 
-      const finalAuctionId = editingAuctionId ?? formData.auctionId;
+      const finalLotId = editingLotId ?? formData.lotId;
 
-      if (finalAuctionId) {
+      if (finalLotId) {
         // Persist local edits before publishing
         const savedId = await saveDraft({
-          auctionId: finalAuctionId as Id<"lots">,
+          lotId: finalLotId as Id<"lots">,
           ...auctionData,
         });
         // Then submit it
@@ -236,7 +234,7 @@ const ListingWizardContent = () => {
         });
       } else {
         // Create a new auction directly as pending_review
-        await createAuction({
+        await createLot({
           ...auctionData,
           isDraft: false,
         });

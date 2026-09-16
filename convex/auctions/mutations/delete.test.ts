@@ -39,7 +39,6 @@ vi.mock("../../lib/auth", () => {
 
 vi.mock("../../admin_utils", () => ({
   updateCounter: vi.fn(),
-  adjustStatusCounters: vi.fn(),
   logAudit: vi.fn(),
 }));
 
@@ -121,7 +120,7 @@ describe("Delete Mutations", () => {
       const result = await deleteDraftHandler(
         mockCtx as unknown as MutationCtx,
         {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
         }
       );
 
@@ -140,7 +139,7 @@ describe("Delete Mutations", () => {
 
       await expect(
         deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
         })
       ).rejects.toThrow("Only draft lots can be deleted");
     });
@@ -160,7 +159,7 @@ describe("Delete Mutations", () => {
 
       const result = await deleteDraftHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"lots"> }
+        { lotId: "a1" as Id<"lots"> }
       );
 
       expect(result.success).toBe(true);
@@ -177,7 +176,7 @@ describe("Delete Mutations", () => {
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         deleteDraftHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
         })
       ).rejects.toThrow("Lot not found");
     });
@@ -196,7 +195,7 @@ describe("Delete Mutations", () => {
 
       const result = await deleteConditionReportHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"lots"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(true);
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("s1");
@@ -210,7 +209,7 @@ describe("Delete Mutations", () => {
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
         deleteConditionReportHandler(mockCtx as unknown as MutationCtx, {
-          auctionId: "a1" as Id<"lots">,
+          lotId: "a1" as Id<"lots">,
         })
       ).rejects.toThrow("Lot not found");
     });
@@ -229,7 +228,7 @@ describe("Delete Mutations", () => {
 
       const result = await deleteConditionReportHandler(
         mockCtx as unknown as MutationCtx,
-        { auctionId: "a1" as Id<"lots"> }
+        { lotId: "a1" as Id<"lots"> }
       );
       expect(result.success).toBe(true);
       expect(spy).toHaveBeenCalled();

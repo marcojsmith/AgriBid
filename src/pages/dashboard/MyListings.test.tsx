@@ -362,7 +362,7 @@ describe("MyListings Page", () => {
       fireEvent.click(confirmDeleteBtn);
     });
 
-    expect(mockDeleteDraft).toHaveBeenCalledWith({ auctionId: "listing1" });
+    expect(mockDeleteDraft).toHaveBeenCalledWith({ lotId: "listing1" });
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith("Draft deleted successfully");
     });

@@ -98,13 +98,13 @@ export default function AuctionDetail() {
   );
 
   const relatedAuctions = useQuery(
-    api.auctions.getRelatedAuctions,
+    api.auctions.getRelatedLots,
     auction?.make ? { make: auction.make, excludeId: auction._id } : "skip"
   );
 
   const watchedLotIds = useQuery(api.watchlist.getWatchedLotIds, {});
 
-  const flagAuction = useMutation(api.auctions.mutations.publish.flagAuction);
+  const flagLot = useMutation(api.auctions.mutations.publish.flagLot);
 
   const isOwner = session?.user.id === auction?.sellerId;
   const liveWindow = useLotLiveWindow(
@@ -125,7 +125,7 @@ export default function AuctionDetail() {
 
     try {
       const normalizedDetails = flagDetails.trim() || undefined;
-      const result = await flagAuction({
+      const result = await flagLot({
         lotId: id as Id<"lots">,
         reason: flagReason,
         details: normalizedDetails,
@@ -457,9 +457,7 @@ export default function AuctionDetail() {
                     key={related._id}
                     auction={related}
                     viewMode="compact"
-                    isWatched={
-                      watchedLotIds?.includes(related._id) ?? false
-                    }
+                    isWatched={watchedLotIds?.includes(related._id) ?? false}
                   />
                 ))}
               </div>

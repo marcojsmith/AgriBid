@@ -7,6 +7,7 @@ import {
   afterEach,
   type Mock,
 } from "vitest";
+import { getFunctionName } from "convex/server";
 
 import {
   generateFingerprint,
@@ -16,8 +17,9 @@ import {
   getErrorReportsHandler,
   getErrorReportStatsHandler,
   processErrorReportsHandler,
+  processErrorReportsAction,
 } from "./errors";
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import * as settings from "./admin/settings";
 import * as auth from "./lib/auth";
@@ -802,6 +804,359 @@ describe("Errors Backend", () => {
       const result = await promise;
 
       expect(result.processed).toBe(5);
+    });
+  });
+
+  describe("processErrorReportsAction", () => {
+    interface GitHubConfig {
+      enabled: boolean;
+      token: string | null;
+      repoOwner: string | null;
+      repoName: string | null;
+      labels: string | null;
+    }
+
+    const defaultConfig: GitHubConfig = {
+      enabled: true,
+      token: "token",
+      repoOwner: "owner",
+      repoName: "repo",
+      labels: "bug,auto-reported",
+    };
+
+    const makeReport = (
+      overrides: Partial<Doc<"errorReports">> = {}
+    ): Doc<"errorReports"> => ({
+      _id: "r1" as Id<"errorReports">,
+      _creationTime: now,
+      fingerprint: "fp",
+      status: "pending",
+      errorType: "TypeError",
+      errorMessage: "Something broke",
+      stackTrace: "Error: boom\n    at fn (file.ts:1:1)",
+      userId: "u1",
+      userRole: "admin",
+      additionalInfo: { retries: 2 },
+      breadcrumbs: [{ timestamp: now, type: "click", description: "clicked" }],
+      metadata: { url: "https://example.com", userAgent: "ua", timestamp: now },
+      githubIssueUrl: undefined,
+      githubIssueNumber: undefined,
+      instanceCount: 1,
+      lastOccurredAt: now,
+      createdAt: now,
+      errorMessageNormalized: "something broke",
+      ...overrides,
+    });
+
+    const setupActionCtx = (
+      options: {
+        enabled?: boolean;
+        config?: GitHubConfig;
+        pendingReports?: Doc<"errorReports">[];
+      } = {}
+    ) => {
+      const {
+        enabled = true,
+        config = defaultConfig,
+        pendingReports = [],
+      } = options;
+
+      const runQuery = vi.fn((fn: unknown) => {
+        const name = getFunctionName(fn as never);
+        if (name === "errors:isGitHubReportingEnabledProxy") {
+          return Promise.resolve(enabled);
+        }
+        if (name === "errors:getGitHubConfigProxy") {
+          return Promise.resolve(config);
+        }
+        throw new Error(`Unexpected query reference: ${name}`);
+      });
+
+      const runMutation = vi.fn((fn: unknown) => {
+        const name = getFunctionName(fn as never);
+        if (name === "errors:getPendingReportsToProcess") {
+          return Promise.resolve(pendingReports);
+        }
+        if (name === "errors:updateReportStatus") {
+          return Promise.resolve(undefined);
+        }
+        throw new Error(`Unexpected mutation reference: ${name}`);
+      });
+
+      const ctx = { runQuery, runMutation } as unknown as ActionCtx;
+      return { ctx, runQuery, runMutation };
+    };
+
+    const invoke = async (ctx: ActionCtx) =>
+      await (
+        processErrorReportsAction as unknown as {
+          _handler: (ctx: ActionCtx) => Promise<{
+            processed: number;
+            created: number;
+            commented: number;
+            failed: number;
+          }>;
+        }
+      )._handler(ctx);
+
+    const statusUpdates = (runMutation: Mock) =>
+      runMutation.mock.calls
+        .filter(
+          ([fn]) => getFunctionName(fn as never) === "errors:updateReportStatus"
+        )
+        .map(
+          ([, args]) =>
+            args as {
+              id: Id<"errorReports">;
+              status: string;
+              githubIssueUrl?: string;
+              githubIssueNumber?: number;
+            }
+        );
+
+    it("returns zeros without fetching when GitHub reporting is disabled", async () => {
+      const { ctx } = setupActionCtx({ enabled: false });
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 0,
+        created: 0,
+        commented: 0,
+        failed: 0,
+      });
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("returns zeros without fetching when config is incomplete", async () => {
+      const { ctx } = setupActionCtx({
+        config: { ...defaultConfig, token: null },
+      });
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 0,
+        created: 0,
+        commented: 0,
+        failed: 0,
+      });
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("returns zeros without fetching when there are no pending reports", async () => {
+      const { ctx, runMutation } = setupActionCtx({ pendingReports: [] });
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 0,
+        created: 0,
+        commented: 0,
+        failed: 0,
+      });
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(statusUpdates(runMutation)).toEqual([]);
+    });
+
+    it("creates a new issue and marks the report completed", async () => {
+      const { ctx, runMutation } = setupActionCtx({
+        pendingReports: [makeReport()],
+      });
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            number: 42,
+            html_url: "https://github.com/owner/repo/issues/42",
+          }),
+      } as Response);
+
+      const result = await invoke(ctx);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.github.com/repos/owner/repo/issues",
+        expect.objectContaining({ method: "POST" })
+      );
+      expect(result).toEqual({
+        processed: 1,
+        created: 1,
+        commented: 0,
+        failed: 0,
+      });
+      expect(statusUpdates(runMutation)).toEqual([
+        {
+          id: "r1",
+          status: "completed",
+          githubIssueUrl: "https://github.com/owner/repo/issues/42",
+          githubIssueNumber: 42,
+        },
+      ]);
+    });
+
+    it("resets a new issue to pending when GitHub rate limits the request", async () => {
+      const { ctx, runMutation } = setupActionCtx({
+        pendingReports: [makeReport()],
+      });
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        text: () => Promise.resolve("rate limited"),
+      } as Response);
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 0,
+        created: 0,
+        commented: 0,
+        failed: 1,
+      });
+      expect(statusUpdates(runMutation)).toEqual([
+        { id: "r1", status: "pending" },
+      ]);
+    });
+
+    it("marks a new issue as failed on other GitHub errors", async () => {
+      const { ctx, runMutation } = setupActionCtx({
+        pendingReports: [makeReport()],
+      });
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve("server error"),
+      } as Response);
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 0,
+        created: 0,
+        commented: 0,
+        failed: 1,
+      });
+      expect(statusUpdates(runMutation)).toEqual([
+        { id: "r1", status: "failed" },
+      ]);
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+
+    it("adds a comment to an existing issue and marks it completed", async () => {
+      const { ctx, runMutation } = setupActionCtx({
+        pendingReports: [makeReport({ githubIssueNumber: 123 })],
+      });
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+      } as Response);
+
+      const result = await invoke(ctx);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.github.com/repos/owner/repo/issues/123/comments",
+        expect.objectContaining({ method: "POST" })
+      );
+      expect(result).toEqual({
+        processed: 1,
+        created: 0,
+        commented: 1,
+        failed: 0,
+      });
+      expect(statusUpdates(runMutation)).toEqual([
+        { id: "r1", status: "completed" },
+      ]);
+    });
+
+    it("resets an existing issue to pending when comments are rate limited", async () => {
+      const { ctx, runMutation } = setupActionCtx({
+        pendingReports: [makeReport({ githubIssueNumber: 123 })],
+      });
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve("forbidden"),
+      } as Response);
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 0,
+        created: 0,
+        commented: 0,
+        failed: 1,
+      });
+      expect(statusUpdates(runMutation)).toEqual([
+        { id: "r1", status: "pending" },
+      ]);
+    });
+
+    it("marks an existing issue as failed on other comment errors", async () => {
+      const { ctx, runMutation } = setupActionCtx({
+        pendingReports: [makeReport({ githubIssueNumber: 123 })],
+      });
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve("comment failed"),
+      } as Response);
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 0,
+        created: 0,
+        commented: 0,
+        failed: 1,
+      });
+      expect(statusUpdates(runMutation)).toEqual([
+        { id: "r1", status: "failed" },
+      ]);
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+
+    it("processes multiple pending reports in a single call", async () => {
+      const { ctx, runMutation } = setupActionCtx({
+        pendingReports: [
+          makeReport({ _id: "r1" as Id<"errorReports"> }),
+          makeReport({
+            _id: "r2" as Id<"errorReports">,
+            githubIssueNumber: 7,
+          }),
+        ],
+      });
+      vi.mocked(global.fetch).mockImplementation((url) => {
+        const urlStr = url instanceof Request ? url.url : url.toString();
+        if (urlStr.includes("comments")) {
+          return Promise.resolve({ ok: true } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ number: 99, html_url: "h99" }),
+        } as Response);
+      });
+
+      const result = await invoke(ctx);
+
+      expect(result).toEqual({
+        processed: 2,
+        created: 1,
+        commented: 1,
+        failed: 0,
+      });
+      expect(statusUpdates(runMutation)).toEqual([
+        {
+          id: "r1",
+          status: "completed",
+          githubIssueUrl: "h99",
+          githubIssueNumber: 99,
+        },
+        { id: "r2", status: "completed" },
+      ]);
     });
   });
 

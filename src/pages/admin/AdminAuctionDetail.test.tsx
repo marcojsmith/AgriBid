@@ -4,7 +4,7 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 
-import AdminSaleDetail from "./AdminSaleDetail";
+import AdminAuctionDetail from "./AdminAuctionDetail";
 
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("sonner", () => ({
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
     auctions: {
-      getAuctionEventById: { name: "auctions:getAuctionEventById" },
+      getAuctionById: { name: "auctions:getAuctionById" },
       getAssignmentCandidates: { name: "auctions:getAssignmentCandidates" },
       mutations: {
         assignment: {
@@ -45,7 +45,7 @@ vi.mock("@/components/admin/AdminLayout", () => ({
   ),
 }));
 
-describe("AdminSaleDetail Page", () => {
+describe("AdminAuctionDetail Page", () => {
   const mockEvent = {
     _id: "auc1",
     title: "Spring Sale",
@@ -56,10 +56,20 @@ describe("AdminSaleDetail Page", () => {
 
   const mockCandidates = {
     assigned: [
-      { _id: "l1", title: "Assigned Tractor", currentPrice: 1000, status: "assigned" },
+      {
+        _id: "l1",
+        title: "Assigned Tractor",
+        currentPrice: 1000,
+        status: "assigned",
+      },
     ],
     unassigned: [
-      { _id: "l2", title: "Approved Plow", currentPrice: 500, status: "approved" },
+      {
+        _id: "l2",
+        title: "Approved Plow",
+        currentPrice: 500,
+        status: "approved",
+      },
     ],
   };
 
@@ -69,7 +79,7 @@ describe("AdminSaleDetail Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.auctions.getAuctionEventById) return mockEvent;
+      if (apiPath === mockApi.auctions.getAuctionById) return mockEvent;
       if (apiPath === mockApi.auctions.getAssignmentCandidates)
         return mockCandidates;
       return undefined;
@@ -85,9 +95,9 @@ describe("AdminSaleDetail Page", () => {
 
   const renderPage = () =>
     render(
-      <MemoryRouter initialEntries={["/admin/sales/auc1"]}>
+      <MemoryRouter initialEntries={["/admin/auctions/auc1"]}>
         <Routes>
-          <Route path="/admin/sales/:id" element={<AdminSaleDetail />} />
+          <Route path="/admin/auctions/:id" element={<AdminAuctionDetail />} />
         </Routes>
       </MemoryRouter>
     );
@@ -137,9 +147,26 @@ describe("AdminSaleDetail Page", () => {
     });
   });
 
+  it("shows an error toast when unassignment fails", async () => {
+    mockUnassign.mockRejectedValue(new Error("Unassign failed"));
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /unassign/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Unassign failed");
+    });
+  });
+
+  it("renders a loading state while the queries resolve", () => {
+    (useQuery as Mock).mockReturnValue(undefined);
+    renderPage();
+    expect(screen.getByLabelText("Loading")).toBeInTheDocument();
+  });
+
   it("renders a not-found state when the auction doesn't exist", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.auctions.getAuctionEventById) return null;
+      if (apiPath === mockApi.auctions.getAuctionById) return null;
       if (apiPath === mockApi.auctions.getAssignmentCandidates)
         return { assigned: [], unassigned: [] };
       return undefined;
@@ -150,7 +177,7 @@ describe("AdminSaleDetail Page", () => {
 
   it("renders empty states when there are no lots in either list", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.auctions.getAuctionEventById) return mockEvent;
+      if (apiPath === mockApi.auctions.getAuctionById) return mockEvent;
       if (apiPath === mockApi.auctions.getAssignmentCandidates)
         return { assigned: [], unassigned: [] };
       return undefined;

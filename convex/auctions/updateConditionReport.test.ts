@@ -34,7 +34,7 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.patch.mockResolvedValue(undefined);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 
@@ -57,7 +57,7 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.patch.mockResolvedValue(undefined);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 
@@ -73,7 +73,7 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.get.mockResolvedValue(null);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 
@@ -87,7 +87,7 @@ describe("updateConditionReportHandler", () => {
     mockCtx.db.get.mockResolvedValue(auctionOtherOwner);
 
     const args = {
-      auctionId: "auction_123" as Id<"lots">,
+      lotId: "auction_123" as Id<"lots">,
       storageId: "new_storage_id" as Id<"_storage">,
     };
 

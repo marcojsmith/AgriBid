@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { settleExpiredAuctionsHandler } from "./internal";
+import { settleExpiredLotsHandler } from "./internal";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
@@ -28,7 +28,7 @@ vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-describe("settleExpiredAuctions mutation", () => {
+describe("settleExpiredLots mutation", () => {
   let mockCtx: MockCtxType;
 
   beforeEach(() => {
@@ -46,6 +46,11 @@ describe("settleExpiredAuctions mutation", () => {
   /**
    * Builds a table-aware mock context. `lots` returns the assigned lots,
    * `bids` the bids, and `ctx.db.get` resolves the parent auction.
+   *
+   * @param assignedLots - Rows returned for queries against the `lots` table.
+   * @param bids - Rows returned for queries against the `bids` table.
+   * @param parentAuction - The auction document `ctx.db.get` resolves to.
+   * @returns A mock mutation context for the settlement handler.
    */
   const setupMockCtx = (
     assignedLots: Record<string, unknown>[],
@@ -64,6 +69,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     return {
       db: {
+        // eslint-disable-next-line security/detect-object-injection -- table comes from a fixed set of test-mock table names, not user input
         query: vi.fn((table: string) => makeQuery(tableResults[table] ?? [])),
         patch: vi.fn(),
         get: vi.fn().mockResolvedValue(parentAuction),
@@ -111,7 +117,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(assignedLots, bids);
 
-    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+    await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "sold",
@@ -148,7 +154,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(assignedLots, bids);
 
-    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+    await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "unsold",
@@ -174,7 +180,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(assignedLots, []);
 
-    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+    await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "unsold",
@@ -220,7 +226,7 @@ describe("settleExpiredAuctions mutation", () => {
 
     mockCtx = setupMockCtx(assignedLots, bids);
 
-    await settleExpiredAuctionsHandler(mockCtx as unknown as MutationCtx);
+    await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "sold",

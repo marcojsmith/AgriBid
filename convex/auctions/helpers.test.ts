@@ -1,11 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import {
-  resolveImageUrls,
-  toLotSummary,
-  toLotDetail,
-  validateAuctionStatus,
-} from "./helpers";
+import { resolveImageUrls, toLotSummary, toLotDetail } from "./helpers";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -448,28 +443,5 @@ describe("toLotDetail", () => {
     const result = await toLotDetail(mockCtx, auction);
 
     expect(result.sellerEmail).toBeUndefined();
-  });
-});
-
-describe("validateAuctionStatus", () => {
-  it("should throw if status is active but endTime is missing", () => {
-    expect(() => {
-      validateAuctionStatus({ status: "pending_review" }, "active");
-    }).toThrow("Cannot set status to 'active' without endTime");
-  });
-
-  it("should not throw if status is active and endTime is present", () => {
-    expect(() => {
-      validateAuctionStatus(
-        { status: "pending_review", endTime: Date.now() },
-        "active"
-      );
-    }).not.toThrow();
-  });
-
-  it("should not throw for other status transitions", () => {
-    expect(() => {
-      validateAuctionStatus({ status: "draft" }, "pending_review");
-    }).not.toThrow();
   });
 });

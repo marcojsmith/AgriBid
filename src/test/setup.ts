@@ -18,8 +18,6 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-export * from "./factories";
-
 /**
  * Creates a mock query result object for testing Convex queries.
  * @param results - Array of results to return

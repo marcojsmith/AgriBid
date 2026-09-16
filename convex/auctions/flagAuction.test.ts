@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConvexError } from "convex/values";
 
-import { flagAuctionHandler } from "./mutations/publish";
+import { flagLotHandler } from "./mutations/publish";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
@@ -27,7 +27,7 @@ type MockCtxType = {
   db: MockDb;
 } & Partial<MutationCtx>;
 
-describe("flagAuction mutation", () => {
+describe("flagLot mutation", () => {
   let mockCtx: MockCtxType;
 
   beforeEach(() => {
@@ -67,7 +67,7 @@ describe("flagAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(reporterId);
 
-    const result = await flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+    const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
       lotId,
       reason: "suspicious",
       details: "Looks fake",
@@ -114,7 +114,7 @@ describe("flagAuction mutation", () => {
     mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(reporterId);
 
-    const result = await flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+    const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
       lotId,
       reason: "other",
     });
@@ -151,7 +151,7 @@ describe("flagAuction mutation", () => {
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
 
     await expect(
-      flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+      flagLotHandler(mockCtx as unknown as MutationCtx, {
         lotId,
         reason: "other",
       })
@@ -173,7 +173,7 @@ describe("flagAuction mutation", () => {
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
     await expect(
-      flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+      flagLotHandler(mockCtx as unknown as MutationCtx, {
         lotId,
         reason: "other",
       })
@@ -201,7 +201,7 @@ describe("flagAuction mutation", () => {
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
 
     await expect(
-      flagAuctionHandler(mockCtx as unknown as MutationCtx, {
+      flagLotHandler(mockCtx as unknown as MutationCtx, {
         lotId,
         reason: "other",
       })

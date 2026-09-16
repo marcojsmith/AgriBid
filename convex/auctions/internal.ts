@@ -116,10 +116,7 @@ export async function calculateAndRecordFees(
       const existing = await ctx.db
         .query("lotFees")
         .withIndex("by_lot_fee_applied", (q) =>
-          q
-            .eq("lotId", lot._id)
-            .eq("feeId", fee._id)
-            .eq("appliedTo", "seller")
+          q.eq("lotId", lot._id).eq("feeId", fee._id).eq("appliedTo", "seller")
         )
         .first();
 
@@ -143,10 +140,7 @@ export async function calculateAndRecordFees(
       const existing = await ctx.db
         .query("lotFees")
         .withIndex("by_lot_fee_applied", (q) =>
-          q
-            .eq("lotId", lot._id)
-            .eq("feeId", fee._id)
-            .eq("appliedTo", "buyer")
+          q.eq("lotId", lot._id).eq("feeId", fee._id).eq("appliedTo", "buyer")
         )
         .first();
 
@@ -219,16 +213,126 @@ export async function logAuctionSettlementActivity(
 }
 
 /**
+ * Settle a single assigned lot: determine the winning bid (if any), patch the
+ * lot to `sold`/`unsold`, update counters, record fees and log activity.
+ *
+ * Unsold lots have their `auctionId` cleared so admins can filter
+ * `status === "unsold"` and re-approve/reassign them.
+ *
+ * Shared by the expiry cron (`settleExpiredLotsHandler`) and manual container
+ * closure (`closeAuctionContainerHandler`), so both paths settle identically.
+ *
+ * @param ctx - The mutation context.
+ * @param lot - The assigned lot to settle.
+ * @param now - The settlement timestamp to record.
+ * @returns The resulting lot status ("sold" or "unsold").
+ */
+export async function settleLot(
+  ctx: MutationCtx,
+  lot: Doc<"lots">,
+  now: number
+): Promise<"sold" | "unsold"> {
+  const bids = await ctx.db
+    .query("bids")
+    .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
+    .collect();
+
+  // Filter out voided or invalid bids so they don't affect settlement
+  const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
+
+  const hasBids = validBids.length > 0;
+  const reserveMet = lot.currentPrice >= lot.reservePrice;
+  const finalStatus: "sold" | "unsold" =
+    hasBids && reserveMet ? "sold" : "unsold";
+
+  // Find the highest valid bid to determine the winner.
+  // Tie-break: earlier bid wins if amounts are equal.
+  const winningBid =
+    finalStatus === "sold"
+      ? validBids.reduce((prev: Doc<"bids">, current: Doc<"bids">) => {
+          if (current.amount > prev.amount) return current;
+          if (current.amount === prev.amount) {
+            return current.timestamp < prev.timestamp ? current : prev;
+          }
+          return prev;
+        })
+      : undefined;
+  const winnerId = winningBid?.bidderId;
+
+  await ctx.db.patch("lots", lot._id, {
+    status: finalStatus,
+    winnerId,
+    settledAt: now,
+    // Unsold lots return to the pool for admin reassignment.
+    ...(finalStatus === "unsold" ? { auctionId: undefined } : {}),
+  });
+
+  await updateCounter(ctx, "lots", "active", -1);
+
+  if (finalStatus === "sold" && winningBid) {
+    await updateCounter(ctx, "lots", "soldCount", 1);
+    await updateCounter(ctx, "lots", "salesVolume", lot.currentPrice);
+    await calculateAndRecordFees(ctx, lot, winningBid.amount);
+  }
+
+  await logAuctionSettlementActivity(ctx, lot, finalStatus, winnerId);
+
+  console.warn(
+    `Lot ${lot._id} (${lot.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`
+  );
+
+  return finalStatus;
+}
+
+/**
+ * Closes published auction containers whose window has elapsed and which have
+ * no lots still awaiting settlement (`assigned`). Containers with a lot whose
+ * anti-snipe `extendedEndTime` runs past the auction window are left open until
+ * that lot settles.
+ *
+ * @param ctx - The mutation context.
+ * @param now - The current timestamp.
+ * @returns Promise<void>
+ */
+async function closeCompletedAuctions(
+  ctx: MutationCtx,
+  now: number
+): Promise<void> {
+  const published = await ctx.db
+    .query("auctions")
+    .withIndex("by_status", (q) => q.eq("status", "published"))
+    .collect();
+
+  for (const auction of published) {
+    if (auction.endTime > now) continue;
+
+    const remaining = await ctx.db
+      .query("lots")
+      .withIndex("by_status_auctionId", (q) =>
+        q.eq("status", "assigned").eq("auctionId", auction._id)
+      )
+      .collect();
+    if (remaining.length > 0) continue;
+
+    await ctx.db.patch("auctions", auction._id, {
+      status: "closed",
+      updatedAt: now,
+    });
+  }
+}
+
+/**
  * Internal mutation to settle assigned lots whose effective end time has passed.
  * A lot is settled only while its parent auction is `published` and once
  * `extendedEndTime ?? auction.endTime <= now`. Transitions status to 'sold' if
  * the reserve is met, or 'unsold' otherwise. Unsold lots clear their
  * `auctionId` so admins can filter `status === "unsold"` and re-approve/reassign.
+ * Containers past their window with no remaining assigned lots are closed.
  *
  * @param ctx - The mutation context.
  * @returns Promise<void>
  */
-export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
+export const settleExpiredLotsHandler = async (ctx: MutationCtx) => {
   const now = Date.now();
   const assignedLots = await ctx.db
     .query("lots")
@@ -247,67 +351,12 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
       continue;
     }
 
-    // Check if there are any bids and if the currentPrice >= reservePrice
-    const bids = await ctx.db
-      .query("bids")
-      .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
-      .collect();
-
-    // Filter out voided or invalid bids so they don't affect settlement
-    const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
-
-    const hasBids = validBids.length > 0;
-    const reserveMet = lot.currentPrice >= lot.reservePrice;
-
-    const finalStatus = hasBids && reserveMet ? "sold" : "unsold";
-
-    let winnerId = undefined;
-    if (finalStatus === "sold") {
-      // Find the highest valid bid to determine the winner.
-      // Tie-break: earlier bid wins if amounts are equal.
-      const highestBid = validBids.reduce(
-        (prev: Doc<"bids">, current: Doc<"bids">) => {
-          if (current.amount > prev.amount) return current;
-          if (current.amount === prev.amount) {
-            return current.timestamp < prev.timestamp ? current : prev;
-          }
-          return prev;
-        }
-      );
-      winnerId = highestBid.bidderId;
-    }
-
-    await ctx.db.patch("lots", lot._id, {
-      status: finalStatus,
-      winnerId,
-      settledAt: now,
-      // Unsold lots return to the pool for admin reassignment.
-      ...(finalStatus === "unsold" ? { auctionId: undefined } : {}),
-    });
-
-    await updateCounter(ctx, "lots", "active", -1);
-
-    if (finalStatus === "sold") {
-      await updateCounter(ctx, "lots", "soldCount", 1);
-      await updateCounter(ctx, "lots", "salesVolume", lot.currentPrice);
-      const winningBid = validBids.reduce(
-        (prev: Doc<"bids">, current: Doc<"bids">) => {
-          if (current.amount > prev.amount) return current;
-          if (current.amount === prev.amount) {
-            return current.timestamp < prev.timestamp ? current : prev;
-          }
-          return prev;
-        }
-      );
-      await calculateAndRecordFees(ctx, lot, winningBid.amount);
-    }
-
-    await logAuctionSettlementActivity(ctx, lot, finalStatus, winnerId);
-
-    console.warn(
-      `Lot ${lot._id} (${lot.title}) settled as ${finalStatus}${winnerId ? " (Winner: yes)" : ""}`
-    );
+    await settleLot(ctx, lot, now);
   }
+
+  // Lifecycle hygiene: retire published containers once their window has
+  // elapsed and every lot in them has settled.
+  await closeCompletedAuctions(ctx, now);
 
   return null;
 };
@@ -315,10 +364,10 @@ export const settleExpiredAuctionsHandler = async (ctx: MutationCtx) => {
 /**
  * Internal mutation to settle auctions that have reached their end time.
  */
-export const settleExpiredAuctions = internalMutation({
+export const settleExpiredLots = internalMutation({
   args: {},
   returns: v.null(),
-  handler: settleExpiredAuctionsHandler,
+  handler: settleExpiredLotsHandler,
 });
 
 /**

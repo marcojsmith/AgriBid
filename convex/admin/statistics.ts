@@ -227,7 +227,7 @@ export const getFinancialStats = query({
         title: lot.title,
         amount: lot.currentPrice,
         fees: lotFeeMap.get(lot._id) ?? [],
-        date: lot.endTime ?? lot.settledAt ?? 0,
+        date: lot.settledAt ?? 0,
       }));
 
       const page = allSales.slice(startIndex);
@@ -293,7 +293,9 @@ export const initializeCountersHandler = async (ctx: MutationCtx) => {
         .withIndex("by_status", (q) => q.eq("status", "pending_review"))
     ),
     countQuery(
-      ctx.db.query("lots").withIndex("by_status", (q) => q.eq("status", "draft"))
+      ctx.db
+        .query("lots")
+        .withIndex("by_status", (q) => q.eq("status", "draft"))
     ),
     countUsers(ctx),
     countUsers(ctx, { isVerified: true }),
@@ -366,9 +368,8 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
     }
 
     return {
-      // Field names are legacy but now report lot counts.
-      totalAuctions: lotCounter?.total ?? 0,
-      activeAuctions: lotCounter?.active ?? 0,
+      totalLots: lotCounter?.total ?? 0,
+      activeLots: lotCounter?.active ?? 0,
       pendingReview: lotCounter?.pending ?? 0,
       totalUsers: profileCounter?.total ?? 0,
       verifiedSellers: profileCounter?.verified ?? 0,
@@ -390,8 +391,8 @@ export const getAdminStatsHandler = async (ctx: QueryCtx) => {
 export const getAdminStats = query({
   args: {},
   returns: v.object({
-    totalAuctions: v.number(),
-    activeAuctions: v.number(),
+    totalLots: v.number(),
+    activeLots: v.number(),
     pendingReview: v.number(),
     totalUsers: v.number(),
     verifiedSellers: v.number(),

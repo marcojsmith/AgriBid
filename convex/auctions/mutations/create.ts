@@ -70,7 +70,7 @@ export const generateUploadUrl = mutation({
  * @param args.startTime - Legacy scheduling field; accepted but not persisted on the lot.
  * @returns Promise<Id<"lots">>
  */
-export const createAuctionHandler = async (
+export const createLotHandler = async (
   ctx: MutationCtx,
   args: {
     title: string;
@@ -188,7 +188,7 @@ export const createAuctionHandler = async (
  * Generic lot creation mutation.
  * Supports creating either a draft or a pending_review lot.
  */
-export const createAuction = mutation({
+export const createLot = mutation({
   args: {
     title: v.string(),
     categoryId: v.id("equipmentCategories"),
@@ -219,7 +219,7 @@ export const createAuction = mutation({
     startTime: v.optional(v.number()),
   },
   returns: v.id("lots"),
-  handler: createAuctionHandler,
+  handler: createLotHandler,
 });
 
 /**
@@ -227,7 +227,7 @@ export const createAuction = mutation({
  * Allows partial updates for draft lots, enabling users to save incomplete work.
  * @param ctx - The mutation context.
  * @param args - The arguments for saving a draft.
- * @param args.auctionId - The ID of the lot to update (optional, legacy arg name for the lot id).
+ * @param args.lotId - The ID of the lot to update (optional).
  * @param args.title - The title of the listing (optional for drafts).
  * @param args.categoryId - The ID of the category for the listing (optional for drafts).
  * @param args.make - The make of the equipment (optional for drafts).
@@ -257,7 +257,7 @@ export const createAuction = mutation({
 export const saveDraftHandler = async (
   ctx: MutationCtx,
   args: {
-    auctionId?: string;
+    lotId?: string;
     title?: string;
     categoryId?: Id<"equipmentCategories">;
     make?: string;
@@ -288,7 +288,7 @@ export const saveDraftHandler = async (
 ) => {
   const { userId } = await requireVerified(ctx);
 
-  const { auctionId, ...restArgs } = args;
+  const { lotId, ...restArgs } = args;
 
   // Enforce image cap for additional images
   if (
@@ -304,10 +304,10 @@ export const saveDraftHandler = async (
   const images = restArgs.images ? normalizeImages(restArgs.images) : undefined;
 
   let validLotId: Id<"lots"> | null = null;
-  if (auctionId) {
-    validLotId = ctx.db.normalizeId("lots", auctionId);
+  if (lotId) {
+    validLotId = ctx.db.normalizeId("lots", lotId);
     if (!validLotId) {
-      throw new ConvexError("Invalid auctionId provided");
+      throw new ConvexError("Invalid lotId provided");
     }
   }
 
@@ -395,12 +395,12 @@ export const saveDraftHandler = async (
 
 /**
  * Save or update a draft lot.
- * Creates new draft if no auctionId provided, otherwise updates existing draft.
+ * Creates new draft if no lotId provided, otherwise updates existing draft.
  * All fields except those required for new draft creation are optional to support partial saves.
  */
 export const saveDraft = mutation({
   args: {
-    auctionId: v.optional(v.string()),
+    lotId: v.optional(v.string()),
     title: v.optional(v.string()),
     categoryId: v.optional(v.id("equipmentCategories")),
     make: v.optional(v.string()),

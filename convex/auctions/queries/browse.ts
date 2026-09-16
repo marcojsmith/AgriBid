@@ -16,7 +16,7 @@ import { MAX_RESULTS_CAP } from "../../constants";
 
 type StatusFilter = "active" | "closed" | "all";
 
-/** Arguments for getActiveAuctions query */
+/** Arguments for getActiveLots query */
 // Type alias (not interface): Convex derives the query's FunctionReference args
 // type from this handler args type — interfaces break that inference.
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- see comment above
@@ -99,7 +99,7 @@ function matchesLotFilter(
  * @param args - Query arguments including pagination options and filters
  * @returns Paginated lot results with total count
  */
-export const getActiveAuctionsHandler = async (
+export const getActiveLotsHandler = async (
   ctx: QueryCtx,
   args: ActiveAuctionsArgs
 ) => {
@@ -254,7 +254,7 @@ export const getActiveAuctionsHandler = async (
  *
  * @returns Paginated lot results
  */
-export const getActiveAuctions = query({
+export const getActiveLots = query({
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
@@ -282,7 +282,7 @@ export const getActiveAuctions = query({
     splitCursor: v.optional(v.union(v.string(), v.null())),
     totalCount: v.union(v.number(), v.string()),
   }),
-  handler: getActiveAuctionsHandler,
+  handler: getActiveLotsHandler,
 });
 
 /**
@@ -295,7 +295,7 @@ export const getActiveAuctions = query({
  * @param args.excludeId - Lot ID to exclude (the current lot)
  * @returns Array of matching lot summaries (max 4)
  */
-export const getRelatedAuctions = query({
+export const getRelatedLots = query({
   args: {
     make: v.string(),
     excludeId: v.id("lots"),
@@ -446,9 +446,7 @@ export const getSellerInfoHandler = async (
     0
   );
   const avgSalePrice =
-    soldLotsCount > 0
-      ? Math.round(totalSoldPrice / soldLotsCount)
-      : undefined;
+    soldLotsCount > 0 ? Math.round(totalSoldPrice / soldLotsCount) : undefined;
 
   return {
     name: profile.name,

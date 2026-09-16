@@ -15,23 +15,12 @@ export type LotDetail = NonNullable<
 /**
  * Compact lot summary shape used in list and grid views.
  *
- * Derived from the `getActiveAuctions` paginated page so it matches what list
+ * Derived from the `getActiveLots` paginated page so it matches what list
  * queries actually return.
  */
 export type LotSummary = FunctionReturnType<
-  typeof api.auctions.queries.browse.getActiveAuctions
+  typeof api.auctions.queries.browse.getActiveLots
 >["page"][number];
-
-/**
- * @deprecated Use {@link LotSummary}. Kept as an alias so out-of-scope call
- * sites that still import this name continue to typecheck.
- */
-export type AuctionWithCategory = LotSummary;
-
-/**
- * @deprecated Use {@link LotSummary}.
- */
-export type AuctionSummary = LotSummary;
 
 /**
  * Represents the images associated with an auction.

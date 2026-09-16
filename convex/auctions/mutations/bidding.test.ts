@@ -33,7 +33,6 @@ vi.mock("../../lib/auth", () => {
 
 vi.mock("../../admin_utils", () => ({
   updateCounter: vi.fn(),
-  adjustStatusCounters: vi.fn(),
   logAudit: vi.fn(),
 }));
 
@@ -111,6 +110,7 @@ describe("Bidding Coverage", () => {
       lot: Record<string, unknown> | null,
       auction: Record<string, unknown> | null
     ) => {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- mockImplementation's declared callback type is loosely inferred here
       mockCtx.db.get.mockImplementation((table: string) => {
         if (table === "lots") return Promise.resolve(lot);
         if (table === "auctions") return Promise.resolve(auction);
@@ -686,6 +686,7 @@ describe("Bidding Coverage", () => {
       lot: Record<string, unknown>,
       auction: Record<string, unknown>
     ) => {
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- mockImplementation's declared callback type is loosely inferred here
       mockCtx.db.get.mockImplementation((table: string) => {
         if (table === "lots") return Promise.resolve(lot);
         if (table === "auctions") return Promise.resolve(auction);
@@ -762,6 +763,7 @@ describe("Bidding Coverage", () => {
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "bidCooldowns",
         "bc1",
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- mockCtx.db.patch is loosely typed in this test's mock
         expect.objectContaining({ lastBidAt: expect.any(Number) })
       );
     });
@@ -780,6 +782,7 @@ describe("Bidding Coverage", () => {
       expect(result.success).toBe(true);
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "bidCooldowns",
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- mockCtx.db.insert is loosely typed in this test's mock
         expect.objectContaining({ userId: "u2", lastBidAt: expect.any(Number) })
       );
     });
