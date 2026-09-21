@@ -1,6 +1,5 @@
 # 🚜 AgriBid
 
-[![Project Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Built with Convex](https://img.shields.io/badge/Built%20with-Convex-orange.svg)](https://www.convex.dev/)
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
@@ -17,8 +16,7 @@
 
 - [🌟 Why AgriBid?](#-why-agribid)
 - [🚀 Key Features](#-key-features)
-- [🛠 Tech Stack](#-tech-stack)
-- [📂 Project Structure](#-project-structure)
+- [🛠 Tech Stack & Architecture](#-tech-stack--architecture)
 - [🏁 Getting Started](#-getting-started)
 - [🌐 Deployment](#-deployment)
 - [🧪 Testing & Quality](#-testing--quality)
@@ -67,40 +65,11 @@ In a market where machinery often costs between $50k and $500k, trust is everyth
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Tech Stack & Architecture
 
-- **Frontend**: [React 19](https://react.dev/) (Vite) + [TypeScript 5.9](https://www.typescriptlang.org/)
-- **Backend & Database**: [Convex](https://www.convex.dev/) (Reactive Queries, ACID Transactions, Cron Jobs, File Storage)
-- **Authentication**: [Clerk](https://clerk.com/) (Email/Password + Google, JWT verified natively by Convex)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn/UI](https://ui.shadcn.com/)
-- **Testing**: [Vitest](https://vitest.dev/) (Unit & Integration)
-- **Deployment**: [Vercel](https://vercel.com/)
+React 19 + Vite + TypeScript on the front end, Convex (reactive database, cron jobs, file storage) on the back end, Clerk for authentication, Tailwind CSS v4 + shadcn/ui for styling, Vitest for tests and Vercel for hosting.
 
----
-
-## 📂 Project Structure
-
-```text
-AgriBid/
-├── convex/                  # Backend Architecture
-│   ├── admin/              # KYC, Stats, Metadata & Moderation
-│   ├── auctions/           # Bidding logic, Settlement & Queries
-│   ├── lib/                # Auth utilities & Encryption helpers
-│   ├── schema.ts           # Type-safe Database Schema
-│   └── crons.ts           # Automated Settlement & Cleanup
-├── src/                    # Frontend Application (React)
-│   ├── components/         # Atomic UI & Compound Business Components
-│   ├── contexts/          # State providers (User, Stats, Global)
-│   ├── lib/               # Auth client & Shared Utilities
-│   └── pages/             # Route-level View Components
-├── conductor/              # Spec-Driven Development (Tracks & Plans)
-├── docs/                   # Engineering Documentation
-│   ├── database/           # ERDs & Table Relationships
-│   ├── ui-design/         # Design System & Layouts
-│   ├── security/          # Encryption & RBAC Policies
-│   └── data-flow/         # Auth & Transaction Sequences
-└── ... (Config files: Vite, Vitest, ESLint, Prettier)
-```
+The stack with versions, the repository map and how a request flows through the system live in [`docs/architecture/overview.md`](docs/architecture/overview.md); it is the single source, so this README does not repeat it.
 
 ---
 
@@ -167,17 +136,12 @@ Deployments are automatically triggered when pushing to the `main` branch (if co
 
 ## 🧪 Testing & Quality
 
-AgriBid maintains a high standard of code quality through strict linting and comprehensive testing.
-
 - **Run Tests**: `bun run test`
 - **Coverage Report**: `bun run test:coverage`
-- **Linting**: `bun run lint` (Checks for type-safety, security, and style)
+- **Linting**: `bun run lint` (type-safety, security and style)
+- **Type check / build**: `bun run type-check`, `bun run build`
 
-**Naming Conventions**:
-
-- Folders: `hyphen-case`
-- React Components: `PascalCase`
-- Utils/Hooks: `camelCase`
+Coding rules, naming conventions and the full command list are in [`AGENTS.md`](AGENTS.md).
 
 ---
 
@@ -193,23 +157,17 @@ AgriBid maintains a high standard of code quality through strict linting and com
 
 ## 🗺 Roadmap
 
-- [ ] **Phase 4 Integration**: AI-Powered Pricing Suggestions.
-- [ ] **Advanced Notifications**: SMS and Email outbid alerts.
-- [ ] **Condition Reports**: PDF generation for machine inspections.
-- [ ] **Mobile App**: React Native wrapper for on-field bidding.
-- [ ] **Multi-Currency Support**: Expand beyond Southern African regional markets.
+See [`docs/product/roadmap.md`](docs/product/roadmap.md). Open work and bugs are tracked in [GitHub Issues](https://github.com/marcojsmith/AgriBid/issues); current status is in [`docs/STATUS.md`](docs/STATUS.md).
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please follow our workflow:
-
-1. Check the [ISSUES_CHECKLIST.md](ISSUES_CHECKLIST.md) for open tasks.
-2. Create a feature branch (`feature/description`).
-3. Follow the commit format specified in [Checklist.md](Checklist.md).
-4. Ensure all tests pass (`bun run test`).
-5. Submit a Pull Request referencing the issue ID.
+1. Pick or open a [GitHub issue](https://github.com/marcojsmith/AgriBid/issues).
+2. Read [`AGENTS.md`](AGENTS.md) (rules, workflow, commit format) and [`docs/STATUS.md`](docs/STATUS.md).
+3. Create a branch (`feature/description` or `bugfix/description`); never commit to `main`.
+4. Ensure `bun run lint`, `bun run test` and `bun run build` pass.
+5. Open a Pull Request referencing the issue and complete the docs checklist.
 
 ---
 

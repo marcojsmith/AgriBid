@@ -47,3 +47,6 @@ seo-plan.md
 *.sln
 *.sw?
 .vercel
+
+# opencode task files are local scratch (see conductor/workflow notes in AGENTS.md)
+conductor/opencode_tasks/

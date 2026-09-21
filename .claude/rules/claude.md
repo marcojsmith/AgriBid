@@ -28,7 +28,7 @@ opencode is an AI coding agent installed on this machine. It can be invoked via 
    opencode run "Read conductor/opencode_tasks/<task-name>.md and execute the plan exactly. Update the ## Results section when done."
    ```
 4. **Review** — read the updated task file, inspect changed files, run lint/tests/type-check. Fix anything opencode got wrong.
-5. **Clean up** — delete or archive the task file after the work is committed.
+5. **Clean up** — task files are local scratch (`conductor/opencode_tasks/` is gitignored). Never commit them; delete once the work is merged.
 
 ## Task file template
 
