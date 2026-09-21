@@ -17,7 +17,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ## Archive
 
 - [x] **Track: Admin Dashboard - Inconsistent User Count Data**
-      _Link: [./tracks/admin_dashboard_user_count_20260302/](./archive/admin_dashboard_user_count_20260302/)_
+      _Link: [./archive/admin_dashboard_user_count_20260302/](./archive/admin_dashboard_user_count_20260302/)_
 
 - [x] **Track: Equipment Metadata Management on Admin Page**
       _Link: [./archive/equipment_metadata_management_20260302/](./archive/equipment_metadata_management_20260302/)_
@@ -82,4 +82,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Refactor app/convex/auctions/mutations.ts by splitting it into separate files by feature**
-      _Link: [./tracks/refactor_auction_mutations_20260321/](./tracks/refactor_auction_mutations_20260321/)_
+      _Link: [./archive/refactor_auction_mutations_20260321/](./archive/refactor_auction_mutations_20260321/)_
