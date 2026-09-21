@@ -1,14 +1,29 @@
 You are a senior full-stack developer assisting in building **AgriBid** — a real-time auction platform for agricultural products.
 
----
-
-# Where work state lives
-
-`docs/STATUS.md` is the source of truth for what is done, in progress and next, plus operations commands, decisions and open questions. Read it at the start of every session. When you start, finish or change the scope of work, update it in the same PR. Do not rely on chat history for state. Detailed per-feature plans live in `conductor/tracks/`; STATUS.md links to them rather than duplicating task lists.
+This file holds rules and commands only. Everything else has one home; follow the links instead of copying facts here.
 
 ---
 
-## Quick Reference
+# Where things live
+
+| Question                                     | Read                                                                                                                    |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| What is in progress / next / blocked?        | [`docs/STATUS.md`](docs/STATUS.md) — **read at the start of every session**                                             |
+| What shipped?                                | [`docs/CHANGELOG.md`](docs/CHANGELOG.md)                                                                                |
+| What have we learned? Check before you build | [`docs/LESSONS.md`](docs/LESSONS.md)                                                                                    |
+| Why was X chosen?                            | [`docs/decisions/`](docs/decisions/)                                                                                    |
+| How does the repo work? Tech stack?          | [`docs/architecture/overview.md`](docs/architecture/overview.md) (+ data-flow, database, security, ui-design beside it) |
+| Product vision, roadmap                      | [`docs/product/`](docs/product/)                                                                                        |
+| How is feature X planned?                    | `conductor/tracks/<name>/spec.md` + `plan.md` ([`conductor/README.md`](conductor/README.md))                            |
+| Backlog and bugs                             | GitHub Issues                                                                                                           |
+| Convex rules                                 | `.claude/rules/convex_rules.md`                                                                                         |
+| Schema                                       | `convex/schema.ts`                                                                                                      |
+
+When you start, finish or change the scope of work, update `docs/STATUS.md` in the same PR. When something non-obvious happens (a bug's real cause, a gotcha, a surprising tool behaviour), add a dated line to `docs/LESSONS.md`. When a real choice is made, add an ADR in `docs/decisions/`. Do not rely on chat history for state.
+
+---
+
+# Quick reference
 
 | DO NOT RUN     | DO RUN               |
 | -------------- | -------------------- |
@@ -34,7 +49,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 
 The dev server runs HTTPS using a Tailscale-issued cert for this machine's MagicDNS name (`vite.config.ts` loads it from `certs/`, which is git-ignored). Regenerate with `tailscale cert --cert-file certs/trio5700x.taila18a1c.ts.net.crt --key-file certs/trio5700x.taila18a1c.ts.net.key trio5700x.taila18a1c.ts.net` if it expires. The cert matches `trio5700x.taila18a1c.ts.net`, so that URL is warning-free on every tailnet device; `https://localhost:5173` works but shows a name-mismatch warning.
 
-When sharing local dev-server changes for review, give the Tailscale URL (`https://trio5700x.taila18a1c.ts.net:5173`) instead of `localhost` so it's reachable from any device on the tailnet (`vite.config.ts` already sets `host: true`).
+When sharing local dev-server changes for review, give the Tailscale URL instead of `localhost` so it's reachable from any device on the tailnet (`vite.config.ts` already sets `host: true`).
 
 **Clerk note:** Clerk blocks sign-in requests whose origin isn't allow-listed (`403` from Cloudflare, and the Google button silently does nothing). Any origin you use — `https://localhost:5173`, `https://trio5700x.taila18a1c.ts.net:5173` — must be added under Clerk Dashboard → Configure → API Keys → Allowed origins.
 
@@ -45,103 +60,28 @@ When sharing local dev-server changes for review, give the Tailscale URL (`https
 - Assume the dev and Convex servers are already running.
 - **Priorities (in order):** security → type safety → correctness → code quality → maintainability → performance/bandwidth → user experience.
 - Create tests before starting a new feature or fixing a bug.
-- When encountering lint or typesafety errors or warns, correct these where possible.
-- There are many tests, run tests ONLY for specific files (e.g. `bun run test --run path/to/directory/file.ts`) where possible instead of running `bun run test`.
-- Boy scout motto = "Leave it better than how you found it". When you come across linting errors, type safety issues, or structural inefficiencies, you correct these.
+- There are many tests: run tests ONLY for specific files (e.g. `bun run test --run path/to/file.ts`) where possible instead of the whole suite.
+- Boy scout motto = "Leave it better than how you found it". Correct lint errors, type-safety issues and structural inefficiencies you come across.
 - If you spot something important — an incorrect import, a structural issue, a potential improvement — raise it, even if unrelated to the current task.
 - Never make assumptions. Review code and ask for clarification when unsure.
-- Document noteworthy discoveries in `codebase_notes.md`.
+- Read entire files for full context before editing, and make related edits to a file in one pass. If the harness says a file changed since you last read it, re-read it and retry.
+- Ship cohesive changes together: frontend, backend, schema, seed data, tests and docs. Data-related changes need thorough testing.
 
-## Test coverage
+## Testing and coverage
 
-Test coverage is saved to `test-coverage/latest-coverage-output.txt` file.
-Review this file for the current test coverage report or run `bun run test:coverage` to update the file.
+- Every module needs tests; cover success and failure paths; mock external dependencies.
+- Global coverage thresholds (enforced in `vitest.config.ts`, currently 90% for statements, branches, functions and lines) must pass before you commit.
+- The latest coverage report is `test-coverage/latest-coverage-output.txt`; run `bun run test:coverage` to refresh it.
 
-## Coding harness
+## Type safety and style
 
-When you come across this error, you need to reread the file and try again to apply the change. This is a safety mechanism to prevent you from making changes based on stale code context. Always read the entire file for full context before making any changes.
+- **NO `any` types.** Use specific types, interfaces, type guards and assertions.
+- **No `eslint-disable`.** Refactor to comply instead. Remove stale or unused directives.
+- **JSDoc** all exported functions, components and types.
+- Use meaningful names, modular reusable code, functional components, hooks and composition. Comment complex logic.
+- Formatting and generic style are enforced by ESLint and Prettier; do not restate them by hand.
 
-```text
-File <file path> has been modified since it was last read.
-Last modification: <timestamp>
-Last read: <timestamp>
-Please read the file again before modifying it.
-```
-
----
-
-# 2. Project Structure
-
-```text
-convex/          # Backend: schema, mutations, queries, auth, config
-src/
-  assets/        # Static assets
-  components/    # Reusable UI (shadcn/ui)
-  contexts/       # React context providers
-  hooks/          # Custom hooks
-  lib/            # Utilities and shared logic
-  pages/          # Views and routing
-  test/           # Tests (Vitest, MCP)
-  types/          # TypeScript type definitions
-conductor/       # Product docs, guidelines, feature tracks, style guides
-.gemini/         # Gemini CLI config and Convex-specific rules
-```
-
----
-
-# 3. Key Documentation
-
-Consult these regularly. Keep them accurate when making changes.
-
-| File / Folder                     | Purpose                                        |
-| --------------------------------- | ---------------------------------------------- |
-| `docs/STATUS.md`                  | Live work state (done / in progress / next)    |
-| `Brief.md`                        | Application purpose, audience, key features    |
-| `Checklist.md`                    | Implementation progress and commit format      |
-| `codebase_notes.md`               | Architectural decisions, ideas, scratchpad     |
-| `conductor/product.md`            | Product vision and goals                       |
-| `conductor/product-guidelines.md` | Design and development guidelines              |
-| `conductor/workflow.md`           | Development workflow                           |
-| `conductor/tech-stack.md`         | Technology stack details                       |
-| `conductor/tracks.md`             | Feature tracks                                 |
-| `conductor/code_styleguides/*.md` | TypeScript, JavaScript, HTML/CSS conventions   |
-| `.gemini/convex_rules.md`         | Convex backend rules and best practices        |
-| `convex/schema.ts`                | Database schema                                |
-| `convex/auctions/*`               | Auction logic (queries, mutations, bidding)    |
-| `convex/auth.config.ts`           | Clerk JWT config (verified natively by Convex) |
-
----
-
-# 4. Tech Stack
-
-| Layer              | Technology                     |
-| ------------------ | ------------------------------ |
-| Frontend           | React (Vite), TypeScript       |
-| Backend / Database | Convex (real-time sync)        |
-| Authentication     | Clerk (JWT verified by Convex) |
-| UI Components      | shadcn/ui                      |
-| Testing            | Vitest, Chrome DevTools MCP    |
-| Deployment         | Vercel                         |
-
----
-
-# 5. Coding Standards
-
-## Testing coverage
-
-- Before you can commit, you need to achieve the global thresholds for test coverage:
-  - statements: 90%
-  - branches: 90%
-  - functions: 90%
-  - lines: 90%
-
-## Type safety
-
-- **NO `any` types.** CRITICAL Use specific types, interfaces, type guards, and assertions. DO NOT USE `any` types.
-- **No `eslint-disable`.** Refactor to comply instead. Remove stale/unused directives.
-- **JSDoc** all exported functions, components, and types.
-
-## Naming Conventions (strictly enforced via linting)
+## Naming conventions (enforced via linting)
 
 | Element               | Convention  | Example                    |
 | --------------------- | ----------- | -------------------------- |
@@ -151,149 +91,102 @@ Consult these regularly. Keep them accurate when making changes.
 | Variables/functions   | camelCase   | `getUserProfile`           |
 | React components      | PascalCase  | `<UserProfile />`          |
 
-## Code Style
-
-- Follow the style guides in `conductor/code_styleguides/`.
-- Use meaningful names. Write modular, reusable code. Avoid duplication.
-- Comment complex logic. Refactor regularly.
-- Follow React best practices: functional components, hooks, composition.
-
 ---
 
-# 6. UI Design Rules
+# 2. UI design rules
 
 1. **Clarity** — Clear labels, tooltips, prominent key information (highest bid, time remaining).
-2. **Consistency** — Uniform styles per `conductor/product-guidelines.md`. Use theme tokens, never hardcoded colours/fonts.
+2. **Consistency** — Uniform styles per [`docs/product/vision.md`](docs/product/vision.md) and [`docs/architecture/ui-design/`](docs/architecture/ui-design/). Use theme tokens, never hardcoded colours/fonts.
 3. **Accessibility** — ARIA roles, keyboard navigation, semantic HTML.
-4. **Mobile-first** — Design for 375×812 first, then scale up to tablet (768×1024) and desktop (1440×900). Every layout, spacing, and component decision must work well on mobile before being enhanced for larger screens. Use Tailwind's unprefixed classes for mobile, then `sm:`, `md:`, `lg:` to progressively enhance.
+4. **Mobile-first** — Design for 375×812 first, then scale up to tablet (768×1024) and desktop (1440×900). Use Tailwind's unprefixed classes for mobile, then `sm:`, `md:`, `lg:` to progressively enhance.
 5. **Feedback** — Loading indicators, success/error messages for all user actions.
 6. **Simplicity** — No clutter. Every element must earn its place.
 7. **Components** — Use shadcn/ui. Install from the library first, customise as needed.
-8. **Verify with MCP** — Always test UI changes across breakpoints before committing.
-9. **Restraint** — Prefer flat sections with dividers over wrapping every block in a `<Card>`. Cards are for content that genuinely needs visual isolation. Avoid card-in-card patterns.
-10. **Sharpness** — Use `rounded` (4px) or `rounded-md` (6px) for UI elements. Reserve `rounded-lg` (8px) for images and avatars. Avoid `rounded-xl`, `rounded-2xl` on layout containers and buttons — they read as playful, not professional.
+8. **Verify with MCP** — Test UI changes across breakpoints before committing.
+9. **Restraint** — Prefer flat sections with dividers over wrapping every block in a `<Card>`. Avoid card-in-card patterns.
+10. **Sharpness** — Use `rounded` (4px) or `rounded-md` (6px) for UI elements. Reserve `rounded-lg` (8px) for images and avatars. Avoid `rounded-xl`/`rounded-2xl` on layout containers and buttons.
 
 ---
 
-# 7. Workflow
+# 3. Workflow
 
-## Making Changes
+## Development cycle
 
-- Read entire files for full context before editing.
-- Make multiple related edits to a file in one pass.
-- Ensure all cohesive changes (frontend, backend, schema, seed data, tests, docs) ship together.
-- Changing code may cause data issues — test data-related changes thoroughly.
+1. **Plan** — Define scope, list files to change, identify data needs. Anything spanning more than one PR gets a track in `conductor/tracks/` (`spec.md` + `plan.md`); single-PR fixes need only an issue and the PR.
+2. **Test** — Write or update tests _before_ building; they should fail first.
+3. **Build** — Implement (schema → backend → frontend).
+4. **Verify** — `bun run lint` → `bun run test --run` → `bun run type-check` → `bun run build`. All must pass. For UI changes, also check in the browser (Chrome DevTools MCP) across breakpoints.
+5. **Review** — Run the CodeRabbit CLI on uncommitted changes (see section 4).
+6. **Push** — Branch, commit, push, open a PR, and update `docs/STATUS.md` in that PR.
 
-## Branching & Commits
+## Branching and commits
 
-- **Never commit or push directly to `main`, even when you have permission to bypass branch protection.** Always create a new branch for any change, however small, and merge it into `main` via a pull request.
-- Branch per feature/fix: `feature/description` or `bugfix/description`.
-- Follow the commit format in `Checklist.md`.
+- **Never commit or push directly to `main`, even when you have permission to bypass branch protection.** Always create a branch and merge via pull request.
+- Branch names: `feature/description` or `bugfix/description` (`chore/`, `docs/`, `fix/` are fine for non-feature work).
+- Commit format: `<type>(<scope>): <description>` with types `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`. Example: `feat(auth): add remember-me option`.
 - Group related changes per commit. No unrelated changes in one commit.
-- Before committing: `bun run lint` → `bun run test --run` → `bun run build` must all pass.
+- Before committing, `bun run lint` → `bun run test --run` → `bun run build` must pass (the husky pre-commit hook also runs them).
 
-## Development Cycle
+## Semantic versioning
 
-Follow this sequence for every feature or fix:
+Update the `package.json` version in the **same PR** as the changes: patch for fixes and UI tweaks, minor for non-breaking features, major for breaking or major refactors. The version flows from `package.json` → Vite build → AdminDashboard display.
 
-1. **Plan** — Define the scope, list all files to change, identify data needs. Create subissues for backend requirements.
-2. **Test** — Write or update tests _before_ building. Tests should fail initially.
-3. **Build** — Implement the changes (schema → backend → frontend).
-4. **Verify** — Run `bun run lint` → `bun run test --run` → `bun run type-check` → `bun run build`. All must pass.
-5. **Push** — Create branch, commit with descriptive message, push and open PR.
+## Pull requests
 
-## Semantic Versioning
-
-Update `package.json` version in the **same commit/PR** as the changes.
-
-| Change Type                 | Bump  | Example       |
-| --------------------------- | ----- | ------------- |
-| Bug fixes, UI tweaks        | Patch | 0.1.0 → 0.1.1 |
-| New features (non-breaking) | Minor | 0.1.0 → 0.2.0 |
-| Breaking / major refactors  | Major | 0.1.0 → 1.0.0 |
-
-The version flows from `package.json` → Vite build → AdminDashboard display.
-
-## Pull Requests
-
-- All changes to `main` go through a PR — no direct pushes to `main`, ever.
-- One PR per feature/fix. Clear description referencing relevant issues.
+- One PR per feature/fix, with a clear description referencing relevant issues (`Closes #n`).
 - All automated tests must pass before requesting review.
+- Fill in the PR template checklist, including the docs items.
+
+## Definition of done
+
+Code implemented to spec; tests written and passing; coverage thresholds met; lint, type-check and build clean; works on mobile; no secrets or security regressions; `docs/STATUS.md` (and `LESSONS.md` / `decisions/` where applicable) updated; deviations from a track's spec noted in its `plan.md`.
+
+## Emergencies
+
+- **Production bug:** hotfix branch from `main` → failing test → minimal fix → verify → PR → record the cause in `docs/LESSONS.md`.
+- **Suspected secret leak or breach:** rotate secrets immediately, review access logs, patch, then document.
 
 ---
 
-# 8. Code Reviews
+# 4. Code reviews
 
-## Pre-Commit (CodeRabbit CLI)
+## Pre-commit (CodeRabbit CLI)
 
 1. Run: `bunx coderabbit --prompt-only --type uncommitted`
 2. Fix critical and major issues. Consider improvements. Ignore inapplicable nits.
 3. Re-run to verify fixes.
 
-## PR Reviews (CodeRabbit)
+## PR reviews (CodeRabbit)
 
-1. User adds review findings to `conductor/code_reviews/prXX_review_findings.md`.
-2. Convert findings into a numbered checklist.
-3. For each item: read the file → understand context → fix the issue → tick it off.
-4. Verify: `lint` → `test --run` → `build` → `bunx vercel build`.
-5. Write a commit summary of all changes.
-6. Update any affected documentation.
-7. Push changes. **Do not commit** the `prXX_review_findings.md` file.
+1. The user places review findings in a local `prXX_review_findings.md` (do not commit it).
+2. Convert findings into a numbered checklist; for each item read the file → understand context → fix → tick it off.
+3. Verify: `lint` → `test --run` → `build` → `bunx vercel build`.
+4. Write a commit summary, update any affected documentation, push.
 
-## Review Focus Areas
+## Review focus areas
 
-- Code quality, readability, type safety
-- Adherence to coding standards and naming conventions
-- Test coverage
-- Security implications
-- Unused imports/variables/code, stale `eslint-disable` directives
-- Incomplete or placeholder code
-- Documentation accuracy
+Code quality, readability, type safety; adherence to standards and naming; test coverage; security; unused imports/variables/code and stale `eslint-disable` directives; incomplete or placeholder code; documentation accuracy.
 
 ---
 
-# 9. Tools
+# 5. Tools
 
 ## Chrome DevTools MCP
 
-For automated UI testing, accessibility audits, and debugging.
+For automated UI testing, accessibility audits and debugging.
 
 - **One action per tool call.** Snapshots go stale after any page change — wait for the new snapshot before proceeding.
 - Key actions: `list_pages`, `take_snapshot`, `navigate_page`, `new_page`, `click`, `fill`.
 
 ## Vercel CLI
 
-- Run `bunx vercel` from the **project root**.
-- Confirm deployments with `bunx vercel list`.
+- Run `bunx vercel` from the **project root**; confirm deployments with `bunx vercel list`.
 - Dashboard settings: Root = `.`, Build = `bunx convex deploy --cmd 'bun run build'`, Install = `bun install` (override ON), Output = `dist`.
 
 ## GitHub CLI
 
-- Run `gh` from the project root for branch, commit, PR, and issue management.
+Run `gh` from the project root for branch, commit, PR and issue management.
 
----
+## Local scratch
 
-# 10. External Model Usage
-
-When a task benefits from a specialist LLM (brainstorming, image generation, complex reasoning):
-
-1. Identify the task and select an appropriate model.
-2. Generate a detailed, context-rich prompt. Save as a markdown file with a placeholder for the response.
-3. Ask the user to submit the prompt and return the output.
-4. Review, refine, and integrate the result.
-
-| Model           | Best for                          |
-| --------------- | --------------------------------- |
-| Convex AI       | Convex docs, schema design        |
-| Gemini 3 Pro    | Complex reasoning                 |
-| Gemini 3 Flash  | Simpler/faster tasks              |
-| Claude          | Coding and development            |
-| GPT-5           | General-purpose                   |
-| Kimi K2         | Coding, maths, tool orchestration |
-| Nano Banana Pro | Image generation                  |
-
----
-
-# 11. Scratchpad
-
-Use `codebase_notes.md` (markdown) to capture architectural decisions, ideas, potential improvements, and anything noteworthy encountered during development. Update and reorganise it regularly.
+`conductor/opencode_tasks/` is local scratch for delegated task files. It is gitignored: never commit its contents.
