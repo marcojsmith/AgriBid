@@ -2,6 +2,12 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 
 ---
 
+# Where work state lives
+
+`docs/STATUS.md` is the source of truth for what is done, in progress and next, plus operations commands, decisions and open questions. Read it at the start of every session. When you start, finish or change the scope of work, update it in the same PR. Do not rely on chat history for state. Detailed per-feature plans live in `conductor/tracks/`; STATUS.md links to them rather than duplicating task lists.
+
+---
+
 ## Quick Reference
 
 | DO NOT RUN     | DO RUN               |
@@ -11,6 +17,7 @@ You are a senior full-stack developer assisting in building **AgriBid** — a re
 | Command                                            | Description                                                                 |
 | -------------------------------------------------- | --------------------------------------------------------------------------- |
 | `bun run dev`                                      | Start development server                                                    |
+| `bunx convex dev`                                  | Run Convex backend in dev / regenerate `convex/_generated`                  |
 | `bun run type-check`                               | Type check with tsgo (4.6x faster than tsc)                                 |
 | `bun run lint`                                     | Check code for errors on all files                                          |
 | `bunx eslint path/to/directory.file.ts`            | Run linting on a specific file                                              |
@@ -86,34 +93,35 @@ conductor/       # Product docs, guidelines, feature tracks, style guides
 
 Consult these regularly. Keep them accurate when making changes.
 
-| File / Folder                      | Purpose                                      |
-| ---------------------------------- | -------------------------------------------- |
-| `Brief.md`                         | Application purpose, audience, key features  |
-| `Checklist.md`                     | Implementation progress and commit format    |
-| `codebase_notes.md`                | Architectural decisions, ideas, scratchpad   |
-| `conductor/product.md`             | Product vision and goals                     |
-| `conductor/product-guidelines.md`  | Design and development guidelines            |
-| `conductor/workflow.md`            | Development workflow                         |
-| `conductor/tech-stack.md`          | Technology stack details                     |
-| `conductor/tracks.md`              | Feature tracks                               |
-| `conductor/code_styleguides/*.md`  | TypeScript, JavaScript, HTML/CSS conventions |
-| `.gemini/convex_rules.md`          | Convex backend rules and best practices      |
-| `convex/schema.ts`                 | Database schema                              |
-| `convex/auctions/*`                | Auction logic (queries, mutations, bidding)  |
-| `convex/auth.ts`, `auth.config.ts` | BetterAuth integration (server-side)         |
+| File / Folder                     | Purpose                                        |
+| --------------------------------- | ---------------------------------------------- |
+| `docs/STATUS.md`                  | Live work state (done / in progress / next)    |
+| `Brief.md`                        | Application purpose, audience, key features    |
+| `Checklist.md`                    | Implementation progress and commit format      |
+| `codebase_notes.md`               | Architectural decisions, ideas, scratchpad     |
+| `conductor/product.md`            | Product vision and goals                       |
+| `conductor/product-guidelines.md` | Design and development guidelines              |
+| `conductor/workflow.md`           | Development workflow                           |
+| `conductor/tech-stack.md`         | Technology stack details                       |
+| `conductor/tracks.md`             | Feature tracks                                 |
+| `conductor/code_styleguides/*.md` | TypeScript, JavaScript, HTML/CSS conventions   |
+| `.gemini/convex_rules.md`         | Convex backend rules and best practices        |
+| `convex/schema.ts`                | Database schema                                |
+| `convex/auctions/*`               | Auction logic (queries, mutations, bidding)    |
+| `convex/auth.config.ts`           | Clerk JWT config (verified natively by Convex) |
 
 ---
 
 # 4. Tech Stack
 
-| Layer              | Technology                          |
-| ------------------ | ----------------------------------- |
-| Frontend           | React (Vite), TypeScript            |
-| Backend / Database | Convex (real-time sync)             |
-| Authentication     | BetterAuth (via Convex server-side) |
-| UI Components      | shadcn/ui                           |
-| Testing            | Vitest, Chrome DevTools MCP         |
-| Deployment         | Vercel                              |
+| Layer              | Technology                     |
+| ------------------ | ------------------------------ |
+| Frontend           | React (Vite), TypeScript       |
+| Backend / Database | Convex (real-time sync)        |
+| Authentication     | Clerk (JWT verified by Convex) |
+| UI Components      | shadcn/ui                      |
+| Testing            | Vitest, Chrome DevTools MCP    |
+| Deployment         | Vercel                         |
 
 ---
 
