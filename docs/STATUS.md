@@ -14,9 +14,7 @@ Last updated: 2026-09-21
 
 ## In progress
 
-- PR #323 `chore/conductor-tracks-cleanup`: archive the finished `refactor_auction_mutations` track.
-- PR #329 `docs/status-md-and-conductor-cleanup`: add this file, fix stale auth docs.
-- PR `docs/restructure-docs` (stacked on #329): one home per kind of information. Adds CHANGELOG, LESSONS, decisions, architecture overview, product docs; slims `AGENTS.md`; retires `Brief.md`, `Checklist.md`, `codebase_notes.md` and most of `conductor/` (originals kept in `docs/archive/`).
+- PR #330 `docs/restructure-docs`: one home per kind of information. Adds CHANGELOG, LESSONS, decisions, architecture overview, product docs; slims `AGENTS.md`; retires `Brief.md`, `Checklist.md`, `codebase_notes.md` and most of `conductor/` (originals kept in `docs/archive/`).
 - Dependabot PRs #324-#328 (radix slot/accordion, @types/node, jest-dom, convex-test): open, unreviewed.
 
 ## Next (prioritised)
@@ -29,6 +27,7 @@ Last updated: 2026-09-21
 
 ## Done (last 10)
 
+- 2026-09-21: STATUS.md added and stale auth docs fixed (#329); finished `refactor_auction_mutations` track archived (#323).
 - 2026-09-19: Fix prod crash from manual vendor-react chunk grouping (#322).
 - 2026-09: Multi-lot auctions rework finished (#318, #321).
 - 2026-09: Dev server served over HTTPS with a Tailscale-issued cert (#320).
