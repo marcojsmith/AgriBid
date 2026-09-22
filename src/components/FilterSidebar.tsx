@@ -275,12 +275,20 @@ export const FilterSidebar = ({
       };
 
       await updateMyPreferences({
-        defaultStatusFilter:
-          localFilters.status === "active" ||
-          localFilters.status === "closed" ||
-          localFilters.status === "all"
-            ? localFilters.status
-            : undefined,
+        // hideStatus means no control is shown for the user to set or see
+        // this value, so never persist it as a default (it would silently
+        // become "active" even though localFilters.status defaults to that
+        // regardless of what the scoped browser is actually using).
+        ...(hideStatus
+          ? {}
+          : {
+              defaultStatusFilter:
+                localFilters.status === "active" ||
+                localFilters.status === "closed" ||
+                localFilters.status === "all"
+                  ? localFilters.status
+                  : undefined,
+            }),
         defaultMake: localFilters.make.trim() || undefined,
         defaultMinYear: validateAndParseInt(localFilters.minYear),
         defaultMaxYear: validateAndParseInt(localFilters.maxYear),

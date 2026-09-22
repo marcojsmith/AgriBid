@@ -1,5 +1,5 @@
 // app/src/pages/Home.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
@@ -51,9 +51,18 @@ export default function Home() {
     api.auctions.getPublishedAuctions,
     searchQuery !== undefined ? "skip" : {}
   );
-  // Lazy initializer keeps this a pure read during render (the "Live Now"
-  // badge doesn't need to tick live here; a page refresh is enough).
-  const [now] = useState(() => Date.now());
+  // Lazy initializer keeps this a pure read during render; refreshed on an
+  // interval so events crossing startTime/endTime while the page stays
+  // mounted still move between the Live Now badge and status tabs.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 30_000);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   const rawStatus = searchParams.get("status");
   const statusTab: StatusTab = isValidTab(rawStatus) ? rawStatus : "active";

@@ -121,13 +121,16 @@ export const LotBrowser = ({
   make = make === "" ? undefined : make;
 
   const rawStatus = searchParams.get("status");
-  // Inside an auction container the status is fixed to "all" by default
-  // (saved preferences do not apply); elsewhere the URL wins, then prefs.
-  const statusFilter = isValidStatus(rawStatus)
-    ? rawStatus
-    : auctionId !== undefined
+  // Inside an auction container the status control is hidden, so it is
+  // always "all" — a stale/crafted `?status=` in the URL must not silently
+  // filter out lots with no visible way to see or clear it. Elsewhere the
+  // URL wins, then saved preferences.
+  const statusFilter =
+    auctionId !== undefined
       ? "all"
-      : (preferences?.defaultStatusFilter ?? "active");
+      : isValidStatus(rawStatus)
+        ? rawStatus
+        : (preferences?.defaultStatusFilter ?? "active");
 
   const parseFiniteInt = (key: string) => {
     const val = searchParams.get(key);
@@ -530,7 +533,7 @@ export const LotBrowser = ({
                   variant="outline"
                   className="rounded-md font-medium px-12 border gap-2 h-12 text-xs"
                 >
-                  Load More Auctions
+                  Load More Lots
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </div>

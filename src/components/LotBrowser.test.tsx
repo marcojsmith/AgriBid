@@ -396,7 +396,7 @@ describe("LotBrowser", () => {
     });
 
     renderLotBrowser();
-    const loadMoreBtn = screen.getByText(/Load More Auctions/i);
+    const loadMoreBtn = screen.getByText(/Load More Lots/i);
     fireEvent.click(loadMoreBtn);
     expect(mockLoadMore).toHaveBeenCalledWith(12);
   });
@@ -735,7 +735,7 @@ describe("LotBrowser", () => {
       );
     });
 
-    it("still honours an explicit status param from the URL", () => {
+    it("ignores a stale status param from the URL — no visible control to see or clear it", () => {
       (useSearchParams as Mock).mockReturnValue([
         new URLSearchParams("status=closed"),
         vi.fn(),
@@ -745,7 +745,7 @@ describe("LotBrowser", () => {
 
       expect(usePaginatedQuery).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ statusFilter: "closed" }),
+        expect.objectContaining({ statusFilter: "all" }),
         expect.anything()
       );
     });
