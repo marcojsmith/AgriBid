@@ -837,4 +837,62 @@ describe("FilterSidebar", () => {
       })
     );
   });
+
+  describe("hideStatus", () => {
+    const renderHiddenSidebar = (onClose?: () => void) =>
+      render(
+        <BrowserRouter>
+          <FilterSidebar onClose={onClose} hideStatus />
+        </BrowserRouter>
+      );
+
+    it("hides the Auction Status select", () => {
+      renderHiddenSidebar();
+      expect(
+        screen.queryByLabelText(/Auction Status/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it("still renders the other filter sections", () => {
+      renderHiddenSidebar();
+      expect(screen.getByText("Manufacturer")).toBeInTheDocument();
+      expect(screen.getByText("Year Model")).toBeInTheDocument();
+      expect(screen.getByText("Price Range (ZAR)")).toBeInTheDocument();
+      expect(screen.getByText("Max Operating Hours")).toBeInTheDocument();
+    });
+
+    it("skips status in URL sync when a filter changes", () => {
+      mockSearchParams.set("status", "closed");
+      renderHiddenSidebar();
+
+      fireEvent.change(screen.getByLabelText(/Manufacturer/i), {
+        target: { value: "John Deere" },
+      });
+
+      const calledWith = mockSetSearchParams.mock
+        .calls[0][0] as URLSearchParams;
+      expect(calledWith.get("make")).toBe("John Deere");
+      // Status is left untouched in the URL when hidden
+      expect(calledWith.get("status")).toBe("closed");
+    });
+
+    it("does not write the saved defaultStatusFilter to the URL", async () => {
+      (useSession as Mock).mockReturnValue({ data: { user: { id: "u1" } } });
+      (useQuery as Mock).mockReset();
+      (useQuery as Mock)
+        .mockReturnValueOnce(["John Deere", "Case IH"])
+        .mockReturnValueOnce({ defaultStatusFilter: "closed" });
+
+      renderHiddenSidebar();
+
+      await act(async () => {
+        // intentional no-op: flush async preference-loading effects before asserting
+      });
+
+      const statusWrites = mockSetSearchParams.mock.calls.filter(
+        (call) => (call[0] as URLSearchParams).get("status") === "closed"
+      );
+      expect(statusWrites).toHaveLength(0);
+    });
+  });
 });

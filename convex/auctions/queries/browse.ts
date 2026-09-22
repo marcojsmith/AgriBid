@@ -30,6 +30,8 @@ export type ActiveAuctionsArgs = {
   maxPrice?: number;
   maxHours?: number;
   statusFilter?: StatusFilter;
+  /** Scope results to a single auction container (marketplace event page). */
+  auctionId?: Id<"auctions">;
 };
 
 function statusesForFilter(
@@ -74,6 +76,8 @@ function matchesLotFilter(
   lot: Doc<"lots">,
   args: Partial<ActiveAuctionsArgs>
 ): boolean {
+  if (args.auctionId !== undefined && lot.auctionId !== args.auctionId)
+    return false;
   if (args.make !== undefined && lot.make !== args.make) return false;
   if (args.minYear !== undefined && lot.year < args.minYear) return false;
   if (args.maxYear !== undefined && lot.year > args.maxYear) return false;
@@ -89,6 +93,8 @@ function matchesLotFilter(
 /**
  * Returns paginated active lots with optional filtering.
  * Supports search, make, year range, price range, and hours filtering.
+ * When `auctionId` is provided, results are scoped to that auction's lots;
+ * a missing or draft auction yields an empty page (drafts are never exposed).
  *
  * "Active" is derived at query time: a lot must be `assigned` to a published,
  * currently in-window parent auction. Because that requires joining the parent
@@ -106,6 +112,16 @@ export const getActiveLotsHandler = async (
   const statusFilter = args.statusFilter ?? ("active" as StatusFilter);
   const statuses = statusesForFilter(statusFilter);
   const requiresWindowCheck = statusFilter === "active";
+  const { auctionId } = args;
+
+  // Draft auctions are never exposed publicly (see getPublishedAuctionHandler);
+  // a missing id can only come from a stale URL, so both yield an empty page.
+  if (auctionId !== undefined) {
+    const auction = await ctx.db.get("auctions", auctionId);
+    if (!auction || auction.status === "draft") {
+      return { page: [], isDone: true, continueCursor: "", totalCount: 0 };
+    }
+  }
 
   const getBaseQuery = () => {
     const lotsQuery = ctx.db.query("lots");
@@ -150,6 +166,12 @@ export const getActiveLotsHandler = async (
       return lotsQuery.order("desc");
     }
 
+    if (auctionId !== undefined) {
+      return lotsQuery
+        .withIndex("by_auctionId", (q) => q.eq("auctionId", auctionId))
+        .order("desc");
+    }
+
     if (statuses.length === 1) {
       return lotsQuery
         .withIndex("by_status", (q) => q.eq("status", statuses[0]))
@@ -164,10 +186,17 @@ export const getActiveLotsHandler = async (
     return q.filter((f) => {
       const expressions = [];
 
-      if (statuses.length > 1) {
+      // The status index/eq is not applied at the DB level when scoping by
+      // auctionId (by_auctionId has no status field), so enforce it here —
+      // even for a single status.
+      if (statuses.length > 1 || auctionId !== undefined) {
         expressions.push(
           f.or(...statuses.map((s) => f.eq(f.field("status"), s)))
         );
+      }
+
+      if (auctionId !== undefined) {
+        expressions.push(f.eq(f.field("auctionId"), auctionId));
       }
 
       if (args.make !== undefined) {
@@ -250,7 +279,7 @@ export const getActiveLotsHandler = async (
 
 /**
  * Query: Get paginated list of active lots with filtering.
- * Args: paginationOpts, search, make, minYear, maxYear, minPrice, maxPrice, maxHours, statusFilter
+ * Args: paginationOpts, search, make, minYear, maxYear, minPrice, maxPrice, maxHours, statusFilter, auctionId
  *
  * @returns Paginated lot results
  */
@@ -267,6 +296,7 @@ export const getActiveLots = query({
     statusFilter: v.optional(
       v.union(v.literal("active"), v.literal("closed"), v.literal("all"))
     ),
+    auctionId: v.optional(v.id("auctions")),
   },
   returns: v.object({
     page: v.array(LotSummaryValidator),

@@ -18,9 +18,9 @@ vi.mock("convex/_generated/api", () => ({
   },
 }));
 
-vi.mock("@/components/auction/AuctionCard", () => ({
-  AuctionCard: ({ auction }: { auction: { _id: string; title: string } }) => (
-    <div data-testid="auction-card">{auction.title}</div>
+vi.mock("@/components/LotBrowser", () => ({
+  LotBrowser: ({ auctionId }: { auctionId?: string }) => (
+    <div data-testid="lot-browser">{auctionId}</div>
   ),
 }));
 
@@ -52,7 +52,7 @@ describe("AuctionContainerDetail Page", () => {
     expect(screen.getByText(/Auction Not Found/i)).toBeInTheDocument();
   });
 
-  it("renders the container and one card per lot", () => {
+  it("renders the container header and a lot browser scoped to the auction", () => {
     (useQuery as Mock).mockReturnValue({
       _id: "a1",
       title: "Spring Sale",
@@ -62,24 +62,21 @@ describe("AuctionContainerDetail Page", () => {
       endTime: Date.now() + 100000,
       status: "published",
       lotCount: 2,
-      lots: [
-        { _id: "l1", title: "Tractor A" },
-        { _id: "l2", title: "Tractor B" },
-      ],
+      lots: [],
     });
     renderPage();
     expect(
       screen.getByRole("heading", { name: "Spring Sale" })
     ).toBeInTheDocument();
-    expect(screen.getByText("Lots (2)")).toBeInTheDocument();
-    expect(screen.getAllByTestId("auction-card")).toHaveLength(2);
+    expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
+    expect(screen.getByTestId("lot-browser")).toHaveTextContent("a1");
     expect(screen.getByText("Live Now")).toBeInTheDocument();
   });
 
-  it("shows an empty state when the container has no lots", () => {
+  it("renders the lot browser without a legacy 'Lots (n)' heading or inline lot cards", () => {
     (useQuery as Mock).mockReturnValue({
       _id: "a1",
-      title: "Empty Sale",
+      title: "Spring Sale",
       description: undefined,
       bannerImageUrl: undefined,
       startTime: Date.now() - 100000,
@@ -89,8 +86,7 @@ describe("AuctionContainerDetail Page", () => {
       lots: [],
     });
     renderPage();
-    expect(
-      screen.getByText(/No lots have been added to this auction yet/i)
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/Lots \(/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
   });
 });

@@ -334,6 +334,199 @@ describe("Queries Branch Coverage Expansion", () => {
     });
   });
 
+  describe("getActiveLotsHandler auctionId scoping", () => {
+    const publishedAuction = {
+      _id: "auction1" as Id<"auctions">,
+      status: "published",
+      startTime: 0,
+      endTime: Date.now() + 100_000,
+    };
+
+    const baseLot = {
+      title: "Tractor",
+      make: "John Deere",
+      model: "6110M",
+      year: 2020,
+      currentPrice: 100,
+      operatingHours: 500,
+    };
+
+    beforeEach(() => {
+      // Every auction id resolves to a published, in-window auction so that
+      // lots from other auctions are only excluded by the auctionId scoping
+      // itself, not by the liveness check.
+      dbGetMock.mockImplementation((_table: string, id: string) => {
+        if (id === "auctionDraft") {
+          return Promise.resolve({
+            _id: "auctionDraft",
+            status: "draft",
+          } as unknown as Doc<"auctions">);
+        }
+        if (id === "missing") return Promise.resolve(null);
+        return Promise.resolve(publishedAuction as unknown as Doc<"auctions">);
+      });
+    });
+
+    it("should return only the given auction's lots and exclude other auctions' lots", async () => {
+      vi.mocked(queryMock.take).mockResolvedValue([
+        { _id: "lot1", ...baseLot, status: "assigned", auctionId: "auction1" },
+        { _id: "lot2", ...baseLot, status: "assigned", auctionId: "auction2" },
+      ] as unknown[]);
+
+      const result = await getActiveLotsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        auctionId: "auction1" as Id<"auctions">,
+      });
+
+      expect(result.page).toHaveLength(1);
+      expect(result.page[0]._id).toBe("lot1");
+      expect(result.isDone).toBe(true);
+      expect(result.totalCount).toBe(1);
+    });
+
+    it("should include assigned, sold and unsold lots of the auction with statusFilter 'all'", async () => {
+      vi.mocked(queryMock.paginate).mockResolvedValue({
+        page: [
+          {
+            _id: "lot1",
+            ...baseLot,
+            status: "assigned",
+            auctionId: "auction1",
+          },
+          { _id: "lot2", ...baseLot, status: "sold", auctionId: "auction1" },
+          { _id: "lot3", ...baseLot, status: "unsold", auctionId: "auction1" },
+        ],
+        isDone: true,
+        continueCursor: "",
+      });
+      vi.mocked(countQuery).mockResolvedValue(3);
+
+      const result = await getActiveLotsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        auctionId: "auction1" as Id<"auctions">,
+        statusFilter: "all",
+      });
+
+      expect(result.page.map((l) => l.status)).toEqual([
+        "assigned",
+        "sold",
+        "unsold",
+      ]);
+      expect(result.totalCount).toBe(3);
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_auctionId",
+        expect.any(Function)
+      );
+      expect(qMock.eq).toHaveBeenCalledWith("auctionId", "auction1");
+    });
+
+    it("should return an empty page for a draft auction", async () => {
+      dbGetMock.mockImplementation((_table: string, id: string) =>
+        id === "auctionDraft"
+          ? Promise.resolve({
+              _id: "auctionDraft",
+              status: "draft",
+            } as unknown as Doc<"auctions">)
+          : Promise.resolve(null)
+      );
+
+      const result = await getActiveLotsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        auctionId: "auctionDraft" as Id<"auctions">,
+        statusFilter: "all",
+      });
+
+      expect(result).toEqual({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+      });
+      expect(queryMock.paginate).not.toHaveBeenCalled();
+      expect(queryMock.take).not.toHaveBeenCalled();
+    });
+
+    it("should return an empty page when the auction does not exist", async () => {
+      dbGetMock.mockResolvedValue(null);
+
+      const result = await getActiveLotsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        auctionId: "missing" as Id<"auctions">,
+      });
+
+      expect(result).toEqual({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        totalCount: 0,
+      });
+      expect(queryMock.paginate).not.toHaveBeenCalled();
+      expect(queryMock.take).not.toHaveBeenCalled();
+    });
+
+    it("should scope by auction when combined with make", async () => {
+      vi.mocked(queryMock.take).mockResolvedValue([
+        { _id: "lot1", ...baseLot, status: "assigned", auctionId: "auction1" },
+        { _id: "lot2", ...baseLot, status: "assigned", auctionId: "auction2" },
+      ] as unknown[]);
+
+      const result = await getActiveLotsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        auctionId: "auction1" as Id<"auctions">,
+        make: "John Deere",
+      });
+
+      expect(result.page).toHaveLength(1);
+      expect(result.page[0]._id).toBe("lot1");
+      expect(queryMock.withIndex).toHaveBeenCalledWith(
+        "by_status_make",
+        expect.any(Function)
+      );
+      expect(qMock.eq).toHaveBeenCalledWith("make", "John Deere");
+    });
+
+    it("should scope by auction when combined with search", async () => {
+      vi.mocked(queryMock.take).mockResolvedValue([
+        { _id: "lot1", ...baseLot, status: "assigned", auctionId: "auction1" },
+        { _id: "lot2", ...baseLot, status: "assigned", auctionId: "auction2" },
+      ] as unknown[]);
+
+      const result = await getActiveLotsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        auctionId: "auction1" as Id<"auctions">,
+        search: "Tractor",
+      });
+
+      expect(result.page).toHaveLength(1);
+      expect(result.page[0]._id).toBe("lot1");
+      expect(queryMock.withSearchIndex).toHaveBeenCalledWith(
+        "search_title",
+        expect.any(Function)
+      );
+    });
+
+    it("should not scope by auction when auctionId is omitted", async () => {
+      vi.mocked(queryMock.paginate).mockResolvedValue({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      });
+      vi.mocked(countQuery).mockResolvedValue(0);
+
+      const result = await getActiveLotsHandler(mockCtx, {
+        paginationOpts: { numItems: 10, cursor: null },
+        statusFilter: "closed",
+      });
+
+      expect(queryMock.withIndex).not.toHaveBeenCalledWith(
+        "by_auctionId",
+        expect.any(Function)
+      );
+      expect(qMock.field).not.toHaveBeenCalledWith("auctionId");
+      expect(result.page).toHaveLength(0);
+    });
+  });
+
   describe("getMyBidsHandler sorting", () => {
     it("should sort by ending soonest", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
