@@ -1,20 +1,13 @@
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
-import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
-
-import { useSession } from "@/lib/auth-client";
+import { useQuery } from "convex/react";
 
 import Home from "./Home";
 
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
-  usePaginatedQuery: vi.fn(),
-  useMutation: vi.fn(() => vi.fn()),
-}));
-
-vi.mock("@/lib/auth-client", () => ({
-  useSession: vi.fn(),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -25,610 +18,236 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-// Mock FilterSidebar to keep it simple
-vi.mock("@/components/FilterSidebar", () => ({
-  FilterSidebar: ({
-    onClose,
-    "data-testid": testid = "filter-sidebar",
-  }: {
-    onClose?: () => void;
-    "data-testid"?: string;
-  }) => (
-    <div data-testid={testid}>
-      Filter Sidebar
-      {onClose && <button onClick={onClose}>Close Sidebar</button>}
-    </div>
+vi.mock("@/components/LotBrowser", () => ({
+  LotBrowser: () => <div data-testid="lot-browser">Lot Browser</div>,
+}));
+
+vi.mock("@/components/auction/AuctionEventCard", () => ({
+  AuctionEventCard: ({ event }: { event: { title: string } }) => (
+    <div data-testid="auction-event-card">{event.title}</div>
   ),
 }));
 
-// Mock AuctionCard to keep it simple
-vi.mock("@/components/auction/AuctionCard", () => ({
-  AuctionCard: ({
-    auction,
-    viewMode,
-  }: {
-    auction: { title: string };
-    viewMode: string;
-  }) => (
-    <div data-testid="auction-card">
-      {auction.title} ({viewMode})
-    </div>
-  ),
-}));
-
-// Mock AuctionCardSkeleton
-vi.mock("@/components/AuctionCardSkeleton", () => ({
-  AuctionCardSkeleton: () => (
-    <div data-testid="auction-skeleton">Loading...</div>
-  ),
-}));
-
-// Mock LoadingIndicator
 vi.mock("@/components/LoadingIndicator", () => ({
   LoadingPage: ({ message }: { message: string }) => <div>{message}</div>,
   LoadingIndicator: () => <div data-testid="loading-indicator">Spinner</div>,
 }));
 
-describe("Home Page Full Coverage", () => {
-  const mockAuctions = [
-    { _id: "1", title: "Auction 1" },
-    { _id: "2", title: "Auction 2" },
-  ];
+describe("Home Page", () => {
+  const NOW = Date.now();
+
+  const activeEvent = {
+    _id: "a1",
+    title: "Spring Sale",
+    status: "published",
+    startTime: NOW - 1000,
+    endTime: NOW + 100000,
+    lotCount: 3,
+  };
+
+  const closedEvent = {
+    _id: "a2",
+    title: "Past Sale",
+    status: "closed",
+    startTime: NOW - 200000,
+    endTime: NOW - 1000,
+    lotCount: 1,
+  };
+
+  const endedPublishedEvent = {
+    _id: "a3",
+    title: "Ended Sale",
+    status: "published",
+    startTime: NOW - 200000,
+    endTime: NOW - 1000,
+    lotCount: 2,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useSession as Mock).mockReturnValue({ isPending: false });
-    (useQuery as Mock).mockReturnValue(["1"]); // Watched ID 1
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: mockAuctions,
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
-
-    // Default desktop matchMedia
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
+    (useQuery as Mock).mockReturnValue([activeEvent, closedEvent]);
 
     (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
   });
 
   const renderHome = () => {
     return render(
-      <BrowserRouter>
-        <Home />
-      </BrowserRouter>
+      <HelmetProvider>
+        <BrowserRouter>
+          <Home />
+        </BrowserRouter>
+      </HelmetProvider>
     );
   };
 
-  it("renders active auctions by default", () => {
+  it("renders the auction-event card view with heading and Sell button by default", () => {
     renderHome();
-    expect(screen.getByText(/Active Auctions/i)).toBeInTheDocument();
-    expect(screen.getAllByTestId("auction-card")).toHaveLength(2);
-    expect(screen.getByText(/Auction 1 \(detailed\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Auctions" })
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("auction-event-card")).toBeInTheDocument();
+    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sell" })).toHaveAttribute(
+      "href",
+      "/sell"
+    );
+    expect(screen.queryByTestId("lot-browser")).not.toBeInTheDocument();
   });
 
-  it("renders loading state", () => {
-    (useSession as Mock).mockReturnValue({ isPending: true });
+  it("shows only active events on the default Active tab", () => {
     renderHome();
-    expect(screen.getByText(/Loading/i)).toBeInTheDocument();
+    const cards = screen.getAllByTestId("auction-event-card");
+    expect(cards).toHaveLength(1);
+    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
+    expect(screen.queryByText("Past Sale")).not.toBeInTheDocument();
   });
 
-  it("renders empty state when no auctions found", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
-
+  it("excludes a published event whose window has ended from the Active tab", () => {
+    (useQuery as Mock).mockReturnValue([activeEvent, endedPublishedEvent]);
     renderHome();
-    expect(screen.getByText(/No auctions found/i)).toBeInTheDocument();
+    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
+    expect(screen.queryByText("Ended Sale")).not.toBeInTheDocument();
   });
 
-  it("toggles view mode manually", () => {
+  it("renders a loading state while events are undefined", () => {
+    (useQuery as Mock).mockReturnValue(undefined);
     renderHome();
-    const compactBtn = screen.getByText(/Compact/i);
-    fireEvent.click(compactBtn);
-    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
-
-    const detailedBtn = screen.getByText(/Detailed/i);
-    fireEvent.click(detailedBtn);
-    expect(screen.getByText(/Auction 1 \(detailed\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading auctions/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("auction-event-card")).not.toBeInTheDocument();
   });
 
-  it("toggles desktop sidebar", () => {
+  it("shows the Active-tab empty state when no events are active", () => {
+    (useQuery as Mock).mockReturnValue([closedEvent]);
     renderHome();
-    expect(screen.getByText(/Show Filters/i)).toBeInTheDocument();
-
-    const showFiltersBtn = screen.getByText(/Show Filters/i);
-    fireEvent.click(showFiltersBtn);
-
-    const desktopSidebar = screen.getByTestId("desktop-sidebar");
-    expect(within(desktopSidebar).getByTestId("filter-sidebar")).toBeVisible();
-    expect(screen.getByText(/Hide Filters/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("No active auctions right now.")
+    ).toBeInTheDocument();
   });
 
-  it("renders search results header and clear link", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("q=tractor"),
-      vi.fn(),
-    ]);
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [{ _id: "3", title: "Tractor X" }],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
-
-    renderHome();
-    expect(screen.getByText(/Results for "tractor"/i)).toBeInTheDocument();
-    expect(screen.getByText(/Clear search results/i)).toBeInTheDocument();
-  });
-
-  it("renders different status filters", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=closed"),
-      vi.fn(),
-    ]);
-    renderHome();
-    expect(screen.getByText(/Closed Auctions/i)).toBeInTheDocument();
-
+  it("shows the All-tab empty state when no events exist at all", () => {
+    (useQuery as Mock).mockReturnValue([]);
     (useSearchParams as Mock).mockReturnValue([
       new URLSearchParams("status=all"),
       vi.fn(),
     ]);
     renderHome();
-    expect(screen.getByText(/All Auctions/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("No auction events have been published yet.")
+    ).toBeInTheDocument();
   });
 
-  it("renders removable filter chips when filters are active", () => {
+  it("shows only closed events (including ended published ones) on the Closed tab", () => {
+    (useQuery as Mock).mockReturnValue([
+      activeEvent,
+      closedEvent,
+      endedPublishedEvent,
+    ]);
     (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("make=John+Deere"),
+      new URLSearchParams("status=closed"),
       vi.fn(),
     ]);
     renderHome();
-    expect(screen.getByTestId("active-filter-chips")).toBeInTheDocument();
-    expect(screen.getByTestId("filter-chip-make")).toHaveTextContent(
-      "Make: John Deere"
-    );
+    const cards = screen.getAllByTestId("auction-event-card");
+    expect(cards).toHaveLength(2);
+    expect(screen.getByText("Past Sale")).toBeInTheDocument();
+    expect(screen.getByText("Ended Sale")).toBeInTheDocument();
+    expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
   });
 
-  it("does not render filter chips when no filters are active", () => {
+  it("shows both active and closed events on the All tab", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=all"),
+      vi.fn(),
+    ]);
     renderHome();
-    expect(screen.queryByTestId("active-filter-chips")).not.toBeInTheDocument();
+    const cards = screen.getAllByTestId("auction-event-card");
+    expect(cards).toHaveLength(2);
+    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
+    expect(screen.getByText("Past Sale")).toBeInTheDocument();
   });
 
-  it("removes the make filter and preserves other params when its chip is dismissed", () => {
+  it("switches to the Closed tab by writing the status URL param", () => {
     const setSearchParams = vi.fn();
     (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("make=John+Deere&q=tractor"),
+      new URLSearchParams(),
       setSearchParams,
     ]);
     renderHome();
-    fireEvent.click(screen.getByTestId("filter-chip-make"));
+    fireEvent.click(screen.getByTestId("status-tab-closed"));
 
     const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
-    expect(calledWith.has("make")).toBe(false);
-    expect(calledWith.get("q")).toBe("tractor");
+    expect(calledWith.get("status")).toBe("closed");
   });
 
-  it("renders a combined year chip and removes both year params on dismissal", () => {
+  it("switching back to Active removes the status URL param", () => {
     const setSearchParams = vi.fn();
     (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("minYear=2015&maxYear=2020&make=John+Deere"),
+      new URLSearchParams("status=all"),
       setSearchParams,
     ]);
     renderHome();
-    const chip = screen.getByTestId("filter-chip-year");
-    expect(chip).toHaveTextContent("Year: 2015–2020");
+    fireEvent.click(screen.getByTestId("status-tab-active"));
 
-    fireEvent.click(chip);
-    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
-    expect(calledWith.has("minYear")).toBe(false);
-    expect(calledWith.has("maxYear")).toBe(false);
-    expect(calledWith.get("make")).toBe("John Deere");
-  });
-
-  it("renders a price chip and removes both price params on dismissal", () => {
-    const setSearchParams = vi.fn();
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("minPrice=100000&maxPrice=500000"),
-      setSearchParams,
-    ]);
-    renderHome();
-    const chip = screen.getByTestId("filter-chip-price");
-    expect(chip).toHaveTextContent(/100/);
-    expect(chip).toHaveTextContent(/500/);
-
-    fireEvent.click(chip);
-    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
-    expect(calledWith.has("minPrice")).toBe(false);
-    expect(calledWith.has("maxPrice")).toBe(false);
-  });
-
-  it("renders a max hours chip and removes it on dismissal", () => {
-    const setSearchParams = vi.fn();
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("maxHours=1000"),
-      setSearchParams,
-    ]);
-    renderHome();
-    expect(screen.getByTestId("filter-chip-hours")).toHaveTextContent(
-      "Max Hours: 1"
-    );
-
-    fireEvent.click(screen.getByTestId("filter-chip-hours"));
-    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
-    expect(calledWith.has("maxHours")).toBe(false);
-  });
-
-  it("renders a status chip for non-active status and removes it on dismissal", () => {
-    const setSearchParams = vi.fn();
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=closed"),
-      setSearchParams,
-    ]);
-    renderHome();
-    expect(screen.getByTestId("filter-chip-status")).toHaveTextContent(
-      "Status: Closed"
-    );
-
-    fireEvent.click(screen.getByTestId("filter-chip-status"));
     const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
     expect(calledWith.has("status")).toBe(false);
   });
 
-  it("does not render a status chip when status comes from saved preferences only", () => {
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "u1" } },
-      isPending: false,
-    });
-    (useQuery as Mock)
-      .mockReturnValueOnce({ defaultStatusFilter: "closed" })
-      .mockReturnValueOnce(["1"]);
-    (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
-
+  it("falls back to the Active tab for an invalid status param", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=bogus"),
+      vi.fn(),
+    ]);
     renderHome();
-    expect(screen.queryByTestId("filter-chip-status")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("active-filter-chips")).not.toBeInTheDocument();
-  });
-
-  it("initializes in mobile view (compact) when viewport is small", () => {
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: query === "(max-width: 768px)",
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
-
-    renderHome();
-
-    // Mobile view defaults to compact
-    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
-  });
-
-  it("shows mobile filter overlay", () => {
-    // Mock mobile viewport
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: query === "(max-width: 768px)",
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
-
-    renderHome();
-    const filterBtn = screen.getByLabelText(/Filters/i);
-    fireEvent.click(filterBtn);
-
-    const overlay = screen.getByTestId("mobile-filter-overlay");
-    expect(within(overlay).getByTestId("filter-sidebar")).toBeVisible();
-
-    // Click backdrop to close
-    const backdrop = screen.getByLabelText(/Close filters/i);
-    fireEvent.click(backdrop);
-    expect(
-      screen.queryByTestId("mobile-filter-overlay")
-    ).not.toBeInTheDocument();
-  });
-
-  it("closes mobile filters via onClose prop", () => {
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: query === "(max-width: 768px)",
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
-
-    renderHome();
-    fireEvent.click(screen.getByLabelText(/Filters/i));
-
-    const overlay = screen.getByTestId("mobile-filter-overlay");
-    const closeBtn = within(overlay).getByText(/Close Sidebar/i);
-    fireEvent.click(closeBtn);
-    expect(
-      screen.queryByTestId("mobile-filter-overlay")
-    ).not.toBeInTheDocument();
-  });
-
-  it("renders load more button and status", () => {
-    const mockLoadMore = vi.fn();
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: mockAuctions,
-      status: "CanLoadMore",
-      loadMore: mockLoadMore,
-    });
-
-    renderHome();
-    const loadMoreBtn = screen.getByText(/Load More Auctions/i);
-    fireEvent.click(loadMoreBtn);
-    expect(mockLoadMore).toHaveBeenCalledWith(12);
-  });
-
-  it("renders loading more state", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: mockAuctions,
-      status: "LoadingMore",
-      loadMore: vi.fn(),
-    });
-
-    renderHome();
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-  });
-
-  it("renders skeleton during first page load", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "LoadingFirstPage",
-      loadMore: vi.fn(),
-    });
-
-    renderHome();
-    expect(screen.getAllByTestId("auction-skeleton")).toHaveLength(3);
-  });
-
-  it("updates view when media query matches change", () => {
-    let changeHandler: () => void = () => {
-      // intentional no-op: placeholder until Home registers its change listener
-    };
-    const mql = {
-      matches: false,
-      media: "(max-width: 768px)",
-      onchange: null,
-      addEventListener: vi.fn((event: string, handler: () => void) => {
-        if (event === "change") changeHandler = handler;
-      }),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    };
-
-    window.matchMedia = vi.fn().mockReturnValue(mql);
-
-    const { rerender } = render(
-      <BrowserRouter>
-        <Home />
-      </BrowserRouter>
+    // Active tab is pressed
+    expect(screen.getByTestId("status-tab-active")).toHaveAttribute(
+      "aria-pressed",
+      "true"
     );
-
-    expect(screen.getByText(/Auction 1 \(detailed\)/i)).toBeInTheDocument();
-
-    // Simulate media query change
-    act(() => {
-      mql.matches = true;
-      changeHandler();
-    });
-
-    rerender(
-      <BrowserRouter>
-        <Home />
-      </BrowserRouter>
-    );
-
-    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
+    expect(screen.queryByText("Past Sale")).not.toBeInTheDocument();
   });
 
-  it("renders clear search results link and clears it", () => {
+  it("marks the pressed tab with aria-pressed", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=closed"),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(screen.getByTestId("status-tab-closed")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(screen.getByTestId("status-tab-active")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+  });
+
+  it("renders the global lot browser when a q param is present", () => {
     (useSearchParams as Mock).mockReturnValue([
       new URLSearchParams("q=tractor"),
       vi.fn(),
     ]);
     renderHome();
 
-    const clearLink = screen.getByText(/Clear search results/i);
-    expect(clearLink).toHaveAttribute("href", "/");
+    expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
+    expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
+    // The events query is skipped while searching
+    expect(useQuery).toHaveBeenCalledWith(expect.anything(), "skip");
   });
 
-  it("renders clear all filters link in empty state and clears it", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
+  it("treats an empty q param as no search", () => {
     (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("make=John+Deere"),
-      vi.fn(),
-    ]);
-
-    renderHome();
-    const clearLink = screen.getByText(/Clear All Filters/i);
-    expect(clearLink).toHaveAttribute("href", "/");
-  });
-
-  it("handles missing search query and filters gracefully", () => {
-    (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
-    renderHome();
-    expect(screen.getByText(/Active Auctions/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Filters Applied/i)).not.toBeInTheDocument();
-  });
-
-  it("handles empty search and make strings as undefined", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("q=&make="),
+      new URLSearchParams("q="),
       vi.fn(),
     ]);
     renderHome();
-    expect(usePaginatedQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        search: undefined,
-        make: undefined,
-      }),
-      expect.anything()
-    );
+
+    expect(screen.queryByTestId("lot-browser")).not.toBeInTheDocument();
+    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
   });
 
-  it("handles invalid numeric filter parameters", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("minYear=abc"),
-      vi.fn(),
-    ]);
+  it("fetches published events when not searching", () => {
     renderHome();
-    expect(usePaginatedQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        minYear: undefined,
-      }),
-      expect.anything()
-    );
-  });
-
-  it("handles empty state with search query", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("q=tractor"),
-      vi.fn(),
-    ]);
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
-
-    renderHome();
-    expect(
-      screen.getByText(/No auctions found matching "tractor"/i)
-    ).toBeInTheDocument();
-  });
-
-  it("handles undefined watchedAuctionIds gracefully", () => {
-    (useQuery as Mock).mockReturnValue(undefined);
-    renderHome();
-    expect(screen.getAllByTestId("auction-card")).toHaveLength(2);
-  });
-
-  it("applies saved viewMode preference on load", async () => {
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "u1" } },
-      isPending: false,
-    });
-    // First useQuery call → preferences, second → watchedAuctionIds
-    (useQuery as Mock)
-      .mockReturnValueOnce({ viewMode: "compact", sidebarOpen: false })
-      .mockReturnValueOnce(["1"]);
-
-    renderHome();
-
-    await act(async () => {
-      // intentional no-op: flush async preference-loading effects before asserting
-    });
-
-    expect(screen.getByText(/Auction 1 \(compact\)/i)).toBeInTheDocument();
-  });
-
-  it("applies saved sidebarOpen preference on load", async () => {
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "u1" } },
-      isPending: false,
-    });
-    (useQuery as Mock)
-      .mockReturnValueOnce({ viewMode: "detailed", sidebarOpen: true })
-      .mockReturnValueOnce(["1"]);
-
-    renderHome();
-
-    await act(async () => {
-      // intentional no-op: flush async preference-loading effects before asserting
-    });
-
-    expect(screen.getByText(/Hide Filters/i)).toBeInTheDocument();
-  });
-
-  it("fires updateMyPreferences when authenticated user toggles view mode", () => {
-    const mockMutate = vi.fn().mockResolvedValue(undefined);
-    (useMutation as Mock).mockReturnValue(mockMutate);
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "u1" } },
-      isPending: false,
-    });
-    (useQuery as Mock).mockReturnValue(null);
-
-    renderHome();
-    fireEvent.click(screen.getByText(/Compact/i));
-
-    expect(mockMutate).toHaveBeenCalledWith({ viewMode: "compact" });
-  });
-
-  it("fires updateMyPreferences when authenticated user toggles sidebar", () => {
-    const mockMutate = vi.fn().mockResolvedValue(undefined);
-    (useMutation as Mock).mockReturnValue(mockMutate);
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "u1" } },
-      isPending: false,
-    });
-    (useQuery as Mock).mockReturnValue(null);
-
-    renderHome();
-    fireEvent.click(screen.getByText(/Show Filters/i));
-
-    expect(mockMutate).toHaveBeenCalledWith({ sidebarOpen: true });
-  });
-
-  it("does not fire updateMyPreferences when unauthenticated user toggles view mode", () => {
-    const mockMutate = vi.fn();
-    (useMutation as Mock).mockReturnValue(mockMutate);
-    (useSession as Mock).mockReturnValue({ data: null, isPending: false });
-    (useQuery as Mock).mockReturnValue(null);
-
-    renderHome();
-    fireEvent.click(screen.getByText(/Compact/i));
-
-    expect(mockMutate).not.toHaveBeenCalled();
-  });
-
-  it("fires updateMyPreferences when authenticated user clicks Detailed", () => {
-    const mockMutate = vi.fn().mockResolvedValue(undefined);
-    (useMutation as Mock).mockReturnValue(mockMutate);
-    (useSession as Mock).mockReturnValue({
-      data: { user: { id: "u1" } },
-      isPending: false,
-    });
-    (useQuery as Mock).mockReturnValue(null);
-
-    renderHome();
-    fireEvent.click(screen.getByRole("button", { name: "Detailed" }));
-
-    expect(mockMutate).toHaveBeenCalledWith({ viewMode: "detailed" });
-  });
-
-  it("applies compact grid classes in loading state", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "LoadingFirstPage",
-      loadMore: vi.fn(),
-    });
-
-    // Set compact mode
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: query === "(max-width: 768px)",
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
-
-    renderHome();
-    const skeletons = screen.getAllByTestId("auction-skeleton");
-    expect(skeletons[0].parentElement).toHaveClass("max-w-[500px]");
+    expect(useQuery).toHaveBeenCalledWith(expect.anything(), {});
   });
 });

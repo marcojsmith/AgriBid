@@ -7,17 +7,17 @@ import type { Id } from "convex/_generated/dataModel";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Calendar, Image as ImageIcon } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/LoadingIndicator";
-import { AuctionCard } from "@/components/auction/AuctionCard";
+import { LotBrowser } from "@/components/LotBrowser";
 import { buildTitle, buildCanonical, DEFAULT_DESCRIPTION } from "@/lib/seo";
 
 /**
- * Public detail page for a scheduled auction container, listing the lots it
- * contains. Only published/closed containers are reachable; draft containers
- * resolve to a not-found state.
+ * Public detail page for a scheduled auction container, showing the container
+ * banner and header above a full lot browser scoped to the auction's lots.
+ * Only published/closed containers are reachable; draft containers resolve to
+ * a not-found state.
  *
  * @returns The AuctionContainerDetail page component.
  */
@@ -44,8 +44,8 @@ export default function AuctionContainerDetail() {
           This auction may not exist or is not yet published.
         </p>
         <Button asChild variant="outline">
-          <Link to="/auctions">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Auctions
+          <Link to="/">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Marketplace
           </Link>
         </Button>
       </div>
@@ -58,7 +58,7 @@ export default function AuctionContainerDetail() {
     now < auction.endTime;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+    <div className="space-y-8">
       <Helmet>
         <title>{buildTitle(auction.title)}</title>
         <meta
@@ -72,8 +72,8 @@ export default function AuctionContainerDetail() {
       </Helmet>
 
       <Button asChild variant="ghost" size="sm" className="gap-2 -ml-2">
-        <Link to="/auctions">
-          <ArrowLeft className="h-4 w-4" /> Back to Auctions
+        <Link to="/">
+          <ArrowLeft className="h-4 w-4" /> Back to Marketplace
         </Link>
       </Button>
 
@@ -115,26 +115,7 @@ export default function AuctionContainerDetail() {
         )}
       </div>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">
-          Lots ({auction.lots.length})
-        </h2>
-        {auction.lots.length === 0 ? (
-          <Card className="border border-dashed">
-            <div className="text-center py-16 space-y-3">
-              <p className="text-muted-foreground font-bold">
-                No lots have been added to this auction yet.
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {auction.lots.map((lot) => (
-              <AuctionCard key={lot._id} auction={lot} />
-            ))}
-          </div>
-        )}
-      </section>
+      <LotBrowser auctionId={auction._id} showSellButton={false} />
     </div>
   );
 }

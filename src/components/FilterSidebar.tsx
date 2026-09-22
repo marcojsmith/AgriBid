@@ -24,6 +24,11 @@ interface FilterSidebarProps {
    * Callback invoked when the sidebar should close (used in mobile overlay).
    */
   onClose?: () => void;
+  /**
+   * Hides the auction status select and skips `status` in URL/preference
+   * sync. Used on auction container pages where status is fixed.
+   */
+  hideStatus?: boolean;
 }
 
 /**
@@ -100,9 +105,14 @@ const parseUrlFilters = (params: URLSearchParams): LocalFilters => {
  *
  * @param props - Component props.
  * @param props.onClose - Callback when the sidebar is closed.
+ * @param props.hideStatus - When true, hides the status select and excludes
+ *   status from URL and preference syncing.
  * @returns The rendered filter sidebar.
  */
-export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
+export const FilterSidebar = ({
+  onClose,
+  hideStatus = false,
+}: FilterSidebarProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMakes = useQuery(api.auctions.getActiveMakes) ?? [];
   const { data: session } = useSession();
@@ -151,11 +161,13 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
 
   // Sync localFilters → URL whenever filters change locally.
   // Uses searchParamsRef so it does not run on external URL changes.
+  // When hideStatus is set, status is left untouched in the URL.
   useEffect(() => {
     const currentParams = searchParamsRef.current;
     const newParams = new URLSearchParams(currentParams.toString());
     (Object.entries(localFilters) as [string, string][]).forEach(
       ([key, value]) => {
+        if (hideStatus && key === "status") return;
         if (value && !(key === "status" && value === "active")) {
           newParams.set(key, value);
         } else {
@@ -167,7 +179,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       isLocalUpdateRef.current = true;
       setSearchParams(newParams);
     }
-  }, [localFilters, setSearchParams]);
+  }, [localFilters, setSearchParams, hideStatus]);
 
   // Sync URL → localFilters when the URL changes due to external navigation
   // (e.g. browser back/forward). Skips updates caused by local filter changes.
@@ -216,8 +228,9 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
       };
 
       setLocalFilters({
-        status:
-          urlFilters.status !== "active"
+        status: hideStatus
+          ? urlFilters.status
+          : urlFilters.status !== "active"
             ? urlFilters.status
             : validateStatus(preferences.defaultStatusFilter),
         make: urlFilters.make || (preferences.defaultMake ?? "").trim(),
@@ -233,7 +246,7 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
           urlFilters.maxHours || validateNumber(preferences.defaultMaxHours),
       });
     }
-  }, [preferences, searchParamsString]);
+  }, [preferences, searchParamsString, hideStatus]);
 
   const updateParam = (key: keyof LocalFilters, value: string) => {
     setLocalFilters((prev) => ({ ...prev, [key]: value }));
@@ -514,26 +527,28 @@ export const FilterSidebar = ({ onClose }: FilterSidebarProps) => {
         </div>
 
         {/* Auction Status Filter */}
-        <div className="space-y-2">
-          <label
-            htmlFor="filter-status"
-            className="text-xs font-medium text-muted-foreground ml-1"
-          >
-            Auction Status
-          </label>
-          <select
-            id="filter-status"
-            value={localFilters.status}
-            onChange={(e) => {
-              updateParam("status", e.target.value);
-            }}
-            className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-          >
-            <option value="active">Active Auctions</option>
-            <option value="closed">Closed Auctions</option>
-            <option value="all">All Auctions</option>
-          </select>
-        </div>
+        {!hideStatus && (
+          <div className="space-y-2">
+            <label
+              htmlFor="filter-status"
+              className="text-xs font-medium text-muted-foreground ml-1"
+            >
+              Auction Status
+            </label>
+            <select
+              id="filter-status"
+              value={localFilters.status}
+              onChange={(e) => {
+                updateParam("status", e.target.value);
+              }}
+              className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+            >
+              <option value="active">Active Auctions</option>
+              <option value="closed">Closed Auctions</option>
+              <option value="all">All Auctions</option>
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="p-4 border-t bg-muted/10">
