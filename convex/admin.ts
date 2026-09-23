@@ -53,6 +53,7 @@ export {
   initializeCounters,
   updateSystemConfig,
   updateGitHubErrorReportingConfig,
+  updatePerformanceConfig,
   updateSeoSettings,
   updateBusinessInfo,
   createFaqItem,

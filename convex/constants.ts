@@ -24,6 +24,29 @@ export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const MS_PER_DAY = 24 * MS_PER_HOUR;
 
 /**
+ * Performance / demo-mode defaults.
+ *
+ * Runtime-adjustable by admins via the settings table (see
+ * convex/admin/settings.ts); these are the fallbacks used when a setting row
+ * is absent.
+ */
+// Whether demo mode is enabled when no admin has configured it.
+export const DEMO_MODE_ENABLED_DEFAULT = false;
+
+// Default presence heartbeat interval in ms. Must stay in sync with the
+// client-side fallback in src/components/PresenceListener.tsx.
+export const PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT = 60 * MS_PER_SECOND;
+
+// Allowed bounds for the presence heartbeat interval setting (15s - 5min).
+// NOTE: countOnlineUsers marks users offline after a fixed 90s threshold
+// (convex/presence.ts PRESENCE_HEARTBEAT_THRESHOLD), so intervals above ~90s
+// will make signed-in users appear offline between heartbeats. Accepted for
+// demo-mode resource savings; deriving the threshold from the configured
+// interval is a possible follow-up.
+export const PRESENCE_HEARTBEAT_INTERVAL_MS_MIN = 15 * MS_PER_SECOND;
+export const PRESENCE_HEARTBEAT_INTERVAL_MS_MAX = 5 * MS_PER_MINUTE;
+
+/**
  * Auction lifecycle and validation constants.
  */
 export const AUCTION_MIN_DURATION_DAYS = 1;
@@ -65,6 +88,23 @@ export const DRAFT_RETENTION_MS = DRAFT_RETENTION_DAYS * MS_PER_DAY;
 
 // Batch size for background cleanup tasks.
 export const CLEANUP_BATCH_SIZE = 100;
+
+// Safety cap for admin-only moderation/management views that would otherwise
+// `.collect()` an entire status bucket unbounded.
+export const ADMIN_COLLECTION_CAP = 500;
+
+// Safety cap per status bucket ("published"/"closed") when building the
+// public auction-event feed, before merging and sorting.
+export const PUBLISHED_AUCTIONS_STATUS_CAP = 50;
+
+// Maximum number of storage files examined (and deleted) per orphaned-upload
+// sweep run.
+export const STORAGE_SWEEP_BATCH_SIZE = 500;
+
+// Age a storage file must reach before the orphaned-upload sweep may delete
+// it, so uploads whose referencing document is written moments later are
+// never treated as orphans.
+export const STORAGE_SWEEP_MIN_AGE_MS = MS_PER_DAY;
 
 /**
  * Support ticket constants.

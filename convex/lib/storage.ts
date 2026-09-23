@@ -60,6 +60,34 @@ export async function safeDelete(
 }
 
 /**
+ * Collects every storage ID referenced by an auction images value, handling
+ * both the current object shape and the legacy array shape. Empty entries are
+ * dropped.
+ * @param images - The images value (object or legacy array) holding storage IDs
+ * @returns Array of referenced storage IDs, in insertion order
+ */
+export function extractImageStorageIds(
+  images: AuctionImages | Doc<"lots">["images"] | null | undefined
+): string[] {
+  if (images != null && Array.isArray(images)) {
+    return images.filter(Boolean);
+  }
+
+  if (images != null && typeof images === "object") {
+    const imagesObj = images as AuctionImages;
+    return [
+      imagesObj.front,
+      imagesObj.engine,
+      imagesObj.cabin,
+      imagesObj.rear,
+      ...(imagesObj.additional ?? []),
+    ].filter((id): id is string => !!id);
+  }
+
+  return [];
+}
+
+/**
  * Deletes all storage items associated with lot images.
  * Silently handles missing or already-deleted storage items.
  *
@@ -70,27 +98,7 @@ export async function deleteAuctionImages(
   ctx: MutationCtx,
   images: AuctionImages | Doc<"lots">["images"]
 ): Promise<void> {
-  // Legacy documents may hold null/undefined despite the declared parameter type.
-  const legacyImages = images as
-    | AuctionImages
-    | Doc<"lots">["images"]
-    | null
-    | undefined;
-  let storageIds: string[] = [];
-
-  if (legacyImages != null && Array.isArray(legacyImages)) {
-    storageIds = legacyImages.filter(Boolean);
-  } else if (legacyImages != null && typeof legacyImages === "object") {
-    const imagesObj = legacyImages as AuctionImages;
-    storageIds = [
-      imagesObj.front,
-      imagesObj.engine,
-      imagesObj.cabin,
-      imagesObj.rear,
-      ...(imagesObj.additional ?? []),
-    ].filter((id): id is string => !!id);
-  }
-
+  const storageIds = extractImageStorageIds(images);
   if (storageIds.length === 0) return;
 
   await Promise.allSettled(

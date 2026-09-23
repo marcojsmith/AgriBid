@@ -11,9 +11,12 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import { toLotSummary } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { countQuery } from "../../admin_utils";
+import { ADMIN_COLLECTION_CAP } from "../../constants";
 
 /**
- * Returns all lots pending review (admin only).
+ * Returns all lots pending review (admin only), capped at
+ * {@link ADMIN_COLLECTION_CAP} so the moderation queue can't blow up as the
+ * table grows.
  *
  * @param ctx - Convex Query context
  * @returns Array of pending lots
@@ -24,7 +27,7 @@ export const getPendingLotsHandler = async (ctx: QueryCtx) => {
   const lots = await ctx.db
     .query("lots")
     .withIndex("by_status", (q) => q.eq("status", "pending_review"))
-    .collect();
+    .take(ADMIN_COLLECTION_CAP);
 
   return await Promise.all(lots.map((lot) => toLotSummary(ctx, lot)));
 };
@@ -65,7 +68,9 @@ export const getAllLotsHandler = async (
     ...lotsResult,
     totalCount,
     page: await Promise.all(
-      lotsResult.page.map(async (lot: Doc<"lots">) => await toLotSummary(ctx, lot))
+      lotsResult.page.map(
+        async (lot: Doc<"lots">) => await toLotSummary(ctx, lot)
+      )
     ),
   };
 };
@@ -172,7 +177,9 @@ export const getLotFlags = query({
 });
 
 /**
- * Returns all pending flags across all lots (admin only).
+ * Returns all pending flags across all lots (admin only), capped at
+ * {@link ADMIN_COLLECTION_CAP} so the moderation queue can't blow up as the
+ * table grows.
  *
  * @param ctx - Convex Query context
  * @returns Array of pending flags with lot titles and reporter names
@@ -184,7 +191,7 @@ export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
     .query("lotFlags")
     .withIndex("by_status", (q) => q.eq("status", "pending"))
     .order("desc")
-    .collect();
+    .take(ADMIN_COLLECTION_CAP);
 
   const uniqueLotIds = Array.from(
     new Set(flags.map((f: Doc<"lotFlags">) => f.lotId))

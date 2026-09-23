@@ -1,10 +1,16 @@
 // app/convex/auctions/queries/events.ts
 import { v } from "convex/values";
+import type { PaginationOptions } from "convex/server";
 
-import { query, type QueryCtx } from "./shared";
+import { query, paginationOptsValidator, type QueryCtx } from "./shared";
 import { LotSummaryValidator, toLotSummary } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { resolveUrlCached } from "../../image_cache";
+import { countQuery } from "../../admin_utils";
+import {
+  ADMIN_COLLECTION_CAP,
+  PUBLISHED_AUCTIONS_STATUS_CAP,
+} from "../../constants";
 import type { Id } from "../../_generated/dataModel";
 
 /**
@@ -60,17 +66,21 @@ interface AuctionContainerDoc {
  * Convert an auction container document into the client-facing shape,
  * resolving its banner image to an accessible URL and counting assigned lots.
  *
+ * The lot count uses `countQuery` (a cheap `count()` on the index) instead of
+ * collecting full lot documents.
+ *
  * @param ctx - Query context.
  * @param auction - The auction container document.
  * @returns The auction with a resolved banner URL and lot count.
  */
 async function toAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
-  const [bannerImageUrl, lots] = await Promise.all([
+  const [bannerImageUrl, lotCount] = await Promise.all([
     resolveUrlCached(ctx.storage, auction.bannerImage),
-    ctx.db
-      .query("lots")
-      .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
-      .collect(),
+    countQuery(
+      ctx.db
+        .query("lots")
+        .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
+    ),
   ]);
 
   return {
@@ -87,12 +97,14 @@ async function toAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
     createdBy: auction.createdBy,
     createdAt: auction.createdAt,
     updatedAt: auction.updatedAt,
-    lotCount: lots.length,
+    lotCount,
   };
 }
 
 /**
- * Returns every auction container, newest first (admin only).
+ * Returns every auction container, newest first (admin only), capped at
+ * {@link ADMIN_COLLECTION_CAP} so the admin listing can't blow up as the
+ * table grows.
  *
  * @param ctx - Convex Query context.
  * @returns Array of auctions with resolved banner URLs and lot counts.
@@ -100,7 +112,10 @@ async function toAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
 export const getAllAuctionsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
-  const auctions = await ctx.db.query("auctions").order("desc").collect();
+  const auctions = await ctx.db
+    .query("auctions")
+    .order("desc")
+    .take(ADMIN_COLLECTION_CAP);
   return await Promise.all(auctions.map((a) => toAuction(ctx, a)));
 };
 
@@ -137,33 +152,67 @@ export const getAuctionById = query({
 });
 
 /**
- * Returns every published auction container (past or present), newest-start
- * first, for the public auction gallery. Draft containers are never exposed
- * publicly.
+ * Returns a paginated page of published/closed auction containers, newest
+ * start first, for the public auction gallery. Draft containers are never
+ * exposed publicly.
+ *
+ * Results are a union of two indexes ("published" and "closed") merged and
+ * re-sorted by `startTime`, so a true cross-index cursor isn't feasible
+ * without a bigger redesign. Instead each status side is capped at
+ * {@link PUBLISHED_AUCTIONS_STATUS_CAP} before merging, and pagination is a
+ * manual offset cursor over the merged, sorted list (the same approach as
+ * `getActiveLots`' manual branch).
  *
  * @param ctx - Convex Query context.
- * @returns Array of published/closed auctions with resolved banners.
+ * @param args - Handler arguments.
+ * @param args.paginationOpts - Pagination options (numItems and cursor).
+ * @returns Standard pagination result: `{ page, isDone, continueCursor }`.
  */
-export const getPublishedAuctionsHandler = async (ctx: QueryCtx) => {
-  const published = await ctx.db
-    .query("auctions")
-    .withIndex("by_status", (q) => q.eq("status", "published"))
-    .collect();
-  const closed = await ctx.db
-    .query("auctions")
-    .withIndex("by_status", (q) => q.eq("status", "closed"))
-    .collect();
+export const getPublishedAuctionsHandler = async (
+  ctx: QueryCtx,
+  args: { paginationOpts: PaginationOptions }
+) => {
+  const [published, closed] = await Promise.all([
+    ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "published"))
+      .take(PUBLISHED_AUCTIONS_STATUS_CAP),
+    ctx.db
+      .query("auctions")
+      .withIndex("by_status", (q) => q.eq("status", "closed"))
+      .take(PUBLISHED_AUCTIONS_STATUS_CAP),
+  ]);
 
   const all = [...published, ...closed].sort(
     (a, b) => b.startTime - a.startTime
   );
 
-  return await Promise.all(all.map((a) => toAuction(ctx, a)));
+  const numItems = args.paginationOpts.numItems;
+  const cursor = args.paginationOpts.cursor;
+  const startIndex = cursor ? parseInt(cursor, 10) : 0;
+
+  const paginatedSlice = all.slice(startIndex, startIndex + numItems);
+  const page = await Promise.all(
+    paginatedSlice.map((auction) => toAuction(ctx, auction))
+  );
+
+  const nextIndex = startIndex + numItems;
+  const isDone = all.length <= nextIndex;
+
+  return {
+    page,
+    isDone,
+    continueCursor: isDone ? "" : nextIndex.toString(),
+  };
 };
 
 export const getPublishedAuctions = query({
-  args: {},
-  returns: v.array(AuctionValidator),
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(AuctionValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
   handler: getPublishedAuctionsHandler,
 });
 
@@ -220,11 +269,13 @@ export const getAssignmentCandidatesHandler = async (
 ) => {
   await requireAdmin(ctx);
 
+  // The approved-lots bucket is an admin moderation queue that would
+  // otherwise grow unbounded; cap it and keep the assignment scan precise.
   const [approvedLots, auctionLots] = await Promise.all([
     ctx.db
       .query("lots")
       .withIndex("by_status", (q) => q.eq("status", "approved"))
-      .collect(),
+      .take(ADMIN_COLLECTION_CAP),
     ctx.db
       .query("lots")
       .withIndex("by_auctionId", (q) => q.eq("auctionId", args.auctionId))

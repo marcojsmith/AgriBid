@@ -31,6 +31,18 @@ crons.interval(
 );
 
 /**
+ * Daily job to sweep orphaned file-storage uploads (files no longer
+ * referenced by any lot image, condition report, KYC document or auction
+ * banner). Uses `crons.interval` per the Convex guidelines, which disallow
+ * the `crons.daily` helper.
+ */
+crons.interval(
+  "sweep orphaned uploads",
+  { hours: 24 },
+  internal.storageCleanup.sweepOrphanedUploads
+);
+
+/**
  * Daily job to process error reports and create GitHub issues.
  * Runs at 2 AM UTC to avoid peak hours.
  */

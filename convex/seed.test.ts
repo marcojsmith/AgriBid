@@ -122,6 +122,9 @@ function createMockDb() {
 type MockDb = ReturnType<typeof createMockDb>;
 interface MockCtx {
   db: MockDb["db"];
+  storage: {
+    delete: ReturnType<typeof vi.fn>;
+  };
 }
 
 /**
@@ -153,8 +156,11 @@ describe("Seed Coverage", () => {
     vi.spyOn(console, "log").mockImplementation(() => {
       // Intentional no-op: suppress seed script logging during tests
     });
+    vi.spyOn(console, "warn").mockImplementation(() => {
+      // Intentional no-op: suppress safeDelete failure warnings during tests
+    });
     mockDb = createMockDb();
-    mockCtx = { db: mockDb.db };
+    mockCtx = { db: mockDb.db, storage: { delete: vi.fn() } };
   });
 
   afterEach(() => {
@@ -183,6 +189,7 @@ describe("Seed Coverage", () => {
       role: "buyer",
       isVerified: true,
       kycStatus: "verified",
+      kycDocuments: ["kyc-blob-1", "kyc-blob-2"],
       createdAt: 2000,
       updatedAt: 2000,
     });
@@ -291,6 +298,17 @@ describe("Seed Coverage", () => {
             p.userId === "mock-seller" && p.email === "mock-seller@farm.com"
         )
       ).toBe(true);
+    });
+
+    it("sweeps KYC document blobs when deleting non-admin profiles", async () => {
+      seedExistingProfiles();
+
+      await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
+
+      // The buyer's KYC document blobs are removed from storage before the
+      // profile rows are deleted so they don't orphan.
+      expect(mockCtx.storage.delete).toHaveBeenCalledWith("kyc-blob-1");
+      expect(mockCtx.storage.delete).toHaveBeenCalledWith("kyc-blob-2");
     });
 
     it("repopulates the database after clearing all mock data", async () => {

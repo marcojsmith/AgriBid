@@ -11,6 +11,8 @@ interface SettingsSchema {
   max_results_cap: number;
   equipment_metadata_limit: number;
   bid_history_limit: number;
+  demo_mode_enabled: boolean;
+  presence_heartbeat_interval_ms: number;
   github_error_reporting_enabled: boolean;
   github_api_token: string;
   github_repo_owner: string;
@@ -162,21 +164,33 @@ export async function getSystemConfigHandler(ctx: QueryCtx) {
     return setting;
   });
 
-  const [defaultLimit, maxResultsCap, equipmentMetadataLimit, bidHistoryLimit] =
-    await Promise.all([
-      getSetting(
-        ctx,
-        "pagination_default_limit",
-        constants.PAGINATION_DEFAULT_LIMIT
-      ),
-      getSetting(ctx, "max_results_cap", constants.MAX_RESULTS_CAP),
-      getSetting(
-        ctx,
-        "equipment_metadata_limit",
-        constants.EQUIPMENT_METADATA_LIMIT
-      ),
-      getSetting(ctx, "bid_history_limit", constants.BID_HISTORY_LIMIT),
-    ]);
+  const [
+    defaultLimit,
+    maxResultsCap,
+    equipmentMetadataLimit,
+    bidHistoryLimit,
+    demoModeEnabled,
+    heartbeatIntervalMs,
+  ] = await Promise.all([
+    getSetting(
+      ctx,
+      "pagination_default_limit",
+      constants.PAGINATION_DEFAULT_LIMIT
+    ),
+    getSetting(ctx, "max_results_cap", constants.MAX_RESULTS_CAP),
+    getSetting(
+      ctx,
+      "equipment_metadata_limit",
+      constants.EQUIPMENT_METADATA_LIMIT
+    ),
+    getSetting(ctx, "bid_history_limit", constants.BID_HISTORY_LIMIT),
+    getSetting(ctx, "demo_mode_enabled", constants.DEMO_MODE_ENABLED_DEFAULT),
+    getSetting(
+      ctx,
+      "presence_heartbeat_interval_ms",
+      constants.PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT
+    ),
+  ]);
 
   return {
     pagination: {
@@ -199,6 +213,18 @@ export async function getSystemConfigHandler(ctx: QueryCtx) {
         current: bidHistoryLimit,
         default: constants.BID_HISTORY_LIMIT,
         key: "bid_history_limit",
+      },
+    },
+    performance: {
+      demoModeEnabled: {
+        current: demoModeEnabled,
+        default: constants.DEMO_MODE_ENABLED_DEFAULT,
+        key: "demo_mode_enabled",
+      },
+      heartbeatIntervalMs: {
+        current: heartbeatIntervalMs,
+        default: constants.PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT,
+        key: "presence_heartbeat_interval_ms",
       },
     },
     dbSettings: filteredDbSettings,
@@ -240,6 +266,18 @@ export const getSystemConfig = query({
         key: v.string(),
       }),
       bidHistoryLimit: v.object({
+        current: v.number(),
+        default: v.number(),
+        key: v.string(),
+      }),
+    }),
+    performance: v.object({
+      demoModeEnabled: v.object({
+        current: v.boolean(),
+        default: v.boolean(),
+        key: v.string(),
+      }),
+      heartbeatIntervalMs: v.object({
         current: v.number(),
         default: v.number(),
         key: v.string(),
@@ -297,6 +335,8 @@ export async function updateSystemConfigHandler(
     max_results_cap: "number",
     equipment_metadata_limit: "number",
     bid_history_limit: "number",
+    demo_mode_enabled: "boolean",
+    presence_heartbeat_interval_ms: "number",
   };
 
   if (!(args.key in allowedKeys)) {
@@ -316,7 +356,22 @@ export async function updateSystemConfigHandler(
     if (!Number.isInteger(val) || val <= 0) {
       throw new Error(`Setting ${args.key} must be a positive integer`);
     }
-    if (val > 5000) {
+    if (args.key === "presence_heartbeat_interval_ms") {
+      if (val < constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MIN) {
+        throw new Error(
+          `Setting ${args.key} cannot be below ${String(
+            constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MIN
+          )}`
+        );
+      }
+      if (val > constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MAX) {
+        throw new Error(
+          `Setting ${args.key} cannot exceed ${String(
+            constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MAX
+          )}`
+        );
+      }
+    } else if (val > 5000) {
       throw new Error(`Setting ${args.key} cannot exceed 5000`);
     }
   }
@@ -371,6 +426,107 @@ export const updateSystemConfig = mutation({
     description: v.optional(v.string()),
   },
   handler: updateSystemConfigHandler,
+});
+
+/**
+ * Handler for updatePerformanceConfig.
+ *
+ * Atomically writes both performance/demo settings in a single Convex
+ * transaction so the page can never persist a partial save.
+ *
+ * @param ctx - Convex Mutation context
+ * @param args - Performance settings to write
+ * @param args.demoModeEnabled - Whether demo mode is enabled
+ * @param args.heartbeatIntervalMs - Presence heartbeat interval in ms (15000-300000)
+ * @returns Success object
+ */
+export async function updatePerformanceConfigHandler(
+  ctx: MutationCtx,
+  args: {
+    demoModeEnabled: boolean;
+    heartbeatIntervalMs: number;
+  }
+): Promise<{ success: boolean }> {
+  await requireAdmin(ctx);
+
+  if (
+    !Number.isInteger(args.heartbeatIntervalMs) ||
+    args.heartbeatIntervalMs < constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MIN ||
+    args.heartbeatIntervalMs > constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MAX
+  ) {
+    throw new Error(
+      `Presence heartbeat interval must be between ${String(
+        constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MIN
+      )} and ${String(constants.PRESENCE_HEARTBEAT_INTERVAL_MS_MAX)} ms`
+    );
+  }
+
+  const settingsToUpdate: {
+    key: string;
+    value: string | number | boolean;
+    description: string;
+  }[] = [
+    {
+      key: "demo_mode_enabled",
+      value: args.demoModeEnabled,
+      description:
+        "Reduce background activity during demos and low-traffic periods",
+    },
+    {
+      key: "presence_heartbeat_interval_ms",
+      value: args.heartbeatIntervalMs,
+      description:
+        "Interval in ms between presence heartbeats sent by signed-in clients (15000-300000)",
+    },
+  ];
+
+  for (const setting of settingsToUpdate) {
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", setting.key))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch("settings", existing._id, {
+        value: setting.value,
+        description: setting.description,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("settings", {
+        key: setting.key,
+        value: setting.value,
+        description: setting.description,
+        updatedAt: Date.now(),
+      });
+    }
+  }
+
+  await logAudit(ctx, {
+    action: "UPDATE_SETTING",
+    targetId: "performance-config",
+    targetType: "setting",
+    details: `Updated performance config: demo_mode_enabled=${String(
+      args.demoModeEnabled
+    )}, presence_heartbeat_interval_ms=${String(args.heartbeatIntervalMs)}`,
+  });
+
+  return { success: true };
+}
+
+/**
+ * Update both performance/demo settings atomically.
+ *
+ * Writes demo_mode_enabled and presence_heartbeat_interval_ms in a single
+ * transaction. Only accessible to admin users.
+ */
+export const updatePerformanceConfig = mutation({
+  args: {
+    demoModeEnabled: v.boolean(),
+    heartbeatIntervalMs: v.number(),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: updatePerformanceConfigHandler,
 });
 
 // Type alias (not interface): Convex derives the mutation's FunctionReference

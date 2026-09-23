@@ -5,6 +5,8 @@ import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 
+import { resizeImageFile } from "@/lib/image-resize";
+
 interface UseFileUploadOptions {
   maxSize?: number; // In bytes
   allowedTypes?: string[];
@@ -141,11 +143,18 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     try {
       const uploadResults = await Promise.allSettled(
         filesToUpload.map(async (file) => {
+          // Images are downscaled and re-encoded client-side to keep uploads
+          // small; non-image files (PDFs) pass through untouched. The helper
+          // falls back to the original file on any resize failure.
+          const payload = file.type.startsWith("image/")
+            ? await resizeImageFile(file)
+            : file;
+
           const postUrl = await generateUploadUrl();
           const result = await fetch(postUrl, {
             method: "POST",
-            headers: { "Content-Type": file.type },
-            body: file,
+            headers: { "Content-Type": payload.type },
+            body: payload,
           });
 
           if (!result.ok) {

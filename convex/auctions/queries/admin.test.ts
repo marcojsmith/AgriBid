@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { getLotFlagsHandler, getAllPendingFlagsHandler } from "./admin";
+import {
+  getLotFlagsHandler,
+  getAllPendingFlagsHandler,
+  getPendingLotsHandler,
+} from "./admin";
+import { ADMIN_COLLECTION_CAP } from "../../constants";
 import * as auth from "../../lib/auth";
 import type { QueryCtx } from "../../_generated/server";
 import type { Doc, Id } from "../../_generated/dataModel";
@@ -72,10 +77,9 @@ describe("Admin Queries - Auction Flags", () => {
         name: "John Doe",
       } as unknown as Doc<"profiles">);
 
-      const result = await getLotFlagsHandler(
-        mockCtx as unknown as QueryCtx,
-        { lotId: "a1" as Id<"lots"> }
-      );
+      const result = await getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
+        lotId: "a1" as Id<"lots">,
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0].reporterName).toBe("John Doe");
@@ -97,10 +101,9 @@ describe("Admin Queries - Auction Flags", () => {
 
       setupDbMocks(mockFlags, null);
 
-      const result = await getLotFlagsHandler(
-        mockCtx as unknown as QueryCtx,
-        { lotId: "a1" as Id<"lots"> }
-      );
+      const result = await getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
+        lotId: "a1" as Id<"lots">,
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0].reporterName).toBe("Unknown User");
@@ -125,10 +128,9 @@ describe("Admin Queries - Auction Flags", () => {
         userId: "u2",
       } as unknown as Doc<"profiles">);
 
-      const result = await getLotFlagsHandler(
-        mockCtx as unknown as QueryCtx,
-        { lotId: "a1" as Id<"lots"> }
-      );
+      const result = await getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
+        lotId: "a1" as Id<"lots">,
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0].reporterName).toBe("Unknown User");
@@ -162,10 +164,9 @@ describe("Admin Queries - Auction Flags", () => {
         name: "Reporter Name",
       } as unknown as Doc<"profiles">);
 
-      const result = await getLotFlagsHandler(
-        mockCtx as unknown as QueryCtx,
-        { lotId: "a1" as Id<"lots"> }
-      );
+      const result = await getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
+        lotId: "a1" as Id<"lots">,
+      });
 
       expect(result).toHaveLength(2);
       expect(result[0].reporterName).toBe("Reporter Name");
@@ -182,6 +183,51 @@ describe("Admin Queries - Auction Flags", () => {
         getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
           lotId: "a1" as Id<"lots">,
         })
+      ).rejects.toThrow("unauthorized");
+
+      expect(auth.requireAdmin).toHaveBeenCalled();
+    });
+  });
+
+  describe("getPendingLotsHandler", () => {
+    it("requires admin and returns capped pending lot summaries", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "u1" });
+
+      const mockLots = [
+        {
+          _id: "l1",
+          status: "pending_review",
+          images: {},
+        },
+      ] as unknown as Doc<"lots">[];
+
+      const lotsQuery = {
+        withIndex: vi.fn().mockReturnThis(),
+        take: vi.fn().mockResolvedValue(mockLots),
+      };
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "lots") return lotsQuery;
+        return { get: vi.fn() };
+      });
+
+      const result = await getPendingLotsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+
+      expect(auth.requireAdmin).toHaveBeenCalled();
+      // The moderation queue is capped so it can't blow up as the table grows.
+      expect(lotsQuery.take).toHaveBeenCalledWith(ADMIN_COLLECTION_CAP);
+      expect(result).toHaveLength(1);
+      expect(result[0]._id).toBe("l1");
+    });
+
+    it("throws when the caller is not an admin", async () => {
+      vi.mocked(auth.requireAdmin).mockRejectedValueOnce(
+        new Error("unauthorized")
+      );
+
+      await expect(
+        getPendingLotsHandler(mockCtx as unknown as QueryCtx)
       ).rejects.toThrow("unauthorized");
 
       expect(auth.requireAdmin).toHaveBeenCalled();
@@ -206,6 +252,7 @@ describe("Admin Queries - Auction Flags", () => {
       const mockQuery = {
         withIndex: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
+        take: vi.fn().mockResolvedValue(mockFlags),
         collect: vi.fn().mockResolvedValue(mockFlags),
       };
       mockCtx.db.query.mockImplementation((table: string) => {
@@ -250,6 +297,7 @@ describe("Admin Queries - Auction Flags", () => {
       const mockQuery = {
         withIndex: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
+        take: vi.fn().mockResolvedValue(mockFlags),
         collect: vi.fn().mockResolvedValue(mockFlags),
       };
       mockCtx.db.query.mockImplementation((table: string) => {

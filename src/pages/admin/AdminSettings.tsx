@@ -8,6 +8,7 @@ import {
   Search,
   HelpCircle,
   Palette,
+  Gauge,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -91,6 +92,12 @@ export default function AdminSettings() {
             description="Manage public FAQ questions and answers."
             icon={<HelpCircle />}
             action={() => navigate("/admin/faq")}
+          />
+          <SettingsCard
+            title="Performance & Demo Mode"
+            description="Tune background activity for demos and low-traffic periods."
+            icon={<Gauge />}
+            action={() => navigate("/admin/performance")}
           />
         </div>
       </div>

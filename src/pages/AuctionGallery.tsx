@@ -1,14 +1,19 @@
 // app/src/pages/AuctionGallery.tsx
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Helmet } from "react-helmet-async";
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronDown } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LoadingPage } from "@/components/LoadingIndicator";
+import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
 import { AuctionEventCard } from "@/components/auction/AuctionEventCard";
 import { buildTitle, buildCanonical, DEFAULT_DESCRIPTION } from "@/lib/seo";
+import {
+  PAGINATION_INITIAL_ITEMS,
+  PAGINATION_LOAD_MORE_ITEMS,
+} from "@/lib/constants";
 
 /**
  * Public gallery of past and present auction events (scheduled sale
@@ -17,12 +22,20 @@ import { buildTitle, buildCanonical, DEFAULT_DESCRIPTION } from "@/lib/seo";
  * @returns The AuctionGallery page component.
  */
 export default function AuctionGallery() {
-  const events = useQuery(api.auctions.getPublishedAuctions);
+  const {
+    results: events,
+    status: eventsStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.auctions.getPublishedAuctions,
+    {},
+    { initialNumItems: PAGINATION_INITIAL_ITEMS }
+  );
   // Lazy initializer keeps this a pure read during render (the "Live Now"
   // badge doesn't need to tick live here; a page refresh is enough).
   const [now] = useState(() => Date.now());
 
-  if (events === undefined) {
+  if (eventsStatus === "LoadingFirstPage") {
     return <LoadingPage message="Loading auctions..." />;
   }
 
@@ -53,10 +66,31 @@ export default function AuctionGallery() {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
-            <AuctionEventCard key={event._id} event={event} now={now} />
-          ))}
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {events.map((event) => (
+              <AuctionEventCard key={event._id} event={event} now={now} />
+            ))}
+          </div>
+          {eventsStatus === "CanLoadMore" && (
+            <div className="flex justify-center pt-4">
+              <Button
+                onClick={() => {
+                  loadMore(PAGINATION_LOAD_MORE_ITEMS);
+                }}
+                variant="outline"
+                className="rounded-md font-medium px-12 border gap-2 h-12 text-xs"
+              >
+                Load More Auctions
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          {eventsStatus === "LoadingMore" && (
+            <div className="flex justify-center py-8">
+              <LoadingIndicator />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -830,7 +830,8 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin",
       } as AuthUser);
-      queryMock.collect.mockResolvedValue([
+      // The pending-flags queue is read through the capped .take().
+      queryMock.take.mockResolvedValue([
         { _id: "f1", reporterId: "r1", lotId: "a1", status: "pending" },
       ]);
       dbGetMock.mockResolvedValue(null); // Missing auction

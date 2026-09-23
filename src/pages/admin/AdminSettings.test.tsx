@@ -171,4 +171,14 @@ describe("AdminSettings Page", () => {
     fireEvent.click(card);
     expect(mockNavigate).toHaveBeenCalledWith("/admin/faq");
   });
+
+  it("navigates to performance page when Performance & Demo Mode card is clicked", () => {
+    (useQuery as Mock).mockReturnValue(mockAdminStats);
+    renderPage();
+    const card = screen.getByRole("button", {
+      name: /Performance & Demo Mode/i,
+    });
+    fireEvent.click(card);
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/performance");
+  });
 });

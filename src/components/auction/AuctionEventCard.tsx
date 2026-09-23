@@ -8,11 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 /**
- * A published auction event as returned by `api.auctions.getPublishedAuctions`.
+ * A published auction event as returned by `api.auctions.getPublishedAuctions`
+ * (one entry of the paginated result's `page`).
  */
 export type AuctionEvent = FunctionReturnType<
   typeof api.auctions.getPublishedAuctions
->[number];
+>["page"][number];
 
 interface AuctionEventCardProps {
   /** The auction event document to render. */

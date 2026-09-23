@@ -1,9 +1,9 @@
 // app/src/pages/Home.tsx
 import { useState, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronDown } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,11 @@ import {
   DEFAULT_DESCRIPTION,
   DEFAULT_OG_IMAGE,
 } from "@/lib/seo";
-import { LoadingPage } from "@/components/LoadingIndicator";
+import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
+import {
+  PAGINATION_INITIAL_ITEMS,
+  PAGINATION_LOAD_MORE_ITEMS,
+} from "@/lib/constants";
 
 /** Status tabs available for the auction-event listing. */
 type StatusTab = "active" | "closed" | "all";
@@ -47,9 +51,17 @@ export default function Home() {
   const searchQuery =
     rawQuery === null || rawQuery === "" ? undefined : rawQuery;
 
-  const events = useQuery(
+  // The feed is a union of published + closed auction containers sorted by
+  // startTime; the backend caps each side and pages with a manual cursor, and
+  // this hook consumes it with the standard load-more pattern.
+  const {
+    results: events,
+    status: eventsStatus,
+    loadMore,
+  } = usePaginatedQuery(
     api.auctions.getPublishedAuctions,
-    searchQuery !== undefined ? "skip" : {}
+    searchQuery !== undefined ? "skip" : {},
+    { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
   // Lazy initializer keeps this a pure read during render; refreshed on an
   // interval so events crossing startTime/endTime while the page stays
@@ -83,7 +95,7 @@ export default function Home() {
     setSearchParams(newParams);
   };
 
-  const visibleEvents = (events ?? []).filter((event) => {
+  const visibleEvents = events.filter((event) => {
     const isActive = event.status === "published" && event.endTime > now;
     const isClosed = event.status === "closed" || event.endTime <= now;
     if (statusTab === "active") return isActive;
@@ -167,9 +179,11 @@ export default function Home() {
             </div>
           </div>
 
-          {events === undefined ? (
+          {eventsStatus === "LoadingFirstPage" ? (
             <LoadingPage message="Loading auctions..." />
-          ) : visibleEvents.length === 0 ? (
+          ) : visibleEvents.length === 0 &&
+            eventsStatus !== "CanLoadMore" &&
+            eventsStatus !== "LoadingMore" ? (
             <Card className="border border-dashed">
               <div className="text-center py-20 space-y-4">
                 <Calendar className="h-10 w-10 text-muted-foreground/20 mx-auto" />
@@ -179,10 +193,33 @@ export default function Home() {
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {visibleEvents.map((event) => (
-                <AuctionEventCard key={event._id} event={event} now={now} />
-              ))}
+            <div className="space-y-8">
+              {visibleEvents.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {visibleEvents.map((event) => (
+                    <AuctionEventCard key={event._id} event={event} now={now} />
+                  ))}
+                </div>
+              )}
+              {eventsStatus === "CanLoadMore" && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    onClick={() => {
+                      loadMore(PAGINATION_LOAD_MORE_ITEMS);
+                    }}
+                    variant="outline"
+                    className="rounded-md font-medium px-12 border gap-2 h-12 text-xs"
+                  >
+                    Load More Auctions
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {eventsStatus === "LoadingMore" && (
+                <div className="flex justify-center py-8">
+                  <LoadingIndicator />
+                </div>
+              )}
             </div>
           )}
         </div>
