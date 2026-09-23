@@ -67,7 +67,7 @@
     "@vitest/coverage-v8": "5.0.0",
     "@vitest/ui": "5.0.0",
     "autoprefixer": "^10.4.24",
-    "convex-test": "^0.0.41",
+    "convex-test": "^0.0.59",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.16.1",
