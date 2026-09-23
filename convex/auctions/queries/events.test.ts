@@ -7,6 +7,10 @@ import {
   getPublishedAuctionHandler,
   getAssignmentCandidatesHandler,
 } from "./events";
+import {
+  ADMIN_COLLECTION_CAP,
+  PUBLISHED_AUCTIONS_STATUS_CAP,
+} from "../../constants";
 import * as auth from "../../lib/auth";
 import * as imageCache from "../../image_cache";
 import type { QueryCtx } from "../../_generated/server";
@@ -65,10 +69,11 @@ describe("Auction event queries", () => {
 
       const auctionsQuery = {
         order: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([auctionRow]),
+        take: vi.fn().mockResolvedValue([auctionRow]),
       };
       const lotsQuery = {
         withIndex: vi.fn().mockReturnThis(),
+        count: vi.fn().mockResolvedValue(2),
         collect: vi.fn().mockResolvedValue([{ _id: "l1" }, { _id: "l2" }]),
       };
       mockCtx.db.query.mockImplementation((table: string) => {
@@ -81,6 +86,8 @@ describe("Auction event queries", () => {
       );
 
       expect(auth.requireAdmin).toHaveBeenCalled();
+      // The admin listing is capped so it can't blow up as the table grows.
+      expect(auctionsQuery.take).toHaveBeenCalledWith(ADMIN_COLLECTION_CAP);
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         _id: "a1",
@@ -111,6 +118,7 @@ describe("Auction event queries", () => {
       mockCtx.db.get.mockResolvedValue(auctionRow);
       const lotsQuery = {
         withIndex: vi.fn().mockReturnThis(),
+        count: vi.fn().mockResolvedValue(4),
         collect: vi.fn().mockResolvedValue([]),
       };
       mockCtx.db.query.mockReturnValue(lotsQuery);
@@ -120,12 +128,70 @@ describe("Auction event queries", () => {
         { auctionId: "a1" as Id<"auctions"> }
       );
 
-      expect(result).toMatchObject({ _id: "a1", lotCount: 0 });
+      expect(result).toMatchObject({ _id: "a1", lotCount: 4 });
+      // The lot count comes from the cheap index count, not a full collect.
+      expect(lotsQuery.count).toHaveBeenCalled();
     });
   });
 
   // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret
   describe("getPublishedAuctionsHandler", () => {
+    /**
+     * Builds a db mock serving capped status-bucket takes and lot counts.
+     *
+     * @param published - Rows returned for the "published" status bucket.
+     * @param closed - Rows returned for the "closed" status bucket.
+     * @returns The mock context plus the per-status `take` mocks.
+     */
+    function makePublishedMockCtx(
+      published: Record<string, unknown>[],
+      closed: Record<string, unknown>[]
+    ) {
+      const takeMocks = {
+        published: vi.fn().mockResolvedValue(published),
+        closed: vi.fn().mockResolvedValue(closed),
+      };
+      const orderMocks = {
+        published: vi.fn().mockReturnThis(),
+        closed: vi.fn().mockReturnThis(),
+      };
+      const lotsQuery = {
+        withIndex: vi.fn().mockReturnThis(),
+        count: vi.fn().mockResolvedValue(0),
+        collect: vi.fn().mockResolvedValue([]),
+      };
+      const db = {
+        get: vi.fn(),
+        query: vi.fn().mockImplementation((table: string) => {
+          if (table !== "auctions") return lotsQuery;
+          return {
+            withIndex: vi.fn((_idx: string, cb: (q: unknown) => unknown) => {
+              const captured = { status: "" };
+              cb({
+                eq: (_field: string, value: string) => {
+                  captured.status = value;
+                  return captured;
+                },
+              });
+              return {
+                order:
+                  captured.status === "published"
+                    ? orderMocks.published
+                    : orderMocks.closed,
+                take:
+                  captured.status === "published"
+                    ? takeMocks.published
+                    : takeMocks.closed,
+              };
+            }),
+          };
+        }),
+      };
+      return { db, lotsQuery, orderMocks, takeMocks, storage: {} };
+    }
+
+    const paginationOpts = { numItems: 10, cursor: null };
+
     it("does not require admin and merges published + closed auctions sorted by startTime desc", async () => {
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
 
@@ -141,40 +207,83 @@ describe("Auction event queries", () => {
         startTime: 5000,
       };
 
-      const lotsQuery = {
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([]),
-      };
-      mockCtx.db.query.mockImplementation((table: string) => {
-        if (table === "auctions") {
-          return {
-            withIndex: vi.fn((_idx: string, cb: (q: unknown) => unknown) => {
-              const captured = { status: "" };
-              cb({
-                eq: (_field: string, value: string) => {
-                  captured.status = value;
-                  return captured;
-                },
-              });
-              return {
-                collect: vi
-                  .fn()
-                  .mockResolvedValue(
-                    captured.status === "published" ? [published] : [closed]
-                  ),
-              };
-            }),
-          };
-        }
-        return lotsQuery;
-      });
+      const mock = makePublishedMockCtx([published], [closed]);
+      mockCtx = mock as unknown as typeof mockCtx;
 
       const result = await getPublishedAuctionsHandler(
-        mockCtx as unknown as QueryCtx
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts }
       );
 
       expect(auth.requireAdmin).not.toHaveBeenCalled();
-      expect(result.map((r) => r._id)).toEqual(["a2", "a1"]);
+      expect(result.page.map((r) => r._id)).toEqual(["a2", "a1"]);
+      expect(result.isDone).toBe(true);
+      expect(result.continueCursor).toBe("");
+    });
+
+    it("caps each status side at PUBLISHED_AUCTIONS_STATUS_CAP", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+      const mock = makePublishedMockCtx([], []);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      await getPublishedAuctionsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts,
+      });
+
+      // Both status buckets were read through .take(CAP), not .collect().
+      expect(mock.takeMocks.published).toHaveBeenCalledWith(
+        PUBLISHED_AUCTIONS_STATUS_CAP
+      );
+      expect(mock.takeMocks.closed).toHaveBeenCalledWith(
+        PUBLISHED_AUCTIONS_STATUS_CAP
+      );
+    });
+
+    it("orders each status bucket newest-first before applying the cap", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+      const mock = makePublishedMockCtx([], []);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      await getPublishedAuctionsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts,
+      });
+
+      expect(mock.orderMocks.published).toHaveBeenCalledWith("desc");
+      expect(mock.orderMocks.closed).toHaveBeenCalledWith("desc");
+      expect(
+        mock.orderMocks.published.mock.invocationCallOrder[0]
+      ).toBeLessThan(mock.takeMocks.published.mock.invocationCallOrder[0]);
+      expect(mock.orderMocks.closed.mock.invocationCallOrder[0]).toBeLessThan(
+        mock.takeMocks.closed.mock.invocationCallOrder[0]
+      );
+    });
+
+    it("paginates with a manual offset cursor", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+
+      const rows = [
+        { ...auctionRow, _id: "a1" as Id<"auctions">, startTime: 3000 },
+        { ...auctionRow, _id: "a2" as Id<"auctions">, startTime: 2000 },
+        { ...auctionRow, _id: "a3" as Id<"auctions">, startTime: 1000 },
+      ];
+      const mock = makePublishedMockCtx(rows, []);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      const firstPage = await getPublishedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 2, cursor: null } }
+      );
+      expect(firstPage.page.map((r) => r._id)).toEqual(["a1", "a2"]);
+      expect(firstPage.isDone).toBe(false);
+      expect(firstPage.continueCursor).toBe("2");
+
+      const secondPage = await getPublishedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 2, cursor: "2" } }
+      );
+      expect(secondPage.page.map((r) => r._id)).toEqual(["a3"]);
+      expect(secondPage.isDone).toBe(true);
+      expect(secondPage.continueCursor).toBe("");
     });
   });
 
@@ -241,6 +350,7 @@ describe("Auction event queries", () => {
         images: {},
       };
 
+      const approvedTake = vi.fn().mockResolvedValue([approvedLot]);
       mockCtx.db.query.mockImplementation((table: string) => {
         if (table === "lots") {
           return {
@@ -254,12 +364,16 @@ describe("Auction event queries", () => {
                 },
               });
               return {
+                // The approved-status scan is capped; the auctionId scan
+                // collects.
+                take:
+                  "status" in captured && captured.status === "approved"
+                    ? approvedTake
+                    : vi.fn().mockResolvedValue([]),
                 collect: vi
                   .fn()
                   .mockResolvedValue(
-                    "status" in captured && captured.status === "approved"
-                      ? [approvedLot]
-                      : [assignedLot]
+                    "auctionId" in captured ? [assignedLot] : []
                   ),
               };
             }),
@@ -275,6 +389,7 @@ describe("Auction event queries", () => {
       );
 
       expect(auth.requireAdmin).toHaveBeenCalled();
+      expect(approvedTake).toHaveBeenCalledWith(ADMIN_COLLECTION_CAP);
       expect(result.unassigned).toHaveLength(1);
       expect(result.unassigned[0]._id).toBe("l1");
       expect(result.assigned).toHaveLength(1);

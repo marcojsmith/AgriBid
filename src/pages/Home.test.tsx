@@ -2,12 +2,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
+
+import { PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
 
 import Home from "./Home";
 
 vi.mock("convex/react", () => ({
-  useQuery: vi.fn(),
+  usePaginatedQuery: vi.fn(),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -65,7 +67,11 @@ describe("Home Page", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useQuery as Mock).mockReturnValue([activeEvent, closedEvent]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [activeEvent, closedEvent],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
 
     (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
   });
@@ -103,21 +109,33 @@ describe("Home Page", () => {
   });
 
   it("excludes a published event whose window has ended from the Active tab", () => {
-    (useQuery as Mock).mockReturnValue([activeEvent, endedPublishedEvent]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [activeEvent, endedPublishedEvent],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
     renderHome();
     expect(screen.getByText("Spring Sale")).toBeInTheDocument();
     expect(screen.queryByText("Ended Sale")).not.toBeInTheDocument();
   });
 
-  it("renders a loading state while events are undefined", () => {
-    (useQuery as Mock).mockReturnValue(undefined);
+  it("renders a loading state while the first page is loading", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "LoadingFirstPage",
+      loadMore: vi.fn(),
+    });
     renderHome();
     expect(screen.getByText(/Loading auctions/i)).toBeInTheDocument();
     expect(screen.queryByTestId("auction-event-card")).not.toBeInTheDocument();
   });
 
   it("shows the Active-tab empty state when no events are active", () => {
-    (useQuery as Mock).mockReturnValue([closedEvent]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [closedEvent],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
     renderHome();
     expect(
       screen.getByText("No active auctions right now.")
@@ -125,7 +143,11 @@ describe("Home Page", () => {
   });
 
   it("shows the All-tab empty state when no events exist at all", () => {
-    (useQuery as Mock).mockReturnValue([]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
     (useSearchParams as Mock).mockReturnValue([
       new URLSearchParams("status=all"),
       vi.fn(),
@@ -137,11 +159,11 @@ describe("Home Page", () => {
   });
 
   it("shows only closed events (including ended published ones) on the Closed tab", () => {
-    (useQuery as Mock).mockReturnValue([
-      activeEvent,
-      closedEvent,
-      endedPublishedEvent,
-    ]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [activeEvent, closedEvent, endedPublishedEvent],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
     (useSearchParams as Mock).mockReturnValue([
       new URLSearchParams("status=closed"),
       vi.fn(),
@@ -232,7 +254,11 @@ describe("Home Page", () => {
     expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
     expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
     // The events query is skipped while searching
-    expect(useQuery).toHaveBeenCalledWith(expect.anything(), "skip");
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      "skip",
+      expect.anything()
+    );
   });
 
   it("treats an empty q param as no search", () => {
@@ -246,8 +272,66 @@ describe("Home Page", () => {
     expect(screen.getByText("Spring Sale")).toBeInTheDocument();
   });
 
-  it("fetches published events when not searching", () => {
+  it("fetches published events with pagination options when not searching", () => {
     renderHome();
-    expect(useQuery).toHaveBeenCalledWith(expect.anything(), {});
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      {},
+      { initialNumItems: 12 }
+    );
+  });
+
+  it("shows a Load More button and loads more when status is CanLoadMore", () => {
+    const loadMore = vi.fn();
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [activeEvent],
+      status: "CanLoadMore",
+      loadMore,
+    });
+    renderHome();
+
+    const button = screen.getByRole("button", { name: /Load More Auctions/i });
+    fireEvent.click(button);
+    expect(loadMore).toHaveBeenCalledWith(PAGINATION_LOAD_MORE_ITEMS);
+  });
+
+  it("hides the Load More button when all pages are loaded", () => {
+    renderHome();
+    expect(
+      screen.queryByRole("button", { name: /Load More Auctions/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Load More instead of the empty state when the current page has no matching-tab events but more pages remain", () => {
+    // Active tab is default; this page only contains a closed event, so the
+    // client-side filter yields zero visible cards even though CanLoadMore
+    // means a later page may contain active events.
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [closedEvent],
+      status: "CanLoadMore",
+      loadMore: vi.fn(),
+    });
+    renderHome();
+
+    expect(
+      screen.queryByText("No active auctions right now.")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Load More Auctions/i })
+    ).toBeInTheDocument();
+  });
+
+  it("shows the LoadingMore spinner instead of the empty state while fetching the next page", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [closedEvent],
+      status: "LoadingMore",
+      loadMore: vi.fn(),
+    });
+    renderHome();
+
+    expect(
+      screen.queryByText("No active auctions right now.")
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 });

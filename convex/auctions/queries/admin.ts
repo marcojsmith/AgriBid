@@ -11,33 +11,44 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import { toLotSummary } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { countQuery } from "../../admin_utils";
+import { ADMIN_COLLECTION_CAP } from "../../constants";
 
 /**
- * Returns all lots pending review (admin only).
+ * Returns lots pending review (admin only), capped at
+ * {@link ADMIN_COLLECTION_CAP}. The truncation flag prevents consumers from
+ * presenting the bounded result length as the total queue size.
  *
  * @param ctx - Convex Query context
- * @returns Array of pending lots
+ * @returns Capped pending lots and whether more results exist.
  */
 export const getPendingLotsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
-  const lots = await ctx.db
+  const fetchedLots = await ctx.db
     .query("lots")
     .withIndex("by_status", (q) => q.eq("status", "pending_review"))
-    .collect();
+    .take(ADMIN_COLLECTION_CAP + 1);
+  const isTruncated = fetchedLots.length > ADMIN_COLLECTION_CAP;
+  const lots = fetchedLots.slice(0, ADMIN_COLLECTION_CAP);
 
-  return await Promise.all(lots.map((lot) => toLotSummary(ctx, lot)));
+  return {
+    items: await Promise.all(lots.map((lot) => toLotSummary(ctx, lot))),
+    isTruncated,
+  };
 };
 
 /**
  * Query: Get pending review lots (admin only).
  * Args: (none)
  *
- * @returns Array of pending lots
+ * @returns Capped pending lots and whether more results exist.
  */
 export const getPendingLots = query({
   args: {},
-  returns: v.array(LotSummaryValidator),
+  returns: v.object({
+    items: v.array(LotSummaryValidator),
+    isTruncated: v.boolean(),
+  }),
   handler: getPendingLotsHandler,
 });
 
@@ -65,7 +76,9 @@ export const getAllLotsHandler = async (
     ...lotsResult,
     totalCount,
     page: await Promise.all(
-      lotsResult.page.map(async (lot: Doc<"lots">) => await toLotSummary(ctx, lot))
+      lotsResult.page.map(
+        async (lot: Doc<"lots">) => await toLotSummary(ctx, lot)
+      )
     ),
   };
 };
@@ -172,19 +185,23 @@ export const getLotFlags = query({
 });
 
 /**
- * Returns all pending flags across all lots (admin only).
+ * Returns pending flags across all lots (admin only), capped at
+ * {@link ADMIN_COLLECTION_CAP}. The truncation flag prevents consumers from
+ * presenting the bounded result length as the total queue size.
  *
  * @param ctx - Convex Query context
- * @returns Array of pending flags with lot titles and reporter names
+ * @returns Capped pending flags with enrichment and truncation state.
  */
 export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
   await requireAdmin(ctx);
 
-  const flags = await ctx.db
+  const fetchedFlags = await ctx.db
     .query("lotFlags")
     .withIndex("by_status", (q) => q.eq("status", "pending"))
     .order("desc")
-    .collect();
+    .take(ADMIN_COLLECTION_CAP + 1);
+  const isTruncated = fetchedFlags.length > ADMIN_COLLECTION_CAP;
+  const flags = fetchedFlags.slice(0, ADMIN_COLLECTION_CAP);
 
   const uniqueLotIds = Array.from(
     new Set(flags.map((f: Doc<"lotFlags">) => f.lotId))
@@ -209,44 +226,50 @@ export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
     }),
   ]);
 
-  return flags.map((flag: Doc<"lotFlags">) => ({
-    ...flag,
-    lotTitle: lotTitles.get(flag.lotId) ?? "Unknown Auction",
-    reporterName: reporterNames.get(flag.reporterId) ?? "Unknown Reporter",
-  }));
+  return {
+    items: flags.map((flag: Doc<"lotFlags">) => ({
+      ...flag,
+      lotTitle: lotTitles.get(flag.lotId) ?? "Unknown Auction",
+      reporterName: reporterNames.get(flag.reporterId) ?? "Unknown Reporter",
+    })),
+    isTruncated,
+  };
 };
 
 /**
  * Query: Get all pending flags (admin only).
  * Args: (none)
  *
- * @returns Array of pending flags
+ * @returns Capped pending flags and whether more results exist.
  */
 export const getAllPendingFlags = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("lotFlags"),
-      _creationTime: v.number(),
-      lotId: v.id("lots"),
-      reporterId: v.string(),
-      reason: v.union(
-        v.literal("misleading"),
-        v.literal("inappropriate"),
-        v.literal("suspicious"),
-        v.literal("other")
-      ),
-      details: v.optional(v.string()),
-      status: v.union(
-        v.literal("pending"),
-        v.literal("reviewed"),
-        v.literal("dismissed")
-      ),
-      createdAt: v.number(),
-      lotTitle: v.string(),
-      reporterName: v.string(),
-    })
-  ),
+  returns: v.object({
+    items: v.array(
+      v.object({
+        _id: v.id("lotFlags"),
+        _creationTime: v.number(),
+        lotId: v.id("lots"),
+        reporterId: v.string(),
+        reason: v.union(
+          v.literal("misleading"),
+          v.literal("inappropriate"),
+          v.literal("suspicious"),
+          v.literal("other")
+        ),
+        details: v.optional(v.string()),
+        status: v.union(
+          v.literal("pending"),
+          v.literal("reviewed"),
+          v.literal("dismissed")
+        ),
+        createdAt: v.number(),
+        lotTitle: v.string(),
+        reporterName: v.string(),
+      })
+    ),
+    isTruncated: v.boolean(),
+  }),
   handler: getAllPendingFlagsHandler,
 });
 

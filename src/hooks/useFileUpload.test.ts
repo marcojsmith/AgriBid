@@ -3,10 +3,16 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 
+import { resizeImageFile } from "@/lib/image-resize";
+
 import { useFileUpload } from "./useFileUpload";
 
 vi.mock("convex/react", () => ({
   useMutation: vi.fn(),
+}));
+
+vi.mock("@/lib/image-resize", () => ({
+  resizeImageFile: vi.fn((file: File) => Promise.resolve(file)),
 }));
 
 vi.mock("convex/_generated/api", () => ({
@@ -45,6 +51,9 @@ describe("useFileUpload", () => {
       return vi.fn();
     });
     global.fetch = vi.fn();
+    vi.mocked(resizeImageFile).mockImplementation((file: File) =>
+      Promise.resolve(file)
+    );
   });
 
   it("should initialize with empty files and not uploading", () => {
@@ -378,5 +387,132 @@ describe("useFileUpload", () => {
       storageIds = await result.current.uploadFiles([]);
     });
     expect(storageIds).toEqual([]);
+  });
+
+  it("should resize image files before uploading them", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    const file = new File(["a"], "photo.png", { type: "image/png" });
+    const resized = new Blob(["resized"], { type: "image/jpeg" });
+    vi.mocked(resizeImageFile).mockResolvedValue(resized);
+
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    await act(async () => {
+      await result.current.uploadFiles([file]);
+    });
+
+    expect(resizeImageFile).toHaveBeenCalledWith(file);
+    expect(global.fetch).toHaveBeenCalledWith("http://upload.url", {
+      method: "POST",
+      headers: { "Content-Type": "image/jpeg" },
+      body: resized,
+    });
+  });
+
+  it("limits concurrent image resizes to two", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    const imageFiles = Array.from(
+      { length: 3 },
+      (_, index) =>
+        new File([String(index)], `${String(index)}.png`, {
+          type: "image/png",
+        })
+    );
+    const resizeResolvers: (() => void)[] = [];
+    let activeResizes = 0;
+    let peakActiveResizes = 0;
+
+    vi.mocked(resizeImageFile).mockImplementation(
+      (file: File) =>
+        new Promise((resolve) => {
+          activeResizes += 1;
+          peakActiveResizes = Math.max(peakActiveResizes, activeResizes);
+          resizeResolvers.push(() => {
+            activeResizes -= 1;
+            resolve(file);
+          });
+        })
+    );
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    let uploadPromise: Promise<string[] | null> | undefined;
+    act(() => {
+      uploadPromise = result.current.uploadFiles(imageFiles);
+    });
+
+    await vi.waitFor(() => {
+      expect(resizeImageFile).toHaveBeenCalledTimes(2);
+    });
+    expect(peakActiveResizes).toBe(2);
+
+    resizeResolvers.shift()?.();
+    await vi.waitFor(() => {
+      expect(resizeImageFile).toHaveBeenCalledTimes(3);
+    });
+    resizeResolvers.splice(0).forEach((resolve) => {
+      resolve();
+    });
+    await act(async () => {
+      await uploadPromise;
+    });
+
+    expect(peakActiveResizes).toBe(2);
+  });
+
+  it("should not resize non-image files", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    const pdf = new File(["pdf"], "report.pdf", {
+      type: "application/pdf",
+    });
+
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    await act(async () => {
+      await result.current.uploadFiles([pdf]);
+    });
+
+    expect(resizeImageFile).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledWith("http://upload.url", {
+      method: "POST",
+      headers: { "Content-Type": "application/pdf" },
+      body: pdf,
+    });
+  });
+
+  it("should upload the fallback blob when resizing fails", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    const file = new File(["a"], "photo.png", { type: "image/png" });
+    // The helper's contract: on failure it resolves with the original file.
+    vi.mocked(resizeImageFile).mockResolvedValue(file);
+
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    let storageIds: string[] | null = null;
+    await act(async () => {
+      storageIds = await result.current.uploadFiles([file]);
+    });
+
+    expect(storageIds).toEqual(["storage-1"]);
+    expect(global.fetch).toHaveBeenCalledWith("http://upload.url", {
+      method: "POST",
+      headers: { "Content-Type": "image/png" },
+      body: file,
+    });
   });
 });

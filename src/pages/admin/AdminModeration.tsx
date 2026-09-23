@@ -109,8 +109,8 @@ export default function AdminModeration() {
   const [dismissReason, setDismissReason] = useState("");
   const [showDismissDialog, setShowDismissDialog] = useState(false);
 
-  const pendingAuctions = useQuery(api.auctions.getPendingLots);
-  const allPendingFlags = useQuery(api.auctions.getAllPendingFlags);
+  const pendingAuctionsResult = useQuery(api.auctions.getPendingLots);
+  const pendingFlagsResult = useQuery(api.auctions.getAllPendingFlags);
   const allPendingProfileFlags = useQuery(
     api.profileFlags.getAllPendingProfileFlags
   );
@@ -201,8 +201,8 @@ export default function AdminModeration() {
   };
 
   if (
-    pendingAuctions === undefined ||
-    allPendingFlags === undefined ||
+    pendingAuctionsResult === undefined ||
+    pendingFlagsResult === undefined ||
     allPendingProfileFlags === undefined
   ) {
     return (
@@ -217,6 +217,8 @@ export default function AdminModeration() {
     );
   }
 
+  const pendingAuctions = pendingAuctionsResult.items;
+  const allPendingFlags = pendingFlagsResult.items;
   const flaggedAuctionsCount = allPendingFlags.length;
   const reportedProfilesCount = allPendingProfileFlags.length;
 
@@ -233,7 +235,9 @@ export default function AdminModeration() {
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <h2 className="text-xl font-bold">Flagged Listings</h2>
               <Badge variant="destructive" className="ml-2">
-                {flaggedAuctionsCount}
+                {pendingFlagsResult.isTruncated
+                  ? `${String(flaggedAuctionsCount)}+`
+                  : flaggedAuctionsCount}
               </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -370,7 +374,9 @@ export default function AdminModeration() {
             <Flag className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-bold">Pending Review</h2>
             <Badge variant="outline" className="ml-2">
-              {pendingAuctions.length}
+              {pendingAuctionsResult.isTruncated
+                ? `${String(pendingAuctions.length)}+`
+                : pendingAuctions.length}
             </Badge>
           </div>
 

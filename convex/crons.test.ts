@@ -24,6 +24,9 @@ vi.mock("./_generated/api", () => ({
     seed: {
       weeklyReset: "weeklyReset",
     },
+    storageCleanup: {
+      sweepOrphanedUploads: "sweepOrphanedUploads",
+    },
   },
 }));
 
@@ -61,6 +64,12 @@ describe("Crons Coverage", () => {
       "weekly mock data reset",
       { hours: 24 * 7 },
       "weeklyReset"
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "sweep orphaned uploads",
+      { hours: 24 },
+      "sweepOrphanedUploads"
     );
   });
 });

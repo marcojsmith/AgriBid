@@ -1,6 +1,14 @@
 import { render } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { useMutation } from "convex/react";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from "vitest";
+import { useMutation, useQuery } from "convex/react";
 
 import { useSession } from "@/lib/auth-client";
 
@@ -14,6 +22,7 @@ vi.mock("convex/react", () => {
   mockMutation.withOptimisticUpdate.mockReturnValue(mockMutation);
   return {
     useMutation: vi.fn(() => mockMutation),
+    useQuery: vi.fn((): number | undefined => 60000),
   };
 });
 
@@ -24,7 +33,10 @@ vi.mock("@/lib/auth-client", () => ({
 // Mock api
 vi.mock("convex/_generated/api", () => ({
   api: {
-    presence: { heartbeat: "heartbeat" },
+    presence: {
+      heartbeat: "heartbeat",
+      getHeartbeatIntervalMs: "presence:getHeartbeatIntervalMs",
+    },
   },
 }));
 
@@ -77,11 +89,35 @@ describe("PresenceListener", () => {
     render(<PresenceListener />);
     expect(mockHeartbeat).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(25000);
+    vi.advanceTimersByTime(60000);
     expect(mockHeartbeat).toHaveBeenCalledTimes(2);
 
-    vi.advanceTimersByTime(25000);
+    vi.advanceTimersByTime(60000);
     expect(mockHeartbeat).toHaveBeenCalledTimes(3);
+  });
+
+  it("should use the configured interval from the settings query", () => {
+    (useQuery as Mock).mockReturnValue(5000);
+    render(<PresenceListener />);
+    expect(mockHeartbeat).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(4999);
+    expect(mockHeartbeat).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1);
+    expect(mockHeartbeat).toHaveBeenCalledTimes(2);
+  });
+
+  it("should fall back to the default 60s interval while the query is loading", () => {
+    (useQuery as Mock).mockReturnValue(undefined);
+    render(<PresenceListener />);
+    expect(mockHeartbeat).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(59999);
+    expect(mockHeartbeat).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1);
+    expect(mockHeartbeat).toHaveBeenCalledTimes(2);
   });
 
   it("should send heartbeat on visibility change to visible", () => {

@@ -1,13 +1,15 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
+
+import { PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
 
 import AuctionGallery from "./AuctionGallery";
 
 vi.mock("convex/react", () => ({
-  useQuery: vi.fn(),
+  usePaginatedQuery: vi.fn(),
 }));
 
 vi.mock("convex/_generated/api", () => ({
@@ -21,8 +23,15 @@ vi.mock("convex/_generated/api", () => ({
 }));
 
 describe("AuctionGallery Page", () => {
+  const loadMore = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "Exhausted",
+      loadMore,
+    });
   });
 
   const renderPage = () =>
@@ -34,14 +43,17 @@ describe("AuctionGallery Page", () => {
       </HelmetProvider>
     );
 
-  it("renders a loading state while events are undefined", () => {
-    (useQuery as Mock).mockReturnValue(undefined);
+  it("renders a loading state while the first page is loading", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [],
+      status: "LoadingFirstPage",
+      loadMore,
+    });
     renderPage();
     expect(screen.getByText(/Loading auctions/i)).toBeInTheDocument();
   });
 
   it("renders an empty state when there are no published events", () => {
-    (useQuery as Mock).mockReturnValue([]);
     renderPage();
     expect(
       screen.getByText(/No auction events have been published yet/i)
@@ -49,18 +61,22 @@ describe("AuctionGallery Page", () => {
   });
 
   it("renders event cards with title, window and lot count", () => {
-    (useQuery as Mock).mockReturnValue([
-      {
-        _id: "a1",
-        title: "Spring Sale",
-        description: "Tractors and combines",
-        bannerImageUrl: "https://cdn/banner.jpg",
-        startTime: Date.now() - 1000,
-        endTime: Date.now() + 100000,
-        status: "published",
-        lotCount: 3,
-      },
-    ]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "a1",
+          title: "Spring Sale",
+          description: "Tractors and combines",
+          bannerImageUrl: "https://cdn/banner.jpg",
+          startTime: Date.now() - 1000,
+          endTime: Date.now() + 100000,
+          status: "published",
+          lotCount: 3,
+        },
+      ],
+      status: "Exhausted",
+      loadMore,
+    });
     renderPage();
     expect(screen.getByText("Spring Sale")).toBeInTheDocument();
     expect(screen.getByText("Tractors and combines")).toBeInTheDocument();
@@ -69,38 +85,82 @@ describe("AuctionGallery Page", () => {
   });
 
   it("does not show the Live Now badge for a closed event", () => {
-    (useQuery as Mock).mockReturnValue([
-      {
-        _id: "a2",
-        title: "Past Sale",
-        bannerImageUrl: undefined,
-        startTime: Date.now() - 100000,
-        endTime: Date.now() - 1000,
-        status: "closed",
-        lotCount: 1,
-      },
-    ]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "a2",
+          title: "Past Sale",
+          bannerImageUrl: undefined,
+          startTime: Date.now() - 100000,
+          endTime: Date.now() - 1000,
+          status: "closed",
+          lotCount: 1,
+        },
+      ],
+      status: "Exhausted",
+      loadMore,
+    });
     renderPage();
     expect(screen.getByText("Past Sale")).toBeInTheDocument();
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
   });
 
   it("links each card to its container detail page", () => {
-    (useQuery as Mock).mockReturnValue([
-      {
-        _id: "a1",
-        title: "Spring Sale",
-        bannerImageUrl: undefined,
-        startTime: Date.now() - 1000,
-        endTime: Date.now() + 100000,
-        status: "published",
-        lotCount: 3,
-      },
-    ]);
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "a1",
+          title: "Spring Sale",
+          bannerImageUrl: undefined,
+          startTime: Date.now() - 1000,
+          endTime: Date.now() + 100000,
+          status: "published",
+          lotCount: 3,
+        },
+      ],
+      status: "Exhausted",
+      loadMore,
+    });
     renderPage();
     expect(screen.getByRole("link", { name: /Spring Sale/i })).toHaveAttribute(
       "href",
       "/auctions/a1"
     );
+  });
+
+  it("subscribes with the paginated query hook and shows Load More when more pages exist", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "a1",
+          title: "Spring Sale",
+          bannerImageUrl: undefined,
+          startTime: Date.now() - 1000,
+          endTime: Date.now() + 100000,
+          status: "published",
+          lotCount: 3,
+        },
+      ],
+      status: "CanLoadMore",
+      loadMore,
+    });
+    renderPage();
+
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      {},
+      { initialNumItems: 12 }
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /Load More Auctions/i })
+    );
+    expect(loadMore).toHaveBeenCalledWith(PAGINATION_LOAD_MORE_ITEMS);
+  });
+
+  it("hides the Load More button when all pages are loaded", () => {
+    renderPage();
+    expect(
+      screen.queryByRole("button", { name: /Load More Auctions/i })
+    ).not.toBeInTheDocument();
   });
 });

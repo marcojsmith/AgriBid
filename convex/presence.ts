@@ -8,8 +8,10 @@ import {
   type MutationCtx,
 } from "./_generated/server";
 import { getAuthUser } from "./lib/auth";
+import { getSetting } from "./admin/settings";
+import * as constants from "./constants";
 
-export const PRESENCE_HEARTBEAT_THRESHOLD = 30 * 1000; // 30 seconds
+export const PRESENCE_HEARTBEAT_THRESHOLD = 90 * 1000; // 90 seconds (heartbeat interval is 60s)
 
 /**
  * Standardized presence counting logic.
@@ -79,6 +81,24 @@ export const getOnlineCount = query({
     if (!authUser) throw new Error("Unauthorized");
     return await countOnlineUsers(ctx);
   },
+});
+
+/**
+ * Return the admin-configured presence heartbeat interval in milliseconds.
+ *
+ * Public (no auth): every logged-in client's PresenceListener needs this to
+ * pace its heartbeat mutation. Not sensitive — falls back to the hardcoded
+ * default when no admin has overridden it.
+ */
+export const getHeartbeatIntervalMs = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) =>
+    getSetting(
+      ctx,
+      "presence_heartbeat_interval_ms",
+      constants.PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT
+    ),
 });
 
 /**

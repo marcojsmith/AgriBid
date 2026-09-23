@@ -6,6 +6,7 @@ import {
   getSystemConfigHandler,
   updateSystemConfigHandler,
   updateGitHubErrorReportingConfigHandler,
+  updatePerformanceConfigHandler,
   getSetting,
   getBusinessInfoHandler,
   updateBusinessInfoHandler,
@@ -148,6 +149,43 @@ describe("Settings Config", () => {
       expect(result.githubConfig.enabled).toBe(true);
       expect(result.githubConfig.tokenMasked).toBe("****oken");
     });
+
+    it("returns performance section defaults when settings are absent", async () => {
+      const ctx = createMockCtx({});
+
+      const result = await getSystemConfigHandler(ctx);
+
+      expect(result.performance.demoModeEnabled).toEqual({
+        current: false,
+        default: false,
+        key: "demo_mode_enabled",
+      });
+      expect(result.performance.heartbeatIntervalMs).toEqual({
+        current: 60000,
+        default: 60000,
+        key: "presence_heartbeat_interval_ms",
+      });
+    });
+
+    it("returns performance section with stored overrides", async () => {
+      const ctx = createMockCtx({
+        demo_mode_enabled: true,
+        presence_heartbeat_interval_ms: 120000,
+      });
+
+      const result = await getSystemConfigHandler(ctx);
+
+      expect(result.performance.demoModeEnabled).toEqual({
+        current: true,
+        default: false,
+        key: "demo_mode_enabled",
+      });
+      expect(result.performance.heartbeatIntervalMs).toEqual({
+        current: 120000,
+        default: 60000,
+        key: "presence_heartbeat_interval_ms",
+      });
+    });
   });
 
   describe("updateSystemConfig", () => {
@@ -275,6 +313,228 @@ describe("Settings Config", () => {
           value: 6000,
         })
       ).rejects.toThrow("Setting pagination_default_limit cannot exceed 5000");
+    });
+
+    it("updates demo_mode_enabled boolean setting", async () => {
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn(() => ({
+            unique: vi.fn().mockResolvedValue(null),
+          })),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updateSystemConfigHandler(ctx, {
+        key: "demo_mode_enabled",
+        value: true,
+      });
+
+      expect(mockDb.insert).toHaveBeenCalledWith(
+        "settings",
+        expect.objectContaining({
+          key: "demo_mode_enabled",
+          value: true,
+        })
+      );
+    });
+
+    it("updates presence_heartbeat_interval_ms at the bounds", async () => {
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn(() => ({
+            unique: vi.fn().mockResolvedValue(null),
+          })),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updateSystemConfigHandler(ctx, {
+        key: "presence_heartbeat_interval_ms",
+        value: 15000,
+      });
+      await updateSystemConfigHandler(ctx, {
+        key: "presence_heartbeat_interval_ms",
+        value: 300000,
+      });
+
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+      const insertCalls = mockDb.insert.mock.calls as [
+        string,
+        InsertedSettingArgs,
+      ][];
+      expect(insertCalls[0]?.[1].value).toBe(15000);
+      expect(insertCalls[1]?.[1].value).toBe(300000);
+    });
+
+    it("rejects presence_heartbeat_interval_ms below the 15s floor", async () => {
+      const ctx = createMockCtx({});
+      await expect(
+        updateSystemConfigHandler(ctx as unknown as MutationCtx, {
+          key: "presence_heartbeat_interval_ms",
+          value: 14999,
+        })
+      ).rejects.toThrow(
+        "Setting presence_heartbeat_interval_ms cannot be below 15000"
+      );
+    });
+
+    it("rejects presence_heartbeat_interval_ms above the 5min ceiling", async () => {
+      const ctx = createMockCtx({});
+      await expect(
+        updateSystemConfigHandler(ctx as unknown as MutationCtx, {
+          key: "presence_heartbeat_interval_ms",
+          value: 300001,
+        })
+      ).rejects.toThrow(
+        "Setting presence_heartbeat_interval_ms cannot exceed 300000"
+      );
+    });
+
+    it("rejects invalid type for demo_mode_enabled", async () => {
+      const ctx = createMockCtx({});
+      await expect(
+        updateSystemConfigHandler(ctx as unknown as MutationCtx, {
+          key: "demo_mode_enabled",
+          value: "yes",
+        })
+      ).rejects.toThrow(
+        "Invalid type for setting demo_mode_enabled: expected boolean"
+      );
+    });
+  });
+
+  describe("updatePerformanceConfig", () => {
+    const makeInsertDb = () => ({
+      query: vi.fn().mockReturnValue({
+        withIndex: vi.fn(() => ({
+          unique: vi.fn().mockResolvedValue(null),
+        })),
+      }),
+      insert: vi.fn().mockResolvedValue("new_id"),
+      patch: vi.fn(),
+    });
+
+    it("writes both settings in one transaction (insert path)", async () => {
+      const mockDb = makeInsertDb();
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updatePerformanceConfigHandler(ctx, {
+        demoModeEnabled: true,
+        heartbeatIntervalMs: 120000,
+      });
+
+      expect(auth.requireAdmin).toHaveBeenCalled();
+      expect(mockDb.patch).not.toHaveBeenCalled();
+      const insertCalls = mockDb.insert.mock.calls as [
+        string,
+        InsertedSettingArgs,
+      ][];
+      expect(insertCalls).toHaveLength(2);
+      expect(insertCalls[0]?.[1]).toMatchObject({
+        key: "demo_mode_enabled",
+        value: true,
+      });
+      expect(insertCalls[1]?.[1]).toMatchObject({
+        key: "presence_heartbeat_interval_ms",
+        value: 120000,
+      });
+    });
+
+    it("patches existing settings (update path)", async () => {
+      const existing = new Map<string, { _id: string; key: string }>([
+        ["demo_mode_enabled", { _id: "s1", key: "demo_mode_enabled" }],
+        [
+          "presence_heartbeat_interval_ms",
+          { _id: "s2", key: "presence_heartbeat_interval_ms" },
+        ],
+      ]);
+      let currentKey = "";
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn((_idx: string, cb?: (q: unknown) => void) => {
+            const q = {
+              eq: vi.fn((_field: string, val: string) => {
+                currentKey = val;
+                return q;
+              }),
+            };
+            if (cb) cb(q);
+            return {
+              unique: vi
+                .fn()
+                .mockImplementation(() =>
+                  Promise.resolve(existing.get(currentKey) ?? null)
+                ),
+            };
+          }),
+        }),
+        patch: vi.fn().mockResolvedValue(undefined),
+        insert: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updatePerformanceConfigHandler(ctx, {
+        demoModeEnabled: false,
+        heartbeatIntervalMs: 30000,
+      });
+
+      expect(mockDb.patch).toHaveBeenCalledTimes(2);
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-integer heartbeat interval", async () => {
+      const ctx = createMockCtx({});
+      await expect(
+        updatePerformanceConfigHandler(ctx as unknown as MutationCtx, {
+          demoModeEnabled: false,
+          heartbeatIntervalMs: 30000.5,
+        })
+      ).rejects.toThrow(
+        "Presence heartbeat interval must be between 15000 and 300000 ms"
+      );
+    });
+
+    it("rejects a heartbeat interval outside the 15s-5min bounds", async () => {
+      const ctx = createMockCtx({});
+      await expect(
+        updatePerformanceConfigHandler(ctx as unknown as MutationCtx, {
+          demoModeEnabled: false,
+          heartbeatIntervalMs: 14999,
+        })
+      ).rejects.toThrow(
+        "Presence heartbeat interval must be between 15000 and 300000 ms"
+      );
+      await expect(
+        updatePerformanceConfigHandler(ctx as unknown as MutationCtx, {
+          demoModeEnabled: false,
+          heartbeatIntervalMs: 300001,
+        })
+      ).rejects.toThrow(
+        "Presence heartbeat interval must be between 15000 and 300000 ms"
+      );
+    });
+
+    it("logs an audit entry on success", async () => {
+      const mockDb = makeInsertDb();
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      await updatePerformanceConfigHandler(ctx, {
+        demoModeEnabled: true,
+        heartbeatIntervalMs: 60000,
+      });
+
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(
+        ctx,
+        expect.objectContaining({
+          action: "UPDATE_SETTING",
+          targetId: "performance-config",
+        })
+      );
     });
   });
 

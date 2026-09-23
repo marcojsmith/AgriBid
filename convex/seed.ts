@@ -6,6 +6,7 @@ import { MS_PER_DAY, MS_PER_HOUR } from "./constants";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCallerRole } from "./lib/auth";
+import { deleteAuctionImages, safeDelete } from "./lib/storage";
 import { updateCounter } from "./admin_utils";
 import { getLotCounterKey } from "./lots/mutations/helpers";
 
@@ -509,7 +510,102 @@ async function clearTable(
 }
 
 /**
+ * Deletes a profile's KYC document blobs from storage, then deletes the
+ * profile row itself.
+ *
+ * @param ctx - Mutation context used for the storage and row deletes.
+ * @param profile - The profile to delete.
+ */
+async function deleteProfileWithKYCStorage(
+  ctx: MutationCtx,
+  profile: Doc<"profiles">
+): Promise<void> {
+  for (const documentId of profile.kycDocuments ?? []) {
+    await safeDelete(ctx, documentId, "kyc document");
+  }
+  await ctx.db.delete("profiles", profile._id);
+}
+
+/**
+ * Batch-deletes every lot, removing the storage blobs it references
+ * (images and condition report) first so no orphaned files are left behind.
+ *
+ * @param ctx - Mutation context used for the queries and deletes.
+ * @returns The number of lots deleted.
+ */
+async function clearLotsTableWithStorage(ctx: MutationCtx): Promise<number> {
+  let deletedCount = 0;
+  let batch = await ctx.db.query("lots").take(BATCH_SIZE);
+  while (batch.length > 0) {
+    await Promise.all(
+      batch.map(async (lot) => {
+        await deleteAuctionImages(ctx, lot.images);
+        if (lot.conditionReportUrl) {
+          await safeDelete(ctx, lot.conditionReportUrl, "condition report");
+        }
+        await ctx.db.delete("lots", lot._id);
+      })
+    );
+    deletedCount += batch.length;
+    batch = await ctx.db.query("lots").take(BATCH_SIZE);
+  }
+  return deletedCount;
+}
+
+/**
+ * Batch-deletes every auction container, removing its referenced banner-image
+ * blob first so no orphaned files are left behind.
+ *
+ * @param ctx - Mutation context used for the queries and deletes.
+ * @returns The number of auctions deleted.
+ */
+async function clearAuctionsTableWithStorage(
+  ctx: MutationCtx
+): Promise<number> {
+  let deletedCount = 0;
+  let batch = await ctx.db.query("auctions").take(BATCH_SIZE);
+  while (batch.length > 0) {
+    await Promise.all(
+      batch.map(async (auction) => {
+        if (auction.bannerImage) {
+          await safeDelete(ctx, auction.bannerImage, "auction banner image");
+        }
+        await ctx.db.delete("auctions", auction._id);
+      })
+    );
+    deletedCount += batch.length;
+    batch = await ctx.db.query("auctions").take(BATCH_SIZE);
+  }
+  return deletedCount;
+}
+
+/**
+ * Batch-deletes every profile, removing referenced KYC document blobs first
+ * so no orphaned files are left behind. Admin profiles are NOT preserved —
+ * use {@link deleteNonAdminProfiles} when they must be.
+ *
+ * @param ctx - Mutation context used for the queries and deletes.
+ * @returns The number of profiles deleted.
+ */
+async function clearProfilesTableWithStorage(
+  ctx: MutationCtx
+): Promise<number> {
+  let deletedCount = 0;
+  let batch = await ctx.db.query("profiles").take(BATCH_SIZE);
+  while (batch.length > 0) {
+    await Promise.all(
+      batch.map(async (profile) => deleteProfileWithKYCStorage(ctx, profile))
+    );
+    deletedCount += batch.length;
+    batch = await ctx.db.query("profiles").take(BATCH_SIZE);
+  }
+  return deletedCount;
+}
+
+/**
  * Deletes every profile whose role is not "admin".
+ * Each non-admin profile's KYC document blobs are removed from storage before
+ * the profile row itself is deleted, so no orphaned files are left behind.
  * Admin profiles are never touched.
  *
  * @param ctx - Mutation context used for the queries and deletes.
@@ -524,7 +620,7 @@ async function deleteNonAdminProfiles(ctx: MutationCtx): Promise<number> {
   for (let i = 0; i < nonAdminProfiles.length; i += BATCH_SIZE) {
     const batch = nonAdminProfiles.slice(i, i + BATCH_SIZE);
     await Promise.all(
-      batch.map((profile) => ctx.db.delete("profiles", profile._id))
+      batch.map((profile) => deleteProfileWithKYCStorage(ctx, profile))
     );
   }
 
@@ -2300,8 +2396,6 @@ export const runSeed = mutation({
 
     if (args.clear) {
       const tablesToClear: SeedTableNames[] = [
-        "auctions",
-        "lots",
         "bids",
         "proxy_bids",
         "watchlist",
@@ -2318,6 +2412,18 @@ export const runSeed = mutation({
         "equipmentMetadata",
         "equipmentCategories",
       ];
+
+      // Lots and auctions reference storage blobs — clear them through the
+      // storage-aware helpers so those blobs don't orphan here either.
+      const auctionsCount = await clearAuctionsTableWithStorage(ctx);
+      const lotsCount = await clearLotsTableWithStorage(ctx);
+      console.log(
+        `Cleared ${auctionsCount.toString()} records from auctions with storage.`
+      );
+      console.log(
+        `Cleared ${lotsCount.toString()} records from lots with storage.`
+      );
+
       for (const tableName of tablesToClear) {
         const deletedCount = await clearTable(ctx, tableName);
         console.log(
@@ -2344,9 +2450,10 @@ export const clearAuctions = mutation({
     // 1. Sweep and delete all bids first to avoid nested loops/long mutations
     const totalBidsDeleted = await clearTable(ctx, "bids");
 
-    // 2. Delete lots and auction events in batches
-    const lotsCount = await clearTable(ctx, "lots");
-    const auctionsCount = await clearTable(ctx, "auctions");
+    // 2. Delete lots and auction events in batches, removing the storage
+    // blobs they reference first so no orphaned files are left behind.
+    const lotsCount = await clearLotsTableWithStorage(ctx);
+    const auctionsCount = await clearAuctionsTableWithStorage(ctx);
 
     console.log(
       `Cleared ${auctionsCount.toString()} auction events, ${lotsCount.toString()} lots and ${totalBidsDeleted.toString()} bids.`
@@ -2365,21 +2472,25 @@ export const clearAllData = mutation({
   handler: async (ctx) => {
     await checkDestructiveAccess(ctx);
 
+    // Lots, auctions and profiles reference storage blobs — delete through
+    // the storage-aware helpers so the blobs don't orphan here either.
     const appTables: SeedTableNames[] = [
-      "auctions",
-      "lots",
       "bids",
-      "profiles",
       "watchlist",
       "equipmentMetadata",
     ];
 
     let totalDeleted = 0;
 
+    totalDeleted += await clearAuctionsTableWithStorage(ctx);
+    totalDeleted += await clearLotsTableWithStorage(ctx);
+
     // Clear App Tables
     for (const tableName of appTables) {
       totalDeleted += await clearTable(ctx, tableName);
     }
+
+    totalDeleted += await clearProfilesTableWithStorage(ctx);
 
     // Note: Clerk manages user/session/account data externally — there is no
     // Convex-side auth table to wipe here anymore.
@@ -2406,9 +2517,19 @@ export const weeklyReset = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    // Lots and auctions reference storage blobs — clear them through the
+    // storage-aware helpers so those blobs don't orphan here either.
+    const auctionsDeleted = await clearAuctionsTableWithStorage(ctx);
+    console.log(
+      `Cleared ${auctionsDeleted.toString()} records from auctions with storage.`
+    );
+
+    const lotsDeleted = await clearLotsTableWithStorage(ctx);
+    console.log(
+      `Cleared ${lotsDeleted.toString()} records from lots with storage.`
+    );
+
     const tablesToClear: SeedTableNames[] = [
-      "auctions",
-      "lots",
       "bids",
       "proxy_bids",
       "watchlist",

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   heartbeat,
   getOnlineCount,
+  getHeartbeatIntervalMs,
   cleanup,
   countOnlineUsers,
 } from "./presence";
@@ -18,6 +19,14 @@ vi.mock("./_generated/server", () => ({
 
 vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),
+}));
+
+// presence.ts imports getSetting from ./admin/settings, which pulls in
+// admin_utils (crypto/env side effects) — stub it so the module loads cleanly.
+vi.mock("./admin_utils", () => ({
+  logAudit: vi.fn(),
+  decryptPII: vi.fn(),
+  encryptPII: vi.fn(),
 }));
 
 interface QueryMock {
@@ -192,6 +201,54 @@ describe("Presence Coverage", () => {
           }
         ).handler(mockCtx, {})
       ).rejects.toThrow("Unauthorized");
+    });
+  });
+
+  describe("getHeartbeatIntervalMs", () => {
+    it("should return the hardcoded default when no setting is stored", async () => {
+      queryMock.unique.mockResolvedValue(null);
+
+      const result = await (
+        getHeartbeatIntervalMs as unknown as {
+          handler: (...args: unknown[]) => Promise<unknown>;
+        }
+      ).handler(mockCtx, {});
+
+      expect(result).toBe(60000);
+    });
+
+    it("should reflect an admin-written override", async () => {
+      queryMock.unique.mockResolvedValue({
+        key: "presence_heartbeat_interval_ms",
+        value: 120000,
+      });
+
+      const result = await (
+        getHeartbeatIntervalMs as unknown as {
+          handler: (...args: unknown[]) => Promise<unknown>;
+        }
+      ).handler(mockCtx, {});
+
+      expect(result).toBe(120000);
+    });
+
+    it("should fall back to the default on stored type mismatch", async () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+        // intentional no-op: silences the expected type-mismatch warning
+      });
+      queryMock.unique.mockResolvedValue({
+        key: "presence_heartbeat_interval_ms",
+        value: "not a number",
+      });
+
+      const result = await (
+        getHeartbeatIntervalMs as unknown as {
+          handler: (...args: unknown[]) => Promise<unknown>;
+        }
+      ).handler(mockCtx, {});
+
+      expect(result).toBe(60000);
+      consoleSpy.mockRestore();
     });
   });
 
