@@ -22,6 +22,37 @@ interface StorageUploadResponse {
   storageId: string;
 }
 
+const MAX_CONCURRENT_IMAGE_RESIZES = 2;
+
+/**
+ * Create a small in-memory limiter for asynchronous work.
+ *
+ * @param maxConcurrency - Maximum number of tasks allowed to run at once.
+ * @returns A function that schedules a task within the concurrency bound.
+ */
+function createConcurrencyLimiter(maxConcurrency: number) {
+  let activeCount = 0;
+  const waiting: (() => void)[] = [];
+
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (activeCount >= maxConcurrency) {
+      await new Promise<void>((resolve) => {
+        waiting.push(resolve);
+      });
+    }
+
+    activeCount += 1;
+    try {
+      return await task();
+    } finally {
+      activeCount -= 1;
+      waiting.shift()?.();
+    }
+  };
+}
+
+const limitImageResize = createConcurrencyLimiter(MAX_CONCURRENT_IMAGE_RESIZES);
+
 /**
  * Manage file selection, validation, uploading to presigned URLs, and cleanup for client-side file uploads.
  *
@@ -147,7 +178,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
           // small; non-image files (PDFs) pass through untouched. The helper
           // falls back to the original file on any resize failure.
           const payload = file.type.startsWith("image/")
-            ? await resizeImageFile(file)
+            ? await limitImageResize(async () => await resizeImageFile(file))
             : file;
 
           const postUrl = await generateUploadUrl();

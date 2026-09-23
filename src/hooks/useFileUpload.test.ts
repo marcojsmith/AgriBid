@@ -413,6 +413,60 @@ describe("useFileUpload", () => {
     });
   });
 
+  it("limits concurrent image resizes to two", async () => {
+    const { result } = renderHook(() => useFileUpload());
+    const imageFiles = Array.from(
+      { length: 3 },
+      (_, index) =>
+        new File([String(index)], `${String(index)}.png`, {
+          type: "image/png",
+        })
+    );
+    const resizeResolvers: (() => void)[] = [];
+    let activeResizes = 0;
+    let peakActiveResizes = 0;
+
+    vi.mocked(resizeImageFile).mockImplementation(
+      (file: File) =>
+        new Promise((resolve) => {
+          activeResizes += 1;
+          peakActiveResizes = Math.max(peakActiveResizes, activeResizes);
+          resizeResolvers.push(() => {
+            activeResizes -= 1;
+            resolve(file);
+          });
+        })
+    );
+    mockGenerateUploadUrl.mockResolvedValue("http://upload.url");
+    (global.fetch as Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ storageId: "storage-1" }),
+    });
+
+    let uploadPromise: Promise<string[] | null> | undefined;
+    act(() => {
+      uploadPromise = result.current.uploadFiles(imageFiles);
+    });
+
+    await vi.waitFor(() => {
+      expect(resizeImageFile).toHaveBeenCalledTimes(2);
+    });
+    expect(peakActiveResizes).toBe(2);
+
+    resizeResolvers.shift()?.();
+    await vi.waitFor(() => {
+      expect(resizeImageFile).toHaveBeenCalledTimes(3);
+    });
+    resizeResolvers.splice(0).forEach((resolve) => {
+      resolve();
+    });
+    await act(async () => {
+      await uploadPromise;
+    });
+
+    expect(peakActiveResizes).toBe(2);
+  });
+
   it("should not resize non-image files", async () => {
     const { result } = renderHook(() => useFileUpload());
     const pdf = new File(["pdf"], "report.pdf", {

@@ -106,6 +106,12 @@ export const STORAGE_SWEEP_BATCH_SIZE = 500;
 // never treated as orphans.
 export const STORAGE_SWEEP_MIN_AGE_MS = MS_PER_DAY;
 
+// Moving creation-time window examined by the daily storage sweep. The
+// seven-day overlap is longer than the cron interval, giving transiently
+// skipped candidates several opportunities to be examined without letting
+// ancient referenced files occupy every batch forever.
+export const STORAGE_SWEEP_LOOKBACK_MS = 7 * MS_PER_DAY;
+
 /**
  * Support ticket constants.
  */

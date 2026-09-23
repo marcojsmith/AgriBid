@@ -86,6 +86,13 @@ describe("AdminPerformance", () => {
     expect(screen.getByLabelText(/presence heartbeat interval/i)).toHaveValue(
       60
     );
+    expect(screen.getByText(/reserved for future use/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not currently reduce background activity/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/above 90 seconds.*appear offline/i)
+    ).toBeInTheDocument();
   });
 
   it("populates fields from stored overrides", () => {

@@ -4,6 +4,7 @@ import { internalMutation } from "./_generated/server";
 import { extractImageStorageIds, safeDelete } from "./lib/storage";
 import {
   STORAGE_SWEEP_BATCH_SIZE,
+  STORAGE_SWEEP_LOOKBACK_MS,
   STORAGE_SWEEP_MIN_AGE_MS,
 } from "./constants";
 import type { MutationCtx } from "./_generated/server";
@@ -21,14 +22,17 @@ import type { MutationCtx } from "./_generated/server";
  * `auctions`: there is no reverse index from storage ID to owning document,
  * and capping the reference scan would risk misclassifying referenced files
  * as orphans and deleting live data. The scan is bounded on the storage side
- * instead: at most {@link STORAGE_SWEEP_BATCH_SIZE} oldest files are examined
- * per run, so a backlog is drained over consecutive daily runs.
+ * instead: at most {@link STORAGE_SWEEP_BATCH_SIZE} files from a moving
+ * {@link STORAGE_SWEEP_LOOKBACK_MS} window are examined per run. The window
+ * overlaps multiple daily runs and excludes ancient referenced files that
+ * would otherwise occupy every batch.
  *
  * @param ctx - The mutation context.
  * @returns The number of files examined (`scanned`) and deleted (`deleted`).
  */
 export const sweepOrphanedUploadsHandler = async (ctx: MutationCtx) => {
   const cutoff = Date.now() - STORAGE_SWEEP_MIN_AGE_MS;
+  const windowStart = cutoff - STORAGE_SWEEP_LOOKBACK_MS;
 
   const [lots, profiles, auctions] = await Promise.all([
     ctx.db.query("lots").collect(),
@@ -51,11 +55,14 @@ export const sweepOrphanedUploadsHandler = async (ctx: MutationCtx) => {
     if (auction.bannerImage) inUse.add(auction.bannerImage);
   }
 
-  // Default order is ascending `_creationTime`, so `.take()` returns the
-  // oldest qualifying files first.
+  // Scan newest-first within an overlapping creation-time window so files
+  // encountered by earlier runs cannot permanently block newer candidates.
   const candidates = await ctx.db.system
     .query("_storage")
-    .filter((q) => q.lt(q.field("_creationTime"), cutoff))
+    .withIndex("by_creation_time", (q) =>
+      q.gte("_creationTime", windowStart).lt("_creationTime", cutoff)
+    )
+    .order("desc")
     .take(STORAGE_SWEEP_BATCH_SIZE);
 
   let deleted = 0;

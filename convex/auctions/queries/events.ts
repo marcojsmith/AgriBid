@@ -176,10 +176,12 @@ export const getPublishedAuctionsHandler = async (
     ctx.db
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "published"))
+      .order("desc")
       .take(PUBLISHED_AUCTIONS_STATUS_CAP),
     ctx.db
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "closed"))
+      .order("desc")
       .take(PUBLISHED_AUCTIONS_STATUS_CAP),
   ]);
 

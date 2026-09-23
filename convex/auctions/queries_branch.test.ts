@@ -838,8 +838,8 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(queryMock.unique).mockResolvedValue(null); // Missing reporter profile
 
       const result = await getAllPendingFlagsHandler(mockCtx);
-      expect(result[0].lotTitle).toBe("Unknown Auction");
-      expect(result[0].reporterName).toBe("Unknown User");
+      expect(result.items[0].lotTitle).toBe("Unknown Auction");
+      expect(result.items[0].reporterName).toBe("Unknown User");
     });
 
     it("statusesForFilter coverage in shared", async () => {

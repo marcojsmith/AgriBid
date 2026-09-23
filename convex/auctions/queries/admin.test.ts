@@ -216,9 +216,35 @@ describe("Admin Queries - Auction Flags", () => {
 
       expect(auth.requireAdmin).toHaveBeenCalled();
       // The moderation queue is capped so it can't blow up as the table grows.
-      expect(lotsQuery.take).toHaveBeenCalledWith(ADMIN_COLLECTION_CAP);
-      expect(result).toHaveLength(1);
-      expect(result[0]._id).toBe("l1");
+      expect(lotsQuery.take).toHaveBeenCalledWith(ADMIN_COLLECTION_CAP + 1);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]._id).toBe("l1");
+      expect(result.isTruncated).toBe(false);
+    });
+
+    it("marks the pending lot queue as truncated without returning more than the cap", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "u1" });
+
+      const mockLots = Array.from(
+        { length: ADMIN_COLLECTION_CAP + 1 },
+        (_, index) => ({
+          _id: `l${String(index)}`,
+          status: "pending_review",
+          images: {},
+        })
+      ) as unknown as Doc<"lots">[];
+      const lotsQuery = {
+        withIndex: vi.fn().mockReturnThis(),
+        take: vi.fn().mockResolvedValue(mockLots),
+      };
+      mockCtx.db.query.mockReturnValue(lotsQuery);
+
+      const result = await getPendingLotsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+
+      expect(result.items).toHaveLength(ADMIN_COLLECTION_CAP);
+      expect(result.isTruncated).toBe(true);
     });
 
     it("throws when the caller is not an admin", async () => {
@@ -275,9 +301,10 @@ describe("Admin Queries - Auction Flags", () => {
         mockCtx as unknown as QueryCtx
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0].lotTitle).toBe("Test Auction");
-      expect(result[0].reporterName).toBe("Reporter Name");
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].lotTitle).toBe("Test Auction");
+      expect(result.items[0].reporterName).toBe("Reporter Name");
+      expect(result.isTruncated).toBe(false);
     });
 
     it("should return Unknown Auction when auction not found", async () => {
@@ -320,8 +347,47 @@ describe("Admin Queries - Auction Flags", () => {
         mockCtx as unknown as QueryCtx
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0].lotTitle).toBe("Unknown Auction");
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].lotTitle).toBe("Unknown Auction");
+    });
+
+    it("marks the pending flag queue as truncated without returning more than the cap", async () => {
+      vi.mocked(auth.requireAdmin).mockResolvedValue({ _id: "u1" });
+
+      const mockFlags = Array.from(
+        { length: ADMIN_COLLECTION_CAP + 1 },
+        (_, index) => ({
+          _id: `f${String(index)}`,
+          lotId: "a1",
+          reporterId: "u2",
+          reason: "misleading",
+          status: "pending",
+          createdAt: Date.now(),
+        })
+      ) as unknown as Doc<"lotFlags">[];
+      const mockQuery = {
+        withIndex: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        take: vi.fn().mockResolvedValue(mockFlags),
+      };
+      mockCtx.db.query.mockImplementation((table: string) => {
+        if (table === "profiles") {
+          return {
+            withIndex: vi.fn().mockReturnThis(),
+            unique: vi.fn().mockResolvedValue(null),
+          };
+        }
+        return mockQuery;
+      });
+      mockCtx.db.get.mockResolvedValue(null);
+
+      const result = await getAllPendingFlagsHandler(
+        mockCtx as unknown as QueryCtx
+      );
+
+      expect(mockQuery.take).toHaveBeenCalledWith(ADMIN_COLLECTION_CAP + 1);
+      expect(result.items).toHaveLength(ADMIN_COLLECTION_CAP);
+      expect(result.isTruncated).toBe(true);
     });
 
     it("should throw unauthorized error when user is not admin", async () => {

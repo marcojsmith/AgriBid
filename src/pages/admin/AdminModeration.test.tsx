@@ -141,8 +141,10 @@ describe("AdminModeration Page", () => {
 
     // Default mock implementations
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === "auctions:getPendingLots") return mockPendingAuctions;
-      if (apiPath === "auctions:getAllPendingFlags") return mockPendingFlags;
+      if (apiPath === "auctions:getPendingLots")
+        return { items: mockPendingAuctions, isTruncated: false };
+      if (apiPath === "auctions:getAllPendingFlags")
+        return { items: mockPendingFlags, isTruncated: false };
       if (apiPath === "profileFlags:getAllPendingProfileFlags")
         return mockPendingProfileFlags;
       if (apiPath === "admin:getAdminStats")
@@ -184,8 +186,10 @@ describe("AdminModeration Page", () => {
 
   it("renders empty state when there are no pending auctions or flags", () => {
     (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === "auctions:getPendingLots") return [];
-      if (apiPath === "auctions:getAllPendingFlags") return [];
+      if (apiPath === "auctions:getPendingLots")
+        return { items: [], isTruncated: false };
+      if (apiPath === "auctions:getAllPendingFlags")
+        return { items: [], isTruncated: false };
       if (apiPath === "profileFlags:getAllPendingProfileFlags") return [];
       if (apiPath === "admin:getAdminStats")
         return { totalUsers: 100, pendingReview: 0, liveUsers: 10 };
@@ -224,6 +228,29 @@ describe("AdminModeration Page", () => {
     expect(within(oldPlowCard as HTMLElement).getAllByText("N/A")).toHaveLength(
       1
     ); // Hydraulics missing
+  });
+
+  it("marks capped moderation queue badge counts as truncated", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === "auctions:getPendingLots") {
+        return { items: mockPendingAuctions, isTruncated: true };
+      }
+      if (apiPath === "auctions:getAllPendingFlags") {
+        return { items: mockPendingFlags, isTruncated: true };
+      }
+      if (apiPath === "profileFlags:getAllPendingProfileFlags") return [];
+      return undefined;
+    });
+
+    renderPage();
+
+    const flaggedHeader = screen.getByText("Flagged Listings").parentElement;
+    const pendingHeader = screen.getByText("Pending Review").parentElement;
+    if (!flaggedHeader || !pendingHeader) {
+      throw new Error("Expected moderation queue section headers");
+    }
+    expect(within(flaggedHeader).getByText("1+")).toBeVisible();
+    expect(within(pendingHeader).getByText("2+")).toBeVisible();
   });
 
   it("handles auction approval successfully", async () => {
@@ -431,8 +458,12 @@ describe("AdminModeration Page", () => {
       (apiPath: string | { _path?: string } | undefined) => {
         // Handle both object and string paths
         const path = typeof apiPath === "string" ? apiPath : apiPath?._path;
-        if (path === "auctions:getAllPendingFlags") return [unknownFlag];
-        if (path === "auctions:getPendingLots") return [];
+        if (path === "auctions:getAllPendingFlags") {
+          return { items: [unknownFlag], isTruncated: false };
+        }
+        if (path === "auctions:getPendingLots") {
+          return { items: [], isTruncated: false };
+        }
         return [];
       }
     );

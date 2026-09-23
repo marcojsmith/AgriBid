@@ -132,7 +132,8 @@ export default function AdminPerformance() {
               <div className="space-y-1">
                 <Label htmlFor="demo-mode">Demo mode</Label>
                 <p className="text-xs text-muted-foreground">
-                  Reduce background activity for demos and low-traffic periods.
+                  Reserved for future use. This setting does not currently
+                  reduce background activity.
                 </p>
               </div>
               <Switch
@@ -162,7 +163,8 @@ export default function AdminPerformance() {
                 How often signed-in clients ping the server to report presence.
                 Allowed range: {String(HEARTBEAT_INTERVAL_MIN_S)}-
                 {String(HEARTBEAT_INTERVAL_MAX_S)} seconds. Higher values mean
-                fewer background writes.
+                fewer background writes. Intervals above 90 seconds can make
+                signed-in users appear offline between heartbeats.
               </p>
             </div>
 

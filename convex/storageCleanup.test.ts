@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import { sweepOrphanedUploadsHandler } from "./storageCleanup";
+import {
+  STORAGE_SWEEP_BATCH_SIZE,
+  STORAGE_SWEEP_LOOKBACK_MS,
+  STORAGE_SWEEP_MIN_AGE_MS,
+} from "./constants";
 import type { MutationCtx } from "./_generated/server";
 
 describe("sweepOrphanedUploads mutation", () => {
@@ -19,6 +24,7 @@ describe("sweepOrphanedUploads mutation", () => {
   const makeQueryChainMock = (results: Record<string, unknown>[] = []) => ({
     withIndex: vi.fn().mockReturnThis(),
     filter: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
     collect: vi.fn().mockResolvedValue(results),
     take: vi.fn((n: number) => Promise.resolve(results.slice(0, n))),
     unique: vi.fn().mockResolvedValue(results[0] || null),
@@ -103,9 +109,42 @@ describe("sweepOrphanedUploads mutation", () => {
     );
 
     // STORAGE_SWEEP_BATCH_SIZE caps the scan; the backlog drains on later runs.
-    expect(result.scanned).toBe(500);
-    expect(result.deleted).toBe(500);
-    expect(mockCtx.storage.delete).toHaveBeenCalledTimes(500);
+    expect(result.scanned).toBe(STORAGE_SWEEP_BATCH_SIZE);
+    expect(result.deleted).toBe(STORAGE_SWEEP_BATCH_SIZE);
+    expect(mockCtx.storage.delete).toHaveBeenCalledTimes(
+      STORAGE_SWEEP_BATCH_SIZE
+    );
+  });
+
+  it("queries the newest files in a bounded creation-time window before the cutoff", async () => {
+    const storageQuery = makeQueryChainMock([]);
+    mockCtx.db.system.query = vi.fn().mockReturnValue(storageQuery);
+
+    await sweepOrphanedUploadsHandler(mockCtx as unknown as MutationCtx);
+
+    expect(storageQuery.withIndex).toHaveBeenCalledWith(
+      "by_creation_time",
+      expect.any(Function)
+    );
+    const rangeBuilder = storageQuery.withIndex.mock.calls[0][1] as (q: {
+      gte: ReturnType<typeof vi.fn>;
+      lt: ReturnType<typeof vi.fn>;
+    }) => unknown;
+    const range = {
+      gte: vi.fn().mockReturnThis(),
+      lt: vi.fn().mockReturnThis(),
+    };
+    rangeBuilder(range);
+
+    const now = Date.now();
+    const cutoff = now - STORAGE_SWEEP_MIN_AGE_MS;
+    expect(range.gte).toHaveBeenCalledWith(
+      "_creationTime",
+      cutoff - STORAGE_SWEEP_LOOKBACK_MS
+    );
+    expect(range.lt).toHaveBeenCalledWith("_creationTime", cutoff);
+    expect(storageQuery.order).toHaveBeenCalledWith("desc");
+    expect(storageQuery.take).toHaveBeenCalledWith(STORAGE_SWEEP_BATCH_SIZE);
   });
 
   it("should do nothing when storage has no old unreferenced files", async () => {

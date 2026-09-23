@@ -151,6 +151,10 @@ describe("Auction event queries", () => {
         published: vi.fn().mockResolvedValue(published),
         closed: vi.fn().mockResolvedValue(closed),
       };
+      const orderMocks = {
+        published: vi.fn().mockReturnThis(),
+        closed: vi.fn().mockReturnThis(),
+      };
       const lotsQuery = {
         withIndex: vi.fn().mockReturnThis(),
         count: vi.fn().mockResolvedValue(0),
@@ -170,6 +174,10 @@ describe("Auction event queries", () => {
                 },
               });
               return {
+                order:
+                  captured.status === "published"
+                    ? orderMocks.published
+                    : orderMocks.closed,
                 take:
                   captured.status === "published"
                     ? takeMocks.published
@@ -179,7 +187,7 @@ describe("Auction event queries", () => {
           };
         }),
       };
-      return { db, lotsQuery, takeMocks, storage: {} };
+      return { db, lotsQuery, orderMocks, takeMocks, storage: {} };
     }
 
     const paginationOpts = { numItems: 10, cursor: null };
@@ -228,6 +236,25 @@ describe("Auction event queries", () => {
       );
       expect(mock.takeMocks.closed).toHaveBeenCalledWith(
         PUBLISHED_AUCTIONS_STATUS_CAP
+      );
+    });
+
+    it("orders each status bucket newest-first before applying the cap", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+      const mock = makePublishedMockCtx([], []);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      await getPublishedAuctionsHandler(mockCtx as unknown as QueryCtx, {
+        paginationOpts,
+      });
+
+      expect(mock.orderMocks.published).toHaveBeenCalledWith("desc");
+      expect(mock.orderMocks.closed).toHaveBeenCalledWith("desc");
+      expect(
+        mock.orderMocks.published.mock.invocationCallOrder[0]
+      ).toBeLessThan(mock.takeMocks.published.mock.invocationCallOrder[0]);
+      expect(mock.orderMocks.closed.mock.invocationCallOrder[0]).toBeLessThan(
+        mock.takeMocks.closed.mock.invocationCallOrder[0]
       );
     });
 
