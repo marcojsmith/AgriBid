@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Replace hardcoded palette classes with theme tokens and add a guard test (#300) (0.17.17)
 - Add input length caps and per-user rate limits on write mutations (#298) (0.17.16)
 - Harden destructive seed access (no preview bypass, explicit dev opt-in), audit-log seed/promotion, add deny-path tests (#297) (0.17.15)
 - Memoize contexts, nest admin routes under a shared layout, Set-based watchlist lookups (#303) (0.17.14)
