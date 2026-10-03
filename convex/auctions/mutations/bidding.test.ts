@@ -236,6 +236,50 @@ describe("Bidding Coverage", () => {
       );
     });
 
+    it("should reject proxy bid (maxBid) before scheduled startTime (#296)", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockLotAndAuction(lotFixture, {
+        ...publishedAuctionFixture,
+        startTime: Date.now() + 60_000,
+      });
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+          amount: 100,
+          maxBid: 500,
+        })
+      ).rejects.toThrow("Auction has not started");
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should allow proxy bid once scheduled startTime has passed (#296)", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockLotAndAuction(
+        { ...lotFixture, sellerId: "u1" },
+        publishedAuctionFixture
+      );
+      mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
+
+      const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        amount: 110,
+        maxBid: 500,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.confirmedMaxBid).toBe(500);
+    });
+
+
     it("should throw if seller bids on own auction", async () => {
       const userId = "u1";
       vi.mocked(auth.requireVerified).mockResolvedValue({
