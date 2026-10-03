@@ -31,6 +31,7 @@ Last updated: 2026-10-03
 
 ## Done (last 10)
 
+- 2026-10-03: Add per-route error boundaries (#341) (v0.17.7).
 - 2026-10-03: Paginate support tickets and use shared pagination constants (#340) (v0.17.6).
 - 2026-10-03: Noindex private pages, dev-safe site URL fallback, toast on mark-read failure (#344) (v0.17.5).
 - 2026-10-03: Add catch-all 404 route and NotFound page (#306) (v0.17.4).
