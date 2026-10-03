@@ -117,8 +117,8 @@ export default function AdminErrorReportingSettings() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-primary/10 rounded-md">
+                <Shield className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <CardTitle>GitHub Integration</CardTitle>
@@ -250,13 +250,13 @@ export default function AdminErrorReportingSettings() {
                   </p>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 flex gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="bg-warning/10 border border-warning/20 rounded-md p-3 flex gap-3">
+                  <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                   <div className="text-sm">
-                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                    <p className="font-medium text-warning">
                       Security Note
                     </p>
-                    <p className="text-amber-700 dark:text-amber-300 mt-0.5">
+                    <p className="text-warning/80 mt-0.5">
                       Validation errors are filtered out. Only unexpected errors
                       (runtime failures, network issues, etc.) are reported.
                       Error messages are sanitized to remove PII.
@@ -290,8 +290,8 @@ export default function AdminErrorReportingSettings() {
           <Card className="h-fit">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div className="p-2 bg-success/10 rounded-md">
+                  <CheckCircle className="h-5 w-5 text-success" />
                 </div>
                 <div>
                   <CardTitle>Configuration Status</CardTitle>

@@ -89,15 +89,15 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div
-          className="min-h-screen flex items-center justify-center bg-gray-50 p-4"
+          className="min-h-screen flex items-center justify-center bg-muted p-4"
           role="alert"
         >
-          <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
+          <div className="max-w-md w-full bg-card shadow-lg rounded-md p-8 text-center">
             <div className="mb-6">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-destructive/10">
                 <svg
                   aria-hidden="true"
-                  className="h-6 w-6 text-red-600"
+                  className="h-6 w-6 text-destructive"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -112,17 +112,17 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
               Something went wrong
             </h1>
 
-            <p className="text-gray-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               We&apos;re sorry for the inconvenience. The error has been
               automatically reported and we&apos;ll look into it.
             </p>
 
-            <div className="mb-4 p-3 bg-gray-100 border border-gray-200 rounded-md">
-              <p className="text-sm text-gray-700">
+            <div className="mb-4 p-3 bg-muted border border-border rounded-md">
+              <p className="text-sm text-foreground">
                 Error has been logged for investigation
               </p>
             </div>
@@ -130,7 +130,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={this.handleReload}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium mb-2"
+              className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium mb-2"
             >
               Reload Page
             </button>
@@ -138,7 +138,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={this.handleGoBack}
-              className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors font-medium"
+              className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors font-medium"
             >
               Go Back
             </button>

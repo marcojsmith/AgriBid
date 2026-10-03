@@ -101,8 +101,8 @@ export const MediaGalleryStep = () => {
                       Remove
                     </Button>
                   </div>
-                  <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm">
-                    <Check className="h-3 w-3 text-green-600" />
+                  <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                    <Check className="h-3 w-3 text-success" />
                     {slot.label} (UPLOADED)
                   </div>
                 </>

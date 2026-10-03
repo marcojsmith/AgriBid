@@ -178,7 +178,7 @@ export const PricingDurationStep = () => {
               </Badge>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 w-[85%]" />
+              <div className="h-full bg-success w-[85%]" />
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Based on recent auctions for{" "}

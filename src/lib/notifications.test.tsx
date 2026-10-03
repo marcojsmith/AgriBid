@@ -14,13 +14,13 @@ describe("notifications lib", () => {
   describe("getNotificationIcon", () => {
     it("should return correct icons for types", () => {
       const { container: success } = render(getNotificationIcon("success"));
-      expect(success.querySelector(".text-green-500")).toBeInTheDocument();
+      expect(success.querySelector(".text-success")).toBeInTheDocument();
 
       const { container: error } = render(getNotificationIcon("error"));
       expect(error.querySelector(".text-destructive")).toBeInTheDocument();
 
       const { container: warning } = render(getNotificationIcon("warning"));
-      expect(warning.querySelector(".text-orange-500")).toBeInTheDocument();
+      expect(warning.querySelector(".text-warning")).toBeInTheDocument();
 
       const { container: def } = render(getNotificationIcon("info"));
       expect(def.querySelector(".text-primary")).toBeInTheDocument();

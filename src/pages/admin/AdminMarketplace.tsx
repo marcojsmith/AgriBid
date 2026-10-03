@@ -52,7 +52,7 @@ export default function AdminMarketplace() {
     >
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
         {adminStats.status === "partial" && (
-          <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 rounded-lg text-sm font-medium">
+          <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/20 text-warning rounded-md text-sm font-medium">
             <AlertCircle className="h-4 w-4" />
             Warning: Background aggregates are currently partial. Global metric
             numbers may be out of sync.

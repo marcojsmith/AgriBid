@@ -88,56 +88,56 @@ interface ActivityMeta {
 const ACTIVITY_META: Record<ActivityType, ActivityMeta> = {
   account_created: {
     icon: UserCheck,
-    bgClass: "bg-blue-500/10",
-    iconColor: "text-blue-600",
+    bgClass: "bg-primary/10",
+    iconColor: "text-primary",
     title: "Account created",
   },
   verification_requested: {
     icon: ShieldAlert,
-    bgClass: "bg-amber-500/10",
-    iconColor: "text-amber-600",
+    bgClass: "bg-warning/10",
+    iconColor: "text-warning",
     title: "Verification requested",
   },
   verification_approved: {
     icon: ShieldCheck,
-    bgClass: "bg-green-500/10",
-    iconColor: "text-green-600",
+    bgClass: "bg-success/10",
+    iconColor: "text-success",
     title: "Verification approved",
   },
   verification_rejected: {
     icon: ShieldAlert,
-    bgClass: "bg-red-500/10",
-    iconColor: "text-red-600",
+    bgClass: "bg-destructive/10",
+    iconColor: "text-destructive",
     title: "Verification rejected",
   },
   role_changed: {
     icon: ShieldCheck,
-    bgClass: "bg-blue-500/10",
-    iconColor: "text-blue-600",
+    bgClass: "bg-primary/10",
+    iconColor: "text-primary",
     title: "Role changed",
   },
   listing_created: {
     icon: Tag,
-    bgClass: "bg-blue-500/10",
-    iconColor: "text-blue-600",
+    bgClass: "bg-primary/10",
+    iconColor: "text-primary",
     title: "Listing created",
   },
   listing_sold: {
     icon: Award,
-    bgClass: "bg-green-500/10",
-    iconColor: "text-green-600",
+    bgClass: "bg-success/10",
+    iconColor: "text-success",
     title: "Listing sold",
   },
   bid_placed: {
     icon: Gavel,
-    bgClass: "bg-amber-500/10",
-    iconColor: "text-amber-600",
+    bgClass: "bg-warning/10",
+    iconColor: "text-warning",
     title: "Bid placed",
   },
   bid_won: {
     icon: Trophy,
-    bgClass: "bg-green-500/10",
-    iconColor: "text-green-600",
+    bgClass: "bg-success/10",
+    iconColor: "text-success",
     title: "Auction won",
   },
 };
@@ -435,7 +435,7 @@ export default function Profile() {
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 lg:gap-8">
         {/* Sidebar — single merged card */}
         <aside>
-          <Card className="bg-card border border-primary/10 rounded-lg overflow-hidden">
+          <Card className="bg-card border border-primary/10 rounded-md overflow-hidden">
             {/* Profile header */}
             <div className="h-14 sm:h-20 bg-gradient-to-br from-primary to-accent" />
             <CardContent className="p-4 sm:p-6">
@@ -659,7 +659,7 @@ export default function Profile() {
             <div className="px-4 py-3 flex items-center justify-between">
               <div>
                 {sellerInfo.avgRating !== undefined ? (
-                  <p className="text-amber-500 tracking-widest">
+                  <p className="text-warning tracking-widest">
                     {"★".repeat(Math.round(sellerInfo.avgRating))}
                     {"☆".repeat(5 - Math.round(sellerInfo.avgRating))}
                   </p>
@@ -870,7 +870,7 @@ export default function Profile() {
         {/* Main Content */}
         <main className="space-y-6">
           {/* Active Auctions */}
-          <Card className="bg-card border border-primary/10 rounded-lg">
+          <Card className="bg-card border border-primary/10 rounded-md">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -912,11 +912,11 @@ export default function Profile() {
 
           {/* Past Sales */}
           {sellerInfo.itemsSold > 0 && (
-            <Card className="bg-card border border-primary/10 rounded-lg">
+            <Card className="bg-card border border-primary/10 rounded-md">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <Award className="h-4 w-4 text-green-600" />
+                    <Award className="h-4 w-4 text-success" />
                     <h2 className="text-lg font-bold text-success">
                       Sales History
                     </h2>
@@ -953,10 +953,10 @@ export default function Profile() {
           )}
 
           {/* Reviews */}
-          <Card className="bg-card border border-primary/10 rounded-lg">
+          <Card className="bg-card border border-primary/10 rounded-md">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Star className="h-4 w-4 text-amber-500" />
+                <Star className="h-4 w-4 text-warning" />
                 <h2 className="text-lg font-black uppercase tracking-wide text-primary">
                   Reviews
                 </h2>
@@ -981,7 +981,7 @@ export default function Profile() {
                           </p>
                         </div>
                         <p
-                          className="text-amber-500 tracking-widest mt-1"
+                          className="text-warning tracking-widest mt-1"
                           aria-label={`Rated ${String(review.rating)} out of 5 stars`}
                         >
                           {"★".repeat(Math.round(review.rating))}
@@ -1042,7 +1042,7 @@ export default function Profile() {
           {/* Recent Activity */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <UserCheck className="h-4 w-4 text-blue-600" />
+              <UserCheck className="h-4 w-4 text-primary" />
               <h2 className="text-lg font-bold text-primary">
                 Recent Activity
               </h2>
@@ -1105,7 +1105,7 @@ export default function Profile() {
                   >
                     <Icon
                       className={`h-5 w-5 mx-auto mb-2 ${
-                        item.verified ? "text-green-600" : "text-amber-600"
+                        item.verified ? "text-success" : "text-warning"
                       }`}
                     />
                     <p className="text-xs font-semibold text-muted-foreground mb-1">
@@ -1113,7 +1113,7 @@ export default function Profile() {
                     </p>
                     <p
                       className={`text-xs font-bold ${
-                        item.verified ? "text-green-600" : "text-amber-600"
+                        item.verified ? "text-success" : "text-warning"
                       }`}
                     >
                       {item.value}

@@ -50,7 +50,7 @@ describe("AuctionCardThumbnail", () => {
     const button = screen.getByRole("button", {
       name: /remove from watchlist/i,
     });
-    expect(button).toHaveClass("text-red-500");
+    expect(button).toHaveClass("text-destructive");
   });
 
   it("renders compact layout when isCompact is true", () => {

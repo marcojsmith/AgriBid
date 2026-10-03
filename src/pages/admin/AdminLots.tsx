@@ -386,7 +386,7 @@ export default function AdminLots() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col text-xs font-bold font-mono">
-                        <span className="text-green-600">
+                        <span className="text-success">
                           {formatCurrency(a.currentPrice)}
                         </span>
                         <span className="text-muted-foreground/60 text-[10px]">
@@ -505,9 +505,9 @@ export default function AdminLots() {
                           {formatCurrency(closingAuction.reservePrice)}{" "}
                           {closingAuction.currentPrice >=
                           closingAuction.reservePrice ? (
-                            <span className="text-green-600">✓ Met</span>
+                            <span className="text-success">✓ Met</span>
                           ) : (
-                            <span className="text-red-600">✗ Not Met</span>
+                            <span className="text-destructive">✗ Not Met</span>
                           )}
                         </div>
                       </div>
@@ -524,7 +524,7 @@ export default function AdminLots() {
                         </span>
                       </div>
                     )}
-                    <div className="pt-2 border-t text-yellow-600 text-sm font-medium">
+                    <div className="pt-2 border-t text-warning text-sm font-medium">
                       ⚠️ This action will immediately close the lot. If the
                       reserve price is met, the highest bidder will be awarded
                       the item. If not met, the lot will be marked as unsold.
