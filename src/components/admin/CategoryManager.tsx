@@ -14,6 +14,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -56,6 +66,9 @@ export function CategoryManager({
 }: CategoryManagerProps) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
+    null
+  );
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
@@ -170,16 +183,7 @@ export function CategoryManager({
                         className="h-8 w-8 text-destructive"
                         aria-label={`Deactivate category ${cat.name}`}
                         onClick={() => {
-                          if (confirm(`Deactivate category "${cat.name}"?`)) {
-                            deleteCategory({ id: cat._id }).catch(
-                              (err: unknown) =>
-                                toast.error(
-                                  err instanceof Error
-                                    ? err.message
-                                    : "Failed to delete"
-                                )
-                            );
-                          }
+                          setCategoryToDelete(cat);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -213,6 +217,43 @@ export function CategoryManager({
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog
+        open={categoryToDelete != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCategoryToDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate category</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate "{categoryToDelete?.name}"?
+              This will hide it from the marketplace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (categoryToDelete) {
+                  deleteCategory({ id: categoryToDelete._id }).catch(
+                    (err: unknown) =>
+                      toast.error(
+                        err instanceof Error ? err.message : "Failed to delete"
+                      )
+                  );
+                  setCategoryToDelete(null);
+                }
+              }}
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

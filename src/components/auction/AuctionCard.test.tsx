@@ -385,6 +385,41 @@ describe("AuctionCard", () => {
     });
   });
 
+  it("syncs isWatched state with prop changes without effect", async () => {
+    const { rerender } = renderWithRouter({ isWatched: false });
+
+    const watchlistButton = screen.getByRole("button", { name: /watchlist/i });
+    expect(watchlistButton).toHaveAttribute("aria-pressed", "false");
+
+    rerender(
+      <BrowserRouter>
+        <AuctionCard
+          auction={mockAuction as unknown as LotSummary}
+          isWatched={true}
+        />
+      </BrowserRouter>
+    );
+
+    expect(watchlistButton).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("reflects optimistic watchlist toggle before server response", async () => {
+    mockToggleWatchlist.mockImplementation(
+      () => new Promise<boolean>(() => undefined)
+    );
+
+    renderWithRouter({ isWatched: false });
+
+    const watchlistButton = screen.getByRole("button", { name: /watchlist/i });
+    expect(watchlistButton).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(watchlistButton);
+
+    await waitFor(() => {
+      expect(mockToggleWatchlist).toHaveBeenCalled();
+    });
+  });
+
   it("handles watchlist toggle error", async () => {
     mockToggleWatchlist.mockRejectedValue(new Error("Fail"));
     renderWithRouter();

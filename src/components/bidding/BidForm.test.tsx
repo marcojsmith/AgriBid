@@ -341,6 +341,51 @@ describe("BidForm", () => {
     expect(screen.getByLabelText(/enable auto-bid/i)).toBeChecked();
   });
 
+  it("renders proxy checkbox as a Radix checkbox with role=checkbox", () => {
+    render(
+      <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
+    );
+
+    expandAutoBid();
+
+    const checkbox = screen.getByRole("checkbox", { name: /enable auto-bid/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveAttribute("data-state", "unchecked");
+  });
+
+  it("toggles proxy checkbox state on click", () => {
+    render(
+      <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
+    );
+
+    expandAutoBid();
+
+    const checkbox = screen.getByRole("checkbox", { name: /enable auto-bid/i });
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute("data-state", "checked");
+
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute("data-state", "unchecked");
+  });
+
+  it("supports keyboard operation on proxy checkbox", () => {
+    render(
+      <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
+    );
+
+    expandAutoBid();
+
+    const checkbox = screen.getByRole("checkbox", { name: /enable auto-bid/i });
+    checkbox.focus();
+    expect(checkbox).toHaveFocus();
+
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute("data-state", "checked");
+
+    fireEvent.click(checkbox);
+    expect(checkbox).toHaveAttribute("data-state", "unchecked");
+  });
+
   it("expands and collapses the auto-bid section via the toggle", () => {
     render(
       <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
