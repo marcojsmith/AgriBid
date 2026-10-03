@@ -163,4 +163,47 @@ describe("AuctionGallery Page", () => {
       screen.queryByRole("button", { name: /Load More Auctions/i })
     ).not.toBeInTheDocument();
   });
+
+  it("leaves horizontal spacing to the layout so cards align with other pages", () => {
+    renderPage();
+
+    // The page root wraps the heading block; it must add no horizontal padding
+    // of its own on top of the layout's `px-4 md:px-8`.
+    const pageRoot = screen.getByRole("heading", {
+      level: 1,
+      name: /Auctions/i,
+    }).parentElement?.parentElement;
+
+    expect(pageRoot).not.toBeNull();
+    expect(pageRoot?.className ?? "").not.toMatch(/(^|\s)px-/);
+    expect(pageRoot).toHaveClass("max-w-6xl", "mx-auto");
+  });
+
+  it("tightens the page wrapper and card grid on phones", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "a1",
+          title: "Spring Sale",
+          description: "Tractors and combines",
+          bannerImageUrl: "https://cdn/banner.jpg",
+          startTime: Date.now() - 1000,
+          endTime: Date.now() + 100000,
+          status: "published",
+          lotCount: 3,
+        },
+      ],
+      status: "Exhausted",
+      loadMore,
+    });
+    const { container } = renderPage();
+
+    // A flat `py-10`/`gap-6` wasted ~90px of a 375px viewport before the
+    // first card was even visible.
+    expect(container.querySelector(".max-w-6xl")).toHaveClass(
+      "py-6",
+      "sm:py-10"
+    );
+    expect(container.querySelector(".grid")).toHaveClass("gap-4", "sm:gap-6");
+  });
 });

@@ -109,10 +109,17 @@ describe("AuctionHeader", () => {
 
   it("hides the subtitle when make or model is missing", () => {
     const noModelAuction = { ...mockAuction, model: undefined };
-    renderComponent(
-      noModelAuction as unknown as LotDetail
-    );
+    renderComponent(noModelAuction as unknown as LotDetail);
     expect(screen.queryByText("2022 John Deere 8R")).not.toBeInTheDocument();
+  });
+
+  it("tightens the meta row spacing on phones", () => {
+    renderComponent();
+
+    // The location/hours/year row sat under the title with `gap-6 pt-2`, which
+    // wrapped to two rows on a 375px phone with a lot of trailing whitespace.
+    const metaRow = screen.getByText("Iowa").parentElement?.parentElement;
+    expect(metaRow).toHaveClass("gap-4", "sm:gap-6", "pt-1", "sm:pt-2");
   });
 
   it("shows login toast when unauthenticated user clicks watch", () => {
@@ -156,9 +163,7 @@ describe("AuctionHeader", () => {
       data: { user: { id: "u1" } },
       isPending: false,
     } as ReturnType<typeof useSession>);
-    renderComponent(
-      soldAuction as unknown as LotDetail
-    );
+    renderComponent(soldAuction as unknown as LotDetail);
     expect(screen.getByText("You won")).toBeDefined();
     expect(screen.getByText(/Congratulations/i)).toBeDefined();
   });
@@ -173,17 +178,13 @@ describe("AuctionHeader", () => {
       data: { user: { id: "u1" } },
       isPending: false,
     } as ReturnType<typeof useSession>);
-    renderComponent(
-      soldAuction as unknown as LotDetail
-    );
+    renderComponent(soldAuction as unknown as LotDetail);
     expect(screen.getByText("Sold")).toBeDefined();
   });
 
   it("shows UNSOLD badge", () => {
     const unsoldAuction = { ...mockAuction, status: "unsold" as const };
-    renderComponent(
-      unsoldAuction as unknown as LotDetail
-    );
+    renderComponent(unsoldAuction as unknown as LotDetail);
     expect(screen.getByText("Unsold")).toBeDefined();
   });
 
@@ -198,9 +199,7 @@ describe("AuctionHeader", () => {
       data: { user: { id: "s1" } },
       isPending: false,
     } as ReturnType<typeof useSession>);
-    renderComponent(
-      soldAuction as unknown as LotDetail
-    );
+    renderComponent(soldAuction as unknown as LotDetail);
     expect(screen.getByText("Item Sold")).toBeDefined();
     expect(screen.getByText(/Reserve met/i)).toBeDefined();
   });
@@ -267,9 +266,7 @@ describe("AuctionHeader", () => {
 
   it("renders UNCATEGORIZED_LABEL when categoryName is missing", () => {
     const noCatAuction = { ...mockAuction, categoryName: undefined };
-    renderComponent(
-      noCatAuction as unknown as LotDetail
-    );
+    renderComponent(noCatAuction as unknown as LotDetail);
     expect(screen.getByText("Uncategorized")).toBeDefined();
   });
 

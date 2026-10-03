@@ -40,7 +40,7 @@ export default function AuctionGallery() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-6xl mx-auto py-6 sm:py-10 space-y-6 sm:space-y-8">
       <Helmet>
         <title>{buildTitle("Auctions")}</title>
         <meta name="description" content={DEFAULT_DESCRIPTION} />
@@ -58,7 +58,7 @@ export default function AuctionGallery() {
 
       {events.length === 0 ? (
         <Card className="border border-dashed">
-          <div className="text-center py-20 space-y-4">
+          <div className="text-center py-10 sm:py-20 space-y-4">
             <Calendar className="h-10 w-10 text-muted-foreground/20 mx-auto" />
             <p className="text-muted-foreground font-bold">
               No auction events have been published yet.
@@ -66,8 +66,8 @@ export default function AuctionGallery() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-6 sm:space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {events.map((event) => (
               <AuctionEventCard key={event._id} event={event} now={now} />
             ))}

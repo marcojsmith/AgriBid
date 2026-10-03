@@ -17,10 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
-import {
-  getLotLiveWindow,
-  useLotLiveWindow,
-} from "@/hooks/useLotLiveWindow";
+import { getLotLiveWindow, useLotLiveWindow } from "@/hooks/useLotLiveWindow";
 
 import { BidForm } from "./BidForm";
 
@@ -97,8 +94,7 @@ export const BiddingPanel = ({
   const kycStatus = isProfileLoading ? undefined : userData?.profile?.kycStatus;
 
   if (liveWindow.isUnavailable) {
-    const copy =
-      UNAVAILABLE_COPY[auction.status] ?? UNAVAILABLE_COPY.draft;
+    const copy = UNAVAILABLE_COPY[auction.status] ?? UNAVAILABLE_COPY.draft;
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
@@ -283,20 +279,20 @@ export const BiddingPanel = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
+    <div className="@container space-y-6">
+      <div className="flex flex-col items-start gap-2 @[28rem]:flex-row @[28rem]:items-start @[28rem]:justify-between">
+        <div className="min-w-0 space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
             Current Bid
           </p>
           <div
-            className={`flex items-baseline gap-2 rounded-md p-2 border transition-colors duration-700 ${
+            className={`flex flex-wrap items-baseline gap-x-2 gap-y-1 min-w-0 rounded-md p-2 -mx-2 border transition-colors duration-700 ${
               isHighlighted
                 ? "bg-success/10 border-success/30"
                 : "border-transparent"
             }`}
           >
-            <span className="text-4xl font-bold tabular-nums text-primary tracking-tighter">
+            <span className="whitespace-nowrap text-3xl font-bold tabular-nums text-primary tracking-tighter @[28rem]:text-4xl">
               {formatCurrency(auction.currentPrice)}
             </span>
             {liveWindow.isLive && (
@@ -309,7 +305,7 @@ export const BiddingPanel = ({
             )}
           </div>
         </div>
-        <div className="text-right space-y-1">
+        <div className="min-w-0 space-y-1 whitespace-nowrap @[28rem]:text-right">
           <p className="text-xs font-medium text-muted-foreground">
             {liveWindow.isUpcoming ? "Starts In" : "Time Remaining"}
           </p>
@@ -349,13 +345,11 @@ export const BiddingPanel = ({
             </Alert>
           )}
 
-          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground bg-muted/30 p-3 rounded-lg border">
-            <Gavel className="h-4 w-4 text-primary" />
-            <span>
-              Next minimum bid:{" "}
-              <span className="text-foreground tabular-nums">
-                {formatCurrency(nextMinBid)}
-              </span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 text-sm font-semibold text-muted-foreground bg-muted/30 p-3 rounded-lg border">
+            <Gavel className="h-4 w-4 shrink-0 text-primary" />
+            <span className="min-w-0">Next minimum bid:</span>
+            <span className="whitespace-nowrap text-foreground tabular-nums">
+              {formatCurrency(nextMinBid)}
             </span>
           </div>
 

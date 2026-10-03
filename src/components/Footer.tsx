@@ -61,11 +61,11 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="bg-muted/30 border-t py-16">
+    <footer className="bg-muted/30 border-t py-8 md:py-16">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+        <div className="grid grid-cols-2 gap-8 md:gap-10 lg:grid-cols-4 lg:gap-12">
           {/* Brand Column */}
-          <div className="space-y-6">
+          <div className="col-span-2 md:col-span-1 space-y-4 md:space-y-6">
             <div className="font-bold text-3xl text-primary">
               {businessName.toUpperCase()}
             </div>
@@ -74,7 +74,7 @@ export const Footer = () => {
               by farmers. We provide a transparent, high-integrity platform for
               equipment liquidation.
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-3 md:gap-4">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <ShieldCheck className="h-4 w-4" />
               </div>
@@ -88,11 +88,11 @@ export const Footer = () => {
 
           {/* Navigation Sections */}
           {footerSections.map((section) => (
-            <div key={section.title} className="space-y-6">
+            <div key={section.title} className="space-y-4 md:space-y-6">
               <h3 className="text-xs font-semibold text-primary">
                 {section.title}
               </h3>
-              <ul className="space-y-4">
+              <ul className="space-y-3 md:space-y-4">
                 {section.links.map((link) => {
                   const isPlaceholder = link.href.startsWith("#");
                   const content = (
@@ -102,7 +102,7 @@ export const Footer = () => {
                     </>
                   );
                   const className =
-                    "group flex items-center gap-3 text-xs text-muted-foreground hover:text-primary transition-colors";
+                    "group flex items-center gap-2 md:gap-3 text-xs text-muted-foreground hover:text-primary transition-colors";
 
                   return (
                     <li key={link.name}>
@@ -123,11 +123,11 @@ export const Footer = () => {
           ))}
 
           {/* Contact Info */}
-          <div className="space-y-6">
+          <div className="col-span-2 md:col-span-1 space-y-4 md:space-y-6">
             <h3 className="text-xs font-semibold text-primary">Headquarters</h3>
-            <ul className="space-y-4">
+            <ul className="space-y-3 md:space-y-4">
               {addressParts && (
-                <li className="flex items-start gap-3 text-xs text-muted-foreground">
+                <li className="flex items-start gap-2 md:gap-3 text-xs text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressParts)}`}
@@ -140,7 +140,7 @@ export const Footer = () => {
                 </li>
               )}
               {telephone && (
-                <li className="flex items-center gap-3 text-xs text-muted-foreground">
+                <li className="flex items-center gap-2 md:gap-3 text-xs text-muted-foreground">
                   <Phone className="h-3.5 w-3.5" />
                   <a
                     href={`tel:${telephone.replace(/[^0-9+]/g, "")}`}
@@ -154,7 +154,7 @@ export const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-16 pt-8 border-t border-muted flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="mt-8 pt-6 md:mt-16 md:pt-8 border-t border-muted flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} {businessName}. All rights reserved.
           </p>

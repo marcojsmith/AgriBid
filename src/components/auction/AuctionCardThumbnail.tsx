@@ -59,13 +59,15 @@ export function AuctionCardThumbnail({
     <div
       className={cn(
         "shrink-0 flex flex-col",
-        isCompact ? "w-[120px] sm:w-[160px] md:w-[180px]" : "w-full"
+        isCompact
+          ? "w-[120px] sm:w-[160px] md:w-[180px] h-full bg-muted"
+          : "w-full"
       )}
     >
       <div
         className={cn(
           "bg-muted flex items-center justify-center relative overflow-hidden transition-all duration-300",
-          isCompact ? "aspect-[4/3] h-full border-r" : "aspect-video"
+          isCompact ? "aspect-[4/3] shrink-0 border-r" : "aspect-video"
         )}
       >
         {primaryImage && primaryImage !== failedImage ? (
@@ -123,11 +125,12 @@ export function AuctionCardThumbnail({
         </div>
       </div>
 
-      {/* Timer - Under Image */}
+      {/* Timer - Under Image. `flex-1` so the strip absorbs any leftover column
+          height and the grey column always reaches the bottom of the card. */}
       {isCompact && !isClosed && (
         <div
           className={cn(
-            "flex items-center justify-center px-2 border-r h-12 border-t gap-1",
+            "flex items-center justify-center px-2 border-r h-12 border-t gap-1 flex-1",
             isNotStarted ? "bg-warning/10" : "bg-muted/30"
           )}
         >

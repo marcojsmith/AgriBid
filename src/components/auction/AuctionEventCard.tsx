@@ -42,7 +42,7 @@ export const AuctionEventCard = ({ event, now }: AuctionEventCardProps) => {
   return (
     <Link to={`/auctions/${event._id}`} className="block group">
       <Card className="overflow-hidden border hover:shadow-lg transition-shadow h-full">
-        <div className="h-40 bg-muted relative">
+        <div className="h-32 sm:h-40 bg-muted relative">
           {event.bannerImageUrl ? (
             <img
               src={event.bannerImageUrl}
@@ -60,7 +60,7 @@ export const AuctionEventCard = ({ event, now }: AuctionEventCardProps) => {
             </Badge>
           )}
         </div>
-        <div className="p-4 space-y-2">
+        <div className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
           <h2 className="font-bold text-base leading-tight group-hover:text-primary transition-colors">
             {event.title}
           </h2>
@@ -69,7 +69,7 @@ export const AuctionEventCard = ({ event, now }: AuctionEventCardProps) => {
               {event.description}
             </p>
           )}
-          <p className="text-xs text-muted-foreground font-medium pt-1">
+          <p className="text-xs text-muted-foreground font-medium pt-0.5 sm:pt-1">
             {new Date(event.startTime).toLocaleDateString()} –{" "}
             {new Date(event.endTime).toLocaleDateString()}
           </p>

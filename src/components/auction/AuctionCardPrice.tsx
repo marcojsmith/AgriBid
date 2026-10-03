@@ -15,6 +15,12 @@ interface AuctionCardPriceProps {
 /**
  * Display the current bid and auction countdown, or render nothing in compact mode.
  *
+ * The row stacks by default and only switches to a side-by-side layout once the
+ * container is at least 24rem wide, so the layout follows the card width rather
+ * than the viewport — a 2/3-column lots grid makes cards far narrower than the
+ * viewport. An ancestor (the card's content wrapper) must therefore be marked
+ * `@container`, otherwise every `@[...]` variant here silently never applies.
+ *
  * @param props - Component props
  * @param props.currentPrice - The current bid amount in rand
  * @param props.endTime - Optional auction end timestamp in milliseconds used to initialise the countdown
@@ -37,9 +43,9 @@ export function AuctionCardPrice({
   if (isCompact) return null;
 
   return (
-    <div className="flex justify-between items-end mt-2 md:mt-4">
+    <div className="flex flex-col items-start gap-1 mt-2 @[24rem]:mt-4 @[24rem]:flex-row @[24rem]:items-end @[24rem]:justify-between">
       <div
-        className={`rounded-lg p-2 border transition-colors duration-700 ${
+        className={`min-w-0 rounded-lg p-2 -mx-2 border transition-colors duration-700 ${
           isHighlighted
             ? "bg-success/10 border-success/30"
             : "border-transparent"
@@ -48,12 +54,12 @@ export function AuctionCardPrice({
         <p className="text-muted-foreground font-medium text-xs">
           {isNotStarted ? "Starting price" : "Current bid"}
         </p>
-        <p className="font-bold tabular-nums text-primary tracking-tight leading-none text-2xl md:text-3xl">
+        <p className="font-bold tabular-nums text-primary tracking-tight leading-none whitespace-nowrap text-xl @[18rem]:text-2xl @[24rem]:text-3xl">
           {formatCurrency(currentPrice)}
         </p>
       </div>
       {!isClosed && (
-        <div className="text-right">
+        <div className="min-w-0 whitespace-nowrap @[24rem]:text-right">
           <p
             className={`text-xs font-medium ${isNotStarted ? "text-warning" : "text-muted-foreground"}`}
           >

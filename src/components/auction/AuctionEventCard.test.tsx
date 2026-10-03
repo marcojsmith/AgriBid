@@ -92,4 +92,18 @@ describe("AuctionEventCard", () => {
       "/auctions/a1"
     );
   });
+
+  it("uses a shorter banner and tighter body padding on phones", () => {
+    renderCard({ ...baseEvent, bannerImageUrl: "https://cdn/banner.jpg" });
+
+    // Each card was ~314px tall on a 375px phone; the banner took a third of
+    // that. Phones get a shorter banner, desktop keeps `h-40`.
+    expect(
+      screen.getByRole("img", { name: "Spring Sale" }).parentElement
+    ).toHaveClass("h-32", "sm:h-40");
+    expect(screen.getByText("Spring Sale").parentElement).toHaveClass(
+      "p-3",
+      "sm:p-4"
+    );
+  });
 });

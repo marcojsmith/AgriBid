@@ -319,7 +319,7 @@ export const LotBrowser = ({
         : "All Auctions";
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 pb-12">
+    <div className="flex flex-col lg:flex-row gap-4 lg:gap-8 pb-12">
       {/* Desktop Sidebar — animated slide in/out */}
       <aside
         data-testid="desktop-sidebar"

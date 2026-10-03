@@ -257,12 +257,12 @@ export const BidForm = ({
       )}
 
       {/* Quick Bid Options */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 @[26rem]:grid-cols-3 gap-3">
         {getQuickBidAmounts().map((amount, index) => (
           <Button
             key={`quick-bid-${String(index)}-${String(amount)}`}
             variant="outline"
-            className="h-14 flex flex-col items-center justify-center gap-0.5 border hover:border-primary hover:bg-primary/5 transition-all group"
+            className="h-14 min-w-0 flex flex-col items-center justify-center gap-0.5 border hover:border-primary hover:bg-primary/5 transition-all group"
             onClick={() => {
               handleQuickBid(amount);
             }}
@@ -275,7 +275,7 @@ export const BidForm = ({
             <span className="text-[10px] font-medium text-muted-foreground group-hover:text-primary transition-colors">
               Quick Bid
             </span>
-            <span className="text-base font-semibold tracking-tight">
+            <span className="whitespace-nowrap text-base font-semibold tracking-tight">
               {formatCurrency(amount)}
             </span>
           </Button>
@@ -295,8 +295,8 @@ export const BidForm = ({
 
       {/* Manual Bid Input */}
       <div className="space-y-3">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-col gap-3 @[22rem]:flex-row">
+          <div className="relative w-full min-w-0 @[22rem]:flex-1">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
               R
             </span>
@@ -310,12 +310,12 @@ export const BidForm = ({
                 setManualAmount(e.target.value);
               }}
               placeholder="Enter amount"
-              className="h-14 pl-8 text-lg font-bold rounded-md border focus-visible:ring-primary"
+              className="h-14 w-full min-w-0 pl-8 text-lg font-bold rounded-md border focus-visible:ring-primary"
               disabled={isLoading || !isBidFormEnabled}
             />
           </div>
           <Button
-            className="h-14 px-8 rounded-md font-semibold text-lg gap-2 shadow-lg shadow-primary/20"
+            className="h-14 w-full px-8 rounded-md font-semibold text-lg gap-2 shadow-lg shadow-primary/20 @[22rem]:w-auto"
             disabled={
               !isManualValid ||
               isLoading ||

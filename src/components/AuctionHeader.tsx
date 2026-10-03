@@ -71,7 +71,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-wrap gap-2 items-center">
         <Badge
           variant="outline"
@@ -162,7 +162,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-6 text-muted-foreground pt-2">
+      <div className="flex flex-wrap gap-4 sm:gap-6 text-muted-foreground pt-1 sm:pt-2">
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-primary/60" />
           <span className="font-medium text-foreground">

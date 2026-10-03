@@ -281,9 +281,9 @@ export default function AuctionDetail() {
         crumbs={[{ label: "Home", href: "/" }, { label: auction.title }]}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-20 lg:pb-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 pb-12 lg:pb-0">
         {/* Left Column: Images & Info */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="lg:col-span-8 space-y-4 sm:space-y-6 lg:space-y-8">
           <AuctionHeader auction={auction} />
 
           {auctionNotYetStarted && auction.auctionStartTime && (
@@ -307,7 +307,7 @@ export default function AuctionDetail() {
           {/* Description Section */}
           <section
             aria-label="Equipment Description"
-            className="bg-card border rounded-md p-8 space-y-6"
+            className="bg-card border rounded-md p-4 sm:p-8 space-y-4 sm:space-y-6"
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-lg font-semibold">Equipment Description</h2>
@@ -351,7 +351,7 @@ export default function AuctionDetail() {
 
           {/* Flag Button (for non-owners) */}
           {!sessionLoading && session && !isOwner && (
-            <div className="bg-card border border-destructive/20 rounded-md p-6">
+            <div className="bg-card border border-destructive/20 rounded-md p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <h4 className="font-bold text-sm">See something wrong?</h4>
@@ -448,7 +448,7 @@ export default function AuctionDetail() {
           {/* Related Auctions */}
           {relatedAuctions && relatedAuctions.length > 0 && (
             <section aria-label={`More ${auction.make} Equipment`}>
-              <h2 className="text-lg font-semibold mb-4">
+              <h2 className="text-lg font-semibold mb-3 sm:mb-4">
                 More {auction.make} Equipment
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -467,11 +467,11 @@ export default function AuctionDetail() {
 
         {/* Right Column: Bidding Panel */}
         <div className="lg:col-span-4">
-          <div className="lg:sticky lg:top-24 space-y-6 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto pr-2">
+          <div className="space-y-4 sm:space-y-6 lg:top-24 lg:[@media(min-height:900px)]:sticky">
             <aside
               aria-label="Bidding"
               id="bidding-panel"
-              className="bg-card border border-primary/20 rounded-md p-6"
+              className="bg-card border border-primary/20 rounded-md p-4 sm:p-6"
             >
               <BiddingPanel auction={auction} />
             </aside>
@@ -489,11 +489,10 @@ export default function AuctionDetail() {
 
             <section
               aria-label="Bid History"
-              className="bg-card border rounded-md p-6"
+              className="bg-card border rounded-md p-4 sm:p-6"
             >
-              <h2 className="text-sm font-semibold text-muted-foreground mb-4">
-                Bid History
-              </h2>
+              {/* The accordion trigger carries the "Bid History" label; a
+                  section heading above it duplicated the same words. */}
               <BidHistory lotId={auction._id} />
             </section>
 

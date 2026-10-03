@@ -1,7 +1,8 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import type { LotDetail } from "@/types/auction";
+import { formatCurrency } from "@/lib/currency";
 
 import { BidForm } from "./BidForm";
 
@@ -354,5 +355,61 @@ describe("BidForm", () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByLabelText(/enable auto-bid/i)).not.toBeInTheDocument();
+  });
+
+  describe("narrow panel layout", () => {
+    const renderForm = () =>
+      render(
+        <BidForm auction={mockAuction} onBid={mockOnBid} isLoading={false} />
+      );
+
+    /**
+     * Returns the quick bid grid wrapper shared by every quick bid button.
+     *
+     * @returns The grid element containing the quick bid buttons.
+     */
+    const getQuickBidGrid = () =>
+      screen.getAllByRole("button", { name: /quick bid/i })[0]?.closest("div");
+
+    it("only spreads quick bids into three columns when the panel is wide enough", () => {
+      renderForm();
+
+      const grid = getQuickBidGrid();
+
+      expect(grid).toHaveClass("grid-cols-1", "@[26rem]:grid-cols-3");
+      expect(grid?.className).not.toContain("md:grid-cols-3");
+    });
+
+    it("keeps quick bid amounts on one line and lets the buttons shrink", () => {
+      renderForm();
+
+      for (const button of screen.getAllByRole("button", {
+        name: /quick bid/i,
+      })) {
+        expect(button).toHaveClass("min-w-0");
+      }
+
+      const amount = within(
+        screen.getByRole("button", {
+          name: /quick bid.*1[.,\s]*100/i,
+        })
+      ).getByText(formatCurrency(1100));
+      expect(amount).toHaveClass("whitespace-nowrap");
+    });
+
+    it("stacks the custom amount input above the button until the panel is wide enough", () => {
+      renderForm();
+
+      const input = screen.getByPlaceholderText(/enter amount/i);
+      const field = input.parentElement;
+      const row = field?.parentElement;
+      const submitButton = screen.getByRole("button", { name: /place bid/i });
+
+      expect(row).toHaveClass("flex-col", "@[22rem]:flex-row");
+      expect(row?.classList.contains("flex-row")).toBe(false);
+      expect(field).toHaveClass("w-full", "min-w-0");
+      expect(input).toHaveClass("min-w-0");
+      expect(submitButton).toHaveClass("w-full", "@[22rem]:w-auto");
+    });
   });
 });

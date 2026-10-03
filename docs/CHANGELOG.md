@@ -5,6 +5,10 @@ items; this file is the complete record. Items are drawn from merged PRs on
 `main` (PR numbers in parentheses), completed conductor tracks and the original
 build checklist. Dates are merge dates.
 
+## 2026-10
+
+- Polish tablet/phone layouts on auctions, lots and lot-detail pages: fix price/countdown/quick-bid overflow with container queries, tighten spacing, compact footer (0.17.2)
+
 ## 2026-09
 
 - Fix production crash by removing manual vendor-react chunk grouping (#322)

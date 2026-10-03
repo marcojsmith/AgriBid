@@ -687,6 +687,13 @@ describe("LotBrowser", () => {
     ).toBeInTheDocument();
   });
 
+  it("tightens the page gap on phones and tablets", () => {
+    const { container } = renderLotBrowser();
+
+    // The toolbar-to-grid gap only matters once the sidebar appears at `lg`.
+    expect(container.firstElementChild).toHaveClass("gap-4", "lg:gap-8");
+  });
+
   describe("scoped to an auction container", () => {
     it("passes auctionId to the paginated lot query", () => {
       renderLotBrowser({ auctionId: TEST_AUCTION_ID });

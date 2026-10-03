@@ -90,6 +90,27 @@ describe("AuctionCardThumbnail", () => {
     );
   });
 
+  it("fills the column height in compact mode so no white gap sits under the countdown", () => {
+    render(
+      <AuctionCardThumbnail
+        {...defaultProps}
+        isCompact={true}
+        endTime={Date.now() + 100_000}
+      />
+    );
+
+    const imageBox = screen.getByAltText("Test Auction").parentElement;
+    const column = imageBox?.parentElement;
+    const countdown = column?.lastElementChild;
+
+    // The column stretches with the card body, the image keeps its 4:3 box and
+    // the countdown strip absorbs the leftover height.
+    expect(column).toHaveClass("h-full");
+    expect(imageBox).toHaveClass("aspect-[4/3]");
+    expect(imageBox?.className).not.toContain("h-full");
+    expect(countdown).toHaveClass("flex-1");
+  });
+
   it("shows a 'Starts' countdown to startTime in compact mode when isNotStarted (#296)", () => {
     render(
       <AuctionCardThumbnail

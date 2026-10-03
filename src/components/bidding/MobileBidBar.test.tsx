@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { useQuery } from "convex/react";
 import type { Id } from "convex/_generated/dataModel";
@@ -47,17 +47,113 @@ const createMockLot = (overrides: Partial<LotDetail> = {}): LotDetail =>
     ...overrides,
   }) as unknown as LotDetail;
 
+/**
+ * Records the state of a single mocked IntersectionObserver so tests can
+ * assert which elements were observed and whether it was disconnected.
+ */
+interface MockObserverRecord {
+  callback: IntersectionObserverCallback;
+  observer: IntersectionObserver;
+  observed: Set<Element>;
+  disconnected: boolean;
+}
+
+/** Every IntersectionObserver instance created since the last reset. */
+const mockObservers: MockObserverRecord[] = [];
+
+/**
+ * Builds a minimal IntersectionObserverEntry for a target.
+ *
+ * @param target - The observed element
+ * @param isIntersecting - Whether the element intersects the viewport
+ * @returns A synthetic IntersectionObserverEntry
+ */
+const createEntry = (
+  target: Element,
+  isIntersecting: boolean
+): IntersectionObserverEntry => ({
+  boundingClientRect: target.getBoundingClientRect(),
+  intersectionRatio: isIntersecting ? 1 : 0,
+  intersectionRect: isIntersecting
+    ? target.getBoundingClientRect()
+    : new DOMRect(),
+  isIntersecting,
+  rootBounds: null,
+  target,
+  time: Date.now(),
+});
+
+/**
+ * Jest-free IntersectionObserver stand-in. Records every constructed
+ * instance so tests can drive visibility changes and assert cleanup.
+ */
+class MockIntersectionObserver implements IntersectionObserver {
+  readonly root: Element | Document | null = null;
+  readonly rootMargin = "0px";
+  readonly scrollMargin = "";
+  readonly thresholds: readonly number[] = [0];
+
+  readonly record: MockObserverRecord;
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.record = {
+      callback,
+      observer: this,
+      observed: new Set<Element>(),
+      disconnected: false,
+    };
+    mockObservers.push(this.record);
+  }
+
+  observe(target: Element): void {
+    this.record.observed.add(target);
+  }
+
+  unobserve(target: Element): void {
+    this.record.observed.delete(target);
+  }
+
+  disconnect(): void {
+    this.record.observed.clear();
+    this.record.disconnected = true;
+  }
+
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+/**
+ * Emits an intersection change to every mocked observer currently watching
+ * the target.
+ *
+ * @param target - The observed element
+ * @param isIntersecting - Whether the element now intersects the viewport
+ */
+const emitIntersection = (target: Element, isIntersecting: boolean) => {
+  act(() => {
+    mockObservers.forEach((record) => {
+      if (record.observed.has(target)) {
+        record.callback([createEntry(target, isIntersecting)], record.observer);
+      }
+    });
+  });
+};
+
 const renderComponent = (auction: LotDetail) =>
   render(
     <MemoryRouter>
       <MobileBidBar auction={auction} />
-      <div id="bidding-panel" />
+      <div id="bidding-panel" data-testid="bidding-panel" />
+      <footer data-testid="page-footer" />
     </MemoryRouter>
   );
 
 describe("MobileBidBar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockObservers.length = 0;
+    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
     // Not implemented in JSDOM
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     vi.mocked(useSession).mockReturnValue({
@@ -67,6 +163,10 @@ describe("MobileBidBar", () => {
     vi.mocked(useQuery).mockReturnValue({
       profile: { isVerified: true, kycStatus: "verified" },
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("shows the current bid price", () => {
@@ -153,5 +253,82 @@ describe("MobileBidBar", () => {
     expect(
       screen.queryByRole("link", { name: /verify to bid/i })
     ).not.toBeInTheDocument();
+  });
+
+  describe("Viewport awareness", () => {
+    it("observes both the bidding panel and the page footer", () => {
+      renderComponent(createMockLot());
+
+      expect(mockObservers).toHaveLength(1);
+      const { observed } = mockObservers[0];
+      expect(observed.has(screen.getByTestId("bidding-panel"))).toBe(true);
+      expect(observed.has(screen.getByTestId("page-footer"))).toBe(true);
+    });
+
+    it("hides the bar while the bidding panel is in view", () => {
+      renderComponent(createMockLot());
+
+      emitIntersection(screen.getByTestId("bidding-panel"), true);
+
+      expect(screen.getByTestId("mobile-bid-bar")).toHaveClass("hidden");
+    });
+
+    it("hides the bar while the page footer is in view", () => {
+      renderComponent(createMockLot());
+
+      emitIntersection(screen.getByTestId("page-footer"), true);
+
+      expect(screen.getByTestId("mobile-bid-bar")).toHaveClass("hidden");
+    });
+
+    it("stays hidden while the footer remains in view after the panel leaves", () => {
+      renderComponent(createMockLot());
+      const panel = screen.getByTestId("bidding-panel");
+      const footer = screen.getByTestId("page-footer");
+
+      emitIntersection(panel, true);
+      emitIntersection(footer, true);
+      expect(screen.getByTestId("mobile-bid-bar")).toHaveClass("hidden");
+
+      emitIntersection(panel, false);
+      expect(screen.getByTestId("mobile-bid-bar")).toHaveClass("hidden");
+
+      emitIntersection(footer, false);
+      expect(screen.getByTestId("mobile-bid-bar")).not.toHaveClass("hidden");
+    });
+
+    it("keeps the bar visible while neither the panel nor the footer is in view", () => {
+      renderComponent(createMockLot());
+
+      expect(screen.getByTestId("mobile-bid-bar")).not.toHaveClass("hidden");
+    });
+
+    it("disconnects the observer on unmount", () => {
+      const { unmount } = renderComponent(createMockLot());
+
+      unmount();
+
+      expect(mockObservers[0].disconnected).toBe(true);
+    });
+
+    it("stays visible when IntersectionObserver is unavailable", () => {
+      vi.stubGlobal("IntersectionObserver", undefined);
+
+      renderComponent(createMockLot());
+
+      expect(mockObservers).toHaveLength(0);
+      expect(screen.getByTestId("mobile-bid-bar")).not.toHaveClass("hidden");
+    });
+
+    it("stays visible when neither the bidding panel nor a footer is rendered", () => {
+      render(
+        <MemoryRouter>
+          <MobileBidBar auction={createMockLot()} />
+        </MemoryRouter>
+      );
+
+      expect(mockObservers).toHaveLength(0);
+      expect(screen.getByTestId("mobile-bid-bar")).not.toHaveClass("hidden");
+    });
   });
 });
