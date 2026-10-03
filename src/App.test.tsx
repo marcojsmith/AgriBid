@@ -54,6 +54,7 @@ vi.mock("./pages/Support", () => mockPage("support"));
 vi.mock("./pages/Notifications", () => mockPage("notifications"));
 vi.mock("./pages/admin/AdminMarketplace", () => mockPage("admin-marketplace"));
 vi.mock("./pages/admin/AdminFees", () => mockPage("admin-fees"));
+vi.mock("./pages/NotFound", () => mockPage("not-found"));
 
 // Mock App without its own BrowserRouter so we can control it with MemoryRouter
 vi.mock("react-router-dom", async () => {
@@ -220,5 +221,15 @@ describe("App Routing", () => {
   it("renders AdminFees for /admin/fees", async () => {
     renderApp("/admin/fees");
     expect(await screen.findByTestId("admin-fees-page")).toBeInTheDocument();
+  });
+
+  it("renders NotFound page for unknown routes", async () => {
+    renderApp("/nonexistent-route");
+    expect(await screen.findByTestId("not-found-page")).toBeInTheDocument();
+  });
+
+  it("renders NotFound page for deeply nested unknown routes", async () => {
+    renderApp("/some/deeply/nested/unknown/path");
+    expect(await screen.findByTestId("not-found-page")).toBeInTheDocument();
   });
 });

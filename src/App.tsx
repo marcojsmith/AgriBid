@@ -54,6 +54,7 @@ const Support = lazy(() => import("./pages/Support"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 /**
  * Global loading fallback for lazy-loaded routes.
@@ -94,6 +95,7 @@ const PageLoader = () => (
  * - "/messages" → Messages inbox (protected, allowedRole="any")
  * - "/messages/:conversationId" → Messages thread view (protected, allowedRole="any")
  * - "/settings" → Settings (protected, allowedRole="any")
+ * - "*" → NotFound (catch-all for unknown routes)
  *
  * @returns The root JSX element containing the BrowserRouter, layout and route definitions
  */
@@ -359,6 +361,7 @@ function App() {
                 </RoleProtectedRoute>
               }
             />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </Layout>
