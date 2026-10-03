@@ -4,6 +4,7 @@ import { MemoryRouter, useParams } from "react-router-dom";
 import { usePaginatedQuery, useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
+import { HelmetProvider } from "react-helmet-async";
 
 import Messages from "./Messages";
 
@@ -134,10 +135,22 @@ describe("Messages Page — inbox", () => {
 
   const renderMessages = () =>
     render(
-      <MemoryRouter>
-        <Messages />
-      </MemoryRouter>
+      <HelmetProvider>
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      </HelmetProvider>
     );
+
+  it("sets page title and noindex meta tag", async () => {
+    renderMessages();
+    await waitFor(() => {
+      expect(document.title).toBe("Messages | AgriBid");
+    });
+    const robotsMeta = document.querySelector('meta[name="robots"]');
+    expect(robotsMeta).toBeInTheDocument();
+    expect(robotsMeta?.getAttribute("content")).toBe("noindex");
+  });
 
   it("renders loading state", () => {
     (usePaginatedQuery as Mock).mockImplementation(() =>

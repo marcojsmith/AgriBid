@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
+import { HelmetProvider } from "react-helmet-async";
 
 import { handleNotificationClick } from "@/lib/notifications";
 
@@ -101,11 +102,23 @@ describe("Notifications Page", () => {
 
   const renderNotifications = () => {
     return render(
-      <BrowserRouter>
-        <Notifications />
-      </BrowserRouter>
+      <HelmetProvider>
+        <BrowserRouter>
+          <Notifications />
+        </BrowserRouter>
+      </HelmetProvider>
     );
   };
+
+  it("sets page title and noindex meta tag", async () => {
+    renderNotifications();
+    await waitFor(() => {
+      expect(document.title).toBe("Notifications | AgriBid");
+    });
+    const robotsMeta = document.querySelector('meta[name="robots"]');
+    expect(robotsMeta).toBeInTheDocument();
+    expect(robotsMeta?.getAttribute("content")).toBe("noindex");
+  });
 
   it("renders loading state", () => {
     (useQuery as Mock).mockReturnValue(undefined);

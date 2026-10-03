@@ -2,7 +2,9 @@ import { useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
+import { Helmet } from "react-helmet-async";
 
+import { buildTitle } from "@/lib/seo";
 import { useSession } from "@/lib/auth-client";
 import { LoadingPage } from "@/components/LoadingIndicator";
 import { Label } from "@/components/ui/label";
@@ -118,7 +120,12 @@ export default function Settings() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4 space-y-10">
+    <>
+      <Helmet>
+        <title>{buildTitle("Settings")}</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
+      <div className="max-w-2xl mx-auto py-8 px-4 space-y-10">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">
           Settings
@@ -296,5 +303,6 @@ export default function Settings() {
         />
       </section>
     </div>
+    </>
   );
 }

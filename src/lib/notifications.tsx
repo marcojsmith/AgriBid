@@ -1,4 +1,5 @@
 import { CheckCircle2, AlertCircle, Info, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
 /**
@@ -42,7 +43,7 @@ export async function handleNotificationClick(
     if (link) void navigate(link);
   } catch (err) {
     console.error("Failed to mark notification as read:", err);
-    // If marking read fails, we still navigate if requested, but swallow error to prevent UI crash
+    toast.error("Could not mark notification as read");
     if (link) void navigate(link);
   }
 }
