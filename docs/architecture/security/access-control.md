@@ -90,7 +90,7 @@ This document describes role-based access control (RBAC), permissions, and autho
 
 ### Authorization Utilities
 
-Located in `app/convex/lib/auth.ts`. Choose the utility that matches your required access level:
+Located in `convex/lib/auth.ts`. Choose the utility that matches your required access level:
 
 **1. Optional Authentication (Guests allowed)**
 
@@ -174,7 +174,7 @@ export const getProfile = query({
 ### RoleProtectedRoute Component
 
 ```typescript
-// app/src/components/RoleProtectedRoute.tsx
+// src/components/RoleProtectedRoute.tsx
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;

@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Reconcile stale docs: fix app/ paths, regenerate schema reference, correct test command (#307) (0.17.3)
 - Polish tablet/phone layouts on auctions, lots and lot-detail pages: fix price/countdown/quick-bid overflow with container queries, tighten spacing, compact footer (0.17.2)
 
 ## 2026-09

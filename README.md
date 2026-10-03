@@ -136,7 +136,7 @@ Deployments are automatically triggered when pushing to the `main` branch (if co
 
 ## 🧪 Testing & Quality
 
-- **Run Tests**: `bun run test`
+- **Run Tests**: `bun run test --run`
 - **Coverage Report**: `bun run test:coverage`
 - **Linting**: `bun run lint` (type-safety, security and style)
 - **Type check / build**: `bun run type-check`, `bun run build`

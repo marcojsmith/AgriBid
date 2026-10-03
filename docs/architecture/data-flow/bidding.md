@@ -18,7 +18,7 @@ This document describes the bidding system architecture, data flows, and process
 │                   Convex Mutations                           │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │              app/convex/auctions/bidding.ts          │  │
+│  │              convex/auctions/bidding.ts             │  │
 │  │                                                      │  │
 │  │  • placeBid()                                        │  │
 │  │  • placeProxyBid()                                   │  │
@@ -91,7 +91,7 @@ User Views Auction Detail
 ### Core Bidding Mutation
 
 ```typescript
-// app/convex/auctions/bidding.ts
+// convex/auctions/bidding.ts
 
 export const placeBid = mutation({
   args: {
@@ -344,7 +344,7 @@ sold   unsold
 ### Settlement Implementation
 
 ```typescript
-// app/convex/auctions/internal.ts
+// convex/auctions/internal.ts
 
 export const settleExpiredLots = internalMutation({
   args: {},
