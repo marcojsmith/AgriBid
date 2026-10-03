@@ -24,6 +24,11 @@ import {
 } from "./admin_utils";
 import { logActivity } from "./userActivity";
 import { getPresenceThresholdMs } from "./presence";
+import {
+  MAX_PROFILE_BIO_LENGTH,
+  MAX_PROFILE_FIELD_LENGTH,
+  KYC_RATE_LIMIT_WINDOW_MS,
+} from "./constants";
 
 /**
  * Validator for a profile document from the database.
@@ -532,6 +537,18 @@ export const submitKYCHandler = async (
 
   if (!profile) throw new Error("Profile not found");
 
+  // Rate limiting: max MAX_KYC_SUBMISSIONS_PER_WINDOW per KYC_RATE_LIMIT_WINDOW_MS
+  const now = Date.now();
+  const windowStart = now - KYC_RATE_LIMIT_WINDOW_MS;
+  if (
+    profile.kycStatus === "pending" &&
+    profile.updatedAt >= windowStart
+  ) {
+    throw new ConvexError(
+      "You're submitting KYC documents too quickly. Please wait before submitting again."
+    );
+  }
+
   const [encFirstName, encLastName, encPhone, encIdNumber, encEmail] =
     await Promise.all([
       encryptPII(args.firstName),
@@ -728,6 +745,33 @@ export const updateMyProfileHandler = async (
   args: { bio?: string; location?: string; companyName?: string }
 ): Promise<null> => {
   const userId = await getAuthenticatedUserId(ctx);
+
+  if (args.bio !== undefined) {
+    const trimmedBio = args.bio.trim();
+    if (trimmedBio.length > MAX_PROFILE_BIO_LENGTH) {
+      throw new ConvexError(
+        `Bio is too long. Maximum ${MAX_PROFILE_BIO_LENGTH.toString()} characters allowed.`
+      );
+    }
+  }
+
+  if (args.location !== undefined) {
+    const trimmedLocation = args.location.trim();
+    if (trimmedLocation.length > MAX_PROFILE_FIELD_LENGTH) {
+      throw new ConvexError(
+        `Location is too long. Maximum ${MAX_PROFILE_FIELD_LENGTH.toString()} characters allowed.`
+      );
+    }
+  }
+
+  if (args.companyName !== undefined) {
+    const trimmedCompanyName = args.companyName.trim();
+    if (trimmedCompanyName.length > MAX_PROFILE_FIELD_LENGTH) {
+      throw new ConvexError(
+        `Company name is too long. Maximum ${MAX_PROFILE_FIELD_LENGTH.toString()} characters allowed.`
+      );
+    }
+  }
 
   const profile = await ctx.db
     .query("profiles")

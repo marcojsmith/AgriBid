@@ -112,3 +112,51 @@ export const STORAGE_SWEEP_LOOKBACK_MS = 7 * MS_PER_DAY;
  */
 export const SUPPORT_TICKET_MAX_SUBJECT_LENGTH = 100;
 export const SUPPORT_TICKET_MAX_MESSAGE_LENGTH = 2000;
+
+/**
+ * Input length caps for free-text fields.
+ */
+export const MAX_MESSAGE_LENGTH = 2000;
+export const MAX_REVIEW_COMMENT_LENGTH = 2000;
+export const MAX_AUCTION_TITLE_LENGTH = 150;
+export const MAX_AUCTION_DESCRIPTION_LENGTH = 5000;
+export const MAX_FLAG_DETAILS_LENGTH = 1000;
+export const MAX_PROFILE_BIO_LENGTH = 1000;
+export const MAX_PROFILE_FIELD_LENGTH = 200;
+export const MAX_ERROR_REPORT_FIELD_LENGTH = 5000;
+
+/**
+ * Upper bound on bid amounts (R10 billion).
+ * Prevents overflow in fee calculations and counters.
+ */
+export const MAX_BID_AMOUNT = 10_000_000_000;
+
+/**
+ * Rate limiting constants for lot/draft creation.
+ */
+export const LOT_CREATION_COOLDOWN_MS = 5_000;
+export const MAX_DRAFTS_PER_USER = 20;
+
+/**
+ * Rate limiting constants for review submission.
+ */
+export const REVIEW_RATE_LIMIT_WINDOW_MS = MS_PER_MINUTE;
+export const MAX_REVIEWS_PER_WINDOW = 10;
+
+/**
+ * Rate limiting constants for support ticket submission.
+ */
+export const SUPPORT_RATE_LIMIT_WINDOW_MS = MS_PER_HOUR;
+export const MAX_SUPPORT_TICKETS_PER_WINDOW = 5;
+
+/**
+ * Rate limiting constants for profile reports.
+ */
+export const PROFILE_REPORT_RATE_LIMIT_WINDOW_MS = MS_PER_DAY;
+export const MAX_PROFILE_REPORTS_PER_WINDOW = 10;
+
+/**
+ * Rate limiting constants for KYC submission.
+ */
+export const KYC_RATE_LIMIT_WINDOW_MS = MS_PER_DAY;
+export const MAX_KYC_SUBMISSIONS_PER_WINDOW = 3;

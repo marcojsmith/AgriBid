@@ -1,4 +1,3 @@
-// app/convex/reviews.ts
 import { v, ConvexError } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import type { PaginationOptions } from "convex/server";
@@ -10,6 +9,11 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { getAuthenticatedUserId } from "./lib/auth";
+import {
+  MAX_REVIEW_COMMENT_LENGTH,
+  REVIEW_RATE_LIMIT_WINDOW_MS,
+  MAX_REVIEWS_PER_WINDOW,
+} from "./constants";
 import type { Id } from "./_generated/dataModel";
 
 /** Cooldown after auction settlement before a review can be left (7 days). */
@@ -87,6 +91,30 @@ export const submitReviewHandler = async (
     throw new ConvexError("Rating must be an integer between 1 and 5");
   }
 
+  if (args.comment !== undefined) {
+    const trimmedComment = args.comment.trim();
+    if (trimmedComment.length > MAX_REVIEW_COMMENT_LENGTH) {
+      throw new ConvexError(
+        `Comment is too long. Maximum ${MAX_REVIEW_COMMENT_LENGTH.toString()} characters allowed.`
+      );
+    }
+  }
+
+  // Rate limiting: max MAX_REVIEWS_PER_WINDOW reviews per REVIEW_RATE_LIMIT_WINDOW_MS
+  const now = Date.now();
+  const windowStart = now - REVIEW_RATE_LIMIT_WINDOW_MS;
+  const recentReviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_reviewer_createdAt", (q) =>
+      q.eq("reviewerId", userId).gte("createdAt", windowStart)
+    )
+    .collect();
+  if (recentReviews.length >= MAX_REVIEWS_PER_WINDOW) {
+    throw new ConvexError(
+      "You're submitting reviews too quickly. Please wait a moment before trying again."
+    );
+  }
+
   const existingReview = await ctx.db
     .query("reviews")
     .withIndex("by_lot_reviewer", (q) =>
@@ -160,8 +188,15 @@ export const respondToReviewHandler = async (
     throw new ConvexError("Response text cannot be empty");
   }
 
+  const trimmedText = args.text.trim();
+  if (trimmedText.length > MAX_REVIEW_COMMENT_LENGTH) {
+    throw new ConvexError(
+      `Response is too long. Maximum ${MAX_REVIEW_COMMENT_LENGTH.toString()} characters allowed.`
+    );
+  }
+
   await ctx.db.patch("reviews", args.reviewId, {
-    response: { text: args.text, createdAt: Date.now() },
+    response: { text: trimmedText, createdAt: Date.now() },
   });
 
   return { success: true };

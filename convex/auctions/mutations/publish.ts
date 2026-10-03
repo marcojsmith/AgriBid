@@ -9,7 +9,10 @@ import {
   resolveUserId,
 } from "../../lib/auth";
 import { logAudit, updateCounter } from "../../admin_utils";
-import { AUCTION_FLAG_AUTO_HIDE_THRESHOLD } from "../../constants";
+import {
+  AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
+  MAX_FLAG_DETAILS_LENGTH,
+} from "../../constants";
 import type { Id, Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import {
@@ -68,6 +71,15 @@ export const flagLotHandler = async (
 
   if (userHasFlagged) {
     throw new ConvexError("You have already flagged this lot");
+  }
+
+  if (args.details !== undefined) {
+    const trimmedDetails = args.details.trim();
+    if (trimmedDetails.length > MAX_FLAG_DETAILS_LENGTH) {
+      throw new ConvexError(
+        `Details is too long. Maximum ${MAX_FLAG_DETAILS_LENGTH.toString()} characters allowed.`
+      );
+    }
   }
 
   await ctx.db.insert("lotFlags", {

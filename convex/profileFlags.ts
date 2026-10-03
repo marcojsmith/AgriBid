@@ -9,7 +9,12 @@ import {
   resolveUserId,
 } from "./lib/auth";
 import { logAudit } from "./admin_utils";
-import { MS_PER_DAY } from "./constants";
+import {
+  MS_PER_DAY,
+  MAX_FLAG_DETAILS_LENGTH,
+  PROFILE_REPORT_RATE_LIMIT_WINDOW_MS,
+  MAX_PROFILE_REPORTS_PER_WINDOW,
+} from "./constants";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
@@ -73,6 +78,31 @@ export const reportProfileHandler = async (
 
   if (userHasReported) {
     throw new ConvexError("You have already reported this profile");
+  }
+
+  // Length cap on details
+  if (args.details !== undefined) {
+    const trimmedDetails = args.details.trim();
+    if (trimmedDetails.length > MAX_FLAG_DETAILS_LENGTH) {
+      throw new ConvexError(
+        `Details is too long. Maximum ${MAX_FLAG_DETAILS_LENGTH.toString()} characters allowed.`
+      );
+    }
+  }
+
+  // Rate limiting: max MAX_PROFILE_REPORTS_PER_WINDOW per PROFILE_REPORT_RATE_LIMIT_WINDOW_MS
+  const now = Date.now();
+  const windowStart = now - PROFILE_REPORT_RATE_LIMIT_WINDOW_MS;
+  const recentReports = await ctx.db
+    .query("profileFlags")
+    .withIndex("by_reporter_createdAt", (q) =>
+      q.eq("reporterId", reporterId).gte("createdAt", windowStart)
+    )
+    .collect();
+  if (recentReports.length >= MAX_PROFILE_REPORTS_PER_WINDOW) {
+    throw new ConvexError(
+      "You're submitting reports too quickly. Please wait before submitting another report."
+    );
   }
 
   await ctx.db.insert("profileFlags", {

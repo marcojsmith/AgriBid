@@ -19,6 +19,8 @@ import {
   PRICE_THRESHOLD_FOR_INCREMENT,
   SMALL_INCREMENT_AMOUNT,
   LARGE_INCREMENT_AMOUNT,
+  LOT_CREATION_COOLDOWN_MS,
+  MAX_DRAFTS_PER_USER,
 } from "../../constants";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
@@ -106,6 +108,35 @@ export const createLotHandler = async (
 
   const { isDraft } = args;
 
+  // Rate limiting: check last lot creation time
+  const now = Date.now();
+  const recentLots = await ctx.db
+    .query("lots")
+    .withIndex("by_seller_createdAt", (q) =>
+      q.eq("sellerId", userId).gte("createdAt", now - LOT_CREATION_COOLDOWN_MS)
+    )
+    .collect();
+  if (recentLots.length > 0) {
+    throw new ConvexError(
+      "You're creating listings too quickly. Please wait a moment before trying again."
+    );
+  }
+
+  // Draft cap: max MAX_DRAFTS_PER_USER drafts per user
+  if (isDraft) {
+    const existingDrafts = await ctx.db
+      .query("lots")
+      .withIndex("by_seller_status", (q) =>
+        q.eq("sellerId", userId).eq("status", "draft")
+      )
+      .collect();
+    if (existingDrafts.length >= MAX_DRAFTS_PER_USER) {
+      throw new ConvexError(
+        `You have reached the maximum of ${MAX_DRAFTS_PER_USER.toString()} drafts. Please submit or delete an existing draft before creating a new one.`
+      );
+    }
+  }
+
   const images = { ...args.images };
   if (images.additional && images.additional.length > MAX_ADDITIONAL_IMAGES) {
     if (isDraft) {
@@ -160,6 +191,7 @@ export const createLotHandler = async (
       args.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
+    createdAt: now,
   });
 
   await updateCounter(ctx, "lots", "total", 1);
@@ -290,6 +322,22 @@ export const saveDraftHandler = async (
 
   const { lotId, ...restArgs } = args;
 
+  // Rate limiting: check last lot creation time (only for new drafts)
+  if (!lotId) {
+    const now = Date.now();
+    const recentLots = await ctx.db
+      .query("lots")
+      .withIndex("by_seller_createdAt", (q) =>
+        q.eq("sellerId", userId).gte("createdAt", now - LOT_CREATION_COOLDOWN_MS)
+      )
+      .collect();
+    if (recentLots.length > 0) {
+      throw new ConvexError(
+        "You're creating listings too quickly. Please wait a moment before trying again."
+      );
+    }
+  }
+
   // Enforce image cap for additional images
   if (
     restArgs.images?.additional &&
@@ -363,6 +411,19 @@ export const saveDraftHandler = async (
     throw new ConvexError("Images are required to create a new draft");
   }
 
+  // Draft cap: max MAX_DRAFTS_PER_USER drafts per user
+  const existingDrafts = await ctx.db
+    .query("lots")
+    .withIndex("by_seller_status", (q) =>
+      q.eq("sellerId", userId).eq("status", "draft")
+    )
+    .collect();
+  if (existingDrafts.length >= MAX_DRAFTS_PER_USER) {
+    throw new ConvexError(
+      `You have reached the maximum of ${MAX_DRAFTS_PER_USER.toString()} drafts. Please submit or delete an existing draft before creating a new one.`
+    );
+  }
+
   const newLotId = await ctx.db.insert("lots", {
     title: args.title,
     ...(args.categoryId && { categoryId: args.categoryId }),
@@ -385,6 +446,7 @@ export const saveDraftHandler = async (
       (args.startingPrice ?? 0) < PRICE_THRESHOLD_FOR_INCREMENT
         ? SMALL_INCREMENT_AMOUNT
         : LARGE_INCREMENT_AMOUNT,
+    createdAt: Date.now(),
   });
 
   await updateCounter(ctx, "lots", "total", 1);

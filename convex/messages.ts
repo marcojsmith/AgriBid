@@ -10,7 +10,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { getAuthenticatedUserId } from "./lib/auth";
-import { MS_PER_MINUTE } from "./constants";
+import { MS_PER_MINUTE, MAX_MESSAGE_LENGTH } from "./constants";
 import type { Doc, Id } from "./_generated/dataModel";
 
 /**
@@ -76,6 +76,13 @@ async function insertMessageAndNotify(
   recipientId: string,
   content: string
 ): Promise<void> {
+  const trimmedContent = content.trim();
+  if (trimmedContent.length > MAX_MESSAGE_LENGTH) {
+    throw new ConvexError(
+      `Message is too long. Maximum ${MAX_MESSAGE_LENGTH.toString()} characters allowed.`
+    );
+  }
+
   const windowStart = Date.now() - MESSAGE_RATE_LIMIT_WINDOW_MS;
   const recentMessages = await ctx.db
     .query("messages")
