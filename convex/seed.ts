@@ -7,8 +7,10 @@ import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCallerRole } from "./lib/auth";
 import { deleteAuctionImages, safeDelete } from "./lib/storage";
-import { updateCounter } from "./admin_utils";
+import { updateCounter, logAudit } from "./admin_utils";
 import { getLotCounterKey } from "./lots/mutations/helpers";
+
+export type DestructiveAccessPath = "admin" | "secret" | "dev";
 
 type SeedTableNames =
   | "auctions"
@@ -453,39 +455,40 @@ const CONVERSATION_PLANS: {
 ];
 
 /**
- * Enforces that destructive operations are permitted only for admin callers or when running in a safe environment.
+ * Enforces that destructive operations are permitted only for admin callers,
+ * when a valid SEED_SECRET is provided, or in local development with an explicit opt-in.
+ *
+ * IMPORTANT: Preview deployments (VERCEL_ENV=preview) are NOT trusted. Admin auth or
+ * SEED_SECRET is required in every environment except local dev with ALLOW_DEV_SEED=true.
  *
  * @param ctx - Mutation context used to determine the caller's role for access validation.
- * @throws Error if the caller is not an admin and both NODE_ENV and VERCEL_ENV are undefined.
- * @throws Error if the caller is not an admin and the current environment is neither "development" nor Vercel "preview".
+ * @returns The access path used ("admin" | "secret" | "dev") for audit logging.
+ * @throws Error if the caller is not authorized and no valid secret or dev opt-in is present.
  */
-async function checkDestructiveAccess(ctx: MutationCtx) {
+async function checkDestructiveAccess(
+  ctx: MutationCtx
+): Promise<DestructiveAccessPath> {
   const nodeEnv = process.env.NODE_ENV;
-  const vercelEnv = process.env.VERCEL_ENV;
   const role = await getCallerRole(ctx);
   const isAdmin = role === "admin";
 
-  // Admin bypass: Admins are always allowed to perform destructive operations
-  if (isAdmin) return;
-
-  // SECURITY: Explicitly validate environment variables to prevent silent degradation.
-  // These variables must be set in the Convex dashboard or via CLI (e.g., bunx convex env set NODE_ENV development).
-  if (nodeEnv === undefined && vercelEnv === undefined) {
-    throw new Error(
-      "Unauthorized: Deployment environment is indeterminate (NODE_ENV and VERCEL_ENV are undefined). " +
-        "Destructive operations are blocked for non-admins to prevent accidental data loss in production."
-    );
+  if (isAdmin) {
+    return "admin";
   }
 
+  const allowDevSeed = process.env.ALLOW_DEV_SEED === "true";
   const isDev = nodeEnv === "development";
-  const isPreview = vercelEnv === "preview";
 
-  if (!isDev && !isPreview) {
-    throw new Error(
-      `Unauthorized: Destructive operations are only allowed in development or preview environments. ` +
-        `Current environment: ${nodeEnv ?? vercelEnv ?? "unknown"}.`
-    );
+  if (isDev && allowDevSeed) {
+    return "dev";
   }
+
+  throw new Error(
+    "Unauthorized: Destructive seed operations require admin authentication, " +
+      "a valid SEED_SECRET, or local development with ALLOW_DEV_SEED=true. " +
+      `Current environment: NODE_ENV=${nodeEnv ?? "undefined"}, ` +
+      `ALLOW_DEV_SEED=${allowDevSeed ? "true" : "false"}.`
+  );
 }
 
 /**
@@ -2375,8 +2378,8 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
  * Shared seeding logic for both local development and Vercel Previews.
  * This is idempotent: it checks for existing records before inserting.
  *
- * SECURITY: This mutation is protected by environment checks, admin status,
- * or a valid providedSeed matching process.env.SEED_SECRET.
+ * SECURITY: This mutation is protected by admin authentication, a valid
+ * SEED_SECRET, or local development with ALLOW_DEV_SEED=true opt-in.
  */
 export const runSeed = mutation({
   args: {
@@ -2385,14 +2388,31 @@ export const runSeed = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // --- SECURITY GUARD ---
     const seedSecret = process.env.SEED_SECRET;
     const isSecretMatch = !!seedSecret && args.providedSeed === seedSecret;
 
-    if (!isSecretMatch) {
-      await checkDestructiveAccess(ctx);
+    let accessPath: DestructiveAccessPath;
+
+    if (isSecretMatch) {
+      accessPath = "secret";
+    } else {
+      accessPath = await checkDestructiveAccess(ctx);
     }
-    // -----------------------
+
+    console.warn(
+      `[seed] Destructive operation invoked via ${accessPath} access path`
+    );
+
+    if (accessPath === "admin") {
+      const role = await getCallerRole(ctx);
+      if (role === "admin") {
+        await logAudit(ctx, {
+          action: "run_seed",
+          targetType: "database",
+          details: JSON.stringify({ clear: args.clear ?? false }),
+        });
+      }
+    }
 
     if (args.clear) {
       const tablesToClear: SeedTableNames[] = [
@@ -2413,8 +2433,6 @@ export const runSeed = mutation({
         "equipmentCategories",
       ];
 
-      // Lots and auctions reference storage blobs — clear them through the
-      // storage-aware helpers so those blobs don't orphan here either.
       const auctionsCount = await clearAuctionsTableWithStorage(ctx);
       const lotsCount = await clearLotsTableWithStorage(ctx);
       console.log(
@@ -2430,9 +2448,6 @@ export const runSeed = mutation({
           `Cleared ${deletedCount.toString()} records from ${tableName}.`
         );
       }
-
-      // Note: Clerk manages user/session/account data externally — there is
-      // no Convex-side auth table to wipe here anymore.
     }
 
     await performSeed(ctx);
@@ -2445,13 +2460,23 @@ export const clearAuctions = mutation({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    await checkDestructiveAccess(ctx);
+    const accessPath = await checkDestructiveAccess(ctx);
 
-    // 1. Sweep and delete all bids first to avoid nested loops/long mutations
+    console.warn(
+      `[seed] clearAuctions invoked via ${accessPath} access path`
+    );
+
+    if (accessPath === "admin") {
+      const role = await getCallerRole(ctx);
+      if (role === "admin") {
+        await logAudit(ctx, {
+          action: "clear_auctions",
+          targetType: "database",
+        });
+      }
+    }
+
     const totalBidsDeleted = await clearTable(ctx, "bids");
-
-    // 2. Delete lots and auction events in batches, removing the storage
-    // blobs they reference first so no orphaned files are left behind.
     const lotsCount = await clearLotsTableWithStorage(ctx);
     const auctionsCount = await clearAuctionsTableWithStorage(ctx);
 
@@ -2470,10 +2495,22 @@ export const clearAllData = mutation({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    await checkDestructiveAccess(ctx);
+    const accessPath = await checkDestructiveAccess(ctx);
 
-    // Lots, auctions and profiles reference storage blobs — delete through
-    // the storage-aware helpers so the blobs don't orphan here either.
+    console.warn(
+      `[seed] clearAllData invoked via ${accessPath} access path`
+    );
+
+    if (accessPath === "admin") {
+      const role = await getCallerRole(ctx);
+      if (role === "admin") {
+        await logAudit(ctx, {
+          action: "clear_all_data",
+          targetType: "database",
+        });
+      }
+    }
+
     const appTables: SeedTableNames[] = [
       "bids",
       "watchlist",
@@ -2485,15 +2522,11 @@ export const clearAllData = mutation({
     totalDeleted += await clearAuctionsTableWithStorage(ctx);
     totalDeleted += await clearLotsTableWithStorage(ctx);
 
-    // Clear App Tables
     for (const tableName of appTables) {
       totalDeleted += await clearTable(ctx, tableName);
     }
 
     totalDeleted += await clearProfilesTableWithStorage(ctx);
-
-    // Note: Clerk manages user/session/account data externally — there is no
-    // Convex-side auth table to wipe here anymore.
 
     return totalDeleted;
   },
@@ -2517,8 +2550,16 @@ export const weeklyReset = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    // Lots and auctions reference storage blobs — clear them through the
-    // storage-aware helpers so those blobs don't orphan here either.
+    console.warn(
+      "[seed] weeklyReset invoked via system cron (internal mutation)"
+    );
+
+    await logAudit(ctx, {
+      action: "weekly_reset",
+      targetType: "database",
+      system: true,
+    });
+
     const auctionsDeleted = await clearAuctionsTableWithStorage(ctx);
     console.log(
       `Cleared ${auctionsDeleted.toString()} records from auctions with storage.`
@@ -2556,9 +2597,6 @@ export const weeklyReset = internalMutation({
       `Cleared ${deletedProfiles.toString()} non-admin profiles (admin profiles preserved).`
     );
 
-    // performSeed requires the mock seller profile to exist, and its
-    // Clerk-synced profile was just removed above — recreate the synthetic
-    // stand-in so the reseed can resolve it.
     await ensureMockSellerProfile(ctx);
 
     await performSeed(ctx);
