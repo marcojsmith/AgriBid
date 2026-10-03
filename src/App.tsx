@@ -1,10 +1,11 @@
 // app/src/App.tsx
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactElement } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 import { LoadingIndicator } from "./components/LoadingIndicator";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));
@@ -67,6 +68,16 @@ const PageLoader = () => (
 );
 
 /**
+ * Wraps an element with a RouteErrorBoundary for per-route error isolation.
+ *
+ * @param element - The route element to wrap
+ * @returns The wrapped element
+ */
+function withBoundary(element: ReactElement): ReactElement {
+  return <RouteErrorBoundary>{element}</RouteErrorBoundary>;
+}
+
+/**
  * Mounts the client-side router and declares application routes within the main layout.
  *
  * Declared routes:
@@ -107,20 +118,29 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/auction/:id" element={<AuctionDetail />} />
-            <Route path="/profile/:userId" element={<Profile />} />
+            <Route
+              path="/auction/:id"
+              element={withBoundary(<AuctionDetail />)}
+            />
+            <Route
+              path="/profile/:userId"
+              element={withBoundary(<Profile />)}
+            />
             <Route
               path="/sellers/:userId/listings"
-              element={<SellerListings status="active" />}
+              element={withBoundary(<SellerListings status="active" />)}
             />
             <Route
               path="/sellers/:userId/listings/sold"
-              element={<SellerListings status="sold" />}
+              element={withBoundary(<SellerListings status="sold" />)}
             />
-            <Route path="/sell" element={<Sell />} />
+            <Route path="/sell" element={withBoundary(<Sell />)} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/auctions" element={<AuctionGallery />} />
-            <Route path="/auctions/:id" element={<AuctionContainerDetail />} />
+            <Route
+              path="/auctions/:id"
+              element={withBoundary(<AuctionContainerDetail />)}
+            />
             <Route
               path="/watchlist"
               element={
@@ -131,187 +151,187 @@ function App() {
             />
             <Route
               path="/dashboard/bids"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <MyBids />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/dashboard/listings"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <MyListings />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminDashboard />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/dashboard"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminDashboard />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/moderation"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminModeration />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/marketplace"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminMarketplace />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/lots"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminLots />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/auctions"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAuctions />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/auctions/:id"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAuctionDetail />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/users"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminUsers />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/finance"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminFinance />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/announcements"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAnnouncements />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/support"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminSupport />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/audit"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminAudit />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/equipment-catalog"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminEquipmentCatalog />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/settings"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminSettings />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/error-reports"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminErrorReports />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/error-reporting"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminErrorReportingSettings />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/seo"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminSEOSettings />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/business-info"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminBusinessInfo />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/faq"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminFAQ />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/fees"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminFees />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/admin/performance"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="admin">
                   <AdminPerformance />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/kyc"
@@ -339,19 +359,19 @@ function App() {
             />
             <Route
               path="/messages"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <Messages />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/messages/:conversationId"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <Messages />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/settings"
