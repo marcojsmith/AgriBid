@@ -31,6 +31,7 @@ Last updated: 2026-10-03
 
 ## Done (last 10)
 
+- 2026-10-03: Noindex private pages, dev-safe site URL fallback, toast on mark-read failure (#344) (v0.17.5).
 - 2026-10-03: Add catch-all 404 route and NotFound page (#306) (v0.17.4).
 - 2026-10-03: Reconcile stale docs: fix app/ paths, regenerate schema reference, correct test command (#307) (v0.17.3).
 - 2026-10-03: Tablet/phone layout polish on auctions, lots and lot-detail pages (wrapping/overflow fixes via container queries, tighter spacing, sticky bid bar hides over panel/footer) (v0.17.2).
