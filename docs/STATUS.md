@@ -31,6 +31,7 @@ Last updated: 2026-10-03
 
 ## Done (last 10)
 
+- 2026-10-03: Derive presence threshold from heartbeat interval, fix flag counter race, add audit logging, show cooldown seconds (#338) (v0.17.10).
 - 2026-10-03: Filter Home status tabs server-side and scope the time tick (#339) (v0.17.9).
 - 2026-10-03: Use shadcn Checkbox and AlertDialog, remove eslint-disable in BidForm (#342) (v0.17.8).
 - 2026-10-03: Add per-route error boundaries (#341) (v0.17.7).

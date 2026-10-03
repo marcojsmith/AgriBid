@@ -38,11 +38,6 @@ export const DEMO_MODE_ENABLED_DEFAULT = false;
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT = 60 * MS_PER_SECOND;
 
 // Allowed bounds for the presence heartbeat interval setting (15s - 5min).
-// NOTE: countOnlineUsers marks users offline after a fixed 90s threshold
-// (convex/presence.ts PRESENCE_HEARTBEAT_THRESHOLD), so intervals above ~90s
-// will make signed-in users appear offline between heartbeats. Accepted for
-// demo-mode resource savings; deriving the threshold from the configured
-// interval is a possible follow-up.
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_MIN = 15 * MS_PER_SECOND;
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_MAX = 5 * MS_PER_MINUTE;
 

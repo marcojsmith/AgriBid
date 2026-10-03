@@ -83,7 +83,8 @@ export const flagLotHandler = async (
 
   const pendingFlags = existingFlags.filter((f) => f.status === "pending");
   if (pendingFlags.length + 1 >= AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
-    if (lot.status === "approved") {
+    const freshLot = await ctx.db.get("lots", args.lotId);
+    if (freshLot?.status === "approved") {
       await ctx.db.patch("lots", args.lotId, {
         status: "pending_review",
         hiddenByFlags: true,

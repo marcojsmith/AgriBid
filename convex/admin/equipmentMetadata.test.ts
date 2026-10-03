@@ -16,6 +16,15 @@ import type { Id } from "../_generated/dataModel";
 vi.mock("../lib/auth", () => ({
   getCallerRole: vi.fn(),
   requireAdmin: vi.fn(),
+  getAuthUser: vi.fn(),
+  resolveUserId: vi.fn(),
+}));
+
+vi.mock("../admin_utils", () => ({
+  logAudit: vi.fn(),
+  updateCounter: vi.fn(),
+  decryptPII: vi.fn(),
+  encryptPII: vi.fn(),
 }));
 
 interface MockQueryChain {
@@ -102,6 +111,8 @@ describe("Equipment Metadata Backend", () => {
       "make_123" as Id<"equipmentMetadata">
     );
 
+    const { logAudit } = await import("../admin_utils");
+
     const result = await addEquipmentMakeHandler(mockCtx, {
       make: "John Deere",
       models: ["8R"],
@@ -116,6 +127,14 @@ describe("Equipment Metadata Backend", () => {
         models: ["8R"],
         categoryId: "cat_123",
         isActive: true,
+      })
+    );
+    expect(logAudit).toHaveBeenCalledWith(
+      mockCtx,
+      expect.objectContaining({
+        action: "EQUIPMENT_MAKE_CREATE",
+        targetId: "make_123",
+        targetType: "equipmentMetadata",
       })
     );
   });
@@ -347,6 +366,8 @@ describe("updateEquipmentMake", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
+    const { logAudit } = await import("../admin_utils");
+
     await updateEquipmentMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,
       make: "John Deere Updated",
@@ -361,6 +382,14 @@ describe("updateEquipmentMake", () => {
         make: "John Deere Updated",
         models: ["8R", "7R"],
         categoryId: "cat_123",
+      })
+    );
+    expect(logAudit).toHaveBeenCalledWith(
+      mockCtx,
+      expect.objectContaining({
+        action: "EQUIPMENT_MAKE_UPDATE",
+        targetId: "make_123",
+        targetType: "equipmentMetadata",
       })
     );
   });
@@ -528,6 +557,8 @@ describe("deleteEquipmentMake", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
+    const { logAudit } = await import("../admin_utils");
+
     await deleteEquipmentMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,
     });
@@ -537,6 +568,14 @@ describe("deleteEquipmentMake", () => {
       "make_123",
       expect.objectContaining({
         isActive: false,
+      })
+    );
+    expect(logAudit).toHaveBeenCalledWith(
+      mockCtx,
+      expect.objectContaining({
+        action: "EQUIPMENT_MAKE_DEACTIVATE",
+        targetId: "make_123",
+        targetType: "equipmentMetadata",
       })
     );
   });
