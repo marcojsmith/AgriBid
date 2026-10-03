@@ -145,7 +145,7 @@ export function FinanceTab() {
                             {sale.fees
                               .map(
                                 (f) =>
-                                  `${f.feeName}: ${f.appliedTo === "buyer" ? "B" : "S"} R${f.amount.toFixed(2)}`
+                                  `${f.feeName}: ${f.appliedTo === "buyer" ? "B" : "S"} ${formatCurrency(f.amount)}`
                               )
                               .join(", ")}
                           </div>
