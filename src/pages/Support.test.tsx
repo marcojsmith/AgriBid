@@ -7,7 +7,7 @@ import {
 } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { toast } from "sonner";
 
 import Support from "./Support";
@@ -16,6 +16,7 @@ import Support from "./Support";
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
   useMutation: vi.fn(),
+  usePaginatedQuery: vi.fn(),
 }));
 
 // Mock Convex API
@@ -99,26 +100,23 @@ describe("Support Page", () => {
     },
   ];
 
-  const mockPaginatedTickets = {
-    page: mockTickets,
-    isDone: true,
-    continueCursor: "",
-    totalCount: mockTickets.length,
-    pageStatus: null,
-    splitCursor: null,
-  };
-
   const mockCreateTicket = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.support.getMyTickets) return mockPaginatedTickets;
-      return null;
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.support.getMyTickets)
+        return {
+          results: mockTickets,
+          status: "Exhausted",
+          loadMore: vi.fn(),
+        };
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
     });
+    (useQuery as Mock).mockReturnValue(null);
     (useMutation as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.support.createTicket) return mockCreateTicket;
-      return mockCreateTicket; // Default for backward compatibility in this test
+      return mockCreateTicket;
     });
   });
 
@@ -210,26 +208,28 @@ describe("Support Page", () => {
   });
 
   it("renders empty state when no tickets are found", () => {
-    (useQuery as Mock).mockImplementation((apiPath) => {
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
       if (apiPath === mockApi.support.getMyTickets)
         return {
-          page: [],
-          isDone: true,
-          continueCursor: "",
-          totalCount: 0,
-          pageStatus: null,
-          splitCursor: null,
+          results: [],
+          status: "Exhausted",
+          loadMore: vi.fn(),
         };
-      return null;
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
     });
     renderSupport();
     expect(screen.getByText("No active tickets")).toBeInTheDocument();
   });
 
   it("shows loading state when tickets are being fetched", () => {
-    (useQuery as Mock).mockImplementation((apiPath) => {
-      if (apiPath === mockApi.support.getMyTickets) return undefined;
-      return null;
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.support.getMyTickets)
+        return {
+          results: [],
+          status: "LoadingFirstPage",
+          loadMore: vi.fn(),
+        };
+      return { results: [], status: "LoadingFirstPage", loadMore: vi.fn() };
     });
     renderSupport();
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -270,5 +270,57 @@ describe("Support Page", () => {
       expect(consoleSpy).toHaveBeenCalled();
     });
     consoleSpy.mockRestore();
+  });
+
+  it("shows Load more button when status is CanLoadMore", () => {
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.support.getMyTickets)
+        return {
+          results: mockTickets,
+          status: "CanLoadMore",
+          loadMore: vi.fn(),
+        };
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
+    });
+    renderSupport();
+    expect(
+      screen.getByRole("button", { name: /load more/i })
+    ).toBeInTheDocument();
+  });
+
+  it("calls loadMore when Load more button is clicked", () => {
+    const loadMore = vi.fn();
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.support.getMyTickets)
+        return {
+          results: mockTickets,
+          status: "CanLoadMore",
+          loadMore,
+        };
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
+    });
+    renderSupport();
+    const loadMoreBtn = screen.getByRole("button", { name: /load more/i });
+    act(() => {
+      fireEvent.click(loadMoreBtn);
+    });
+    expect(loadMore).toHaveBeenCalledWith(10);
+  });
+
+  it("shows loading indicator when loading more tickets", () => {
+    (usePaginatedQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.support.getMyTickets)
+        return {
+          results: mockTickets,
+          status: "LoadingMore",
+          loadMore: vi.fn(),
+        };
+      return { results: [], status: "Exhausted", loadMore: vi.fn() };
+    });
+    renderSupport();
+    expect(screen.getByText(/loading…/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /loading/i })
+    ).toBeDisabled();
   });
 });

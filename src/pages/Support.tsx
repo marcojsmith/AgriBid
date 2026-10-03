@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
-import { MessageSquare, Clock, CheckCircle2, HelpCircle } from "lucide-react";
+import { MessageSquare, Clock, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { buildTitle, buildCanonical } from "@/lib/seo";
+import { DASHBOARD_PAGINATION_INITIAL_ITEMS, DASHBOARD_PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
 
 /**
  * Render the Help & Support page that lets users create new support tickets and view their existing tickets.
@@ -31,9 +32,11 @@ import { buildTitle, buildCanonical } from "@/lib/seo";
  * @returns The Support page component as a JSX.Element
  */
 export default function Support() {
-  const ticketsResult = useQuery(api.support.getMyTickets, {
-    paginationOpts: { numItems: 50, cursor: null },
-  });
+  const { results: ticketsResult, status, loadMore } = usePaginatedQuery(
+    api.support.getMyTickets,
+    {},
+    { initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS }
+  );
   const createTicket = useMutation(api.support.createTicket);
 
   const [subject, setSubject] = useState("");
@@ -41,8 +44,8 @@ export default function Support() {
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const tickets = ticketsResult?.page ?? [];
-  const isTicketsLoading = ticketsResult === undefined;
+  const tickets = ticketsResult;
+  const isTicketsLoading = status === "LoadingFirstPage";
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -248,6 +251,27 @@ export default function Support() {
                       No active tickets
                     </p>
                   </div>
+                )}
+                {status === "CanLoadMore" && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      loadMore(DASHBOARD_PAGINATION_LOAD_MORE_ITEMS);
+                    }}
+                    className="w-full h-12 rounded-md font-semibold"
+                  >
+                    Load More
+                  </Button>
+                )}
+                {status === "LoadingMore" && (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full h-12 rounded-md"
+                  >
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading…
+                  </Button>
                 )}
               </>
             )}
