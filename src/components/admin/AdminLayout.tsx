@@ -25,7 +25,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AdminStatsProvider } from "@/contexts/AdminStatsContext";
 import { useAdminStats } from "@/hooks/useAdminStats";
 
 import { StatCard } from "./StatCard";
@@ -107,14 +106,10 @@ const SIDEBAR_ITEMS = [
  * Render the admin layout with a persistent sidebar, KPI header and main content area.
  *
  * @param props - Properties controlling the layout: `children`, optional `title` and `subtitle`, and optional `onAnnounce` callback.
- * @returns The layout element wrapped with admin stats context, containing the sidebar, KPI header and main content area.
+ * @returns The layout element containing the sidebar, KPI header and main content area.
  */
 export function AdminLayout(props: AdminLayoutProps) {
-  return (
-    <AdminStatsProvider>
-      <AdminLayoutContent {...props} />
-    </AdminStatsProvider>
-  );
+  return <AdminLayoutContent {...props} />;
 }
 
 /**

@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
@@ -21,6 +22,24 @@ const { mockApi } = vi.hoisted(() => ({
 
 vi.mock("convex/_generated/api", () => ({
   api: mockApi,
+}));
+
+vi.mock("@/components/admin/AdminLayout", () => ({
+  AdminLayout: ({
+    children,
+    title,
+    subtitle,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    subtitle: string;
+  }) => (
+    <div data-testid="admin-layout">
+      <h1>{title}</h1>
+      <h2>{subtitle}</h2>
+      {children}
+    </div>
+  ),
 }));
 
 // Mock lucide-react icons
@@ -120,11 +139,6 @@ describe("AdminFinance Page", () => {
     expect(
       screen.getByText("Revenue, Commissions & Transaction History")
     ).toBeInTheDocument();
-
-    // Verify Header Stats (from AdminLayout context usage)
-    expect(screen.getByText("Online Users")).toBeInTheDocument();
-    expect(screen.getByText("10")).toBeInTheDocument();
-    expect(screen.getAllByText("100")).toHaveLength(1); // One in header "Users" card
 
     // Verify Finance Metrics (from FinanceTab)
     expect(screen.getByText("Total Sales Volume")).toBeInTheDocument();

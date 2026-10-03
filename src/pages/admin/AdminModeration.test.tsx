@@ -1,3 +1,4 @@
+import React from "react";
 import {
   render,
   screen,
@@ -11,6 +12,24 @@ import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 
 import AdminModeration from "./AdminModeration";
+
+vi.mock("@/components/admin/AdminLayout", () => ({
+  AdminLayout: ({
+    children,
+    title,
+    subtitle,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    subtitle: string;
+  }) => (
+    <div data-testid="admin-layout">
+      <h1>{title}</h1>
+      <h2>{subtitle}</h2>
+      {children}
+    </div>
+  ),
+}));
 
 // Mock convex hooks
 vi.mock("convex/react", () => ({

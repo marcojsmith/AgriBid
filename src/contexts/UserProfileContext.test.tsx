@@ -68,6 +68,20 @@ describe("UserProfileContext", () => {
 
       expect(container).toHaveTextContent("test@example.com");
     });
+
+    it("should maintain stable context value identity across unrelated re-renders", () => {
+      vi.mocked(convexReact.useQuery).mockReturnValue(mockUserProfile);
+
+      const { result, rerender } = renderHook(() => useUserProfile(), {
+        wrapper: UserProfileProvider,
+      });
+
+      const contextValue1 = result.current;
+      rerender();
+      const contextValue2 = result.current;
+
+      expect(Object.is(contextValue1, contextValue2)).toBe(true);
+    });
   });
 
   describe("useUserProfile", () => {

@@ -1,5 +1,5 @@
 // app/src/pages/Messages.tsx
-import { useEffect, useState, Component, type ReactNode } from "react";
+import { useEffect, useState, useMemo, Component, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import {
@@ -294,7 +294,10 @@ function ConversationThread({
 
   // getMessages pages newest-first; reverse the accumulated results so the
   // thread renders oldest-first with the latest message at the bottom.
-  const oldestFirst: Message[] = [...messages.results].reverse();
+  const oldestFirst: Message[] = useMemo(
+    () => [...messages.results].reverse(),
+    [messages.results]
+  );
 
   return (
     <div className="space-y-4">

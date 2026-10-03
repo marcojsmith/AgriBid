@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
@@ -6,6 +7,24 @@ import { toast } from "sonner";
 import { api } from "convex/_generated/api";
 
 import AdminAnnouncements from "./AdminAnnouncements";
+
+vi.mock("@/components/admin/AdminLayout", () => ({
+  AdminLayout: ({
+    children,
+    title,
+    subtitle,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    subtitle: string;
+  }) => (
+    <div data-testid="admin-layout">
+      <h1>{title}</h1>
+      <h2>{subtitle}</h2>
+      {children}
+    </div>
+  ),
+}));
 
 // Mock convex/react
 vi.mock("convex/react", () => ({

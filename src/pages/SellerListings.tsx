@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -39,7 +40,11 @@ export default function SellerListings({ status }: SellerListingsProps) {
     sellerId: userId ?? "",
   });
 
-  const watchedAuctionIds = useQuery(api.watchlist.getWatchedLotIds, {});
+  const watchedAuctionIdsArray = useQuery(api.watchlist.getWatchedLotIds, {});
+  const watchedAuctionIds = useMemo(
+    () => new Set(watchedAuctionIdsArray ?? []),
+    [watchedAuctionIdsArray]
+  );
 
   const {
     results: listings,
@@ -101,7 +106,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
               <AuctionCard
                 key={auction._id}
                 auction={auction}
-                isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
+                isWatched={watchedAuctionIds.has(auction._id)}
               />
             ))}
           </div>

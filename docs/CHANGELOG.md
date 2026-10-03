@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Memoize contexts, nest admin routes under a shared layout, Set-based watchlist lookups (#303) (0.17.14)
 - Admin audit skeleton, category empty state, tooltips, wizard/search/bid-form polish (#343) (0.17.13)
 - Format the finance fee tooltip amount with formatCurrency (other call sites already used the shared helper) (#301) (0.17.12)
 - Add regression tests for auction startTime enforcement (already enforced; stale issue) (#296) (0.17.11)

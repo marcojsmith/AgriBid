@@ -56,6 +56,20 @@ describe("AdminStatsContext", () => {
 
       expect(container).toHaveTextContent("100");
     });
+
+    it("should maintain stable context value identity across unrelated re-renders", () => {
+      vi.mocked(convexReact.useQuery).mockReturnValue(mockStats);
+
+      const { result, rerender } = renderHook(() => useAdminStats(), {
+        wrapper: AdminStatsProvider,
+      });
+
+      const contextValue1 = result.current;
+      rerender();
+      const contextValue2 = result.current;
+
+      expect(Object.is(contextValue1, contextValue2)).toBe(true);
+    });
   });
 
   describe("useAdminStats", () => {

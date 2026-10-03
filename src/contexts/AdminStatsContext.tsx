@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "../../convex/_generated/api";
@@ -15,9 +16,10 @@ export { AdminStatsContext };
  */
 export function AdminStatsProvider({ children }: { children: ReactNode }) {
   const stats = useQuery(api.admin.getAdminStats);
+  const value = useMemo(() => stats, [stats]);
 
   return (
-    <AdminStatsContext.Provider value={stats}>
+    <AdminStatsContext.Provider value={value}>
       {children}
     </AdminStatsContext.Provider>
   );
