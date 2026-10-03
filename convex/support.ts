@@ -12,6 +12,8 @@ import { updateCounter, countQuery } from "./admin_utils";
 import {
   SUPPORT_TICKET_MAX_SUBJECT_LENGTH,
   SUPPORT_TICKET_MAX_MESSAGE_LENGTH,
+  SUPPORT_RATE_LIMIT_WINDOW_MS,
+  MAX_SUPPORT_TICKETS_PER_WINDOW,
 } from "./constants";
 import type { Id } from "./_generated/dataModel";
 
@@ -55,6 +57,21 @@ export const createTicketHandler = async (
   ) {
     throw new ConvexError(
       `Message must be between 1 and ${SUPPORT_TICKET_MAX_MESSAGE_LENGTH.toString()} characters`
+    );
+  }
+
+  // Rate limiting: max MAX_SUPPORT_TICKETS_PER_WINDOW per SUPPORT_RATE_LIMIT_WINDOW_MS
+  const now = Date.now();
+  const windowStart = now - SUPPORT_RATE_LIMIT_WINDOW_MS;
+  const recentTickets = await ctx.db
+    .query("supportTickets")
+    .withIndex("by_user_createdAt", (q) =>
+      q.eq("userId", userId).gte("createdAt", windowStart)
+    )
+    .collect();
+  if (recentTickets.length >= MAX_SUPPORT_TICKETS_PER_WINDOW) {
+    throw new ConvexError(
+      "You're creating support tickets too quickly. Please wait before submitting another ticket."
     );
   }
 

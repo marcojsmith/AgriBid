@@ -64,13 +64,25 @@ const createMockProfile = (userId: string, role: string) => ({
 describe("Create Mutations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const mockLotsQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([]),
+    };
     mockCtx = {
       db: {
         get: vi.fn(),
         insert: vi.fn().mockResolvedValue("id"),
         patch: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
-        query: vi.fn(),
+        query: vi.fn((table: string) => {
+          if (table === "lots") {
+            return mockLotsQuery;
+          }
+          return {
+            withIndex: vi.fn().mockReturnThis(),
+            collect: vi.fn().mockResolvedValue([]),
+          };
+        }),
         normalizeId: vi
           .fn()
           .mockImplementation((_table: string, id: string) => id),

@@ -39,12 +39,41 @@ describe("submitReview mutation", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: unknown = {}) => {
+  const setupMockCtx = (options: {
+    existingReview?: unknown;
+    recentReviews?: unknown[];
+    mockQuery?: unknown;
+  } = {}) => {
+    const { existingReview = null, recentReviews = [] } = options;
+    const baseMockQuery = options.mockQuery ?? {
+      withIndex: vi.fn().mockReturnThis(),
+      unique: vi.fn().mockResolvedValue(existingReview),
+    };
+
     const mockDb: MockDb = {
       get: vi.fn(),
       insert: vi.fn(),
       patch: vi.fn(),
-      query: vi.fn(() => mockQuery),
+      query: vi.fn((table: string) => {
+        if (table === "reviews") {
+          return {
+            withIndex: vi.fn((indexName: string) => {
+              if (indexName === "by_reviewer_createdAt") {
+                return {
+                  collect: vi.fn().mockResolvedValue(recentReviews),
+                };
+              }
+              if (indexName === "by_lot_reviewer") {
+                return {
+                  unique: vi.fn().mockResolvedValue(existingReview),
+                };
+              }
+              return baseMockQuery;
+            }),
+          };
+        }
+        return baseMockQuery;
+      }),
     };
     return {
       db: mockDb,
@@ -64,12 +93,7 @@ describe("submitReview mutation", () => {
       settledAt: Date.now() - 8 * DAY_MS,
     };
 
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      unique: vi.fn().mockResolvedValue(null), // No existing review
-    };
-
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
 
@@ -188,12 +212,9 @@ describe("submitReview mutation", () => {
       status: "sold",
     };
 
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      unique: vi.fn().mockResolvedValue({ _id: "review1", rating: 4 }),
-    };
-
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx({
+      existingReview: { _id: "review1", rating: 4 },
+    });
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
 
@@ -243,12 +264,7 @@ describe("submitReview mutation", () => {
       settledAt: Date.now() - 7 * DAY_MS,
     };
 
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      unique: vi.fn().mockResolvedValue(null), // No existing review
-    };
-
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
 
@@ -273,12 +289,7 @@ describe("submitReview mutation", () => {
       settledAt: Date.now() - 7 * DAY_MS - 60_000,
     };
 
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      unique: vi.fn().mockResolvedValue(null), // No existing review
-    };
-
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
 
@@ -301,12 +312,7 @@ describe("submitReview mutation", () => {
       status: "sold",
     };
 
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      unique: vi.fn().mockResolvedValue(null), // No existing review
-    };
-
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(auctionDoc);
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
 

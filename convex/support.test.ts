@@ -30,6 +30,7 @@ describe("Support Coverage", () => {
     withIndex: ReturnType<typeof vi.fn>;
     order: ReturnType<typeof vi.fn>;
     paginate: ReturnType<typeof vi.fn>;
+    collect: ReturnType<typeof vi.fn>;
     eq: ReturnType<typeof vi.fn>;
     neq: ReturnType<typeof vi.fn>;
     gte: ReturnType<typeof vi.fn>;
@@ -74,6 +75,7 @@ describe("Support Coverage", () => {
         pageStatus: null,
         splitCursor: null,
       }),
+      collect: vi.fn().mockResolvedValue([]),
       eq: vi.fn().mockReturnThis(),
       neq: vi.fn().mockReturnThis(),
       gte: vi.fn().mockReturnThis(),

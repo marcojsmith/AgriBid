@@ -3,6 +3,10 @@ import { ConvexError } from "convex/values";
 import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { updateCounter } from "../../admin_utils";
+import {
+  MAX_AUCTION_TITLE_LENGTH,
+  MAX_AUCTION_DESCRIPTION_LENGTH,
+} from "../../constants";
 
 /**
  * Shape of the fields required to submit a lot for admin review.
@@ -90,8 +94,20 @@ export function validateLotBeforeSubmit(lot: LotValidationInput): void {
   if (!lot.title || lot.title.trim().length === 0) {
     throw new ConvexError("Title is required before submitting");
   }
+  const trimmedTitle = lot.title.trim();
+  if (trimmedTitle.length > MAX_AUCTION_TITLE_LENGTH) {
+    throw new ConvexError(
+      `Title is too long. Maximum ${MAX_AUCTION_TITLE_LENGTH.toString()} characters allowed.`
+    );
+  }
   if (!lot.description || lot.description.trim().length === 0) {
     throw new ConvexError("Description is required before submitting");
+  }
+  const trimmedDescription = lot.description.trim();
+  if (trimmedDescription.length > MAX_AUCTION_DESCRIPTION_LENGTH) {
+    throw new ConvexError(
+      `Description is too long. Maximum ${MAX_AUCTION_DESCRIPTION_LENGTH.toString()} characters allowed.`
+    );
   }
   if (lot.startingPrice === undefined || lot.startingPrice <= 0) {
     throw new ConvexError("Starting price must be greater than zero");

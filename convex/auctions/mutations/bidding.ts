@@ -6,6 +6,7 @@ import type { Id } from "../../_generated/dataModel";
 import { requireVerified } from "../../lib/auth";
 import { logActivity } from "../../userActivity";
 import { handleNewBid } from "../proxy_bidding";
+import { MAX_BID_AMOUNT } from "../../constants";
 
 /**
  * Minimum time between consecutive bids from the same user (issue #283).
@@ -46,6 +47,18 @@ export const placeBidHandler = async (
     const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
     throw new ConvexError(
       `You're bidding too fast. Please wait ${String(remainingSeconds)} second${remainingSeconds === 1 ? "" : "s"} and try again.`
+    );
+  }
+
+  // Upper bound on bid amounts prevents overflow in fee calculations.
+  if (args.amount > MAX_BID_AMOUNT) {
+    throw new ConvexError(
+      `Bid amount exceeds the maximum allowed (R${MAX_BID_AMOUNT.toLocaleString("en-ZA")}).`
+    );
+  }
+  if (args.maxBid !== undefined && args.maxBid > MAX_BID_AMOUNT) {
+    throw new ConvexError(
+      `Maximum bid exceeds the limit (R${MAX_BID_AMOUNT.toLocaleString("en-ZA")}).`
     );
   }
 

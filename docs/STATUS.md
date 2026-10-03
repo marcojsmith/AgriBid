@@ -31,6 +31,7 @@ Last updated: 2026-10-03
 
 ## Done (last 10)
 
+- 2026-10-03: Add input length caps and per-user rate limits on write mutations (#298) (v0.17.16).
 - 2026-10-03: Harden destructive seed access (no preview bypass, explicit dev opt-in), audit-log seed/promotion, add deny-path tests (#297) (v0.17.15).
 - 2026-10-03: Memoize contexts, nest admin routes under a shared layout, Set-based watchlist lookups (#303) (v0.17.14).
 - 2026-10-03: Admin audit skeleton, category empty state, tooltips, wizard/search/bid-form polish (#343) (v0.17.13).

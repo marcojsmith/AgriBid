@@ -11,6 +11,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getGitHubConfig, isGitHubReportingEnabled } from "./admin/settings";
 import { getAuthUser, requireAdmin } from "./lib/auth";
 import { internal } from "./_generated/api";
+import { MAX_ERROR_REPORT_FIELD_LENGTH } from "./constants";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 5;
@@ -23,6 +24,18 @@ const rateLimitCache: { count: number; expiresAt: number } = {
   count: 0,
   expiresAt: 0,
 };
+
+/**
+ * Truncate a string to the given max length, appending an ellipsis if truncated.
+ *
+ * @param str - The string to truncate.
+ * @param maxLength - The maximum allowed length.
+ * @returns The truncated string, with "..." appended if it was shortened.
+ */
+function truncate(str: string, maxLength: number): string {
+  if (str.length <= maxLength) return str;
+  return str.slice(0, maxLength - 3) + "...";
+}
 
 /**
  * Generate a deterministic fingerprint for an error to enable deduplication.
@@ -235,9 +248,12 @@ export async function submitErrorReportHandler(
   }
 ) {
   const sanitizedBreadcrumbs = args.breadcrumbs.map(sanitizeBreadcrumbMetadata);
-  const sanitizedErrorMessage = sanitizeText(args.errorMessage);
+  const sanitizedErrorMessage = truncate(
+    sanitizeText(args.errorMessage),
+    MAX_ERROR_REPORT_FIELD_LENGTH
+  );
   const sanitizedStackTrace = args.stackTrace
-    ? sanitizeText(args.stackTrace)
+    ? truncate(sanitizeText(args.stackTrace), MAX_ERROR_REPORT_FIELD_LENGTH)
     : args.stackTrace;
   const sanitizedAdditionalInfo = sanitizeAdditionalInfo(args.additionalInfo);
   const authUser = await getAuthUser(ctx);

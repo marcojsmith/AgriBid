@@ -101,6 +101,7 @@ export default defineSchema({
         notes: v.optional(v.string()),
       })
     ),
+    createdAt: v.optional(v.number()),
   })
     .index("by_status", ["status"])
     .index("by_seller", ["sellerId"])
@@ -112,6 +113,7 @@ export default defineSchema({
     .index("by_status_settledAt", ["status", "settledAt"])
     .index("by_auctionId", ["auctionId"])
     .index("by_status_auctionId", ["status", "auctionId"])
+    .index("by_seller_createdAt", ["sellerId", "createdAt"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["status"],
@@ -170,7 +172,8 @@ export default defineSchema({
     .index("by_reported_user", ["reportedUserId"])
     .index("by_reporter", ["reporterId"])
     .index("by_status", ["status"])
-    .index("by_reported_status", ["reportedUserId", "status"]),
+    .index("by_reported_status", ["reportedUserId", "status"])
+    .index("by_reporter_createdAt", ["reporterId", "createdAt"]),
 
   // Seller reviews left by lot winners
   reviews: defineTable({
@@ -184,7 +187,8 @@ export default defineSchema({
   })
     .index("by_reviewee", ["revieweeId"])
     .index("by_reviewee_createdAt", ["revieweeId", "createdAt"])
-    .index("by_lot_reviewer", ["lotId", "reviewerId"]),
+    .index("by_lot_reviewer", ["lotId", "reviewerId"])
+    .index("by_reviewer_createdAt", ["reviewerId", "createdAt"]),
 
   bids: defineTable({
     lotId: v.id("lots"),
@@ -283,7 +287,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_user", ["userId"])
     .index("by_updatedAt", ["updatedAt"])
-    .index("by_user_updatedAt", ["userId", "updatedAt"]),
+    .index("by_user_updatedAt", ["userId", "updatedAt"])
+    .index("by_user_createdAt", ["userId", "createdAt"]),
 
   notifications: defineTable({
     recipientId: v.string(), // "all" for announcements
