@@ -235,7 +235,7 @@ export default function Support() {
                       {ticket.message}
                     </p>
                     {ticket.status === "resolved" && (
-                      <div className="mt-3 pt-3 border-t flex items-center gap-2 text-green-600">
+                      <div className="mt-3 pt-3 border-t flex items-center gap-2 text-success">
                         <CheckCircle2 className="h-3 w-3" />
                         <span className="text-xs font-semibold">
                           Resolved by Admin

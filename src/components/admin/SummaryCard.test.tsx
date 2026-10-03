@@ -21,7 +21,7 @@ describe("SummaryCard", () => {
     icon: <span data-testid="icon">Icon</span>,
     stats: [
       { label: "Label 1", value: 100 },
-      { label: "Label 2", value: "200", color: "text-green-500" },
+      { label: "Label 2", value: "200", color: "text-success" },
     ],
     link: "/test-link",
     linkLabel: "View Details",
@@ -53,7 +53,7 @@ describe("SummaryCard", () => {
   it("applies custom color to stat value", () => {
     renderWithRouter(<SummaryCard {...mockProps} />);
     const valueElement = screen.getByText("200");
-    expect(valueElement).toHaveClass("text-green-500");
+    expect(valueElement).toHaveClass("text-success");
   });
 
   it("renders with custom className", () => {

@@ -11,11 +11,11 @@ import type { Id } from "convex/_generated/dataModel";
 export function getNotificationIcon(type: string) {
   switch (type) {
     case "success":
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      return <CheckCircle2 className="h-4 w-4 text-success" />;
     case "error":
       return <XCircle className="h-4 w-4 text-destructive" />;
     case "warning":
-      return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      return <AlertCircle className="h-4 w-4 text-warning" />;
     default:
       return <Info className="h-4 w-4 text-primary" />;
   }

@@ -107,7 +107,7 @@ export default function AdminUsers() {
             <Badge variant="secondary" className="font-bold">
               Showing {filteredUsers.length} of {adminStats.totalUsers} Users
             </Badge>
-            <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 font-bold">
+            <Badge className="bg-primary/10 text-primary border-primary/20 font-bold">
               {adminStats.verifiedSellers} Verified
             </Badge>
           </div>
@@ -157,7 +157,7 @@ export default function AdminUsers() {
                             {p.name ?? "Anonymous"}
                             {p.isOnline && (
                               <span
-                                className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"
+                                className="flex h-2 w-2 rounded-full bg-success animate-pulse"
                                 title="Online now"
                                 aria-label="Online now"
                                 role="status"
@@ -181,7 +181,7 @@ export default function AdminUsers() {
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         {p.isVerified ? (
-                          <div className="flex items-center gap-1.5 text-green-600 font-bold text-xs">
+                          <div className="flex items-center gap-1.5 text-success font-bold text-xs">
                             <ShieldCheck className="h-4 w-4" /> Verified
                           </div>
                         ) : (
@@ -190,7 +190,7 @@ export default function AdminUsers() {
                           </div>
                         )}
                         {p.kycStatus === "pending" && (
-                          <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 text-xs font-medium w-fit">
+                          <Badge className="bg-warning/10 text-warning border-warning/20 text-xs font-medium w-fit">
                             KYC Pending
                           </Badge>
                         )}
@@ -204,7 +204,7 @@ export default function AdminUsers() {
                         {p.kycStatus === "pending" && (
                           <Button
                             size="sm"
-                            className="h-8 font-semibold text-xs bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20"
+                            className="h-8 font-semibold text-xs bg-warning hover:bg-warning/90 shadow-lg shadow-warning/20"
                             onClick={() => handleReviewKYCClick(p.userId)}
                             disabled={
                               isFetchingKYC && fetchingKycUserId === p.userId

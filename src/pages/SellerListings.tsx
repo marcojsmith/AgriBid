@@ -78,7 +78,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
           {isActive ? (
             <Gavel className="h-5 w-5 text-primary" />
           ) : (
-            <Award className="h-5 w-5 text-green-600" />
+            <Award className="h-5 w-5 text-success" />
           )}
           <h1
             className={`text-2xl sm:text-4xl font-bold tracking-tight ${

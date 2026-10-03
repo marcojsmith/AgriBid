@@ -111,7 +111,7 @@ export function AuctionCardThumbnail({
             className={cn(
               "rounded-full shadow-md bg-background/80 backdrop-blur hover:bg-background transition-all",
               isCompact ? "h-7 w-7" : "h-9 w-9",
-              isWatched ? "text-red-500" : "text-zinc-500"
+              isWatched ? "text-destructive" : "text-muted-foreground"
             )}
             onClick={onWatchlistToggle}
           >

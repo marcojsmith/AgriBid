@@ -74,8 +74,8 @@ export function VerificationStatusSection({
     return (
       <Card className="p-12 border border-success/20 bg-success/5 space-y-8">
         <div className="text-center space-y-4">
-          <div className="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-green-500/20">
-            <ShieldCheck className="h-8 w-8 text-white" />
+          <div className="h-16 w-16 bg-success rounded-full flex items-center justify-center mx-auto shadow-lg shadow-success/20">
+            <ShieldCheck className="h-8 w-8 text-success-foreground" />
           </div>
           <div className="space-y-1">
             <h2 className="text-2xl font-bold">Identity Verified</h2>
@@ -86,7 +86,7 @@ export function VerificationStatusSection({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-green-500/10 pt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-success/10 pt-8">
           <div className="space-y-4">
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground">
@@ -178,8 +178,8 @@ export function VerificationStatusSection({
   if (status === "pending") {
     return (
       <Card className="p-12 border border-warning/20 bg-warning/5 text-center space-y-4">
-        <div className="h-16 w-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto animate-pulse shadow-lg shadow-orange-500/20">
-          <Clock className="h-8 w-8 text-white" />
+        <div className="h-16 w-16 bg-warning rounded-full flex items-center justify-center mx-auto animate-pulse shadow-lg shadow-warning/20">
+          <Clock className="h-8 w-8 text-warning-foreground" />
         </div>
         <div className="space-y-1">
           <h2 className="text-2xl font-bold">Review in Progress</h2>
@@ -202,8 +202,8 @@ export function VerificationStatusSection({
   if (status === "rejected") {
     return (
       <Card className="p-12 border border-destructive/20 bg-destructive/5 text-center space-y-4">
-        <div className="h-16 w-16 bg-red-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-red-500/20">
-          <ShieldX className="h-8 w-8 text-white" />
+        <div className="h-16 w-16 bg-destructive rounded-full flex items-center justify-center mx-auto shadow-lg shadow-destructive/20">
+          <ShieldX className="h-8 w-8 text-destructive-foreground" />
         </div>
         <div className="space-y-1">
           <h2 className="text-2xl font-bold">Verification Rejected</h2>

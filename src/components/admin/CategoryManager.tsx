@@ -175,7 +175,7 @@ export function CategoryManager({
                       variant={cat.isActive ? "outline" : "secondary"}
                       className={
                         cat.isActive
-                          ? "bg-green-500/10 text-green-500 border-green-500/20"
+                          ? "bg-success/10 text-success border-success/20"
                           : ""
                       }
                     >

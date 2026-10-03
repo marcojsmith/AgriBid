@@ -251,7 +251,7 @@ function AdminLayoutContent({
                     label="Online Users"
                     value={stats.liveUsers}
                     icon={<Activity className="h-3 w-3" />}
-                    color="text-green-500"
+                    color="text-success"
                     padding="p-2"
                     className="min-w-[100px] h-14"
                     iconSize="h-8 w-8"
@@ -268,7 +268,7 @@ function AdminLayoutContent({
                     label="Moderation"
                     value={stats.pendingReview}
                     icon={<Clock className="h-3 w-3" />}
-                    color={stats.pendingReview > 0 ? "text-yellow-500" : ""}
+                    color={stats.pendingReview > 0 ? "text-warning" : ""}
                     padding="p-2"
                     className="min-w-[100px] h-14"
                     iconSize="h-8 w-8"

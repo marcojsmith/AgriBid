@@ -259,9 +259,9 @@ const ListingWizardContent = () => {
 
   if (isSuccess) {
     return (
-      <div className="bg-card border rounded-lg p-12 text-center space-y-8 animate-in zoom-in duration-500">
-        <div className="h-24 w-24 rounded-full bg-green-500/10 flex items-center justify-center mx-auto border-4 border-green-500/20">
-          <CheckCircle2 className="h-12 w-12 text-green-500" />
+      <div className="bg-card border rounded-md p-12 text-center space-y-8 animate-in zoom-in duration-500">
+        <div className="h-24 w-24 rounded-full bg-success/10 flex items-center justify-center mx-auto border-4 border-success/20">
+          <CheckCircle2 className="h-12 w-12 text-success" />
         </div>
         <div className="space-y-3">
           <h2 className="text-4xl font-bold tracking-tight">

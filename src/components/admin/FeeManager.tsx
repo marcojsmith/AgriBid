@@ -352,7 +352,7 @@ export function FeeManager() {
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           fee.isActive
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                            ? "bg-success/10 text-success"
                             : "bg-muted text-muted-foreground"
                         }`}
                       >

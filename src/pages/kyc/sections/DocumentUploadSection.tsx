@@ -74,7 +74,7 @@ export function DocumentUploadSection({
               variant="secondary"
               className="h-8 px-3 gap-2 font-bold text-xs border border-success/20"
             >
-              <ShieldCheck className="h-3 w-3 text-green-600" />
+              <ShieldCheck className="h-3 w-3 text-success" />
               Existing Doc {idx + 1}
               {isEditMode && (
                 <Button

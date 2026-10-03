@@ -79,7 +79,7 @@ export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
   const timeLeft = parts.join(" ");
 
   const stateColorClass = isLowTime
-    ? "text-red-600 animate-pulse"
+    ? "text-destructive animate-pulse"
     : "text-primary";
 
   return (

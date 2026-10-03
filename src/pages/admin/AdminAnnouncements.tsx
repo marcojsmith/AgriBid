@@ -208,7 +208,7 @@ export default function AdminAnnouncements() {
             label="Engaged Users"
             value={announcements.reduce((acc, curr) => acc + curr.readCount, 0)}
             icon={<Eye className="h-5 w-5" />}
-            color="text-green-500"
+            color="text-success"
           />
         </div>
 

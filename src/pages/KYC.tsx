@@ -162,12 +162,12 @@ export default function KYC() {
         <div className="space-y-8">
           {isEditMode && (
             <div className="p-4 border border-warning/20 bg-warning/5 rounded-md flex gap-3 items-center">
-              <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
+              <AlertCircle className="h-5 w-5 text-warning shrink-0" />
               <div>
                 <p className="font-semibold text-xs text-warning">
                   Editing Verified Details
                 </p>
-                <p className="text-sm font-medium text-orange-600/80 leading-relaxed">
+                <p className="text-sm font-medium text-warning/80 leading-relaxed">
                   Updating your information will reset your status to "Pending"
                   and require re-verification by our team.
                 </p>

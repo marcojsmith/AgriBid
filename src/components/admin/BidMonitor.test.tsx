@@ -166,7 +166,7 @@ describe("BidMonitor", () => {
     });
     renderWithProvider(<BidMonitor />);
     const amount = screen.getByText(/R\s*150\s*000/);
-    expect(amount.closest("span")).toHaveClass("text-green-600");
+    expect(amount.closest("span")).toHaveClass("text-success");
   });
 
   it("renders connection error on timeout", () => {

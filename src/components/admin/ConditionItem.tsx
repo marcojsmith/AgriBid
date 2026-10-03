@@ -23,7 +23,7 @@ export function ConditionItem({
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center gap-1">
         {value === true ? (
-          <Check className="h-3 w-3 text-green-500" />
+          <Check className="h-3 w-3 text-success" />
         ) : value === false ? (
           <X className="h-3 w-3 text-destructive" />
         ) : (

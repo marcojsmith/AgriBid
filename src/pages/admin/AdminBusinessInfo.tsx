@@ -162,8 +162,8 @@ export default function AdminBusinessInfo() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Building2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="p-2 bg-success/10 rounded-md">
+                <Building2 className="h-5 w-5 text-success" />
               </div>
               <div>
                 <CardTitle>Organization Details</CardTitle>
@@ -337,8 +337,8 @@ export default function AdminBusinessInfo() {
         <Card className="h-fit">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-primary/10 rounded-md">
+                <CheckCircle className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <CardTitle>How it works</CardTitle>

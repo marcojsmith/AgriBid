@@ -171,7 +171,7 @@ export function BidMonitor() {
                           {formatCurrency(bid.amount)}
                         </span>
                       ) : (
-                        <span className="text-green-600">
+                        <span className="text-success">
                           {formatCurrency(bid.amount)}
                         </span>
                       )}

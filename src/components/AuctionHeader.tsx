@@ -119,7 +119,7 @@ export const AuctionHeader = ({ auction }: AuctionHeaderProps) => {
               "rounded-md border font-medium text-xs gap-2 h-12 px-6 transition-all shrink-0",
               isWatched
                 ? "border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                : "text-zinc-500 hover:border-primary hover:text-primary"
+                : "text-muted-foreground hover:border-primary hover:text-primary"
             )}
             onClick={handleWatchlistToggle}
             disabled={sessionIsPending || isWatched === undefined || isToggling}
