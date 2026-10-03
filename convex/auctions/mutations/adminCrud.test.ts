@@ -316,6 +316,51 @@ describe("Auction container CRUD mutations", () => {
         })
       ).rejects.toThrow("Auction startTime must be before endTime");
     });
+
+    it("preserves a future scheduled startTime on publish (#296)", async () => {
+      const futureStart = Date.now() + 86_400_000;
+      mockCtx.db.get.mockResolvedValue({
+        ...baseAuction,
+        startTime: futureStart,
+        endTime: futureStart + 3600_000,
+      } as unknown as Doc<"auctions">);
+
+      const result = await publishAuctionContainerHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockCtx.db.patch).toHaveBeenCalledWith(
+        "auctions",
+        "a1",
+        expect.objectContaining({
+          status: "published",
+        })
+      );
+      const patchCall = mockCtx.db.patch.mock.calls[0];
+      const patchPayload = patchCall[2] as Record<string, unknown>;
+      expect(patchPayload.startTime).toBeUndefined();
+    });
+
+    it("preserves a past startTime on publish (no clamping) (#296)", async () => {
+      const pastStart = Date.now() - 3600_000;
+      mockCtx.db.get.mockResolvedValue({
+        ...baseAuction,
+        startTime: pastStart,
+        endTime: Date.now() + 3600_000,
+      } as unknown as Doc<"auctions">);
+
+      const result = await publishAuctionContainerHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions"> }
+      );
+
+      expect(result.success).toBe(true);
+      const patchCall = mockCtx.db.patch.mock.calls[0];
+      const patchPayload = patchCall[2] as Record<string, unknown>;
+      expect(patchPayload.startTime).toBeUndefined();
+    });
   });
 
   describe("closeAuctionContainerHandler", () => {
