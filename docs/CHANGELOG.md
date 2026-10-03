@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Paginate support tickets and use shared pagination constants (#340) (0.17.6)
 - Noindex private pages, dev-safe site URL fallback, toast on mark-read failure (#344) (0.17.5)
 - Add catch-all 404 route and NotFound page (#306) (0.17.4)
 - Reconcile stale docs: fix app/ paths, regenerate schema reference, correct test command (#307) (0.17.3)
