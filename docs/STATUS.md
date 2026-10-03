@@ -31,6 +31,7 @@ Last updated: 2026-10-03
 
 ## Done (last 10)
 
+- 2026-10-03: Use shadcn Checkbox and AlertDialog, remove eslint-disable in BidForm (#342) (v0.17.8).
 - 2026-10-03: Add per-route error boundaries (#341) (v0.17.7).
 - 2026-10-03: Paginate support tickets and use shared pagination constants (#340) (v0.17.6).
 - 2026-10-03: Noindex private pages, dev-safe site URL fallback, toast on mark-read failure (#344) (v0.17.5).
