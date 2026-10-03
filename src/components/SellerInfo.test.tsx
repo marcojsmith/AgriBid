@@ -137,6 +137,23 @@ describe("SellerInfo", () => {
     ).toBeInTheDocument();
   });
 
+  it("styles the verification highlight as bold success text with no background block", () => {
+    renderSellerInfo();
+
+    const highlight = screen.getByText(/High-Integrity Verification/i);
+
+    expect(highlight.tagName).toBe("STRONG");
+    expect(highlight).toHaveClass("font-bold", "text-success");
+    expect(highlight.className).not.toMatch(/(^|\s)(bg-|px-|rounded)/);
+  });
+
+  it("uses tighter padding and vertical gaps on phones", () => {
+    const { container } = renderSellerInfo();
+
+    const card = container.querySelector(".shadow-sm");
+    expect(card).toHaveClass("p-4", "sm:p-6", "space-y-4", "sm:space-y-6");
+  });
+
   it("shows skeleton UI when loading", () => {
     vi.mocked(convexReact.useQuery).mockReturnValue(undefined);
 

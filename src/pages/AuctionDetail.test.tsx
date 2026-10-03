@@ -519,4 +519,49 @@ describe("AuctionDetail Page", () => {
       isOwnListing: true,
     });
   });
+
+  it("scrolls the bidding column with the page and only sticks on tall viewports", () => {
+    const { container } = renderPage();
+
+    const stickyColumn =
+      container.querySelector("#bidding-panel")?.parentElement;
+
+    // A capped, internally scrollable column gave the sidebar a second
+    // scrollbar on short viewports; it now scrolls with the page and only
+    // sticks when the viewport is tall enough to hold it.
+    expect(stickyColumn).toHaveClass("lg:[@media(min-height:900px)]:sticky");
+    expect(stickyColumn?.className).not.toContain("max-h-[");
+    expect(stickyColumn?.className).not.toContain("overflow-y-auto");
+  });
+
+  it("tightens the layout and card padding on phones", () => {
+    const { container } = renderPage();
+
+    const description = container.querySelector(
+      '[aria-label="Equipment Description"]'
+    );
+    const grid = description?.parentElement?.parentElement;
+
+    // `pb-20` only existed to clear the fixed MobileBidBar; `pb-12` is enough
+    // once the card padding and gaps below stop adding another 100px or so.
+    expect(grid).toHaveClass("gap-4", "lg:gap-8", "pb-12", "lg:pb-0");
+    expect(description).toHaveClass("p-4", "sm:p-8");
+
+    const biddingAside = container.querySelector("#bidding-panel");
+    expect(biddingAside).toHaveClass("p-4", "sm:p-6");
+
+    const bidHistory = container.querySelector('[aria-label="Bid History"]');
+    expect(bidHistory).toHaveClass("p-4", "sm:p-6");
+  });
+
+  it("labels the bid history only through the accordion trigger", () => {
+    renderPage();
+
+    // A section heading duplicated the accordion trigger's own label, stacking
+    // two "Bid History" headings on the phone.
+    expect(
+      screen.queryByRole("heading", { name: "Bid History" })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText("Bid History")).toHaveLength(1);
+  });
 });

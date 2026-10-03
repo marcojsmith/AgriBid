@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import type { LotDetail } from "@/types/auction";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
 import { useSession } from "@/lib/auth-client";
+import { formatCurrency } from "@/lib/currency";
 
 import { BiddingPanel } from "./BiddingPanel";
 
@@ -864,6 +865,97 @@ describe("BiddingPanel", () => {
         )
       ).toBeInTheDocument();
       expect(screen.getByText(/Complete KYC Now/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("responsive wrapping", () => {
+    const renderPanel = () =>
+      render(
+        <BrowserRouter>
+          <BiddingPanel auction={getActiveAuction()} />
+        </BrowserRouter>
+      );
+
+    it("keeps the price on a single line and scales it with the panel width", () => {
+      renderPanel();
+
+      const price = screen.getByText(formatCurrency(50000));
+
+      expect(price).toHaveClass(
+        "whitespace-nowrap",
+        "text-3xl",
+        "@[28rem]:text-4xl"
+      );
+    });
+
+    it("responds to the panel width, not the viewport, for the row direction", () => {
+      renderPanel();
+
+      const row = screen.getByText("Current Bid").closest("div")?.parentElement;
+
+      expect(row).toHaveClass(
+        "flex-col",
+        "items-start",
+        "@[28rem]:flex-row",
+        "@[28rem]:items-start",
+        "@[28rem]:justify-between"
+      );
+      expect(row?.className).not.toContain("sm:flex-row");
+      // The container itself must live on an ancestor: an element cannot query
+      // its own container, so `@container` here would disable every variant.
+      expect(row?.className).not.toContain("@container");
+      expect(
+        screen.getByText("Current Bid").closest('[class~="@container"]')
+      ).not.toBeNull();
+    });
+
+    it("keeps the countdown on one line and left aligned until the panel is wide enough", () => {
+      renderPanel();
+
+      const countdown = screen.getByText("Time Remaining").parentElement;
+
+      expect(countdown).toHaveClass(
+        "whitespace-nowrap",
+        "min-w-0",
+        "@[28rem]:text-right"
+      );
+      expect(countdown?.className).not.toContain("sm:text-right");
+      expect(countdown).not.toHaveClass("text-right");
+    });
+
+    it("lets the live badge drop below the price instead of overflowing", () => {
+      renderPanel();
+
+      const priceRow = screen.getByText(formatCurrency(50000)).parentElement;
+
+      expect(priceRow).toHaveClass("flex-wrap", "gap-x-2", "gap-y-1");
+    });
+
+    it("keeps the highlighted price flush with the panel text", () => {
+      renderPanel();
+
+      const priceRow = screen.getByText(formatCurrency(50000)).parentElement;
+
+      // Horizontal bleed only: the 8px padding is cancelled by an equal negative
+      // margin so the price lines up with the "Current Bid" label above it.
+      expect(priceRow).toHaveClass("p-2", "-mx-2");
+      expect(priceRow).not.toHaveClass("-m-2");
+    });
+
+    it("keeps the next minimum bid amount on one line and lets the label wrap", () => {
+      renderPanel();
+
+      // The label must be its own box so it can break before the amount does
+      const label = screen.getByText(/^Next minimum bid:$/);
+      expect(label.tagName).toBe("SPAN");
+
+      const row = label.parentElement;
+      expect(row).toHaveClass("flex-wrap", "min-w-0");
+
+      // Scoped to the row: the same amount is also rendered by the quick bids
+      const amount = row?.querySelector(".tabular-nums");
+      expect(amount?.textContent).toBe(formatCurrency(50500));
+      expect(amount).toHaveClass("whitespace-nowrap");
     });
   });
 });

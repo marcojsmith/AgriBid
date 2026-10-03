@@ -7,10 +7,7 @@ import { toast } from "sonner";
 import { Clock, MapPin, Gavel, CalendarClock } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
-import {
-  getLotLiveWindow,
-  useLotLiveWindow,
-} from "@/hooks/useLotLiveWindow";
+import { getLotLiveWindow, useLotLiveWindow } from "@/hooks/useLotLiveWindow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,12 +168,12 @@ export const AuctionCard = ({
         "overflow-hidden border hover:border-primary/60 transition-shadow duration-200 hover:shadow-md bg-card group rounded-lg h-full shadow-none"
       )}
     >
-      <div className="relative">
+      <div className="relative flex h-full flex-col">
         <Link
           to={`/auction/${auction._id}`}
-          className={cn("flex h-full", isCompact ? "flex-row" : "flex-col")}
+          className={cn("flex flex-1", isCompact ? "flex-row" : "flex-col")}
         >
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 self-stretch">
             <AuctionCardThumbnail
               primaryImage={primaryImage}
               title={auction.title}
@@ -252,7 +249,9 @@ export const AuctionCard = ({
 
           <div className="flex-1 flex flex-col min-w-0">
             <CardHeader
-              className={cn(isCompact ? "p-3 pb-1" : "p-4 md:p-5 pb-0 md:pb-0")}
+              className={cn(
+                isCompact ? "p-3 pb-1" : "p-3 sm:p-4 md:p-5 pb-0 md:pb-0"
+              )}
             >
               <div className="flex flex-wrap gap-1 mb-1">
                 <Badge
@@ -268,10 +267,10 @@ export const AuctionCard = ({
               <div className="flex justify-between items-start gap-2">
                 <CardTitle
                   className={cn(
-                    "leading-tight font-semibold group-hover:text-primary transition-colors line-clamp-2",
+                    "leading-tight font-semibold group-hover:text-primary transition-colors",
                     isCompact
-                      ? "text-xs sm:text-sm md:text-base"
-                      : "text-lg md:text-xl"
+                      ? "line-clamp-3 text-xs sm:text-sm md:text-base"
+                      : "line-clamp-2 text-lg md:text-xl"
                   )}
                 >
                   {auction.title}
@@ -279,7 +278,7 @@ export const AuctionCard = ({
               </div>
 
               {isCompact ? (
-                <p className="text-[10px] sm:text-xs leading-tight text-muted-foreground font-medium line-clamp-3 mt-1.5 italic">
+                <p className="text-[10px] sm:text-xs leading-tight text-muted-foreground font-medium line-clamp-2 mt-1.5 italic">
                   {auction.description}
                 </p>
               ) : (
@@ -298,10 +297,20 @@ export const AuctionCard = ({
 
             <CardContent
               className={cn(
-                "flex-1 flex flex-col justify-end pt-0 md:pt-0",
-                isCompact ? "p-3" : "p-4 md:p-5"
+                "@container flex-1 flex flex-col justify-end pt-0 md:pt-0",
+                isCompact ? "p-3" : "p-3 sm:p-4 md:p-5"
               )}
             >
+              {/* Compact cards hide the full price block, so surface the current
+                  bid on phones where the bid button truncates the figure. */}
+              {isCompact && (
+                <p className="text-[11px] font-medium text-muted-foreground whitespace-nowrap sm:hidden">
+                  Current bid{" "}
+                  <span className="font-bold tabular-nums text-primary">
+                    {formatCurrency(auction.currentPrice)}
+                  </span>
+                </p>
+              )}
               <AuctionCardPrice
                 currentPrice={auction.currentPrice}
                 endTime={liveWindow.effectiveEndTime}
@@ -316,8 +325,8 @@ export const AuctionCard = ({
 
         <div
           className={cn(
-            "bg-muted/20 border-t flex gap-2 items-center",
-            isCompact ? "p-3 h-12" : "p-4 md:p-5"
+            "bg-muted/20 border-t flex gap-2 items-center mt-auto shrink-0",
+            isCompact ? "p-3 h-12" : "p-3 sm:p-4 md:p-5"
           )}
         >
           <Button

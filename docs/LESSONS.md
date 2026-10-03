@@ -43,6 +43,8 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 - 2026-09 - Use semantic tokens (`--success`/`--warning`, `bg-success/10`) not hardcoded `green-*`/`amber-*`; no info/blue token exists (Sold badge uses `bg-primary/10`). Overlays on imagery: `bg-foreground/70 text-background`. Containers use `rounded-md`, `rounded-lg` only for images/avatars (AGENTS rule 10). CodeRabbit flags touched lines that violate these.
 - 2026-09 - Verification checks are duplicated in `BiddingPanel`, `BidForm`, `MobileBidBar` → keep in sync if the profile shape changes.
 - 2026-09 - A phase's grep gate (`uppercase|font-black|border-2|rounded-(xl|2xl|3xl)`) is the contract for the visual sweep; hardcoded colours on untouched lines were left deliberately.
+- 2026-10 - Tailwind container queries (`@container` + `@[24rem]:`) never match when `@container` sits on the _same_ element as its `@[...]` variants — an element is not its own query container, so the rules compile but silently do nothing. Put `@container` on an ancestor. Both `@[24rem]:` and `@min-[24rem]:` compile in Tailwind v4.3.
+- 2026-10 - A card/panel whose width is set by a grid column (lots grids are 2/3/4-up from `md`/`lg`/`xl`) must not switch internal layout on viewport breakpoints: at 820px viewport a 2-up card is only ~340px wide, so `md:` fires while the content does not fit.
 
 ## Auth
 
@@ -60,6 +62,7 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 - 2026-09 - Lint baseline is ~524 warnings, 0 errors; new code must not add to it. `.husky/pre-commit` rejects new undocumented `eslint-disable` (needs `-- reason`). `no-console` allows only `warn`/`error`.
 - 2026-09 - CodeRabbit CLI: installed 0.7.6 supports `bunx coderabbit review --uncommitted` (AGENTS.md's `--prompt-only --type uncommitted` errors); add `--include-untracked` for new files; `review findings` reprints the last review.
 - 2026-09 - With `core.autocrlf=true` on Windows, `prettier --check` fails on every file (no `endOfLine` set) → never run repo-wide `prettier --write`.
+- 2026-10 - `bun run format` is `prettier --write .`, which rewrites ~20 unrelated files at once (the repo is not prettier-clean) and buries a focused diff. Format only what you touched: `bunx prettier --write <changed files>`, and `git checkout --` any file you did not mean to edit.
 - 2026-09 - `git stash push -u` fails on this repo (Windows) and leaves a dirty tree; the running `convex dev` watcher rewrites `convex/_generated/api.d.ts` mid-operation and blocks pop → treat `api.d.ts` as perpetually modified (`git checkout -- convex/_generated/api.d.ts && git stash pop`), and diff instead of stashing.
 - 2026-09 - `eslint --stdin --stdin-filename` lints the on-disk file with the type-aware config → use a path-scoped stash baseline.
 - 2026-09 - `git diff -- 'convex/'` is an invalid pathspec → use `git diff -- convex/`.

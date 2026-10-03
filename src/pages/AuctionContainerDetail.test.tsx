@@ -89,4 +89,30 @@ describe("AuctionContainerDetail Page", () => {
     expect(screen.queryByText(/Lots \(/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
   });
+
+  it("uses a shorter hero and tighter vertical gaps on phones", () => {
+    (useQuery as Mock).mockReturnValue({
+      _id: "a1",
+      title: "Spring Sale",
+      description: "Tractors and combines",
+      bannerImageUrl: "https://cdn/banner.jpg",
+      startTime: Date.now() - 1000,
+      endTime: Date.now() + 100000,
+      status: "published",
+      lotCount: 2,
+      lots: [],
+    });
+    renderPage();
+
+    // A 224px hero plus `space-y-8` pushed the first lot well below the fold.
+    expect(screen.getByTestId("auction-hero")).toHaveClass(
+      "h-40",
+      "sm:h-56",
+      "md:h-72"
+    );
+    expect(screen.getByTestId("auction-header")).toHaveClass(
+      "space-y-1.5",
+      "sm:space-y-2"
+    );
+  });
 });

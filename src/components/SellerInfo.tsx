@@ -109,7 +109,7 @@ export const SellerInfo = ({
   const memberSince = new Date(seller.createdAt).getFullYear();
 
   return (
-    <div className="bg-card border rounded-lg p-6 space-y-6 shadow-sm">
+    <div className="bg-card border rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="flex gap-4">
           <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/5">
@@ -222,7 +222,7 @@ export const SellerInfo = ({
           <ShieldCheck className="h-4 w-4 text-success mt-0.5" />
           <p className="text-xs text-success font-bold leading-relaxed">
             This seller has completed our{" "}
-            <strong className="text-success-foreground bg-success px-1 rounded-sm">
+            <strong className="font-bold text-success">
               High-Integrity Verification
             </strong>{" "}
             process, including identity and business registration checks.

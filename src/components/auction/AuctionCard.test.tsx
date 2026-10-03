@@ -269,6 +269,109 @@ describe("AuctionCard", () => {
     expect(screen.queryByText(/500 hrs/i)).not.toBeInTheDocument();
   });
 
+  it("shows a phone-only current bid figure in compact view", () => {
+    renderWithRouter({
+      auction: mockAuction as unknown as LotSummary,
+      viewMode: "compact",
+    });
+
+    // formatCurrency uses a space as thousands separator
+    const currentBid = screen.getByText("Current bid");
+    expect(currentBid).toHaveTextContent("R 1 000,00");
+    expect(currentBid).toHaveClass("sm:hidden");
+  });
+
+  it("does not add the phone-only current bid line in detailed view", () => {
+    renderWithRouter({
+      auction: mockAuction as unknown as LotSummary,
+      viewMode: "detailed",
+    });
+
+    expect(screen.getByText("Current bid")).not.toHaveClass("sm:hidden");
+  });
+
+  it("marks the card content as a container so the price row can query it", () => {
+    renderWithRouter({
+      auction: mockAuction as unknown as LotSummary,
+      viewMode: "detailed",
+    });
+
+    // AuctionCardPrice switches layout with container queries, and an element
+    // cannot query its own container — the `@container` has to be an ancestor.
+    expect(
+      screen.getByText("Current bid").closest('[class~="@container"]')
+    ).not.toBeNull();
+  });
+
+  it("pins the bid footer to the bottom of a stretched card", () => {
+    renderWithRouter({ viewMode: "detailed" });
+
+    const bidButton = screen.getByRole("button", { name: /Bid R 1/i });
+    const footer = bidButton.parentElement;
+    const cardBody = footer?.parentElement;
+
+    // A grid row stretches the shorter card to its neighbour's height. Without a
+    // full-height flex column the footer stays put and leaves a white strip.
+    expect(cardBody).toHaveClass("flex", "flex-col", "h-full");
+    expect(cardBody?.querySelector("a")).toHaveClass("flex-1");
+    expect(footer).toHaveClass("mt-auto");
+  });
+
+  it("uses tighter card padding on phones and keeps the bid button tappable", () => {
+    renderWithRouter({ viewMode: "detailed" });
+
+    const title = screen.getByText("Test Tractor");
+    const cardHeader = title.parentElement?.parentElement;
+    const cardContent = cardHeader?.nextElementSibling;
+    const bidButton = screen.getByRole("button", { name: /Bid R 1/i });
+
+    // `p-4 md:p-5` on every block added ~24px of dead padding per phone card.
+    expect(cardHeader).toHaveClass("p-3", "sm:p-4", "md:p-5");
+    expect(cardContent).toHaveClass("p-3", "sm:p-4", "md:p-5");
+    expect(bidButton.parentElement).toHaveClass("p-3", "sm:p-4", "md:p-5");
+    // ...without shrinking the bid button below the 44px touch target.
+    expect(bidButton).toHaveClass("h-11");
+  });
+
+  it("stretches the compact thumbnail column to the height of the card body", () => {
+    renderWithRouter({ viewMode: "compact" });
+
+    const image = screen.getByAltText(
+      `${mockAuction.make} — ${mockAuction.model} — ${mockAuction.title}`
+    );
+    const wrapper = image.parentElement?.parentElement?.parentElement;
+
+    // The thumbnail column used to be content-sized, so a taller body left a
+    // white gap underneath the countdown strip on phones.
+    expect(wrapper).toHaveClass("self-stretch");
+  });
+
+  it("clamps compact titles to three lines and shortens the description to match", () => {
+    renderWithRouter({
+      auction: {
+        ...mockAuction,
+        description: "Short desc",
+      } as unknown as LotSummary,
+      viewMode: "compact",
+    });
+
+    // Tablets show compact cards in two columns, where a two-line clamp hid
+    // the tail of titles such as "Fendt 1050 Vario — German...".
+    const title = screen.getByText("Test Tractor");
+    expect(title).toHaveClass("line-clamp-3");
+    expect(title.className).not.toContain("line-clamp-2");
+    // One line moves from the title to the description, so card height holds.
+    expect(screen.getByText("Short desc")).toHaveClass("line-clamp-2");
+  });
+
+  it("keeps the two-line title clamp in detailed view", () => {
+    renderWithRouter({ viewMode: "detailed" });
+
+    const title = screen.getByText("Test Tractor");
+    expect(title).toHaveClass("line-clamp-2");
+    expect(title.className).not.toContain("line-clamp-3");
+  });
+
   it("handles watchlist removal", async () => {
     mockToggleWatchlist.mockResolvedValue(false); // Returning false means removed
     renderWithRouter({ isWatched: true });

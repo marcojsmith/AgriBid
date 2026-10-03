@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-09-22
+Last updated: 2026-10-03
 
 ## How to keep this file useful
 
@@ -31,6 +31,7 @@ Last updated: 2026-09-22
 
 ## Done (last 10)
 
+- 2026-10-03: Tablet/phone layout polish on auctions, lots and lot-detail pages (wrapping/overflow fixes via container queries, tighter spacing, sticky bid bar hides over panel/footer) (v0.17.2).
 - 2026-09-21: STATUS.md added and stale auth docs fixed (#329); finished `refactor_auction_mutations` track archived (#323).
 - 2026-09-19: Fix prod crash from manual vendor-react chunk grouping (#322).
 - 2026-09: Multi-lot auctions rework finished (#318, #321).

@@ -58,7 +58,7 @@ export default function AuctionContainerDetail() {
     now < auction.endTime;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       <Helmet>
         <title>{buildTitle(auction.title)}</title>
         <meta
@@ -77,7 +77,10 @@ export default function AuctionContainerDetail() {
         </Link>
       </Button>
 
-      <div className="relative h-56 md:h-72 rounded-lg overflow-hidden bg-muted border">
+      <div
+        data-testid="auction-hero"
+        className="relative h-40 sm:h-56 md:h-72 rounded-lg overflow-hidden bg-muted border"
+      >
         {auction.bannerImageUrl ? (
           <img
             src={auction.bannerImageUrl}
@@ -96,11 +99,11 @@ export default function AuctionContainerDetail() {
         )}
       </div>
 
-      <div className="space-y-2">
+      <div data-testid="auction-header" className="space-y-1.5 sm:space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-primary">
           {auction.title}
         </h1>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Calendar className="h-4 w-4" />
             {new Date(auction.startTime).toLocaleString()} –{" "}
@@ -109,7 +112,7 @@ export default function AuctionContainerDetail() {
           <Badge className="capitalize">{auction.status}</Badge>
         </div>
         {auction.description && (
-          <p className="text-muted-foreground max-w-3xl mt-2">
+          <p className="text-muted-foreground max-w-3xl mt-1 sm:mt-2">
             {auction.description}
           </p>
         )}
