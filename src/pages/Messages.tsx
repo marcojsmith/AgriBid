@@ -1,6 +1,7 @@
 // app/src/pages/Messages.tsx
 import { useEffect, useState, Component, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import {
   usePaginatedQuery,
   useMutation,
@@ -13,6 +14,7 @@ import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 import { ArrowLeft, Inbox, MessageSquare, Send } from "lucide-react";
 
+import { buildTitle } from "@/lib/seo";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -414,7 +416,12 @@ export default function Messages() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+    <>
+      <Helmet>
+        <title>{buildTitle("Messages")}</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
+      <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       <div className="space-y-2">
         <h1 className="text-4xl font-black uppercase tracking-tight">
           Messages
@@ -436,5 +443,6 @@ export default function Messages() {
         )}
       </Card>
     </div>
+    </>
   );
 }

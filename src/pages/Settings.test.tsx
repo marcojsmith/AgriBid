@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
+import { HelmetProvider } from "react-helmet-async";
 import React from "react";
 
 import { useSession } from "@/lib/auth-client";
@@ -135,10 +136,22 @@ describe("Settings Page", () => {
 
   const renderSettings = () =>
     render(
-      <BrowserRouter>
-        <Settings />
-      </BrowserRouter>
+      <HelmetProvider>
+        <BrowserRouter>
+          <Settings />
+        </BrowserRouter>
+      </HelmetProvider>
     );
+
+  it("sets page title and noindex meta tag", async () => {
+    renderSettings();
+    await waitFor(() => {
+      expect(document.title).toBe("Settings | AgriBid");
+    });
+    const robotsMeta = document.querySelector('meta[name="robots"]');
+    expect(robotsMeta).toBeInTheDocument();
+    expect(robotsMeta?.getAttribute("content")).toBe("noindex");
+  });
 
   it("renders loading state when preferences are undefined", () => {
     (useQuery as Mock).mockReturnValue(undefined);
