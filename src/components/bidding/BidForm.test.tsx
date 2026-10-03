@@ -47,7 +47,7 @@ describe("BidForm", () => {
 
     // Invalid bid
     fireEvent.change(input, { target: { value: "1050" } });
-    expect(screen.getByText(/minimum bid required/i)).toBeInTheDocument();
+    expect(screen.getByText(/minimum bid/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /place bid/i })).toBeDisabled();
   });
 

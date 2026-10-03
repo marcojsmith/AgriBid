@@ -165,6 +165,7 @@ function AdminLayoutContent({
       </aside>
 
       {/* Sidebar — mobile drawer */}
+      {/* z-index stack: mobile nav overlay (z-[100]) > dialogs/toasts (z-50) > header (z-50) */}
       {isMobileNavOpen && (
         <div
           data-testid="admin-mobile-nav-overlay"

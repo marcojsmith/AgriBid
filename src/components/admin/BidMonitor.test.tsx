@@ -4,6 +4,7 @@ import type { Id } from "convex/_generated/dataModel";
 import { toast } from "sonner";
 
 import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { BidMonitor } from "./BidMonitor";
 
@@ -60,6 +61,9 @@ vi.mock("@/hooks/useLoadingTimeout", () => ({
   useLoadingTimeout: vi.fn(() => false),
 }));
 
+const renderWithProvider = (ui: React.ReactElement) =>
+  render(<TooltipProvider>{ui}</TooltipProvider>);
+
 describe("BidMonitor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,7 +71,7 @@ describe("BidMonitor", () => {
 
   it("renders loading state", () => {
     mockUseQuery.mockReturnValue(undefined);
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(
       screen.getByText("Connecting to real-time bid stream...")
     ).toBeInTheDocument();
@@ -79,27 +83,27 @@ describe("BidMonitor", () => {
       page: [],
       totalCount: 0,
     });
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(screen.getByText("No bids yet")).toBeInTheDocument();
   });
 
   it("renders bids table with data", () => {
     mockUseQuery.mockReturnValue(mockPaginatedBids);
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(screen.getByText("John Deere 8R")).toBeInTheDocument();
     expect(screen.getByText("Case IH Combine")).toBeInTheDocument();
   });
 
   it("displays bid amounts formatted", () => {
     mockUseQuery.mockReturnValue(mockPaginatedBids);
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(screen.getByText(/R\s*150\s*000/)).toBeInTheDocument();
     expect(screen.getByText(/R\s*200\s*000/)).toBeInTheDocument();
   });
 
   it("displays live indicator", () => {
     mockUseQuery.mockReturnValue(mockPaginatedBids);
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(screen.getByText(/LIVE/)).toBeInTheDocument();
   });
 
@@ -112,7 +116,7 @@ describe("BidMonitor", () => {
       pageStatus: null,
       splitCursor: null,
     });
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     const amount = screen.getByText(/R\s*200\s*000/);
     expect(amount.closest("span")).toHaveClass("line-through");
   });
@@ -130,7 +134,7 @@ describe("BidMonitor", () => {
       pageStatus: null,
       splitCursor: null,
     });
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(screen.getByText("Auction Data Unavailable")).toBeInTheDocument();
   });
 
@@ -147,7 +151,7 @@ describe("BidMonitor", () => {
       pageStatus: null,
       splitCursor: null,
     });
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(screen.getByText("Unknown Auction (Deleted)")).toBeInTheDocument();
   });
 
@@ -160,7 +164,7 @@ describe("BidMonitor", () => {
       pageStatus: null,
       splitCursor: null,
     });
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     const amount = screen.getByText(/R\s*150\s*000/);
     expect(amount.closest("span")).toHaveClass("text-green-600");
   });
@@ -168,7 +172,7 @@ describe("BidMonitor", () => {
   it("renders connection error on timeout", () => {
     mockUseQuery.mockReturnValue(undefined);
     vi.mocked(useLoadingTimeout).mockReturnValue(true);
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
     expect(screen.getByText("Feed Timeout")).toBeInTheDocument();
   });
 
@@ -177,7 +181,7 @@ describe("BidMonitor", () => {
     const mockVoidBid = vi.fn().mockResolvedValue(undefined);
     mockUseMutation.mockReturnValue(mockVoidBid);
 
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
 
     const voidButtons = screen.getAllByRole("button");
     fireEvent.click(voidButtons[0]);
@@ -200,7 +204,7 @@ describe("BidMonitor", () => {
     const mockVoidBid = vi.fn().mockRejectedValue(new Error("Void failed"));
     mockUseMutation.mockReturnValue(mockVoidBid);
 
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
 
     const voidButtons = screen.getAllByRole("button");
     fireEvent.click(voidButtons[0]);
@@ -221,7 +225,7 @@ describe("BidMonitor", () => {
     };
     mockUseQuery.mockReturnValue(mockWithPagination);
 
-    render(<BidMonitor />);
+    renderWithProvider(<BidMonitor />);
 
     const moreButton = screen.getByRole("button", { name: /more/i });
     expect(moreButton).not.toBeDisabled();
