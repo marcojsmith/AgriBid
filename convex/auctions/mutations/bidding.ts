@@ -41,8 +41,11 @@ export const placeBidHandler = async (
     .withIndex("by_userId", (q) => q.eq("userId", userId))
     .unique();
   if (cooldown && now - cooldown.lastBidAt < BID_COOLDOWN_MS) {
+    const elapsed = now - cooldown.lastBidAt;
+    const remainingMs = BID_COOLDOWN_MS - elapsed;
+    const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
     throw new ConvexError(
-      "You're bidding too fast. Please wait a moment and try again."
+      `You're bidding too fast. Please wait ${String(remainingSeconds)} second${remainingSeconds === 1 ? "" : "s"} and try again.`
     );
   }
 

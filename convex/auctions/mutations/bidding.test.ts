@@ -740,9 +740,7 @@ describe("Bidding Coverage", () => {
           lotId: "l1" as Id<"lots">,
           amount: 200,
         })
-      ).rejects.toThrow(
-        "You're bidding too fast. Please wait a moment and try again."
-      );
+      ).rejects.toThrow(/You're bidding too fast. Please wait \d+ second/);
     });
 
     it("should allow two bids from the same user spaced beyond the cooldown window", async () => {

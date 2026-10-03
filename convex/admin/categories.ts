@@ -4,6 +4,7 @@ import { mutation, query } from "../_generated/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getCallerRole } from "../lib/auth";
 import type { Id } from "../_generated/dataModel";
+import { logAudit } from "../admin_utils";
 
 /**
  * Admin: List all equipment categories.
@@ -68,15 +69,28 @@ export const addCategoryHandler = async (
       await ctx.db.patch("equipmentCategories", existing._id, {
         isActive: true,
       });
+      await logAudit(ctx, {
+        action: "CATEGORY_REACTIVATE",
+        targetId: existing._id,
+        targetType: "equipmentCategory",
+        details: JSON.stringify({ name: args.name }),
+      });
       return existing._id;
     }
     throw new ConvexError("Category already exists");
   }
 
-  return await ctx.db.insert("equipmentCategories", {
+  const newId = await ctx.db.insert("equipmentCategories", {
     name: args.name,
     isActive: true,
   });
+  await logAudit(ctx, {
+    action: "CATEGORY_CREATE",
+    targetId: newId,
+    targetType: "equipmentCategory",
+    details: JSON.stringify({ name: args.name }),
+  });
+  return newId;
 };
 
 export const addCategory = mutation({
@@ -130,6 +144,12 @@ export const updateCategoryHandler = async (
   }
 
   await ctx.db.patch("equipmentCategories", args.id, { name: trimmedName });
+  await logAudit(ctx, {
+    action: "CATEGORY_UPDATE",
+    targetId: args.id,
+    targetType: "equipmentCategory",
+    details: JSON.stringify({ name: trimmedName }),
+  });
 };
 
 export const updateCategory = mutation({
@@ -185,6 +205,12 @@ export const deleteCategoryHandler = async (
   }
 
   await ctx.db.patch("equipmentCategories", args.id, { isActive: false });
+  await logAudit(ctx, {
+    action: "CATEGORY_DEACTIVATE",
+    targetId: args.id,
+    targetType: "equipmentCategory",
+    details: JSON.stringify({ name: existing.name }),
+  });
 };
 
 export const deleteCategory = mutation({

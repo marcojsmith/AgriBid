@@ -290,6 +290,66 @@ describe("Publish Mutations", () => {
         hiddenByFlags: true,
       });
     });
+
+    it("should only decrement/increment counters once when two flags cross threshold", async () => {
+      const userId1 = "u1";
+      const userId2 = "u5";
+      vi.mocked(auth.getAuthenticatedUserId)
+        .mockResolvedValueOnce(userId1)
+        .mockResolvedValueOnce(userId2);
+
+      mockCtx.db.get
+        .mockResolvedValueOnce({
+          _id: "l1",
+          sellerId: "u_seller",
+          status: "approved",
+        })
+        .mockResolvedValueOnce({
+          _id: "l1",
+          sellerId: "u_seller",
+          status: "approved",
+        });
+
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([
+          { reporterId: "u3", status: "pending" },
+        ]),
+      });
+
+      const result1 = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "misleading",
+      });
+      expect(result1.hideTriggered).toBe(false);
+
+      mockCtx.db.get.mockResolvedValueOnce({
+        _id: "l1",
+        sellerId: "u_seller",
+        status: "pending_review",
+        hiddenByFlags: true,
+      });
+
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([
+          { reporterId: "u1", status: "pending" },
+          { reporterId: "u3", status: "pending" },
+        ]),
+      });
+
+      const result2 = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "inappropriate",
+      });
+      expect(result2.hideTriggered).toBe(false);
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "lots",
+        "l1",
+        expect.objectContaining({ status: "pending_review" })
+      );
+    });
   });
 
   describe("dismissFlagHandler", () => {

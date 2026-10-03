@@ -23,7 +23,7 @@ import {
   countQuery,
 } from "./admin_utils";
 import { logActivity } from "./userActivity";
-import { PRESENCE_HEARTBEAT_THRESHOLD } from "./presence";
+import { getPresenceThresholdMs } from "./presence";
 
 /**
  * Validator for a profile document from the database.
@@ -221,14 +221,17 @@ export const listAllProfilesHandler = async (
 
   // Batch presence lookups for the entire page, deduplicating IDs first
   const userIds = Array.from(new Set(profiles.page.map((p) => p.userId)));
-  const presences = await Promise.all(
-    userIds.map((uid) =>
-      ctx.db
-        .query("presence")
-        .withIndex("by_userId", (q) => q.eq("userId", uid))
-        .unique()
-    )
-  );
+  const [presences, thresholdMs] = await Promise.all([
+    Promise.all(
+      userIds.map((uid) =>
+        ctx.db
+          .query("presence")
+          .withIndex("by_userId", (q) => q.eq("userId", uid))
+          .unique()
+      )
+    ),
+    getPresenceThresholdMs(ctx),
+  ]);
   const presenceMap = new Map(
     presences
       .filter((presence): presence is Doc<"presence"> => presence !== null)
@@ -240,7 +243,7 @@ export const listAllProfilesHandler = async (
     const presence = presenceMap.get(p.userId);
 
     const isOnline = presence
-      ? now - presence.updatedAt < PRESENCE_HEARTBEAT_THRESHOLD
+      ? now - presence.updatedAt < thresholdMs
       : false;
 
     return {

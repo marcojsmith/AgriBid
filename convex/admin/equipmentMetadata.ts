@@ -4,6 +4,7 @@ import { mutation, query } from "../_generated/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCallerRole } from "../lib/auth";
+import { logAudit } from "../admin_utils";
 
 /**
  * Admin: List all equipment makes with their models and categories.
@@ -102,18 +103,38 @@ export const addEquipmentMakeHandler = async (
         models: Array.from(new Set([...existing.models, ...trimmedModels])),
         updatedAt: Date.now(),
       });
+      await logAudit(ctx, {
+        action: "EQUIPMENT_MAKE_REACTIVATE",
+        targetId: existing._id,
+        targetType: "equipmentMetadata",
+        details: JSON.stringify({
+          make: trimmedMake,
+          mergedModels: trimmedModels,
+        }),
+      });
       return existing._id;
     }
     throw new ConvexError("Equipment make already exists for this category");
   }
 
-  return await ctx.db.insert("equipmentMetadata", {
+  const newId = await ctx.db.insert("equipmentMetadata", {
     make: trimmedMake,
     models: trimmedModels,
     categoryId: args.categoryId,
     isActive: true,
     updatedAt: Date.now(),
   });
+  await logAudit(ctx, {
+    action: "EQUIPMENT_MAKE_CREATE",
+    targetId: newId,
+    targetType: "equipmentMetadata",
+    details: JSON.stringify({
+      make: trimmedMake,
+      models: trimmedModels,
+      categoryId: args.categoryId,
+    }),
+  });
+  return newId;
 };
 
 export const addEquipmentMake = mutation({
@@ -193,6 +214,16 @@ export const updateEquipmentMakeHandler = async (
     categoryId: args.categoryId,
     updatedAt: Date.now(),
   });
+  await logAudit(ctx, {
+    action: "EQUIPMENT_MAKE_UPDATE",
+    targetId: args.id,
+    targetType: "equipmentMetadata",
+    details: JSON.stringify({
+      make: trimmedMake,
+      models: trimmedModels,
+      categoryId: args.categoryId,
+    }),
+  });
 };
 
 export const updateEquipmentMake = mutation({
@@ -230,6 +261,12 @@ export const deleteEquipmentMakeHandler = async (
   await ctx.db.patch("equipmentMetadata", args.id, {
     isActive: false,
     updatedAt: Date.now(),
+  });
+  await logAudit(ctx, {
+    action: "EQUIPMENT_MAKE_DEACTIVATE",
+    targetId: args.id,
+    targetType: "equipmentMetadata",
+    details: JSON.stringify({ make: existing.make }),
   });
 };
 

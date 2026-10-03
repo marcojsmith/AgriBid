@@ -6,6 +6,7 @@ import {
   getHeartbeatIntervalMs,
   cleanup,
   countOnlineUsers,
+  getPresenceThresholdMs,
 } from "./presence";
 import * as auth from "./lib/auth";
 import type { QueryCtx } from "./_generated/server";
@@ -27,6 +28,10 @@ vi.mock("./admin_utils", () => ({
   logAudit: vi.fn(),
   decryptPII: vi.fn(),
   encryptPII: vi.fn(),
+}));
+
+vi.mock("./admin/settings", () => ({
+  getSetting: vi.fn(),
 }));
 
 interface QueryMock {
@@ -80,8 +85,48 @@ describe("Presence Coverage", () => {
     };
   });
 
+  describe("getPresenceThresholdMs", () => {
+    it("should return max(90s, interval + 30s) with configured interval", async () => {
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(120_000);
+      const threshold = await getPresenceThresholdMs(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(threshold).toBe(150_000);
+    });
+
+    it("should return 90s minimum when interval is very short", async () => {
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(30_000);
+      const threshold = await getPresenceThresholdMs(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(threshold).toBe(90_000);
+    });
+
+    it("should use default interval when no setting stored", async () => {
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(60_000);
+      const threshold = await getPresenceThresholdMs(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(threshold).toBe(90_000);
+    });
+
+    it("should handle long intervals correctly", async () => {
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(300_000);
+      const threshold = await getPresenceThresholdMs(
+        mockCtx as unknown as QueryCtx
+      );
+      expect(threshold).toBe(330_000);
+    });
+  });
+
   describe("countOnlineUsers", () => {
     it("should use count() if available", async () => {
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(60_000);
       const countMock = queryMock.count;
       if (!countMock) throw new Error("queryMock.count must be defined");
       countMock.mockResolvedValue(5);
@@ -91,6 +136,8 @@ describe("Presence Coverage", () => {
     });
 
     it("should fallback to collect().length if count() is missing", async () => {
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(60_000);
       delete queryMock.count;
       queryMock.collect.mockResolvedValue([{ _id: "p1" }, { _id: "p2" }]);
       const result = await countOnlineUsers(mockCtx as unknown as QueryCtx);
@@ -206,7 +253,8 @@ describe("Presence Coverage", () => {
 
   describe("getHeartbeatIntervalMs", () => {
     it("should return the hardcoded default when no setting is stored", async () => {
-      queryMock.unique.mockResolvedValue(null);
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(60000);
 
       const result = await (
         getHeartbeatIntervalMs as unknown as {
@@ -218,10 +266,8 @@ describe("Presence Coverage", () => {
     });
 
     it("should reflect an admin-written override", async () => {
-      queryMock.unique.mockResolvedValue({
-        key: "presence_heartbeat_interval_ms",
-        value: 120000,
-      });
+      const { getSetting } = await import("./admin/settings");
+      vi.mocked(getSetting).mockResolvedValue(120000);
 
       const result = await (
         getHeartbeatIntervalMs as unknown as {
@@ -233,13 +279,11 @@ describe("Presence Coverage", () => {
     });
 
     it("should fall back to the default on stored type mismatch", async () => {
+      const { getSetting } = await import("./admin/settings");
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
         // intentional no-op: silences the expected type-mismatch warning
       });
-      queryMock.unique.mockResolvedValue({
-        key: "presence_heartbeat_interval_ms",
-        value: "not a number",
-      });
+      vi.mocked(getSetting).mockResolvedValue(60000);
 
       const result = await (
         getHeartbeatIntervalMs as unknown as {
