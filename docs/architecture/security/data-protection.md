@@ -55,7 +55,7 @@ The following fields in the `profiles` table are encrypted:
 ### Key Management
 
 ```typescript
-// app/convex/lib/encryption.ts
+// convex/lib/encryption.ts
 
 const ENCRYPTION_KEY_STR = process.env.PII_ENCRYPTION_KEY;
 
