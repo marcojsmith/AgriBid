@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Filter Home status tabs server-side and scope the time tick (#339) (0.17.9)
 - Use shadcn Checkbox and AlertDialog, remove eslint-disable in BidForm (#342) (0.17.8)
 - Add per-route error boundaries (#341) (0.17.7)
 - Paginate support tickets and use shared pagination constants (#340) (0.17.6)
