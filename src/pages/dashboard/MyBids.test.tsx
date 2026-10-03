@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
 
+import { DASHBOARD_PAGINATION_INITIAL_ITEMS } from "@/lib/constants";
+
 import MyBids from "./MyBids";
 
 // Mock Convex hooks
@@ -341,6 +343,24 @@ describe("MyBids Page", () => {
     fireEvent.click(loadMoreBtn);
 
     expect(loadMore).toHaveBeenCalledWith(10);
+  });
+
+  it("uses DASHBOARD_PAGINATION_INITIAL_ITEMS constant for initialNumItems", () => {
+    const loadMore = vi.fn();
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: mockAuctions,
+      status: "Exhausted",
+      loadMore,
+    });
+
+    renderMyBids();
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      mockApi.auctions.queries.getMyBids,
+      expect.any(Object),
+      expect.objectContaining({
+        initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS,
+      })
+    );
   });
 
   it("shows loading indicator when loading more", () => {

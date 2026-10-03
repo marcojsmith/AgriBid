@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DASHBOARD_PAGINATION_INITIAL_ITEMS, DASHBOARD_PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
 
 interface StatusDisplay {
   label: string;
@@ -199,8 +200,8 @@ export default function MyBids() {
   } = usePaginatedQuery(
     api.auctions.queries.getMyBids,
     { sort: sortBy === "ending" ? "ending" : undefined },
-    { initialNumItems: 50 }
-  ); // Higher limit for client filtering
+    { initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS }
+  );
 
   const stats = serverStats ?? {
     totalActive: 0,
@@ -543,7 +544,7 @@ export default function MyBids() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  loadMore(10);
+                  loadMore(DASHBOARD_PAGINATION_LOAD_MORE_ITEMS);
                 }}
                 className="h-12 px-10 rounded-md font-semibold border hover:bg-primary hover:text-primary-foreground transition-[background-color,color,border-color]"
               >
