@@ -1,5 +1,4 @@
 // app/src/pages/Home.tsx
-import { useState, useEffect } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
@@ -54,37 +53,21 @@ export default function Home() {
   // The feed is a union of published + closed auction containers sorted by
   // startTime; the backend caps each side and pages with a manual cursor, and
   // this hook consumes it with the standard load-more pattern.
+  const rawStatus = searchParams.get("status");
+  const statusTab: StatusTab = isValidTab(rawStatus) ? rawStatus : "active";
+
   const {
     results: events,
     status: eventsStatus,
     loadMore,
   } = usePaginatedQuery(
     api.auctions.getPublishedAuctions,
-    searchQuery !== undefined ? "skip" : {},
+    searchQuery !== undefined
+      ? "skip"
+      : { status: statusTab },
     { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
-  // Lazy initializer keeps this a pure read during render; refreshed on an
-  // interval so events crossing startTime/endTime while the page stays
-  // mounted still move between the Live Now badge and status tabs.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 30_000);
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
 
-  const rawStatus = searchParams.get("status");
-  const statusTab: StatusTab = isValidTab(rawStatus) ? rawStatus : "active";
-
-  /**
-   * Switch the status tab by writing the URL `status` param. The default
-   * tab ("active") is stored as the absence of the param.
-   *
-   * @param tab - The tab to activate.
-   */
   const setTab = (tab: StatusTab) => {
     const newParams = new URLSearchParams(searchParams.toString());
     if (tab === "active") {
@@ -94,14 +77,6 @@ export default function Home() {
     }
     setSearchParams(newParams);
   };
-
-  const visibleEvents = events.filter((event) => {
-    const isActive = event.status === "published" && event.endTime > now;
-    const isClosed = event.status === "closed" || event.endTime <= now;
-    if (statusTab === "active") return isActive;
-    if (statusTab === "closed") return isClosed;
-    return true;
-  });
 
   const emptyStateMessage =
     statusTab === "active"
@@ -181,7 +156,7 @@ export default function Home() {
 
           {eventsStatus === "LoadingFirstPage" ? (
             <LoadingPage message="Loading auctions..." />
-          ) : visibleEvents.length === 0 &&
+          ) : events.length === 0 &&
             eventsStatus !== "CanLoadMore" &&
             eventsStatus !== "LoadingMore" ? (
             <Card className="border border-dashed">
@@ -194,10 +169,10 @@ export default function Home() {
             </Card>
           ) : (
             <div className="space-y-8">
-              {visibleEvents.length > 0 && (
+              {events.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {visibleEvents.map((event) => (
-                    <AuctionEventCard key={event._id} event={event} now={now} />
+                  {events.map((event) => (
+                    <AuctionEventCard key={event._id} event={event} />
                   ))}
                 </div>
               )}

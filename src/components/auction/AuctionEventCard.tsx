@@ -6,6 +6,7 @@ import type { api } from "convex/_generated/api";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useNow } from "@/hooks/useNow";
 
 /**
  * A published auction event as returned by `api.auctions.getPublishedAuctions`
@@ -18,8 +19,6 @@ export type AuctionEvent = FunctionReturnType<
 interface AuctionEventCardProps {
   /** The auction event document to render. */
   event: AuctionEvent;
-  /** Current time (ms since epoch) used to decide whether the event is live. */
-  now: number;
 }
 
 /**
@@ -28,12 +27,15 @@ interface AuctionEventCardProps {
  * a "Live Now" badge while the event's window is open, and links to the
  * container detail page.
  *
+ * Uses `useNow` internally for live-badge timing, so the parent does not need
+ * to pass a timestamp or re-render on every tick.
+ *
  * @param props - Component props.
  * @param props.event - The auction event document to render.
- * @param props.now - Current time (ms since epoch) used for the live badge.
  * @returns The rendered auction event card.
  */
-export const AuctionEventCard = ({ event, now }: AuctionEventCardProps) => {
+export const AuctionEventCard = ({ event }: AuctionEventCardProps) => {
+  const now = useNow();
   const isLive =
     event.status === "published" &&
     event.startTime <= now &&

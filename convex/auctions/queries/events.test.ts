@@ -285,6 +285,97 @@ describe("Auction event queries", () => {
       expect(secondPage.isDone).toBe(true);
       expect(secondPage.continueCursor).toBe("");
     });
+
+    it("filters by status='active' returning only published auctions", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+
+      const published = {
+        ...auctionRow,
+        _id: "a1" as Id<"auctions">,
+        status: "published" as const,
+        startTime: 1000,
+      };
+      const closed = {
+        ...auctionRow,
+        _id: "a2" as Id<"auctions">,
+        status: "closed" as const,
+        startTime: 5000,
+      };
+
+      const mock = makePublishedMockCtx([published], [closed]);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      const result = await getPublishedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts, status: "active" }
+      );
+
+      expect(result.page).toHaveLength(1);
+      expect(result.page[0]._id).toBe("a1");
+      expect(mock.takeMocks.published).toHaveBeenCalledWith(
+        PUBLISHED_AUCTIONS_STATUS_CAP
+      );
+      expect(mock.takeMocks.closed).not.toHaveBeenCalled();
+    });
+
+    it("filters by status='closed' returning only closed auctions", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+
+      const published = {
+        ...auctionRow,
+        _id: "a1" as Id<"auctions">,
+        status: "published" as const,
+        startTime: 1000,
+      };
+      const closed = {
+        ...auctionRow,
+        _id: "a2" as Id<"auctions">,
+        status: "closed" as const,
+        startTime: 5000,
+      };
+
+      const mock = makePublishedMockCtx([published], [closed]);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      const result = await getPublishedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts, status: "closed" }
+      );
+
+      expect(result.page).toHaveLength(1);
+      expect(result.page[0]._id).toBe("a2");
+      expect(mock.takeMocks.closed).toHaveBeenCalledWith(
+        PUBLISHED_AUCTIONS_STATUS_CAP
+      );
+      expect(mock.takeMocks.published).not.toHaveBeenCalled();
+    });
+
+    it("status='all' returns merged published+closed (default behavior)", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+
+      const published = {
+        ...auctionRow,
+        _id: "a1" as Id<"auctions">,
+        status: "published" as const,
+        startTime: 1000,
+      };
+      const closed = {
+        ...auctionRow,
+        _id: "a2" as Id<"auctions">,
+        status: "closed" as const,
+        startTime: 5000,
+      };
+
+      const mock = makePublishedMockCtx([published], [closed]);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      const result = await getPublishedAuctionsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts, status: "all" }
+      );
+
+      expect(result.page.map((r) => r._id)).toEqual(["a2", "a1"]);
+    });
   });
 
   // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret

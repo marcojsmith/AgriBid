@@ -56,22 +56,27 @@ describe("Home Page", () => {
     lotCount: 1,
   };
 
-  const endedPublishedEvent = {
-    _id: "a3",
-    title: "Ended Sale",
-    status: "published",
-    startTime: NOW - 200000,
-    endTime: NOW - 1000,
-    lotCount: 2,
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [activeEvent, closedEvent],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
+    (usePaginatedQuery as Mock).mockImplementation(
+      (_query: unknown, args: { status?: string } | string) => {
+        if (args === "skip") {
+          return { results: [], status: "Exhausted", loadMore: vi.fn() };
+        }
+        const status = "status" in args ? args.status : "active";
+        let results = [activeEvent, closedEvent];
+        if (status === "active") {
+          results = [activeEvent];
+        } else if (status === "closed") {
+          results = [closedEvent];
+        }
+        return {
+          results,
+          status: "Exhausted",
+          loadMore: vi.fn(),
+        };
+      }
+    );
 
     (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
   });
@@ -108,9 +113,44 @@ describe("Home Page", () => {
     expect(screen.queryByText("Past Sale")).not.toBeInTheDocument();
   });
 
+  it("passes status='active' to query when on Active tab (default)", () => {
+    renderHome();
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      { status: "active" },
+      { initialNumItems: 12 }
+    );
+  });
+
+  it("passes status='closed' to query when on Closed tab", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=closed"),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      { status: "closed" },
+      { initialNumItems: 12 }
+    );
+  });
+
+  it("passes status='all' to query when on All tab", () => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams("status=all"),
+      vi.fn(),
+    ]);
+    renderHome();
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      { status: "all" },
+      { initialNumItems: 12 }
+    );
+  });
+
   it("excludes a published event whose window has ended from the Active tab", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
-      results: [activeEvent, endedPublishedEvent],
+      results: [activeEvent],
       status: "Exhausted",
       loadMore: vi.fn(),
     });
@@ -132,7 +172,7 @@ describe("Home Page", () => {
 
   it("shows the Active-tab empty state when no events are active", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
-      results: [closedEvent],
+      results: [],
       status: "Exhausted",
       loadMore: vi.fn(),
     });
@@ -158,9 +198,9 @@ describe("Home Page", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows only closed events (including ended published ones) on the Closed tab", () => {
+  it("shows only closed events on the Closed tab (server-filtered)", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
-      results: [activeEvent, closedEvent, endedPublishedEvent],
+      results: [closedEvent],
       status: "Exhausted",
       loadMore: vi.fn(),
     });
@@ -170,13 +210,17 @@ describe("Home Page", () => {
     ]);
     renderHome();
     const cards = screen.getAllByTestId("auction-event-card");
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(1);
     expect(screen.getByText("Past Sale")).toBeInTheDocument();
-    expect(screen.getByText("Ended Sale")).toBeInTheDocument();
     expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
   });
 
   it("shows both active and closed events on the All tab", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [activeEvent, closedEvent],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
     (useSearchParams as Mock).mockReturnValue([
       new URLSearchParams("status=all"),
       vi.fn(),
@@ -219,8 +263,20 @@ describe("Home Page", () => {
       new URLSearchParams("status=bogus"),
       vi.fn(),
     ]);
+    (usePaginatedQuery as Mock).mockImplementation(
+      (_query: unknown, args: { status?: string } | string) => {
+        if (args === "skip") {
+          return { results: [], status: "Exhausted", loadMore: vi.fn() };
+        }
+        const status = "status" in args ? args.status : "active";
+        return {
+          results: status === "active" ? [activeEvent] : [closedEvent],
+          status: "Exhausted",
+          loadMore: vi.fn(),
+        };
+      }
+    );
     renderHome();
-    // Active tab is pressed
     expect(screen.getByTestId("status-tab-active")).toHaveAttribute(
       "aria-pressed",
       "true"
@@ -276,7 +332,7 @@ describe("Home Page", () => {
     renderHome();
     expect(usePaginatedQuery).toHaveBeenCalledWith(
       expect.anything(),
-      {},
+      { status: "active" },
       { initialNumItems: 12 }
     );
   });
@@ -302,12 +358,9 @@ describe("Home Page", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows Load More instead of the empty state when the current page has no matching-tab events but more pages remain", () => {
-    // Active tab is default; this page only contains a closed event, so the
-    // client-side filter yields zero visible cards even though CanLoadMore
-    // means a later page may contain active events.
+  it("shows Load More instead of the empty state when status is CanLoadMore", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
-      results: [closedEvent],
+      results: [activeEvent],
       status: "CanLoadMore",
       loadMore: vi.fn(),
     });
