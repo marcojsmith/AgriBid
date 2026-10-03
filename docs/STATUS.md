@@ -31,6 +31,7 @@ Last updated: 2026-10-03
 
 ## Done (last 10)
 
+- 2026-10-03: Admin audit skeleton, category empty state, tooltips, wizard/search/bid-form polish (#343) (v0.17.13).
 - 2026-10-03: Format the finance fee tooltip amount with formatCurrency (other call sites already used the shared helper) (#301) (v0.17.12).
 - 2026-10-03: Add regression tests for auction startTime enforcement (already enforced; stale issue) (#296) (v0.17.11).
 - 2026-10-03: Derive presence threshold from heartbeat interval, fix flag counter race, add audit logging, show cooldown seconds (#338) (v0.17.10).

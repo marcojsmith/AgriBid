@@ -1,5 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, type MockInstance } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  type MockInstance,
+} from "vitest";
 import type { ReactNode } from "react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 
@@ -256,7 +263,7 @@ describe("RouteErrorBoundary Integration", () => {
   });
 
   it("keeps Layout visible when a wrapped route throws during render", () => {
-    function ThrowingPage() {
+    function ThrowingPage(): never {
       throw new Error("Page crashed");
     }
 
@@ -283,7 +290,11 @@ describe("RouteErrorBoundary Integration", () => {
 
     expect(screen.getByTestId("test-layout")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /something went wrong/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /something went wrong/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /try again/i })
+    ).toBeInTheDocument();
   });
 });

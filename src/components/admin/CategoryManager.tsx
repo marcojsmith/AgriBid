@@ -150,70 +150,83 @@ export function CategoryManager({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.map((cat) => (
-              <TableRow
-                key={cat._id}
-                className={
-                  !cat.isActive ? "bg-muted/30 text-muted-foreground" : ""
-                }
-              >
-                <TableCell className="font-bold">{cat.name}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={cat.isActive ? "outline" : "secondary"}
-                    className={
-                      cat.isActive
-                        ? "bg-green-500/10 text-green-500 border-green-500/20"
-                        : ""
-                    }
-                  >
-                    {cat.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <EditCategoryDialog
-                      category={cat}
-                      updateCategory={updateCategory}
-                    />
-                    {cat.isActive ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        aria-label={`Deactivate category ${cat.name}`}
-                        onClick={() => {
-                          setCategoryToDelete(cat);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-primary"
-                        aria-label={`Reactivate category ${cat.name}`}
-                        onClick={async () => {
-                          try {
-                            await addCategory({ name: cat.name }); // addCategory handles reactivation
-                            toast.success("Category reactivated");
-                          } catch (err) {
-                            toast.error(
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to reactivate"
-                            );
-                          }
-                        }}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
+            {categories.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
+                    <p className="font-medium text-sm">No categories yet</p>
+                    <p className="text-xs">
+                      Add your first category to organize equipment listings.
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              categories.map((cat) => (
+                <TableRow
+                  key={cat._id}
+                  className={
+                    !cat.isActive ? "bg-muted/30 text-muted-foreground" : ""
+                  }
+                >
+                  <TableCell className="font-bold">{cat.name}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={cat.isActive ? "outline" : "secondary"}
+                      className={
+                        cat.isActive
+                          ? "bg-green-500/10 text-green-500 border-green-500/20"
+                          : ""
+                      }
+                    >
+                      {cat.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <EditCategoryDialog
+                        category={cat}
+                        updateCategory={updateCategory}
+                      />
+                      {cat.isActive ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          aria-label={`Deactivate category ${cat.name}`}
+                          onClick={() => {
+                            setCategoryToDelete(cat);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary"
+                          aria-label={`Reactivate category ${cat.name}`}
+                          onClick={async () => {
+                            try {
+                              await addCategory({ name: cat.name });
+                              toast.success("Category reactivated");
+                            } catch (err) {
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to reactivate"
+                              );
+                            }
+                          }}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

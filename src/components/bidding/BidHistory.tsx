@@ -127,14 +127,16 @@ export const BidHistory = ({ lotId }: BidHistoryProps) => {
                         <User className="h-4 w-4" />
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-sm font-bold tracking-tight">
-                          {anonymizeName(bid.bidderName)}
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <p className="text-sm font-bold tracking-tight">
+                            {anonymizeName(bid.bidderName)}
+                          </p>
                           {isHighest && (
-                            <span className="ml-2 text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-semibold">
+                            <span className="text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-semibold">
                               Highest
                             </span>
                           )}
-                        </p>
+                        </div>
                         <p className="text-xs text-muted-foreground font-medium">
                           {formatTime(bid.timestamp)}
                         </p>

@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Admin audit skeleton, category empty state, tooltips, wizard/search/bid-form polish (#343) (0.17.13)
 - Format the finance fee tooltip amount with formatCurrency (other call sites already used the shared helper) (#301) (0.17.12)
 - Add regression tests for auction startTime enforcement (already enforced; stale issue) (#296) (0.17.11)
 - Derive presence threshold from heartbeat interval, fix flag counter race, add audit logging, show cooldown seconds (#338) (0.17.10)

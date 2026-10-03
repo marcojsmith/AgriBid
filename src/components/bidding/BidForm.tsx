@@ -321,7 +321,8 @@ export const BidForm = ({
       {!isManualValid && manualAmount !== "" && (
         <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
           <ArrowUpCircle className="h-3 w-3" />
-          Minimum bid required: {formatCurrency(nextMinBid)}
+          Minimum bid: {formatCurrency(nextMinBid)} (increment of{" "}
+          {formatCurrency(auction.minIncrement)})
         </p>
       )}
 

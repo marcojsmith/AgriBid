@@ -50,6 +50,8 @@ export function SearchBar({
       <Input
         id={id}
         type="search"
+        enterKeyHint="search"
+        autoComplete="off"
         placeholder="Search equipment..."
         className="pl-10 h-10 bg-muted/50 border rounded-md focus-visible:ring-primary focus-visible:border-primary font-medium"
         value={searchQuery}

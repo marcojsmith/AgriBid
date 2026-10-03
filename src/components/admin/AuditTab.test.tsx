@@ -46,10 +46,12 @@ describe("AuditTab", () => {
     vi.clearAllMocks();
   });
 
-  it("renders loading state", () => {
+  it("renders loading state with table skeleton", () => {
     mockUseQuery.mockReturnValue(undefined);
     render(<AuditTab />);
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    const skeletons = screen.getAllByTestId("skeleton-timestamp");
+    expect(skeletons.length).toBe(5);
   });
 
   it("renders empty state when no logs", () => {

@@ -63,7 +63,8 @@ describe("Home Page", () => {
         if (args === "skip") {
           return { results: [], status: "Exhausted", loadMore: vi.fn() };
         }
-        const status = "status" in args ? args.status : "active";
+        const status =
+          typeof args === "string" ? "active" : (args.status ?? "active");
         let results = [activeEvent, closedEvent];
         if (status === "active") {
           results = [activeEvent];
@@ -268,7 +269,8 @@ describe("Home Page", () => {
         if (args === "skip") {
           return { results: [], status: "Exhausted", loadMore: vi.fn() };
         }
-        const status = "status" in args ? args.status : "active";
+        const status =
+          typeof args === "string" ? "active" : (args.status ?? "active");
         return {
           results: status === "active" ? [activeEvent] : [closedEvent],
           status: "Exhausted",
