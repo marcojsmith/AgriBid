@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -18,6 +19,24 @@ vi.mock("convex/_generated/api", () => ({
       getAuditLogs: "admin:getAuditLogs",
     },
   },
+}));
+
+vi.mock("@/components/admin/AdminLayout", () => ({
+  AdminLayout: ({
+    children,
+    title,
+    subtitle,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    subtitle: string;
+  }) => (
+    <div data-testid="admin-layout">
+      <h1>{title}</h1>
+      <h2>{subtitle}</h2>
+      {children}
+    </div>
+  ),
 }));
 
 const mockLogs = Array.from({ length: 60 }, (_, i) => ({

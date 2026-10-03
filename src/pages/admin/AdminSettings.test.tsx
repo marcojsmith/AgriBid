@@ -1,9 +1,28 @@
+import React from "react";
 import { render, screen, fireEvent, createEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { useQuery } from "convex/react";
 
 import AdminSettings from "./AdminSettings";
+
+vi.mock("@/components/admin/AdminLayout", () => ({
+  AdminLayout: ({
+    children,
+    title,
+    subtitle,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    subtitle: string;
+  }) => (
+    <div data-testid="admin-layout">
+      <h1>{title}</h1>
+      <h2>{subtitle}</h2>
+      {children}
+    </div>
+  ),
+}));
 
 // Mocking Convex hooks
 vi.mock("convex/react", () => ({

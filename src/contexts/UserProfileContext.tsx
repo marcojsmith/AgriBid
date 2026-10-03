@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "../../convex/_generated/api";
@@ -15,9 +16,10 @@ export { UserProfileContext };
  */
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const userProfile = useQuery(api.users.getMyProfile);
+  const value = useMemo(() => userProfile, [userProfile]);
 
   return (
-    <UserProfileContext.Provider value={userProfile}>
+    <UserProfileContext.Provider value={value}>
       {children}
     </UserProfileContext.Provider>
   );

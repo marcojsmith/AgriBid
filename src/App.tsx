@@ -6,6 +6,7 @@ import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 import { LoadingIndicator } from "./components/LoadingIndicator";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
+import { AdminRoute } from "./components/admin/AdminRoute";
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));
@@ -165,174 +166,29 @@ function App() {
                 </RoleProtectedRoute>
               )}
             />
-            <Route
-              path="/admin"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/dashboard"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/moderation"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminModeration />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/marketplace"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminMarketplace />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/lots"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminLots />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/auctions"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAuctions />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/auctions/:id"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAuctionDetail />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/users"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminUsers />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/finance"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminFinance />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/announcements"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAnnouncements />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/support"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminSupport />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/audit"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAudit />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/equipment-catalog"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminEquipmentCatalog />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/settings"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminSettings />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/error-reports"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminErrorReports />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/error-reporting"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminErrorReportingSettings />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/seo"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminSEOSettings />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/business-info"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminBusinessInfo />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/faq"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminFAQ />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/fees"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminFees />
-                </RoleProtectedRoute>
-              )}
-            />
-            <Route
-              path="/admin/performance"
-              element={withBoundary(
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminPerformance />
-                </RoleProtectedRoute>
-              )}
-            />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/moderation" element={<AdminModeration />} />
+              <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+              <Route path="/admin/lots" element={<AdminLots />} />
+              <Route path="/admin/auctions" element={<AdminAuctions />} />
+              <Route path="/admin/auctions/:id" element={<AdminAuctionDetail />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/finance" element={<AdminFinance />} />
+              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+              <Route path="/admin/support" element={<AdminSupport />} />
+              <Route path="/admin/audit" element={<AdminAudit />} />
+              <Route path="/admin/equipment-catalog" element={<AdminEquipmentCatalog />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/error-reports" element={<AdminErrorReports />} />
+              <Route path="/admin/error-reporting" element={<AdminErrorReportingSettings />} />
+              <Route path="/admin/seo" element={<AdminSEOSettings />} />
+              <Route path="/admin/business-info" element={<AdminBusinessInfo />} />
+              <Route path="/admin/faq" element={<AdminFAQ />} />
+              <Route path="/admin/fees" element={<AdminFees />} />
+              <Route path="/admin/performance" element={<AdminPerformance />} />
+            </Route>
             <Route
               path="/kyc"
               element={

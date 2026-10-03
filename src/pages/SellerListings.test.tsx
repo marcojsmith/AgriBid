@@ -231,4 +231,18 @@ describe("SellerListings Page", () => {
     expect(screen.getByText(/Active Tractor/i)).toBeInTheDocument();
     expect(screen.queryByText(/\(Watched\)/i)).not.toBeInTheDocument();
   });
+
+  it("uses Set.has for O(1) lookups when checking watch state", () => {
+    const watchedIds = ["auction1", "auction3"];
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return watchedIds;
+      return null;
+    });
+
+    renderSellerListings("active");
+    expect(screen.getByText(/Active Tractor \(Watched\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Active Combine/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Active Combine \(Watched\)/i)).not.toBeInTheDocument();
+  });
 });
