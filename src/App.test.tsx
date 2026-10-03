@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockInstance } from "vitest";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 // Mock Layout to avoid sidebar/header complexity
 vi.mock("./components/Layout", () => ({
@@ -70,6 +72,11 @@ vi.mock("convex/react", () => ({
   useQuery: vi.fn(() => []),
   usePaginatedQuery: vi.fn(() => ({ results: [], status: "Exhausted" })),
   useMutation: () => vi.fn(),
+}));
+
+// Mock error reporter
+vi.mock("./lib/error-reporter", () => ({
+  reportErrorAsync: vi.fn(),
 }));
 
 import App from "./App";
@@ -231,5 +238,52 @@ describe("App Routing", () => {
   it("renders NotFound page for deeply nested unknown routes", async () => {
     renderApp("/some/deeply/nested/unknown/path");
     expect(await screen.findByTestId("not-found-page")).toBeInTheDocument();
+  });
+});
+
+describe("RouteErrorBoundary Integration", () => {
+  let consoleErrorSpy: MockInstance<typeof console.error> | undefined;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      return undefined;
+    });
+  });
+
+  afterEach(() => {
+    consoleErrorSpy?.mockRestore();
+  });
+
+  it("keeps Layout visible when a wrapped route throws during render", () => {
+    function ThrowingPage() {
+      throw new Error("Page crashed");
+    }
+
+    function TestLayout({ children }: { children: ReactNode }) {
+      return <div data-testid="test-layout">{children}</div>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/crash"]}>
+        <TestLayout>
+          <Routes>
+            <Route
+              path="/crash"
+              element={
+                <RouteErrorBoundary>
+                  <ThrowingPage />
+                </RouteErrorBoundary>
+              }
+            />
+          </Routes>
+        </TestLayout>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("test-layout")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /something went wrong/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 });
