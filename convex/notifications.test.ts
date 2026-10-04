@@ -92,14 +92,14 @@ describe("Notifications Coverage", () => {
         _id: "u1",
         userId: "user1",
       } as unknown as AuthUser);
-      queryMock.collect
+      queryMock.take
         .mockResolvedValueOnce([
-          { _id: "n1", createdAt: 100, recipientId: "user1" },
+          { _id: "n1", createdAt: 100, recipientId: "user1", _creationTime: 100 },
         ])
         .mockResolvedValueOnce([
-          { _id: "a1", createdAt: 200, recipientId: "all" },
-        ])
-        .mockResolvedValueOnce([{ notificationId: "a1" }]); // user receipts for a1
+          { _id: "a1", createdAt: 200, recipientId: "all", _creationTime: 200 },
+        ]);
+      queryMock.collect.mockResolvedValueOnce([{ notificationId: "a1" }]);
 
       const result = await getMyNotificationsHandler(
         mockCtx as unknown as QueryCtx,
@@ -108,121 +108,223 @@ describe("Notifications Coverage", () => {
       expect(result.page).toHaveLength(2);
       expect(result.page[0]._id).toBe("a1");
       expect(result.page[0].isRead).toBe(true);
-      expect(result.page[1].isRead).toBeUndefined();
+      expect(result.page[1].isRead).toBe(false);
     });
 
-    it("should handle pagination with cursor and custom numItems", async () => {
+    it("should paginate 500+ notifications completely with no duplicates or misses", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
       } as unknown as AuthUser);
 
-      // Create enough items to test pagination
-      const personalNotifications = Array.from({ length: 25 }, (_, i) => ({
-        _id: `n${String(i)}`,
-        createdAt: 100 + i * 10,
+      const personalNotifications = Array.from({ length: 300 }, (_, i) => ({
+        _id: `n${String(i).padStart(3, "0")}` as Id<"notifications">,
+        createdAt: 100000 - i * 100,
+        _creationTime: 100000 - i * 100,
         recipientId: "user1",
-        type: "bid" as const,
-        title: `Title ${String(i)}`,
-        message: `Msg ${String(i)}`,
+        type: "info" as const,
+        title: `Personal ${String(i)}`,
+        message: `Message ${String(i)}`,
         isRead: false,
       }));
-      const announcements = Array.from({ length: 25 }, (_, i) => ({
-        _id: `a${String(i)}`,
-        createdAt: 200 + i * 10,
+      const announcements = Array.from({ length: 250 }, (_, i) => ({
+        _id: `a${String(i).padStart(3, "0")}` as Id<"notifications">,
+        createdAt: 100050 - i * 100,
+        _creationTime: 100050 - i * 100,
         recipientId: "all",
-        type: "announcement" as const,
-        title: `Ann ${String(i)}`,
-        message: `Ann Msg ${String(i)}`,
+        type: "info" as const,
+        title: `Announcement ${String(i)}`,
+        message: `Announcement Message ${String(i)}`,
         isRead: false,
       }));
 
-      queryMock.collect
-        .mockResolvedValueOnce(personalNotifications)
-        .mockResolvedValueOnce(announcements)
-        .mockResolvedValueOnce([]); // read receipts
-
-      const result = await getMyNotificationsHandler(
-        mockCtx as unknown as QueryCtx,
-        { paginationOpts: { numItems: 10, cursor: "20" } }
+      const allNotifications = [...personalNotifications, ...announcements].sort(
+        (a, b) => b.createdAt - a.createdAt
       );
 
-      // Should return items 20-29 (sorted by createdAt descending, so indices 20-29)
-      expect(result.page).toHaveLength(10);
-      expect(result.isDone).toBe(false);
-      expect(result.continueCursor).toBe("30");
-      expect(result.totalCount).toBe(50);
+      let personalCursor: number | null = null;
+      let announcementCursor: number | null = null;
+
+      queryMock.take.mockImplementation((limit: number) => {
+        const callNum = queryMock.take.mock.calls.length;
+        if (callNum % 2 === 1) {
+          let slice = personalNotifications;
+          if (personalCursor !== null) {
+            const cursor = personalCursor;
+            slice = personalNotifications.filter(n => n.createdAt < cursor);
+          }
+          return Promise.resolve(slice.slice(0, limit));
+        } else {
+          let slice = announcements;
+          if (announcementCursor !== null) {
+            const cursor = announcementCursor;
+            slice = announcements.filter(n => n.createdAt < cursor);
+          }
+          return Promise.resolve(slice.slice(0, limit));
+        }
+      });
+
+      queryMock.collect.mockResolvedValue([]);
+
+      const collectedIds: string[] = [];
+      let cursor: string | null = null;
+      let isDone = false;
+
+      while (!isDone) {
+        const result = await getMyNotificationsHandler(
+          mockCtx as unknown as QueryCtx,
+          { paginationOpts: { numItems: 50, cursor } }
+        );
+        collectedIds.push(...result.page.map((n) => n._id));
+        isDone = result.isDone;
+        cursor = result.continueCursor || null;
+
+        if (result.page.length > 0) {
+          const personalItems = result.page.filter(n => n.recipientId !== "all");
+          const announcementItems = result.page.filter(n => n.recipientId === "all");
+          if (personalItems.length > 0) {
+            personalCursor = personalItems[personalItems.length - 1].createdAt;
+          }
+          if (announcementItems.length > 0) {
+            announcementCursor = announcementItems[announcementItems.length - 1].createdAt;
+          }
+        }
+      }
+
+      expect(collectedIds).toHaveLength(allNotifications.length);
+      const expectedIds = allNotifications.map((n) => n._id);
+      expect(collectedIds).toEqual(expectedIds);
+
+      const uniqueIds = new Set(collectedIds);
+      expect(uniqueIds.size).toBe(collectedIds.length);
     });
 
-    it("should handle pagination when cursor exceeds data length", async () => {
+    it("should handle notification inserted between page fetches without duplicates", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
       } as unknown as AuthUser);
 
-      queryMock.collect
-        .mockResolvedValueOnce([
-          {
-            _id: "n1",
-            createdAt: 100,
-            recipientId: "user1",
-            type: "bid" as const,
-            title: "T",
-            message: "M",
-            isRead: false,
-          },
-        ])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
-
-      const result = await getMyNotificationsHandler(
-        mockCtx as unknown as QueryCtx,
-        { paginationOpts: { numItems: 10, cursor: "100" } }
-      );
-
-      expect(result.page).toHaveLength(0);
-      expect(result.isDone).toBe(true);
-      expect(result.continueCursor).toBe("");
-    });
-
-    it("should use default pagination values when not provided", async () => {
-      vi.mocked(auth.getAuthUser).mockResolvedValue({
-        _id: "u1",
-        userId: "user1",
-      } as unknown as AuthUser);
-
-      // Return more than 20 items to test default pagination
-      const notifications = Array.from({ length: 30 }, (_, i) => ({
-        _id: `n${String(i)}`,
-        createdAt: 100 + i * 10,
+      const baseNotifications = Array.from({ length: 30 }, (_, i) => ({
+        _id: `n${String(i).padStart(2, "0")}` as Id<"notifications">,
+        createdAt: 10000 - i * 100,
+        _creationTime: 10000 - i * 100,
         recipientId: "user1",
-        type: "bid" as const,
+        type: "info" as const,
         title: `Title ${String(i)}`,
-        message: `Msg ${String(i)}`,
+        message: `Message ${String(i)}`,
         isRead: false,
       }));
 
-      queryMock.collect
-        .mockResolvedValueOnce(notifications)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      let notifications = [...baseNotifications];
+      let callCount = 0;
+      let currentCursor: number | null = null;
 
-      // Call without paginationOpts - should use defaults
-      const result = await getMyNotificationsHandler(
+      queryMock.take.mockImplementation((limit: number) => {
+        callCount++;
+        if (callCount === 3) {
+          notifications = [
+            {
+              _id: "n-new" as Id<"notifications">,
+              createdAt: 10000 + 100,
+              _creationTime: 10000 + 100,
+              recipientId: "user1",
+              type: "info" as const,
+              title: "New Inserted",
+              message: "New Message",
+              isRead: false,
+            },
+            ...baseNotifications,
+          ];
+        }
+        let slice = notifications;
+        if (currentCursor !== null) {
+          const cursor = currentCursor;
+          slice = notifications.filter(n => n.createdAt < cursor);
+        }
+        return Promise.resolve(slice.slice(0, limit));
+      });
+
+      queryMock.collect.mockResolvedValue([]);
+
+      const firstPage = await getMyNotificationsHandler(
         mockCtx as unknown as QueryCtx,
-        {}
+        { paginationOpts: { numItems: 20, cursor: null } }
       );
 
-      // Default is 20 items
-      expect(result.page).toHaveLength(20);
-      expect(result.isDone).toBe(false);
-      expect(result.totalCount).toBe(30);
+      expect(firstPage.page).toHaveLength(20);
+
+      if (firstPage.page.length > 0) {
+        currentCursor = firstPage.page[firstPage.page.length - 1].createdAt;
+      }
+
+      const secondPage = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 20, cursor: firstPage.continueCursor } }
+      );
+
+      const firstPageIds = new Set(firstPage.page.map((n) => n._id));
+      const secondPageIds = new Set(secondPage.page.map((n) => n._id));
+      
+      for (const id of secondPageIds) {
+        expect(firstPageIds.has(id)).toBe(false);
+      }
+    });
+
+    it("should handle malformed cursor gracefully", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as AuthUser);
+
+      queryMock.take
+        .mockResolvedValueOnce([
+          { _id: "n1", createdAt: 100, recipientId: "user1", _creationTime: 100 },
+        ])
+        .mockResolvedValueOnce([]);
+      queryMock.collect.mockResolvedValue([]);
+
+      const result = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 10, cursor: "not-valid-json" } }
+      );
+
+      expect(result.page.length).toBeGreaterThanOrEqual(0);
+      expect(result.isDone).toBeDefined();
+    });
+
+    it("should interleave announcements in correct time order", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user1",
+      } as unknown as AuthUser);
+
+      queryMock.take
+        .mockResolvedValueOnce([
+          { _id: "n1", createdAt: 300, recipientId: "user1", _creationTime: 300 },
+          { _id: "n2", createdAt: 100, recipientId: "user1", _creationTime: 100 },
+        ])
+        .mockResolvedValueOnce([
+          { _id: "a1", createdAt: 200, recipientId: "all", _creationTime: 200 },
+        ]);
+      queryMock.collect.mockResolvedValue([]);
+
+      const result = await getMyNotificationsHandler(
+        mockCtx as unknown as QueryCtx,
+        { paginationOpts: { numItems: 10, cursor: null } }
+      );
+
+      expect(result.page).toHaveLength(3);
+      expect(result.page[0]._id).toBe("n1");
+      expect(result.page[1]._id).toBe("a1");
+      expect(result.page[2]._id).toBe("n2");
     });
 
     it("should use fallback _id if userId is missing", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
       } as unknown as AuthUser);
+      queryMock.take.mockResolvedValue([]);
       queryMock.collect.mockResolvedValue([]);
       const result = await getMyNotificationsHandler(
         mockCtx as unknown as QueryCtx,
@@ -265,9 +367,10 @@ describe("Notifications Coverage", () => {
         _id: "u1",
         userId: "user1",
       } as unknown as AuthUser);
-      queryMock.collect
-        .mockResolvedValueOnce([{ _id: "n1", createdAt: 100 }])
+      queryMock.take
+        .mockResolvedValueOnce([{ _id: "n1", createdAt: 100, _creationTime: 100 }])
         .mockResolvedValueOnce([]);
+      queryMock.collect.mockResolvedValue([]);
 
       const result = await getMyNotificationsHandler(
         mockCtx as unknown as QueryCtx,

@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-10-03
+Last updated: 2026-10-04
 
 ## How to keep this file useful
 
@@ -31,6 +31,7 @@ Last updated: 2026-10-03
 
 ## Done (last 10)
 
+- 2026-10-04: Paginate notifications with bounded per-stream reads and a compound cursor (#336) (v0.17.18).
 - 2026-10-03: Replace hardcoded palette classes with theme tokens and add a guard test (#300) (v0.17.17).
 - 2026-10-03: Add input length caps and per-user rate limits on write mutations (#298) (v0.17.16).
 - 2026-10-03: Harden destructive seed access (no preview bypass, explicit dev opt-in), audit-log seed/promotion, add deny-path tests (#297) (v0.17.15).
