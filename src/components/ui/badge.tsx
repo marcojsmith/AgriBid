@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Slot } from "@radix-ui/react-slot";
+import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
@@ -29,11 +29,11 @@ const badgeVariants = cva(
 /**
  * Render a badge element with selectable visual variants and optional slot composition.
  *
- * When `asChild` is true, uses Radix `Slot` so the provided child element receives the badge attributes and classes; otherwise renders a `span`.
+ * When `asChild` is true, uses Radix `Slot.Root` so the provided child element receives the badge attributes and classes; otherwise renders a `span`.
  *
  * @param props - Component props.
  * @param props.variant - Visual style to apply; one of "default", "secondary", "destructive", "outline", "ghost", or "link".
- * @param props.asChild - If true, render the provided child via Radix `Slot` so it receives the badge attributes and classes.
+ * @param props.asChild - If true, render the provided child via Radix `Slot.Root` so it receives the badge attributes and classes.
  * @param props.className - Additional CSS classes to merge with the computed variant classes.
  * @returns The rendered badge element (a `span` or the slotted child) with merged classes and forwarded props.
  */
@@ -44,7 +44,7 @@ function Badge({
   ...props
 }: React.ComponentProps<"span"> &
   VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "span";
+  const Comp = asChild ? Slot.Root : "span";
 
   return (
     <Comp
