@@ -310,4 +310,80 @@ describe("AdminBusinessInfo", () => {
       );
     });
   });
+
+  it("saves every edited field", async () => {
+    mockBusinessInfo = { ...blankBusinessInfo };
+    (useQuery as Mock).mockReturnValue(mockBusinessInfo);
+    mockUpdateBusinessInfo.mockResolvedValue(null);
+    render(<AdminBusinessInfo />);
+
+    fireEvent.change(screen.getByLabelText(/organization name/i), {
+      target: { value: "AgriBid" },
+    });
+    fireEvent.change(screen.getByLabelText(/description/i), {
+      target: { value: "Auction platform" },
+    });
+    fireEvent.change(screen.getByLabelText(/street address/i), {
+      target: { value: "123 Harvest Road" },
+    });
+    fireEvent.change(screen.getByLabelText(/city \/ locality/i), {
+      target: { value: "Agricultural Hub" },
+    });
+    fireEvent.change(screen.getByLabelText(/country code/i), {
+      target: { value: "ZA" },
+    });
+    fireEvent.change(screen.getByLabelText(/postal code/i), {
+      target: { value: "4500" },
+    });
+    fireEvent.change(screen.getByLabelText(/logo url/i), {
+      target: { value: "https://agribid.co.za/logo.png" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateBusinessInfo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          businessName: "AgriBid",
+          businessDescription: "Auction platform",
+          streetAddress: "123 Harvest Road",
+          addressLocality: "Agricultural Hub",
+          addressCountry: "ZA",
+          postalCode: "4500",
+          logoUrl: "https://agribid.co.za/logo.png",
+        })
+      );
+    });
+  });
+
+  it("shows error toast when logo URL is not a valid URL", async () => {
+    mockBusinessInfo = { ...blankBusinessInfo };
+    (useQuery as Mock).mockReturnValue(mockBusinessInfo);
+    render(<AdminBusinessInfo />);
+
+    fireEvent.change(screen.getByLabelText(/logo url/i), {
+      target: { value: "not-a-url" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Logo URL must be a valid URL");
+      expect(mockUpdateBusinessInfo).not.toHaveBeenCalled();
+    });
+  });
+
+  it("rejects URLs that use a non-http protocol", async () => {
+    mockBusinessInfo = { ...blankBusinessInfo };
+    (useQuery as Mock).mockReturnValue(mockBusinessInfo);
+    render(<AdminBusinessInfo />);
+
+    fireEvent.change(screen.getByLabelText(/website/i), {
+      target: { value: "ftp://agribid.co.za" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Website must be a valid URL");
+      expect(mockUpdateBusinessInfo).not.toHaveBeenCalled();
+    });
+  });
 });

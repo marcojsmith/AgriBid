@@ -253,4 +253,61 @@ describe("AdminLayout", () => {
       screen.queryByTestId("admin-mobile-nav-overlay")
     ).not.toBeInTheDocument();
   });
+
+  it("closes the mobile nav drawer when the overlay backdrop is clicked", () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close navigation overlay" })
+    );
+    expect(
+      screen.queryByTestId("admin-mobile-nav-overlay")
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the mobile nav drawer on Escape", () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByTestId("admin-mobile-nav-overlay")).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(
+      screen.queryByTestId("admin-mobile-nav-overlay")
+    ).not.toBeInTheDocument();
+  });
+
+  it("ignores other keys while the drawer is open", () => {
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+
+    fireEvent.keyDown(document, { key: "Enter" });
+
+    expect(screen.getByTestId("admin-mobile-nav-overlay")).toBeInTheDocument();
+  });
+
+  it("stops listening for Escape once the drawer is closed", () => {
+    const removeSpy = vi.spyOn(document, "removeEventListener");
+    renderWithRouter(
+      <AdminLayout>
+        <div>Test Content</div>
+      </AdminLayout>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close navigation" }));
+
+    expect(removeSpy).toHaveBeenCalledWith("keydown", expect.any(Function));
+  });
 });

@@ -281,6 +281,70 @@ describe("Seed Coverage", () => {
 
       expect(snapshotCounts()).toEqual(firstSnapshot);
     });
+
+    it("clears every table and reseeds when clear is requested", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+      mockDb.db.insert("auctions", {
+        title: "Stale Auction",
+        status: "published",
+        bannerImage: "stale-banner",
+      });
+      mockDb.db.insert("lots", {
+        title: "Stale Lot",
+        status: "assigned",
+        images: { additional: ["stale-image"] },
+        conditionReportUrl: "stale-report",
+      });
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {
+        clear: true,
+      });
+
+      // Storage blobs referenced by the cleared rows are swept first.
+      expect(mockCtx.storage.delete).toHaveBeenCalledWith("stale-banner");
+      expect(mockCtx.storage.delete).toHaveBeenCalledWith("stale-report");
+
+      // Tables listed for clearing end up repopulated by the seed itself.
+      expect(mockDb.rows("equipmentCategories").length).toBeGreaterThan(0);
+      expect(mockDb.rows("auctions").length).toBe(7);
+      expect(mockDb.rows("lots").length).toBe(22);
+    });
+
+    it("promotes synced profiles that have the wrong role", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      mockDb.db.insert("profiles", {
+        userId: "clerk-mock-seller",
+        email: "mock-seller@farm.com",
+        name: "Farm Seller",
+        role: "buyer",
+        isVerified: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      mockDb.db.insert("profiles", {
+        userId: "clerk-admin-user",
+        email: "admin@agribid.com",
+        name: "Showcase Admin",
+        role: "seller",
+        isVerified: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const seller = mockDb
+        .rows("profiles")
+        .find((p) => p.email === "mock-seller@farm.com");
+      const admin = mockDb
+        .rows("profiles")
+        .find((p) => p.email === "admin@agribid.com");
+      expect(seller?.role).toBe("seller");
+      expect(seller?.isVerified).toBe(true);
+      expect(admin?.role).toBe("admin");
+      expect(admin?.isVerified).toBe(true);
+    });
   });
 
   describe("weeklyReset", () => {
@@ -531,10 +595,7 @@ describe("Seed Coverage", () => {
         delete process.env.ALLOW_DEV_SEED;
         vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
-        await handlerOf(clearAllData)(
-          mockCtx as unknown as MutationCtx,
-          {}
-        );
+        await handlerOf(clearAllData)(mockCtx as unknown as MutationCtx, {});
 
         expect(console.warn).toHaveBeenCalledWith(
           expect.stringContaining("admin access path")
@@ -550,6 +611,68 @@ describe("Seed Coverage", () => {
         await expect(
           handlerOf(clearAllData)(mockCtx as unknown as MutationCtx, {})
         ).rejects.toThrow("Unauthorized:");
+      });
+
+      it("clears profiles and their KYC blobs via the dev access path", async () => {
+        process.env.NODE_ENV = "development";
+        process.env.ALLOW_DEV_SEED = "true";
+        delete process.env.SEED_SECRET;
+        vi.mocked(auth.getCallerRole).mockResolvedValue(null);
+        seedExistingProfiles();
+
+        const deleted = await handlerOf(clearAllData)(
+          mockCtx as unknown as MutationCtx,
+          {}
+        );
+
+        expect(typeof deleted).toBe("number");
+        expect(mockDb.rows("profiles").length).toBe(0);
+        expect(mockDb.rows("auctions").length).toBe(0);
+        expect(mockDb.rows("lots").length).toBe(0);
+        expect(mockCtx.storage.delete).toHaveBeenCalledWith("kyc-blob-1");
+        expect(vi.mocked(adminUtils.logAudit)).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("role re-check after access validation", () => {
+      it("skips the runSeed audit entry when the role check downgrades", async () => {
+        process.env.NODE_ENV = "production";
+        delete process.env.ALLOW_DEV_SEED;
+        delete process.env.SEED_SECRET;
+        vi.mocked(auth.getCallerRole)
+          .mockResolvedValueOnce("admin")
+          .mockResolvedValueOnce("buyer");
+        seedExistingProfiles();
+
+        await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+        expect(vi.mocked(adminUtils.logAudit)).not.toHaveBeenCalled();
+      });
+
+      it("skips the clearAuctions audit entry when the role check downgrades", async () => {
+        process.env.NODE_ENV = "production";
+        delete process.env.ALLOW_DEV_SEED;
+        delete process.env.SEED_SECRET;
+        vi.mocked(auth.getCallerRole)
+          .mockResolvedValueOnce("admin")
+          .mockResolvedValueOnce("buyer");
+
+        await handlerOf(clearAuctions)(mockCtx as unknown as MutationCtx, {});
+
+        expect(vi.mocked(adminUtils.logAudit)).not.toHaveBeenCalled();
+      });
+
+      it("skips the clearAllData audit entry when the role check downgrades", async () => {
+        process.env.NODE_ENV = "production";
+        delete process.env.ALLOW_DEV_SEED;
+        delete process.env.SEED_SECRET;
+        vi.mocked(auth.getCallerRole)
+          .mockResolvedValueOnce("admin")
+          .mockResolvedValueOnce("buyer");
+
+        await handlerOf(clearAllData)(mockCtx as unknown as MutationCtx, {});
+
+        expect(vi.mocked(adminUtils.logAudit)).not.toHaveBeenCalled();
       });
     });
   });

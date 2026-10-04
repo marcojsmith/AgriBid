@@ -45,6 +45,7 @@ interface SubmitErrorReportArgs {
   stackTrace?: string;
   userId?: string;
   userRole?: string;
+  additionalInfo?: Record<string, string | number>;
   breadcrumbs: { timestamp: number; type: string; description: string }[];
   metadata: { url: string; userAgent: string; timestamp: number };
 }
@@ -124,6 +125,71 @@ describe("Error Reporter", () => {
       const args = getMockCallArgs(mockMutation);
       expect(args.errorType).toBe("Error"); // Defaults to Error for strings
       expect(args.errorMessage).toBe("String error");
+    });
+
+    it("should sanitize string and number context fields and drop unknown keys", async () => {
+      const result = await reportError(new Error("Context error"), {
+        additionalInfo: {
+          component: "FeeManager",
+          userAction: "click",
+          additionalDetails: 42,
+          secretToken: "leak-me",
+        },
+      });
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.additionalInfo).toEqual({
+        component: "FeeManager",
+        userAction: "click",
+        additionalDetails: 42,
+      });
+    });
+
+    it("should omit additional info when none is supplied", async () => {
+      const result = await reportError(new Error("No context"));
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.additionalInfo).toBeUndefined();
+    });
+
+    it("should omit additional info when it holds no usable fields", async () => {
+      const result = await reportError(new Error("Empty context"), {
+        additionalInfo: { secretToken: "leak-me" },
+      });
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.additionalInfo).toBeUndefined();
+    });
+
+    it("should fall back to an empty stack trace when the error has none", async () => {
+      const error = new Error("No stack");
+      error.stack = undefined;
+
+      const result = await reportError(error);
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.stackTrace).toBe("");
+    });
+
+    it("should omit the stack trace for string errors", async () => {
+      const result = await reportError("Plain string");
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.stackTrace).toBeUndefined();
+    });
+
+    it("should report the browser url and user agent in metadata", async () => {
+      const result = await reportError(new Error("Metadata error"));
+
+      expect(result).toBe(true);
+      const args = getMockCallArgs(mockMutation);
+      expect(args.metadata.url).toBe(window.location.href);
+      expect(args.metadata.userAgent).toBe(navigator.userAgent);
     });
 
     it("should return false if VITE_CONVEX_URL is not set", async () => {

@@ -40,10 +40,38 @@ interface MockDb {
 
 let mockCtx: { db: MockDb };
 
-const makeQuery = (rows: unknown[]) => {
-  const chain = {
-    withIndex: vi.fn(() => chain),
+/** Chainable stand-in for the index range Convex hands to `withIndex`. */
+interface MockIndexBuilder {
+  eq: ReturnType<typeof vi.fn>;
+}
+
+/** Query double whose `withIndex` actually runs the supplied index callback. */
+interface MockIndexQuery {
+  withIndex: ReturnType<typeof vi.fn>;
+  collect: ReturnType<typeof vi.fn>;
+  indexBuilder: MockIndexBuilder;
+}
+
+/**
+ * Builds a query double that runs the index callback production code supplies,
+ * so the index predicates themselves are exercised.
+ *
+ * @param rows - Documents `collect` resolves with
+ * @returns The query double plus the recorded index range
+ */
+const makeQuery = (rows: unknown[]): MockIndexQuery => {
+  const indexBuilder: MockIndexBuilder = {
+    eq: vi.fn(() => indexBuilder),
+  };
+  const chain: MockIndexQuery = {
+    withIndex: vi.fn(
+      (_index: string, cb?: (q: MockIndexBuilder) => unknown) => {
+        if (cb) cb(indexBuilder);
+        return chain;
+      }
+    ),
     collect: vi.fn().mockResolvedValue(rows),
+    indexBuilder,
   };
   return chain;
 };
@@ -245,6 +273,154 @@ describe("Auction container CRUD mutations", () => {
         })
       ).rejects.toThrow("Admin privileges required");
     });
+
+    it("scopes assigned lots to the auction being updated", async () => {
+      mockCtx.db.get.mockResolvedValue(
+        baseAuction as unknown as Doc<"auctions">
+      );
+      const lotsQuery = makeQuery([]);
+      mockCtx.db.query.mockReturnValue(lotsQuery);
+
+      await updateAuctionHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        title: "Renamed",
+      });
+
+      expect(lotsQuery.withIndex).toHaveBeenCalledWith(
+        "by_auctionId",
+        expect.any(Function)
+      );
+      expect(lotsQuery.indexBuilder.eq).toHaveBeenCalledWith("auctionId", "a1");
+    });
+
+    it("scopes bids to the lot being checked and keeps the earliest tie", async () => {
+      const assignedLot = {
+        _id: "l1",
+        status: "assigned",
+        auctionId: "a1",
+      };
+      const bidsQuery = makeQuery([
+        { amount: 100, timestamp: 1400, status: "valid" },
+        { amount: 100, timestamp: 1500, status: "valid" },
+        { amount: 100, timestamp: 1300, status: "voided" },
+      ]);
+      mockCtx.db.get.mockResolvedValue(
+        baseAuction as unknown as Doc<"auctions">
+      );
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots" ? makeQuery([assignedLot]) : bidsQuery
+      );
+
+      // The earliest of the tied valid bids (timestamp 1400) wins, so a start
+      // time before it stays legal.
+      const result = await updateAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions">, startTime: 1350 }
+      );
+
+      expect(result.success).toBe(true);
+      expect(bidsQuery.withIndex).toHaveBeenCalledWith(
+        "by_lot",
+        expect.any(Function)
+      );
+      expect(bidsQuery.indexBuilder.eq).toHaveBeenCalledWith("lotId", "l1");
+    });
+
+    it("keeps the higher bid when amounts differ", async () => {
+      const assignedLot = {
+        _id: "l1",
+        status: "assigned",
+        auctionId: "a1",
+      };
+      mockCtx.db.get.mockResolvedValue(
+        baseAuction as unknown as Doc<"auctions">
+      );
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots"
+          ? makeQuery([assignedLot])
+          : makeQuery([
+              { amount: 100, timestamp: 1200, status: "valid" },
+              { amount: 300, timestamp: 1500, status: "valid" },
+              { amount: 200, timestamp: 1400, status: "valid" },
+            ])
+      );
+
+      await expect(
+        updateAuctionHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+          startTime: 1600,
+        })
+      ).rejects.toThrow(
+        "Auction startTime cannot move later than an accepted bid on an assigned lot"
+      );
+    });
+
+    it("allows a startTime earlier than every accepted bid", async () => {
+      const assignedLot = {
+        _id: "l1",
+        status: "assigned",
+        auctionId: "a1",
+      };
+      mockCtx.db.get.mockResolvedValue(
+        baseAuction as unknown as Doc<"auctions">
+      );
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots"
+          ? makeQuery([assignedLot])
+          : makeQuery([
+              { amount: 300, timestamp: 1500, status: "valid" },
+              { amount: 100, timestamp: 1400, status: "valid" },
+            ])
+      );
+
+      const result = await updateAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions">, startTime: 1100 }
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it("ignores voided bids when validating an assigned lot", async () => {
+      const assignedLot = {
+        _id: "l1",
+        status: "assigned",
+        auctionId: "a1",
+      };
+      mockCtx.db.get.mockResolvedValue(
+        baseAuction as unknown as Doc<"auctions">
+      );
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots"
+          ? makeQuery([assignedLot])
+          : makeQuery([{ amount: 900, timestamp: 1900, status: "voided" }])
+      );
+
+      const result = await updateAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions">, startTime: 1950 }
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it("ignores assigned lots without an extendedEndTime", async () => {
+      mockCtx.db.get.mockResolvedValue(
+        baseAuction as unknown as Doc<"auctions">
+      );
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots"
+          ? makeQuery([{ _id: "l1", status: "assigned", auctionId: "a1" }])
+          : makeQuery([])
+      );
+
+      const result = await updateAuctionHandler(
+        mockCtx as unknown as MutationCtx,
+        { auctionId: "a1" as Id<"auctions">, endTime: 2100 }
+      );
+
+      expect(result.success).toBe(true);
+    });
   });
 
   // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret
@@ -425,6 +601,42 @@ describe("Auction container CRUD mutations", () => {
           auctionId: "a1" as Id<"auctions">,
         })
       ).rejects.toThrow("Only published auctions can be closed");
+    });
+
+    it("throws when the auction is missing", async () => {
+      mockCtx.db.get.mockResolvedValue(null);
+
+      await expect(
+        closeAuctionContainerHandler(mockCtx as unknown as MutationCtx, {
+          auctionId: "a1" as Id<"auctions">,
+        })
+      ).rejects.toThrow("Auction not found");
+
+      expect(mockCtx.db.query).not.toHaveBeenCalled();
+    });
+
+    it("looks up assigned lots by the status+auction compound index", async () => {
+      mockCtx.db.get.mockResolvedValue({
+        ...baseAuction,
+        status: "published",
+      } as unknown as Doc<"auctions">);
+      const lotsQuery = makeQuery([]);
+      mockCtx.db.query.mockReturnValue(lotsQuery);
+
+      await closeAuctionContainerHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      expect(lotsQuery.withIndex).toHaveBeenCalledWith(
+        "by_status_auctionId",
+        expect.any(Function)
+      );
+      expect(lotsQuery.indexBuilder.eq).toHaveBeenCalledWith(
+        "status",
+        "assigned"
+      );
+      expect(lotsQuery.indexBuilder.eq).toHaveBeenCalledWith("auctionId", "a1");
+      expect(settleLot).not.toHaveBeenCalled();
     });
   });
 });

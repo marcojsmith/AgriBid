@@ -412,6 +412,48 @@ describe("Internal Logic Coverage", () => {
       );
     });
 
+    it("skips lots whose parent auction is not published", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test Auction",
+        currentPrice: 1000,
+        reservePrice: 500,
+        status: "assigned",
+        auctionId: "auction1",
+      };
+
+      setupTableQuery([mockLot], []);
+      mockCtx.db.get.mockResolvedValue({
+        status: "draft",
+        endTime: Date.now() - 1000,
+      } as never);
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalled();
+    });
+
+    it("skips lots whose effective end time has not passed", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test Auction",
+        currentPrice: 1000,
+        reservePrice: 500,
+        status: "assigned",
+        auctionId: "auction1",
+      };
+
+      setupTableQuery([mockLot], []);
+      mockCtx.db.get.mockResolvedValue({
+        status: "published",
+        endTime: Date.now() + 60_000,
+      } as never);
+
+      await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+
+      expect(mockCtx.db.patch).not.toHaveBeenCalled();
+    });
+
     it("should handle tie-break - earlier timestamp wins", async () => {
       const mockLot = {
         _id: "a1",
@@ -646,6 +688,70 @@ describe("Internal Logic Coverage", () => {
           createdAt: expect.any(Number) as number,
         })
       );
+    });
+
+    it("records the buyer side of a fee that applies to both sides", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+      };
+      const mockFee = {
+        _id: "f1",
+        name: "Transaction Fee",
+        feeType: "percentage",
+        value: 0.02,
+        appliesTo: "both",
+        isActive: true,
+      };
+
+      setupTableQuery([], [], [mockFee], null);
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockLot as never
+      );
+
+      const appliedTo = mockCtx.db.insert.mock.calls.map(
+        (call) => (call[1] as { appliedTo: string }).appliedTo
+      );
+      expect(appliedTo).toContain("seller");
+      expect(appliedTo).toContain("buyer");
+    });
+
+    it("skips the buyer ledger row when one already exists", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+      };
+      const mockFee = {
+        _id: "f1",
+        name: "Transaction Fee",
+        feeType: "percentage",
+        value: 0.02,
+        appliesTo: "both",
+        isActive: true,
+      };
+
+      setupTableQuery([], [], [mockFee], {
+        _id: "af1",
+        lotId: "a1",
+        feeId: "f1",
+        appliedTo: "buyer",
+      });
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockLot as never
+      );
+
+      const appliedTo = mockCtx.db.insert.mock.calls.map(
+        (call) => (call[1] as { appliedTo: string }).appliedTo
+      );
+      expect(appliedTo).not.toContain("buyer");
     });
 
     it("records the resolved auction-default fees in the audit total without persisting ledger rows", async () => {

@@ -65,4 +65,52 @@ describe("ImageGallery", () => {
     fireEvent.click(nextBtn); // Wrap from 2 to 0
     expect(fullScreenImg.getAttribute("src")).toBe("img1.jpg");
   });
+
+  it("replaces the main image with a placeholder when it fails to load", () => {
+    render(<ImageGallery images={mockImages} title={mockTitle} />);
+
+    fireEvent.error(screen.getByAltText(`${mockTitle} - Main`));
+
+    expect(screen.queryByAltText(`${mockTitle} - Main`)).toBeNull();
+    expect(screen.getByText(/Image Pending/i)).toBeDefined();
+  });
+
+  it("replaces a failed thumbnail with the placeholder icon", () => {
+    render(<ImageGallery images={mockImages} title={mockTitle} />);
+
+    fireEvent.error(screen.getByAltText(`${mockTitle} thumbnail 2`));
+
+    expect(screen.queryByAltText(`${mockTitle} thumbnail 2`)).toBeNull();
+    expect(screen.getByAltText(`${mockTitle} thumbnail 1`)).toBeDefined();
+  });
+
+  it("replaces the lightbox image with a placeholder when it fails to load", () => {
+    render(<ImageGallery images={mockImages} title={mockTitle} />);
+    fireEvent.click(screen.getByLabelText("Open full-screen gallery"));
+
+    fireEvent.error(screen.getByAltText(`${mockTitle} - Full Screen`));
+
+    expect(screen.queryByAltText(`${mockTitle} - Full Screen`)).toBeNull();
+    expect(screen.getAllByText(/Image Pending/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows the newly selected image after a previous failure", () => {
+    render(<ImageGallery images={mockImages} title={mockTitle} />);
+    fireEvent.error(screen.getByAltText(`${mockTitle} - Main`));
+
+    fireEvent.click(screen.getByLabelText("View image 2"));
+
+    expect(screen.getByAltText(`${mockTitle} - Main`).getAttribute("src")).toBe(
+      "img2.jpg"
+    );
+  });
+
+  it("hides lightbox controls when only one image is present", () => {
+    render(<ImageGallery images={[mockImages[0]]} title={mockTitle} />);
+    fireEvent.click(screen.getByLabelText("Open full-screen gallery"));
+
+    expect(screen.queryByLabelText("Next image")).toBeNull();
+    expect(screen.queryByLabelText("Previous image")).toBeNull();
+    expect(screen.queryByLabelText("View image 1")).toBeNull();
+  });
 });

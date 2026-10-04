@@ -8,6 +8,7 @@ import {
   getSellerRatingSummary,
 } from "./reviews";
 import * as auth from "./lib/auth";
+import { MAX_REVIEW_COMMENT_LENGTH, MAX_REVIEWS_PER_WINDOW } from "./constants";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
@@ -32,6 +33,44 @@ type MockQueryCtx = {
   db: MockDb;
 } & Partial<QueryCtx>;
 
+/**
+ * Chainable index-range builder used to run the index callbacks production code
+ * hands to `withIndex`; Convex builds the range synchronously.
+ */
+interface MockIndexBuilder {
+  eq: (field: string, value: unknown) => MockIndexBuilder;
+  gte: (field: string, value: unknown) => MockIndexBuilder;
+  lte: (field: string, value: unknown) => MockIndexBuilder;
+}
+
+const createIndexBuilder = (): MockIndexBuilder => {
+  const builder: MockIndexBuilder = {
+    eq: () => builder,
+    gte: () => builder,
+    lte: () => builder,
+  };
+  return builder;
+};
+
+/**
+ * Replaces a query double's `withIndex` with one that runs the index callback
+ * and returns the same query.
+ *
+ * @param query - Query double to attach the runner to
+ * @returns The same query double
+ */
+const withIndexRunner = <T extends { withIndex: ReturnType<typeof vi.fn> }>(
+  query: T
+): T => {
+  query.withIndex = vi.fn(
+    (_indexName: string, cb?: (q: MockIndexBuilder) => unknown) => {
+      if (cb) cb(createIndexBuilder());
+      return query;
+    }
+  );
+  return query;
+};
+
 describe("submitReview mutation", () => {
   let mockCtx: MockMutationCtx;
 
@@ -39,16 +78,20 @@ describe("submitReview mutation", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (options: {
-    existingReview?: unknown;
-    recentReviews?: unknown[];
-    mockQuery?: unknown;
-  } = {}) => {
+  const setupMockCtx = (
+    options: {
+      existingReview?: unknown;
+      recentReviews?: unknown[];
+      mockQuery?: unknown;
+    } = {}
+  ) => {
     const { existingReview = null, recentReviews = [] } = options;
-    const baseMockQuery = options.mockQuery ?? {
-      withIndex: vi.fn().mockReturnThis(),
-      unique: vi.fn().mockResolvedValue(existingReview),
-    };
+    const baseMockQuery =
+      options.mockQuery ??
+      withIndexRunner({
+        withIndex: vi.fn(),
+        unique: vi.fn().mockResolvedValue(existingReview),
+      });
 
     const mockDb: MockDb = {
       get: vi.fn(),
@@ -57,19 +100,22 @@ describe("submitReview mutation", () => {
       query: vi.fn((table: string) => {
         if (table === "reviews") {
           return {
-            withIndex: vi.fn((indexName: string) => {
-              if (indexName === "by_reviewer_createdAt") {
-                return {
-                  collect: vi.fn().mockResolvedValue(recentReviews),
-                };
+            withIndex: vi.fn(
+              (indexName: string, cb?: (q: MockIndexBuilder) => unknown) => {
+                if (cb) cb(createIndexBuilder());
+                if (indexName === "by_reviewer_createdAt") {
+                  return {
+                    collect: vi.fn().mockResolvedValue(recentReviews),
+                  };
+                }
+                if (indexName === "by_lot_reviewer") {
+                  return {
+                    unique: vi.fn().mockResolvedValue(existingReview),
+                  };
+                }
+                return baseMockQuery;
               }
-              if (indexName === "by_lot_reviewer") {
-                return {
-                  unique: vi.fn().mockResolvedValue(existingReview),
-                };
-              }
-              return baseMockQuery;
-            }),
+            ),
           };
         }
         return baseMockQuery;
@@ -323,6 +369,87 @@ describe("submitReview mutation", () => {
 
     expect(result.success).toBe(true);
   });
+
+  it("should reject a comment longer than the documented cap", async () => {
+    const lotId = "auction123" as Id<"lots">;
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue({
+      _id: lotId,
+      sellerId: "user_seller",
+      winnerId: "user_winner",
+      status: "sold",
+      settledAt: Date.now() - 8 * DAY_MS,
+    });
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_winner");
+
+    await expect(
+      submitReviewHandler(mockCtx as unknown as MutationCtx, {
+        lotId,
+        rating: 5,
+        comment: "x".repeat(MAX_REVIEW_COMMENT_LENGTH + 1),
+      })
+    ).rejects.toThrow(
+      `Comment is too long. Maximum ${MAX_REVIEW_COMMENT_LENGTH.toString()} characters allowed.`
+    );
+    expect(mockCtx.db.insert).not.toHaveBeenCalled();
+  });
+
+  it("should reject once the reviewer hits the window rate limit", async () => {
+    const lotId = "auction123" as Id<"lots">;
+    mockCtx = setupMockCtx({
+      recentReviews: Array.from({ length: MAX_REVIEWS_PER_WINDOW }, (_, i) => ({
+        _id: `rev${String(i)}`,
+      })),
+    });
+    mockCtx.db.get.mockResolvedValue({
+      _id: lotId,
+      sellerId: "user_seller",
+      winnerId: "user_winner",
+      status: "sold",
+      settledAt: Date.now() - 8 * DAY_MS,
+    });
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_winner");
+
+    await expect(
+      submitReviewHandler(mockCtx as unknown as MutationCtx, {
+        lotId,
+        rating: 5,
+      })
+    ).rejects.toThrow("You're submitting reviews too quickly");
+    expect(mockCtx.db.insert).not.toHaveBeenCalled();
+  });
+
+  it("scopes the duplicate and rate-limit lookups to the reviewer", async () => {
+    const lotId = "auction123" as Id<"lots">;
+    const winnerId = "user_winner";
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue({
+      _id: lotId,
+      sellerId: "user_seller",
+      winnerId,
+      status: "sold",
+      settledAt: Date.now() - 8 * DAY_MS,
+    });
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(winnerId);
+
+    await submitReviewHandler(mockCtx as unknown as MutationCtx, {
+      lotId,
+      rating: 4,
+    });
+
+    const indexNames = (
+      mockCtx.db.query as unknown as ReturnType<typeof vi.fn>
+    ).mock.results.flatMap((r) => {
+      const query = r.value as { withIndex?: ReturnType<typeof vi.fn> };
+      return (query.withIndex?.mock.calls ?? []).map(
+        (call) => call[0] as string
+      );
+    });
+    expect(indexNames).toEqual(
+      expect.arrayContaining(["by_reviewer_createdAt", "by_lot_reviewer"])
+    );
+  });
 });
 
 describe("respondToReview mutation", () => {
@@ -384,6 +511,30 @@ describe("respondToReview mutation", () => {
         text: "Thanks",
       })
     ).rejects.toThrow("Review not found");
+  });
+
+  it("should reject a response longer than the documented cap", async () => {
+    const reviewId = "review123" as Id<"reviews">;
+
+    mockCtx = setupMockCtx();
+    mockCtx.db.get.mockResolvedValue({
+      _id: reviewId,
+      reviewerId: "user_buyer",
+      revieweeId: "user_seller",
+      rating: 4,
+      response: undefined,
+    });
+    vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_seller");
+
+    await expect(
+      respondToReviewHandler(mockCtx as unknown as MutationCtx, {
+        reviewId,
+        text: "x".repeat(MAX_REVIEW_COMMENT_LENGTH + 1),
+      })
+    ).rejects.toThrow(
+      `Response is too long. Maximum ${MAX_REVIEW_COMMENT_LENGTH.toString()} characters allowed.`
+    );
+    expect(mockCtx.db.patch).not.toHaveBeenCalled();
   });
 
   it("should reject a caller who is not the reviewed seller", async () => {
@@ -500,23 +651,23 @@ describe("getSellerReviews query", () => {
       },
     ];
 
-    const mockReviewsQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockReviewsQuery = withIndexRunner({
+      withIndex: vi.fn(),
       order: vi.fn().mockReturnThis(),
       paginate: vi.fn().mockResolvedValue({
         page: reviewsPage,
         isDone: true,
         continueCursor: "",
       }),
-    };
+    });
 
-    const mockProfilesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const mockProfilesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       unique: vi
         .fn()
         .mockResolvedValueOnce({ userId: "user1", name: "Buyer One" })
         .mockResolvedValueOnce({ userId: "user2", name: "Buyer Two" }),
-    };
+    });
 
     mockCtx = setupMockCtx();
     mockCtx.db.query.mockImplementation((table: string) => {
@@ -643,11 +794,16 @@ describe("getSellerRatingSummary", () => {
   };
 
   it("should compute the average rating and count", async () => {
+    const collect = vi
+      .fn()
+      .mockResolvedValue([{ rating: 5 }, { rating: 4 }, { rating: 3 }]);
+    const indexBuilder = { eq: vi.fn(() => indexBuilder) };
     const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      collect: vi
-        .fn()
-        .mockResolvedValue([{ rating: 5 }, { rating: 4 }, { rating: 3 }]),
+      withIndex: vi.fn((_index: string, cb?: (q: unknown) => unknown) => {
+        if (cb) cb(indexBuilder);
+        return mockQuery;
+      }),
+      collect,
     };
 
     mockCtx = setupMockCtx(mockQuery);
@@ -661,6 +817,7 @@ describe("getSellerRatingSummary", () => {
       "by_reviewee",
       expect.any(Function)
     );
+    expect(indexBuilder.eq).toHaveBeenCalledWith("revieweeId", "seller1");
     expect(result).toEqual({ avgRating: 4, reviewCount: 3 });
   });
 

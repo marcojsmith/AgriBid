@@ -50,6 +50,45 @@ const setupMockCtx = (tables: Record<string, unknown>) => {
   return { db: mockDb } as unknown as MockMutationCtx & MockQueryCtx;
 };
 
+/**
+ * Chainable index-range builder used to run the index callbacks the production
+ * code hands to `withIndex`. Convex builds the range synchronously, so the
+ * double does the same.
+ */
+interface MockIndexBuilder {
+  eq: (field: string, value: unknown) => MockIndexBuilder;
+  gte: (field: string, value: unknown) => MockIndexBuilder;
+  lte: (field: string, value: unknown) => MockIndexBuilder;
+}
+
+const createIndexBuilder = (): MockIndexBuilder => {
+  const builder: MockIndexBuilder = {
+    eq: () => builder,
+    gte: () => builder,
+    lte: () => builder,
+  };
+  return builder;
+};
+
+/**
+ * Gives a query double a `withIndex` that invokes the index callback and
+ * returns the same query, so index expressions are exercised.
+ *
+ * @param query - Query double to attach the runner to
+ * @returns The same query double
+ */
+const withIndexRunner = <T extends { withIndex: ReturnType<typeof vi.fn> }>(
+  query: T
+): T => {
+  query.withIndex = vi.fn(
+    (_indexName: string, cb?: (q: MockIndexBuilder) => unknown) => {
+      if (cb) cb(createIndexBuilder());
+      return query;
+    }
+  );
+  return query;
+};
+
 describe("startConversation mutation", () => {
   let mockCtx: MockMutationCtx;
 
@@ -68,18 +107,18 @@ describe("startConversation mutation", () => {
     newConversationId?: string;
     recentMessages?: { createdAt: number }[];
   } = {}) => {
-    const profilesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const profilesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       unique: vi.fn().mockResolvedValue(recipientProfile),
-    };
-    const conversationsQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    });
+    const conversationsQuery = withIndexRunner({
+      withIndex: vi.fn(),
       unique: vi.fn().mockResolvedValue(existingConversation),
-    };
-    const messagesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    });
+    const messagesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       collect: vi.fn().mockResolvedValue(recentMessages),
-    };
+    });
     mockCtx = setupMockCtx({
       profiles: profilesQuery,
       conversations: conversationsQuery,
@@ -369,14 +408,14 @@ describe("sendMessage mutation", () => {
     recentMessages?: { createdAt: number }[];
     senderProfile?: unknown;
   } = {}) => {
-    const messagesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const messagesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       collect: vi.fn().mockResolvedValue(recentMessages),
-    };
-    const profilesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    });
+    const profilesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       unique: vi.fn().mockResolvedValue(senderProfile),
-    };
+    });
     mockCtx = setupMockCtx({
       messages: messagesQuery,
       profiles: profilesQuery,
@@ -491,10 +530,10 @@ describe("sendMessage mutation", () => {
         }
       ),
     };
-    const profilesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const profilesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       unique: vi.fn().mockResolvedValue({ userId: "user_buyer", name: "Ben" }),
-    };
+    });
     mockCtx = setupMockCtx({
       messages: messagesQuery,
       profiles: profilesQuery,
@@ -605,13 +644,13 @@ describe("getConversations query", () => {
       ),
     };
 
-    const profilesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const profilesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       unique: vi
         .fn()
         .mockResolvedValueOnce({ userId: "user_seller", name: "Seph Seller" })
         .mockResolvedValueOnce({ userId: "user_buyer", name: "Ben Buyer" }),
-    };
+    });
 
     mockCtx = setupMockCtx({
       conversations: conversationsQuery,
@@ -669,36 +708,42 @@ describe("getConversations query", () => {
     };
 
     const conversationsQuery = {
-      withIndex: vi.fn((indexName: string) => {
-        if (indexName === "by_buyer") {
+      withIndex: vi.fn(
+        (indexName: string, cb?: (q: MockIndexBuilder) => unknown) => {
+          if (cb) cb(createIndexBuilder());
+          if (indexName === "by_buyer") {
+            return {
+              order: vi.fn().mockReturnThis(),
+              take: vi.fn().mockResolvedValue([olderBuyerSide]),
+            };
+          }
           return {
             order: vi.fn().mockReturnThis(),
-            take: vi.fn().mockResolvedValue([olderBuyerSide]),
+            take: vi.fn().mockResolvedValue([newerSellerSide]),
           };
         }
-        return {
-          order: vi.fn().mockReturnThis(),
-          take: vi.fn().mockResolvedValue([newerSellerSide]),
-        };
-      }),
+      ),
     };
 
     const messagesQuery = {
-      withIndex: vi.fn((indexName: string) => {
-        if (indexName === "by_conversation_read") {
-          return { collect: vi.fn().mockResolvedValue([]) };
+      withIndex: vi.fn(
+        (indexName: string, cb?: (q: MockIndexBuilder) => unknown) => {
+          if (cb) cb(createIndexBuilder());
+          if (indexName === "by_conversation_read") {
+            return { collect: vi.fn().mockResolvedValue([]) };
+          }
+          return {
+            order: vi.fn().mockReturnThis(),
+            first: vi.fn().mockResolvedValue(null),
+          };
         }
-        return {
-          order: vi.fn().mockReturnThis(),
-          first: vi.fn().mockResolvedValue(null),
-        };
-      }),
+      ),
     };
 
-    const profilesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const profilesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       unique: vi.fn().mockResolvedValue(null),
-    };
+    });
 
     mockCtx = setupMockCtx({
       conversations: conversationsQuery,
@@ -716,6 +761,22 @@ describe("getConversations query", () => {
       "conv_seller_new",
       "conv_buyer_old",
     ]);
+    expect(conversationsQuery.withIndex).toHaveBeenCalledWith(
+      "by_buyer",
+      expect.any(Function)
+    );
+    expect(conversationsQuery.withIndex).toHaveBeenCalledWith(
+      "by_seller",
+      expect.any(Function)
+    );
+    expect(messagesQuery.withIndex).toHaveBeenCalledWith(
+      "by_conversation",
+      expect.any(Function)
+    );
+    expect(messagesQuery.withIndex).toHaveBeenCalledWith(
+      "by_conversation_read",
+      expect.any(Function)
+    );
   });
 
   it("should return an empty page when the caller has no conversations", async () => {
@@ -749,8 +810,8 @@ describe("getMessages query", () => {
   });
 
   const setupCtx = (conversation: unknown) => {
-    const messagesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const messagesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       order: vi.fn().mockReturnThis(),
       paginate: vi.fn().mockResolvedValue({
         page: [
@@ -776,7 +837,7 @@ describe("getMessages query", () => {
         isDone: false,
         continueCursor: "cursor1",
       }),
-    };
+    });
 
     mockCtx = setupMockCtx({
       messages: messagesQuery,
@@ -846,10 +907,10 @@ describe("markRead mutation", () => {
   });
 
   const setupCtx = (conversation: unknown, unreadMessages: unknown[]) => {
-    const messagesQuery = {
-      withIndex: vi.fn().mockReturnThis(),
+    const messagesQuery = withIndexRunner({
+      withIndex: vi.fn(),
       collect: vi.fn().mockResolvedValue(unreadMessages),
-    };
+    });
     mockCtx = setupMockCtx({
       messages: messagesQuery,
     }) as unknown as MockMutationCtx;
@@ -923,6 +984,16 @@ describe("getUnreadConversationCount query", () => {
     eq: (field: string, value: string | boolean) => MockIndexFilter;
   }
 
+  /** Records the index predicates the handler builds for both sides. */
+  const conversationIndexFilter: MockIndexFilter & {
+    eq: ReturnType<typeof vi.fn>;
+  } = (() => {
+    const filter = {
+      eq: vi.fn(() => filter),
+    };
+    return filter;
+  })();
+
   const setupCtx = (
     buyerSideConversations: unknown[],
     sellerSideConversations: unknown[],
@@ -937,12 +1008,12 @@ describe("getUnreadConversationCount query", () => {
       take: vi.fn().mockResolvedValue(sellerSideConversations),
     };
     const conversationsQuery = {
-      withIndex: vi.fn((indexName: string) => {
-        if (indexName === "by_buyer") {
-          return buyerChain;
+      withIndex: vi.fn(
+        (indexName: string, cb?: (q: MockIndexFilter) => unknown) => {
+          if (cb) cb(conversationIndexFilter);
+          return indexName === "by_buyer" ? buyerChain : sellerChain;
         }
-        return sellerChain;
-      }),
+      ),
     };
 
     // The handler runs one by_conversation_read lookup per conversation, so
@@ -1034,6 +1105,14 @@ describe("getUnreadConversationCount query", () => {
     expect(messagesQuery.withIndex).toHaveBeenCalledWith(
       "by_conversation_read",
       expect.any(Function)
+    );
+    expect(conversationIndexFilter.eq).toHaveBeenCalledWith(
+      "buyerId",
+      "user_me"
+    );
+    expect(conversationIndexFilter.eq).toHaveBeenCalledWith(
+      "sellerId",
+      "user_me"
     );
   });
 

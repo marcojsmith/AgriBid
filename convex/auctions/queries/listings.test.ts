@@ -39,11 +39,19 @@ vi.mock("../../admin_utils", () => ({
   countQuery: vi.fn(),
 }));
 
+/** Chainable stand-in for the index range Convex hands to `withIndex`. */
+interface MockIndexBuilder {
+  eq: Mock;
+  gte: Mock;
+  lte: Mock;
+}
+
 interface QueryChain {
   withIndex: Mock;
   filter: Mock;
   collect: Mock;
   paginate: Mock;
+  indexBuilder: MockIndexBuilder;
 }
 
 interface PaginatedResult {
@@ -53,7 +61,8 @@ interface PaginatedResult {
 }
 
 /**
- * Builds a chainable mock for `ctx.db.query(...)`.
+ * Builds a chainable mock for `ctx.db.query(...)`. `withIndex` runs the index
+ * callback production code supplies so the predicates are actually executed.
  * @param collected - Rows returned by `collect()`.
  * @param paginated - Result returned by `paginate()`.
  * @returns A mock query chain whose methods return themselves.
@@ -66,13 +75,28 @@ function makeQueryChain(
     continueCursor: "",
   }
 ): QueryChain {
+  const indexBuilder: MockIndexBuilder = {
+    eq: vi.fn(),
+    gte: vi.fn(),
+    lte: vi.fn(),
+  };
+  indexBuilder.eq.mockReturnValue(indexBuilder);
+  indexBuilder.gte.mockReturnValue(indexBuilder);
+  indexBuilder.lte.mockReturnValue(indexBuilder);
+
   const chain = {
     withIndex: vi.fn(),
     filter: vi.fn(),
     collect: vi.fn().mockResolvedValue(collected) as Mock,
     paginate: vi.fn().mockResolvedValue(paginated) as Mock,
+    indexBuilder,
   };
-  chain.withIndex.mockReturnValue(chain);
+  chain.withIndex.mockImplementation(
+    (_index: string, cb?: (q: MockIndexBuilder) => unknown) => {
+      if (cb) cb(indexBuilder);
+      return chain;
+    }
+  );
   chain.filter.mockReturnValue(chain);
   return chain;
 }
@@ -137,6 +161,22 @@ describe("listings queries", () => {
       expect(result.totalCount).toBe(0);
       expect(countQuery).not.toHaveBeenCalled();
     });
+
+    it("scopes the page and the total count to the seller index", async () => {
+      vi.mocked(getAuthenticatedUserId).mockResolvedValue("seller1");
+      vi.mocked(countQuery).mockResolvedValue(1);
+      vi.mocked(toLotSummaries).mockResolvedValue([] as never);
+      const chain = makeQueryChain();
+
+      await getMyListingsHandler(makeCtx(chain), { paginationOpts });
+
+      expect(chain.withIndex).toHaveBeenCalledWith(
+        "by_seller",
+        expect.any(Function)
+      );
+      expect(chain.indexBuilder.eq).toHaveBeenCalledWith("sellerId", "seller1");
+      expect(chain.paginate).toHaveBeenCalledWith(paginationOpts);
+    });
   });
 
   describe("getMyListingsCountHandler", () => {
@@ -175,6 +215,39 @@ describe("listings queries", () => {
       });
 
       expect(result).toBe(7);
+    });
+
+    it("queries the seller+status index for an explicit status", async () => {
+      vi.mocked(getAuthenticatedUserId).mockResolvedValue("seller1");
+      vi.mocked(countQuery).mockResolvedValue(4);
+      const chain = makeQueryChain();
+
+      await getMyListingsCountHandler(makeCtx(chain), { status: "sold" });
+
+      expect(chain.withIndex).toHaveBeenCalledWith(
+        "by_seller_status",
+        expect.any(Function)
+      );
+      expect(chain.indexBuilder.eq).toHaveBeenCalledWith("sellerId", "seller1");
+      expect(chain.indexBuilder.eq).toHaveBeenCalledWith("status", "sold");
+    });
+
+    it("queries the plain seller index when no status is given", async () => {
+      vi.mocked(getAuthenticatedUserId).mockResolvedValue("seller1");
+      vi.mocked(countQuery).mockResolvedValue(4);
+      const chain = makeQueryChain();
+
+      await getMyListingsCountHandler(makeCtx(chain), {});
+
+      expect(chain.withIndex).toHaveBeenCalledWith(
+        "by_seller",
+        expect.any(Function)
+      );
+      expect(chain.indexBuilder.eq).toHaveBeenCalledWith("sellerId", "seller1");
+      expect(chain.indexBuilder.eq).not.toHaveBeenCalledWith(
+        "status",
+        expect.anything()
+      );
     });
 
     it("returns 0 when unauthenticated", async () => {
@@ -231,6 +304,20 @@ describe("listings queries", () => {
         rejected: 0,
       });
       expect(chain.collect).not.toHaveBeenCalled();
+    });
+
+    it("collects every lot belonging to the seller", async () => {
+      vi.mocked(getAuthenticatedUserId).mockResolvedValue("seller1");
+      const chain = makeQueryChain([{ status: "draft" }]);
+
+      await getMyListingsStatsHandler(makeCtx(chain));
+
+      expect(chain.withIndex).toHaveBeenCalledWith(
+        "by_seller",
+        expect.any(Function)
+      );
+      expect(chain.indexBuilder.eq).toHaveBeenCalledWith("sellerId", "seller1");
+      expect(chain.collect).toHaveBeenCalled();
     });
   });
 });

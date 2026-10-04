@@ -61,4 +61,19 @@ describe("StepIndicator", () => {
     expect(progressBar).toHaveAttribute("aria-valuenow", "3");
     expect(progressBar).toHaveAttribute("aria-valuemax", "6");
   });
+
+  it("renders an empty heading for a step outside the known list", () => {
+    (useListingWizard as MockUseListingWizard).mockReturnValue({
+      currentStep: 99,
+      draftSaved: false,
+    });
+
+    const { container } = render(<StepIndicator />);
+
+    expect(container.querySelector("h2")).toHaveTextContent("");
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "100"
+    );
+  });
 });

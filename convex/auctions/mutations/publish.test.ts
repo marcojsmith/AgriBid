@@ -271,6 +271,42 @@ describe("Publish Mutations", () => {
       ).rejects.toThrow("You have already flagged this lot");
     });
 
+    it("should throw if details exceeds max length", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({ _id: "l1", sellerId: "u2" });
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([]),
+      });
+
+      const longDetails = "a".repeat(1001);
+      await expect(
+        flagLotHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+          reason: "misleading",
+          details: longDetails,
+        })
+      ).rejects.toThrow(/Details is too long/);
+    });
+
+    it("should accept flag with valid details", async () => {
+      const userId = "u1";
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);
+      mockCtx.db.get.mockResolvedValue({ _id: "l1", sellerId: "u2" });
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([]),
+      });
+
+      const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        reason: "misleading",
+        details: "This is a valid reason for flagging",
+      });
+      expect(result.success).toBe(true);
+    });
+
     it("should auto-hide if threshold reached", async () => {
       const userId = "u1";
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue(userId);

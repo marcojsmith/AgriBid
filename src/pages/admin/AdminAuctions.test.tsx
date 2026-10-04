@@ -165,4 +165,10 @@ describe("AdminAuctions Page", () => {
     renderPage();
     expect(screen.getByLabelText("Loading")).toBeInTheDocument();
   });
+
+  it("opens the form dialog in edit mode from the row Edit button", () => {
+    renderPage();
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0]);
+    expect(screen.getByTestId("form-dialog")).toBeInTheDocument();
+  });
 });

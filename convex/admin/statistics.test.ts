@@ -528,4 +528,148 @@ describe("Admin Statistics", () => {
     expect(result.activeLots).toBe(50);
     expect(result.status).toBe("healthy");
   });
+
+  it("initializeCounters should patch existing counter documents instead of inserting", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      _id: "counter_lots",
+      name: "lots",
+      total: 1,
+    } as unknown as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(2);
+    vi.mocked(adminUtils.countUsers).mockResolvedValue(3);
+
+    await initializeCountersHandler(mockCtx as unknown as MutationCtx);
+
+    expect(mockCtx.db.patch).toHaveBeenCalledWith(
+      "counters",
+      "counter_lots",
+      expect.objectContaining({ updatedAt: expect.any(Number) as number })
+    );
+    expect(mockCtx.db.insert).not.toHaveBeenCalled();
+  });
+
+  it("getFinancialStats should recompute volume when the live sold count drifts from the counter", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue({
+      name: "lots",
+      salesVolume: 1000,
+      soldCount: 1,
+    } as Doc<"counters">);
+    // Live table reports more sold lots than the cached counter.
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(4);
+    queryMock.paginate.mockResolvedValue({
+      page: [
+        { _id: "lot1", currentPrice: 500, settledAt: 10 },
+        { _id: "lot2", currentPrice: 250, settledAt: 20 },
+      ],
+      continueCursor: null,
+      isDone: true,
+    });
+
+    const stats = await (
+      getFinancialStats as unknown as {
+        handler: (...args: unknown[]) => Promise<{
+          totalSalesVolume: number;
+          auctionCount: number;
+          partialResults: boolean;
+        }>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx, {});
+
+    expect(stats.partialResults).toBe(true);
+    expect(stats.totalSalesVolume).toBe(750);
+    expect(stats.auctionCount).toBe(2);
+  });
+
+  it("getFinancialStats should group every fee of a lot onto that lot's sale", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    // Fee totals come from the "lotFees" counter, not from the per-lot rows.
+    vi.mocked(adminUtils.getCounter)
+      .mockResolvedValueOnce({
+        name: "lots",
+        salesVolume: 1000,
+        soldCount: 1,
+      } as Doc<"counters">)
+      .mockResolvedValueOnce({
+        name: "lotFees",
+        buyerTotal: 40,
+        sellerTotal: 15,
+      } as Doc<"counters">);
+    vi.mocked(adminUtils.countQuery).mockResolvedValue(1);
+    queryMock.take.mockResolvedValue([
+      { _id: "lot1", title: "Tractor", currentPrice: 500, settledAt: 10 },
+    ]);
+    queryMock.collect.mockResolvedValue([
+      {
+        lotId: "lot1",
+        feeName: "Buyer Premium",
+        appliedTo: "buyer",
+        calculatedAmount: 40,
+      },
+      {
+        lotId: "lot1",
+        feeName: "Seller Commission",
+        appliedTo: "seller",
+        calculatedAmount: 10,
+      },
+      {
+        lotId: "otherLot",
+        feeName: "Storage",
+        appliedTo: "seller",
+        calculatedAmount: 5,
+      },
+    ]);
+
+    const stats = await (
+      getFinancialStats as unknown as {
+        handler: (...args: unknown[]) => Promise<{
+          buyerFeesTotal: number;
+          sellerFeesTotal: number;
+          totalFeesCollected: number;
+          recentSales: { page: { fees: { feeName: string }[] }[] };
+        }>;
+      }
+    ).handler(mockCtx as unknown as QueryCtx, {});
+
+    expect(stats.buyerFeesTotal).toBe(40);
+    expect(stats.sellerFeesTotal).toBe(15);
+    expect(stats.totalFeesCollected).toBe(55);
+    expect(stats.recentSales.page[0]?.fees).toHaveLength(2);
+  });
+
+  it("getFinancialStats should log and re-throw unexpected failures", async () => {
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      _id: "u1",
+    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    vi.mocked(adminUtils.getCounter).mockResolvedValue(
+      null as unknown as Doc<"counters">
+    );
+    vi.mocked(adminUtils.countQuery).mockRejectedValue(
+      new Error("counter query exploded")
+    );
+    const consoleSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    await expect(
+      (
+        getFinancialStats as unknown as {
+          handler: (...args: unknown[]) => Promise<unknown>;
+        }
+      ).handler(mockCtx as unknown as QueryCtx, {})
+    ).rejects.toThrow("counter query exploded");
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Error in getFinancialStats:",
+      expect.any(Error)
+    );
+    consoleSpy.mockRestore();
+  });
 });

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { resolveImageUrls, toLotSummary, toLotDetail } from "./helpers";
+import {
+  resolveImageUrls,
+  toLotSummary,
+  toLotDetail,
+  toLotSummaries,
+} from "./helpers";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -439,5 +444,91 @@ describe("toLotDetail", () => {
     const result = await toLotDetail(mockCtx, auction);
 
     expect(result.sellerEmail).toBeUndefined();
+  });
+
+  it("looks the seller profile up by userId index", async () => {
+    mockCtx = setupMockCtx(null, true, createMockSellerProfile());
+    const indexBuilder = { eq: vi.fn(() => indexBuilder) };
+    const profilesQuery = {
+      withIndex: vi.fn((_index: string, cb?: (q: unknown) => unknown) => {
+        if (cb) cb(indexBuilder);
+        return profilesQuery;
+      }),
+      unique: vi.fn().mockResolvedValue(createMockSellerProfile()),
+    };
+    (mockCtx.db.query as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      profilesQuery
+    );
+
+    await toLotDetail(mockCtx, createMockLot());
+
+    expect(profilesQuery.withIndex).toHaveBeenCalledWith(
+      "by_userId",
+      expect.any(Function)
+    );
+    expect(indexBuilder.eq).toHaveBeenCalledWith("userId", "seller_123");
+  });
+});
+
+describe("toLotSummaries", () => {
+  const baseLot = (overrides: Partial<Doc<"lots">> = {}) =>
+    ({
+      _id: "lot_1",
+      _creationTime: Date.now(),
+      title: "Lot",
+      make: "John Deere",
+      currentPrice: 100,
+      status: "assigned",
+      sellerId: "seller_1",
+      images: { front: "front" },
+      ...overrides,
+    }) as unknown as Doc<"lots">;
+
+  it("resolves each referenced category and auction exactly once", async () => {
+    const dbGet = vi.fn((table: string) =>
+      Promise.resolve(
+        table === "equipmentCategories"
+          ? { _id: "cat_1", name: "Tractors", isActive: true }
+          : {
+              _id: "auc_1",
+              title: "Spring Sale",
+              status: "published",
+              startTime: 1000,
+              endTime: 2000,
+            }
+      )
+    );
+    const ctx = {
+      db: { get: dbGet },
+    } as unknown as QueryCtx;
+
+    const result = await toLotSummaries(ctx, [
+      baseLot({ categoryId: "cat_1" as Id<"equipmentCategories"> }),
+      baseLot({ auctionId: "auc_1" as Id<"auctions"> }),
+      baseLot({}),
+    ]);
+
+    expect(result).toHaveLength(3);
+    expect(dbGet).toHaveBeenCalledTimes(2);
+    expect(result[0]?.categoryName).toBe("Tractors");
+    expect(result[1]?.auctionStatus).toBe("published");
+    expect(result[1]?.auctionEndTime).toBe(2000);
+  });
+
+  it("falls back to a placeholder name when a referenced document is gone", async () => {
+    const ctx = {
+      db: { get: vi.fn().mockResolvedValue(null) },
+    } as unknown as QueryCtx;
+
+    const result = await toLotSummaries(ctx, [
+      baseLot({
+        categoryId: "cat_missing" as Id<"equipmentCategories">,
+        auctionId: "auc_missing" as Id<"auctions">,
+      }),
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.categoryName).toBe("Unknown");
+    expect(result[0]?.auctionStatus).toBeUndefined();
   });
 });

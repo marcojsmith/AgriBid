@@ -179,4 +179,134 @@ describe("AdminErrorReportingSettings", () => {
       expect(mockUpdateGitHubConfig).not.toHaveBeenCalled();
     });
   });
+
+  it("keeps the masked token out of the payload when it is left untouched", async () => {
+    mockSettings = {
+      githubConfig: {
+        enabled: true,
+        tokenMasked: "****1234",
+        repoOwner: "testowner",
+        repoName: "testrepo",
+        labels: "bug",
+      },
+    };
+
+    render(<AdminErrorReportingSettings />);
+    fireEvent.click(screen.getByText("Save Settings"));
+
+    await waitFor(() => {
+      expect(mockUpdateGitHubConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: undefined })
+      );
+    });
+  });
+
+  it("toggles token visibility", () => {
+    mockSettings = {
+      githubConfig: {
+        enabled: true,
+        tokenMasked: "****1234",
+        repoOwner: "testowner",
+        repoName: "testrepo",
+        labels: "bug",
+      },
+    };
+
+    render(<AdminErrorReportingSettings />);
+    const tokenInput = screen.getByPlaceholderText("ghp_xxxxxxxxxxxx");
+    expect(tokenInput).toHaveAttribute("type", "password");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show token" }));
+
+    expect(screen.getByPlaceholderText("ghp_xxxxxxxxxxxx")).toHaveAttribute(
+      "type",
+      "text"
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Hide token" }));
+    expect(screen.getByPlaceholderText("ghp_xxxxxxxxxxxx")).toHaveAttribute(
+      "type",
+      "password"
+    );
+  });
+
+  it("marks the masked token as typed when it is edited back to the mask", () => {
+    mockSettings = {
+      githubConfig: {
+        enabled: true,
+        tokenMasked: "****1234",
+        repoOwner: "testowner",
+        repoName: "testrepo",
+        labels: "bug",
+      },
+    };
+
+    const { container } = render(<AdminErrorReportingSettings />);
+    const tokenInput = screen.getByPlaceholderText("ghp_xxxxxxxxxxxx");
+    expect(tokenInput).toHaveClass("italic");
+
+    fireEvent.change(tokenInput, { target: { value: "****1234" } });
+
+    // Re-entering the mask is not a real edit, so the field stays read-only styled.
+    expect(container.querySelector("#github-pat")).toHaveClass("italic");
+  });
+
+  it("shows the thrown message when saving fails with an Error", async () => {
+    mockSettings = {
+      githubConfig: {
+        enabled: true,
+        tokenMasked: "",
+        repoOwner: "testowner",
+        repoName: "testrepo",
+        labels: "bug",
+      },
+    };
+    mockUpdateGitHubConfig.mockRejectedValue(new Error("GitHub rejected"));
+
+    render(<AdminErrorReportingSettings />);
+    fireEvent.click(screen.getByText("Save Settings"));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("GitHub rejected");
+    });
+  });
+
+  it("stringifies non-Error failures when saving", async () => {
+    mockSettings = {
+      githubConfig: {
+        enabled: true,
+        tokenMasked: "",
+        repoOwner: "testowner",
+        repoName: "testrepo",
+        labels: "bug",
+      },
+    };
+    mockUpdateGitHubConfig.mockRejectedValue("plain failure");
+
+    render(<AdminErrorReportingSettings />);
+    fireEvent.click(screen.getByText("Save Settings"));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("plain failure");
+    });
+  });
+
+  it("falls back to a generic message for an empty non-Error failure", async () => {
+    mockSettings = {
+      githubConfig: {
+        enabled: true,
+        tokenMasked: "",
+        repoOwner: "testowner",
+        repoName: "testrepo",
+        labels: "bug",
+      },
+    };
+    mockUpdateGitHubConfig.mockRejectedValue("");
+
+    render(<AdminErrorReportingSettings />);
+    fireEvent.click(screen.getByText("Save Settings"));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to save settings");
+    });
+  });
 });

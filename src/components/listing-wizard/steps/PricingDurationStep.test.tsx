@@ -75,4 +75,31 @@ describe("PricingDurationStep", () => {
       screen.getByText(/Reserve price cannot be lower/i)
     ).toBeInTheDocument();
   });
+
+  it("converts the scheduled start date into a timestamp", () => {
+    render(<PricingDurationStep />);
+    const input = screen.getByLabelText(/Start Date/i);
+
+    fireEvent.change(input, { target: { value: "2030-01-02T03:04" } });
+
+    expect(mockUpdateField).toHaveBeenCalledWith(
+      "startTime",
+      new Date("2030-01-02T03:04").getTime()
+    );
+  });
+
+  it("clears the scheduled start date", () => {
+    (useListingWizard as Mock).mockReturnValue({
+      formData: { ...mockFormData, startTime: Date.now() },
+      updateField: mockUpdateField,
+    });
+
+    render(<PricingDurationStep />);
+    const input = screen.getByLabelText(/Start Date/i);
+    expect(input).not.toHaveValue("");
+
+    fireEvent.change(input, { target: { value: "" } });
+
+    expect(mockUpdateField).toHaveBeenCalledWith("startTime", undefined);
+  });
 });

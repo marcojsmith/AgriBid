@@ -63,6 +63,24 @@ vi.mock("./pages/Support", () => mockPage("support"));
 vi.mock("./pages/Notifications", () => mockPage("notifications"));
 vi.mock("./pages/admin/AdminMarketplace", () => mockPage("admin-marketplace"));
 vi.mock("./pages/admin/AdminFees", () => mockPage("admin-fees"));
+vi.mock("./pages/admin/AdminAuctionDetail", () =>
+  mockPage("admin-auction-detail")
+);
+vi.mock("./pages/admin/AdminUsers", () => mockPage("admin-users"));
+vi.mock("./pages/admin/AdminSEOSettings", () => mockPage("admin-seo"));
+vi.mock("./pages/admin/AdminBusinessInfo", () =>
+  mockPage("admin-business-info")
+);
+vi.mock("./pages/admin/AdminFAQ", () => mockPage("admin-faq"));
+vi.mock("./pages/admin/AdminPerformance", () => mockPage("admin-performance"));
+vi.mock("./pages/AuctionGallery", () => mockPage("auction-gallery"));
+vi.mock("./pages/AuctionContainerDetail", () =>
+  mockPage("auction-container-detail")
+);
+vi.mock("./pages/FAQ", () => mockPage("faq"));
+vi.mock("./pages/SellerListings", () => mockPage("seller-listings"));
+vi.mock("./pages/Messages", () => mockPage("messages"));
+vi.mock("./pages/Settings", () => mockPage("settings"));
 vi.mock("./pages/NotFound", () => mockPage("not-found"));
 
 // Mock App without its own BrowserRouter so we can control it with MemoryRouter
@@ -245,6 +263,105 @@ describe("App Routing", () => {
   it("renders NotFound page for deeply nested unknown routes", async () => {
     renderApp("/some/deeply/nested/unknown/path");
     expect(await screen.findByTestId("not-found-page")).toBeInTheDocument();
+  });
+
+  it("renders AdminAuctionDetail for /admin/auctions/:id", async () => {
+    renderApp("/admin/auctions/abc123");
+    expect(
+      await screen.findByTestId("admin-auction-detail-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders AdminUsers for /admin/users", async () => {
+    renderApp("/admin/users");
+    expect(await screen.findByTestId("admin-users-page")).toBeInTheDocument();
+  });
+
+  it("renders AdminSEOSettings for /admin/seo", async () => {
+    renderApp("/admin/seo");
+    expect(await screen.findByTestId("admin-seo-page")).toBeInTheDocument();
+  });
+
+  it("renders AdminBusinessInfo for /admin/business-info", async () => {
+    renderApp("/admin/business-info");
+    expect(
+      await screen.findByTestId("admin-business-info-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders AdminFAQ for /admin/faq", async () => {
+    renderApp("/admin/faq");
+    expect(await screen.findByTestId("admin-faq-page")).toBeInTheDocument();
+  });
+
+  it("renders AdminPerformance for /admin/performance", async () => {
+    renderApp("/admin/performance");
+    expect(
+      await screen.findByTestId("admin-performance-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders AdminDashboard for /admin/dashboard", async () => {
+    renderApp("/admin/dashboard");
+    expect(
+      await screen.findByTestId("admin-dashboard-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders AuctionGallery for /auctions", async () => {
+    renderApp("/auctions");
+    expect(
+      await screen.findByTestId("auction-gallery-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders AuctionContainerDetail for /auctions/:id", async () => {
+    renderApp("/auctions/abc123");
+    expect(
+      await screen.findByTestId("auction-container-detail-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders the public FAQ page for /faq", async () => {
+    renderApp("/faq");
+    expect(await screen.findByTestId("faq-page")).toBeInTheDocument();
+  });
+
+  it("renders Profile for /profile/:userId", async () => {
+    renderApp("/profile/user123");
+    expect(await screen.findByTestId("profile-page")).toBeInTheDocument();
+  });
+
+  it("renders SellerListings for /sellers/:userId/listings", async () => {
+    renderApp("/sellers/user123/listings");
+    expect(
+      await screen.findByTestId("seller-listings-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders SellerListings for /sellers/:userId/listings/sold", async () => {
+    renderApp("/sellers/user123/listings/sold");
+    expect(
+      await screen.findByTestId("seller-listings-page")
+    ).toBeInTheDocument();
+  });
+
+  it("renders the Messages inbox for /messages", async () => {
+    renderApp("/messages");
+    expect(await screen.findByTestId("protected")).toBeInTheDocument();
+    expect(await screen.findByTestId("messages-page")).toBeInTheDocument();
+  });
+
+  it("renders the Messages thread view for /messages/:conversationId", async () => {
+    renderApp("/messages/conv123");
+    expect(await screen.findByTestId("protected")).toBeInTheDocument();
+    expect(await screen.findByTestId("messages-page")).toBeInTheDocument();
+  });
+
+  it("renders Settings for /settings", async () => {
+    renderApp("/settings");
+    expect(await screen.findByTestId("protected")).toBeInTheDocument();
+    expect(await screen.findByTestId("settings-page")).toBeInTheDocument();
   });
 });
 

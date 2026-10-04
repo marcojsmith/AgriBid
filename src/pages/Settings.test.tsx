@@ -374,4 +374,47 @@ describe("Settings Page", () => {
     renderSettings();
     expect(screen.getByText("Settings")).toBeInTheDocument();
   });
+
+  it("toggles a switch from the keyboard", () => {
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+
+    fireEvent.keyDown(sidebarSwitch, { key: "Enter" });
+    expect(mockMutate).toHaveBeenCalledWith({ sidebarOpen: true });
+  });
+
+  it("toggles a switch with the space key", () => {
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+
+    fireEvent.keyDown(sidebarSwitch, { key: " " });
+    expect(mockMutate).toHaveBeenCalledWith({ sidebarOpen: true });
+  });
+
+  it("ignores other keys on a switch", () => {
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+
+    fireEvent.keyDown(sidebarSwitch, { key: "a" });
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("shows an error toast when saving a preference fails", async () => {
+    mockMutate.mockRejectedValue(new Error("offline"));
+    renderSettings();
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Show Filter Sidebar by Default" })
+    );
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to save setting");
+    });
+  });
 });
