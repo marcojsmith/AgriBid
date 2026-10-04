@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ export default function Support() {
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const priorityId = useId();
 
   const tickets = ticketsResult;
   const isTicketsLoading = status === "LoadingFirstPage";
@@ -139,7 +140,7 @@ export default function Support() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Priority</Label>
+                  <Label htmlFor={priorityId} className="text-xs font-semibold">Priority</Label>
                   <Select
                     value={priority}
                     onValueChange={(v: "low" | "medium" | "high") => {
@@ -147,6 +148,7 @@ export default function Support() {
                     }}
                   >
                     <SelectTrigger
+                      id={priorityId}
                       aria-label="Priority"
                       className="h-12 border rounded-md"
                     >

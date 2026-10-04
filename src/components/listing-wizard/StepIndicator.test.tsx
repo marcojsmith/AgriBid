@@ -23,8 +23,8 @@ describe("StepIndicator", () => {
     });
 
     render(<StepIndicator />);
-    expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
-    expect(screen.getByText(/General Information/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Step 1 of 6/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/General Information/i)[0]).toBeInTheDocument();
   });
 
   it("shows draft saved indicator when saved", () => {

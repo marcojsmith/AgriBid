@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAdminStats } from "@/hooks/useAdminStats";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 import { StatCard } from "./StatCard";
 
@@ -63,7 +64,7 @@ function SidebarNav({ currentPath, onNavigate }: SidebarNavProps) {
             to={item.path}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all group",
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all group focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background outline-none",
               isActive
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -135,6 +136,7 @@ function AdminLayoutContent({
   const location = useLocation();
   const stats = useAdminStats();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const drawerRef = useFocusTrap(isMobileNavOpen);
 
   useEffect(() => {
     if (!isMobileNavOpen) return;
@@ -163,6 +165,7 @@ function AdminLayoutContent({
       {/* z-index stack: mobile nav overlay (z-[100]) > dialogs/toasts (z-50) > header (z-50) */}
       {isMobileNavOpen && (
         <div
+          ref={drawerRef}
           data-testid="admin-mobile-nav-overlay"
           role="dialog"
           aria-modal="true"

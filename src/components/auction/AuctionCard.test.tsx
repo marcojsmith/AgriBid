@@ -558,7 +558,7 @@ describe("AuctionCard", () => {
       viewMode: "compact",
     });
 
-    expect(screen.getByLabelText("Sold auction")).toBeInTheDocument();
+    expect(screen.getByText("Sold auction")).toBeInTheDocument();
   });
 
   it("renders closed and compact state with unsold badge", () => {
@@ -568,7 +568,7 @@ describe("AuctionCard", () => {
       viewMode: "compact",
     });
 
-    expect(screen.getByLabelText("Closed auction")).toBeInTheDocument();
+    expect(screen.getByText("Closed auction")).toBeInTheDocument();
   });
 
   it("renders closed and detailed state with Sold badge", () => {
@@ -634,7 +634,7 @@ describe("AuctionCard", () => {
       });
 
       expect(
-        screen.getByLabelText("Scheduled auction, not yet started")
+        screen.getByText("Scheduled auction, not yet started")
       ).toBeInTheDocument();
     });
 

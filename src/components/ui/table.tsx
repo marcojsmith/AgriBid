@@ -103,14 +103,22 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 /**
  * Renders a styled table header cell (`th`) with checkbox-aware spacing and baseline header typography.
  *
+ * Defaults to `scope="col"` for accessibility; can be overridden via props.
+ *
  * @param props - Component props; any other props are forwarded to the underlying `th` element.
  * @param props.className - Additional CSS classes to merge with the component's default header classes
+ * @param props.scope - The scope attribute for the header cell, defaults to "col"
  * @returns A `th` element configured for use as a table header cell
  */
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({
+  className,
+  scope = "col",
+  ...props
+}: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      scope={scope}
       className={cn(
         "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className

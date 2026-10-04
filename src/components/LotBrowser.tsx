@@ -469,7 +469,7 @@ export const LotBrowser = ({
         ) : auctions.length === 0 ? (
           auctionId !== undefined ? (
             <div className="text-center py-24 bg-card rounded-lg border border-dashed">
-              <div className="text-5xl mb-4">🚜</div>
+              <div className="text-5xl mb-4" aria-hidden="true">🚜</div>
               <p className="text-muted-foreground font-medium mb-6 px-4">
                 No lots match your current filters.
               </p>
@@ -483,7 +483,7 @@ export const LotBrowser = ({
             </div>
           ) : (
             <div className="text-center py-24 bg-card rounded-lg border border-dashed">
-              <div className="text-5xl mb-4">🚜</div>
+              <div className="text-5xl mb-4" aria-hidden="true">🚜</div>
               <p className="text-muted-foreground font-medium mb-6 px-4">
                 {searchQuery
                   ? `No auctions found matching "${searchQuery}".`
