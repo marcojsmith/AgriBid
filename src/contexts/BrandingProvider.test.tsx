@@ -111,6 +111,30 @@ describe("BrandingProvider", () => {
     expect(currentBranding(result).appName).toBe("Trimmed Name");
   });
 
+  it("should expose the raw business info for descendants", () => {
+    const businessInfo = {
+      businessName: "Test Business",
+      telephone: "+27-11-000-0000",
+    };
+    vi.mocked(useQuery).mockReturnValue(businessInfo);
+
+    const { result } = renderHook(() => useBranding(), {
+      wrapper: BrandingProvider,
+    });
+
+    expect(currentBranding(result).businessInfo).toEqual(businessInfo);
+  });
+
+  it("should expose no business info while loading", () => {
+    vi.mocked(useQuery).mockReturnValue(undefined);
+
+    const { result } = renderHook(() => useBranding(), {
+      wrapper: BrandingProvider,
+    });
+
+    expect(currentBranding(result).businessInfo).toBeUndefined();
+  });
+
   it("should call useQuery with correct query", () => {
     vi.mocked(useQuery).mockReturnValue(undefined);
 
@@ -150,7 +174,10 @@ describe("useBranding", () => {
       wrapper: BrandingProvider,
     });
 
-    expect(result.current).toEqual({ appName: "Test Business" });
+    expect(result.current).toEqual({
+      appName: "Test Business",
+      businessInfo: { businessName: "Test Business" },
+    });
   });
 
   it("should maintain stable context value identity across unrelated re-renders", () => {

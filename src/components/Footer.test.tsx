@@ -1,24 +1,36 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi, type Mock } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
-import { useQuery } from "convex/react";
+
+import { useBranding } from "@/hooks/useBranding";
+import type { BusinessInfo } from "@/hooks/useBranding";
 
 import { Footer } from "./Footer";
 
 vi.mock("@/hooks/useBranding", () => ({
-  useBranding: () => ({ appName: "AgriBid" }),
+  useBranding: vi.fn(),
 }));
 
-vi.mock("convex/react", () => ({
-  useQuery: vi.fn(),
-}));
-
-const mockUseQuery = useQuery as Mock;
+/** Business details as `admin.getBusinessInfo` returns them. */
+const businessInfo: BusinessInfo = {
+  businessName: "AgriBid",
+  businessDescription: null,
+  streetAddress: "1 Main Road",
+  addressLocality: "Centurion",
+  addressCountry: "ZA",
+  postalCode: "0157",
+  telephone: "+27-11-000-0000",
+  email: null,
+  website: null,
+  logoUrl: null,
+  sameAs: [],
+};
 
 describe("Footer", () => {
   beforeEach(() => {
-    mockUseQuery.mockReturnValue({
-      businessName: "AgriBid",
+    vi.mocked(useBranding).mockReturnValue({
+      appName: "AgriBid",
+      businessInfo,
     });
   });
 
@@ -28,6 +40,36 @@ describe("Footer", () => {
         <Footer />
       </BrowserRouter>
     );
+
+  it("renders the headquarters address and phone from the branding context", () => {
+    renderFooter();
+
+    const addressLink = screen.getByRole("link", {
+      name: "1 Main Road, Centurion, ZA, 0157",
+    });
+    expect(addressLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("1%20Main%20Road%2C%20Centurion")
+    );
+
+    const phoneLink = screen.getByRole("link", { name: "+27-11-000-0000" });
+    expect(phoneLink).toHaveAttribute("href", "tel:+27110000000");
+  });
+
+  it("omits the contact details while business info is unavailable", () => {
+    vi.mocked(useBranding).mockReturnValue({
+      appName: "AgriBid",
+      businessInfo: undefined,
+    });
+
+    renderFooter();
+
+    expect(
+      screen.queryByRole("link", { name: "Headquarters" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Main Road/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /000-0000/ })).toBeNull();
+  });
 
   it("renders the brand name and copyright", () => {
     renderFooter();

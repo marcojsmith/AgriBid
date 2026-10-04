@@ -1,5 +1,5 @@
 // app/src/components/LotBrowser.tsx
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect, useMemo } from "react";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
@@ -167,6 +167,13 @@ export const LotBrowser = ({
 
   // Batch-fetch watched auction IDs to avoid per-card queries
   const watchedAuctionIds = useQuery(api.watchlist.getWatchedLotIds, {});
+
+  // Set lookup keeps the per-card watch check O(1) instead of scanning the
+  // array for every rendered lot.
+  const watchedIdSet = useMemo(
+    () => new Set(watchedAuctionIds ?? []),
+    [watchedAuctionIds]
+  );
 
   if (isPending) {
     return <LoadingPage message="Loading..." />;
@@ -469,7 +476,9 @@ export const LotBrowser = ({
         ) : auctions.length === 0 ? (
           auctionId !== undefined ? (
             <div className="text-center py-24 bg-card rounded-lg border border-dashed">
-              <div className="text-5xl mb-4" aria-hidden="true">🚜</div>
+              <div className="text-5xl mb-4" aria-hidden="true">
+                🚜
+              </div>
               <p className="text-muted-foreground font-medium mb-6 px-4">
                 No lots match your current filters.
               </p>
@@ -483,7 +492,9 @@ export const LotBrowser = ({
             </div>
           ) : (
             <div className="text-center py-24 bg-card rounded-lg border border-dashed">
-              <div className="text-5xl mb-4" aria-hidden="true">🚜</div>
+              <div className="text-5xl mb-4" aria-hidden="true">
+                🚜
+              </div>
               <p className="text-muted-foreground font-medium mb-6 px-4">
                 {searchQuery
                   ? `No auctions found matching "${searchQuery}".`
@@ -517,9 +528,7 @@ export const LotBrowser = ({
                   <AuctionCard
                     auction={auction}
                     viewMode={viewMode}
-                    isWatched={
-                      watchedAuctionIds?.includes(auction._id) ?? false
-                    }
+                    isWatched={watchedIdSet.has(auction._id)}
                   />
                 </div>
               ))}

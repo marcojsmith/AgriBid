@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LoadingIndicator, LoadingPage } from "@/components/LoadingIndicator";
 import { ListItem } from "@/components/kyc/ListItem";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { useKYCForm } from "@/hooks/kyc/useKYCForm";
 import { useKYCFileUpload } from "@/hooks/kyc/useKYCFileUpload";
 
@@ -34,10 +35,13 @@ import { DocumentUploadSection } from "./kyc/sections/DocumentUploadSection";
  * Displays UI for verified, pending, rejected, and unverified states; provides a form
  * for personal information, a document upload area, and controls to submit or edit KYC details.
  *
+ * The profile comes from `UserProfileContext`, which the layout provides, instead
+ * of subscribing to `users.getMyProfile` again.
+ *
  * @returns The JSX element for the KYC page
  */
 export default function KYC() {
-  const profile = useQuery(api.users.getMyProfile);
+  const profile = useUserProfile();
   const myKycDetails = useQuery(api.users.getMyKYCDetails);
   const submitKYC = useMutation(api.users.submitKYC);
 

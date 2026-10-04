@@ -1,187 +1,31 @@
 // app/src/pages/dashboard/MyBids.tsx
 import { useState, useMemo } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
 import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
-import {
-  Gavel,
-  Loader2,
-  TrendingUp,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  XCircle,
-  ArrowUpDown,
-} from "lucide-react";
+import { Gavel, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { DashboardListSkeleton } from "@/components/DashboardListSkeleton";
-import { formatCurrency } from "@/lib/currency";
-import { CountdownTimer } from "@/components/CountdownTimer";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BidCard } from "@/components/dashboard/BidCard";
+import { BidFilters } from "@/components/dashboard/BidFilters";
+import { BidStats } from "@/components/dashboard/BidStats";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DASHBOARD_PAGINATION_INITIAL_ITEMS, DASHBOARD_PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
+  isMyBidAuction,
+  type MyBidsStats,
+} from "@/components/dashboard/bidTypes";
+import {
+  DASHBOARD_PAGINATION_INITIAL_ITEMS,
+  DASHBOARD_PAGINATION_LOAD_MORE_ITEMS,
+} from "@/lib/constants";
 
-interface StatusDisplay {
-  label: string;
-  variant: "default" | "secondary" | "destructive" | "outline";
-  icon: React.ReactNode;
-  colorClass: string;
-}
-
-/**
- * Allowed statuses for a lot.
- * - `draft`: Listing is being created, not yet published.
- * - `pending_review`: Submitted and awaiting admin approval.
- * - `approved`: Approved by an admin, not yet assigned to an auction.
- * - `assigned`: Assigned to an auction and currently open for bidding.
- * - `sold`: Auction ended with a winning bid meeting reserve.
- * - `unsold`: Auction ended without meeting reserve or no bids.
- * - `rejected`: Admin rejected the listing.
- */
-type AuctionStatus =
-  | "draft"
-  | "pending_review"
-  | "approved"
-  | "assigned"
-  | "sold"
-  | "unsold"
-  | "rejected";
-
-/**
- * Represents the auction data and the user's bid statistics for that auction.
- */
-interface Auction {
-  /** The unique Convex ID of the auction. */
-  _id: string;
-  /** The title of the auction listing. */
-  title: string;
-  /** The equipment manufacturer. */
-  make: string;
-  /** The equipment model. */
-  model: string;
-  /** The current highest bid or starting price if no bids. */
-  currentPrice: number;
-  /** The minimum increment required for the next bid. */
-  minIncrement: number;
-  /** The highest bid amount placed by the current user. */
-  myHighestBid: number;
-  /** The total number of bids placed by the current user on this auction. */
-  bidCount: number;
-  /** The current lifecycle status of the auction. */
-  status: AuctionStatus;
-  /** The parent auction's scheduled end timestamp (ms), if assigned. */
-  auctionEndTime?: number;
-  /** Per-lot anti-snipe extended end timestamp (ms), if set. */
-  extendedEndTime?: number;
-  /** True if the user is currently the highest bidder on an active auction. */
-  isWinning: boolean;
-  /** True if the auction is sold and the user is the winner. */
-  isWon: boolean;
-  /** True if the auction is active but the user is not the highest bidder. */
-  isOutbid: boolean;
-  /** True if the auction was rejected. */
-  isCancelled: boolean;
-  /** Images associated with the auction. */
-  images: {
-    /** The main front image URL. */
-    front?: string;
-  };
-  /** The epoch timestamp (ms) of the user's most recent bid on this auction. */
-  lastBidTimestamp?: number;
-}
-
-type MyBidsPage = FunctionReturnType<
-  typeof api.auctions.queries.getMyBids
->["page"];
-
-const AUCTION_STATUSES: readonly AuctionStatus[] = [
-  "draft",
-  "pending_review",
-  "approved",
-  "assigned",
-  "sold",
-  "unsold",
-  "rejected",
-];
-
-/**
- * Type guard narrowing a getMyBids row (whose `status` is typed as `string`)
- * to a row with a known `AuctionStatus`, satisfying the local `Auction` interface.
- *
- * @param auction - Raw row from the getMyBids query
- * @returns True if the row's status is a known auction status
- */
-function isAuction(
-  auction: MyBidsPage[number]
-): auction is MyBidsPage[number] & { status: AuctionStatus } {
-  return (AUCTION_STATUSES as readonly string[]).includes(auction.status);
-}
-
-/**
- * Determine the user-facing badge label, visual variant, icon, and color for an auction's bid status.
- * @param auction - The auction data to analyze
- * @returns A StatusDisplay object containing label, variant, icon, and color
- */
-function getStatusDisplay(auction: Auction): StatusDisplay {
-  if (auction.isWon) {
-    return {
-      label: "WON",
-      variant: "default",
-      icon: <CheckCircle2 className="h-3 w-3 mr-1" />,
-      colorClass: "bg-success hover:bg-success/90 text-success-foreground",
-    };
-  }
-  if (auction.status === "unsold") {
-    return {
-      label: "RESERVE NOT MET",
-      variant: "destructive",
-      icon: <XCircle className="h-3 w-3 mr-1" />,
-      colorClass: "bg-muted text-muted-foreground",
-    };
-  }
-  if (auction.isWinning) {
-    return {
-      label: "WINNING",
-      variant: "secondary",
-      icon: <TrendingUp className="h-3 w-3 mr-1" />,
-      colorClass: "bg-success hover:bg-success/90 text-success-foreground",
-    };
-  }
-  if (auction.isOutbid) {
-    return {
-      label: "OUTBID",
-      variant: "destructive",
-      icon: <AlertCircle className="h-3 w-3 mr-1" />,
-      colorClass: "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
-    };
-  }
-  if (auction.isCancelled) {
-    return {
-      label: "CANCELLED",
-      variant: "outline",
-      icon: <XCircle className="h-3 w-3 mr-1" />,
-      colorClass: "border-warning text-warning",
-    };
-  }
-
-  return {
-    label: auction.status.toUpperCase(),
-    variant: "outline",
-    icon: <Clock className="h-3 w-3 mr-1" />,
-    colorClass: "border-muted-foreground text-muted-foreground",
-  };
-}
+/** Stable placeholder shown while the stats query has not resolved. */
+const EMPTY_STATS: MyBidsStats = {
+  totalActive: 0,
+  winningCount: 0,
+  outbidCount: 0,
+  totalExposure: 0,
+};
 
 /**
  * Renders the user's personal bidding dashboard.
@@ -203,16 +47,11 @@ export default function MyBids() {
     { initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS }
   );
 
-  const stats = serverStats ?? {
-    totalActive: 0,
-    winningCount: 0,
-    outbidCount: 0,
-    totalExposure: 0,
-  };
+  const stats = serverStats ?? EMPTY_STATS;
 
   // Apply filtering and sorting
   const filteredAndSortedAuctions = useMemo(() => {
-    let result = rawAuctions.filter(isAuction);
+    let result = rawAuctions.filter(isMyBidAuction);
 
     // Filter
     if (filter === "winning") {
@@ -227,9 +66,7 @@ export default function MyBids() {
 
     // Sort
     if (sortBy === "recent") {
-      result.sort(
-        (a, b) => (b.lastBidTimestamp ?? 0) - (a.lastBidTimestamp ?? 0)
-      );
+      result.sort((a, b) => b.lastBidTimestamp - a.lastBidTimestamp);
     } else if (sortBy === "bid") {
       result.sort((a, b) => b.myHighestBid - a.myHighestBid);
     }
@@ -260,50 +97,7 @@ export default function MyBids() {
         </div>
       </div>
 
-      {rawAuctions.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-card/50 border">
-            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-semibold text-muted-foreground mb-1">
-                Active Bids
-              </p>
-              <p className="text-3xl font-bold text-primary">
-                {stats.totalActive}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/50 border">
-            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-semibold text-muted-foreground mb-1">
-                Winning
-              </p>
-              <p className="text-3xl font-bold text-success">
-                {stats.winningCount}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/50 border">
-            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-semibold text-muted-foreground mb-1">
-                Outbid
-              </p>
-              <p className="text-3xl font-bold text-destructive">
-                {stats.outbidCount}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card/50 border">
-            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-              <p className="text-xs font-semibold text-muted-foreground mb-1">
-                Total Exposure
-              </p>
-              <p className="text-xl font-bold text-primary">
-                {formatCurrency(stats.totalExposure)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {rawAuctions.length > 0 && <BidStats stats={stats} />}
 
       {rawAuctions.length === 0 ? (
         <div className="max-w-4xl mx-auto space-y-8 py-24 text-center bg-card border border-dashed rounded-lg border-primary/10">
@@ -320,211 +114,17 @@ export default function MyBids() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6">
-            <Tabs
-              value={filter}
-              onValueChange={setFilter}
-              className="w-full sm:w-auto"
-            >
-              <TabsList className="bg-muted/50 p-1">
-                <TabsTrigger
-                  value="all"
-                  className="font-bold text-xs px-4 transition-[background-color,color]"
-                >
-                  All
-                </TabsTrigger>
-                <TabsTrigger
-                  value="winning"
-                  className="font-bold text-xs px-4 transition-[background-color,color]"
-                >
-                  Winning
-                </TabsTrigger>
-                <TabsTrigger
-                  value="outbid"
-                  className="font-bold text-xs px-4 transition-[background-color,color]"
-                >
-                  Outbid
-                </TabsTrigger>
-                <TabsTrigger
-                  value="ended"
-                  className="font-bold text-xs px-4 transition-[background-color,color]"
-                >
-                  Ended
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger
-                  aria-label="Sort bids"
-                  className="w-[180px] font-bold text-xs bg-muted/30 border transition-[border-color,background-color]"
-                >
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ending" className="font-bold text-xs">
-                    Ending Soon
-                  </SelectItem>
-                  <SelectItem value="recent" className="font-bold text-xs">
-                    Recent Activity
-                  </SelectItem>
-                  <SelectItem value="bid" className="font-bold text-xs">
-                    Highest Bid
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <BidFilters
+            filter={filter}
+            onFilterChange={setFilter}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filteredAndSortedAuctions.map((auction) => {
-              const { label, icon, colorClass } = getStatusDisplay(auction);
-              const nextMinBid = auction.currentPrice + auction.minIncrement;
-
-              return (
-                <div
-                  key={auction._id}
-                  className={cn(
-                    "group relative bg-card border rounded-md overflow-hidden transition-[transform,shadow] duration-300 hover:shadow-md hover:-translate-y-0.5 flex flex-col sm:flex-row sm:h-48 border-border/50"
-                  )}
-                >
-                  {/* Status Strip Indicator */}
-                  {auction.isWinning && (
-                    <div className="absolute top-0 left-0 w-1 h-full bg-success z-20 hidden sm:block" />
-                  )}
-                  {auction.isOutbid && (
-                    <div className="absolute top-0 left-0 w-1 h-full bg-destructive z-20 hidden sm:block" />
-                  )}
-
-                  {/* Image Section */}
-                  <div className="w-full sm:w-48 md:w-56 shrink-0 bg-muted relative overflow-hidden border-b sm:border-b-0 sm:border-r border-border/10">
-                    {auction.images.front ? (
-                      <img
-                        src={auction.images.front}
-                        alt={auction.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-muted">
-                        <Gavel className="h-10 w-10 text-muted-foreground/10" />
-                      </div>
-                    )}
-
-                    <div className="absolute top-2 left-2">
-                      <Badge
-                        className={cn(
-                          "px-2 py-0.5 font-semibold text-xs rounded-full shadow-lg",
-                          colorClass
-                        )}
-                      >
-                        <div className="flex items-center">
-                          {icon}
-                          {label}
-                        </div>
-                      </Badge>
-                    </div>
-
-                    {auction.status === "assigned" &&
-                      (auction.extendedEndTime ?? auction.auctionEndTime) !=
-                        null && (
-                        <div className="absolute bottom-2 right-2">
-                          <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-white/10 shadow-lg">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-2.5 w-2.5 text-white" />
-                              <CountdownTimer
-                                endTime={
-                                  auction.extendedEndTime ??
-                                  auction.auctionEndTime
-                                }
-                                className="text-xs text-white"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                  </div>
-
-                  {/* Content Section */}
-                  <div className="flex-1 p-5 flex flex-col min-w-0">
-                    <div className="space-y-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-base leading-tight truncate group-hover:text-primary transition-colors">
-                          {auction.title}
-                        </h3>
-                      </div>
-                      <p className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-                        <span>{auction.make}</span>
-                        <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-                        <span>{auction.model}</span>
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 py-2 border-y border-border/5 my-auto">
-                      <div className="space-y-0.5">
-                        <p className="text-xs text-muted-foreground font-semibold">
-                          My Bid
-                        </p>
-                        <p className="font-bold text-sm tracking-tight tabular-nums">
-                          {formatCurrency(auction.myHighestBid)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground font-bold">
-                          {auction.bidCount}{" "}
-                          {auction.bidCount === 1 ? "bid" : "bids"}
-                        </p>
-                      </div>
-                      <div className="space-y-0.5 text-right border-l border-border/10 pl-3">
-                        <p className="text-xs text-muted-foreground font-semibold">
-                          {auction.status === "assigned" ? "Next Min" : "Final"}
-                        </p>
-                        <p
-                          className={cn(
-                            "font-bold text-sm tracking-tight tabular-nums",
-                            auction.status === "assigned"
-                              ? "text-primary"
-                              : auction.isWon
-                                ? "text-success"
-                                : "text-foreground"
-                          )}
-                        >
-                          {auction.status === "assigned"
-                            ? formatCurrency(nextMinBid)
-                            : formatCurrency(auction.currentPrice)}
-                        </p>
-                        {auction.isOutbid && (
-                          <p className="text-xs text-destructive font-semibold animate-pulse">
-                            Outbid!
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1 font-semibold text-xs h-10 rounded-md transition-[background-color,transform,shadow]"
-                        variant={auction.isOutbid ? "default" : "outline"}
-                        asChild
-                      >
-                        <Link to={`/auction/${auction._id}`}>
-                          {auction.isOutbid ? (
-                            <span className="flex items-center gap-1.5">
-                              <TrendingUp className="h-3 w-3" />
-                              Raise Bid
-                            </span>
-                          ) : auction.status === "assigned" ? (
-                            "View Details"
-                          ) : (
-                            "View Results"
-                          )}
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {filteredAndSortedAuctions.map((auction) => (
+              <BidCard key={auction._id} auction={auction} />
+            ))}
           </div>
 
           {filteredAndSortedAuctions.length === 0 && (

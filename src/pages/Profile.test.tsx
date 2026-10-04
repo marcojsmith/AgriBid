@@ -11,6 +11,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
+
 import Profile from "./Profile";
 
 interface AuctionCardProps {
@@ -255,8 +257,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
       if (apiPath === mockApi.userActivity.getSellerActivity) return [];
-      if (apiPath === mockApi.watchlist.getWatchedLotIds)
-        return ["auction1"];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return ["auction1"];
       return null;
     });
 
@@ -275,12 +276,16 @@ describe("Profile Page", () => {
     });
   });
 
+  // Profile reads the signed-in profile from UserProfileContext, which the
+  // layout provides at runtime; the provider keeps the mocked query in charge.
   const renderProfile = (userId = "user1") => {
     return render(
       <MemoryRouter initialEntries={[`/profile/${userId}`]}>
-        <Routes>
-          <Route path="/profile/:userId" element={<Profile />} />
-        </Routes>
+        <UserProfileProvider>
+          <Routes>
+            <Route path="/profile/:userId" element={<Profile />} />
+          </Routes>
+        </UserProfileProvider>
       </MemoryRouter>
     );
   };
@@ -563,13 +568,15 @@ describe("Profile Page", () => {
     const renderProfileWithMessagesRoute = () => {
       return render(
         <MemoryRouter initialEntries={["/profile/user1"]}>
-          <Routes>
-            <Route path="/profile/:userId" element={<Profile />} />
-            <Route
-              path="/messages/:conversationId"
-              element={<div data-testid="messages-thread">Thread</div>}
-            />
-          </Routes>
+          <UserProfileProvider>
+            <Routes>
+              <Route path="/profile/:userId" element={<Profile />} />
+              <Route
+                path="/messages/:conversationId"
+                element={<div data-testid="messages-thread">Thread</div>}
+              />
+            </Routes>
+          </UserProfileProvider>
         </MemoryRouter>
       );
     };
@@ -1262,8 +1269,7 @@ describe("Profile Page", () => {
       if (apiPath === mockApi.users.getMyProfile) return mockMyProfile;
       if (apiPath === mockApi.auctions.getSellerInfo)
         return shortNameSellerInfo;
-      if (apiPath === mockApi.watchlist.getWatchedLotIds)
-        return ["auction1"];
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return ["auction1"];
       return null;
     });
 

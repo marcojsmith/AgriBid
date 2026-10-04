@@ -7,6 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 import React from "react";
 
 import { useSession } from "@/lib/auth-client";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
 
 import Settings from "./Settings";
 
@@ -134,11 +135,15 @@ describe("Settings Page", () => {
     });
   });
 
+  // Settings reads the profile from UserProfileContext, which the layout
+  // provides at runtime; the provider keeps the mocked query in charge.
   const renderSettings = () =>
     render(
       <HelmetProvider>
         <BrowserRouter>
-          <Settings />
+          <UserProfileProvider>
+            <Settings />
+          </UserProfileProvider>
         </BrowserRouter>
       </HelmetProvider>
     );

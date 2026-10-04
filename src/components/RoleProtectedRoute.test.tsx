@@ -4,6 +4,7 @@ import { BrowserRouter, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 
 import { useSession } from "@/lib/auth-client";
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
 
 import { RoleProtectedRoute } from "./RoleProtectedRoute";
 
@@ -34,12 +35,16 @@ describe("RoleProtectedRoute", () => {
     (useLocation as Mock).mockReturnValue({ pathname: "/admin", search: "" });
   });
 
+  // The route guard reads the profile from UserProfileContext, which the layout
+  // provides at runtime; the provider keeps the mocked query in charge.
   const renderWithRouter = (allowedRole: string) => {
     return render(
       <BrowserRouter>
-        <RoleProtectedRoute allowedRole={allowedRole}>
-          <div data-testid="protected-content">Secret Content</div>
-        </RoleProtectedRoute>
+        <UserProfileProvider>
+          <RoleProtectedRoute allowedRole={allowedRole}>
+            <div data-testid="protected-content">Secret Content</div>
+          </RoleProtectedRoute>
+        </UserProfileProvider>
       </BrowserRouter>
     );
   };
@@ -283,9 +288,11 @@ describe("RoleProtectedRoute", () => {
 
     const { unmount } = render(
       <BrowserRouter>
-        <RoleProtectedRoute allowedRole="admin">
-          <div>Content</div>
-        </RoleProtectedRoute>
+        <UserProfileProvider>
+          <RoleProtectedRoute allowedRole="admin">
+            <div>Content</div>
+          </RoleProtectedRoute>
+        </UserProfileProvider>
       </BrowserRouter>
     );
 
@@ -333,9 +340,11 @@ describe("RoleProtectedRoute", () => {
 
     const { rerender } = render(
       <BrowserRouter>
-        <RoleProtectedRoute allowedRole="admin">
-          <div>Content</div>
-        </RoleProtectedRoute>
+        <UserProfileProvider>
+          <RoleProtectedRoute allowedRole="admin">
+            <div>Content</div>
+          </RoleProtectedRoute>
+        </UserProfileProvider>
       </BrowserRouter>
     );
 
@@ -348,9 +357,11 @@ describe("RoleProtectedRoute", () => {
     // Rerender - should NOT trigger another timeout since hasTimedOut is true
     rerender(
       <BrowserRouter>
-        <RoleProtectedRoute allowedRole="admin">
-          <div>Content</div>
-        </RoleProtectedRoute>
+        <UserProfileProvider>
+          <RoleProtectedRoute allowedRole="admin">
+            <div>Content</div>
+          </RoleProtectedRoute>
+        </UserProfileProvider>
       </BrowserRouter>
     );
 
@@ -367,9 +378,11 @@ describe("RoleProtectedRoute", () => {
 
     const { unmount } = render(
       <BrowserRouter>
-        <RoleProtectedRoute allowedRole="admin">
-          <div>Content</div>
-        </RoleProtectedRoute>
+        <UserProfileProvider>
+          <RoleProtectedRoute allowedRole="admin">
+            <div>Content</div>
+          </RoleProtectedRoute>
+        </UserProfileProvider>
       </BrowserRouter>
     );
 

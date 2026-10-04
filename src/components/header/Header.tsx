@@ -1,11 +1,11 @@
 // app/src/components/header/Header.tsx
 import { Link, useLocation } from "react-router-dom";
-import { Authenticated, Unauthenticated, useQuery } from "convex/react";
-import { api } from "convex/_generated/api";
+import { Authenticated, Unauthenticated } from "convex/react";
 import { toast } from "sonner";
 import { useClerk } from "@clerk/clerk-react";
 
 import { useBranding } from "@/hooks/useBranding";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
@@ -19,12 +19,15 @@ import { UserDropdown } from "./UserDropdown";
  * Renders the site navigation, search bar, and user authentication controls.
  * This component is publicly exported via the header barrel.
  *
+ * Reads the signed-in user's profile from `UserProfileContext`, which the
+ * layout provides, instead of subscribing to `users.getMyProfile` again.
+ *
  * @returns A JSX.Element representing the application header
  */
 export const Header = () => {
   const { signOut } = useClerk();
   const branding = useBranding();
-  const userData = useQuery(api.users.getMyProfile);
+  const userData = useUserProfile();
   const isLoadingProfile = userData === undefined;
   const profileId = userData?.profile?.userId;
   const role = userData?.profile?.role;
