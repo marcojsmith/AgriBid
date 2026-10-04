@@ -889,7 +889,7 @@ export default function Profile() {
 
               {activeListings.length === 0 && status === "Exhausted" ? (
                 <div className="border border-dashed border-border rounded p-12 text-center">
-                  <p className="text-4xl mb-3">🚜</p>
+                  <p className="text-4xl mb-3" aria-hidden="true">🚜</p>
                   <p className="text-muted-foreground font-bold italic text-sm">
                     No active auctions at this time.
                   </p>

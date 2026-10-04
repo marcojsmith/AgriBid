@@ -82,7 +82,7 @@ export function AuctionCardThumbnail({
           />
         ) : (
           <div className="text-muted-foreground flex flex-col items-center">
-            <span className={isCompact ? "text-2xl" : "text-4xl"}>🚜</span>
+            <span className={isCompact ? "text-2xl" : "text-4xl"} aria-hidden="true">🚜</span>
             <span
               className={cn(
                 "italic text-center px-2",

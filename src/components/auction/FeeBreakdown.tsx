@@ -73,8 +73,8 @@ export function FeeBreakdown({
               Your Fees (as Buyer)
             </div>
             <div className="space-y-1">
-              {fees.buyerFees.map((fee, index) => (
-                <div key={index} className="flex justify-between text-sm">
+              {fees.buyerFees.map((fee) => (
+                <div key={fee.feeName} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{fee.feeName}</span>
                   <span className="font-medium">
                     {formatCurrency(fee.calculatedAmount)}
@@ -96,8 +96,8 @@ export function FeeBreakdown({
               Your Fees (as Seller)
             </div>
             <div className="space-y-1">
-              {fees.sellerFees.map((fee, index) => (
-                <div key={index} className="flex justify-between text-sm">
+              {fees.sellerFees.map((fee) => (
+                <div key={fee.feeName} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{fee.feeName}</span>
                   <span className="font-medium">
                     {formatCurrency(fee.calculatedAmount)}

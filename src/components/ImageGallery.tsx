@@ -25,7 +25,7 @@ interface ImageGalleryProps {
 function ImagePlaceholder() {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-6xl mb-4">🚜</span>
+      <span className="text-6xl mb-4" aria-hidden="true">🚜</span>
       <span className="text-muted-foreground font-medium italic text-center px-4">
         Image Pending (Seller Inspection in Progress)
       </span>
@@ -164,9 +164,9 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
             )}
 
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-              {images.map((_, idx) => (
+              {images.map((image, idx) => (
                 <div
-                  key={idx}
+                  key={image}
                   className={cn(
                     "h-1.5 w-1.5 rounded-full transition-all",
                     activeIndex === idx ? "bg-white w-4" : "bg-white/40"
@@ -183,7 +183,7 @@ export const ImageGallery = ({ images, title }: ImageGalleryProps) => {
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           {images.map((image, index) => (
             <button
-              key={index}
+              key={image}
               type="button"
               onClick={() => {
                 setActiveIndex(index);

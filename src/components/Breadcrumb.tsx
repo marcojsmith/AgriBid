@@ -42,7 +42,7 @@ export const Breadcrumb = ({ crumbs }: BreadcrumbProps) => {
           {crumbs.map((crumb, index) => {
             const isLast = index === crumbs.length - 1;
             return (
-              <li key={index} className="flex items-center gap-1">
+              <li key={crumb.href ?? crumb.label} className="flex items-center gap-1">
                 {index > 0 && (
                   <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
                 )}

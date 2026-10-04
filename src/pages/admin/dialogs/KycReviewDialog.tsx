@@ -153,7 +153,7 @@ export function KycReviewDialog({
                 <div className="space-y-2">
                   {user.kycDocumentUrls?.map((url: string, i: number) => (
                     <Button
-                      key={i}
+                      key={url}
                       variant="outline"
                       className="w-full justify-start font-medium text-xs h-10 border gap-2"
                       onClick={() => {

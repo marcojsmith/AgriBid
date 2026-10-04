@@ -197,26 +197,24 @@ export const AuctionCard = ({
                       : "bg-destructive text-destructive-foreground",
                     "h-6 w-6"
                   )}
-                  role="img"
-                  aria-label={
-                    auction.status === "sold"
-                      ? "Sold auction"
-                      : "Closed auction"
-                  }
+                  aria-hidden="true"
                 >
                   <Gavel className="h-3.5 w-3.5" />
                 </div>
+                <span className="sr-only">
+                  {auction.status === "sold" ? "Sold auction" : "Closed auction"}
+                </span>
               </div>
             )}
             {isNotStarted && isCompact && (
               <div className="absolute top-1.5 right-1.5 z-10">
                 <div
                   className="rounded-full flex items-center justify-center shadow-lg bg-warning text-warning-foreground h-6 w-6"
-                  role="img"
-                  aria-label="Scheduled auction, not yet started"
+                  aria-hidden="true"
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
                 </div>
+                <span className="sr-only">Scheduled auction, not yet started</span>
               </div>
             )}
           </div>

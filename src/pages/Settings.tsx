@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useId } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
@@ -37,15 +37,17 @@ function ToggleSwitch({
   onChange: () => void;
   description?: string;
 }) {
+  const id = useId();
   return (
     <div className="flex items-center justify-between">
       <div>
-        <Label className="text-sm font-bold">{label}</Label>
+        <Label htmlFor={id} className="text-sm font-bold">{label}</Label>
         {description && (
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       <button
+        id={id}
         type="button"
         role="switch"
         aria-label={label}
@@ -87,6 +89,9 @@ export default function Settings() {
     api.userPreferences.updateMyPreferences
   );
   const isSavingRef = useRef(false);
+  const watchlistEndingId = useId();
+  const viewModeId = useId();
+  const defaultStatusId = useId();
 
   if (preferences === undefined || myProfile === undefined) {
     return <LoadingPage message="Loading settings..." />;
@@ -157,14 +162,14 @@ export default function Settings() {
         />
 
         <div className="space-y-2">
-          <Label className="text-sm font-bold">Watchlist Ending Alerts</Label>
+          <Label htmlFor={watchlistEndingId} className="text-sm font-bold">Watchlist Ending Alerts</Label>
           <Select
             value={preferences?.notificationsWatchlistEnding ?? "1h"}
             onValueChange={(value: "disabled" | "1h" | "3h" | "24h") => {
               update({ notificationsWatchlistEnding: value });
             }}
           >
-            <SelectTrigger className="w-48 h-10 rounded-md border font-bold">
+            <SelectTrigger id={watchlistEndingId} className="w-48 h-10 rounded-md border font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -224,14 +229,14 @@ export default function Settings() {
         </h2>
 
         <div className="space-y-2">
-          <Label className="text-sm font-bold">Default View Mode</Label>
+          <Label htmlFor={viewModeId} className="text-sm font-bold">Default View Mode</Label>
           <Select
             value={preferences?.viewMode ?? "detailed"}
             onValueChange={(value: "compact" | "detailed") => {
               update({ viewMode: value });
             }}
           >
-            <SelectTrigger className="w-48 h-10 rounded-md border font-bold">
+            <SelectTrigger id={viewModeId} className="w-48 h-10 rounded-md border font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -251,14 +256,14 @@ export default function Settings() {
         />
 
         <div className="space-y-2">
-          <Label className="text-sm font-bold">Default Auction Status</Label>
+          <Label htmlFor={defaultStatusId} className="text-sm font-bold">Default Auction Status</Label>
           <Select
             value={preferences?.defaultStatusFilter ?? "active"}
             onValueChange={(value: "active" | "closed" | "all") => {
               update({ defaultStatusFilter: value });
             }}
           >
-            <SelectTrigger className="w-48 h-10 rounded-md border font-bold">
+            <SelectTrigger id={defaultStatusId} className="w-48 h-10 rounded-md border font-bold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

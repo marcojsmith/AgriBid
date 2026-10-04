@@ -1,5 +1,5 @@
 // app/src/components/header/MobileMenu.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useId } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UserDataWithProfile } from "@/types/auth";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 import { SearchBar } from "./SearchBar";
 
@@ -107,69 +108,17 @@ export function MobileMenu({
   onSignOut,
 }: MobileMenuProps) {
   const location = useLocation();
-  const menuRef = useRef<HTMLDivElement>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
+  const menuRef = useFocusTrap(isOpen);
+  const secondaryNavId = useId();
 
-  // Focus trap and Escape key handling
   useEffect(() => {
-    if (!isOpen) {
-      if (previousFocus.current) {
-        previousFocus.current.focus();
-        previousFocus.current = null;
-      }
-      return;
-    }
-
-    previousFocus.current = document.activeElement as HTMLElement;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-
-      if (e.key === "Tab" && menuRef.current) {
-        const allFocusable = menuRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-
-        // Filter out elements that are disabled, hidden, or have negative tabindex
-        const focusableElements = Array.from(allFocusable).filter((el) => {
-          const element = el as HTMLElement;
-          return (
-            !element.hasAttribute("disabled") &&
-            element.getAttribute("aria-hidden") !== "true" &&
-            element.tabIndex !== -1 &&
-            element.offsetParent !== null // basic visibility check
-          );
-        }) as HTMLElement[];
-
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
-      }
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
     };
-
-    document.addEventListener("keydown", handleKeyDown);
-    // Focus the first element (search input) when opened
-    const firstFocusable = menuRef.current?.querySelector("input");
-    firstFocusable?.focus();
-
+    document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [isOpen, onClose]);
 
@@ -186,7 +135,7 @@ export function MobileMenu({
       <div className="container mx-auto px-4 py-6 space-y-6">
         <SearchBar id="search-mobile" onSearch={onClose} />
 
-        <nav className="flex flex-col gap-4">
+        <nav className="flex flex-col gap-4" aria-label="Primary">
           {navLinks.map((link) => (
             <Link
               key={link.name}
@@ -242,7 +191,7 @@ export function MobileMenu({
                 </Button>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <nav id={secondaryNavId} className="grid grid-cols-2 gap-3" aria-label="User account">
                 {role === "admin" && (
                   <Button
                     variant="outline"
@@ -312,7 +261,7 @@ export function MobileMenu({
                   </Link>
                 </Button>
                 <MessagesTile onClose={onClose} />
-              </div>
+              </nav>
               <Button
                 variant="destructive"
                 className="w-full font-semibold text-xs h-14 rounded-md shadow-lg shadow-destructive/10"

@@ -378,8 +378,9 @@ describe("MobileMenu", () => {
       </MemoryRouter>
     );
 
-    const menuRoot =
-      screen.getByRole("navigation").parentElement?.parentElement;
+    const menuRoot = screen
+      .getByRole("navigation", { name: "Primary" })
+      .parentElement?.parentElement;
     if (!menuRoot) {
       throw new Error("Expected MobileMenu container to be rendered");
     }

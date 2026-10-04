@@ -12,6 +12,14 @@ import {
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type ErrorStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -197,39 +205,31 @@ export default function AdminErrorReports() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    Error Message
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    Instances
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    Last Occurred
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    GitHub Issue
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+            <Table className="w-full text-sm">
+              <caption className="sr-only">
+                Error reports with status, type, message, instance count, last
+                occurrence date, and GitHub issue link
+              </caption>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead>Status</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Error Message</TableHead>
+                  <TableHead>Instances</TableHead>
+                  <TableHead>Last Occurred</TableHead>
+                  <TableHead>GitHub Issue</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {reports.reports.length === 0 ? (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={6}
                       className="px-4 py-12 text-center text-muted-foreground"
                     >
                       No error reports found
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   reports.reports.map((report: ErrorReport) => {
                     const statusConfig = STATUS_CONFIG[report.status] as
@@ -237,34 +237,31 @@ export default function AdminErrorReports() {
                       | undefined;
                     const config = statusConfig ?? STATUS_CONFIG.pending;
                     return (
-                      <tr
-                        key={report._id}
-                        className="hover:bg-muted/50"
-                      >
-                        <td className="px-4 py-3">
+                      <TableRow key={report._id}>
+                        <TableCell>
                           <div
                             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
                           >
                             <config.icon className="h-3 w-3" />
                             {config.label}
                           </div>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
                           {report.errorType}
-                        </td>
-                        <td className="px-4 py-3 max-w-xs">
+                        </TableCell>
+                        <TableCell className="max-w-xs">
                           <p className="truncate text-foreground">
                             {report.errorMessage}
                           </p>
-                        </td>
-                        <td className="px-4 py-3 text-center">
+                        </TableCell>
+                        <TableCell className="text-center">
                           {report.instanceCount > 1 && (
                             <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 rounded-full bg-muted text-xs font-medium text-muted-foreground">
                               {report.instanceCount}
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                        </TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
                           {new Date(report.lastOccurredAt).toLocaleDateString(
                             undefined,
                             {
@@ -274,8 +271,8 @@ export default function AdminErrorReports() {
                               minute: "2-digit",
                             }
                           )}
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           {report.githubIssueUrl ? (
                             <a
                               href={report.githubIssueUrl}
@@ -291,13 +288,13 @@ export default function AdminErrorReports() {
                               —
                             </span>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>

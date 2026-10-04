@@ -12,6 +12,7 @@ import { STEPS } from "./constants";
  */
 export const StepIndicator = () => {
   const { currentStep, draftSaved } = useListingWizard();
+  const currentTitle = STEPS.at(currentStep) ?? "";
 
   return (
     <div className="space-y-4">
@@ -21,7 +22,7 @@ export const StepIndicator = () => {
             Step {currentStep + 1} of {STEPS.length}
           </p>
           <h2 className="text-2xl font-bold tracking-tight">
-            {STEPS.at(currentStep)}
+            {currentTitle}
           </h2>
         </div>
         <div
@@ -50,6 +51,9 @@ export const StepIndicator = () => {
             width: `${String(((currentStep + 1) / STEPS.length) * 100)}%`,
           }}
         />
+      </div>
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        Step {currentStep + 1} of {STEPS.length}: {currentTitle}
       </div>
     </div>
   );
