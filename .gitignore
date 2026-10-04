@@ -50,3 +50,6 @@ seo-plan.md
 
 # opencode task files are local scratch (see conductor/workflow notes in AGENTS.md)
 conductor/opencode_tasks/
+
+# stale pre-restructure app/ skeleton (local only; may hold .env.local)
+/app/
