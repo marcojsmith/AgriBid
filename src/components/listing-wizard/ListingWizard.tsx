@@ -11,10 +11,10 @@ import { useListingForm } from "@/hooks/listing-wizard/useListingForm";
 import { normalizeListingImages } from "@/lib/normalize-images";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { Button } from "@/components/ui/button";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 import type { ListingFormData } from "./types";
 import { ListingWizardProvider } from "./context/ListingWizardContext";
-import { useListingWizard } from "./context/useListingWizard";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
 import { STEPS } from "./constants";
