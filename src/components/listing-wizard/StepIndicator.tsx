@@ -21,9 +21,7 @@ export const StepIndicator = () => {
           <p className="text-xs font-semibold text-primary">
             Step {currentStep + 1} of {STEPS.length}
           </p>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {currentTitle}
-          </h2>
+          <h2 className="text-2xl font-bold tracking-tight">{currentTitle}</h2>
         </div>
         <div
           className={cn(
@@ -53,7 +51,7 @@ export const StepIndicator = () => {
         />
       </div>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        Step {currentStep + 1} of {STEPS.length}: {currentTitle}
+        Progress: {currentStep + 1} of {STEPS.length}
       </div>
     </div>
   );
