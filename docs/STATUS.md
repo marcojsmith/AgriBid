@@ -14,6 +14,7 @@ Last updated: 2026-10-04
 
 ## In progress
 
+- Stacked PRs #345 -> #373 (audit follow-ups: docs, 404, SEO, pagination, error boundaries, UI, security, performance, accessibility, coverage). Each PR bases on the previous; merging #373 merges them all.
 - Branch `feat/marketplace-auction-cards`: `/` shows auction-event cards with Active/Closed/All tabs (search still returns lots); `/auctions/:id` reuses the full lot browser scoped via `getActiveLots(auctionId)`.
 - Same branch, storage-and-query cleanup: storage-aware seed/reset clears (`runSeed`/`clearAuctions`/`clearAllData`/`weeklyReset` now delete image/KYC/banner blobs), daily orphaned-upload sweep cron (`convex/storageCleanup.ts`), client-side image compression before upload (`src/lib/image-resize.ts` + `useFileUpload`), `getPublishedAuctions` paginated with capped takes + manual cursor (consumed via `usePaginatedQuery` on Home/AuctionGallery), and 500-cap safety caps on admin `.collect()` queues.
 - Same branch, admin Performance & Demo Mode settings: runtime-editable `demo_mode_enabled` + `presence_heartbeat_interval_ms` settings keys (atomic `updatePerformanceConfig` mutation), public `presence.getHeartbeatIntervalMs` read, `PresenceListener` paces itself from it (60s fallback while loading), `AdminPerformance` page at `/admin/performance` + System Settings tile; cron schedules stay code-fixed (stated in the UI copy). Presence 90s online threshold intentionally not yet derived from the interval (see `convex/constants.ts` note).
@@ -23,39 +24,25 @@ Last updated: 2026-10-04
 
 ## Next (prioritised)
 
-1. Bump `@convex-dev/aggregate` 0.2.1 -> 0.3.x and run the `explicit-ids` codemod. Verify first whether the component is registered (issue #308).
-2. Review the open dependabot PRs.
-3. Add an ESLint override disabling `consistent-type-definitions` for `convex/**` (recorded as pending in the old notes).
-4. Clear merged remote branches.
-5. Decide the open questions below, then tidy `AGENTS.md` accordingly.
+1. Merge the stacked PRs #345-#373 (merging #373 lands them all), then run `bunx convex run admin_utils:recomputeLotFeeCounters '{"cursor":null,"buyerTotal":0,"sellerTotal":0}'` against each deployment with existing fees.
+2. Finish the partial issues: #302 (backend duplication: highest-bid reduce, cursor parsing, bidder-name lookup; large files such as FeeManager, MyBids, seed.ts), #303 (duplicate subscriptions, AdminAuctions re-renders), #304 (vitest-axe checks), #308 (Radix import strategy), #299 (Playwright E2E for the money paths).
+3. Review the open dependabot PRs.
+4. Add an ESLint override disabling `consistent-type-definitions` for `convex/**` (recorded as pending in the old notes).
+5. Clear merged remote branches.
+6. Decide the open questions below, then tidy `AGENTS.md` accordingly.
 
 ## Done (last 10)
 
+- 2026-10-04: Coverage now measures unimported files and writes `test-coverage/latest-coverage-output.txt`; thresholds raised; broad unit-test additions (E2E still open) (#299) (v0.17.26).
+- 2026-10-04: Cursor-based `getMyBids` pagination over a bidder/timestamp index (ending sort bounded to 200 lots) with integration tests (#335) (v0.17.25).
+- 2026-10-04: Index-driven batched settlement, unified reserve check, fee-total counters (run `admin_utils:recomputeLotFeeCounters` once after deploy) (#305) (v0.17.24).
+- 2026-10-04: Dedupe `useListingWizard` and split the Profile page into components (backend duplication and other 500+ line files still open) (#302) (v0.17.23).
+- 2026-10-04: Drop unused autoprefixer/postcss/coverage-istanbul deps, add `engines`, align packageManager, ignore stale `app/` dir (Radix import strategy still open) (#308) (v0.17.22).
 - 2026-10-04: Accessibility fixes: focus trap, table scope, label links, live regions, hidden decorative icons (#304) (v0.17.21).
 - 2026-10-04: Split convex/errors.ts helpers into convex/lib modules (#282) (v0.17.20).
 - 2026-10-04: Batch lot summary lookups, bound the storage sweep, add platformFees/equipmentMetadata indexes (#337) (v0.17.19).
 - 2026-10-04: Paginate notifications with bounded per-stream reads and a compound cursor (#336) (v0.17.18).
 - 2026-10-03: Replace hardcoded palette classes with theme tokens and add a guard test (#300) (v0.17.17).
-- 2026-10-03: Add input length caps and per-user rate limits on write mutations (#298) (v0.17.16).
-- 2026-10-03: Harden destructive seed access (no preview bypass, explicit dev opt-in), audit-log seed/promotion, add deny-path tests (#297) (v0.17.15).
-- 2026-10-03: Memoize contexts, nest admin routes under a shared layout, Set-based watchlist lookups (#303) (v0.17.14).
-- 2026-10-03: Admin audit skeleton, category empty state, tooltips, wizard/search/bid-form polish (#343) (v0.17.13).
-- 2026-10-03: Format the finance fee tooltip amount with formatCurrency (other call sites already used the shared helper) (#301) (v0.17.12).
-- 2026-10-03: Add regression tests for auction startTime enforcement (already enforced; stale issue) (#296) (v0.17.11).
-- 2026-10-03: Derive presence threshold from heartbeat interval, fix flag counter race, add audit logging, show cooldown seconds (#338) (v0.17.10).
-- 2026-10-03: Filter Home status tabs server-side and scope the time tick (#339) (v0.17.9).
-- 2026-10-03: Use shadcn Checkbox and AlertDialog, remove eslint-disable in BidForm (#342) (v0.17.8).
-- 2026-10-03: Add per-route error boundaries (#341) (v0.17.7).
-- 2026-10-03: Paginate support tickets and use shared pagination constants (#340) (v0.17.6).
-- 2026-10-03: Noindex private pages, dev-safe site URL fallback, toast on mark-read failure (#344) (v0.17.5).
-- 2026-10-03: Add catch-all 404 route and NotFound page (#306) (v0.17.4).
-- 2026-10-03: Reconcile stale docs: fix app/ paths, regenerate schema reference, correct test command (#307) (v0.17.3).
-- 2026-10-03: Tablet/phone layout polish on auctions, lots and lot-detail pages (wrapping/overflow fixes via container queries, tighter spacing, sticky bid bar hides over panel/footer) (v0.17.2).
-- 2026-09-21: STATUS.md added and stale auth docs fixed (#329); finished `refactor_auction_mutations` track archived (#323).
-- 2026-09-19: Fix prod crash from manual vendor-react chunk grouping (#322).
-- 2026-09: Multi-lot auctions rework finished (#318, #321).
-- 2026-09: Dev server served over HTTPS with a Tailscale-issued cert (#320).
-- 2026-09: Convex upgraded to 1.45.
 - Older items: see [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Operations

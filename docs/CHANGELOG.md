@@ -7,6 +7,11 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Coverage now measures unimported files and writes `test-coverage/latest-coverage-output.txt`; thresholds raised; broad unit-test additions (E2E still open) (#299) (0.17.26)
+- Cursor-based `getMyBids` pagination over a bidder/timestamp index (ending sort bounded to 200 lots) with integration tests (#335) (0.17.25)
+- Index-driven batched settlement, unified reserve check, fee-total counters (run `admin_utils:recomputeLotFeeCounters` once after deploy) (#305) (0.17.24)
+- Dedupe `useListingWizard` and split the Profile page into components (backend duplication and other 500+ line files still open) (#302) (0.17.23)
+- Drop unused autoprefixer/postcss/coverage-istanbul deps, add `engines`, align packageManager, ignore stale `app/` dir (Radix import strategy still open) (#308) (0.17.22)
 - Accessibility fixes: focus trap, table scope, label links, live regions, hidden decorative icons (#304) (0.17.21)
 - Split convex/errors.ts helpers into convex/lib modules (#282) (0.17.20)
 - Batch lot summary lookups, bound the storage sweep, add platformFees/equipmentMetadata indexes (#337) (0.17.19)

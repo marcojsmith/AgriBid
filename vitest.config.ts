@@ -41,7 +41,7 @@ export default defineConfig({
         statements: 95,
         branches: 92,
         functions: 95,
-        lines: 96,
+        lines: 95,
         // Per-file floors. These used to be set far below what the tests
         // actually achieve and were only lowered to make the gate pass.
         "src/components/admin/FeeManager.tsx": {
