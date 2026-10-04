@@ -4,7 +4,7 @@ import type { PaginationOptions } from "convex/server";
 import { paginationOptsValidator, query, type QueryCtx } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
 import {
-  toLotSummary,
+  toLotSummaries,
   LotSummaryValidator,
   toLotDetail,
   LotDetailValidator,
@@ -244,9 +244,7 @@ export const getActiveLotsHandler = async (
       startIndex + numItems
     );
 
-    const page = await Promise.all(
-      paginatedSlice.map((lot) => toLotSummary(ctx, lot))
-    );
+    const page = await toLotSummaries(ctx, paginatedSlice);
 
     const nextIndex = startIndex + numItems;
     const isDone = filteredResults.length <= nextIndex;
@@ -264,9 +262,7 @@ export const getActiveLotsHandler = async (
     countQuery(getFilteredQuery()),
   ]);
 
-  const page = await Promise.all(
-    results.page.map((lot) => toLotSummary(ctx, lot))
-  );
+  const page = await toLotSummaries(ctx, results.page);
 
   const finalTotalCount = totalCount > 1000 ? "1000+" : totalCount;
 
@@ -346,27 +342,36 @@ export const getRelatedLots = query({
       if (related.length >= 4) break;
     }
 
-    return Promise.all(related.map((lot) => toLotSummary(ctx, lot)));
+    return await toLotSummaries(ctx, related);
   },
 });
 
 /**
  * Returns list of active equipment makes for filter dropdowns.
  *
+ * Uses the `by_isActive` index for rows where `isActive` is explicitly `true`.
+ * Rows where `isActive` is `undefined` (legacy) are also considered active and
+ * require a table scan since undefined values are not indexed.
+ *
  * @param ctx - Convex Query context
  * @returns Array of unique equipment makes
  */
 export const getActiveMakesHandler = async (ctx: QueryCtx) => {
-  const metadata = await ctx.db
+  // Query indexed rows: isActive === true
+  const activeMetadata = await ctx.db
     .query("equipmentMetadata")
-    .filter((q) =>
-      q.or(
-        q.eq(q.field("isActive"), true),
-        q.eq(q.field("isActive"), undefined)
-      )
-    )
+    .withIndex("by_isActive", (q) => q.eq("isActive", true))
     .collect();
-  const makes = Array.from(new Set(metadata.map((m) => m.make))).sort();
+
+  // Query unindexed rows: isActive === undefined (legacy data)
+  // This requires a scan, but undefined values are expected to be rare after migration
+  const undefinedMetadata = await ctx.db
+    .query("equipmentMetadata")
+    .filter((q) => q.eq(q.field("isActive"), undefined))
+    .collect();
+
+  const allMetadata = [...activeMetadata, ...undefinedMetadata];
+  const makes = Array.from(new Set(allMetadata.map((m) => m.make))).sort();
   return makes;
 };
 
@@ -592,9 +597,7 @@ export const getSellerListingsHandler = async (
     countQuery(getListingsQuery()),
   ]);
 
-  const page = await Promise.all(
-    results.page.map(async (lot: Doc<"lots">) => await toLotSummary(ctx, lot))
-  );
+  const page = await toLotSummaries(ctx, results.page);
 
   return {
     ...results,

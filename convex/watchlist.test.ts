@@ -21,6 +21,9 @@ vi.mock("./auctions", () => ({
   toLotSummary: vi.fn((_ctx: unknown, a: { _id: unknown }) =>
     Promise.resolve({ _id: a._id, title: "Auction" })
   ),
+  toLotSummaries: vi.fn((_ctx: unknown, lots: { _id: unknown }[]) =>
+    Promise.resolve(lots.map((a) => ({ _id: a._id, title: "Auction" })))
+  ),
   LotSummaryValidator: { fields: {} },
 }));
 
@@ -227,7 +230,7 @@ describe("Watchlist Coverage", () => {
         { paginationOpts: { numItems: 10, cursor: null } }
       );
       expect(result.page).toHaveLength(1);
-      expect(auctions.toLotSummary).toHaveBeenCalled();
+      expect(auctions.toLotSummaries).toHaveBeenCalled();
     });
 
     it("should filter out missing auctions", async () => {

@@ -8,7 +8,7 @@ import {
 import { getAuthenticatedUserId } from "./shared";
 import type * as sharedModule from "./shared";
 import { countQuery } from "../../admin_utils";
-import { toLotSummary } from "../helpers";
+import { toLotSummaries } from "../helpers";
 import type * as helpersModule from "../helpers";
 import type { QueryCtx } from "../../_generated/server";
 
@@ -31,6 +31,7 @@ vi.mock("../helpers", async (importOriginal) => {
   return {
     ...actual,
     toLotSummary: vi.fn(),
+    toLotSummaries: vi.fn(),
   };
 });
 
@@ -97,13 +98,15 @@ describe("listings queries", () => {
   });
 
   describe("getMyListingsHandler", () => {
-    it("maps the page through toLotSummary and returns the count", async () => {
+    it("maps the page through toLotSummaries and returns the count", async () => {
       vi.mocked(getAuthenticatedUserId).mockResolvedValue("seller1");
       vi.mocked(countQuery).mockResolvedValue(1);
-      vi.mocked(toLotSummary).mockResolvedValue({
-        _id: "l1",
-        title: "Mapped lot",
-      } as never);
+      vi.mocked(toLotSummaries).mockResolvedValue([
+        {
+          _id: "l1",
+          title: "Mapped lot",
+        },
+      ] as never);
 
       const chain = makeQueryChain([], {
         page: [{ _id: "l1" }],
@@ -117,9 +120,9 @@ describe("listings queries", () => {
       expect(result.totalCount).toBe(1);
       expect(result.page).toHaveLength(1);
       expect(result.page[0]).toMatchObject({ _id: "l1", title: "Mapped lot" });
-      expect(toLotSummary).toHaveBeenCalledWith(expect.anything(), {
-        _id: "l1",
-      });
+      expect(toLotSummaries).toHaveBeenCalledWith(expect.anything(), [
+        { _id: "l1" },
+      ]);
     });
 
     it("returns an empty page when unauthenticated", async () => {

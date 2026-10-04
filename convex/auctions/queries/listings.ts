@@ -9,8 +9,7 @@ import {
   unauthenticatedPaginatedResult,
   type PaginationOptions,
 } from "./shared";
-import type { Doc } from "../../_generated/dataModel";
-import { toLotSummary } from "../helpers";
+import { toLotSummaries } from "../helpers";
 import { countQuery } from "../../admin_utils";
 
 /**
@@ -41,11 +40,7 @@ export const getMyListingsHandler = async (
     ),
   ]);
 
-  const page = await Promise.all(
-    results.page.map(
-      async (lot: Doc<"lots">) => await toLotSummary(ctx, lot)
-    )
-  );
+  const page = await toLotSummaries(ctx, results.page);
 
   return {
     ...results,

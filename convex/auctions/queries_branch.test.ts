@@ -30,6 +30,9 @@ vi.mock("./helpers", () => ({
   toLotSummary: vi.fn((_ctx, a) =>
     Promise.resolve({ ...a, categoryName: "Unknown" })
   ),
+  toLotSummaries: vi.fn((_ctx, lots) =>
+    Promise.resolve(lots.map((a: { _id: unknown }) => ({ ...a, categoryName: "Unknown" })))
+  ),
   toLotDetail: vi.fn((_ctx, a) =>
     Promise.resolve({ ...a, categoryName: "Unknown" })
   ),

@@ -41,7 +41,7 @@ async function checkDuplicateName(
 ): Promise<void> {
   const existing = await ctx.db
     .query("platformFees")
-    .filter((q) => q.eq(q.field("name"), name))
+    .withIndex("by_name", (q) => q.eq("name", name))
     .filter((q) => q.neq(q.field("isActive"), false))
     .collect();
 

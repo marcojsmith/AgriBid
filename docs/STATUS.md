@@ -31,6 +31,7 @@ Last updated: 2026-10-04
 
 ## Done (last 10)
 
+- 2026-10-04: Batch lot summary lookups, bound the storage sweep, add platformFees/equipmentMetadata indexes (#337) (v0.17.19).
 - 2026-10-04: Paginate notifications with bounded per-stream reads and a compound cursor (#336) (v0.17.18).
 - 2026-10-03: Replace hardcoded palette classes with theme tokens and add a guard test (#300) (v0.17.17).
 - 2026-10-03: Add input length caps and per-user rate limits on write mutations (#298) (v0.17.16).

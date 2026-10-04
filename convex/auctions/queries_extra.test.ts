@@ -28,6 +28,9 @@ vi.mock("./helpers", () => {
     toLotSummary: vi.fn((_ctx: unknown, a: Doc<"lots">) =>
       Promise.resolve({ _id: a._id, title: a.title, status: a.status })
     ),
+    toLotSummaries: vi.fn((_ctx: unknown, lots: Doc<"lots">[]) =>
+      Promise.resolve(lots.map((a) => ({ _id: a._id, title: a.title, status: a.status })))
+    ),
     LotSummaryValidator: v.object({
       _id: v.string(),
       title: v.string(),
