@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Batch lot summary lookups, bound the storage sweep, add platformFees/equipmentMetadata indexes (#337) (0.17.19)
 - Paginate notifications with bounded per-stream reads and a compound cursor (#336) (0.17.18)
 - Replace hardcoded palette classes with theme tokens and add a guard test (#300) (0.17.17)
 - Add input length caps and per-user rate limits on write mutations (#298) (0.17.16)
