@@ -18,7 +18,8 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
   })
     .index("by_make", ["make"])
-    .index("by_category", ["categoryId"]),
+    .index("by_category", ["categoryId"])
+    .index("by_isActive", ["isActive"]),
 
   auctions: defineTable({
     title: v.string(),
@@ -464,6 +465,7 @@ export default defineSchema({
     updatedAt: v.number(),
     deletedAt: v.optional(v.number()),
   })
+    .index("by_name", ["name"])
     .index("by_active", ["isActive"])
     .index("by_appliesTo", ["appliesTo"])
     .index("by_sortOrder", ["sortOrder"]),

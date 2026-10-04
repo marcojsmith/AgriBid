@@ -53,6 +53,7 @@ const createMockQuery = (results: Record<string, unknown>[] = []) => {
     first: vi.fn().mockResolvedValue(results[0] || null),
     unique: vi.fn().mockResolvedValue(results[0] || null),
     collect: vi.fn().mockResolvedValue(results),
+    take: vi.fn().mockResolvedValue(results),
     paginate: vi.fn().mockResolvedValue({
       page: results,
       isDone: true,
@@ -660,6 +661,7 @@ describe("Bidding Coverage", () => {
         filter: vi.fn().mockReturnThis(),
         first: vi.fn().mockResolvedValue(null),
         collect: vi.fn().mockResolvedValue([]),
+        take: vi.fn().mockResolvedValue([]),
       });
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
@@ -685,6 +687,7 @@ describe("Bidding Coverage", () => {
         filter: vi.fn().mockReturnThis(),
         first: vi.fn().mockResolvedValue(null),
         collect: vi.fn().mockResolvedValue([]),
+        take: vi.fn().mockResolvedValue([]),
       });
       await handleNewBid(
         mockCtx as unknown as MutationCtx,

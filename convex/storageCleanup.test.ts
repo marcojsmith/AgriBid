@@ -28,6 +28,11 @@ describe("sweepOrphanedUploads mutation", () => {
     collect: vi.fn().mockResolvedValue(results),
     take: vi.fn((n: number) => Promise.resolve(results.slice(0, n))),
     unique: vi.fn().mockResolvedValue(results[0] || null),
+    paginate: vi.fn().mockResolvedValue({
+      page: results,
+      isDone: true,
+      continueCursor: "",
+    }),
   });
 
   beforeEach(() => {

@@ -107,6 +107,10 @@ export const STORAGE_SWEEP_MIN_AGE_MS = MS_PER_DAY;
 // ancient referenced files occupy every batch forever.
 export const STORAGE_SWEEP_LOOKBACK_MS = 7 * MS_PER_DAY;
 
+// Batch size for scanning reference tables during the orphaned-upload sweep.
+// This bounds the number of documents read from each table per sweep run.
+export const STORAGE_SWEEP_REFERENCE_BATCH_SIZE = 500;
+
 /**
  * Support ticket constants.
  */

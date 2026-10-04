@@ -34,6 +34,7 @@ interface QueryMock {
   first: Mock;
   unique: Mock;
   collect: Mock;
+  take: Mock;
   paginate: Mock;
 }
 
@@ -63,6 +64,7 @@ const createMockQuery = (
     first: vi.fn().mockResolvedValue(results[0] || null),
     unique: vi.fn().mockResolvedValue(results[0] || null),
     collect: vi.fn().mockResolvedValue(results),
+    take: vi.fn().mockResolvedValue(results),
     paginate: vi.fn().mockResolvedValue({
       page: results,
       isDone: true,

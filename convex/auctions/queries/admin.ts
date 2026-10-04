@@ -8,7 +8,7 @@ import {
   LotSummaryValidator,
 } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { toLotSummary } from "../helpers";
+import { toLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { countQuery } from "../../admin_utils";
 import { ADMIN_COLLECTION_CAP } from "../../constants";
@@ -32,7 +32,7 @@ export const getPendingLotsHandler = async (ctx: QueryCtx) => {
   const lots = fetchedLots.slice(0, ADMIN_COLLECTION_CAP);
 
   return {
-    items: await Promise.all(lots.map((lot) => toLotSummary(ctx, lot))),
+    items: await toLotSummaries(ctx, lots),
     isTruncated,
   };
 };
@@ -75,11 +75,7 @@ export const getAllLotsHandler = async (
   return {
     ...lotsResult,
     totalCount,
-    page: await Promise.all(
-      lotsResult.page.map(
-        async (lot: Doc<"lots">) => await toLotSummary(ctx, lot)
-      )
-    ),
+    page: await toLotSummaries(ctx, lotsResult.page),
   };
 };
 

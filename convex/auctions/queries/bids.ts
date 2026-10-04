@@ -11,7 +11,7 @@ import {
   type PaginationOptions,
 } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { BidValidator, toLotSummary } from "../helpers";
+import { BidValidator, toLotSummaries } from "../helpers";
 import { countQuery } from "../../admin_utils";
 import { getAuthenticatedProfile } from "../../lib/auth";
 
@@ -179,12 +179,20 @@ export const getMyBidsHandler = async (
     userId
   );
 
-  const allAuctionSummaries = await Promise.all(
-    Array.from(auctionStatsMap.entries()).map(async ([lotId, stats]) => {
+  const validLots = Array.from(auctionsMap.values()).filter(
+    (lot): lot is Doc<"lots"> => lot !== null
+  );
+
+  const lotSummaries = await toLotSummaries(ctx, validLots);
+  const summariesByLotId = new Map(lotSummaries.map((s) => [s._id, s]));
+
+  const allAuctionSummaries = Array.from(auctionStatsMap.entries())
+    .map(([lotId, stats]) => {
+      const summary = summariesByLotId.get(lotId as Id<"lots">);
+      if (!summary) return null;
       const lot = auctionsMap.get(lotId);
       if (!lot) return null;
 
-      const summary = await toLotSummary(ctx, lot);
       const isWinning =
         lot.status === "assigned" &&
         stats.highestBid === lot.currentPrice &&
@@ -203,11 +211,9 @@ export const getMyBidsHandler = async (
         bidCount: stats.bidCount,
       };
     })
-  );
+    .filter((a): a is NonNullable<typeof a> => a !== null);
 
-  const validAuctions = allAuctionSummaries.filter(
-    (a): a is NonNullable<typeof a> => a !== null
-  );
+  const validAuctions = allAuctionSummaries;
 
   const sortBy = args.sort ?? "recent";
   validAuctions.sort((a, b) => {

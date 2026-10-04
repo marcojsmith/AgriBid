@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import type { QueryCtx } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
 
 export interface RawImages {
@@ -182,16 +182,28 @@ export const BidValidator = v.object({
  *
  * @param ctx - Query context used to resolve image URLs and the parent auction
  * @param lot - Full lot document to convert into a summary
+ * @param preloaded - Optional preloaded lookups for batch processing
+ * @param preloaded.categories - Map of category id to category document
+ * @param preloaded.auctions - Map of auction id to auction document
  * @returns An object with selected lot fields, the parent auction's window, and an `images` object whose entries are resolved URLs for `front`, `engine`, `cabin`, `rear` and an `additional` array of resolved URLs
  */
-export async function toLotSummary(ctx: QueryCtx, lot: Doc<"lots">) {
+export async function toLotSummary(
+  ctx: QueryCtx,
+  lot: Doc<"lots">,
+  preloaded?: {
+    categories: Map<Id<"equipmentCategories">, Doc<"equipmentCategories"> | null>;
+    auctions: Map<Id<"auctions">, Doc<"auctions"> | null>;
+  }
+) {
   const [category, auction] = await Promise.all([
     lot.categoryId
-      ? ctx.db.get("equipmentCategories", lot.categoryId)
-      : Promise.resolve(null),
+      ? preloaded?.categories.get(lot.categoryId) ??
+        ctx.db.get("equipmentCategories", lot.categoryId)
+      : null,
     lot.auctionId
-      ? ctx.db.get("auctions", lot.auctionId)
-      : Promise.resolve(null),
+      ? preloaded?.auctions.get(lot.auctionId) ??
+        ctx.db.get("auctions", lot.auctionId)
+      : null,
   ]);
 
   return {
@@ -227,6 +239,58 @@ export async function toLotSummary(ctx: QueryCtx, lot: Doc<"lots">) {
     conditionChecklist: lot.conditionChecklist,
     images: await resolveImageUrls(ctx.storage, lot.images, { limit: 0 }),
   };
+}
+
+/**
+ * Batch-convert lots to summaries with preloaded lookups.
+ *
+ * Loads all unique category and auction IDs once using `Promise.all`,
+ * then converts each lot using the preloaded maps. This avoids N+1 reads
+ * when converting a list of lots.
+ *
+ * @param ctx - Query context
+ * @param lots - Array of lot documents to convert
+ * @returns Array of lot summaries in the same order as input
+ */
+export async function toLotSummaries(
+  ctx: QueryCtx,
+  lots: Doc<"lots">[]
+): Promise<
+  Awaited<ReturnType<typeof toLotSummary>>[]
+> {
+  const categoryIds = new Set<Id<"equipmentCategories">>();
+  const auctionIds = new Set<Id<"auctions">>();
+
+  for (const lot of lots) {
+    if (lot.categoryId) categoryIds.add(lot.categoryId);
+    if (lot.auctionId) auctionIds.add(lot.auctionId);
+  }
+
+  const [categoryDocs, auctionDocs] = await Promise.all([
+    Promise.all(
+      Array.from(categoryIds, (id) => ctx.db.get("equipmentCategories", id))
+    ),
+    Promise.all(
+      Array.from(auctionIds, (id) => ctx.db.get("auctions", id))
+    ),
+  ]);
+
+  const categories = new Map<Id<"equipmentCategories">, Doc<"equipmentCategories"> | null>();
+  const auctions = new Map<Id<"auctions">, Doc<"auctions"> | null>();
+
+  const categoryIdArray = Array.from(categoryIds);
+  for (let i = 0; i < categoryIdArray.length; i++) {
+    categories.set(categoryIdArray[i], categoryDocs[i] ?? null);
+  }
+
+  const auctionIdArray = Array.from(auctionIds);
+  for (let i = 0; i < auctionIdArray.length; i++) {
+    auctions.set(auctionIdArray[i], auctionDocs[i] ?? null);
+  }
+
+  return Promise.all(
+    lots.map((lot) => toLotSummary(ctx, lot, { categories, auctions }))
+  );
 }
 
 /**
