@@ -8,6 +8,7 @@ import {
   type QueryCtx,
 } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
+import { parseOffsetCursor } from "../lib/pagination";
 import {
   countQuery,
   countUsers,
@@ -163,9 +164,7 @@ export const getFinancialStats = query({
       }
 
       const numItems = args.salesPaginationOpts?.numItems ?? 100;
-      const cursor = args.salesPaginationOpts?.cursor ?? null;
-      const parsed = cursor ? parseInt(cursor, 10) : 0;
-      const startIndex = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+      const startIndex = parseOffsetCursor(args.salesPaginationOpts?.cursor);
 
       const [recentSoldLots, totalSoldCount, feeCounter] = await Promise.all([
         ctx.db

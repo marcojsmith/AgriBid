@@ -5,6 +5,7 @@ import type { PaginationOptions } from "convex/server";
 import { query, paginationOptsValidator, type QueryCtx } from "./shared";
 import { LotSummaryValidator, toLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
+import { parseOffsetCursor } from "../../lib/pagination";
 import { resolveUrlCached } from "../../image_cache";
 import { countQuery } from "../../admin_utils";
 import {
@@ -206,8 +207,7 @@ export const getPublishedAuctionsHandler = async (
   );
 
   const numItems = args.paginationOpts.numItems;
-  const cursor = args.paginationOpts.cursor;
-  const startIndex = cursor ? parseInt(cursor, 10) : 0;
+  const startIndex = parseOffsetCursor(args.paginationOpts.cursor);
 
   const paginatedSlice = all.slice(startIndex, startIndex + numItems);
   const page = await Promise.all(
@@ -227,7 +227,9 @@ export const getPublishedAuctionsHandler = async (
 export const getPublishedAuctions = query({
   args: {
     paginationOpts: paginationOptsValidator,
-    status: v.optional(v.union(v.literal("active"), v.literal("closed"), v.literal("all"))),
+    status: v.optional(
+      v.union(v.literal("active"), v.literal("closed"), v.literal("all"))
+    ),
   },
   returns: v.object({
     page: v.array(AuctionValidator),

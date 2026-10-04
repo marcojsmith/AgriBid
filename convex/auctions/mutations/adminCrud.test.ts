@@ -25,11 +25,12 @@ vi.mock("../../lib/auth", () => ({
   resolveUserId: vi.fn(),
 }));
 
-const { settleLot } = vi.hoisted(() => ({
+const { settleLot, findWinningBid } = vi.hoisted(() => ({
   settleLot: vi.fn().mockResolvedValue("unsold"),
+  findWinningBid: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../internal", () => ({ settleLot }));
+vi.mock("../internal", () => ({ settleLot, findWinningBid }));
 
 interface MockDb {
   get: ReturnType<typeof vi.fn>;
@@ -90,6 +91,7 @@ const baseAuction = {
 describe("Auction container CRUD mutations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findWinningBid.mockResolvedValue(undefined);
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "admin1",
       userId: "admin1",
@@ -221,10 +223,17 @@ describe("Auction container CRUD mutations", () => {
       mockCtx.db.get.mockResolvedValue(
         baseAuction as unknown as Doc<"auctions">
       );
-      mockCtx.db.query.mockImplementation((table: string) => {
-        if (table === "lots") return makeQuery([assignedLot]);
-        return makeQuery([{ amount: 1500, timestamp: 1500, status: "valid" }]);
-      });
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
+      );
+      findWinningBid.mockResolvedValue({
+        _id: "b1",
+        lotId: "l1",
+        bidderId: "u1",
+        amount: 1500,
+        timestamp: 1500,
+        status: "valid",
+      } as unknown as Doc<"bids">);
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -293,17 +302,13 @@ describe("Auction container CRUD mutations", () => {
       expect(lotsQuery.indexBuilder.eq).toHaveBeenCalledWith("auctionId", "a1");
     });
 
-    it("scopes bids to the lot being checked and keeps the earliest tie", async () => {
+    it("scopes the winning-bid lookup to each assigned lot", async () => {
       const assignedLot = {
         _id: "l1",
         status: "assigned",
         auctionId: "a1",
       };
-      const bidsQuery = makeQuery([
-        { amount: 100, timestamp: 1400, status: "valid" },
-        { amount: 100, timestamp: 1500, status: "valid" },
-        { amount: 100, timestamp: 1300, status: "voided" },
-      ]);
+      const bidsQuery = makeQuery([]);
       mockCtx.db.get.mockResolvedValue(
         baseAuction as unknown as Doc<"auctions">
       );
@@ -311,22 +316,47 @@ describe("Auction container CRUD mutations", () => {
         table === "lots" ? makeQuery([assignedLot]) : bidsQuery
       );
 
-      // The earliest of the tied valid bids (timestamp 1400) wins, so a start
-      // time before it stays legal.
+      await updateAuctionHandler(mockCtx as unknown as MutationCtx, {
+        auctionId: "a1" as Id<"auctions">,
+        startTime: 500,
+        title: "Renamed",
+      });
+
+      expect(bidsQuery.withIndex).not.toHaveBeenCalled();
+      expect(findWinningBid).toHaveBeenCalledTimes(1);
+      expect(findWinningBid).toHaveBeenCalledWith(mockCtx, "l1");
+    });
+
+    it("checks every assigned lot's winning bid, not just the first", async () => {
+      mockCtx.db.get.mockResolvedValue(
+        baseAuction as unknown as Doc<"auctions">
+      );
+      mockCtx.db.query.mockImplementation((table: string) =>
+        table === "lots"
+          ? makeQuery([
+              { _id: "l1", status: "assigned", auctionId: "a1" },
+              { _id: "l2", status: "assigned", auctionId: "a1" },
+            ])
+          : makeQuery([])
+      );
+      findWinningBid
+        .mockResolvedValueOnce({ timestamp: 1400 } as unknown as Doc<"bids">)
+        .mockResolvedValueOnce({ timestamp: 1500 } as unknown as Doc<"bids">);
+
+      // Both lots' winning bids predate nothing above 1350, so the move stays
+      // legal — but only because every assigned lot is checked.
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
         { auctionId: "a1" as Id<"auctions">, startTime: 1350 }
       );
 
       expect(result.success).toBe(true);
-      expect(bidsQuery.withIndex).toHaveBeenCalledWith(
-        "by_lot",
-        expect.any(Function)
-      );
-      expect(bidsQuery.indexBuilder.eq).toHaveBeenCalledWith("lotId", "l1");
+      expect(findWinningBid).toHaveBeenCalledTimes(2);
+      expect(findWinningBid).toHaveBeenNthCalledWith(1, mockCtx, "l1");
+      expect(findWinningBid).toHaveBeenNthCalledWith(2, mockCtx, "l2");
     });
 
-    it("keeps the higher bid when amounts differ", async () => {
+    it("rejects a startTime later than the highest accepted bid", async () => {
       const assignedLot = {
         _id: "l1",
         status: "assigned",
@@ -336,14 +366,16 @@ describe("Auction container CRUD mutations", () => {
         baseAuction as unknown as Doc<"auctions">
       );
       mockCtx.db.query.mockImplementation((table: string) =>
-        table === "lots"
-          ? makeQuery([assignedLot])
-          : makeQuery([
-              { amount: 100, timestamp: 1200, status: "valid" },
-              { amount: 300, timestamp: 1500, status: "valid" },
-              { amount: 200, timestamp: 1400, status: "valid" },
-            ])
+        table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
       );
+      findWinningBid.mockResolvedValue({
+        _id: "b1",
+        lotId: "l1",
+        bidderId: "u1",
+        amount: 300,
+        timestamp: 1500,
+        status: "valid",
+      } as unknown as Doc<"bids">);
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -365,13 +397,16 @@ describe("Auction container CRUD mutations", () => {
         baseAuction as unknown as Doc<"auctions">
       );
       mockCtx.db.query.mockImplementation((table: string) =>
-        table === "lots"
-          ? makeQuery([assignedLot])
-          : makeQuery([
-              { amount: 300, timestamp: 1500, status: "valid" },
-              { amount: 100, timestamp: 1400, status: "valid" },
-            ])
+        table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
       );
+      findWinningBid.mockResolvedValue({
+        _id: "b1",
+        lotId: "l1",
+        bidderId: "u1",
+        amount: 300,
+        timestamp: 1500,
+        status: "valid",
+      } as unknown as Doc<"bids">);
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
@@ -381,7 +416,7 @@ describe("Auction container CRUD mutations", () => {
       expect(result.success).toBe(true);
     });
 
-    it("ignores voided bids when validating an assigned lot", async () => {
+    it("ignores an assigned lot whose bids are all voided", async () => {
       const assignedLot = {
         _id: "l1",
         status: "assigned",
@@ -391,10 +426,9 @@ describe("Auction container CRUD mutations", () => {
         baseAuction as unknown as Doc<"auctions">
       );
       mockCtx.db.query.mockImplementation((table: string) =>
-        table === "lots"
-          ? makeQuery([assignedLot])
-          : makeQuery([{ amount: 900, timestamp: 1900, status: "voided" }])
+        table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
       );
+      findWinningBid.mockResolvedValue(undefined);
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,

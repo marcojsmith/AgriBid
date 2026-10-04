@@ -10,6 +10,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { getAuthenticatedUserId } from "./lib/auth";
+import { parseOffsetCursor } from "./lib/pagination";
 import { MS_PER_MINUTE, MAX_MESSAGE_LENGTH } from "./constants";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -335,9 +336,7 @@ export const getConversationsHandler = async (
     (a, b) => b.lastMessageAt - a.lastMessageAt
   );
 
-  const startIndex = args.paginationOpts.cursor
-    ? parseInt(args.paginationOpts.cursor, 10)
-    : 0;
+  const startIndex = parseOffsetCursor(args.paginationOpts.cursor);
   const end = startIndex + args.paginationOpts.numItems;
   const isDone = end >= sorted.length;
   const continueCursor = isDone ? "" : String(end);

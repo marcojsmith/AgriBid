@@ -286,6 +286,30 @@ describe("Auction event queries", () => {
       expect(secondPage.continueCursor).toBe("");
     });
 
+    it("restarts from the first page for an unusable offset cursor", async () => {
+      vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
+
+      const rows = [
+        { ...auctionRow, _id: "a1" as Id<"auctions">, startTime: 3000 },
+        { ...auctionRow, _id: "a2" as Id<"auctions">, startTime: 2000 },
+      ];
+      const mock = makePublishedMockCtx(rows, []);
+      mockCtx = mock as unknown as typeof mockCtx;
+
+      // A cursor that is not a number used to yield a NaN offset: an empty page
+      // with a continuation cursor of "NaN" that never advanced.
+      for (const cursor of ["abc", "-1"]) {
+        const result = await getPublishedAuctionsHandler(
+          mockCtx as unknown as QueryCtx,
+          { paginationOpts: { numItems: 2, cursor } }
+        );
+
+        expect(result.page.map((r) => r._id)).toEqual(["a1", "a2"]);
+        expect(result.isDone).toBe(true);
+        expect(result.continueCursor).toBe("");
+      }
+    });
+
     it("filters by status='active' returning only published auctions", async () => {
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
 

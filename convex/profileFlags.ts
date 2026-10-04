@@ -9,6 +9,7 @@ import {
   resolveUserId,
 } from "./lib/auth";
 import { logAudit } from "./admin_utils";
+import { resolveDisplayNames } from "./lib/userNames";
 import {
   MS_PER_DAY,
   MAX_FLAG_DETAILS_LENGTH,
@@ -149,30 +150,15 @@ export const getAllPendingProfileFlagsHandler = async (ctx: QueryCtx) => {
     .order("desc")
     .collect();
 
-  const uniqueReporterIds = Array.from(
-    new Set(flags.map((f: Doc<"profileFlags">) => f.reporterId))
-  );
-  const reporterNames = new Map<string, string>();
-  const uniqueReportedUserIds = Array.from(
-    new Set(flags.map((f: Doc<"profileFlags">) => f.reportedUserId))
-  );
-  const reportedUserNames = new Map<string, string>();
-
-  await Promise.all([
-    ...uniqueReporterIds.map(async (reporterId) => {
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", reporterId))
-        .unique();
-      reporterNames.set(reporterId, profile?.name ?? "Unknown User");
-    }),
-    ...uniqueReportedUserIds.map(async (reportedUserId) => {
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", reportedUserId))
-        .unique();
-      reportedUserNames.set(reportedUserId, profile?.name ?? "Unknown User");
-    }),
+  const [reporterNames, reportedUserNames] = await Promise.all([
+    resolveDisplayNames(
+      ctx,
+      flags.map((f: Doc<"profileFlags">) => f.reporterId)
+    ),
+    resolveDisplayNames(
+      ctx,
+      flags.map((f: Doc<"profileFlags">) => f.reportedUserId)
+    ),
   ]);
 
   return flags.map((flag: Doc<"profileFlags">) => ({

@@ -10,6 +10,7 @@ import {
   LotDetailValidator,
 } from "../helpers";
 import { getAuthenticatedProfile } from "../../lib/auth";
+import { parseOffsetCursor } from "../../lib/pagination";
 import { countQuery } from "../../admin_utils";
 import { getSellerRatingSummary } from "../../reviews";
 import { MAX_RESULTS_CAP } from "../../constants";
@@ -236,8 +237,7 @@ export const getActiveLotsHandler = async (
 
     // Apply manual pagination to the filtered results
     const numItems = args.paginationOpts.numItems;
-    const cursor = args.paginationOpts.cursor;
-    const startIndex = cursor ? parseInt(cursor, 10) : 0;
+    const startIndex = parseOffsetCursor(args.paginationOpts.cursor);
 
     const paginatedSlice = filteredResults.slice(
       startIndex,

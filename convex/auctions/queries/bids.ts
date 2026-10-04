@@ -15,6 +15,8 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import { BidValidator, toLotSummaries } from "../helpers";
 import { countQuery } from "../../admin_utils";
 import { getAuthenticatedProfile } from "../../lib/auth";
+import { parseOffsetCursor } from "../../lib/pagination";
+import { resolveDisplayNames } from "../../lib/userNames";
 
 /** Maximum bids to read when determining distinct lots for a page */
 const MAX_BIDS_PER_PAGE = 100;
@@ -172,7 +174,6 @@ export const getLotBidsHandler = async (
   const uniqueBidderIds = Array.from(
     new Set(bids.map((b: Doc<"bids">) => b.bidderId))
   );
-  const bidderNames = new Map<string, string>();
 
   const lot = await ctx.db.get("lots", args.lotId);
   const auth = await getAuthenticatedProfile(ctx);
@@ -181,30 +182,21 @@ export const getLotBidsHandler = async (
   // with an unauthenticated caller must never mark the caller as the seller.
   const isSeller = Boolean(lot && lot.sellerId === auth?.userId);
 
-  await Promise.all(
-    uniqueBidderIds.map(async (bidderId) => {
-      if (!bidderId) {
-        bidderNames.set(bidderId, "Anonymous");
-        return;
-      }
-
-      if (!isAdmin && !isSeller) {
-        bidderNames.set(bidderId, "Bidder");
-        return;
-      }
-
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", bidderId))
-        .unique();
-
-      if (profile) {
-        bidderNames.set(bidderId, profile.name ?? "Anonymous");
-      } else {
-        bidderNames.set(bidderId, "Anonymous");
-      }
-    })
-  );
+  // Only admins and the seller may see who bid; everyone else gets a single
+  // shared placeholder, so no profile is read for them at all.
+  const bidderNames = new Map<string, string>();
+  if (isAdmin || isSeller) {
+    const resolved = await resolveDisplayNames(ctx, uniqueBidderIds, {
+      fallback: "Anonymous",
+    });
+    for (const [bidderId, bidderName] of resolved) {
+      bidderNames.set(bidderId, bidderName);
+    }
+  } else {
+    for (const bidderId of uniqueBidderIds) {
+      if (bidderId) bidderNames.set(bidderId, "Bidder");
+    }
+  }
 
   const page = bids.map((bid: Doc<"bids">) => ({
     ...bid,
@@ -650,13 +642,10 @@ async function getMyBidsEnding(
   });
 
   const totalCount = allAuctionSummaries.length;
-  let startIndex = 0;
-  if (paginationOpts.cursor) {
-    const parsed = parseInt(paginationOpts.cursor, 10);
-    if (!isNaN(parsed) && parsed >= 0) {
-      startIndex = Math.min(parsed, totalCount);
-    }
-  }
+  const startIndex = Math.min(
+    parseOffsetCursor(paginationOpts.cursor),
+    totalCount
+  );
 
   const page = allAuctionSummaries.slice(startIndex, startIndex + numItems);
   const isDone = startIndex + numItems >= totalCount;
