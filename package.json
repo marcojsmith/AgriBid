@@ -53,7 +53,7 @@
   },
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^4.0.0",
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^10.0.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/eslint-plugin-security": "^3.0.1",
