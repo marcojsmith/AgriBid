@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { closeLotEarlyHandler } from "./mutations/publish";
 import * as auth from "../lib/auth";
 import * as adminUtils from "../admin_utils";
+import * as internal from "./internal";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
@@ -21,6 +22,13 @@ vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
+vi.mock("./internal", () => ({
+  findWinningBid: vi.fn(),
+  isReserveMet: vi.fn(),
+  calculateAndRecordFees: vi.fn(),
+  logAuctionSettlementActivity: vi.fn(),
+}));
+
 interface MockCtx {
   db: {
     get: ReturnType<typeof vi.fn>;
@@ -36,7 +44,9 @@ interface MockCtx {
     getUserIdentity: ReturnType<typeof vi.fn>;
   };
   storage: unknown;
-  scheduler: unknown;
+  scheduler: {
+    runAfter: ReturnType<typeof vi.fn>;
+  };
   runMutation: unknown;
   runQuery: unknown;
   runAction: unknown;
@@ -58,7 +68,7 @@ describe("closeLotEarly mutation", () => {
     vi.resetAllMocks();
   });
 
-  const setupMockCtx = (mockQuery: unknown = {}) => {
+  const setupMockCtx = () => {
     return {
       db: {
         get: vi.fn(),
@@ -66,12 +76,15 @@ describe("closeLotEarly mutation", () => {
         insert: vi.fn(),
         replace: vi.fn(),
         delete: vi.fn(),
-        query: vi.fn(() => mockQuery),
+        query: vi.fn(),
         system: {},
         normalizeId: vi.fn((_table: string, id: string) => id),
       },
       auth: {
         getUserIdentity: vi.fn(),
+      },
+      scheduler: {
+        runAfter: vi.fn(),
       },
     } as unknown as MockCtx;
   };
@@ -87,14 +100,17 @@ describe("closeLotEarly mutation", () => {
       reservePrice: 1000,
       title: "Test Auction",
     };
-    const bids = [{ bidderId, amount: 1100, timestamp: 100, status: "placed" }];
-
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockResolvedValue(bids),
+    const winningBid = {
+      _id: "bid1" as Id<"bids">,
+      lotId,
+      bidderId,
+      amount: 1100,
+      timestamp: 100,
+      status: "valid" as const,
+      _creationTime: 100,
     };
 
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
       authorized: true,
@@ -105,6 +121,8 @@ describe("closeLotEarly mutation", () => {
       _id: "admin1",
     } as MockUser);
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
+    vi.mocked(internal.findWinningBid).mockResolvedValue(winningBid);
+    vi.mocked(internal.isReserveMet).mockReturnValue(true);
 
     const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
@@ -126,10 +144,9 @@ describe("closeLotEarly mutation", () => {
       "active",
       -1
     );
-    expect(mockCtx.db.query).toHaveBeenCalledWith("bids");
-    expect(mockQuery.withIndex).toHaveBeenCalledWith(
-      "by_lot",
-      expect.any(Function)
+    expect(internal.findWinningBid).toHaveBeenCalledWith(
+      mockCtx as unknown as MutationCtx,
+      lotId
     );
   });
 
@@ -141,21 +158,24 @@ describe("closeLotEarly mutation", () => {
       reservePrice: 2000,
       title: "Test Auction",
     };
-    const bids = [
-      { bidderId: "bidder123", amount: 1500, timestamp: 100, status: "placed" },
-    ];
-
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockResolvedValue(bids),
+    const winningBid = {
+      _id: "bid1" as Id<"bids">,
+      lotId,
+      bidderId: "bidder123",
+      amount: 1500,
+      timestamp: 100,
+      status: "valid" as const,
+      _creationTime: 100,
     };
 
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
       authorized: true,
       user: { _id: "admin", userId: "admin" },
     });
+    vi.mocked(internal.findWinningBid).mockResolvedValue(winningBid);
+    vi.mocked(internal.isReserveMet).mockReturnValue(false);
 
     const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
@@ -209,7 +229,6 @@ describe("closeLotEarly mutation", () => {
   it("should handle tie-break - earlier bid wins when amounts are equal", async () => {
     const lotId = "lot123" as Id<"lots">;
     const earlierBidderId = "bidder_earlier";
-    const laterBidderId = "bidder_later";
     const lotDoc = {
       _id: lotId,
       status: "assigned",
@@ -218,27 +237,17 @@ describe("closeLotEarly mutation", () => {
       reservePrice: 1000,
       title: "Test Auction",
     };
-    const bids = [
-      {
-        bidderId: laterBidderId,
-        amount: 1500,
-        timestamp: 200,
-        status: "placed",
-      },
-      {
-        bidderId: earlierBidderId,
-        amount: 1500,
-        timestamp: 100,
-        status: "placed",
-      },
-    ];
-
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockResolvedValue(bids),
+    const winningBid = {
+      _id: "bid1" as Id<"bids">,
+      lotId,
+      bidderId: earlierBidderId,
+      amount: 1500,
+      timestamp: 100,
+      status: "valid" as const,
+      _creationTime: 100,
     };
 
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
       authorized: true,
@@ -249,6 +258,8 @@ describe("closeLotEarly mutation", () => {
       _id: "admin1",
     } as MockUser);
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
+    vi.mocked(internal.findWinningBid).mockResolvedValue(winningBid);
+    vi.mocked(internal.isReserveMet).mockReturnValue(true);
 
     const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
@@ -297,17 +308,13 @@ describe("closeLotEarly mutation", () => {
       title: "Test Auction",
     };
 
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockResolvedValue([]),
-    };
-
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
       authorized: true,
       user: { _id: "admin", userId: "admin" },
     });
+    vi.mocked(internal.findWinningBid).mockResolvedValue(undefined);
 
     const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,
@@ -331,27 +338,17 @@ describe("closeLotEarly mutation", () => {
       reservePrice: 1000,
       title: "Test Auction",
     };
-    const bids = [
-      {
-        bidderId: "voided_bidder",
-        amount: 2000,
-        timestamp: 100,
-        status: "voided",
-      },
-      {
-        bidderId: validBidderId,
-        amount: 1500,
-        timestamp: 200,
-        status: "placed",
-      },
-    ];
-
-    const mockQuery = {
-      withIndex: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockResolvedValue(bids),
+    const winningBid = {
+      _id: "bid1" as Id<"bids">,
+      lotId,
+      bidderId: validBidderId,
+      amount: 1500,
+      timestamp: 200,
+      status: "valid" as const,
+      _creationTime: 200,
     };
 
-    mockCtx = setupMockCtx(mockQuery);
+    mockCtx = setupMockCtx();
     mockCtx.db.get.mockResolvedValue(lotDoc);
     vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
       authorized: true,
@@ -362,6 +359,8 @@ describe("closeLotEarly mutation", () => {
       _id: "admin1",
     } as MockUser);
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
+    vi.mocked(internal.findWinningBid).mockResolvedValue(winningBid);
+    vi.mocked(internal.isReserveMet).mockReturnValue(true);
 
     const result = await closeLotEarlyHandler(
       mockCtx as unknown as MutationCtx,

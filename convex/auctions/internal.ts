@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { updateCounter, logAudit } from "../admin_utils";
 import { logActivity } from "../userActivity";
 import { deleteAuctionImages, safeDelete } from "../lib/storage";
@@ -8,8 +9,9 @@ import {
   DRAFT_RETENTION_MS,
   CLEANUP_BATCH_SIZE,
   DRAFT_RETENTION_DAYS,
+  SETTLEMENT_BATCH_SIZE,
 } from "../constants";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
 /**
@@ -20,6 +22,54 @@ export interface ResolvedDefaultFee {
   appliedTo: "buyer" | "seller";
   rate: number;
   calculatedAmount: number;
+}
+
+/**
+ * Find the highest valid (non-voided) bid for a lot using the by_lot_amount
+ * index in descending order. Tie-breaks by earlier timestamp.
+ *
+ * @param ctx - The mutation context.
+ * @param lotId - The lot to find the winning bid for.
+ * @returns The highest valid bid document, or undefined if none.
+ */
+export async function findWinningBid(
+  ctx: MutationCtx,
+  lotId: Id<"lots">
+): Promise<Doc<"bids"> | undefined> {
+  let highestValidBid: Doc<"bids"> | undefined;
+  let highestAmount = -Infinity;
+  let earliestTimestamp = Infinity;
+
+  for await (const bid of ctx.db
+    .query("bids")
+    .withIndex("by_lot_amount", (q) => q.eq("lotId", lotId))
+    .order("desc")) {
+    if (bid.status === "voided") continue;
+    if (bid.amount < highestAmount) break;
+
+    if (
+      bid.amount > highestAmount ||
+      (bid.amount === highestAmount && bid.timestamp < earliestTimestamp)
+    ) {
+      highestValidBid = bid;
+      highestAmount = bid.amount;
+      earliestTimestamp = bid.timestamp;
+    }
+  }
+
+  return highestValidBid;
+}
+
+/**
+ * Check if the reserve price is met given a bid amount.
+ * Used to unify reserve logic between settlement and early closure.
+ *
+ * @param bidAmount - The winning bid amount (must be >= reserve for sale).
+ * @param reservePrice - The lot's reserve price.
+ * @returns True if the reserve is met, false otherwise.
+ */
+export function isReserveMet(bidAmount: number, reservePrice: number): boolean {
+  return bidAmount >= reservePrice;
 }
 
 /**
@@ -74,6 +124,9 @@ export function computeResolvedDefaultFees(
  * `resolvedSellerCommissionPct`) are also calculated and included in the audit
  * total, but are not persisted to `lotFees` — see `computeResolvedDefaultFees`.
  *
+ * Updates aggregate fee counters (buyerTotal, sellerTotal) for efficient
+ * dashboard statistics without full-table scans.
+ *
  * @param ctx - The mutation context for database operations.
  * @param lot - The lot document to calculate fees for.
  * @param salesVolume - Optional override for the sale price (e.g. actual winning amount).
@@ -100,6 +153,8 @@ export async function calculateAndRecordFees(
 
   const now = Date.now();
   let totalFees = 0;
+  let buyerFeesAdded = 0;
+  let sellerFeesAdded = 0;
 
   for (const fee of activeFees) {
     let calculatedAmount = 0;
@@ -133,6 +188,7 @@ export async function calculateAndRecordFees(
           createdAt: now,
         });
         totalFees += calculatedAmount;
+        sellerFeesAdded += calculatedAmount;
       }
     }
 
@@ -157,12 +213,25 @@ export async function calculateAndRecordFees(
           createdAt: now,
         });
         totalFees += calculatedAmount;
+        buyerFeesAdded += calculatedAmount;
       }
     }
   }
 
   for (const fee of defaultFees) {
     totalFees += fee.calculatedAmount;
+    if (fee.appliedTo === "buyer") {
+      buyerFeesAdded += fee.calculatedAmount;
+    } else {
+      sellerFeesAdded += fee.calculatedAmount;
+    }
+  }
+
+  if (buyerFeesAdded > 0) {
+    await updateCounter(ctx, "lotFees", "buyerTotal", buyerFeesAdded);
+  }
+  if (sellerFeesAdded > 0) {
+    await updateCounter(ctx, "lotFees", "sellerTotal", sellerFeesAdded);
   }
 
   if (totalFees > 0) {
@@ -232,32 +301,13 @@ export async function settleLot(
   lot: Doc<"lots">,
   now: number
 ): Promise<"sold" | "unsold"> {
-  const bids = await ctx.db
-    .query("bids")
-    .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
-    .collect();
+  const winningBid = await findWinningBid(ctx, lot._id);
+  const hasBids = winningBid !== undefined;
+  const reserveMet =
+    hasBids && isReserveMet(winningBid.amount, lot.reservePrice);
+  const finalStatus: "sold" | "unsold" = reserveMet ? "sold" : "unsold";
 
-  // Filter out voided or invalid bids so they don't affect settlement
-  const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
-
-  const hasBids = validBids.length > 0;
-  const reserveMet = lot.currentPrice >= lot.reservePrice;
-  const finalStatus: "sold" | "unsold" =
-    hasBids && reserveMet ? "sold" : "unsold";
-
-  // Find the highest valid bid to determine the winner.
-  // Tie-break: earlier bid wins if amounts are equal.
-  const winningBid =
-    finalStatus === "sold"
-      ? validBids.reduce((prev: Doc<"bids">, current: Doc<"bids">) => {
-          if (current.amount > prev.amount) return current;
-          if (current.amount === prev.amount) {
-            return current.timestamp < prev.timestamp ? current : prev;
-          }
-          return prev;
-        })
-      : undefined;
-  const winnerId = winningBid?.bidderId;
+  const winnerId = finalStatus === "sold" ? winningBid?.bidderId : undefined;
 
   await ctx.db.patch("lots", lot._id, {
     status: finalStatus,
@@ -271,7 +321,7 @@ export async function settleLot(
 
   if (finalStatus === "sold" && winningBid) {
     await updateCounter(ctx, "lots", "soldCount", 1);
-    await updateCounter(ctx, "lots", "salesVolume", lot.currentPrice);
+    await updateCounter(ctx, "lots", "salesVolume", winningBid.amount);
     await calculateAndRecordFees(ctx, lot, winningBid.amount);
   }
 
@@ -329,36 +379,46 @@ async function closeCompletedAuctions(
  * `auctionId` so admins can filter `status === "unsold"` and re-approve/reassign.
  * Containers past their window with no remaining assigned lots are closed.
  *
+ * Processes lots in bounded batches of SETTLEMENT_BATCH_SIZE. If more expired
+ * lots remain, reschedules itself immediately via the scheduler.
+ *
  * @param ctx - The mutation context.
- * @returns Promise<void>
+ * @returns Promise<{ settled: number; hasMore: boolean }>
  */
 export const settleExpiredLotsHandler = async (ctx: MutationCtx) => {
   const now = Date.now();
   const assignedLots = await ctx.db
     .query("lots")
     .withIndex("by_status", (q) => q.eq("status", "assigned"))
-    .collect();
+    .take(SETTLEMENT_BATCH_SIZE + 1);
 
-  for (const lot of assignedLots) {
+  const hasMore = assignedLots.length > SETTLEMENT_BATCH_SIZE;
+  const batch = hasMore
+    ? assignedLots.slice(0, SETTLEMENT_BATCH_SIZE)
+    : assignedLots;
+
+  let settled = 0;
+  for (const lot of batch) {
     const auction = lot.auctionId
       ? await ctx.db.get("auctions", lot.auctionId)
       : null;
 
-    // Only settle lots whose parent auction is live and whose effective
-    // end time (anti-snipe extension included) has passed.
     const effectiveLotEndTime = lot.extendedEndTime ?? auction?.endTime ?? 0;
     if (auction?.status !== "published" || effectiveLotEndTime > now) {
       continue;
     }
 
     await settleLot(ctx, lot, now);
+    settled++;
   }
 
-  // Lifecycle hygiene: retire published containers once their window has
-  // elapsed and every lot in them has settled.
   await closeCompletedAuctions(ctx, now);
 
-  return null;
+  if (hasMore) {
+    await ctx.scheduler.runAfter(0, internal.auctions.settleExpiredLots, {});
+  }
+
+  return { settled, hasMore };
 };
 
 /**
@@ -366,7 +426,7 @@ export const settleExpiredLotsHandler = async (ctx: MutationCtx) => {
  */
 export const settleExpiredLots = internalMutation({
   args: {},
-  returns: v.null(),
+  returns: v.object({ settled: v.number(), hasMore: v.boolean() }),
   handler: settleExpiredLotsHandler,
 });
 

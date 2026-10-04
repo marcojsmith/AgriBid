@@ -7,6 +7,7 @@ import type { MutationCtx } from "./_generated/server";
 
 vi.mock("./_generated/server", () => ({
   mutation: vi.fn((m: unknown) => m),
+  internalMutation: vi.fn((m: unknown) => m),
 }));
 
 vi.mock("./lib/auth", async (importOriginal) => ({
