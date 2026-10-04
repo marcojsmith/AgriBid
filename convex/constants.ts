@@ -84,6 +84,9 @@ export const DRAFT_RETENTION_MS = DRAFT_RETENTION_DAYS * MS_PER_DAY;
 // Batch size for background cleanup tasks.
 export const CLEANUP_BATCH_SIZE = 100;
 
+// Batch size for settlement cron to process expired lots per run.
+export const SETTLEMENT_BATCH_SIZE = 50;
+
 // Safety cap for admin-only moderation/management views that would otherwise
 // `.collect()` an entire status bucket unbounded.
 export const ADMIN_COLLECTION_CAP = 500;

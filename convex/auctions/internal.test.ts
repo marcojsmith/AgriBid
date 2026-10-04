@@ -7,6 +7,7 @@ import {
 } from "./internal";
 import * as adminUtils from "../admin_utils";
 import type { MutationCtx } from "../_generated/server";
+import type { Id, Doc } from "../_generated/dataModel";
 
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
@@ -27,6 +28,25 @@ interface MockCtxType {
   auth: {
     getUserIdentity: ReturnType<typeof vi.fn>;
   };
+  scheduler: {
+    runAfter: ReturnType<typeof vi.fn>;
+  };
+}
+
+function createAsyncIterable<T>(items: T[]): AsyncIterable<T> {
+  return {
+    [Symbol.asyncIterator]() {
+      let index = 0;
+      return {
+        next: () => {
+          if (index < items.length) {
+            return Promise.resolve({ done: false, value: items[index++] });
+          }
+          return Promise.resolve({ done: true, value: undefined });
+        },
+      };
+    },
+  };
 }
 
 interface IndexQuery {
@@ -43,6 +63,8 @@ interface QueryMock {
   collect: ReturnType<typeof vi.fn>;
   first: ReturnType<typeof vi.fn>;
   unique: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  take: ReturnType<typeof vi.fn>;
 }
 
 const mockQuery = (): QueryMock => {
@@ -63,6 +85,8 @@ const mockQuery = (): QueryMock => {
     collect: vi.fn().mockResolvedValue([]),
     first: vi.fn().mockResolvedValue(null),
     unique: vi.fn().mockResolvedValue(null),
+    order: vi.fn().mockReturnThis(),
+    take: vi.fn().mockResolvedValue([]),
   };
   return query;
 };
@@ -70,14 +94,6 @@ const mockQuery = (): QueryMock => {
 describe("Internal Logic Coverage", () => {
   let mockCtx: MockCtxType;
 
-  /**
-   * Builds a table-aware query mock so each `ctx.db.query(table)` call returns
-   * sensible results for the table being read, independent of call order.
-   * @param lots - Rows returned for the `lots` table.
-   * @param bids - Rows returned for the `bids` table.
-   * @param fees - Rows returned for the `platformFees` table.
-   * @param existingFee - Row returned for the `lotFees` table lookup.
-   */
   const setupTableQuery = (
     lots: Record<string, unknown>[] = [],
     bids: Record<string, unknown>[] = [],
@@ -86,24 +102,36 @@ describe("Internal Logic Coverage", () => {
   ) => {
     mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
       if (table === "lots") {
-        return Object.assign(mockQuery(), {
-          collect: vi.fn().mockResolvedValue(lots),
-        });
+        const q = mockQuery();
+        q.collect = vi.fn().mockResolvedValue(lots);
+        q.take = vi.fn().mockResolvedValue(lots);
+        return q;
       }
       if (table === "bids") {
-        return Object.assign(mockQuery(), {
-          collect: vi.fn().mockResolvedValue(bids),
-        });
+        const q = mockQuery();
+        const orderedBids = [...bids].sort(
+          (a, b) => (b.amount as number) - (a.amount as number)
+        );
+        q.order = vi.fn(() =>
+          createAsyncIterable(orderedBids as Doc<"bids">[])
+        );
+        q.collect = vi.fn().mockResolvedValue(bids);
+        return q;
       }
       if (table === "platformFees") {
-        return Object.assign(mockQuery(), {
-          collect: vi.fn().mockResolvedValue(fees),
-        });
+        const q = mockQuery();
+        q.collect = vi.fn().mockResolvedValue(fees);
+        return q;
       }
       if (table === "lotFees") {
-        return Object.assign(mockQuery(), {
-          first: vi.fn().mockResolvedValue(existingFee),
-        });
+        const q = mockQuery();
+        q.first = vi.fn().mockResolvedValue(existingFee);
+        return q;
+      }
+      if (table === "auctions") {
+        const q = mockQuery();
+        q.collect = vi.fn().mockResolvedValue([]);
+        return q;
       }
       return mockQuery();
     });
@@ -114,12 +142,10 @@ describe("Internal Logic Coverage", () => {
     mockCtx = {
       db: {
         query: vi.fn(mockQuery),
-        get: vi
-          .fn()
-          .mockResolvedValue({
-            status: "published",
-            endTime: Date.now() - 1000,
-          }),
+        get: vi.fn().mockResolvedValue({
+          status: "published",
+          endTime: Date.now() - 1000,
+        }),
         delete: vi.fn(),
         insert: vi.fn(),
         patch: vi.fn(),
@@ -129,6 +155,9 @@ describe("Internal Logic Coverage", () => {
       },
       auth: {
         getUserIdentity: vi.fn().mockResolvedValue(null),
+      },
+      scheduler: {
+        runAfter: vi.fn(),
       },
     };
   });
@@ -148,7 +177,7 @@ describe("Internal Logic Coverage", () => {
         new Error("Storage delete failed")
       );
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {
-        // intentional no-op: silences the expected storage-delete warning
+        // intentional no-op
       });
 
       await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
@@ -173,7 +202,7 @@ describe("Internal Logic Coverage", () => {
       mockCtx.db.query = vi.fn().mockReturnValue(q);
       mockCtx.db.delete.mockRejectedValue(new Error("DB delete failed"));
       const spy = vi.spyOn(console, "error").mockImplementation(() => {
-        // intentional no-op: silences the expected draft-delete error
+        // intentional no-op
       });
 
       const result = await cleanupDraftsHandler(
@@ -202,6 +231,8 @@ describe("Internal Logic Coverage", () => {
         auctionId: "auction1",
       };
       const mockBid = {
+        _id: "b1" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
         bidderId: "u1",
         amount: 1000,
         status: "valid",
@@ -250,12 +281,16 @@ describe("Internal Logic Coverage", () => {
         auctionId: "auction1",
       };
       const highBid = {
+        _id: "b1" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
         bidderId: "u1",
         amount: 1000,
         status: "valid",
         timestamp: 100,
       };
       const lowBid = {
+        _id: "b2" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
         bidderId: "u2",
         amount: 500,
         status: "valid",
@@ -286,6 +321,8 @@ describe("Internal Logic Coverage", () => {
         auctionId: "auction1",
       };
       const mockBid = {
+        _id: "b1" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
         bidderId: "u1",
         amount: 400,
         status: "valid",
@@ -320,6 +357,8 @@ describe("Internal Logic Coverage", () => {
         auctionId: "auction1",
       };
       const mockBid = {
+        _id: "b1" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
         bidderId: "u1",
         amount: 1000,
         status: "voided",
@@ -383,12 +422,16 @@ describe("Internal Logic Coverage", () => {
         auctionId: "auction1",
       };
       const earlierBid = {
+        _id: "b1" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
         bidderId: "u1",
         amount: 1000,
         status: "valid",
         timestamp: 100,
       };
       const laterBid = {
+        _id: "b2" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
         bidderId: "u2",
         amount: 1000,
         status: "valid",
@@ -409,14 +452,6 @@ describe("Internal Logic Coverage", () => {
       );
     });
 
-    /**
-     * Builds a query mock that returns distinct rows for the two `lots`
-     * indexes used during settlement/auto-close.
-     *
-     * @param auctions - Rows returned for the `auctions` table.
-     * @param byStatusLots - Rows for `lots` queried by the `by_status` index.
-     * @param byAuctionLots - Rows for `lots` queried by `by_status_auctionId`.
-     */
     const setupCloseQuery = (
       auctions: Record<string, unknown>[],
       byStatusLots: Record<string, unknown>[],
@@ -444,6 +479,7 @@ describe("Internal Logic Coverage", () => {
             );
             return q;
           });
+          q.take = vi.fn().mockResolvedValue(byStatusLots);
         }
         return q;
       });
@@ -663,7 +699,6 @@ describe("Internal Logic Coverage", () => {
         mockLot as never
       );
 
-      // Only the platformFee is persisted; the auction default is not.
       expect(mockCtx.db.insert).toHaveBeenCalledTimes(1);
       expect(adminUtils.logAudit).toHaveBeenCalledWith(
         mockCtx,

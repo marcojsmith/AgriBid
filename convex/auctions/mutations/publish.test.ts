@@ -79,16 +79,23 @@ vi.mock("../../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
-const { calculateAndRecordFees, logAuctionSettlementActivity } = vi.hoisted(
-  () => ({
-    calculateAndRecordFees: vi.fn().mockResolvedValue(undefined),
-    logAuctionSettlementActivity: vi.fn().mockResolvedValue(undefined),
-  })
-);
+const {
+  calculateAndRecordFees,
+  logAuctionSettlementActivity,
+  findWinningBid,
+  isReserveMet,
+} = vi.hoisted(() => ({
+  calculateAndRecordFees: vi.fn().mockResolvedValue(undefined),
+  logAuctionSettlementActivity: vi.fn().mockResolvedValue(undefined),
+  findWinningBid: vi.fn().mockResolvedValue(undefined),
+  isReserveMet: vi.fn().mockReturnValue(false),
+}));
 
 vi.mock("../internal", () => ({
   calculateAndRecordFees,
   logAuctionSettlementActivity,
+  findWinningBid,
+  isReserveMet,
 }));
 
 const createMockProfile = (userId: string, role: string) => ({
@@ -312,9 +319,9 @@ describe("Publish Mutations", () => {
 
       mockCtx.db.query.mockReturnValue({
         withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([
-          { reporterId: "u3", status: "pending" },
-        ]),
+        collect: vi
+          .fn()
+          .mockResolvedValue([{ reporterId: "u3", status: "pending" }]),
       });
 
       const result1 = await flagLotHandler(mockCtx as unknown as MutationCtx, {
@@ -497,13 +504,15 @@ describe("Publish Mutations", () => {
         reservePrice: 1000,
         title: "Test",
       });
-      mockCtx.db.query.mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([
-          { amount: 1500, bidderId: "u2", status: "valid", timestamp: 100 },
-          { amount: 1200, bidderId: "u3", status: "valid", timestamp: 110 },
-        ]),
-      });
+      vi.mocked(findWinningBid).mockResolvedValue({
+        _id: "bid1",
+        lotId: "a1",
+        bidderId: "u2",
+        amount: 1500,
+        timestamp: 100,
+        status: "valid",
+      } as Doc<"bids">);
+      vi.mocked(isReserveMet).mockReturnValue(true);
 
       const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
@@ -533,6 +542,7 @@ describe("Publish Mutations", () => {
         status: "assigned",
         reservePrice: 1000,
       });
+      vi.mocked(findWinningBid).mockResolvedValue(undefined);
 
       const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
@@ -548,26 +558,28 @@ describe("Publish Mutations", () => {
       );
     });
 
-    it("should handle same amount bids by timestamp", async () => {
+    it("should handle same amount bids by timestamp via findWinningBid", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
         status: "assigned",
         reservePrice: 1000,
       });
-      mockCtx.db.query.mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([
-          { amount: 1500, bidderId: "u2", status: "valid", timestamp: 120 },
-          { amount: 1500, bidderId: "u3", status: "valid", timestamp: 110 },
-        ]),
-      });
+      vi.mocked(findWinningBid).mockResolvedValue({
+        _id: "bid2",
+        lotId: "a1",
+        bidderId: "u3",
+        amount: 1500,
+        timestamp: 110,
+        status: "valid",
+      } as Doc<"bids">);
+      vi.mocked(isReserveMet).mockReturnValue(true);
 
       const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
         { lotId: "a1" as Id<"lots"> }
       );
-      expect(result.winnerId).toBe("u3"); // earlier timestamp
+      expect(result.winnerId).toBe("u3");
     });
 
     it("should close as unsold when reserve not met", async () => {
@@ -577,14 +589,15 @@ describe("Publish Mutations", () => {
         status: "assigned",
         reservePrice: 2000,
       });
-      mockCtx.db.query.mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi
-          .fn()
-          .mockResolvedValue([
-            { amount: 1500, bidderId: "u2", status: "valid", timestamp: 100 },
-          ]),
-      });
+      vi.mocked(findWinningBid).mockResolvedValue({
+        _id: "bid1",
+        lotId: "a1",
+        bidderId: "u2",
+        amount: 1500,
+        timestamp: 100,
+        status: "valid",
+      } as Doc<"bids">);
+      vi.mocked(isReserveMet).mockReturnValue(false);
 
       const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
@@ -595,20 +608,22 @@ describe("Publish Mutations", () => {
       expect(calculateAndRecordFees).not.toHaveBeenCalled();
     });
 
-    it("should filter out voided bids when determining winner", async () => {
+    it("should filter out voided bids via findWinningBid", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
         status: "assigned",
         reservePrice: 1000,
       });
-      mockCtx.db.query.mockReturnValue({
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([
-          { amount: 1500, bidderId: "u2", status: "voided", timestamp: 100 },
-          { amount: 1200, bidderId: "u3", status: "valid", timestamp: 110 },
-        ]),
-      });
+      vi.mocked(findWinningBid).mockResolvedValue({
+        _id: "bid2",
+        lotId: "a1",
+        bidderId: "u3",
+        amount: 1200,
+        timestamp: 110,
+        status: "valid",
+      } as Doc<"bids">);
+      vi.mocked(isReserveMet).mockReturnValue(true);
 
       const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,

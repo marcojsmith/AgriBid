@@ -94,6 +94,27 @@ const MOCK_IMAGE_URLS = {
 
 const BATCH_SIZE = 500;
 
+/**
+ * Resets the lotFees counter to zero after clearing the table.
+ * Ensures consistency between cleared lotFees rows and aggregate counters.
+ *
+ * @param ctx - Mutation context.
+ */
+async function resetLotFeeCounters(ctx: MutationCtx): Promise<void> {
+  const counter = await ctx.db
+    .query("counters")
+    .withIndex("by_name", (q) => q.eq("name", "lotFees"))
+    .unique();
+
+  if (counter) {
+    await ctx.db.patch("counters", counter._id, {
+      buyerTotal: 0,
+      sellerTotal: 0,
+      updatedAt: Date.now(),
+    });
+  }
+}
+
 const MOCK_SELLER_EMAIL = "mock-seller@farm.com";
 const MOCK_ADMIN_EMAIL = "admin@agribid.com";
 
@@ -2371,6 +2392,17 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   const allAuditLogs = await ctx.db.query("auditLogs").collect();
   await updateCounter(ctx, "auditLogs", "total", allAuditLogs.length, true);
 
+  // Lot Fees
+  const allLotFees = await ctx.db.query("lotFees").collect();
+  const buyerFeesTotal = allLotFees
+    .filter((f) => f.appliedTo === "buyer")
+    .reduce((sum, f) => sum + f.calculatedAmount, 0);
+  const sellerFeesTotal = allLotFees
+    .filter((f) => f.appliedTo === "seller")
+    .reduce((sum, f) => sum + f.calculatedAmount, 0);
+  await updateCounter(ctx, "lotFees", "buyerTotal", buyerFeesTotal, true);
+  await updateCounter(ctx, "lotFees", "sellerTotal", sellerFeesTotal, true);
+
   console.log("Seeding and metric calculation completed successfully.");
 }
 
@@ -2462,9 +2494,7 @@ export const clearAuctions = mutation({
   handler: async (ctx) => {
     const accessPath = await checkDestructiveAccess(ctx);
 
-    console.warn(
-      `[seed] clearAuctions invoked via ${accessPath} access path`
-    );
+    console.warn(`[seed] clearAuctions invoked via ${accessPath} access path`);
 
     if (accessPath === "admin") {
       const role = await getCallerRole(ctx);
@@ -2479,9 +2509,12 @@ export const clearAuctions = mutation({
     const totalBidsDeleted = await clearTable(ctx, "bids");
     const lotsCount = await clearLotsTableWithStorage(ctx);
     const auctionsCount = await clearAuctionsTableWithStorage(ctx);
+    const lotFeesCount = await clearTable(ctx, "lotFees");
+
+    await resetLotFeeCounters(ctx);
 
     console.log(
-      `Cleared ${auctionsCount.toString()} auction events, ${lotsCount.toString()} lots and ${totalBidsDeleted.toString()} bids.`
+      `Cleared ${auctionsCount.toString()} auction events, ${lotsCount.toString()} lots, ${totalBidsDeleted.toString()} bids and ${lotFeesCount.toString()} lot fees.`
     );
     return auctionsCount + lotsCount;
   },
@@ -2497,9 +2530,7 @@ export const clearAllData = mutation({
   handler: async (ctx) => {
     const accessPath = await checkDestructiveAccess(ctx);
 
-    console.warn(
-      `[seed] clearAllData invoked via ${accessPath} access path`
-    );
+    console.warn(`[seed] clearAllData invoked via ${accessPath} access path`);
 
     if (accessPath === "admin") {
       const role = await getCallerRole(ctx);
@@ -2515,6 +2546,7 @@ export const clearAllData = mutation({
       "bids",
       "watchlist",
       "equipmentMetadata",
+      "lotFees",
     ];
 
     let totalDeleted = 0;
@@ -2527,6 +2559,8 @@ export const clearAllData = mutation({
     }
 
     totalDeleted += await clearProfilesTableWithStorage(ctx);
+
+    await resetLotFeeCounters(ctx);
 
     return totalDeleted;
   },

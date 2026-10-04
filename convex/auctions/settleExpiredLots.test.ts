@@ -1,8 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { settleExpiredLotsHandler } from "./internal";
+import {
+  settleExpiredLotsHandler,
+  findWinningBid,
+  isReserveMet,
+} from "./internal";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+
+vi.mock("../_generated/api", () => ({
+  internal: {
+    auctions: {
+      settleExpiredLots: "mock-settle-expired-lots",
+    },
+  },
+}));
 
 interface MockCtxType {
   db: {
@@ -17,7 +29,9 @@ interface MockCtxType {
   };
   auth: unknown;
   storage: unknown;
-  scheduler: unknown;
+  scheduler: {
+    runAfter: ReturnType<typeof vi.fn>;
+  };
   runMutation: unknown;
   runQuery: unknown;
   runAction: unknown;
@@ -39,8 +53,21 @@ describe("settleExpiredLots mutation", () => {
     withIndex: vi.fn().mockReturnThis(),
     filter: vi.fn().mockReturnThis(),
     collect: vi.fn().mockResolvedValue(results),
+    take: vi.fn().mockImplementation((n: number) => {
+      const sliced = results.slice(0, n);
+      if (results.length > n) {
+        return Promise.resolve(sliced);
+      }
+      return Promise.resolve(sliced);
+    }),
     first: vi.fn().mockResolvedValue(null),
     unique: vi.fn().mockResolvedValue(null),
+    order: vi.fn().mockReturnThis(),
+    [Symbol.asyncIterator]: async function* () {
+      for (const item of results) {
+        yield item;
+      }
+    },
   });
 
   /**
@@ -67,6 +94,10 @@ describe("settleExpiredLots mutation", () => {
       lotFees: [],
     };
 
+    const mockScheduler = {
+      runAfter: vi.fn().mockResolvedValue(undefined),
+    };
+
     return {
       db: {
         // eslint-disable-next-line security/detect-object-injection -- table comes from a fixed set of test-mock table names, not user input
@@ -81,7 +112,7 @@ describe("settleExpiredLots mutation", () => {
       },
       auth: {},
       storage: {},
-      scheduler: {},
+      scheduler: mockScheduler,
       runMutation: {},
       runQuery: {},
       runAction: {},
@@ -111,19 +142,22 @@ describe("settleExpiredLots mutation", () => {
         bidderId,
         amount: 1500,
         timestamp: now - 500,
-        status: "placed",
+        status: "valid",
       },
     ];
 
     mockCtx = setupMockCtx(assignedLots, bids);
 
-    await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+    const result = await settleExpiredLotsHandler(
+      mockCtx as unknown as MutationCtx
+    );
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "sold",
       winnerId: bidderId,
       settledAt: expect.any(Number) as number,
     });
+    expect(result.hasMore).toBe(false);
   });
 
   it("should settle a lot as unsold if reserve is not met", async () => {
@@ -148,13 +182,15 @@ describe("settleExpiredLots mutation", () => {
         bidderId: "b2",
         amount: 500,
         timestamp: now - 500,
-        status: "placed",
+        status: "valid",
       },
     ];
 
     mockCtx = setupMockCtx(assignedLots, bids);
 
-    await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+    const result = await settleExpiredLotsHandler(
+      mockCtx as unknown as MutationCtx
+    );
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "unsold",
@@ -162,6 +198,7 @@ describe("settleExpiredLots mutation", () => {
       settledAt: expect.any(Number) as number,
       auctionId: undefined,
     });
+    expect(result.hasMore).toBe(false);
   });
 
   it("should settle a lot as unsold if there are no bids", async () => {
@@ -174,13 +211,15 @@ describe("settleExpiredLots mutation", () => {
         title: "Test Auction",
         status: "assigned",
         currentPrice: 100,
-        reservePrice: 0, // Reserve is 0 but no bids
+        reservePrice: 0,
       },
     ];
 
     mockCtx = setupMockCtx(assignedLots, []);
 
-    await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
+    const result = await settleExpiredLotsHandler(
+      mockCtx as unknown as MutationCtx
+    );
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
       status: "unsold",
@@ -188,6 +227,7 @@ describe("settleExpiredLots mutation", () => {
       settledAt: expect.any(Number) as number,
       auctionId: undefined,
     });
+    expect(result.hasMore).toBe(false);
   });
 
   it("should pick the correct winner if there are multiple bids with the same amount", async () => {
@@ -211,8 +251,8 @@ describe("settleExpiredLots mutation", () => {
         lotId,
         bidderId: "winner",
         amount: 1000,
-        timestamp: now - 800, // Earlier bid wins
-        status: "placed",
+        timestamp: now - 800,
+        status: "valid",
       },
       {
         _id: "bid4b",
@@ -220,7 +260,7 @@ describe("settleExpiredLots mutation", () => {
         bidderId: "loser",
         amount: 1000,
         timestamp: now - 700,
-        status: "placed",
+        status: "valid",
       },
     ];
 
@@ -233,5 +273,161 @@ describe("settleExpiredLots mutation", () => {
       winnerId: "winner",
       settledAt: expect.any(Number) as number,
     });
+  });
+
+  it("should reschedule itself when more lots remain", async () => {
+    const now = Date.now();
+    const lots = Array.from({ length: 51 }, (_, i) => ({
+      _id: `lot${i.toString()}` as Id<"lots">,
+      auctionId: "auction1",
+      title: `Lot ${i.toString()}`,
+      status: "assigned",
+      currentPrice: 1500,
+      reservePrice: 1000,
+    }));
+
+    const bids = lots.map((lot) => ({
+      _id: `bid-${lot._id}`,
+      lotId: lot._id,
+      bidderId: "bidder1",
+      amount: 1500,
+      timestamp: now - 500,
+      status: "valid",
+    }));
+
+    mockCtx = setupMockCtx(lots, bids);
+
+    const result = await settleExpiredLotsHandler(
+      mockCtx as unknown as MutationCtx
+    );
+
+    expect(result.hasMore).toBe(true);
+    expect(mockCtx.scheduler.runAfter).toHaveBeenCalledWith(
+      0,
+      expect.anything(),
+      {}
+    );
+  });
+});
+
+describe("findWinningBid helper", () => {
+  it("should return undefined for no bids", async () => {
+    const mockDb = {
+      query: vi.fn().mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        [Symbol.asyncIterator]: async function* () {
+          // Empty generator
+        },
+      }),
+    };
+
+    const result = await findWinningBid(
+      { db: mockDb } as unknown as MutationCtx,
+      "lot1" as Id<"lots">
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it("should skip voided bids", async () => {
+    const bids = [
+      {
+        _id: "b1",
+        lotId: "lot1",
+        bidderId: "u1",
+        amount: 100,
+        timestamp: 100,
+        status: "voided",
+      },
+      {
+        _id: "b2",
+        lotId: "lot1",
+        bidderId: "u2",
+        amount: 90,
+        timestamp: 110,
+        status: "valid",
+      },
+    ];
+
+    const mockDb = {
+      query: vi.fn().mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        [Symbol.asyncIterator]: async function* () {
+          for (const bid of bids) {
+            yield bid;
+          }
+        },
+      }),
+    };
+
+    const result = await findWinningBid(
+      { db: mockDb } as unknown as MutationCtx,
+      "lot1" as Id<"lots">
+    );
+    expect(result).toBeDefined();
+    expect(result?.bidderId).toBe("u2");
+    expect(result?.amount).toBe(90);
+  });
+
+  it("should return highest valid bid, tie-breaking by earlier timestamp", async () => {
+    const bids = [
+      {
+        _id: "b1",
+        lotId: "lot1",
+        bidderId: "winner",
+        amount: 100,
+        timestamp: 100,
+        status: "valid",
+      },
+      {
+        _id: "b2",
+        lotId: "lot1",
+        bidderId: "loser",
+        amount: 100,
+        timestamp: 150,
+        status: "valid",
+      },
+      {
+        _id: "b3",
+        lotId: "lot1",
+        bidderId: "other",
+        amount: 90,
+        timestamp: 90,
+        status: "valid",
+      },
+    ];
+
+    const mockDb = {
+      query: vi.fn().mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        [Symbol.asyncIterator]: async function* () {
+          for (const bid of bids) {
+            yield bid;
+          }
+        },
+      }),
+    };
+
+    const result = await findWinningBid(
+      { db: mockDb } as unknown as MutationCtx,
+      "lot1" as Id<"lots">
+    );
+    expect(result).toBeDefined();
+    expect(result?.bidderId).toBe("winner");
+    expect(result?.amount).toBe(100);
+  });
+});
+
+describe("isReserveMet helper", () => {
+  it("should return true when bid meets reserve", () => {
+    expect(isReserveMet(1000, 1000)).toBe(true);
+    expect(isReserveMet(1500, 1000)).toBe(true);
+  });
+
+  it("should return false when bid does not meet reserve", () => {
+    expect(isReserveMet(999, 1000)).toBe(false);
+    expect(isReserveMet(500, 1000)).toBe(false);
   });
 });

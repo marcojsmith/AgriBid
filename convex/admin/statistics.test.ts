@@ -205,13 +205,19 @@ describe("Admin Statistics", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
     } as Awaited<ReturnType<typeof auth.requireAdmin>>);
-    vi.mocked(adminUtils.getCounter).mockResolvedValue({
-      name: "auctions",
-      total: 10,
-      active: 5,
-      salesVolume: undefined,
-      soldCount: undefined,
-    } as Doc<"counters">);
+    vi.mocked(adminUtils.getCounter)
+      .mockResolvedValueOnce({
+        name: "lots",
+        total: 10,
+        active: 5,
+        salesVolume: undefined,
+        soldCount: undefined,
+      } as Doc<"counters">)
+      .mockResolvedValueOnce({
+        name: "lotFees",
+        buyerTotal: 100,
+        sellerTotal: 200,
+      } as Doc<"counters">);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
 
     queryMock.paginate.mockResolvedValueOnce({
@@ -245,13 +251,19 @@ describe("Admin Statistics", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
     } as Awaited<ReturnType<typeof auth.requireAdmin>>);
-    vi.mocked(adminUtils.getCounter).mockResolvedValue({
-      name: "auctions",
-      total: 10,
-      active: 5,
-      salesVolume: 5000,
-      soldCount: 5,
-    } as Doc<"counters">);
+    vi.mocked(adminUtils.getCounter)
+      .mockResolvedValueOnce({
+        name: "lots",
+        total: 10,
+        active: 5,
+        salesVolume: 5000,
+        soldCount: 5,
+      } as Doc<"counters">)
+      .mockResolvedValueOnce({
+        name: "lotFees",
+        buyerTotal: 100,
+        sellerTotal: 200,
+      } as Doc<"counters">);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
 
     // Return 15 items (10 at startIndex 5 + 5 at startIndex 10)
@@ -287,13 +299,19 @@ describe("Admin Statistics", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
     } as Awaited<ReturnType<typeof auth.requireAdmin>>);
-    vi.mocked(adminUtils.getCounter).mockResolvedValue({
-      name: "auctions",
-      total: 10,
-      active: 5,
-      salesVolume: 5000,
-      soldCount: 5,
-    } as Doc<"counters">);
+    vi.mocked(adminUtils.getCounter)
+      .mockResolvedValueOnce({
+        name: "lots",
+        total: 10,
+        active: 5,
+        salesVolume: 5000,
+        soldCount: 5,
+      } as Doc<"counters">)
+      .mockResolvedValueOnce({
+        name: "lotFees",
+        buyerTotal: 100,
+        sellerTotal: 200,
+      } as Doc<"counters">);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
 
     queryMock.take.mockResolvedValue([
@@ -328,13 +346,19 @@ describe("Admin Statistics", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
     } as Awaited<ReturnType<typeof auth.requireAdmin>>);
-    vi.mocked(adminUtils.getCounter).mockResolvedValue({
-      name: "auctions",
-      total: 10,
-      active: 5,
-      salesVolume: 5000,
-      soldCount: 5,
-    } as Doc<"counters">);
+    vi.mocked(adminUtils.getCounter)
+      .mockResolvedValueOnce({
+        name: "lots",
+        total: 10,
+        active: 5,
+        salesVolume: 5000,
+        soldCount: 5,
+      } as Doc<"counters">)
+      .mockResolvedValueOnce({
+        name: "lotFees",
+        buyerTotal: 100,
+        sellerTotal: 200,
+      } as Doc<"counters">);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
 
     queryMock.take.mockResolvedValue([

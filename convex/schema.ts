@@ -199,6 +199,7 @@ export default defineSchema({
     status: v.optional(v.union(v.literal("valid"), v.literal("voided"))), // Bid integrity
   })
     .index("by_lot", ["lotId", "timestamp"])
+    .index("by_lot_amount", ["lotId", "amount"])
     .index("by_bidder", ["bidderId"])
     .index("by_bidder_lot", ["bidderId", "lotId"])
     .index("by_timestamp", ["timestamp"]),
@@ -425,6 +426,8 @@ export default defineSchema({
     draft: v.optional(v.number()), // Support for draft counter
     soldCount: v.optional(v.number()),
     salesVolume: v.optional(v.number()),
+    buyerTotal: v.optional(v.number()), // Aggregate of buyer fee amounts
+    sellerTotal: v.optional(v.number()), // Aggregate of seller fee amounts
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
 

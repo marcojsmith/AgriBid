@@ -10,6 +10,7 @@ import {
   closeLotEarlyHandler,
 } from "./mutations/publish";
 import * as auth from "../lib/auth";
+import * as internal from "./internal";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { logAudit } from "../admin_utils";
@@ -53,6 +54,13 @@ vi.mock("../lib/storage", () => ({
   }),
 }));
 
+vi.mock("./internal", () => ({
+  findWinningBid: vi.fn(),
+  isReserveMet: vi.fn(),
+  calculateAndRecordFees: vi.fn(),
+  logAuctionSettlementActivity: vi.fn(),
+}));
+
 interface MockCtx {
   db: {
     get: Mock;
@@ -69,6 +77,9 @@ interface MockCtx {
   };
   auth: {
     getUserIdentity: Mock;
+  };
+  scheduler: {
+    runAfter: Mock;
   };
 }
 
@@ -98,6 +109,9 @@ describe("Mutations Branch Coverage Expansion", () => {
       },
       auth: {
         getUserIdentity: vi.fn(),
+      },
+      scheduler: {
+        runAfter: vi.fn(),
       },
     };
     vi.mocked(auth.tryRequireAdmin).mockResolvedValue({
@@ -439,26 +453,25 @@ describe("Mutations Branch Coverage Expansion", () => {
         currentPrice: 1000,
         reservePrice: 500,
       });
-
-      const mockQuery = {
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([
-          { amount: 1000, timestamp: 200, bidderId: "u2", status: "placed" },
-          { amount: 1000, timestamp: 100, bidderId: "u1", status: "placed" }, // Earlier
-        ]),
-      };
-      vi.mocked(mockCtx.db.query).mockReturnValue(
-        mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
-      );
+      vi.mocked(internal.findWinningBid).mockResolvedValue({
+        _id: "b1" as Id<"bids">,
+        lotId: "a1" as Id<"lots">,
+        amount: 1000,
+        timestamp: 100,
+        bidderId: "u1",
+        status: "valid",
+        _creationTime: 100,
+      });
+      vi.mocked(internal.isReserveMet).mockReturnValue(true);
 
       const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,
         { lotId: "a1" as Id<"lots"> }
       );
       expect(result.winnerId).toBe("u1");
-      expect(mockQuery.withIndex).toHaveBeenCalledWith(
-        "by_lot",
-        expect.any(Function)
+      expect(internal.findWinningBid).toHaveBeenCalledWith(
+        mockCtx as unknown as MutationCtx,
+        "a1"
       );
     });
 
@@ -472,6 +485,7 @@ describe("Mutations Branch Coverage Expansion", () => {
         status: "assigned",
         reservePrice: 500,
       });
+      vi.mocked(internal.findWinningBid).mockResolvedValue(undefined);
 
       const result = await closeLotEarlyHandler(
         mockCtx as unknown as MutationCtx,

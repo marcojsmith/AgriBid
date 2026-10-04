@@ -1,4 +1,11 @@
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { v } from "convex/values";
+
+import {
+  internalMutation,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getAuthUser, resolveUserId } from "./lib/auth";
 import { encryptPII, decryptPII } from "./lib/encryption";
 import type { Doc } from "./_generated/dataModel";
@@ -15,7 +22,9 @@ export type CounterField =
   | "resolved"
   | "draft"
   | "salesVolume"
-  | "soldCount";
+  | "soldCount"
+  | "buyerTotal"
+  | "sellerTotal";
 
 /**
  * Fetch a counter document by name.
@@ -297,7 +306,139 @@ export async function updateCounter(
       draft: field === "draft" ? initialValue : 0,
       salesVolume: field === "salesVolume" ? initialValue : 0,
       soldCount: field === "soldCount" ? initialValue : 0,
+      buyerTotal: field === "buyerTotal" ? initialValue : 0,
+      sellerTotal: field === "sellerTotal" ? initialValue : 0,
       updatedAt: Date.now(),
     });
   }
 }
+
+/**
+ * Handler for recomputing lot fee aggregate counters from scratch.
+ * Paginates through the lotFees table in batches and accumulates buyer/seller totals,
+ * resetting the counters to 0 on the first batch.
+ * Self-reschedules until complete.
+ *
+ * @param ctx - The mutation context.
+ * @param args - The arguments object.
+ * @param args.cursor - Pagination cursor, null for first batch.
+ * @param args.buyerTotal - Accumulated buyer fees total from previous batches.
+ * @param args.sellerTotal - Accumulated seller fees total from previous batches.
+ * @returns Object with isDone, buyerTotal, sellerTotal, and continueCursor.
+ */
+export async function recomputeLotFeeCountersHandler(
+  ctx: MutationCtx,
+  args: { cursor: string | null; buyerTotal: number; sellerTotal: number }
+): Promise<{
+  isDone: boolean;
+  buyerTotal: number;
+  sellerTotal: number;
+  continueCursor: string | null;
+}> {
+  const {
+    cursor,
+    buyerTotal: incomingBuyerTotal,
+    sellerTotal: incomingSellerTotal,
+  } = args;
+
+  if (cursor === null) {
+    const existingCounter = await getCounter(ctx, "lotFees");
+    if (existingCounter) {
+      await ctx.db.patch("counters", existingCounter._id, {
+        buyerTotal: 0,
+        sellerTotal: 0,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("counters", {
+        name: "lotFees",
+        total: 0,
+        active: 0,
+        pending: 0,
+        verified: 0,
+        open: 0,
+        resolved: 0,
+        draft: 0,
+        salesVolume: 0,
+        soldCount: 0,
+        buyerTotal: 0,
+        sellerTotal: 0,
+        updatedAt: Date.now(),
+      });
+    }
+  }
+
+  const BATCH_SIZE = 500;
+  const page = await ctx.db
+    .query("lotFees")
+    .paginate({ numItems: BATCH_SIZE, cursor });
+
+  let batchBuyerTotal = 0;
+  let batchSellerTotal = 0;
+
+  for (const feeRow of page.page) {
+    if (feeRow.appliedTo === "buyer") {
+      batchBuyerTotal += feeRow.calculatedAmount;
+    } else {
+      batchSellerTotal += feeRow.calculatedAmount;
+    }
+  }
+
+  const accumulatedBuyerTotal = incomingBuyerTotal + batchBuyerTotal;
+  const accumulatedSellerTotal = incomingSellerTotal + batchSellerTotal;
+
+  if (!page.isDone) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.admin_utils.recomputeLotFeeCounters,
+      {
+        cursor: page.continueCursor,
+        buyerTotal: accumulatedBuyerTotal,
+        sellerTotal: accumulatedSellerTotal,
+      }
+    );
+
+    return {
+      isDone: false,
+      buyerTotal: accumulatedBuyerTotal,
+      sellerTotal: accumulatedSellerTotal,
+      continueCursor: page.continueCursor,
+    };
+  }
+
+  const finalCounter = await getCounter(ctx, "lotFees");
+  if (finalCounter) {
+    await ctx.db.patch("counters", finalCounter._id, {
+      buyerTotal: accumulatedBuyerTotal,
+      sellerTotal: accumulatedSellerTotal,
+      updatedAt: Date.now(),
+    });
+  }
+
+  return {
+    isDone: true,
+    buyerTotal: accumulatedBuyerTotal,
+    sellerTotal: accumulatedSellerTotal,
+    continueCursor: null,
+  };
+}
+
+/**
+ * Internal mutation to recompute lot fee aggregate counters from scratch.
+ * Paginates through lotFees and rebuilds buyerTotal/sellerTotal.
+ * Callable via `bunx convex run admin_utils:recomputeLotFeeCounters`.
+ */
+export const recomputeLotFeeCounters = internalMutation({
+  args: {
+    cursor: v.union(v.string(), v.null()),
+    buyerTotal: v.number(),
+    sellerTotal: v.number(),
+  },
+  returns: v.object({
+    isDone: v.boolean(),
+    buyerTotal: v.number(),
+    sellerTotal: v.number(),
+    continueCursor: v.union(v.string(), v.null()),
+  }),
+  handler: recomputeLotFeeCountersHandler,
+});
