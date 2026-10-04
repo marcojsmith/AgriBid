@@ -7,6 +7,11 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Split FeeManager, MetadataCatalog and FilterSidebar into focused modules (#302) (0.17.31)
+- Set-based lot watch lookup, split MyBids into components, reuse the profile context (#303) (0.17.30)
+- Add a `convex-test` integration suite for bid -> proxy -> soft close -> settlement -> fees (browser E2E still open) (#299) (0.17.29)
+- Share cursor-parsing and display-name resolution helpers across Convex queries (#302) (0.17.28)
+- Standardise on the `radix-ui` umbrella import and drop the per-package Radix dependencies (#308) (0.17.27)
 - Coverage now measures unimported files and writes `test-coverage/latest-coverage-output.txt`; thresholds raised; broad unit-test additions (E2E still open) (#299) (0.17.26)
 - Cursor-based `getMyBids` pagination over a bidder/timestamp index (ending sort bounded to 200 lots) with integration tests (#335) (0.17.25)
 - Index-driven batched settlement, unified reserve check, fee-total counters (run `admin_utils:recomputeLotFeeCounters` once after deploy) (#305) (0.17.24)

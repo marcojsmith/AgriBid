@@ -14,7 +14,7 @@ Last updated: 2026-10-04
 
 ## In progress
 
-- Stacked PRs #345 -> #373 (audit follow-ups: docs, 404, SEO, pagination, error boundaries, UI, security, performance, accessibility, coverage). Each PR bases on the previous; merging #373 merges them all.
+- Stacked PRs #374 -> #378 (Radix umbrella, backend dedupe, money-path integration test, render follow-ups, component splits). Each bases on the previous; #378 targets `main`.
 - Branch `feat/marketplace-auction-cards`: `/` shows auction-event cards with Active/Closed/All tabs (search still returns lots); `/auctions/:id` reuses the full lot browser scoped via `getActiveLots(auctionId)`.
 - Same branch, storage-and-query cleanup: storage-aware seed/reset clears (`runSeed`/`clearAuctions`/`clearAllData`/`weeklyReset` now delete image/KYC/banner blobs), daily orphaned-upload sweep cron (`convex/storageCleanup.ts`), client-side image compression before upload (`src/lib/image-resize.ts` + `useFileUpload`), `getPublishedAuctions` paginated with capped takes + manual cursor (consumed via `usePaginatedQuery` on Home/AuctionGallery), and 500-cap safety caps on admin `.collect()` queues.
 - Same branch, admin Performance & Demo Mode settings: runtime-editable `demo_mode_enabled` + `presence_heartbeat_interval_ms` settings keys (atomic `updatePerformanceConfig` mutation), public `presence.getHeartbeatIntervalMs` read, `PresenceListener` paces itself from it (60s fallback while loading), `AdminPerformance` page at `/admin/performance` + System Settings tile; cron schedules stay code-fixed (stated in the UI copy). Presence 90s online threshold intentionally not yet derived from the interval (see `convex/constants.ts` note).
@@ -24,25 +24,25 @@ Last updated: 2026-10-04
 
 ## Next (prioritised)
 
-1. Merge the stacked PRs #345-#373 (merging #373 lands them all), then run `bunx convex run admin_utils:recomputeLotFeeCounters '{"cursor":null,"buyerTotal":0,"sellerTotal":0}'` against each deployment with existing fees.
-2. Finish the partial issues: #302 (backend duplication: highest-bid reduce, cursor parsing, bidder-name lookup; large files such as FeeManager, MyBids, seed.ts), #303 (duplicate subscriptions, AdminAuctions re-renders), #304 (vitest-axe checks), #308 (Radix import strategy), #299 (Playwright E2E for the money paths).
-3. Review the open dependabot PRs.
-4. Add an ESLint override disabling `consistent-type-definitions` for `convex/**` (recorded as pending in the old notes).
-5. Clear merged remote branches.
+1. Merge the stacked PRs #374 -> #378 (#378 targets `main`; merge with a merge commit, not squash, so the others register as merged).
+2. Finish the partial issues: #302 (`convex/seed.ts` ~2000 lines, `convex/admin/settings.ts`, `src/pages/admin/AdminLots.tsx`), #303 (live search deferral in `AdminLots`, always-on listeners), #304 (install `vitest-axe` and add axe checks), #299 (browser E2E needs a Clerk test user and a live Convex deployment).
+3. Regenerate and commit `convex/_generated/api.d.ts` (stale on `main`: `bunx convex dev --once` adds 8 lines).
+4. Review the open dependabot PRs (the five I closed by mistake were asked to be recreated).
+5. Add an ESLint override disabling `consistent-type-definitions` for `convex/**` (recorded as pending in the old notes).
 6. Decide the open questions below, then tidy `AGENTS.md` accordingly.
 
 ## Done (last 10)
 
+- 2026-10-04: Split FeeManager, MetadataCatalog and FilterSidebar into focused modules (#302) (v0.17.31).
+- 2026-10-04: Set-based lot watch lookup, split MyBids into components, reuse the profile context (#303) (v0.17.30).
+- 2026-10-04: Add a `convex-test` integration suite for bid -> proxy -> soft close -> settlement -> fees (browser E2E still open) (#299) (v0.17.29).
+- 2026-10-04: Share cursor-parsing and display-name resolution helpers across Convex queries (#302) (v0.17.28).
+- 2026-10-04: Standardise on the `radix-ui` umbrella import and drop the per-package Radix dependencies (#308) (v0.17.27).
 - 2026-10-04: Coverage now measures unimported files and writes `test-coverage/latest-coverage-output.txt`; thresholds raised; broad unit-test additions (E2E still open) (#299) (v0.17.26).
 - 2026-10-04: Cursor-based `getMyBids` pagination over a bidder/timestamp index (ending sort bounded to 200 lots) with integration tests (#335) (v0.17.25).
 - 2026-10-04: Index-driven batched settlement, unified reserve check, fee-total counters (run `admin_utils:recomputeLotFeeCounters` once after deploy) (#305) (v0.17.24).
 - 2026-10-04: Dedupe `useListingWizard` and split the Profile page into components (backend duplication and other 500+ line files still open) (#302) (v0.17.23).
 - 2026-10-04: Drop unused autoprefixer/postcss/coverage-istanbul deps, add `engines`, align packageManager, ignore stale `app/` dir (Radix import strategy still open) (#308) (v0.17.22).
-- 2026-10-04: Accessibility fixes: focus trap, table scope, label links, live regions, hidden decorative icons (#304) (v0.17.21).
-- 2026-10-04: Split convex/errors.ts helpers into convex/lib modules (#282) (v0.17.20).
-- 2026-10-04: Batch lot summary lookups, bound the storage sweep, add platformFees/equipmentMetadata indexes (#337) (v0.17.19).
-- 2026-10-04: Paginate notifications with bounded per-stream reads and a compound cursor (#336) (v0.17.18).
-- 2026-10-03: Replace hardcoded palette classes with theme tokens and add a guard test (#300) (v0.17.17).
 - Older items: see [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Operations
