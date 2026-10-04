@@ -4,7 +4,7 @@ import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/utils";
-import { useListingWizard } from "@/components/listing-wizard/context/useListingWizard";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 import type { ListingFormData } from "@/components/listing-wizard/types";
 
 interface UploadResponse {

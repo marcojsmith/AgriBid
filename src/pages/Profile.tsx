@@ -1,249 +1,42 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
+import { useParams, Link } from "react-router-dom";
+import { useQuery, usePaginatedQuery } from "convex/react";
+import { ArrowLeft } from "lucide-react";
+import { useMemo } from "react";
 import { api } from "convex/_generated/api";
-import type { LucideIcon } from "lucide-react";
-import {
-  UserCheck,
-  ShieldCheck,
-  Calendar,
-  Gavel,
-  Award,
-  ArrowLeft,
-  MapPin,
-  Star,
-  AlertTriangle,
-  Plus,
-  MessageSquare,
-  Flag,
-  ShieldAlert,
-  Phone,
-  Mail,
-  CreditCard,
-  FileText,
-  Pencil,
-  X,
-  Check,
-  Building2,
-  Tag,
-  Trophy,
-} from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/currency";
-import { getErrorMessage } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { Button } from "@/components/ui/button";
-import { AuctionCard } from "@/components/auction/AuctionCard";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import type { ActivityType } from "@/types/profile";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  ProfileSidebar,
+  TrustSection,
+  ActivityFeed,
+  ReviewsSection,
+  ActiveAuctionsSection,
+  SalesHistorySection,
+} from "@/components/profile";
+import { getTrustItems } from "@/lib/profile-utils";
 
-type ReportReason =
-  | "fake_account"
-  | "fraudulent_listings"
-  | "abusive_behaviour"
-  | "identity_misrepresentation"
-  | "other";
-
-/**
- * Activity feed entry types returned by the `getSellerActivity` query.
- * Keep in sync with the `userActivity.type` schema validator.
- */
-type ActivityType =
-  | "account_created"
-  | "verification_requested"
-  | "verification_approved"
-  | "verification_rejected"
-  | "role_changed"
-  | "listing_created"
-  | "listing_sold"
-  | "bid_placed"
-  | "bid_won";
-
-interface ActivityMeta {
-  icon: LucideIcon;
-  bgClass: string;
-  iconColor: string;
-  title: string;
+interface ActivityItem {
+  _id: string;
+  type: ActivityType;
+  description?: string;
+  createdAt: number;
 }
 
-const ACTIVITY_META: Record<ActivityType, ActivityMeta> = {
-  account_created: {
-    icon: UserCheck,
-    bgClass: "bg-primary/10",
-    iconColor: "text-primary",
-    title: "Account created",
-  },
-  verification_requested: {
-    icon: ShieldAlert,
-    bgClass: "bg-warning/10",
-    iconColor: "text-warning",
-    title: "Verification requested",
-  },
-  verification_approved: {
-    icon: ShieldCheck,
-    bgClass: "bg-success/10",
-    iconColor: "text-success",
-    title: "Verification approved",
-  },
-  verification_rejected: {
-    icon: ShieldAlert,
-    bgClass: "bg-destructive/10",
-    iconColor: "text-destructive",
-    title: "Verification rejected",
-  },
-  role_changed: {
-    icon: ShieldCheck,
-    bgClass: "bg-primary/10",
-    iconColor: "text-primary",
-    title: "Role changed",
-  },
-  listing_created: {
-    icon: Tag,
-    bgClass: "bg-primary/10",
-    iconColor: "text-primary",
-    title: "Listing created",
-  },
-  listing_sold: {
-    icon: Award,
-    bgClass: "bg-success/10",
-    iconColor: "text-success",
-    title: "Listing sold",
-  },
-  bid_placed: {
-    icon: Gavel,
-    bgClass: "bg-warning/10",
-    iconColor: "text-warning",
-    title: "Bid placed",
-  },
-  bid_won: {
-    icon: Trophy,
-    bgClass: "bg-success/10",
-    iconColor: "text-success",
-    title: "Auction won",
-  },
-};
-
-interface TrustItem {
-  id: string;
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  verified: boolean;
+interface Review {
+  _id: string;
+  rating: number;
+  comment?: string;
+  createdAt: number;
+  reviewerName?: string;
+  response?: {
+    text: string;
+    createdAt: number;
+  };
 }
-
-interface VerificationStatus {
-  emailVerified?: boolean;
-  phoneVerified?: boolean;
-  bankingVerified?: boolean;
-  taxNumberVerified?: boolean;
-}
-
-interface SellerRating {
-  avgRating?: number;
-  reviewCount: number;
-}
-
-const formatPrice = (price?: number): string => {
-  if (price === undefined) return "—";
-  return formatCurrency(price);
-};
-
-const formatMemberSince = (timestamp?: number): string => {
-  if (!timestamp) return "";
-  const date = new Date(timestamp);
-  return date.toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
-};
-
-const getInitials = (name?: string): string => {
-  if (!name) return "??";
-  const parts = name.split(" ");
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return name.substring(0, 2).toUpperCase();
-};
-
-const formatActivityDate = (timestamp?: number): string => {
-  if (!timestamp) return "Unknown";
-  const date = new Date(timestamp);
-  return date.toLocaleDateString("en-ZA", { month: "short", year: "numeric" });
-};
-
-const getTrustItems = (
-  isVerified: boolean,
-  kycStatus?: string,
-  verification?: VerificationStatus,
-  rating?: SellerRating
-): TrustItem[] => {
-  const { emailVerified, phoneVerified, bankingVerified, taxNumberVerified } =
-    verification ?? {};
-  return [
-    {
-      id: "identity",
-      icon: ShieldAlert,
-      label: "Identity",
-      value: isVerified || kycStatus === "verified" ? "Verified" : "Pending",
-      verified: isVerified || kycStatus === "verified",
-    },
-    {
-      id: "banking",
-      icon: CreditCard,
-      label: "Banking",
-      value: bankingVerified ? "Linked" : "Not linked",
-      verified: bankingVerified ?? false,
-    },
-    {
-      id: "phone",
-      icon: Phone,
-      label: "Phone",
-      value: phoneVerified ? "Verified" : "Pending",
-      verified: phoneVerified ?? false,
-    },
-    {
-      id: "email",
-      icon: Mail,
-      label: "Email",
-      value: emailVerified ? "Verified" : "Pending",
-      verified: emailVerified ?? false,
-    },
-    {
-      id: "tax",
-      icon: FileText,
-      label: "Tax Number",
-      value: taxNumberVerified ? "Verified" : "Pending",
-      verified: taxNumberVerified ?? false,
-    },
-    {
-      id: "rating",
-      icon: Star,
-      label: "Seller Rating",
-      value:
-        rating?.avgRating !== undefined
-          ? `${rating.avgRating.toFixed(1)} (${String(rating.reviewCount)})`
-          : "No reviews",
-      verified: (rating?.reviewCount ?? 0) > 0,
-    },
-  ];
-};
 
 /**
  * Renders a seller profile with account details, listings, reviews, activity, and trust information.
@@ -259,98 +52,6 @@ export default function Profile() {
   const isOwner =
     !isProfileLoading &&
     (myProfile?.userId === userId || myProfile?._id === userId);
-
-  const updateMyProfile = useMutation(api.users.updateMyProfile);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
-    bio: myProfile?.profile?.bio ?? "",
-    location: myProfile?.profile?.location ?? "",
-    companyName: myProfile?.profile?.companyName ?? "",
-  });
-
-  const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportReason, setReportReason] = useState<ReportReason | "">("");
-  const [reportDetails, setReportDetails] = useState("");
-
-  const reportProfile = useMutation(api.profileFlags.reportProfile);
-
-  const handleReportProfile = async () => {
-    if (!reportReason) {
-      toast.error("Please select a reason for reporting");
-      return;
-    }
-    if (!userId) return;
-
-    try {
-      await reportProfile({
-        reportedUserId: userId,
-        reason: reportReason,
-        details: reportDetails.trim() || undefined,
-      });
-      toast.success("Thank you for your report");
-      setReportDialogOpen(false);
-      setReportReason("");
-      setReportDetails("");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to report profile"
-      );
-    }
-  };
-
-  const navigate = useNavigate();
-  const [contactDialogOpen, setContactDialogOpen] = useState(false);
-  const [contactMessage, setContactMessage] = useState("");
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-
-  const startConversation = useMutation(api.messages.startConversation);
-
-  const handleContactSeller = async () => {
-    if (contactMessage.trim().length === 0) {
-      toast.error("Please enter a message");
-      return;
-    }
-    if (!userId) return;
-
-    setIsSendingMessage(true);
-    try {
-      const conversationId = await startConversation({
-        recipientId: userId,
-        initialMessage: contactMessage,
-        lotId: undefined,
-      });
-      toast.success("Message sent");
-      setContactDialogOpen(false);
-      setContactMessage("");
-      void navigate(`/messages/${conversationId}`);
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to send message"));
-    } finally {
-      setIsSendingMessage(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      await updateMyProfile({
-        bio: editForm.bio || undefined,
-        location: editForm.location || undefined,
-        companyName: editForm.companyName || undefined,
-      });
-      setIsEditing(false);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to save profile";
-      setSaveError(message);
-      console.error("Failed to save profile:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const sellerInfo = useQuery(api.auctions.getSellerInfo, {
     sellerId: userId ?? "",
@@ -383,6 +84,31 @@ export default function Profile() {
     { initialNumItems: 5 }
   );
 
+  const { activeListings, soldListings, trustItems } = useMemo(() => {
+    if (sellerInfo === undefined || sellerInfo === null) {
+      return { activeListings: [], soldListings: [], trustItems: [] };
+    }
+    const active = listings.filter(
+      (l) => l.status === "approved" || l.status === "assigned"
+    );
+    const sold = listings.filter((l) => l.status === "sold");
+    const items = getTrustItems(
+      sellerInfo.isVerified,
+      sellerInfo.kycStatus,
+      {
+        emailVerified: sellerInfo.emailVerified,
+        phoneVerified: sellerInfo.phoneVerified,
+        bankingVerified: sellerInfo.bankingVerified,
+        taxNumberVerified: sellerInfo.taxNumberVerified,
+      },
+      {
+        avgRating: sellerInfo.avgRating,
+        reviewCount: sellerInfo.reviewCount,
+      }
+    );
+    return { activeListings: active, soldListings: sold, trustItems: items };
+  }, [sellerInfo, listings]);
+
   if (sellerInfo === undefined || status === "LoadingFirstPage") {
     return (
       <div className="flex h-[60vh] items-center justify-center bg-background">
@@ -408,725 +134,63 @@ export default function Profile() {
     );
   }
 
-  const activeListings = listings.filter(
-    (l) => l.status === "approved" || l.status === "assigned"
-  );
-  const soldListings = listings.filter((l) => l.status === "sold");
-  // `activity` is undefined while loading; coerce to an array so the feed
-  // renders an empty state rather than crashing on a missing result.
-  const activityItems = activity ?? [];
-  const trustItems = getTrustItems(
-    sellerInfo.isVerified,
-    sellerInfo.kycStatus,
-    {
-      emailVerified: sellerInfo.emailVerified,
-      phoneVerified: sellerInfo.phoneVerified,
-      bankingVerified: sellerInfo.bankingVerified,
-      taxNumberVerified: sellerInfo.taxNumberVerified,
-    },
-    {
-      avgRating: sellerInfo.avgRating,
-      reviewCount: sellerInfo.reviewCount,
-    }
-  );
-
   return (
     <div className="max-w-7xl mx-auto space-y-8 px-4 py-4 sm:p-6">
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 lg:gap-8">
-        {/* Sidebar — single merged card */}
-        <aside>
-          <Card className="bg-card border border-primary/10 rounded-md overflow-hidden">
-            {/* Profile header */}
-            <div className="h-14 sm:h-20 bg-gradient-to-br from-primary to-accent" />
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center gap-4 -mt-10 mb-4">
-                <div className="h-16 w-16 rounded-md bg-primary/10 flex items-center justify-center border-4 border-card shadow-md">
-                  <span className="text-xl font-bold text-primary">
-                    {getInitials(sellerInfo.name)}
-                  </span>
-                </div>
-              </div>
+        <ProfileSidebar
+          profileData={sellerInfo}
+          userId={userId ?? ""}
+          isOwner={isOwner}
+          initialEditData={
+            myProfile?.profile
+              ? {
+                  bio: myProfile.profile.bio,
+                  location: myProfile.profile.location,
+                  companyName: myProfile.profile.companyName,
+                }
+              : undefined
+          }
+        />
 
-              <div className="flex items-start justify-between">
-                <h1 className="text-2xl font-bold text-primary leading-none mb-2">
-                  {sellerInfo.name}
-                </h1>
-                {isOwner && !isEditing && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditForm({
-                        bio: myProfile?.profile?.bio ?? "",
-                        location: myProfile?.profile?.location ?? "",
-                        companyName: myProfile?.profile?.companyName ?? "",
-                      });
-                      setIsEditing(true);
-                    }}
-                    className="h-8 px-2 rounded-md font-bold text-xs"
-                  >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-3">
-                {sellerInfo.role === "admin" && (
-                  <Badge className="bg-primary text-primary-foreground font-semibold text-xs">
-                    Admin
-                  </Badge>
-                )}
-                {sellerInfo.isVerified ? (
-                  <Badge className="bg-success hover:bg-success/90 text-success-foreground font-semibold text-xs flex items-center gap-1">
-                    <ShieldCheck className="h-3 w-3" />
-                    Verified
-                  </Badge>
-                ) : (
-                  <Badge className="bg-warning hover:bg-warning/90 text-warning-foreground font-semibold text-xs flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    Unverified
-                  </Badge>
-                )}
-              </div>
-
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5 mb-4">
-                <Calendar className="h-4 w-4" />
-                Member since {formatMemberSince(sellerInfo.createdAt)}
-              </p>
-
-              {isEditing ? (
-                <div className="space-y-3">
-                  <div>
-                    <label
-                      htmlFor="profile-bio"
-                      className="text-xs font-semibold text-muted-foreground"
-                    >
-                      Bio
-                    </label>
-                    <Textarea
-                      id="profile-bio"
-                      value={editForm.bio}
-                      onChange={(e) => {
-                        setEditForm({ ...editForm, bio: e.target.value });
-                      }}
-                      placeholder="Tell us about yourself..."
-                      className="mt-1 min-h-[80px] rounded-md border font-bold text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="profile-location"
-                      className="text-xs font-semibold text-muted-foreground"
-                    >
-                      Location
-                    </label>
-                    <Input
-                      id="profile-location"
-                      value={editForm.location}
-                      onChange={(e) => {
-                        setEditForm({ ...editForm, location: e.target.value });
-                      }}
-                      placeholder="City, Province"
-                      className="mt-1 rounded-md border font-bold text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="profile-company-name"
-                      className="text-xs font-semibold text-muted-foreground"
-                    >
-                      Company Name
-                    </label>
-                    <Input
-                      id="profile-company-name"
-                      value={editForm.companyName}
-                      onChange={(e) => {
-                        setEditForm({
-                          ...editForm,
-                          companyName: e.target.value,
-                        });
-                      }}
-                      placeholder="Your company name"
-                      className="mt-1 rounded-md border font-bold text-sm"
-                    />
-                  </div>
-                  {saveError && (
-                    <p className="text-sm text-destructive mt-2">{saveError}</p>
-                  )}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      onClick={handleSaveProfile}
-                      disabled={isSaving}
-                      className="flex-1 h-9 rounded-md font-semibold text-xs"
-                    >
-                      {isSaving ? (
-                        <>
-                          <span className="animate-pulse">Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Check className="h-3 w-3 mr-1" />
-                          Save
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setEditForm({
-                          bio: myProfile?.profile?.bio ?? "",
-                          location: myProfile?.profile?.location ?? "",
-                          companyName: myProfile?.profile?.companyName ?? "",
-                        });
-                        setIsEditing(false);
-                      }}
-                      disabled={isSaving}
-                      className="flex-1 h-9 rounded-md font-semibold text-xs border"
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {sellerInfo.bio && (
-                    <>
-                      <div className="h-px bg-border my-4" />
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {sellerInfo.bio}
-                      </p>
-                    </>
-                  )}
-
-                  {sellerInfo.location && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-3">
-                      <MapPin className="h-4 w-4" />
-                      {sellerInfo.location}
-                    </p>
-                  )}
-
-                  {sellerInfo.companyName && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-3">
-                      <Building2 className="h-4 w-4" />
-                      {sellerInfo.companyName}
-                    </p>
-                  )}
-                </>
-              )}
-            </CardContent>
-
-            {/* Stats */}
-            <div className="h-px bg-border" />
-            <div className="grid grid-cols-4 divide-x divide-border">
-              <div className="p-3 text-center">
-                <p className="text-xl font-bold text-primary">
-                  {sellerInfo.activeListings}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Active
-                </p>
-              </div>
-              <div className="p-3 text-center">
-                <p className="text-xl font-bold text-success">
-                  {sellerInfo.itemsSold}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Sold
-                </p>
-              </div>
-              <div className="p-3 text-center">
-                <p className="text-xl font-bold text-primary">
-                  {formatPrice(sellerInfo.avgSalePrice)}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Avg Sale
-                </p>
-              </div>
-              <div className="p-3 text-center">
-                <p className="text-xl font-bold text-primary">
-                  {sellerInfo.bidsPlaced}
-                </p>
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Bids
-                </p>
-              </div>
-            </div>
-
-            {/* Rating row */}
-            <div className="h-px bg-border" />
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div>
-                {sellerInfo.avgRating !== undefined ? (
-                  <p className="text-warning tracking-widest">
-                    {"★".repeat(Math.round(sellerInfo.avgRating))}
-                    {"☆".repeat(5 - Math.round(sellerInfo.avgRating))}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground tracking-widest">★★★★★</p>
-                )}
-                <p className="text-[10px] text-muted-foreground">
-                  {sellerInfo.reviewCount > 0
-                    ? `${String(sellerInfo.reviewCount)} review${
-                        sellerInfo.reviewCount === 1 ? "" : "s"
-                      }`
-                    : "No reviews yet"}
-                </p>
-              </div>
-              <p className="text-xl font-semibold text-muted-foreground">—</p>
-            </div>
-
-            {/* Action buttons */}
-            <div className="h-px bg-border" />
-            <div className="p-4 space-y-2">
-              {isOwner && !sellerInfo.isVerified && (
-                // TODO(#219): Implement granular verification status fields in backend
-                <Button
-                  className="w-full bg-warning hover:bg-warning/90 text-warning-foreground font-semibold text-xs h-10 rounded-md"
-                  disabled
-                  title="Coming soon - see issue #219"
-                >
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Complete Verification
-                </Button>
-              )}
-              {isOwner && (
-                <Button
-                  asChild
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-10 rounded-md"
-                >
-                  <Link to="/sell">
-                    <Plus className="h-4 w-4 mr-2" />
-                    List Equipment
-                  </Link>
-                </Button>
-              )}
-              {!isOwner && (
-                <>
-                  <Dialog
-                    open={contactDialogOpen}
-                    onOpenChange={setContactDialogOpen}
-                  >
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full border border-border hover:border-primary/30 bg-transparent font-semibold text-xs h-10 rounded-md"
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Contact Seller
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Contact Seller</DialogTitle>
-                        <DialogDescription>
-                          Send a message to start a conversation
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label
-                            htmlFor="contact-message"
-                            className="text-sm font-medium"
-                          >
-                            Message
-                          </label>
-                          <Textarea
-                            id="contact-message"
-                            name="contact-message"
-                            placeholder="Ask about availability, condition, or delivery..."
-                            value={contactMessage}
-                            onChange={(e) => {
-                              setContactMessage(e.target.value);
-                            }}
-                            rows={4}
-                          />
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setContactDialogOpen(false);
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleContactSeller}
-                            disabled={isSendingMessage}
-                          >
-                            {isSendingMessage ? (
-                              <>
-                                <span className="animate-pulse">
-                                  Sending...
-                                </span>
-                              </>
-                            ) : (
-                              "Send Message"
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Dialog
-                    open={reportDialogOpen}
-                    onOpenChange={setReportDialogOpen}
-                  >
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="w-full text-muted-foreground hover:text-destructive font-semibold text-xs h-10 rounded-md"
-                      >
-                        <Flag className="h-4 w-4 mr-2" />
-                        Report Profile
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Report this Profile</DialogTitle>
-                        <DialogDescription>
-                          Help us understand what's wrong with this profile
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label
-                            htmlFor="report-reason"
-                            className="text-sm font-medium"
-                          >
-                            Reason
-                          </label>
-                          <Select
-                            value={reportReason}
-                            onValueChange={(v) => {
-                              setReportReason(v as ReportReason);
-                            }}
-                          >
-                            <SelectTrigger id="report-reason">
-                              <SelectValue placeholder="Select a reason" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="fake_account">
-                                Fake Account
-                              </SelectItem>
-                              <SelectItem value="fraudulent_listings">
-                                Fraudulent Listings
-                              </SelectItem>
-                              <SelectItem value="abusive_behaviour">
-                                Abusive Behaviour
-                              </SelectItem>
-                              <SelectItem value="identity_misrepresentation">
-                                Identity Misrepresentation
-                              </SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <label
-                            htmlFor="report-details"
-                            className="text-sm font-medium"
-                          >
-                            Additional details (optional)
-                          </label>
-                          <Textarea
-                            id="report-details"
-                            name="report-details"
-                            placeholder="Provide more context..."
-                            value={reportDetails}
-                            onChange={(e) => {
-                              setReportDetails(e.target.value);
-                            }}
-                            rows={3}
-                          />
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setReportDialogOpen(false);
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={handleReportProfile}
-                          >
-                            Submit Report
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </>
-              )}
-            </div>
-          </Card>
-        </aside>
-
-        {/* Main Content */}
         <main className="space-y-6">
-          {/* Active Auctions */}
+          <ActiveAuctionsSection
+            auctions={activeListings}
+            status={status}
+            watchedIds={watchedAuctionIds}
+            userId={userId ?? ""}
+          />
+
+          <SalesHistorySection
+            auctions={soldListings}
+            itemsSold={sellerInfo.itemsSold}
+            userId={userId ?? ""}
+          />
+
           <Card className="bg-card border border-primary/10 rounded-md">
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Gavel className="h-4 w-4 text-primary" />
-                  <h2 className="text-lg font-bold text-primary">
-                    Active Auctions
-                  </h2>
-                </div>
-                <Link
-                  to={`/sellers/${userId ?? ""}/listings`}
-                  className="text-xs font-bold text-primary hover:underline"
-                >
-                  View all →
-                </Link>
-              </div>
-
-              {activeListings.length === 0 && status === "Exhausted" ? (
-                <div className="border border-dashed border-border rounded p-12 text-center">
-                  <p className="text-4xl mb-3" aria-hidden="true">🚜</p>
-                  <p className="text-muted-foreground font-bold italic text-sm">
-                    No active auctions at this time.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {activeListings.map((auction) => (
-                    <AuctionCard
-                      key={auction._id}
-                      auction={auction}
-                      isWatched={
-                        watchedAuctionIds?.includes(auction._id) ?? false
-                      }
-                    />
-                  ))}
-                </div>
-              )}
+              <ReviewsSection
+                reviewCount={sellerInfo.reviewCount}
+                reviews={sellerReviews as Review[]}
+                reviewsStatus={reviewsStatus}
+                loadMoreReviews={loadMoreReviews}
+              />
             </CardContent>
           </Card>
 
-          {/* Past Sales */}
-          {sellerInfo.itemsSold > 0 && (
-            <Card className="bg-card border border-primary/10 rounded-md">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Award className="h-4 w-4 text-success" />
-                    <h2 className="text-lg font-bold text-success">
-                      Sales History
-                    </h2>
-                  </div>
-                  <Link
-                    to={`/sellers/${userId ?? ""}/listings/sold`}
-                    className="text-xs font-bold text-success hover:underline"
-                  >
-                    View all →
-                  </Link>
-                </div>
-
-                {soldListings.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {soldListings.map((auction) => (
-                      <AuctionCard
-                        key={auction._id}
-                        auction={auction}
-                        isWatched={
-                          watchedAuctionIds?.includes(auction._id) ?? false
-                        }
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-border rounded p-8 text-center">
-                    <p className="text-muted-foreground font-bold italic text-sm">
-                      View all sold listings →
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Reviews */}
           <Card className="bg-card border border-primary/10 rounded-md">
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Star className="h-4 w-4 text-warning" />
-                <h2 className="text-lg font-black uppercase tracking-wide text-primary">
-                  Reviews
-                </h2>
-              </div>
-
-              {sellerInfo.reviewCount > 0 ? (
-                reviewsStatus === "LoadingFirstPage" ? (
-                  <LoadingIndicator />
-                ) : (
-                  <div>
-                    {sellerReviews.map((review) => (
-                      <div
-                        key={review._id}
-                        className="py-4 border-b border-border last:border-0 first:pt-0"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-foreground">
-                            {review.reviewerName ?? "Anonymous"}
-                          </p>
-                          <p className="text-xs text-muted-foreground whitespace-nowrap">
-                            {formatActivityDate(review.createdAt)}
-                          </p>
-                        </div>
-                        <p
-                          className="text-warning tracking-widest mt-1"
-                          aria-label={`Rated ${String(review.rating)} out of 5 stars`}
-                        >
-                          {"★".repeat(Math.round(review.rating))}
-                          {"☆".repeat(5 - Math.round(review.rating))}
-                        </p>
-                        {review.comment && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {review.comment}
-                          </p>
-                        )}
-                        {review.response && (
-                          <div className="mt-3 ml-3 border-l-2 border-primary/20 pl-3">
-                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                              Seller response
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {review.response.text}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {(reviewsStatus === "CanLoadMore" ||
-                      reviewsStatus === "LoadingMore") && (
-                      <div className="pt-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            loadMoreReviews(5);
-                          }}
-                          disabled={reviewsStatus === "LoadingMore"}
-                          className="rounded-md border-2 font-black uppercase tracking-widest text-xs"
-                        >
-                          {reviewsStatus === "LoadingMore" ? (
-                            <>
-                              <LoadingIndicator size="sm" className="mr-2" />
-                              Loading...
-                            </>
-                          ) : (
-                            "Load More Reviews"
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )
-              ) : (
-                <div className="border-2 border-dashed border-border rounded p-8 text-center">
-                  <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
-                    No reviews yet.
-                  </p>
-                </div>
-              )}
+              <ActivityFeed activity={activity as ActivityItem[] | undefined} />
             </CardContent>
           </Card>
 
-          {/* Recent Activity */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <UserCheck className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-bold text-primary">
-                Recent Activity
-              </h2>
-            </div>
-
-            {activity === undefined ? (
-              <LoadingIndicator />
-            ) : activityItems.length === 0 ? (
-              <div className="border-2 border-dashed border-border rounded p-8 text-center">
-                <p className="text-muted-foreground font-bold uppercase tracking-widest italic text-sm">
-                  No activity yet
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {activity.map((item) => {
-                  const meta = ACTIVITY_META[item.type];
-                  const Icon = meta.icon;
-                  return (
-                    <div
-                      key={item._id}
-                      className="flex items-start gap-3 py-3 border-b border-border last:border-0"
-                    >
-                      <div
-                        className={`h-9 w-9 rounded flex items-center justify-center flex-shrink-0 ${meta.bgClass}`}
-                      >
-                        <Icon className={`h-4 w-4 ${meta.iconColor}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.description ?? meta.title}
-                        </p>
-                      </div>
-                      <p className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatActivityDate(item.createdAt)}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* Trust & Compliance */}
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              <h2 className="text-lg font-bold text-primary">
-                Trust & Compliance
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {trustItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.id}
-                    className="border border-border rounded p-4 text-center"
-                  >
-                    <Icon
-                      className={`h-5 w-5 mx-auto mb-2 ${
-                        item.verified ? "text-success" : "text-warning"
-                      }`}
-                    />
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">
-                      {item.label}
-                    </p>
-                    <p
-                      className={`text-xs font-bold ${
-                        item.verified ? "text-success" : "text-warning"
-                      }`}
-                    >
-                      {item.value}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          <Card className="bg-card border border-primary/10 rounded-md">
+            <CardContent className="p-4 sm:p-6">
+              <TrustSection trustItems={trustItems} />
+            </CardContent>
+          </Card>
         </main>
       </div>
 
-      {/* Pagination */}
       {(status === "CanLoadMore" || status === "LoadingMore") && (
         <div className="flex flex-col items-center gap-4 pt-4 pb-8">
           <p className="text-xs font-semibold text-muted-foreground">
