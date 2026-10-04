@@ -85,8 +85,43 @@ const notificationType = v.union(
   v.literal("error")
 );
 
+interface StreamCursor {
+  createdAt: number;
+  _id: Id<"notifications">;
+}
+
+interface CompoundCursor {
+  personal: StreamCursor | null;
+  announcements: StreamCursor | null;
+}
+
+function encodeCursor(cursor: CompoundCursor | null): string {
+  if (!cursor) return "";
+  return Buffer.from(JSON.stringify(cursor)).toString("base64");
+}
+
+function decodeCursor(cursor: string | null | undefined): CompoundCursor | null {
+  if (!cursor) return null;
+  try {
+    const decoded = Buffer.from(cursor, "base64").toString("utf8");
+    const parsed: unknown = JSON.parse(decoded);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "personal" in parsed &&
+      "announcements" in parsed
+    ) {
+      return parsed as CompoundCursor;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Handler for getting the current user's notifications with pagination.
+ * Uses compound cursor pagination to merge personal and announcement streams.
  * @param ctx - Query context
  * @param args - Arguments including pagination options
  * @param args.paginationOpts - Pagination options for cursor-based pagination
@@ -112,42 +147,95 @@ export const getMyNotificationsHandler = async (
     }
     const userId = authUser.userId ?? authUser._id;
 
-    const [personal, announcementsResult] = await Promise.all([
-      ctx.db
-        .query("notifications")
-        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", userId))
-        .order("desc")
-        .collect(),
-      ctx.db
-        .query("notifications")
-        .withIndex("by_recipient_createdAt", (q) => q.eq("recipientId", "all"))
-        .order("desc")
-        .collect(),
-    ]);
+    const numItems = args.paginationOpts?.numItems ?? 20;
+    const rawCursor = args.paginationOpts?.cursor ?? null;
+    const compoundCursor = decodeCursor(rawCursor);
+
+    const personalQuery = ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_createdAt", (q) => {
+        const eqQuery = q.eq("recipientId", userId);
+        if (compoundCursor?.personal) {
+          return eqQuery.lt("createdAt", compoundCursor.personal.createdAt);
+        }
+        return eqQuery;
+      })
+      .order("desc");
+
+    const announcementsQuery = ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_createdAt", (q) => {
+        const eqQuery = q.eq("recipientId", "all");
+        if (compoundCursor?.announcements) {
+          return eqQuery.lt("createdAt", compoundCursor.announcements.createdAt);
+        }
+        return eqQuery;
+      })
+      .order("desc");
+
+    const fetchLimit = numItems + 1;
+
+    const personal = await personalQuery.take(fetchLimit);
+    const announcements = await announcementsQuery.take(fetchLimit);
 
     const enrichedAnnouncements = await getAnnouncementsWithReadStatus(
       ctx,
       userId,
-      announcementsResult
+      announcements
     );
 
-    const merged = [...personal, ...enrichedAnnouncements];
-    const sorted = merged.sort((a, b) => b.createdAt - a.createdAt);
+    const personalWithType = personal.map((n) => ({
+      ...n,
+      isRead: n.isRead ?? false,
+    }));
 
-    const numItems = args.paginationOpts?.numItems ?? 20;
-    const cursor = args.paginationOpts?.cursor ?? null;
+    const merged = [...personalWithType, ...enrichedAnnouncements];
+    const sorted = merged.sort((a, b) => {
+      if (b.createdAt !== a.createdAt) {
+        return b.createdAt - a.createdAt;
+      }
+      return b._id.localeCompare(a._id);
+    });
 
-    const startIndex = cursor ? parseInt(cursor, 10) : 0;
-    const page = sorted.slice(startIndex, startIndex + numItems);
-    const isDone = startIndex + numItems >= sorted.length;
-    const continueCursor = isDone ? "" : String(startIndex + numItems);
-    const totalCount = sorted.length;
+    const page = sorted.slice(0, numItems);
+    const hasMore = sorted.length > numItems;
+
+    let nextPersonalCursor = compoundCursor?.personal ?? null;
+    let nextAnnouncementsCursor = compoundCursor?.announcements ?? null;
+
+    if (page.length > 0) {
+      const personalItems = page.filter(
+        (n) => n.recipientId !== "all"
+      );
+      const announcementItems = page.filter(
+        (n) => n.recipientId === "all"
+      );
+
+      if (personalItems.length > 0) {
+        const lastPersonal = personalItems[personalItems.length - 1];
+        nextPersonalCursor = {
+          createdAt: lastPersonal.createdAt,
+          _id: lastPersonal._id,
+        };
+      }
+
+      if (announcementItems.length > 0) {
+        const lastAnnouncement = announcementItems[announcementItems.length - 1];
+        nextAnnouncementsCursor = {
+          createdAt: lastAnnouncement.createdAt,
+          _id: lastAnnouncement._id,
+        };
+      }
+    }
+
+    const isDone = !hasMore && personal.length <= numItems && announcements.length <= numItems;
+    const continueCursor = isDone ? "" : encodeCursor({ personal: nextPersonalCursor, announcements: nextAnnouncementsCursor });
 
     return {
       page,
       isDone,
       continueCursor,
-      totalCount,
+      totalCount: page.length,
       pageStatus: null,
       splitCursor: null,
     };
