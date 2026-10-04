@@ -31,7 +31,9 @@ vi.mock("./helpers", () => ({
     Promise.resolve({ ...a, categoryName: "Unknown" })
   ),
   toLotSummaries: vi.fn((_ctx, lots) =>
-    Promise.resolve(lots.map((a: { _id: unknown }) => ({ ...a, categoryName: "Unknown" })))
+    Promise.resolve(
+      lots.map((a: { _id: unknown }) => ({ ...a, categoryName: "Unknown" }))
+    )
   ),
   toLotDetail: vi.fn((_ctx, a) =>
     Promise.resolve({ ...a, categoryName: "Unknown" })
@@ -542,7 +544,7 @@ describe("Queries Branch Coverage Expansion", () => {
         updatedAt: Date.now(),
       } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      vi.mocked(queryMock.collect).mockResolvedValue([
+      const bids = [
         {
           lotId: "a1",
           bidderId: "u1",
@@ -557,7 +559,10 @@ describe("Queries Branch Coverage Expansion", () => {
           timestamp: 200,
           status: "placed",
         },
-      ]);
+      ];
+      // The bid window is read with .take(), the per-lot stats with .collect().
+      vi.mocked(queryMock.take).mockResolvedValue(bids);
+      vi.mocked(queryMock.collect).mockResolvedValue(bids);
       (vi.mocked(dbGetMock) as Mock).mockImplementation(
         (_table: string, id: string) => {
           if (id === "a1")
@@ -592,7 +597,7 @@ describe("Queries Branch Coverage Expansion", () => {
         updatedAt: Date.now(),
       } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      vi.mocked(queryMock.collect).mockResolvedValue([
+      const bids = [
         {
           lotId: "a1",
           bidderId: "u1",
@@ -607,7 +612,10 @@ describe("Queries Branch Coverage Expansion", () => {
           timestamp: 200,
           status: "placed",
         },
-      ]);
+      ];
+      // The bid window is read with .take(), the per-lot stats with .collect().
+      vi.mocked(queryMock.take).mockResolvedValue(bids);
+      vi.mocked(queryMock.collect).mockResolvedValue(bids);
       (vi.mocked(dbGetMock) as Mock).mockImplementation(
         (_table: string, id: string) => {
           if (id === "a1")
@@ -748,28 +756,21 @@ describe("Queries Branch Coverage Expansion", () => {
         updatedAt: Date.now(),
       } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      (vi.mocked(queryMock.collect) as Mock).mockImplementation(() => {
-        console.log("Mock collect called");
-        return Promise.resolve([
-          {
-            lotId: "a1",
-            bidderId: "u1",
-            amount: 100,
-            timestamp: 100,
-            status: "placed",
-          },
-          {
-            lotId: "a2",
-            bidderId: "u1",
-            amount: 200,
-            timestamp: 200,
-            status: "placed",
-          },
-        ] as unknown[]);
-      });
+      // One lot bid at timestamp 100, resumed from a timestamp-only cursor of
+      // 200: the "recent" sort hands back lots whose newest bid is older.
+      const bids = [
+        {
+          lotId: "a1",
+          bidderId: "u1",
+          amount: 100,
+          timestamp: 100,
+          status: "placed",
+        },
+      ];
+      vi.mocked(queryMock.take).mockResolvedValue(bids);
+      vi.mocked(queryMock.collect).mockResolvedValue(bids);
       (vi.mocked(dbGetMock) as Mock).mockImplementation(
         (_table: string, id: string) => {
-          console.log("Mock db.get called with:", id);
           return Promise.resolve({
             _id: id,
             status: "assigned",
@@ -778,9 +779,8 @@ describe("Queries Branch Coverage Expansion", () => {
       );
 
       const result = await getMyBidsHandler(mockCtx, {
-        paginationOpts: { numItems: 1, cursor: "0" },
+        paginationOpts: { numItems: 1, cursor: "200" },
       });
-      console.log("MyBids page length:", result.page.length);
       expect(result.page).toHaveLength(1);
     });
 
@@ -1113,7 +1113,7 @@ describe("Queries Branch Coverage Expansion", () => {
         updatedAt: Date.now(),
       } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
       vi.mocked(auth.resolveUserId).mockReturnValue("u1");
-      vi.mocked(queryMock.collect).mockResolvedValue([
+      const bids = [
         {
           lotId: "a1",
           bidderId: "u1",
@@ -1135,7 +1135,10 @@ describe("Queries Branch Coverage Expansion", () => {
           timestamp: 150,
           status: "placed",
         },
-      ]);
+      ];
+      // The bid window is read with .take(), the per-lot stats with .collect().
+      vi.mocked(queryMock.take).mockResolvedValue(bids);
+      vi.mocked(queryMock.collect).mockResolvedValue(bids);
       vi.mocked(dbGetMock).mockResolvedValue({
         _id: "a1" as Id<"lots">,
         status: "assigned",

@@ -202,6 +202,7 @@ export default defineSchema({
     .index("by_lot_amount", ["lotId", "amount"])
     .index("by_bidder", ["bidderId"])
     .index("by_bidder_lot", ["bidderId", "lotId"])
+    .index("by_bidder_timestamp", ["bidderId", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
 
   // Per-user bid cooldown state (issue #283). One row per user, keyed by the
