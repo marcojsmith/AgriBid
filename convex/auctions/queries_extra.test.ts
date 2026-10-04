@@ -28,6 +28,11 @@ vi.mock("./helpers", () => {
     toLotSummary: vi.fn((_ctx: unknown, a: Doc<"lots">) =>
       Promise.resolve({ _id: a._id, title: a.title, status: a.status })
     ),
+    toLotSummaries: vi.fn((_ctx: unknown, lots: Doc<"lots">[]) =>
+      Promise.resolve(
+        lots.map((a) => ({ _id: a._id, title: a.title, status: a.status }))
+      )
+    ),
     LotSummaryValidator: v.object({
       _id: v.string(),
       title: v.string(),
@@ -216,11 +221,12 @@ describe("Queries Extra Coverage", () => {
     } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
-    // mock bids and lots to have something to paginate
-    queryMock.collect.mockResolvedValue([
-      { lotId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
-      { lotId: "a2", amount: 200, bidderId: "u1", timestamp: 200 },
-    ]);
+    // mock bids and lots to have something to paginate. The bid window is read
+    // with .take(), the per-lot stats with .collect(). A timestamp-only cursor of
+    // 200 leaves the lot bid at 50 unconsumed, so "recent" hands it back.
+    const bids = [{ lotId: "a1", amount: 100, bidderId: "u1", timestamp: 50 }];
+    queryMock.take.mockResolvedValue(bids);
+    queryMock.collect.mockResolvedValue(bids);
     vi.mocked(mockCtx.db.get).mockImplementation(
       (_table: unknown, id: unknown) => {
         return {
@@ -234,11 +240,11 @@ describe("Queries Extra Coverage", () => {
     );
 
     const result = await getMyBidsHandler(mockCtx as unknown as QueryCtx, {
-      paginationOpts: { numItems: 1, cursor: "1" },
+      paginationOpts: { numItems: 1, cursor: "200" },
     });
 
     expect(result.page).toHaveLength(1);
-    expect(result.page[0].title).toBe("a1"); // Since default sort is b.lastBidTimestamp - a.lastBidTimestamp
+    expect(result.page[0].title).toBe("a1");
     expect(result.isDone).toBe(true);
   });
 
@@ -250,9 +256,11 @@ describe("Queries Extra Coverage", () => {
     } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
-    queryMock.collect.mockResolvedValue([
-      { lotId: "a1", amount: 100, bidderId: "u1", timestamp: 100 },
-    ]);
+    // A cursor at the lot's own bid timestamp means that bid was already
+    // consumed, so the lot is not listed again.
+    const bids = [{ lotId: "a1", amount: 100, bidderId: "u1", timestamp: 100 }];
+    queryMock.take.mockResolvedValue(bids);
+    queryMock.collect.mockResolvedValue(bids);
     vi.mocked(mockCtx.db.get).mockResolvedValue({
       _id: "a1",
       status: "assigned",

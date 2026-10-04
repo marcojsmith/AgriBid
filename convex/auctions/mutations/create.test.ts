@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import * as auth from "../../lib/auth";
 import { updateCounter } from "../../admin_utils";
-import { MS_PER_MINUTE } from "../../constants";
+import {
+  MAX_ADDITIONAL_IMAGES,
+  MAX_DRAFTS_PER_USER,
+  MS_PER_MINUTE,
+} from "../../constants";
 import {
   createLotHandler,
   saveDraftHandler,
@@ -61,16 +65,68 @@ const createMockProfile = (userId: string, role: string) => ({
   isVerified: role === "verified" || role === "admin",
 });
 
+/** Chainable stand-in for the index range Convex hands to `withIndex`. */
+interface MockIndexBuilder {
+  eq: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
+}
+
+/** Query double whose `withIndex` actually runs the supplied index callback. */
+interface MockIndexQuery {
+  withIndex: ReturnType<typeof vi.fn>;
+  collect: ReturnType<typeof vi.fn>;
+  indexBuilder: MockIndexBuilder;
+}
+
+/**
+ * Builds a query double that runs the index callback production code supplies,
+ * so the index predicates themselves are exercised.
+ *
+ * @param rows - Documents `collect` resolves with
+ * @returns The query double plus the recorded index range
+ */
+const makeIndexQuery = (rows: unknown[]): MockIndexQuery => {
+  const indexBuilder: MockIndexBuilder = {
+    eq: vi.fn(() => indexBuilder),
+    gte: vi.fn(() => indexBuilder),
+    lte: vi.fn(() => indexBuilder),
+  };
+  const chain: MockIndexQuery = {
+    withIndex: vi.fn(
+      (_index: string, cb?: (q: MockIndexBuilder) => unknown) => {
+        if (cb) cb(indexBuilder);
+        return chain;
+      }
+    ),
+    collect: vi.fn().mockResolvedValue(rows),
+    indexBuilder,
+  };
+  return chain;
+};
+
 describe("Create Mutations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const mockLotsQuery = {
+      withIndex: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([]),
+    };
     mockCtx = {
       db: {
         get: vi.fn(),
         insert: vi.fn().mockResolvedValue("id"),
         patch: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn().mockResolvedValue(undefined),
-        query: vi.fn(),
+        query: vi.fn((table: string) => {
+          if (table === "lots") {
+            return mockLotsQuery;
+          }
+          return {
+            withIndex: vi.fn().mockReturnThis(),
+            collect: vi.fn().mockResolvedValue([]),
+          };
+        }),
         normalizeId: vi
           .fn()
           .mockImplementation((_table: string, id: string) => id),
@@ -249,6 +305,90 @@ describe("Create Mutations", () => {
       const inserted = insertCall?.[1] as Record<string, unknown>;
       expect(inserted).not.toHaveProperty("startTime");
       expect(inserted).not.toHaveProperty("durationDays");
+    });
+
+    it("should reject when a lot was created within the cooldown window", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      const cooldownQuery = makeIndexQuery([{ _id: "recent" }]);
+      mockCtx.db.query.mockReturnValue(cooldownQuery);
+
+      await expect(
+        createLotHandler(mockCtx as unknown as MutationCtx, validArgs)
+      ).rejects.toThrow("You're creating listings too quickly");
+
+      expect(cooldownQuery.withIndex).toHaveBeenCalledWith(
+        "by_seller_createdAt",
+        expect.any(Function)
+      );
+      expect(cooldownQuery.indexBuilder.eq).toHaveBeenCalledWith(
+        "sellerId",
+        "u1"
+      );
+      expect(cooldownQuery.indexBuilder.gte).toHaveBeenCalledWith(
+        "createdAt",
+        expect.any(Number) as number
+      );
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should reject a draft once the draft cap is reached", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      const cooldownQuery = makeIndexQuery([]);
+      const draftQuery = makeIndexQuery(
+        Array.from({ length: MAX_DRAFTS_PER_USER }, (_, i) => ({
+          _id: `draft${String(i)}`,
+        }))
+      );
+      mockCtx.db.query
+        .mockReturnValueOnce(cooldownQuery)
+        .mockReturnValueOnce(draftQuery);
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+
+      await expect(
+        createLotHandler(mockCtx as unknown as MutationCtx, {
+          ...validArgs,
+          isDraft: true,
+        })
+      ).rejects.toThrow(
+        `You have reached the maximum of ${MAX_DRAFTS_PER_USER.toString()} drafts`
+      );
+
+      expect(draftQuery.withIndex).toHaveBeenCalledWith(
+        "by_seller_status",
+        expect.any(Function)
+      );
+      expect(draftQuery.indexBuilder.eq).toHaveBeenCalledWith(
+        "status",
+        "draft"
+      );
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should truncate extra additional images when creating a draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+
+      await createLotHandler(mockCtx as unknown as MutationCtx, {
+        ...validArgs,
+        isDraft: true,
+        images: {
+          front: "front1",
+          additional: Array.from(
+            { length: MAX_ADDITIONAL_IMAGES + 3 },
+            (_, i) => `img${String(i)}`
+          ),
+        },
+      });
+
+      const insertCall = mockCtx.db.insert.mock.calls.find(
+        (call) => call[0] === "lots"
+      );
+      const inserted = insertCall?.[1] as {
+        images: { additional: string[] };
+        status: string;
+      };
+      expect(inserted.status).toBe("draft");
+      expect(inserted.images.additional).toHaveLength(MAX_ADDITIONAL_IMAGES);
     });
   });
 
@@ -533,6 +673,98 @@ describe("Create Mutations", () => {
       expect(patchCall?.[2] as Record<string, unknown>).not.toHaveProperty(
         "startTime"
       );
+    });
+
+    it("should reject a new draft created within the cooldown window", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      const cooldownQuery = makeIndexQuery([{ _id: "recent" }]);
+      mockCtx.db.query.mockReturnValue(cooldownQuery);
+
+      await expect(
+        saveDraftHandler(
+          mockCtx as unknown as MutationCtx,
+          {
+            title: "T",
+            images: { front: "img1" },
+          } as PartialDraftArgs as SaveDraftArgs
+        )
+      ).rejects.toThrow("You're creating listings too quickly");
+
+      expect(cooldownQuery.withIndex).toHaveBeenCalledWith(
+        "by_seller_createdAt",
+        expect.any(Function)
+      );
+      expect(cooldownQuery.indexBuilder.gte).toHaveBeenCalledWith(
+        "createdAt",
+        expect.any(Number) as number
+      );
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should require a title when creating a new draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+
+      await expect(
+        saveDraftHandler(
+          mockCtx as unknown as MutationCtx,
+          {
+            images: { front: "img1" },
+          } as PartialDraftArgs as SaveDraftArgs
+        )
+      ).rejects.toThrow("Title is required to create a new draft");
+
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should require images when creating a new draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+
+      await expect(
+        saveDraftHandler(
+          mockCtx as unknown as MutationCtx,
+          {
+            title: "T",
+          } as PartialDraftArgs as SaveDraftArgs
+        )
+      ).rejects.toThrow("Images are required to create a new draft");
+
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should reject a new draft once the draft cap is reached", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      const cooldownQuery = makeIndexQuery([]);
+      const draftQuery = makeIndexQuery(
+        Array.from({ length: MAX_DRAFTS_PER_USER }, (_, i) => ({
+          _id: `draft${String(i)}`,
+        }))
+      );
+      mockCtx.db.query
+        .mockReturnValueOnce(cooldownQuery)
+        .mockReturnValueOnce(draftQuery);
+
+      await expect(
+        saveDraftHandler(
+          mockCtx as unknown as MutationCtx,
+          {
+            title: "T",
+            images: { front: "img1" },
+          } as PartialDraftArgs as SaveDraftArgs
+        )
+      ).rejects.toThrow(
+        `You have reached the maximum of ${MAX_DRAFTS_PER_USER.toString()} drafts`
+      );
+
+      expect(draftQuery.withIndex).toHaveBeenCalledWith(
+        "by_seller_status",
+        expect.any(Function)
+      );
+      expect(draftQuery.indexBuilder.eq).toHaveBeenCalledWith("sellerId", "u1");
+      expect(draftQuery.indexBuilder.eq).toHaveBeenCalledWith(
+        "status",
+        "draft"
+      );
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
     });
   });
 

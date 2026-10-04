@@ -356,4 +356,98 @@ describe("AdminFAQ", () => {
       expect(toast.error).toHaveBeenCalledWith("Answer is required");
     });
   });
+
+  it("saves edits for an existing item", async () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    mockUpdateFaqItem.mockResolvedValue(null);
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0]);
+    fireEvent.change(screen.getByLabelText(/question/i), {
+      target: { value: "How do I sign up?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateFaqItem).toHaveBeenCalledWith({
+        id: "faq1",
+        question: "How do I sign up?",
+        answer: "Create a free account.",
+        isPublished: true,
+      });
+      expect(toast.success).toHaveBeenCalledWith("FAQ item updated");
+    });
+  });
+
+  it("toggles the published checkbox from the item dialog", async () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    mockCreateFaqItem.mockResolvedValue("faq9");
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getByRole("button", { name: /new faq item/i }));
+    fireEvent.change(screen.getByLabelText(/question/i), {
+      target: { value: "Draft question" },
+    });
+    fireEvent.change(screen.getByLabelText(/answer/i), {
+      target: { value: "Draft answer" },
+    });
+    fireEvent.click(screen.getByLabelText(/published \(visible on \/faq\)/i));
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(mockCreateFaqItem).toHaveBeenCalledWith({
+        question: "Draft question",
+        answer: "Draft answer",
+        isPublished: true,
+      });
+    });
+  });
+
+  it("closes the dialog without saving when cancel is clicked", () => {
+    mockFaqItems = [];
+    (useQuery as Mock).mockReturnValue([]);
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getByRole("button", { name: /new faq item/i }));
+    fireEvent.change(screen.getByLabelText(/question/i), {
+      target: { value: "Discarded" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockCreateFaqItem).not.toHaveBeenCalled();
+  });
+
+  it("deletes an item and reports success", async () => {
+    mockFaqItems = sampleFaqs;
+    (useQuery as Mock).mockReturnValue(sampleFaqs);
+    mockDeleteFaqItem.mockResolvedValue(null);
+    render(<AdminFAQ />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /delete/i })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    await waitFor(() => {
+      expect(mockDeleteFaqItem).toHaveBeenCalledWith({ id: "faq1" });
+      expect(toast.success).toHaveBeenCalledWith("FAQ item deleted");
+    });
+  });
+
+  it("calls reorderFaqItems when move up is clicked", async () => {
+    mockFaqItems = threeFaqs;
+    (useQuery as Mock).mockReturnValue(threeFaqs);
+    mockReorderFaqItems.mockResolvedValue(null);
+    render(<AdminFAQ />);
+
+    const moveUpButtons = screen.getAllByRole("button", { name: /move up/i });
+    fireEvent.click(moveUpButtons[1]);
+
+    await waitFor(() => {
+      expect(mockReorderFaqItems).toHaveBeenCalledWith({
+        orderedIds: ["faq2", "faq1", "faq3"],
+      });
+    });
+  });
 });

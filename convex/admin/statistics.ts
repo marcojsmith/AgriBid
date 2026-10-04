@@ -167,7 +167,7 @@ export const getFinancialStats = query({
       const parsed = cursor ? parseInt(cursor, 10) : 0;
       const startIndex = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 
-      const [recentSoldLots, totalSoldCount, allLotFees] = await Promise.all([
+      const [recentSoldLots, totalSoldCount, feeCounter] = await Promise.all([
         ctx.db
           .query("lots")
           .withIndex("by_status_settledAt", (q) => q.eq("status", "sold"))
@@ -178,8 +178,24 @@ export const getFinancialStats = query({
             .query("lots")
             .withIndex("by_status_settledAt", (q) => q.eq("status", "sold"))
         ),
-        ctx.db.query("lotFees").collect(),
+        getCounter(ctx, "lotFees"),
       ]);
+
+      const buyerFeesTotal = feeCounter?.buyerTotal ?? 0;
+      const sellerFeesTotal = feeCounter?.sellerTotal ?? 0;
+
+      const lotIdsOnPage = recentSoldLots
+        .slice(startIndex)
+        .map((lot) => lot._id);
+
+      const lotFeePromises = await Promise.all(
+        lotIdsOnPage.map(async (lotId) => {
+          return await ctx.db
+            .query("lotFees")
+            .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+            .collect();
+        })
+      );
 
       const lotFeeMap = new Map<
         string,
@@ -190,33 +206,24 @@ export const getFinancialStats = query({
         }[]
       >();
 
-      let buyerFeesTotal = 0;
-      let sellerFeesTotal = 0;
-
-      for (const fee of allLotFees) {
-        if (fee.appliedTo === "buyer") {
-          buyerFeesTotal += fee.calculatedAmount;
-        } else {
-          sellerFeesTotal += fee.calculatedAmount;
-        }
-
-        // Fees and recentSales are both lot-scoped, so they key directly on
-        // the lot id.
-        const existing = lotFeeMap.get(fee.lotId);
-        if (existing) {
-          existing.push({
-            feeName: fee.feeName,
-            appliedTo: fee.appliedTo,
-            amount: fee.calculatedAmount,
-          });
-        } else {
-          lotFeeMap.set(fee.lotId, [
-            {
+      for (const fees of lotFeePromises) {
+        for (const fee of fees) {
+          const existing = lotFeeMap.get(fee.lotId);
+          if (existing) {
+            existing.push({
               feeName: fee.feeName,
               appliedTo: fee.appliedTo,
               amount: fee.calculatedAmount,
-            },
-          ]);
+            });
+          } else {
+            lotFeeMap.set(fee.lotId, [
+              {
+                feeName: fee.feeName,
+                appliedTo: fee.appliedTo,
+                amount: fee.calculatedAmount,
+              },
+            ]);
+          }
         }
       }
 

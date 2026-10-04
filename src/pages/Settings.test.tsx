@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
+import { HelmetProvider } from "react-helmet-async";
 import React from "react";
 
 import { useSession } from "@/lib/auth-client";
@@ -135,10 +136,22 @@ describe("Settings Page", () => {
 
   const renderSettings = () =>
     render(
-      <BrowserRouter>
-        <Settings />
-      </BrowserRouter>
+      <HelmetProvider>
+        <BrowserRouter>
+          <Settings />
+        </BrowserRouter>
+      </HelmetProvider>
     );
+
+  it("sets page title and noindex meta tag", async () => {
+    renderSettings();
+    await waitFor(() => {
+      expect(document.title).toBe("Settings | AgriBid");
+    });
+    const robotsMeta = document.querySelector('meta[name="robots"]');
+    expect(robotsMeta).toBeInTheDocument();
+    expect(robotsMeta?.getAttribute("content")).toBe("noindex");
+  });
 
   it("renders loading state when preferences are undefined", () => {
     (useQuery as Mock).mockReturnValue(undefined);
@@ -360,5 +373,48 @@ describe("Settings Page", () => {
     });
     renderSettings();
     expect(screen.getByText("Settings")).toBeInTheDocument();
+  });
+
+  it("toggles a switch from the keyboard", () => {
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+
+    fireEvent.keyDown(sidebarSwitch, { key: "Enter" });
+    expect(mockMutate).toHaveBeenCalledWith({ sidebarOpen: true });
+  });
+
+  it("toggles a switch with the space key", () => {
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+
+    fireEvent.keyDown(sidebarSwitch, { key: " " });
+    expect(mockMutate).toHaveBeenCalledWith({ sidebarOpen: true });
+  });
+
+  it("ignores other keys on a switch", () => {
+    renderSettings();
+    const sidebarSwitch = screen.getByRole("switch", {
+      name: "Show Filter Sidebar by Default",
+    });
+
+    fireEvent.keyDown(sidebarSwitch, { key: "a" });
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("shows an error toast when saving a preference fails", async () => {
+    mockMutate.mockRejectedValue(new Error("offline"));
+    renderSettings();
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Show Filter Sidebar by Default" })
+    );
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to save setting");
+    });
   });
 });

@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { PaginationOptions } from "convex/server";
 
 import { query, paginationOptsValidator, type QueryCtx } from "./shared";
-import { LotSummaryValidator, toLotSummary } from "../helpers";
+import { LotSummaryValidator, toLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { resolveUrlCached } from "../../image_cache";
 import { countQuery } from "../../admin_utils";
@@ -156,34 +156,50 @@ export const getAuctionById = query({
  * start first, for the public auction gallery. Draft containers are never
  * exposed publicly.
  *
- * Results are a union of two indexes ("published" and "closed") merged and
- * re-sorted by `startTime`, so a true cross-index cursor isn't feasible
- * without a bigger redesign. Instead each status side is capped at
+ * When `status` is provided, filters server-side:
+ * - `"active"`: only `status: "published"` auctions
+ * - `"closed"`: only `status: "closed"` auctions
+ * - `"all"` (default): both published and closed merged by startTime
+ *
+ * Results are a union of two indexes (`by_status`) merged and re-sorted by
+ * `startTime`, so a true cross-index cursor isn't feasible without a bigger
+ * redesign. Instead each status side is capped at
  * {@link PUBLISHED_AUCTIONS_STATUS_CAP} before merging, and pagination is a
- * manual offset cursor over the merged, sorted list (the same approach as
- * `getActiveLots`' manual branch).
+ * manual offset cursor over the merged, sorted list.
  *
  * @param ctx - Convex Query context.
  * @param args - Handler arguments.
  * @param args.paginationOpts - Pagination options (numItems and cursor).
+ * @param args.status - Optional status filter (`"active"` | `"closed"` | `"all"`).
  * @returns Standard pagination result: `{ page, isDone, continueCursor }`.
  */
 export const getPublishedAuctionsHandler = async (
   ctx: QueryCtx,
-  args: { paginationOpts: PaginationOptions }
+  args: {
+    paginationOpts: PaginationOptions;
+    status?: "active" | "closed" | "all";
+  }
 ) => {
-  const [published, closed] = await Promise.all([
-    ctx.db
+  const statusFilter = args.status ?? "all";
+
+  let published: AuctionContainerDoc[] = [];
+  let closed: AuctionContainerDoc[] = [];
+
+  if (statusFilter === "active" || statusFilter === "all") {
+    published = await ctx.db
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .order("desc")
-      .take(PUBLISHED_AUCTIONS_STATUS_CAP),
-    ctx.db
+      .take(PUBLISHED_AUCTIONS_STATUS_CAP);
+  }
+
+  if (statusFilter === "closed" || statusFilter === "all") {
+    closed = await ctx.db
       .query("auctions")
       .withIndex("by_status", (q) => q.eq("status", "closed"))
       .order("desc")
-      .take(PUBLISHED_AUCTIONS_STATUS_CAP),
-  ]);
+      .take(PUBLISHED_AUCTIONS_STATUS_CAP);
+  }
 
   const all = [...published, ...closed].sort(
     (a, b) => b.startTime - a.startTime
@@ -209,7 +225,10 @@ export const getPublishedAuctionsHandler = async (
 };
 
 export const getPublishedAuctions = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(v.union(v.literal("active"), v.literal("closed"), v.literal("all"))),
+  },
   returns: v.object({
     page: v.array(AuctionValidator),
     isDone: v.boolean(),
@@ -245,7 +264,7 @@ export const getPublishedAuctionHandler = async (
 
   return {
     ...auctionView,
-    lots: await Promise.all(lots.map((lot) => toLotSummary(ctx, lot))),
+    lots: await toLotSummaries(ctx, lots),
   };
 };
 
@@ -285,8 +304,8 @@ export const getAssignmentCandidatesHandler = async (
   ]);
 
   const [unassigned, assigned] = await Promise.all([
-    Promise.all(approvedLots.map((lot) => toLotSummary(ctx, lot))),
-    Promise.all(auctionLots.map((lot) => toLotSummary(ctx, lot))),
+    toLotSummaries(ctx, approvedLots),
+    toLotSummaries(ctx, auctionLots),
   ]);
 
   return { unassigned, assigned };

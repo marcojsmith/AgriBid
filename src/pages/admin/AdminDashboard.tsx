@@ -92,7 +92,7 @@ function AdminDashboardContent() {
   return (
     <div className="space-y-6">
       {adminStats.status === "partial" && (
-        <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 rounded-lg text-sm font-medium">
+        <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/20 text-warning rounded-md text-sm font-medium">
           <AlertCircle className="h-4 w-4" />
           Some statistics are currently partial or cached. Some metrics may not
           be fully accurate.
@@ -107,18 +107,18 @@ function AdminDashboardContent() {
             {
               label: "Currently Connected",
               value: adminStats.liveUsers,
-              color: "text-green-600",
+              color: "text-success",
             },
             { label: "Registered Users", value: adminStats.totalUsers },
             {
               label: "Verified Sellers",
               value: adminStats.verifiedSellers,
-              color: "text-blue-600",
+              color: "text-primary",
             },
             {
               label: "KYC Pending",
               value: adminStats.kycPending,
-              color: adminStats.kycPending > 0 ? "text-yellow-600" : undefined,
+              color: adminStats.kycPending > 0 ? "text-warning" : undefined,
             },
           ]}
           link="/admin/users"
@@ -152,8 +152,8 @@ function AdminDashboardContent() {
               value: adminStats.pendingReview,
               color:
                 adminStats.pendingReview > 0
-                  ? "text-yellow-600"
-                  : "text-green-600",
+                  ? "text-warning"
+                  : "text-success",
             },
             { label: "KYC Queue", value: adminStats.kycPending },
           ]}
@@ -173,7 +173,7 @@ function AdminDashboardContent() {
             {
               label: "Fees Collected",
               value: formatCurrency(financialStats.totalFeesCollected),
-              color: "text-green-600",
+              color: "text-success",
             },
           ]}
           link="/admin/finance"
@@ -188,7 +188,7 @@ function AdminDashboardContent() {
             {
               label: "Open Tickets",
               value: supportStats.open,
-              color: supportStats.open > 0 ? "text-red-600" : "text-green-600",
+              color: supportStats.open > 0 ? "text-destructive" : "text-success",
             },
             { label: "Resolved", value: supportStats.resolved },
           ]}

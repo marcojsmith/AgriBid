@@ -184,6 +184,35 @@ vi.mock("@/components/LoadingIndicator", () => ({
   LoadingIndicator: () => <div data-testid="loading-indicator">Loading...</div>,
 }));
 
+vi.mock("@/components/auction/AuctionCard", () => ({
+  AuctionCard: ({
+    auction,
+    isWatched,
+  }: {
+    auction: { _id: string; title: string };
+    isWatched?: boolean;
+  }) => (
+    <div data-testid="auction-card" data-watched={String(Boolean(isWatched))}>
+      {auction.title}
+    </div>
+  ),
+}));
+
+vi.mock("@/components/auction/FeeBreakdown", () => ({
+  FeeBreakdown: ({
+    isWinner,
+    isSeller,
+  }: {
+    lotId: string;
+    isWinner: boolean;
+    isSeller: boolean;
+  }) => (
+    <div data-testid="fee-breakdown">
+      {`winner=${String(isWinner)} seller=${String(isSeller)}`}
+    </div>
+  ),
+}));
+
 describe("AuctionDetail Page", () => {
   const mockAuction = {
     _id: "auction1",
@@ -563,5 +592,98 @@ describe("AuctionDetail Page", () => {
       screen.queryByRole("heading", { name: "Bid History" })
     ).not.toBeInTheDocument();
     expect(screen.getAllByText("Bid History")).toHaveLength(1);
+  });
+
+  it("renders a sparse lot without optional metadata", () => {
+    (useQuery as Mock).mockReturnValue({
+      _id: "auction1",
+      title: "Bare Lot",
+      sellerEmail: "seller@example.com",
+      sellerId: "seller1",
+      images: { front: "img.jpg" },
+      status: "assigned",
+      auctionStatus: "published",
+      auctionStartTime: Date.now() - 60_000,
+    });
+    renderPage();
+
+    expect(screen.getByText("No description provided.")).toBeInTheDocument();
+    expect(screen.getByTestId("image-gallery")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /View Report/i })).toBeNull();
+  });
+
+  it("lists related lots of the same make and marks watched ones", () => {
+    const auctionWithMake = { ...mockAuction, make: "John Deere" };
+    // The page's three queries are told apart by their arguments: the lot
+    // lookup passes lotId, the related-lot lookup passes make/excludeId, and
+    // the watchlist lookup passes an empty object.
+    (useQuery as Mock).mockImplementation((_query: unknown, args: unknown) => {
+      const params = (args ?? {}) as Record<string, unknown>;
+      if ("make" in params) {
+        return [
+          { ...auctionWithMake, _id: "auction2", title: "Related Tractor" },
+        ];
+      }
+      if ("lotId" in params) return auctionWithMake;
+      return ["auction2"];
+    });
+
+    renderPage();
+
+    const card = screen.getByTestId("auction-card");
+    expect(card).toHaveTextContent("Related Tractor");
+    expect(card).toHaveAttribute("data-watched", "true");
+  });
+
+  it("shows the fee breakdown to the winning bidder on a sold lot", () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "buyer1" } },
+      isPending: false,
+    });
+    (useQuery as Mock).mockReturnValue({
+      ...mockAuction,
+      status: "sold",
+      winnerId: "buyer1",
+    });
+
+    renderPage();
+
+    expect(screen.getByTestId("fee-breakdown")).toHaveTextContent(
+      "winner=true seller=false"
+    );
+  });
+
+  it("shows the fee breakdown to the seller on a sold lot", () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "seller1" } },
+      isPending: false,
+    });
+    (useQuery as Mock).mockReturnValue({
+      ...mockAuction,
+      status: "sold",
+      winnerId: "buyer1",
+    });
+
+    renderPage();
+
+    expect(screen.getByTestId("fee-breakdown")).toHaveTextContent(
+      "winner=false seller=true"
+    );
+  });
+
+  it("hides the fee breakdown from unrelated viewers of a sold lot", () => {
+    (useSession as Mock).mockReturnValue({
+      data: { user: { id: "buyer2" } },
+      isPending: false,
+    });
+    (useQuery as Mock).mockReturnValue({
+      ...mockAuction,
+      status: "sold",
+      winnerId: "buyer1",
+    });
+
+    renderPage();
+
+    expect(screen.queryByTestId("fee-breakdown")).toBeNull();
   });
 });

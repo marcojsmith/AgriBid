@@ -27,6 +27,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLoadingTimeout } from "@/hooks/useLoadingTimeout";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { AdminConnectionError } from "./AdminConnectionError";
 
@@ -87,168 +93,187 @@ export function BidMonitor() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      <Card className="border overflow-hidden bg-card/50">
-        <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
-          <h3 className="font-bold text-lg flex items-center gap-2">
-            <Gavel className="h-4 w-4" /> Real-time Feed
-          </h3>
-          <span className="text-xs font-mono text-muted-foreground animate-pulse">
-            ● LIVE
-          </span>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Auction</TableHead>
-              <TableHead>Bidder</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bids.length === 0 ? (
+    <TooltipProvider>
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+        <Card className="border overflow-hidden bg-card/50">
+          <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <Gavel className="h-4 w-4" /> Real-time Feed
+            </h3>
+            <span className="text-xs font-mono text-muted-foreground animate-pulse">
+              ● LIVE
+            </span>
+          </div>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Gavel className="h-8 w-8 opacity-20" />
-                    <p className="font-medium text-xs">No bids yet</p>
-                  </div>
-                </TableCell>
+                <TableHead>Time</TableHead>
+                <TableHead>Auction</TableHead>
+                <TableHead>Bidder</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
-            ) : (
-              bids.map((bid) => (
-                <TableRow
-                  key={bid._id}
-                  className={
-                    bid.status === "voided" ? "opacity-50 bg-destructive/5" : ""
-                  }
-                >
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {new Date(bid.timestamp).toLocaleTimeString()}
-                  </TableCell>
-                  <TableCell
-                    className="font-medium truncate"
-                    title={bid.auctionTitle ?? bid.auctionLookupStatus}
-                  >
-                    {bid.auctionLookupStatus === "FOUND"
-                      ? bid.auctionTitle
-                      : bid.auctionLookupStatus === "ERROR"
-                        ? "Auction Data Unavailable"
-                        : "Unknown Auction (Deleted)"}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs" title={bid.bidderId}>
-                    {bid.bidderId.substring(0, 8)}...
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {bid.status === "voided" ? (
-                      <span className="line-through text-muted-foreground">
-                        {formatCurrency(bid.amount)}
-                      </span>
-                    ) : (
-                      <span className="text-green-600">
-                        {formatCurrency(bid.amount)}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {bid.status !== "voided" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Void bid ${bid._id}`}
-                        onClick={() => {
-                          setVoidTarget(bid._id);
-                        }}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Ban className="h-4 w-4" />
-                      </Button>
-                    )}
+            </TableHeader>
+            <TableBody>
+              {bids.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <Gavel className="h-8 w-8 opacity-20" />
+                      <p className="font-medium text-xs">No bids yet</p>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                bids.map((bid) => (
+                  <TableRow
+                    key={bid._id}
+                    className={
+                      bid.status === "voided"
+                        ? "opacity-50 bg-destructive/5"
+                        : ""
+                    }
+                  >
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {new Date(bid.timestamp).toLocaleTimeString()}
+                    </TableCell>
+                    <TableCell className="font-medium truncate">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-default">
+                            {bid.auctionLookupStatus === "FOUND"
+                              ? bid.auctionTitle
+                              : bid.auctionLookupStatus === "ERROR"
+                                ? "Auction Data Unavailable"
+                                : "Unknown Auction (Deleted)"}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{bid.auctionTitle ?? bid.auctionLookupStatus}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="cursor-default">
+                            {bid.bidderId.substring(0, 8)}...
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{bid.bidderId}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {bid.status === "voided" ? (
+                        <span className="line-through text-muted-foreground">
+                          {formatCurrency(bid.amount)}
+                        </span>
+                      ) : (
+                        <span className="text-success">
+                          {formatCurrency(bid.amount)}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {bid.status !== "voided" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Void bid ${bid._id}`}
+                          onClick={() => {
+                            setVoidTarget(bid._id);
+                          }}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-        {bids.length > 0 && (
-          <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
-            <p className="text-xs font-medium text-muted-foreground">
-              Showing {bids.length} bids
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-3 font-medium text-xs gap-1"
-                onClick={() => {
-                  setCurrentCursor(null);
-                }}
-                disabled={currentCursor === null}
-              >
-                <ChevronLeft className="h-3 w-3" /> Reset
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-3 font-medium text-xs gap-1"
-                onClick={() => {
-                  if (bidsResult.continueCursor) {
-                    setCurrentCursor(bidsResult.continueCursor);
-                  }
-                }}
-                disabled={bidsResult.isDone}
-              >
-                More <ChevronRight className="h-3 w-3" />
-              </Button>
+          {bids.length > 0 && (
+            <div className="p-4 border-t bg-muted/20 flex justify-between items-center">
+              <p className="text-xs font-medium text-muted-foreground">
+                Showing {bids.length} bids
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 font-medium text-xs gap-1"
+                  onClick={() => {
+                    setCurrentCursor(null);
+                  }}
+                  disabled={currentCursor === null}
+                >
+                  <ChevronLeft className="h-3 w-3" /> Reset
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 font-medium text-xs gap-1"
+                  onClick={() => {
+                    if (bidsResult.continueCursor) {
+                      setCurrentCursor(bidsResult.continueCursor);
+                    }
+                  }}
+                  disabled={bidsResult.isDone}
+                >
+                  More <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
 
-      <AlertDialog
-        open={!!voidTarget}
-        onOpenChange={(open) => {
-          if (!open) {
-            setVoidTarget(null);
-          }
-        }}
-      >
-        <AlertDialogContent className="rounded-md border">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-semibold">
-              Void Bid Transaction?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="font-medium text-sm">
-              This will permanently invalidate this bid and recalculate the
-              current auction price based on the next highest valid bid.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={isVoiding}
-              className="rounded-md border font-medium text-xs"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                void handleVoid();
-              }}
-              disabled={isVoiding}
-              className="rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold text-xs"
-            >
-              {isVoiding ? (
-                <LoadingIndicator size="sm" className="mr-2" />
-              ) : null}
-              Confirm Void
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <AlertDialog
+          open={!!voidTarget}
+          onOpenChange={(open) => {
+            if (!open) {
+              setVoidTarget(null);
+            }
+          }}
+        >
+          <AlertDialogContent className="rounded-md border">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-semibold">
+                Void Bid Transaction?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-medium text-sm">
+                This will permanently invalidate this bid and recalculate the
+                current auction price based on the next highest valid bid.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                disabled={isVoiding}
+                className="rounded-md border font-medium text-xs"
+              >
+                Cancel
+              </AlertDialogCancel>
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  void handleVoid();
+                }}
+                disabled={isVoiding}
+                className="rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold text-xs"
+              >
+                {isVoiding ? (
+                  <LoadingIndicator size="sm" className="mr-2" />
+                ) : null}
+                Confirm Void
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 }

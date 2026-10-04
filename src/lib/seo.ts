@@ -1,10 +1,31 @@
 // src/lib/seo.ts
 // Centralised SEO configuration and helpers
 
+const PRODUCTION_FALLBACK = "https://agribid.co.za";
+
+/**
+ * Get the site URL for the current context.
+ *
+ * In development mode with a browser context, returns `window.location.origin`
+ * so canonical URLs match the dev server (e.g., localhost:5173 or Tailscale).
+ * In production or SSR, returns the `VITE_SITE_URL` env var or the fallback.
+ *
+ * @returns The site origin without trailing slash
+ */
+export function getSiteUrl(): string {
+  if (import.meta.env.DEV && typeof window !== "undefined") {
+    return window.location.origin.replace(/\/+$/, "");
+  }
+  const rawUrl = (
+    (import.meta.env.VITE_SITE_URL as string | undefined) ?? ""
+  ).trim();
+  return (rawUrl || PRODUCTION_FALLBACK).replace(/\/+$/, "");
+}
+
 const _rawSiteUrl = (
   (import.meta.env.VITE_SITE_URL as string | undefined) ?? ""
 ).trim();
-export const SITE_URL = (_rawSiteUrl || "https://agribid.co.za").replace(
+export const SITE_URL = (_rawSiteUrl || PRODUCTION_FALLBACK).replace(
   /\/+$/,
   ""
 );

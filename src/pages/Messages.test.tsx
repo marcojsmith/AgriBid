@@ -4,6 +4,7 @@ import { MemoryRouter, useParams } from "react-router-dom";
 import { usePaginatedQuery, useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
 import { toast } from "sonner";
+import { HelmetProvider } from "react-helmet-async";
 
 import Messages from "./Messages";
 
@@ -42,7 +43,21 @@ vi.mock("convex/_generated/api", () => ({
   api: mockApi,
 }));
 
-const mockConversations = [
+interface MockConversation {
+  _id: string;
+  _creationTime: number;
+  buyerId: string;
+  sellerId: string;
+  auctionId: undefined;
+  lastMessageAt: number;
+  createdAt: number;
+  otherParticipantId: string;
+  otherParticipantName: string | undefined;
+  lastMessagePreview: string;
+  unreadCount: number;
+}
+
+const mockConversations: MockConversation[] = [
   {
     _id: "conv1",
     _creationTime: 100,
@@ -111,6 +126,7 @@ const threadResult = (
   overrides: Partial<{
     results: typeof mockThreadMessages;
     status: string;
+    loadMore: (numItems: number) => void;
   }> = {}
 ) => ({
   results: mockThreadMessages,
@@ -134,10 +150,22 @@ describe("Messages Page — inbox", () => {
 
   const renderMessages = () =>
     render(
-      <MemoryRouter>
-        <Messages />
-      </MemoryRouter>
+      <HelmetProvider>
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      </HelmetProvider>
     );
+
+  it("sets page title and noindex meta tag", async () => {
+    renderMessages();
+    await waitFor(() => {
+      expect(document.title).toBe("Messages | AgriBid");
+    });
+    const robotsMeta = document.querySelector('meta[name="robots"]');
+    expect(robotsMeta).toBeInTheDocument();
+    expect(robotsMeta?.getAttribute("content")).toBe("noindex");
+  });
 
   it("renders loading state", () => {
     (usePaginatedQuery as Mock).mockImplementation(() =>
@@ -192,6 +220,61 @@ describe("Messages Page — inbox", () => {
     fireEvent.click(screen.getByRole("button", { name: /load more/i }));
 
     expect(loadMore).toHaveBeenCalledWith(20);
+  });
+
+  it("renders relative timestamps across every bucket", () => {
+    const now = Date.now();
+    const conversations = [
+      {
+        ...mockConversations[0],
+        _id: "conv_just_now",
+        lastMessageAt: now - 30_000,
+        otherParticipantName: "Ada Lovelace",
+      },
+      {
+        ...mockConversations[0],
+        _id: "conv_days",
+        lastMessageAt: now - 3 * 24 * 60 * 60_000,
+      },
+      {
+        ...mockConversations[0],
+        _id: "conv_weeks",
+        lastMessageAt: now - 21 * 24 * 60 * 60_000,
+        otherParticipantName: undefined,
+      },
+    ];
+    (usePaginatedQuery as Mock).mockImplementation(() =>
+      inboxResult({ results: conversations })
+    );
+
+    renderMessages();
+
+    expect(screen.getByText("Just now")).toBeInTheDocument();
+    expect(screen.getByText("3d")).toBeInTheDocument();
+    expect(screen.getByText("3w")).toBeInTheDocument();
+  });
+
+  it("falls back to initials when a participant name is missing or single-word", () => {
+    const conversations = [
+      {
+        ...mockConversations[0],
+        _id: "conv_noname",
+        otherParticipantName: undefined,
+      },
+      {
+        ...mockConversations[0],
+        _id: "conv_onename",
+        otherParticipantName: "Cher",
+      },
+    ];
+    (usePaginatedQuery as Mock).mockImplementation(() =>
+      inboxResult({ results: conversations })
+    );
+
+    renderMessages();
+
+    expect(screen.getByText("??")).toBeInTheDocument();
+    expect(screen.getByText("CH")).toBeInTheDocument();
   });
 });
 
@@ -319,5 +402,41 @@ describe("Messages Page — thread view", () => {
 
     expect(() => renderThread()).toThrow("Network failure");
     consoleSpy.mockRestore();
+  });
+
+  it("logs but does not throw when marking the thread as read fails", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // Intentional no-op: suppress expected error logging in this test
+    });
+    mockMarkRead.mockRejectedValueOnce(new Error("markRead failed"));
+
+    renderThread();
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Failed to mark conversation as read:",
+        expect.any(Error)
+      );
+    });
+    expect(screen.getByText("Yes, still available")).toBeInTheDocument();
+    consoleSpy.mockRestore();
+  });
+
+  it("calls loadMore(30) from the Load Older Messages button", () => {
+    const loadMore = vi.fn();
+    (usePaginatedQuery as Mock).mockImplementation((query) => {
+      if (query === mockApi.messages.getConversations) {
+        return inboxResult();
+      }
+      return threadResult({ status: "CanLoadMore", loadMore });
+    });
+
+    renderThread();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /load older messages/i })
+    );
+
+    expect(loadMore).toHaveBeenCalledWith(30);
   });
 });

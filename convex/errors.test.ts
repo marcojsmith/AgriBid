@@ -18,6 +18,11 @@ import {
   getErrorReportStatsHandler,
   processErrorReportsHandler,
   processErrorReportsAction,
+  getErrorReports,
+  getPendingReportsToProcess,
+  updateReportStatus,
+  isGitHubReportingEnabledProxy,
+  getGitHubConfigProxy,
 } from "./errors";
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -1194,6 +1199,238 @@ describe("Errors Backend", () => {
       expect(result.total).toBe(2);
       expect(result.pending).toBe(1);
       expect(result.completed).toBe(1);
+    });
+
+    it("getErrorReportsHandler filters by the requested status", async () => {
+      const filterBuilder = {
+        eq: vi.fn(() => filterBuilder),
+        field: vi.fn((f: string) => f),
+      };
+      const queryMock = {
+        filter: vi.fn((cb?: (q: typeof filterBuilder) => unknown) => {
+          if (cb) cb(filterBuilder);
+          return queryMock;
+        }),
+        order: vi.fn(() => queryMock),
+        take: vi.fn().mockResolvedValue([]),
+      };
+      const mockDb: MockDatabase = {
+        insert: vi.fn(),
+        patch: vi.fn(),
+        query: vi.fn(() => queryMock),
+      };
+      const mockCtx = createMockQueryCtx(mockDb);
+
+      await getErrorReportsHandler(mockCtx, { status: "failed", limit: 5 });
+
+      expect(queryMock.filter).toHaveBeenCalledWith(expect.any(Function));
+      expect(filterBuilder.field).toHaveBeenCalledWith("status");
+      expect(filterBuilder.eq).toHaveBeenCalledWith("status", "failed");
+      expect(queryMock.take).toHaveBeenCalledWith(5);
+    });
+
+    it("getErrorReports entry point delegates to the handler", async () => {
+      const reports = [
+        {
+          _id: "r1" as Id<"errorReports">,
+          _creationTime: 1,
+          fingerprint: "fp",
+          status: "pending" as const,
+          errorType: "TypeError",
+          errorMessage: "boom",
+        },
+      ];
+      const queryMock = {
+        order: vi.fn(() => queryMock),
+        take: vi.fn().mockResolvedValue(reports),
+      };
+      const mockDb: MockDatabase = {
+        insert: vi.fn(),
+        patch: vi.fn(),
+        query: vi.fn(() => queryMock),
+      };
+      const mockCtx = createMockQueryCtx(mockDb);
+
+      const result = await (
+        getErrorReports as unknown as {
+          _handler: (
+            ctx: QueryCtx,
+            args: { limit?: number }
+          ) => Promise<{ reports: { fingerprint: string }[] }>;
+        }
+      )._handler(mockCtx, { limit: 1 });
+
+      expect(queryMock.take).toHaveBeenCalledWith(1);
+      expect(result.reports).toHaveLength(1);
+      expect(result.reports[0]?.fingerprint).toBe("fp");
+    });
+
+    it("getPendingReportsToProcess marks the fetched batch as processing", async () => {
+      const queryMock = {
+        withIndex: vi.fn(() => queryMock),
+        filter: vi.fn(() => queryMock),
+        take: vi.fn().mockResolvedValue([{ _id: "r1" }, { _id: "r2" }]),
+      };
+      const mockDb: MockDatabase = {
+        insert: vi.fn(),
+        patch: vi.fn().mockResolvedValue(undefined),
+        query: vi.fn(() => queryMock),
+      };
+      const mockCtx = createMockInternalCtx(mockDb);
+
+      const result = await (
+        getPendingReportsToProcess as unknown as {
+          _handler: (ctx: MutationCtx) => Promise<{ _id: string }[]>;
+        }
+      )._handler(mockCtx);
+
+      expect(queryMock.withIndex).toHaveBeenCalledWith("by_status");
+      expect(queryMock.take).toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+      expect(mockDb.patch).toHaveBeenCalledWith("errorReports", "r1", {
+        status: "processing",
+      });
+      expect(mockDb.patch).toHaveBeenCalledWith("errorReports", "r2", {
+        status: "processing",
+      });
+    });
+
+    it("updateReportStatus patches the GitHub bookkeeping fields", async () => {
+      const mockDb: MockDatabase = {
+        insert: vi.fn(),
+        patch: vi.fn().mockResolvedValue(undefined),
+        query: vi.fn(),
+      };
+      const mockCtx = createMockInternalCtx(mockDb);
+
+      await (
+        updateReportStatus as unknown as {
+          _handler: (
+            ctx: MutationCtx,
+            args: {
+              id: Id<"errorReports">;
+              status: string;
+              githubIssueUrl?: string;
+              githubIssueNumber?: number;
+            }
+          ) => Promise<void>;
+        }
+      )._handler(mockCtx, {
+        id: "r1" as Id<"errorReports">,
+        status: "completed",
+        githubIssueUrl: "https://github.com/o/r/issues/1",
+        githubIssueNumber: 1,
+      });
+
+      expect(mockDb.patch).toHaveBeenCalledWith("errorReports", "r1", {
+        status: "completed",
+        githubIssueUrl: "https://github.com/o/r/issues/1",
+        githubIssueNumber: 1,
+      });
+    });
+
+    it("the GitHub config proxies forward to the real settings helpers", async () => {
+      const enabledSpy = vi
+        .spyOn(settings, "isGitHubReportingEnabled")
+        .mockResolvedValue(true);
+      const configSpy = vi
+        .spyOn(settings, "getGitHubConfig")
+        .mockResolvedValue({
+          enabled: true,
+          token: "token",
+          repoOwner: "owner",
+          repoName: "repo",
+          labels: null,
+        });
+      const mockCtx = createMockQueryCtx({
+        insert: vi.fn(),
+        patch: vi.fn(),
+        query: vi.fn(),
+      });
+
+      const enabled = await (
+        isGitHubReportingEnabledProxy as unknown as {
+          _handler: (ctx: QueryCtx) => Promise<boolean>;
+        }
+      )._handler(mockCtx);
+      const config = await (
+        getGitHubConfigProxy as unknown as {
+          _handler: (ctx: QueryCtx) => Promise<{ repoName: string | null }>;
+        }
+      )._handler(mockCtx);
+
+      expect(enabled).toBe(true);
+      expect(config.repoName).toBe("repo");
+      expect(enabledSpy).toHaveBeenCalledWith(mockCtx);
+      expect(configSpy).toHaveBeenCalledWith(mockCtx);
+      enabledSpy.mockRestore();
+      configSpy.mockRestore();
+    });
+
+    it("submitErrorReportHandler rejects server validation errors", async () => {
+      const mockDb: MockDatabase = {
+        insert: vi.fn(),
+        patch: vi.fn(),
+        query: vi.fn(() => ({
+          withIndex: vi.fn(() => ({
+            collect: vi.fn().mockResolvedValue([]),
+          })),
+        })),
+      };
+      const mockCtx = createMockCtx(mockDb);
+
+      const result = await submitErrorReportHandler(mockCtx, {
+        errorType: "ConvexError",
+        errorMessage: "You must be logged in to bid",
+        breadcrumbs: [],
+        metadata: { url: "test", userAgent: "test", timestamp: now },
+      });
+
+      expect(result).toEqual({
+        success: false,
+        isDuplicate: false,
+        instanceCount: 0,
+        reason: "validation_error",
+      });
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Error report rate limiting", () => {
+    // Runs last on purpose: checkRateLimit keeps a module-level cache, so
+    // poisoning it here would make any later submission look rate limited.
+    it("submitErrorReportHandler reports rate_limited once the window is full", async () => {
+      // Move past the 5s rate-limit cache TTL so the window is re-counted.
+      vi.setSystemTime(now + 60_000);
+      const queryMock = {
+        withIndex: vi.fn(() => queryMock),
+        collect: vi
+          .fn()
+          .mockResolvedValue(
+            Array.from({ length: 11 }, (_, i) => ({ _id: `r${String(i)}` }))
+          ),
+      };
+      const mockDb: MockDatabase = {
+        insert: vi.fn(),
+        patch: vi.fn(),
+        query: vi.fn(() => queryMock),
+      };
+      const mockCtx = createMockCtx(mockDb);
+
+      const result = await submitErrorReportHandler(mockCtx, {
+        errorType: "TypeError",
+        errorMessage: "A brand new client side failure",
+        breadcrumbs: [],
+        metadata: { url: "test", userAgent: "test", timestamp: Date.now() },
+      });
+
+      expect(result).toEqual({
+        success: false,
+        isDuplicate: false,
+        instanceCount: 0,
+        reason: "rate_limited",
+      });
+      expect(mockDb.insert).not.toHaveBeenCalled();
     });
   });
 });

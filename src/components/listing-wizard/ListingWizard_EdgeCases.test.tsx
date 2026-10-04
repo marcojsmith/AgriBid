@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-vi.mock("./context/useListingWizard", () => ({
+vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
 }));
 
@@ -11,9 +11,9 @@ vi.mock("@/lib/auth-client", () => ({
 }));
 
 import { useSession } from "@/lib/auth-client";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 import { ListingWizard } from "./ListingWizard";
-import { useListingWizard } from "./context/useListingWizard";
 import { DEFAULT_FORM_DATA } from "./constants";
 
 // Mock child components

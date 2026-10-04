@@ -11,192 +11,27 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { getGitHubConfig, isGitHubReportingEnabled } from "./admin/settings";
 import { getAuthUser, requireAdmin } from "./lib/auth";
 import { internal } from "./_generated/api";
+import { MAX_ERROR_REPORT_FIELD_LENGTH } from "./constants";
+import {
+  truncate,
+  sanitizeText,
+  sanitizeAdditionalInfo,
+  sanitizeBreadcrumbMetadata,
+} from "./lib/errorSanitization";
+import {
+  generateFingerprint,
+  isServerValidationError,
+} from "./lib/errorFingerprint";
+import { checkRateLimit } from "./lib/errorRateLimit";
+import {
+  formatIssueBody,
+  formatCommentBody,
+} from "./lib/githubIssueFormatting";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 5;
 
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const MAX_REPORTS_PER_WINDOW = 10;
-const RATE_LIMIT_CACHE_TTL_MS = 5_000;
-
-const rateLimitCache: { count: number; expiresAt: number } = {
-  count: 0,
-  expiresAt: 0,
-};
-
-/**
- * Generate a deterministic fingerprint for an error to enable deduplication.
- *
- * @param errorType - The error type/name (e.g., "TypeError")
- * @param message - The error message (will be normalized)
- * @param stackTrace - Optional stack trace to extract top frame from
- * @returns A deterministic fingerprint string
- */
-export function generateFingerprint(
-  errorType: string,
-  message: string,
-  stackTrace?: string | null
-): string {
-  const normalizedMessage = message
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .substring(0, 100);
-
-  let topFrame = "";
-  if (stackTrace) {
-    const lines = stackTrace.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed !== "" && trimmed.startsWith("at ")) {
-        // Safe from catastrophic backtracking: the lazy groups have no nested
-        // quantifiers and input is a single stack-frame line, so backtracking
-        // is at worst quadratic in the line length.
-        const match = /at\s+(?:(.+?)\s+\()?(.*?)\)?$/.exec(trimmed);
-        if (match) {
-          topFrame = match[1] || match[2];
-          break;
-        }
-      }
-    }
-  }
-
-  return `${errorType}:${normalizedMessage}:${topFrame}`;
-}
-
-const SERVER_VALIDATION_PATTERNS = [
-  /not authenticated/i,
-  /unauthorized/i,
-  /forbidden/i,
-  /must be logged in/i,
-  /is required/i,
-  /must be between/i,
-  /invalid format/i,
-  /cannot bid on own/i,
-  /kyc required/i,
-  /only .* can perform/i,
-  /invalid.*token/i,
-  /session.*expired/i,
-];
-
-/**
- * Check if an error is a validation error server-side.
- *
- * @param errorMessage - The error message to check
- * @returns True if the error is a validation error
- */
-function isServerValidationError(errorMessage: string): boolean {
-  for (const pattern of SERVER_VALIDATION_PATTERNS) {
-    if (pattern.test(errorMessage)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Check rate limit for error reporting using a short-lived cache backed by DB queries.
- *
- * @param ctx - Convex context for DB queries
- * @returns True if rate limit is not exceeded
- */
-async function checkRateLimit(ctx: QueryCtx): Promise<boolean> {
-  const now = Date.now();
-
-  if (now < rateLimitCache.expiresAt) {
-    return rateLimitCache.count < MAX_REPORTS_PER_WINDOW;
-  }
-
-  const windowStart = now - RATE_LIMIT_WINDOW_MS;
-  const recentReports = await ctx.db
-    .query("errorReports")
-    .withIndex("by_createdAt", (q) => q.gte("createdAt", windowStart))
-    .collect();
-
-  rateLimitCache.count = recentReports.length;
-  rateLimitCache.expiresAt = now + RATE_LIMIT_CACHE_TTL_MS;
-
-  return rateLimitCache.count < MAX_REPORTS_PER_WINDOW;
-}
-
-interface BreadcrumbWithMetadata {
-  timestamp: number;
-  type: string;
-  description: string;
-  metadata?: Record<string, string | number>;
-}
-
-function sanitizeBreadcrumbMetadata(
-  breadcrumb: BreadcrumbWithMetadata
-): BreadcrumbWithMetadata {
-  if (!breadcrumb.metadata) {
-    return breadcrumb;
-  }
-  const sanitizedEntries: [string, string | number][] = [];
-  for (const key of ["action", "path", "component", "props"] as const) {
-    const { [key]: value } = breadcrumb.metadata;
-    if (typeof value === "string" || typeof value === "number") {
-      sanitizedEntries.push([key, value]);
-    }
-  }
-  return {
-    ...breadcrumb,
-    metadata:
-      sanitizedEntries.length > 0
-        ? Object.fromEntries(sanitizedEntries)
-        : undefined,
-  };
-}
-
-const REDACTED_EMAIL = "[redacted-email]";
-const REDACTED_TOKEN = "[redacted-token]";
-const REDACTED_CARD = "[redacted-card]";
-
-const EMAIL_PATTERN = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
-const JWT_PATTERN =
-  /\b[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b/g;
-const API_KEY_PREFIX_PATTERN =
-  /\b(?:sk_live|sk_test|pk_live|pk_test|rk_live|rk_test|ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_-]+\b/g;
-const BEARER_TOKEN_PATTERN =
-  /\b(?:Bearer|bearer|token|Token|TOKEN)\s+[A-Za-z0-9._~+/=-]{20,}\b/g;
-const CARD_PATTERN = /\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b/g;
-
-/**
- * Redact common sensitive patterns (emails, tokens, card numbers) from a
- * string before it is persisted or posted to a public GitHub issue.
- *
- * @param value - The raw text to redact
- * @returns The text with sensitive patterns replaced by redaction markers
- */
-export function sanitizeText(value: string): string {
-  return value
-    .replace(EMAIL_PATTERN, REDACTED_EMAIL)
-    .replace(JWT_PATTERN, REDACTED_TOKEN)
-    .replace(API_KEY_PREFIX_PATTERN, REDACTED_TOKEN)
-    .replace(BEARER_TOKEN_PATTERN, REDACTED_TOKEN)
-    .replace(CARD_PATTERN, REDACTED_CARD);
-}
-
-/**
- * Sanitize string values in an additionalInfo record; numbers pass through.
- *
- * @param additionalInfo - Optional record of extra context values
- * @returns The record with each string value redacted
- */
-export function sanitizeAdditionalInfo(
-  additionalInfo: Record<string, string | number> | undefined
-): Record<string, string | number> | undefined {
-  if (!additionalInfo) {
-    return additionalInfo;
-  }
-  return Object.fromEntries(
-    Object.entries(additionalInfo).map(([key, value]) => [
-      key,
-      typeof value === "string" ? sanitizeText(value) : value,
-    ])
-  );
-}
+export { generateFingerprint, sanitizeText, sanitizeAdditionalInfo };
 
 /**
  * Handler for submitErrorReport.
@@ -235,9 +70,12 @@ export async function submitErrorReportHandler(
   }
 ) {
   const sanitizedBreadcrumbs = args.breadcrumbs.map(sanitizeBreadcrumbMetadata);
-  const sanitizedErrorMessage = sanitizeText(args.errorMessage);
+  const sanitizedErrorMessage = truncate(
+    sanitizeText(args.errorMessage),
+    MAX_ERROR_REPORT_FIELD_LENGTH
+  );
   const sanitizedStackTrace = args.stackTrace
-    ? sanitizeText(args.stackTrace)
+    ? truncate(sanitizeText(args.stackTrace), MAX_ERROR_REPORT_FIELD_LENGTH)
     : args.stackTrace;
   const sanitizedAdditionalInfo = sanitizeAdditionalInfo(args.additionalInfo);
   const authUser = await getAuthUser(ctx);
@@ -367,97 +205,6 @@ export const submitErrorReport = mutation({
   handler: submitErrorReportHandler,
 });
 
-function formatIssueBody(report: {
-  errorType: string;
-  errorMessage: string;
-  stackTrace?: string;
-  userId?: string;
-  userRole?: string;
-  additionalInfo?: Record<string, string | number>;
-  breadcrumbs: {
-    timestamp: number;
-    type: string;
-    description: string;
-    metadata?: Record<string, string | number>;
-  }[];
-  metadata: { url: string; userAgent: string; timestamp: number };
-  instanceCount: number;
-}): string {
-  const breadcrumbsMd = report.breadcrumbs
-    .map((b) => {
-      let line = `- **${new Date(b.timestamp).toISOString()}** [${b.type}] ${b.description}`;
-      if (b.metadata) {
-        const metaStr = Object.entries(b.metadata)
-          .map(([k, val]) => `${k}=${String(val)}`)
-          .join(", ");
-        line += ` \`${metaStr}\``;
-      }
-      return line;
-    })
-    .join("\n");
-
-  const additionalInfoMd = report.additionalInfo
-    ? Object.entries(report.additionalInfo)
-        .map(([k, val]) => `- **${k}:** ${String(val)}`)
-        .join("\n")
-    : "None";
-
-  // Intentionally `||` not `??`: an empty string user ID/role also means "missing"
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
-  const userIdLabel = report.userId || "Anonymous";
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
-  const userRoleLabel = report.userRole || "N/A";
-
-  return `## Production Error Report
-
-**Error Type:** ${report.errorType}
-**Error Message:** ${report.errorMessage}
-**Instance Count:** ${String(report.instanceCount)}
-
-### Stack Trace
-\`\`\`
-${report.stackTrace ?? "No stack trace available"}
-\`\`\`
-
-### User Context
-- **User ID:** ${userIdLabel}
-- **User Role:** ${userRoleLabel}
-
-### Additional Info
-${additionalInfoMd}
-
-### Recent Actions (Breadcrumbs)
-${breadcrumbsMd || "No breadcrumbs recorded"}
-
-### Environment
-- **URL:** ${report.metadata.url}
-- **User Agent:** ${report.metadata.userAgent}
-- **Timestamp:** ${new Date(report.metadata.timestamp).toISOString()}
-
----
-*Auto-reported from production*`;
-}
-
-function formatCommentBody(report: {
-  errorMessage: string;
-  userId?: string;
-  metadata: { url: string };
-  instanceCount: number;
-  lastOccurredAt: number;
-}): string {
-  return `## New Error Instance
-
-- **Instance Count:** ${String(report.instanceCount)}
-- **User ID:** ${report.userId ?? "Anonymous"}
-- **URL:** ${report.metadata.url}
-- **Last Occurred:** ${new Date(report.lastOccurredAt).toISOString()}
-
-> ${report.errorMessage}
-
----
-*Additional instance auto-reported from production*`;
-}
-
 /**
  * Internal mutation to fetch pending reports and mark them as processing.
  */
@@ -529,8 +276,6 @@ export const getGitHubConfigProxy = internalQuery({
  * @returns Summary of processing
  */
 export async function processErrorReportsHandler(ctx: MutationCtx) {
-  // This is a bridge for tests. In reality, this logic now requires an action.
-  // Tests mock the context, so we can keep the old logic here for them.
   const enabled = await isGitHubReportingEnabled(ctx);
   if (!enabled) {
     return { processed: 0, created: 0, commented: 0, failed: 0 };

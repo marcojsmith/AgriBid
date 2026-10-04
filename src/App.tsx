@@ -1,10 +1,12 @@
 // app/src/App.tsx
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactElement } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
 import { LoadingIndicator } from "./components/LoadingIndicator";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
+import { AdminRoute } from "./components/admin/AdminRoute";
 
 // Lazy-loaded components
 const Home = lazy(() => import("./pages/Home"));
@@ -54,6 +56,7 @@ const Support = lazy(() => import("./pages/Support"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 /**
  * Global loading fallback for lazy-loaded routes.
@@ -64,6 +67,16 @@ const PageLoader = () => (
     <LoadingIndicator />
   </div>
 );
+
+/**
+ * Wraps an element with a RouteErrorBoundary for per-route error isolation.
+ *
+ * @param element - The route element to wrap
+ * @returns The wrapped element
+ */
+function withBoundary(element: ReactElement): ReactElement {
+  return <RouteErrorBoundary>{element}</RouteErrorBoundary>;
+}
 
 /**
  * Mounts the client-side router and declares application routes within the main layout.
@@ -94,6 +107,7 @@ const PageLoader = () => (
  * - "/messages" → Messages inbox (protected, allowedRole="any")
  * - "/messages/:conversationId" → Messages thread view (protected, allowedRole="any")
  * - "/settings" → Settings (protected, allowedRole="any")
+ * - "*" → NotFound (catch-all for unknown routes)
  *
  * @returns The root JSX element containing the BrowserRouter, layout and route definitions
  */
@@ -105,20 +119,29 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/auction/:id" element={<AuctionDetail />} />
-            <Route path="/profile/:userId" element={<Profile />} />
+            <Route
+              path="/auction/:id"
+              element={withBoundary(<AuctionDetail />)}
+            />
+            <Route
+              path="/profile/:userId"
+              element={withBoundary(<Profile />)}
+            />
             <Route
               path="/sellers/:userId/listings"
-              element={<SellerListings status="active" />}
+              element={withBoundary(<SellerListings status="active" />)}
             />
             <Route
               path="/sellers/:userId/listings/sold"
-              element={<SellerListings status="sold" />}
+              element={withBoundary(<SellerListings status="sold" />)}
             />
-            <Route path="/sell" element={<Sell />} />
+            <Route path="/sell" element={withBoundary(<Sell />)} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/auctions" element={<AuctionGallery />} />
-            <Route path="/auctions/:id" element={<AuctionContainerDetail />} />
+            <Route
+              path="/auctions/:id"
+              element={withBoundary(<AuctionContainerDetail />)}
+            />
             <Route
               path="/watchlist"
               element={
@@ -129,188 +152,43 @@ function App() {
             />
             <Route
               path="/dashboard/bids"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <MyBids />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/dashboard/listings"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <MyListings />
                 </RoleProtectedRoute>
-              }
+              )}
             />
-            <Route
-              path="/admin"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/dashboard"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminDashboard />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/moderation"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminModeration />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/marketplace"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminMarketplace />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/lots"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminLots />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/auctions"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAuctions />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/auctions/:id"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAuctionDetail />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminUsers />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/finance"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminFinance />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/announcements"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAnnouncements />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/support"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminSupport />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/audit"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminAudit />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/equipment-catalog"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminEquipmentCatalog />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminSettings />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/error-reports"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminErrorReports />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/error-reporting"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminErrorReportingSettings />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/seo"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminSEOSettings />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/business-info"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminBusinessInfo />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/faq"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminFAQ />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/fees"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminFees />
-                </RoleProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/performance"
-              element={
-                <RoleProtectedRoute allowedRole="admin">
-                  <AdminPerformance />
-                </RoleProtectedRoute>
-              }
-            />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/moderation" element={<AdminModeration />} />
+              <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+              <Route path="/admin/lots" element={<AdminLots />} />
+              <Route path="/admin/auctions" element={<AdminAuctions />} />
+              <Route path="/admin/auctions/:id" element={<AdminAuctionDetail />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/finance" element={<AdminFinance />} />
+              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+              <Route path="/admin/support" element={<AdminSupport />} />
+              <Route path="/admin/audit" element={<AdminAudit />} />
+              <Route path="/admin/equipment-catalog" element={<AdminEquipmentCatalog />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/error-reports" element={<AdminErrorReports />} />
+              <Route path="/admin/error-reporting" element={<AdminErrorReportingSettings />} />
+              <Route path="/admin/seo" element={<AdminSEOSettings />} />
+              <Route path="/admin/business-info" element={<AdminBusinessInfo />} />
+              <Route path="/admin/faq" element={<AdminFAQ />} />
+              <Route path="/admin/fees" element={<AdminFees />} />
+              <Route path="/admin/performance" element={<AdminPerformance />} />
+            </Route>
             <Route
               path="/kyc"
               element={
@@ -337,19 +215,19 @@ function App() {
             />
             <Route
               path="/messages"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <Messages />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/messages/:conversationId"
-              element={
+              element={withBoundary(
                 <RoleProtectedRoute allowedRole="any">
                   <Messages />
                 </RoleProtectedRoute>
-              }
+              )}
             />
             <Route
               path="/settings"
@@ -359,6 +237,7 @@ function App() {
                 </RoleProtectedRoute>
               }
             />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </Layout>

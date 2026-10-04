@@ -12,6 +12,14 @@ import {
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type ErrorStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -40,24 +48,22 @@ const STATUS_CONFIG: Record<ErrorStatus, StatusConfig> = {
   pending: {
     label: "Pending",
     icon: Clock,
-    color:
-      "text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30",
+    color: "text-warning bg-warning/10",
   },
   processing: {
     label: "Processing",
     icon: RefreshCcw,
-    color: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30",
+    color: "text-primary bg-primary/10",
   },
   completed: {
     label: "Completed",
     icon: CheckCircle,
-    color:
-      "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30",
+    color: "text-success bg-success/10",
   },
   failed: {
     label: "Failed",
     icon: AlertTriangle,
-    color: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30",
+    color: "text-destructive bg-destructive/10",
   },
 };
 
@@ -96,36 +102,36 @@ export default function AdminErrorReports() {
       label: "Pending",
       count: stats.pending,
       icon: Clock,
-      color: "text-amber-600 dark:text-amber-400",
-      bg: "bg-amber-50 dark:bg-amber-900/20",
+      color: "text-warning",
+      bg: "bg-warning/10",
     },
     {
       label: "Processing",
       count: stats.processing,
       icon: RefreshCcw,
-      color: "text-blue-600 dark:text-blue-400",
-      bg: "bg-blue-50 dark:bg-blue-900/20",
+      color: "text-primary",
+      bg: "bg-primary/10",
     },
     {
       label: "Completed",
       count: stats.completed,
       icon: CheckCircle,
-      color: "text-green-600 dark:text-green-400",
-      bg: "bg-green-50 dark:bg-green-900/20",
+      color: "text-success",
+      bg: "bg-success/10",
     },
     {
       label: "Failed",
       count: stats.failed,
       icon: AlertTriangle,
-      color: "text-red-600 dark:text-red-400",
-      bg: "bg-red-50 dark:bg-red-900/20",
+      color: "text-destructive",
+      bg: "bg-destructive/10",
     },
     {
       label: "Total",
       count: stats.total,
       icon: Bug,
-      color: "text-gray-600 dark:text-gray-400",
-      bg: "bg-gray-50 dark:bg-gray-800",
+      color: "text-muted-foreground",
+      bg: "bg-muted",
     },
   ];
 
@@ -139,17 +145,17 @@ export default function AdminErrorReports() {
           {statCards.map((card) => (
             <div
               key={card.label}
-              className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4"
+              className="bg-card rounded-md border border-border p-4"
             >
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${card.bg}`}>
+                <div className={`p-2 rounded-md ${card.bg}`}>
                   <card.icon className={`h-4 w-4 ${card.color}`} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  <p className="text-2xl font-bold text-foreground">
                     {card.count}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     {card.label}
                   </p>
                 </div>
@@ -158,8 +164,8 @@ export default function AdminErrorReports() {
           ))}
         </div>
 
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="bg-card rounded-md border border-border">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
@@ -168,8 +174,8 @@ export default function AdminErrorReports() {
                 }}
                 className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                   statusFilter === "all"
-                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted"
                 }`}
               >
                 All
@@ -187,7 +193,7 @@ export default function AdminErrorReports() {
                     className={`px-3 py-1.5 rounded-md text-sm transition-colors flex items-center gap-1.5 ${
                       statusFilter === status
                         ? `${config.color} bg-opacity-20`
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        : "text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     <config.icon className="h-3.5 w-3.5" />
@@ -199,75 +205,63 @@ export default function AdminErrorReports() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/50">
-                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Error Message
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Instances
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    Last Occurred
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500 dark:text-gray-400">
-                    GitHub Issue
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <Table className="w-full text-sm">
+              <caption className="sr-only">
+                Error reports with status, type, message, instance count, last
+                occurrence date, and GitHub issue link
+              </caption>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead>Status</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Error Message</TableHead>
+                  <TableHead>Instances</TableHead>
+                  <TableHead>Last Occurred</TableHead>
+                  <TableHead>GitHub Issue</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {reports.reports.length === 0 ? (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={6}
-                      className="px-4 py-12 text-center text-gray-500 dark:text-gray-400"
+                      className="px-4 py-12 text-center text-muted-foreground"
                     >
                       No error reports found
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   reports.reports.map((report: ErrorReport) => {
-                    // Defensive fallback for statuses outside STATUS_CONFIG.
                     const statusConfig = STATUS_CONFIG[report.status] as
                       | StatusConfig
                       | undefined;
                     const config = statusConfig ?? STATUS_CONFIG.pending;
                     return (
-                      <tr
-                        key={report._id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                      >
-                        <td className="px-4 py-3">
+                      <TableRow key={report._id}>
+                        <TableCell>
                           <div
                             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
                           >
                             <config.icon className="h-3 w-3" />
                             {config.label}
                           </div>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
                           {report.errorType}
-                        </td>
-                        <td className="px-4 py-3 max-w-xs">
-                          <p className="truncate text-gray-900 dark:text-gray-100">
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <p className="truncate text-foreground">
                             {report.errorMessage}
                           </p>
-                        </td>
-                        <td className="px-4 py-3 text-center">
+                        </TableCell>
+                        <TableCell className="text-center">
                           {report.instanceCount > 1 && (
-                            <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 rounded-full bg-gray-200 dark:bg-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300">
+                            <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 rounded-full bg-muted text-xs font-medium text-muted-foreground">
                               {report.instanceCount}
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        </TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
                           {new Date(report.lastOccurredAt).toLocaleDateString(
                             undefined,
                             {
@@ -277,30 +271,30 @@ export default function AdminErrorReports() {
                               minute: "2-digit",
                             }
                           )}
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           {report.githubIssueUrl ? (
                             <a
                               href={report.githubIssueUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+                              className="inline-flex items-center gap-1 text-primary hover:underline"
                             >
                               #{report.githubIssueNumber}
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           ) : (
-                            <span className="text-gray-400 dark:text-gray-600">
+                            <span className="text-muted-foreground/50">
                               —
                             </span>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>

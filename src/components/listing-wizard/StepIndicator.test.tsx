@@ -23,8 +23,8 @@ describe("StepIndicator", () => {
     });
 
     render(<StepIndicator />);
-    expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
-    expect(screen.getByText(/General Information/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Step 1 of 6/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/General Information/i)[0]).toBeInTheDocument();
   });
 
   it("shows draft saved indicator when saved", () => {
@@ -60,5 +60,20 @@ describe("StepIndicator", () => {
     const progressBar = screen.getByRole("progressbar");
     expect(progressBar).toHaveAttribute("aria-valuenow", "3");
     expect(progressBar).toHaveAttribute("aria-valuemax", "6");
+  });
+
+  it("renders an empty heading for a step outside the known list", () => {
+    (useListingWizard as MockUseListingWizard).mockReturnValue({
+      currentStep: 99,
+      draftSaved: false,
+    });
+
+    const { container } = render(<StepIndicator />);
+
+    expect(container.querySelector("h2")).toHaveTextContent("");
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "100"
+    );
   });
 });

@@ -1,8 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
+import { useNow } from "@/hooks/useNow";
+
 import { AuctionEventCard, type AuctionEvent } from "./AuctionEventCard";
+
+vi.mock("@/hooks/useNow");
+
+const NOW = Date.now();
 
 const baseEvent: AuctionEvent = {
   _id: "a1" as AuctionEvent["_id"],
@@ -10,8 +16,8 @@ const baseEvent: AuctionEvent = {
   title: "Spring Sale",
   description: "Tractors and combines",
   bannerImageUrl: undefined,
-  startTime: Date.now() - 1000,
-  endTime: Date.now() + 100000,
+  startTime: NOW - 1000,
+  endTime: NOW + 100000,
   status: "published",
   createdBy: "admin1",
   createdAt: 0,
@@ -21,16 +27,21 @@ const baseEvent: AuctionEvent = {
   defaultSellerCommissionPct: undefined,
 };
 
-const renderCard = (event: AuctionEvent, now: number = Date.now()) =>
+const renderCard = (event: AuctionEvent) =>
   render(
     <MemoryRouter>
-      <AuctionEventCard event={event} now={now} />
+      <AuctionEventCard event={event} />
     </MemoryRouter>
   );
 
 describe("AuctionEventCard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useNow).mockReturnValue(NOW);
+  });
+
   it("renders title, description, date window and lot count", () => {
-    renderCard({ ...baseEvent, endTime: Date.now() + 100000 });
+    renderCard({ ...baseEvent, endTime: NOW + 100000 });
     expect(screen.getByText("Spring Sale")).toBeInTheDocument();
     expect(screen.getByText("Tractors and combines")).toBeInTheDocument();
     expect(screen.getByText("3 lots")).toBeInTheDocument();
@@ -72,15 +83,15 @@ describe("AuctionEventCard", () => {
   });
 
   it("does not show the Live Now badge for a published event whose window has ended", () => {
-    renderCard({ ...baseEvent, endTime: Date.now() - 1000 });
+    renderCard({ ...baseEvent, endTime: NOW - 1000 });
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
   });
 
   it("does not show the Live Now badge when the event has not started yet", () => {
     renderCard({
       ...baseEvent,
-      startTime: Date.now() + 100000,
-      endTime: Date.now() + 200000,
+      startTime: NOW + 100000,
+      endTime: NOW + 200000,
     });
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
   });
@@ -96,8 +107,6 @@ describe("AuctionEventCard", () => {
   it("uses a shorter banner and tighter body padding on phones", () => {
     renderCard({ ...baseEvent, bannerImageUrl: "https://cdn/banner.jpg" });
 
-    // Each card was ~314px tall on a 375px phone; the banner took a third of
-    // that. Phones get a shorter banner, desktop keeps `h-40`.
     expect(
       screen.getByRole("img", { name: "Spring Sale" }).parentElement
     ).toHaveClass("h-32", "sm:h-40");

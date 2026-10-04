@@ -1,5 +1,5 @@
 // app/src/components/auction/AuctionCard.tsx
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useNavigate, Link } from "react-router-dom";
@@ -47,14 +47,14 @@ export const AuctionCard = ({
   const isBiddingRef = useRef(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingBid, setPendingBid] = useState<number | null>(null);
-  // Track local state for watchlist to provide immediate feedback
   const [isWatched, setIsWatched] = useState(initialIsWatched);
   const liveWindow = useLotLiveWindow(auction);
 
-  // Synchronize local state with prop changes from parent (server updates)
-  useEffect(() => {
+  const prevInitialIsWatchedRef = useRef(initialIsWatched);
+  if (prevInitialIsWatchedRef.current !== initialIsWatched) {
+    prevInitialIsWatchedRef.current = initialIsWatched;
     setIsWatched(initialIsWatched);
-  }, [initialIsWatched]);
+  }
 
   const handleWatchlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -197,26 +197,24 @@ export const AuctionCard = ({
                       : "bg-destructive text-destructive-foreground",
                     "h-6 w-6"
                   )}
-                  role="img"
-                  aria-label={
-                    auction.status === "sold"
-                      ? "Sold auction"
-                      : "Closed auction"
-                  }
+                  aria-hidden="true"
                 >
                   <Gavel className="h-3.5 w-3.5" />
                 </div>
+                <span className="sr-only">
+                  {auction.status === "sold" ? "Sold auction" : "Closed auction"}
+                </span>
               </div>
             )}
             {isNotStarted && isCompact && (
               <div className="absolute top-1.5 right-1.5 z-10">
                 <div
                   className="rounded-full flex items-center justify-center shadow-lg bg-warning text-warning-foreground h-6 w-6"
-                  role="img"
-                  aria-label="Scheduled auction, not yet started"
+                  aria-hidden="true"
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
                 </div>
+                <span className="sr-only">Scheduled auction, not yet started</span>
               </div>
             )}
           </div>

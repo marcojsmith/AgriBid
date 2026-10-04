@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useState, useId } from "react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
-import { MessageSquare, Clock, CheckCircle2, HelpCircle } from "lucide-react";
+import { MessageSquare, Clock, CheckCircle2, HelpCircle, Loader2 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { buildTitle, buildCanonical } from "@/lib/seo";
+import { DASHBOARD_PAGINATION_INITIAL_ITEMS, DASHBOARD_PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
 
 /**
  * Render the Help & Support page that lets users create new support tickets and view their existing tickets.
@@ -31,18 +32,21 @@ import { buildTitle, buildCanonical } from "@/lib/seo";
  * @returns The Support page component as a JSX.Element
  */
 export default function Support() {
-  const ticketsResult = useQuery(api.support.getMyTickets, {
-    paginationOpts: { numItems: 50, cursor: null },
-  });
+  const { results: ticketsResult, status, loadMore } = usePaginatedQuery(
+    api.support.getMyTickets,
+    {},
+    { initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS }
+  );
   const createTicket = useMutation(api.support.createTicket);
 
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const priorityId = useId();
 
-  const tickets = ticketsResult?.page ?? [];
-  const isTicketsLoading = ticketsResult === undefined;
+  const tickets = ticketsResult;
+  const isTicketsLoading = status === "LoadingFirstPage";
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -136,7 +140,7 @@ export default function Support() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Priority</Label>
+                  <Label htmlFor={priorityId} className="text-xs font-semibold">Priority</Label>
                   <Select
                     value={priority}
                     onValueChange={(v: "low" | "medium" | "high") => {
@@ -144,6 +148,7 @@ export default function Support() {
                     }}
                   >
                     <SelectTrigger
+                      id={priorityId}
                       aria-label="Priority"
                       className="h-12 border rounded-md"
                     >
@@ -232,7 +237,7 @@ export default function Support() {
                       {ticket.message}
                     </p>
                     {ticket.status === "resolved" && (
-                      <div className="mt-3 pt-3 border-t flex items-center gap-2 text-green-600">
+                      <div className="mt-3 pt-3 border-t flex items-center gap-2 text-success">
                         <CheckCircle2 className="h-3 w-3" />
                         <span className="text-xs font-semibold">
                           Resolved by Admin
@@ -248,6 +253,27 @@ export default function Support() {
                       No active tickets
                     </p>
                   </div>
+                )}
+                {status === "CanLoadMore" && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      loadMore(DASHBOARD_PAGINATION_LOAD_MORE_ITEMS);
+                    }}
+                    className="w-full h-12 rounded-md font-semibold"
+                  >
+                    Load More
+                  </Button>
+                )}
+                {status === "LoadingMore" && (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full h-12 rounded-md"
+                  >
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading…
+                  </Button>
                 )}
               </>
             )}

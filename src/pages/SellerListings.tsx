@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -39,7 +40,11 @@ export default function SellerListings({ status }: SellerListingsProps) {
     sellerId: userId ?? "",
   });
 
-  const watchedAuctionIds = useQuery(api.watchlist.getWatchedLotIds, {});
+  const watchedAuctionIdsArray = useQuery(api.watchlist.getWatchedLotIds, {});
+  const watchedAuctionIds = useMemo(
+    () => new Set(watchedAuctionIdsArray ?? []),
+    [watchedAuctionIdsArray]
+  );
 
   const {
     results: listings,
@@ -73,7 +78,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
           {isActive ? (
             <Gavel className="h-5 w-5 text-primary" />
           ) : (
-            <Award className="h-5 w-5 text-green-600" />
+            <Award className="h-5 w-5 text-success" />
           )}
           <h1
             className={`text-2xl sm:text-4xl font-bold tracking-tight ${
@@ -87,7 +92,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
 
       {listings.length === 0 && listingsStatus === "Exhausted" ? (
         <div className="border border-dashed border-border rounded p-12 text-center">
-          <p className="text-4xl mb-3">🚜</p>
+          <p className="text-4xl mb-3" aria-hidden="true">🚜</p>
           <p className="text-muted-foreground font-bold italic text-sm">
             {isActive
               ? "No active auctions at this time."
@@ -101,7 +106,7 @@ export default function SellerListings({ status }: SellerListingsProps) {
               <AuctionCard
                 key={auction._id}
                 auction={auction}
-                isWatched={watchedAuctionIds?.includes(auction._id) ?? false}
+                isWatched={watchedAuctionIds.has(auction._id)}
               />
             ))}
           </div>

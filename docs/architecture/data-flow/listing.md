@@ -225,7 +225,7 @@ export const generateUploadUrl = action({
 ### Create Listing Mutation
 
 ```typescript
-// app/convex/auctions/mutations.ts
+// convex/auctions/mutations.ts
 
 export const createAuction = mutation({
   args: {
@@ -329,7 +329,7 @@ Listing Submitted (Pending Review)
 ### Approval Mutation
 
 ```typescript
-// app/convex/admin/index.ts
+// convex/admin/index.ts
 
 export const approveAuction = mutation({
   args: {

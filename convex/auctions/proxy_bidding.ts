@@ -259,6 +259,15 @@ function getValidatedAutoBid(
 
 /**
  * Resolves all active proxy bids for a lot after a new bid is placed.
+ *
+ * Reads at most 10 proxy bids per call using a bounded `.take()` on the
+ * `by_lot_maxBid` index ordered descending by maxBid. This bound is safe
+ * because we only need the top two proxy bids by maxBid to compute the
+ * winning auto-bid amount; any ties are resolved by `_creationTime` which
+ * is sorted in memory after the bounded read. The bound of 10 provides
+ * ample margin for ties while preventing unbounded scans on lots with
+ * many proxy bidders.
+ *
  * @param ctx - The mutation context.
  * @param lotId - The ID of the lot.
  * @param bidderId - The ID of the bidder.
@@ -279,10 +288,15 @@ async function resolveProxyBids(
     return null;
   }
   const minIncrement = getMinIncrement(lot);
+
+  // Bounded read: we only need top 2 by maxBid, but read 10 to handle ties.
+  // The bound is documented above and defends against unbounded scans.
+  const proxyBidLimit = 10;
   const allProxyBids = await ctx.db
     .query("proxy_bids")
-    .withIndex("by_lot", (q) => q.eq("lotId", lotId))
-    .collect();
+    .withIndex("by_lot_maxBid", (q) => q.eq("lotId", lotId))
+    .order("desc")
+    .take(proxyBidLimit);
 
   // Sort by maxBid descending, then by creationTime ascending (earliest bidder wins tie)
   const sortedProxies = allProxyBids.sort((a, b) => {

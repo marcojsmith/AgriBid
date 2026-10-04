@@ -25,8 +25,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AdminStatsProvider } from "@/contexts/AdminStatsContext";
 import { useAdminStats } from "@/hooks/useAdminStats";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 import { StatCard } from "./StatCard";
 
@@ -64,7 +64,7 @@ function SidebarNav({ currentPath, onNavigate }: SidebarNavProps) {
             to={item.path}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all group",
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all group focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background outline-none",
               isActive
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -107,14 +107,10 @@ const SIDEBAR_ITEMS = [
  * Render the admin layout with a persistent sidebar, KPI header and main content area.
  *
  * @param props - Properties controlling the layout: `children`, optional `title` and `subtitle`, and optional `onAnnounce` callback.
- * @returns The layout element wrapped with admin stats context, containing the sidebar, KPI header and main content area.
+ * @returns The layout element containing the sidebar, KPI header and main content area.
  */
 export function AdminLayout(props: AdminLayoutProps) {
-  return (
-    <AdminStatsProvider>
-      <AdminLayoutContent {...props} />
-    </AdminStatsProvider>
-  );
+  return <AdminLayoutContent {...props} />;
 }
 
 /**
@@ -140,6 +136,7 @@ function AdminLayoutContent({
   const location = useLocation();
   const stats = useAdminStats();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const drawerRef = useFocusTrap(isMobileNavOpen);
 
   useEffect(() => {
     if (!isMobileNavOpen) return;
@@ -165,8 +162,10 @@ function AdminLayoutContent({
       </aside>
 
       {/* Sidebar — mobile drawer */}
+      {/* z-index stack: mobile nav overlay (z-[100]) > dialogs/toasts (z-50) > header (z-50) */}
       {isMobileNavOpen && (
         <div
+          ref={drawerRef}
           data-testid="admin-mobile-nav-overlay"
           role="dialog"
           aria-modal="true"
@@ -255,7 +254,7 @@ function AdminLayoutContent({
                     label="Online Users"
                     value={stats.liveUsers}
                     icon={<Activity className="h-3 w-3" />}
-                    color="text-green-500"
+                    color="text-success"
                     padding="p-2"
                     className="min-w-[100px] h-14"
                     iconSize="h-8 w-8"
@@ -272,7 +271,7 @@ function AdminLayoutContent({
                     label="Moderation"
                     value={stats.pendingReview}
                     icon={<Clock className="h-3 w-3" />}
-                    color={stats.pendingReview > 0 ? "text-yellow-500" : ""}
+                    color={stats.pendingReview > 0 ? "text-warning" : ""}
                     padding="p-2"
                     className="min-w-[100px] h-14"
                     iconSize="h-8 w-8"

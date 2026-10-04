@@ -10,10 +10,17 @@ import {
   getSetting,
   getBusinessInfoHandler,
   updateBusinessInfoHandler,
+  getSeoSettings,
+  updateSeoSettings,
 } from "./settings";
 import * as adminUtils from "../admin_utils";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import * as auth from "../lib/auth";
+
+vi.mock("../_generated/server", () => ({
+  query: vi.fn((query: unknown) => query),
+  mutation: vi.fn((mutation: unknown) => mutation),
+}));
 
 vi.mock("../lib/auth", () => ({
   requireAdmin: vi.fn(),
@@ -862,6 +869,396 @@ describe("Settings Config", () => {
         })
       );
       expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("returns success without writing when no field is provided", async () => {
+      const mockDb = {
+        query: vi.fn(),
+        insert: vi.fn(),
+        patch: vi.fn(),
+      };
+      const ctx = { db: mockDb as unknown as MutationCtx["db"] } as MutationCtx;
+
+      const result = await updateBusinessInfoHandler(ctx, {});
+
+      expect(result).toEqual({ success: true });
+      expect(mockDb.query).not.toHaveBeenCalled();
+      expect(adminUtils.logAudit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getSeoSettings", () => {
+    /**
+     * Invokes the inline Convex query handler registered on `getSeoSettings`.
+     *
+     * @param ctx - Query context double
+     * @returns The handler result
+     */
+    const callGetSeoSettings = async (ctx: QueryCtx) =>
+      await (
+        getSeoSettings as unknown as {
+          handler: (ctx: unknown) => Promise<Record<string, string | null>>;
+        }
+      ).handler(ctx);
+
+    it("returns every stored SEO value", async () => {
+      const ctx = createMockCtx({
+        "seo.ga4MeasurementId": "G-ABC123",
+        "seo.searchConsoleVerification": "gsc-token",
+        "seo.bingVerification": "bing-token",
+      });
+
+      const result = await callGetSeoSettings(ctx);
+
+      expect(result).toEqual({
+        ga4MeasurementId: "G-ABC123",
+        searchConsoleVerification: "gsc-token",
+        bingVerification: "bing-token",
+      });
+    });
+
+    it("returns nulls for missing or non-string values", async () => {
+      const ctx = createMockCtx({ "seo.bingVerification": 42 });
+
+      const result = await callGetSeoSettings(ctx);
+
+      expect(result).toEqual({
+        ga4MeasurementId: null,
+        searchConsoleVerification: null,
+        bingVerification: null,
+      });
+    });
+  });
+
+  describe("updateSeoSettings", () => {
+    /**
+     * Builds a settings db double where the given keys already exist.
+     *
+     * @param existingKeys - Keys that should resolve to an existing row
+     * @returns A mutation context double plus its db spies
+     */
+    const createExistingSettingsDb = (existingKeys: string[]) => {
+      let currentKey = "";
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn((_idx: string, cb?: (q: unknown) => void) => {
+            const q = {
+              eq: vi.fn((_field: string, val: string) => {
+                currentKey = val;
+                return q;
+              }),
+            };
+            if (cb) cb(q);
+            return {
+              unique: vi
+                .fn()
+                .mockImplementation(() =>
+                  Promise.resolve(
+                    existingKeys.includes(currentKey)
+                      ? { _id: `id-${currentKey}`, key: currentKey }
+                      : null
+                  )
+                ),
+            };
+          }),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn().mockResolvedValue(undefined),
+      };
+      return { mockDb, ctx: { db: mockDb } as unknown as MutationCtx };
+    };
+
+    /**
+     * Invokes the inline Convex mutation handler registered on `updateSeoSettings`.
+     *
+     * @param ctx - Mutation context double
+     * @param args - Mutation arguments
+     * @returns The handler result
+     */
+    const callUpdateSeoSettings = async (
+      ctx: MutationCtx,
+      args: Record<string, string>
+    ) =>
+      await (
+        updateSeoSettings as unknown as {
+          handler: (
+            ctx: unknown,
+            args: unknown
+          ) => Promise<{ success: boolean }>;
+        }
+      ).handler(ctx, args);
+
+    it("returns success without writing when no field is provided", async () => {
+      const { mockDb, ctx } = createExistingSettingsDb([]);
+
+      const result = await callUpdateSeoSettings(ctx, {});
+
+      expect(result).toEqual({ success: true });
+      expect(mockDb.insert).not.toHaveBeenCalled();
+      expect(mockDb.patch).not.toHaveBeenCalled();
+      expect(auth.requireAdmin).toHaveBeenCalled();
+    });
+
+    it("patches existing keys, inserts new keys and clears values", async () => {
+      const { mockDb, ctx } = createExistingSettingsDb([
+        "seo.ga4MeasurementId",
+      ]);
+
+      const result = await callUpdateSeoSettings(ctx, {
+        ga4MeasurementId: "G-NEW123",
+        searchConsoleVerification: "gsc-token",
+        bingVerification: "",
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(mockDb.patch).toHaveBeenCalledWith(
+        "settings",
+        "id-seo.ga4MeasurementId",
+        expect.objectContaining({ value: "G-NEW123" })
+      );
+      const insertCalls = mockDb.insert.mock.calls as [
+        string,
+        InsertedSettingArgs,
+      ][];
+      expect(insertCalls).toHaveLength(2);
+      expect(insertCalls[0]?.[1]).toMatchObject({
+        key: "seo.searchConsoleVerification",
+        value: "gsc-token",
+      });
+      expect(insertCalls[1]?.[1]).toMatchObject({
+        key: "seo.bingVerification",
+        value: "",
+      });
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(
+        ctx,
+        expect.objectContaining({
+          action: "UPDATE_SETTING",
+          targetId: "seo-settings",
+          details: expect.stringContaining("seo.ga4MeasurementId") as unknown,
+        })
+      );
+    });
+  });
+
+  describe("updateGitHubErrorReportingConfig validation", () => {
+    const createPatchableDb = (existingKeys: string[]) => {
+      let currentKey = "";
+      const mockDb = {
+        query: vi.fn().mockReturnValue({
+          withIndex: vi.fn((_idx: string, cb?: (q: unknown) => void) => {
+            const q = {
+              eq: vi.fn((_field: string, val: string) => {
+                currentKey = val;
+                return q;
+              }),
+            };
+            if (cb) cb(q);
+            return {
+              unique: vi.fn().mockImplementation(() =>
+                Promise.resolve(
+                  existingKeys.includes(currentKey)
+                    ? {
+                        _id: `id-${currentKey}`,
+                        key: currentKey,
+                        value: "stored",
+                      }
+                    : null
+                )
+              ),
+            };
+          }),
+        }),
+        insert: vi.fn().mockResolvedValue("new_id"),
+        patch: vi.fn().mockResolvedValue(undefined),
+      };
+      return { mockDb, ctx: { db: mockDb } as unknown as MutationCtx };
+    };
+
+    it("rejects enabling without a repository owner", async () => {
+      const { ctx } = createPatchableDb([]);
+
+      await expect(
+        updateGitHubErrorReportingConfigHandler(ctx, {
+          enabled: true,
+          repoOwner: "  ",
+          repoName: "repo",
+          labels: "bug",
+        })
+      ).rejects.toThrow(
+        "Repository owner and name are required when enabling GitHub error reporting"
+      );
+    });
+
+    it("rejects enabling without a repository name", async () => {
+      const { ctx } = createPatchableDb([]);
+
+      await expect(
+        updateGitHubErrorReportingConfigHandler(ctx, {
+          enabled: true,
+          repoOwner: "owner",
+          repoName: "   ",
+          labels: "bug",
+        })
+      ).rejects.toThrow(
+        "Repository owner and name are required when enabling GitHub error reporting"
+      );
+    });
+
+    it("rejects enabling when no token is provided or stored", async () => {
+      const { ctx } = createPatchableDb([]);
+
+      await expect(
+        updateGitHubErrorReportingConfigHandler(ctx, {
+          enabled: true,
+          repoOwner: "owner",
+          repoName: "repo",
+          labels: "bug",
+        })
+      ).rejects.toThrow(
+        "GitHub API token is required when enabling error reporting"
+      );
+    });
+
+    it("aborts when the token cannot be encrypted", async () => {
+      const { ctx } = createPatchableDb([]);
+      vi.mocked(adminUtils.encryptPII).mockResolvedValueOnce("");
+
+      await expect(
+        updateGitHubErrorReportingConfigHandler(ctx, {
+          enabled: true,
+          token: "secret",
+          repoOwner: "owner",
+          repoName: "repo",
+          labels: "bug",
+        })
+      ).rejects.toThrow("Failed to encrypt GitHub token. Operation aborted.");
+    });
+
+    it("keeps the stored token when a masked token is submitted", async () => {
+      const { mockDb, ctx } = createPatchableDb([
+        "github_api_token",
+        "github_error_reporting_enabled",
+      ]);
+
+      const result = await updateGitHubErrorReportingConfigHandler(ctx, {
+        enabled: true,
+        token: "****abcd",
+        repoOwner: "owner",
+        repoName: "repo",
+        labels: "bug",
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(adminUtils.encryptPII).not.toHaveBeenCalled();
+      expect(mockDb.patch).toHaveBeenCalledWith(
+        "settings",
+        "id-github_error_reporting_enabled",
+        expect.objectContaining({ value: true })
+      );
+      expect(mockDb.insert).toHaveBeenCalledWith(
+        "settings",
+        expect.objectContaining({ key: "github_repo_owner", value: "owner" })
+      );
+    });
+
+    it("writes all rows and trims values", async () => {
+      const { mockDb, ctx } = createPatchableDb([]);
+
+      const result = await updateGitHubErrorReportingConfigHandler(ctx, {
+        enabled: true,
+        token: "secret",
+        repoOwner: "  owner  ",
+        repoName: "  repo  ",
+        labels: "  bug, triage  ",
+      });
+
+      expect(result).toEqual({ success: true });
+      const insertCalls = mockDb.insert.mock.calls as [
+        string,
+        InsertedSettingArgs,
+      ][];
+      expect(insertCalls).toHaveLength(5);
+      expect(insertCalls[1]?.[1].value).toBe("owner");
+      expect(insertCalls[2]?.[1].value).toBe("repo");
+      expect(insertCalls[3]?.[1].value).toBe("bug, triage");
+      expect(insertCalls[4]?.[1]).toMatchObject({
+        key: "github_api_token",
+        value: "encrypted_secret",
+      });
+      expect(adminUtils.logAudit).toHaveBeenCalledWith(
+        ctx,
+        expect.objectContaining({
+          action: "UPDATE_GITHUB_ERROR_REPORTING_CONFIG",
+          details: expect.stringContaining("enabled=true") as unknown,
+        })
+      );
+    });
+
+    it("disables reporting without requiring repository details", async () => {
+      const { mockDb, ctx } = createPatchableDb(["github_error_labels"]);
+
+      const result = await updateGitHubErrorReportingConfigHandler(ctx, {
+        enabled: false,
+        repoOwner: "",
+        repoName: "",
+        labels: "bug",
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(mockDb.patch).toHaveBeenCalledWith(
+        "settings",
+        "id-github_error_labels",
+        expect.objectContaining({ value: "bug" })
+      );
+      const insertCalls = mockDb.insert.mock.calls as [
+        string,
+        InsertedSettingArgs,
+      ][];
+      expect(insertCalls).toHaveLength(3);
+    });
+  });
+
+  describe("getGitHubConfig fallbacks", () => {
+    it("treats an empty decrypted token as missing", async () => {
+      vi.mocked(adminUtils.decryptPII).mockResolvedValueOnce(
+        undefined as unknown as string
+      );
+      const ctx = createMockCtx({
+        github_error_reporting_enabled: true,
+        github_api_token: "encrypted_empty",
+      });
+
+      const config = await getGitHubConfig(ctx);
+
+      expect(config.token).toBeNull();
+      expect(config.enabled).toBe(true);
+    });
+
+    it("falls back to nulls and the default label list for non-string values", async () => {
+      const ctx = createMockCtx({
+        github_error_reporting_enabled: true,
+        github_repo_owner: 42,
+        github_repo_name: null,
+        github_error_labels: 7,
+      });
+
+      const config = await getGitHubConfig(ctx);
+
+      expect(config.repoOwner).toBeNull();
+      expect(config.repoName).toBeNull();
+      expect(config.labels).toBe("bug,auto-reported");
+    });
+
+    it("ignores a non-string token", async () => {
+      const ctx = createMockCtx({
+        github_error_reporting_enabled: true,
+        github_api_token: 12345,
+      });
+
+      const config = await getGitHubConfig(ctx);
+
+      expect(config.token).toBeNull();
+      expect(adminUtils.decryptPII).not.toHaveBeenCalled();
     });
   });
 });

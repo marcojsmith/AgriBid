@@ -1,5 +1,5 @@
 // app/src/components/bidding/BidForm.tsx
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import {
   TrendingUp,
   ArrowUpCircle,
@@ -10,8 +10,10 @@ import {
 
 import type { LotDetail } from "@/types/auction";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/currency";
+import { Label } from "@/components/ui/label";
 
 interface BidFormProps {
   /** The lot detail containing current pricing and status */
@@ -53,8 +55,6 @@ export const BidForm = ({
     nextMinBid.toString()
   );
   const [isProxyEnabled, setIsProxyEnabled] = useState(isProxyActive ?? false);
-  // Auto-bid section is collapsed by default (optional feature); users with an
-  // already-active proxy bid start expanded so they can see and edit it
   const [isProxyExpanded, setIsProxyExpanded] = useState(
     isProxyActive ?? false
   );
@@ -62,39 +62,31 @@ export const BidForm = ({
     currentUserMaxBid != null ? String(currentUserMaxBid) : ""
   );
 
-  // Keep track of the latest manualAmount without triggering effects
-  const manualAmountRef = useRef(manualAmount);
-  useEffect(() => {
-    manualAmountRef.current = manualAmount;
-  }, [manualAmount]);
-
-  /**
-   * Sync proxy states with server-backed props when they change.
-   */
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing state with server-backed prop changes
-    setIsProxyEnabled(isProxyActive ?? false);
-  }, [isProxyActive]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing state with server-backed prop changes
-    setMaxBid(currentUserMaxBid != null ? String(currentUserMaxBid) : "");
-  }, [currentUserMaxBid]);
-
-  /**
-   * Sync manualAmount with nextMinBid whenever the current price updates.
-   * This ensures the user always starts with a valid minimum bid amount,
-   * but doesn't clobber their input if they've already typed a higher value.
-   */
-  useEffect(() => {
-    const currentManualNum = parseFloat(manualAmountRef.current) || 0;
-    if (currentManualNum < nextMinBid) {
-      const newAmount = nextMinBid.toString();
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing input with the new minimum bid when the user's value is stale
-      setManualAmount(newAmount);
-      manualAmountRef.current = newAmount;
+  // Re-sync local state when server-driven props change. Done during render
+  // (the React "adjust state on prop change" pattern) instead of in effects.
+  const [prevProps, setPrevProps] = useState({
+    nextMinBid,
+    isProxyActive,
+    currentUserMaxBid,
+  });
+  if (
+    prevProps.nextMinBid !== nextMinBid ||
+    prevProps.isProxyActive !== isProxyActive ||
+    prevProps.currentUserMaxBid !== currentUserMaxBid
+  ) {
+    setPrevProps({ nextMinBid, isProxyActive, currentUserMaxBid });
+    if (prevProps.nextMinBid !== nextMinBid) {
+      if ((parseFloat(manualAmount) || 0) < nextMinBid) {
+        setManualAmount(nextMinBid.toString());
+      }
     }
-  }, [nextMinBid]);
+    if (prevProps.isProxyActive !== isProxyActive) {
+      setIsProxyEnabled(isProxyActive ?? false);
+    }
+    if (prevProps.currentUserMaxBid !== currentUserMaxBid) {
+      setMaxBid(currentUserMaxBid != null ? String(currentUserMaxBid) : "");
+    }
+  }
 
   const currentManualNum = parseFloat(manualAmount) || 0;
   const currentMaxBidNum = parseFloat(maxBid) || 0;
@@ -144,7 +136,6 @@ export const BidForm = ({
    */
   const getQuickBidAmounts = () => {
     if (isProxyEnabled) {
-      // Show quick bids that are within the max bid range if max bid is valid for at least the minimum
       const maxBidAmount = currentMaxBidNum;
       if (maxBidAmount >= nextMinBid) {
         const validQuickBids = quickBids.filter(
@@ -195,36 +186,33 @@ export const BidForm = ({
             <div id="proxy-bidding-section" className="mt-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     id="proxy-enabled"
-                    name="proxy-enabled"
                     checked={isProxyEnabled}
-                    onChange={(e) => {
-                      setIsProxyEnabled(e.target.checked);
+                    onCheckedChange={(checked) => {
+                      setIsProxyEnabled(checked === true);
                     }}
                     disabled={isLoading}
-                    className="h-4 w-4 text-primary-foreground border-primary-foreground"
                   />
-                  <label
+                  <Label
                     htmlFor="proxy-enabled"
                     className="text-sm font-medium cursor-pointer"
                   >
                     Enable Auto-bid (Proxy Bidding)
-                  </label>
+                  </Label>
                 </div>
               </div>
 
               {isProxyEnabled && (
                 <div className="mt-3">
                   <div className="flex items-center gap-2">
-                    <label
+                    <Label
                       htmlFor="proxy-max-bid"
                       className="text-xs font-medium text-muted-foreground"
                     >
                       Max Bid:
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="number"
                       id="proxy-max-bid"
                       name="proxy-max-bid"
@@ -233,7 +221,7 @@ export const BidForm = ({
                         setMaxBid(e.target.value);
                       }}
                       placeholder="Enter max amount"
-                      className="w-32 h-8 px-2 py-1 text-sm rounded border border-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-32 h-8 text-sm"
                       disabled={isLoading}
                     />
                     {currentUserMaxBid != null && (
@@ -333,7 +321,8 @@ export const BidForm = ({
       {!isManualValid && manualAmount !== "" && (
         <p className="text-destructive text-xs font-bold flex items-center gap-1.5 ml-1">
           <ArrowUpCircle className="h-3 w-3" />
-          Minimum bid required: {formatCurrency(nextMinBid)}
+          Minimum bid: {formatCurrency(nextMinBid)} (increment of{" "}
+          {formatCurrency(auction.minIncrement)})
         </p>
       )}
 

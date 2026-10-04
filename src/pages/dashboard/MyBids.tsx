@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DASHBOARD_PAGINATION_INITIAL_ITEMS, DASHBOARD_PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
 
 interface StatusDisplay {
   label: string;
@@ -138,7 +139,7 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
       label: "WON",
       variant: "default",
       icon: <CheckCircle2 className="h-3 w-3 mr-1" />,
-      colorClass: "bg-green-600 hover:bg-green-700 text-white",
+      colorClass: "bg-success hover:bg-success/90 text-success-foreground",
     };
   }
   if (auction.status === "unsold") {
@@ -146,7 +147,7 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
       label: "RESERVE NOT MET",
       variant: "destructive",
       icon: <XCircle className="h-3 w-3 mr-1" />,
-      colorClass: "bg-gray-600 text-white",
+      colorClass: "bg-muted text-muted-foreground",
     };
   }
   if (auction.isWinning) {
@@ -154,7 +155,7 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
       label: "WINNING",
       variant: "secondary",
       icon: <TrendingUp className="h-3 w-3 mr-1" />,
-      colorClass: "bg-green-600 hover:bg-green-700 text-white",
+      colorClass: "bg-success hover:bg-success/90 text-success-foreground",
     };
   }
   if (auction.isOutbid) {
@@ -162,7 +163,7 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
       label: "OUTBID",
       variant: "destructive",
       icon: <AlertCircle className="h-3 w-3 mr-1" />,
-      colorClass: "bg-red-600 hover:bg-red-700 text-white",
+      colorClass: "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
     };
   }
   if (auction.isCancelled) {
@@ -170,7 +171,7 @@ function getStatusDisplay(auction: Auction): StatusDisplay {
       label: "CANCELLED",
       variant: "outline",
       icon: <XCircle className="h-3 w-3 mr-1" />,
-      colorClass: "border-yellow-600 text-yellow-600",
+      colorClass: "border-warning text-warning",
     };
   }
 
@@ -199,8 +200,8 @@ export default function MyBids() {
   } = usePaginatedQuery(
     api.auctions.queries.getMyBids,
     { sort: sortBy === "ending" ? "ending" : undefined },
-    { initialNumItems: 50 }
-  ); // Higher limit for client filtering
+    { initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS }
+  );
 
   const stats = serverStats ?? {
     totalActive: 0,
@@ -391,10 +392,10 @@ export default function MyBids() {
                 >
                   {/* Status Strip Indicator */}
                   {auction.isWinning && (
-                    <div className="absolute top-0 left-0 w-1 h-full bg-green-500 z-20 hidden sm:block" />
+                    <div className="absolute top-0 left-0 w-1 h-full bg-success z-20 hidden sm:block" />
                   )}
                   {auction.isOutbid && (
-                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500 z-20 hidden sm:block" />
+                    <div className="absolute top-0 left-0 w-1 h-full bg-destructive z-20 hidden sm:block" />
                   )}
 
                   {/* Image Section */}
@@ -483,7 +484,7 @@ export default function MyBids() {
                             auction.status === "assigned"
                               ? "text-primary"
                               : auction.isWon
-                                ? "text-green-600"
+                                ? "text-success"
                                 : "text-foreground"
                           )}
                         >
@@ -543,7 +544,7 @@ export default function MyBids() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  loadMore(10);
+                  loadMore(DASHBOARD_PAGINATION_LOAD_MORE_ITEMS);
                 }}
                 className="h-12 px-10 rounded-md font-semibold border hover:bg-primary hover:text-primary-foreground transition-[background-color,color,border-color]"
               >

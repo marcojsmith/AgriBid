@@ -266,7 +266,6 @@ describe("CategoryManager", () => {
 
   it("should delete a category successfully", async () => {
     mockDeleteCategory.mockResolvedValue({ success: true });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(
       <CategoryManager
@@ -286,6 +285,11 @@ describe("CategoryManager", () => {
 
     if (firstDeleteButton) {
       fireEvent.click(firstDeleteButton);
+
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+      const confirmButton = screen.getByRole("button", { name: /Deactivate/i });
+      fireEvent.click(confirmButton);
 
       await waitFor(() => {
         expect(mockDeleteCategory).toHaveBeenCalledWith({ id: "cat_1" });
@@ -358,7 +362,6 @@ describe("CategoryManager", () => {
   it("should handle delete category error", async () => {
     const { toast } = await import("sonner");
     mockDeleteCategory.mockRejectedValue(new Error("Deletion failed"));
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(
       <CategoryManager
@@ -371,15 +374,18 @@ describe("CategoryManager", () => {
 
     const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
     fireEvent.click(deleteButtons[0]);
+
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+    const confirmButton = screen.getByRole("button", { name: /Deactivate/i });
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalled();
     });
   });
 
-  it("should not delete a category if confirm is cancelled", () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
-
+  it("should not delete a category if confirm is cancelled", async () => {
     render(
       <CategoryManager
         categories={mockCategories}
@@ -392,6 +398,14 @@ describe("CategoryManager", () => {
     const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
     fireEvent.click(deleteButtons[0]);
 
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+    const cancelButton = screen.getByRole("button", { name: /Cancel/i });
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    });
     expect(mockDeleteCategory).not.toHaveBeenCalled();
   });
 
@@ -526,7 +540,6 @@ describe("CategoryManager", () => {
   it("should handle delete category error with non-Error object", async () => {
     const { toast } = await import("sonner");
     mockDeleteCategory.mockRejectedValue("Delete error");
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     render(
       <CategoryManager
@@ -539,6 +552,11 @@ describe("CategoryManager", () => {
 
     const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
     fireEvent.click(deleteButtons[0]);
+
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+    const confirmButton = screen.getByRole("button", { name: /Deactivate/i });
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Failed to delete");
@@ -586,6 +604,115 @@ describe("CategoryManager", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("Add New Category")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("deactivate dialog (no window.confirm)", () => {
+    it("should use AlertDialog instead of window.confirm for deactivation", async () => {
+      render(
+        <CategoryManager
+          categories={mockCategories}
+          addCategory={mockAddCategory}
+          updateCategory={mockUpdateCategory}
+          deleteCategory={mockDeleteCategory}
+        />
+      );
+
+      const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+      fireEvent.click(deleteButtons[0]);
+
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+      expect(screen.getByText(/Deactivate category/i)).toBeInTheDocument();
+      expect(screen.getByText(/are you sure you want to deactivate/i)).toBeInTheDocument();
+    });
+
+    it("should cancel deactivation without calling mutation when Cancel is clicked", async () => {
+      render(
+        <CategoryManager
+          categories={mockCategories}
+          addCategory={mockAddCategory}
+          updateCategory={mockUpdateCategory}
+          deleteCategory={mockDeleteCategory}
+        />
+      );
+
+      const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+      fireEvent.click(deleteButtons[0]);
+
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+      const cancelButton = screen.getByRole("button", { name: /Cancel/i });
+      fireEvent.click(cancelButton);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      });
+      expect(mockDeleteCategory).not.toHaveBeenCalled();
+    });
+
+    it("should call delete mutation when Deactivate is confirmed", async () => {
+      mockDeleteCategory.mockResolvedValue({ success: true });
+
+      render(
+        <CategoryManager
+          categories={mockCategories}
+          addCategory={mockAddCategory}
+          updateCategory={mockUpdateCategory}
+          deleteCategory={mockDeleteCategory}
+        />
+      );
+
+      const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+      fireEvent.click(deleteButtons[0]);
+
+      const confirmButton = screen.getByRole("button", { name: /Deactivate/i });
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockDeleteCategory).toHaveBeenCalledWith({ id: "cat_1" });
+      });
+    });
+
+    it("should close the alert dialog with Escape key without calling mutation", async () => {
+      render(
+        <CategoryManager
+          categories={mockCategories}
+          addCategory={mockAddCategory}
+          updateCategory={mockUpdateCategory}
+          deleteCategory={mockDeleteCategory}
+        />
+      );
+
+      const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+      fireEvent.click(deleteButtons[0]);
+
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+      fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+
+      await waitFor(() => {
+        expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      });
+      expect(mockDeleteCategory).not.toHaveBeenCalled();
+    });
+
+    it("should not use window.confirm for deactivation", async () => {
+      const confirmSpy = vi.spyOn(window, "confirm");
+
+      render(
+        <CategoryManager
+          categories={mockCategories}
+          addCategory={mockAddCategory}
+          updateCategory={mockUpdateCategory}
+          deleteCategory={mockDeleteCategory}
+        />
+      );
+
+      const deleteButtons = screen.getAllByLabelText(/Deactivate category/);
+      fireEvent.click(deleteButtons[0]);
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      confirmSpy.mockRestore();
     });
   });
 });

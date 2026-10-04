@@ -82,7 +82,7 @@ export function AuctionCardThumbnail({
           />
         ) : (
           <div className="text-muted-foreground flex flex-col items-center">
-            <span className={isCompact ? "text-2xl" : "text-4xl"}>🚜</span>
+            <span className={isCompact ? "text-2xl" : "text-4xl"} aria-hidden="true">🚜</span>
             <span
               className={cn(
                 "italic text-center px-2",
@@ -111,7 +111,7 @@ export function AuctionCardThumbnail({
             className={cn(
               "rounded-full shadow-md bg-background/80 backdrop-blur hover:bg-background transition-all",
               isCompact ? "h-7 w-7" : "h-9 w-9",
-              isWatched ? "text-red-500" : "text-zinc-500"
+              isWatched ? "text-destructive" : "text-muted-foreground"
             )}
             onClick={onWatchlistToggle}
           >

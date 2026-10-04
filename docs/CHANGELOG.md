@@ -7,6 +7,30 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Coverage now measures unimported files and writes `test-coverage/latest-coverage-output.txt`; thresholds raised; broad unit-test additions (E2E still open) (#299) (0.17.26)
+- Cursor-based `getMyBids` pagination over a bidder/timestamp index (ending sort bounded to 200 lots) with integration tests (#335) (0.17.25)
+- Index-driven batched settlement, unified reserve check, fee-total counters (run `admin_utils:recomputeLotFeeCounters` once after deploy) (#305) (0.17.24)
+- Dedupe `useListingWizard` and split the Profile page into components (backend duplication and other 500+ line files still open) (#302) (0.17.23)
+- Drop unused autoprefixer/postcss/coverage-istanbul deps, add `engines`, align packageManager, ignore stale `app/` dir (Radix import strategy still open) (#308) (0.17.22)
+- Accessibility fixes: focus trap, table scope, label links, live regions, hidden decorative icons (#304) (0.17.21)
+- Split convex/errors.ts helpers into convex/lib modules (#282) (0.17.20)
+- Batch lot summary lookups, bound the storage sweep, add platformFees/equipmentMetadata indexes (#337) (0.17.19)
+- Paginate notifications with bounded per-stream reads and a compound cursor (#336) (0.17.18)
+- Replace hardcoded palette classes with theme tokens and add a guard test (#300) (0.17.17)
+- Add input length caps and per-user rate limits on write mutations (#298) (0.17.16)
+- Harden destructive seed access (no preview bypass, explicit dev opt-in), audit-log seed/promotion, add deny-path tests (#297) (0.17.15)
+- Memoize contexts, nest admin routes under a shared layout, Set-based watchlist lookups (#303) (0.17.14)
+- Admin audit skeleton, category empty state, tooltips, wizard/search/bid-form polish (#343) (0.17.13)
+- Format the finance fee tooltip amount with formatCurrency (other call sites already used the shared helper) (#301) (0.17.12)
+- Add regression tests for auction startTime enforcement (already enforced; stale issue) (#296) (0.17.11)
+- Derive presence threshold from heartbeat interval, fix flag counter race, add audit logging, show cooldown seconds (#338) (0.17.10)
+- Filter Home status tabs server-side and scope the time tick (#339) (0.17.9)
+- Use shadcn Checkbox and AlertDialog, remove eslint-disable in BidForm (#342) (0.17.8)
+- Add per-route error boundaries (#341) (0.17.7)
+- Paginate support tickets and use shared pagination constants (#340) (0.17.6)
+- Noindex private pages, dev-safe site URL fallback, toast on mark-read failure (#344) (0.17.5)
+- Add catch-all 404 route and NotFound page (#306) (0.17.4)
+- Reconcile stale docs: fix app/ paths, regenerate schema reference, correct test command (#307) (0.17.3)
 - Polish tablet/phone layouts on auctions, lots and lot-detail pages: fix price/countdown/quick-bid overflow with container queries, tighten spacing, compact footer (0.17.2)
 
 ## 2026-09

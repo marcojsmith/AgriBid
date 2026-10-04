@@ -53,6 +53,7 @@ const createMockQuery = (results: Record<string, unknown>[] = []) => {
     first: vi.fn().mockResolvedValue(results[0] || null),
     unique: vi.fn().mockResolvedValue(results[0] || null),
     collect: vi.fn().mockResolvedValue(results),
+    take: vi.fn().mockResolvedValue(results),
     paginate: vi.fn().mockResolvedValue({
       page: results,
       isDone: true,
@@ -235,6 +236,50 @@ describe("Bidding Coverage", () => {
         expect.objectContaining({ currentPrice: 200, winnerId: "u2" })
       );
     });
+
+    it("should reject proxy bid (maxBid) before scheduled startTime (#296)", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockLotAndAuction(lotFixture, {
+        ...publishedAuctionFixture,
+        startTime: Date.now() + 60_000,
+      });
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+          amount: 100,
+          maxBid: 500,
+        })
+      ).rejects.toThrow("Auction has not started");
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+    });
+
+    it("should allow proxy bid once scheduled startTime has passed (#296)", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockLotAndAuction(
+        { ...lotFixture, sellerId: "u1" },
+        publishedAuctionFixture
+      );
+      mockCtx.db.query = vi.fn().mockReturnValue(createMockQuery([]));
+
+      const result = await placeBidHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        amount: 110,
+        maxBid: 500,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.confirmedMaxBid).toBe(500);
+    });
+
 
     it("should throw if seller bids on own auction", async () => {
       const userId = "u1";
@@ -616,6 +661,7 @@ describe("Bidding Coverage", () => {
         filter: vi.fn().mockReturnThis(),
         first: vi.fn().mockResolvedValue(null),
         collect: vi.fn().mockResolvedValue([]),
+        take: vi.fn().mockResolvedValue([]),
       });
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
@@ -641,6 +687,7 @@ describe("Bidding Coverage", () => {
         filter: vi.fn().mockReturnThis(),
         first: vi.fn().mockResolvedValue(null),
         collect: vi.fn().mockResolvedValue([]),
+        take: vi.fn().mockResolvedValue([]),
       });
       await handleNewBid(
         mockCtx as unknown as MutationCtx,
@@ -740,9 +787,7 @@ describe("Bidding Coverage", () => {
           lotId: "l1" as Id<"lots">,
           amount: 200,
         })
-      ).rejects.toThrow(
-        "You're bidding too fast. Please wait a moment and try again."
-      );
+      ).rejects.toThrow(/You're bidding too fast. Please wait \d+ second/);
     });
 
     it("should allow two bids from the same user spaced beyond the cooldown window", async () => {

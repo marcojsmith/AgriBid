@@ -1,5 +1,4 @@
 // app/src/pages/AuctionGallery.tsx
-import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Helmet } from "react-helmet-async";
@@ -31,9 +30,6 @@ export default function AuctionGallery() {
     {},
     { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
-  // Lazy initializer keeps this a pure read during render (the "Live Now"
-  // badge doesn't need to tick live here; a page refresh is enough).
-  const [now] = useState(() => Date.now());
 
   if (eventsStatus === "LoadingFirstPage") {
     return <LoadingPage message="Loading auctions..." />;
@@ -69,7 +65,7 @@ export default function AuctionGallery() {
         <div className="space-y-6 sm:space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {events.map((event) => (
-              <AuctionEventCard key={event._id} event={event} now={now} />
+              <AuctionEventCard key={event._id} event={event} />
             ))}
           </div>
           {eventsStatus === "CanLoadMore" && (

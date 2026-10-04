@@ -720,3 +720,266 @@ describe("Admin Utils", () => {
     });
   });
 });
+
+describe("recomputeLotFeeCounters", () => {
+  let mockCtx: {
+    db: {
+      query: ReturnType<typeof vi.fn>;
+      insert: ReturnType<typeof vi.fn>;
+      patch: ReturnType<typeof vi.fn>;
+    };
+    scheduler: {
+      runAfter: ReturnType<typeof vi.fn>;
+    };
+  };
+  let queryMock: {
+    withIndex: ReturnType<typeof vi.fn>;
+    paginate: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    queryMock = {
+      withIndex: vi.fn(() => queryMock),
+      paginate: vi.fn(),
+    };
+    mockCtx = {
+      db: {
+        query: vi.fn(() => queryMock),
+        insert: vi.fn().mockResolvedValue("counter-id"),
+        patch: vi.fn().mockResolvedValue(undefined),
+      },
+      scheduler: {
+        runAfter: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+  });
+
+  it("should reset counters to 0 on first batch and compute totals", async () => {
+    const mockFeeRows = [
+      {
+        _id: "lf1",
+        appliedTo: "buyer",
+        calculatedAmount: 100,
+      },
+      {
+        _id: "lf2",
+        appliedTo: "seller",
+        calculatedAmount: 50,
+      },
+    ];
+
+    const mockCounter = { _id: "counter1", buyerTotal: 999, sellerTotal: 888 };
+
+    const paginateResult = {
+      page: mockFeeRows,
+      isDone: true,
+      continueCursor: "done",
+    };
+
+    queryMock.paginate.mockResolvedValue(paginateResult);
+
+    const { recomputeLotFeeCountersHandler } = await import("./admin_utils");
+
+    vi.doMock("./_generated/api", () => ({
+      internal: {
+        admin_utils: {
+          recomputeLotFeeCounters: "admin_utils:recomputeLotFeeCounters",
+        },
+      },
+    }));
+
+    const mockDbQuery = vi.fn((table: string) => {
+      if (table === "lotFees") {
+        return queryMock;
+      }
+      return {
+        withIndex: vi.fn(() => ({
+          unique: vi.fn().mockResolvedValue(mockCounter),
+        })),
+      };
+    });
+
+    const ctxWithCounterQuery = {
+      ...mockCtx,
+      db: {
+        ...mockCtx.db,
+        query: mockDbQuery,
+      },
+    };
+
+    const result = await recomputeLotFeeCountersHandler(
+      ctxWithCounterQuery as unknown as MutationCtx,
+      {
+        cursor: null,
+        buyerTotal: 0,
+        sellerTotal: 0,
+      }
+    );
+
+    expect(result.isDone).toBe(true);
+    expect(result.buyerTotal).toBe(100);
+    expect(result.sellerTotal).toBe(50);
+  });
+
+  it("should reschedule with cursor when more pages remain", async () => {
+    const mockFeeRows = [
+      {
+        _id: "lf1",
+        appliedTo: "buyer",
+        calculatedAmount: 100,
+      },
+    ];
+
+    const paginateResult = {
+      page: mockFeeRows,
+      isDone: false,
+      continueCursor: "next-page-cursor",
+    };
+
+    queryMock.paginate.mockResolvedValue(paginateResult);
+
+    const { recomputeLotFeeCountersHandler } = await import("./admin_utils");
+
+    const mockDbQuery = vi.fn((table: string) => {
+      if (table === "lotFees") {
+        return queryMock;
+      }
+      return {
+        withIndex: vi.fn(() => ({
+          unique: vi.fn().mockResolvedValue(null),
+        })),
+      };
+    });
+
+    const ctxWithQuery = {
+      ...mockCtx,
+      db: {
+        ...mockCtx.db,
+        query: mockDbQuery,
+      },
+    };
+
+    const result = await recomputeLotFeeCountersHandler(
+      ctxWithQuery as unknown as MutationCtx,
+      {
+        cursor: null,
+        buyerTotal: 0,
+        sellerTotal: 0,
+      }
+    );
+
+    expect(result.isDone).toBe(false);
+    expect(result.buyerTotal).toBe(100);
+    expect(result.sellerTotal).toBe(0);
+    expect(mockCtx.scheduler.runAfter).toHaveBeenCalledWith(
+      0,
+      expect.anything(),
+      expect.objectContaining({
+        cursor: "next-page-cursor",
+        buyerTotal: 100,
+        sellerTotal: 0,
+      })
+    );
+  });
+
+  it("should accumulate totals across batches", async () => {
+    const mockFeeRows = [
+      {
+        _id: "lf3",
+        appliedTo: "seller",
+        calculatedAmount: 75,
+      },
+    ];
+
+    const paginateResult = {
+      page: mockFeeRows,
+      isDone: true,
+      continueCursor: "done",
+    };
+
+    queryMock.paginate.mockResolvedValue(paginateResult);
+
+    const mockCounter = { _id: "counter1", buyerTotal: 0, sellerTotal: 0 };
+
+    const { recomputeLotFeeCountersHandler } = await import("./admin_utils");
+
+    const mockDbQuery = vi.fn((table: string) => {
+      if (table === "lotFees") {
+        return queryMock;
+      }
+      return {
+        withIndex: vi.fn(() => ({
+          unique: vi.fn().mockResolvedValue(mockCounter),
+        })),
+      };
+    });
+
+    const ctxWithQuery = {
+      ...mockCtx,
+      db: {
+        ...mockCtx.db,
+        query: mockDbQuery,
+      },
+    };
+
+    const result = await recomputeLotFeeCountersHandler(
+      ctxWithQuery as unknown as MutationCtx,
+      {
+        cursor: "previous-cursor",
+        buyerTotal: 200,
+        sellerTotal: 100,
+      }
+    );
+
+    expect(result.isDone).toBe(true);
+    expect(result.buyerTotal).toBe(200);
+    expect(result.sellerTotal).toBe(175);
+  });
+
+  it("should handle empty lotFees table", async () => {
+    const paginateResult = {
+      page: [],
+      isDone: true,
+      continueCursor: null,
+    };
+
+    queryMock.paginate.mockResolvedValue(paginateResult);
+
+    const mockCounter = { _id: "counter1", buyerTotal: 999, sellerTotal: 888 };
+
+    const { recomputeLotFeeCountersHandler } = await import("./admin_utils");
+
+    const mockDbQuery = vi.fn((table: string) => {
+      if (table === "lotFees") {
+        return queryMock;
+      }
+      return {
+        withIndex: vi.fn(() => ({
+          unique: vi.fn().mockResolvedValue(mockCounter),
+        })),
+      };
+    });
+
+    const ctxWithQuery = {
+      ...mockCtx,
+      db: {
+        ...mockCtx.db,
+        query: mockDbQuery,
+      },
+    };
+
+    const result = await recomputeLotFeeCountersHandler(
+      ctxWithQuery as unknown as MutationCtx,
+      {
+        cursor: null,
+        buyerTotal: 0,
+        sellerTotal: 0,
+      }
+    );
+
+    expect(result.isDone).toBe(true);
+    expect(result.buyerTotal).toBe(0);
+    expect(result.sellerTotal).toBe(0);
+  });
+});

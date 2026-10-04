@@ -3,9 +3,11 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Clock, ArrowRight, Inbox } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import type { Id } from "convex/_generated/dataModel";
 import { toast } from "sonner";
 
+import { buildTitle } from "@/lib/seo";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,7 +67,12 @@ export default function Notifications() {
     Array.isArray(notifications) && notifications.length > 0;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+    <>
+      <Helmet>
+        <title>{buildTitle("Notifications")}</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
+      <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       <div className="flex justify-between items-end">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight">
@@ -167,5 +174,6 @@ export default function Notifications() {
         </div>
       </Card>
     </div>
+    </>
   );
 }

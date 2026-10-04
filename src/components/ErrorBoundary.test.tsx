@@ -117,4 +117,42 @@ describe("ErrorBoundary", () => {
     fireEvent.click(screen.getByText("Go Back"));
     expect(backSpy).toHaveBeenCalled();
   });
+
+  it("stringifies non-Error throwables", () => {
+    const ThrowObject = () => {
+      throw { code: "E_BOOM" } as unknown as Error;
+    };
+
+    render(
+      <ErrorBoundary>
+        <ThrowObject />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(errorReporter.reportErrorAsync).toHaveBeenCalledWith(
+      { code: "E_BOOM" },
+      expect.any(Object)
+    );
+  });
+
+  it("falls back to a generic message when the throwable cannot be serialized", () => {
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    const ThrowCyclic = () => {
+      throw cyclic as unknown as Error;
+    };
+
+    render(
+      <ErrorBoundary>
+        <ThrowCyclic />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(errorReporter.reportErrorAsync).toHaveBeenCalledWith(
+      cyclic,
+      expect.any(Object)
+    );
+  });
 });

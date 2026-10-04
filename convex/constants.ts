@@ -38,11 +38,6 @@ export const DEMO_MODE_ENABLED_DEFAULT = false;
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT = 60 * MS_PER_SECOND;
 
 // Allowed bounds for the presence heartbeat interval setting (15s - 5min).
-// NOTE: countOnlineUsers marks users offline after a fixed 90s threshold
-// (convex/presence.ts PRESENCE_HEARTBEAT_THRESHOLD), so intervals above ~90s
-// will make signed-in users appear offline between heartbeats. Accepted for
-// demo-mode resource savings; deriving the threshold from the configured
-// interval is a possible follow-up.
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_MIN = 15 * MS_PER_SECOND;
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_MAX = 5 * MS_PER_MINUTE;
 
@@ -89,6 +84,9 @@ export const DRAFT_RETENTION_MS = DRAFT_RETENTION_DAYS * MS_PER_DAY;
 // Batch size for background cleanup tasks.
 export const CLEANUP_BATCH_SIZE = 100;
 
+// Batch size for settlement cron to process expired lots per run.
+export const SETTLEMENT_BATCH_SIZE = 50;
+
 // Safety cap for admin-only moderation/management views that would otherwise
 // `.collect()` an entire status bucket unbounded.
 export const ADMIN_COLLECTION_CAP = 500;
@@ -112,8 +110,60 @@ export const STORAGE_SWEEP_MIN_AGE_MS = MS_PER_DAY;
 // ancient referenced files occupy every batch forever.
 export const STORAGE_SWEEP_LOOKBACK_MS = 7 * MS_PER_DAY;
 
+// Batch size for scanning reference tables during the orphaned-upload sweep.
+// This bounds the number of documents read from each table per sweep run.
+export const STORAGE_SWEEP_REFERENCE_BATCH_SIZE = 500;
+
 /**
  * Support ticket constants.
  */
 export const SUPPORT_TICKET_MAX_SUBJECT_LENGTH = 100;
 export const SUPPORT_TICKET_MAX_MESSAGE_LENGTH = 2000;
+
+/**
+ * Input length caps for free-text fields.
+ */
+export const MAX_MESSAGE_LENGTH = 2000;
+export const MAX_REVIEW_COMMENT_LENGTH = 2000;
+export const MAX_AUCTION_TITLE_LENGTH = 150;
+export const MAX_AUCTION_DESCRIPTION_LENGTH = 5000;
+export const MAX_FLAG_DETAILS_LENGTH = 1000;
+export const MAX_PROFILE_BIO_LENGTH = 1000;
+export const MAX_PROFILE_FIELD_LENGTH = 200;
+export const MAX_ERROR_REPORT_FIELD_LENGTH = 5000;
+
+/**
+ * Upper bound on bid amounts (R10 billion).
+ * Prevents overflow in fee calculations and counters.
+ */
+export const MAX_BID_AMOUNT = 10_000_000_000;
+
+/**
+ * Rate limiting constants for lot/draft creation.
+ */
+export const LOT_CREATION_COOLDOWN_MS = 5_000;
+export const MAX_DRAFTS_PER_USER = 20;
+
+/**
+ * Rate limiting constants for review submission.
+ */
+export const REVIEW_RATE_LIMIT_WINDOW_MS = MS_PER_MINUTE;
+export const MAX_REVIEWS_PER_WINDOW = 10;
+
+/**
+ * Rate limiting constants for support ticket submission.
+ */
+export const SUPPORT_RATE_LIMIT_WINDOW_MS = MS_PER_HOUR;
+export const MAX_SUPPORT_TICKETS_PER_WINDOW = 5;
+
+/**
+ * Rate limiting constants for profile reports.
+ */
+export const PROFILE_REPORT_RATE_LIMIT_WINDOW_MS = MS_PER_DAY;
+export const MAX_PROFILE_REPORTS_PER_WINDOW = 10;
+
+/**
+ * Rate limiting constants for KYC submission.
+ */
+export const KYC_RATE_LIMIT_WINDOW_MS = MS_PER_DAY;
+export const MAX_KYC_SUBMISSIONS_PER_WINDOW = 3;

@@ -32,12 +32,12 @@ describe("StatCard", () => {
         label="Revenue"
         value={5000}
         icon={<Package />}
-        color="text-green-500"
+        color="text-success"
       />
     );
 
     const valueElement = screen.getByText("5000");
-    expect(valueElement).toHaveClass("text-green-500");
+    expect(valueElement).toHaveClass("text-success");
   });
 
   it("renders with custom className", () => {

@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -56,8 +56,60 @@ export function AuditTab() {
 
   if (result === undefined) {
     return (
-      <div className="flex justify-center p-8">
-        <LoadingIndicator />
+      <div
+        role="status"
+        aria-label="Loading audit logs"
+        className="space-y-6 animate-in fade-in slide-in-from-bottom-4"
+      >
+        <Card className="border overflow-hidden bg-card/50">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Timestamp</TableHead>
+                <TableHead>Admin ID</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Target</TableHead>
+                <TableHead>Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={`skeleton-${String(i)}`}>
+                  <TableCell>
+                    <Skeleton
+                      className="h-4 w-24"
+                      data-testid="skeleton-timestamp"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton
+                      className="h-4 w-20"
+                      data-testid="skeleton-admin-id"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton
+                      className="h-4 w-28"
+                      data-testid="skeleton-action"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton
+                      className="h-4 w-32"
+                      data-testid="skeleton-target"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton
+                      className="h-4 w-16"
+                      data-testid="skeleton-details"
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       </div>
     );
   }

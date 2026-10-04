@@ -21,38 +21,94 @@ export default defineConfig({
     },
     coverage: {
       provider: "v8",
+      // `coverage.include` is what makes Vitest measure files that no test
+      // imports; the old `all: true` flag was removed in Vitest 4/5.
+      include: ["src/**/*.{ts,tsx}", "convex/**/*.ts"],
       reporter: ["text", "json", "html"],
       exclude: [
         "src/test/**",
         "src/components/ui/**",
+        "src/main.tsx",
         "node_modules/**",
         "**/*.test.ts",
         "**/*.spec.ts",
         "**/*.d.ts",
       ],
       thresholds: {
-        // Global Baseline - Updated March 2026 after test coverage improvements
-        statements: 90,
-        branches: 90,
-        functions: 90,
-        lines: 90,
-        "src/hooks/useErrorHandler.ts": {
-          statements: 80,
-          branches: 60,
-          functions: 80,
-          lines: 80,
-        },
-        "src/pages/admin/AdminErrorReportingSettings.tsx": {
+        // Global gate. Deliberately set above the 90% floor so small
+        // regressions cannot flip the build; re-measure with
+        // `bun run test:coverage` before lowering anything here.
+        statements: 95,
+        branches: 92,
+        functions: 95,
+        lines: 95,
+        // Per-file floors. These used to be set far below what the tests
+        // actually achieve and were only lowered to make the gate pass.
+        "src/components/admin/FeeManager.tsx": {
           statements: 90,
-          branches: 75,
-          functions: 80,
+          branches: 90,
+          functions: 95,
           lines: 90,
         },
-        "src/pages/admin/AdminErrorReports.tsx": {
+        "convex/admin/fees.ts": {
+          statements: 93,
+          branches: 94,
+          functions: 68,
+          lines: 93,
+        },
+        "convex/auctions/proxy_bidding.ts": {
+          statements: 89,
+          branches: 94,
+          functions: 69,
+          lines: 89,
+        },
+        "convex/auctions/mutations/adminCrud.ts": {
           statements: 95,
-          branches: 80,
-          functions: 90,
+          branches: 85,
+          functions: 95,
           lines: 95,
+        },
+        "convex/auctions/mutations/create.ts": {
+          statements: 95,
+          branches: 92,
+          functions: 95,
+          lines: 95,
+        },
+        "convex/auctions/queries/browse.ts": {
+          statements: 93,
+          branches: 92,
+          functions: 83,
+          lines: 93,
+        },
+        "convex/profileFlags.ts": {
+          statements: 95,
+          branches: 88,
+          functions: 95,
+          lines: 95,
+        },
+        "convex/reviews.ts": {
+          statements: 95,
+          branches: 95,
+          functions: 95,
+          lines: 95,
+        },
+        "src/hooks/useErrorHandler.ts": {
+          statements: 95,
+          branches: 95,
+          functions: 95,
+          lines: 95,
+        },
+        "src/pages/admin/AdminErrorReportingSettings.tsx": {
+          statements: 92,
+          branches: 92,
+          functions: 85,
+          lines: 92,
+        },
+        "src/pages/admin/AdminErrorReports.tsx": {
+          statements: 97,
+          branches: 90,
+          functions: 97,
+          lines: 97,
         },
 
         // Backend: Publish handlers (anonymous handlers in Convex mutations)

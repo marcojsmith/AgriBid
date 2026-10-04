@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import {
   SITE_URL,
@@ -12,6 +12,7 @@ import {
   truncate,
   buildAuctionDescription,
   buildBreadcrumbSchema,
+  getSiteUrl,
 } from "./seo";
 
 describe("SEO constants", () => {
@@ -22,6 +23,40 @@ describe("SEO constants", () => {
   it("SITE_URL falls back to agribid.co.za when env var is absent", () => {
     expect(SITE_URL).toBe("https://agribid.co.za");
   });
+});
+
+describe("getSiteUrl", () => {
+  const originalImportMeta = import.meta;
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, "import.meta", {
+      value: originalImportMeta,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it("returns production fallback when window is undefined (SSR)", () => {
+    const originalWindow = globalThis.window;
+    Object.defineProperty(globalThis, "window", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+    expect(getSiteUrl()).toBe("https://agribid.co.za");
+    Object.defineProperty(globalThis, "window", {
+      value: originalWindow,
+      writable: true,
+      configurable: true,
+    });
+  });
+});
+
+describe("SEO constants (continued)", () => {
 
   it("DEFAULT_TITLE contains site name", () => {
     expect(DEFAULT_TITLE).toContain(SITE_NAME);

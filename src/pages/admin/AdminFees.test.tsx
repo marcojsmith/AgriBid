@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -32,6 +33,24 @@ vi.mock("lucide-react", () => ({
   Menu: () => <span />,
   X: () => <span />,
   CalendarClock: () => <span />,
+}));
+
+vi.mock("@/components/admin/AdminLayout", () => ({
+  AdminLayout: ({
+    children,
+    title,
+    subtitle,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    subtitle: string;
+  }) => (
+    <div data-testid="admin-layout">
+      <h1>{title}</h1>
+      <h2>{subtitle}</h2>
+      {children}
+    </div>
+  ),
 }));
 
 import AdminFees from "./AdminFees";

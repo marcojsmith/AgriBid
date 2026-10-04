@@ -90,7 +90,7 @@ This document describes role-based access control (RBAC), permissions, and autho
 
 ### Authorization Utilities
 
-Located in `app/convex/lib/auth.ts`. Choose the utility that matches your required access level:
+Located in `convex/lib/auth.ts`. Choose the utility that matches your required access level:
 
 **1. Optional Authentication (Guests allowed)**
 
@@ -174,7 +174,7 @@ export const getProfile = query({
 ### RoleProtectedRoute Component
 
 ```typescript
-// app/src/components/RoleProtectedRoute.tsx
+// src/components/RoleProtectedRoute.tsx
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
@@ -382,4 +382,33 @@ Users can only access their own data:
 
 ---
 
-_Last Updated: 2026-03-02_
+## Destructive Seed Operations
+
+The following mutations are classified as destructive and have hardened access control:
+
+- `runSeed` (with `clear: true`)
+- `clearAuctions`
+- `clearAllData`
+
+### Access Paths
+
+These operations require one of the following:
+
+| Path | Requirement | Use Case |
+| ---- | ------------ | -------- |
+| Admin | Authenticated admin role | Production admin actions |
+| Secret | Valid `SEED_SECRET` environment variable | CI/CD pipelines, CLI invocations |
+| Dev | `NODE_ENV=development` AND `ALLOW_DEV_SEED=true` | Local development only |
+
+**Important:** Preview deployments (`VERCEL_ENV=preview`) are NOT trusted. Admin authentication or `SEED_SECRET` is required in every non-local environment.
+
+### Audit Logging
+
+All destructive invocations are logged:
+
+- `console.warn` includes the access path used (no secrets are logged)
+- `auditLogs` table receives an entry for authenticated admin invocations
+
+---
+
+_Last Updated: 2026-10-04_

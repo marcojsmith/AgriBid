@@ -1,3 +1,4 @@
+import React from "react";
 import {
   render,
   screen,
@@ -21,6 +22,24 @@ vi.mock("@/contexts/useAdminStats", () => ({
 }));
 
 import AdminLots from "./AdminLots";
+
+vi.mock("@/components/admin/AdminLayout", () => ({
+  AdminLayout: ({
+    children,
+    title,
+    subtitle,
+  }: {
+    children: React.ReactNode;
+    title: string;
+    subtitle: string;
+  }) => (
+    <div data-testid="admin-layout">
+      <h1>{title}</h1>
+      <h2>{subtitle}</h2>
+      {children}
+    </div>
+  ),
+}));
 
 // Mock Navigate
 const mockNavigate = vi.fn();

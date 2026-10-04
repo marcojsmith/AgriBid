@@ -1,4 +1,4 @@
-import { useListingWizard } from "@/components/listing-wizard/context/useListingWizard";
+import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 import { STEPS } from "@/components/listing-wizard/constants";
 
 /**

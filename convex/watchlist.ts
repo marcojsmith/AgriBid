@@ -9,7 +9,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { LotSummaryValidator, toLotSummary } from "./auctions";
+import { LotSummaryValidator, toLotSummaries } from "./auctions";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import type { Id, Doc } from "./_generated/dataModel";
 
@@ -134,17 +134,22 @@ export const getWatchedLotsHandler = async (
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .paginate(args.paginationOpts);
 
-    const page = await Promise.all(
+    const lots = await Promise.all(
       watchlist.page.map(async (item: Doc<"watchlist">) => {
         const lot = await ctx.db.get("lots", item.lotId);
-        if (!lot) return null;
-        return await toLotSummary(ctx, lot);
+        return lot;
       })
     );
 
+    const validLots = lots.filter(
+      (lot): lot is NonNullable<typeof lot> => lot !== null
+    );
+
+    const page = await toLotSummaries(ctx, validLots);
+
     return {
       ...watchlist,
-      page: page.filter((a): a is NonNullable<typeof a> => a !== null),
+      page,
     };
   } catch (err) {
     if (!(err instanceof Error && err.message.includes("Unauthenticated"))) {

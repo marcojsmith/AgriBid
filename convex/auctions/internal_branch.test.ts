@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import type { MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Id, Doc } from "../_generated/dataModel";
 import { settleExpiredLotsHandler, cleanupDraftsHandler } from "./internal";
 
 vi.mock("../admin_utils", () => ({
@@ -26,6 +26,64 @@ vi.mock("../lib/storage", () => ({
   ),
 }));
 
+function createAsyncIterable<T>(items: T[]): AsyncIterable<T> {
+  return {
+    [Symbol.asyncIterator]() {
+      let index = 0;
+      return {
+        next: () => {
+          if (index < items.length) {
+            return Promise.resolve({ done: false, value: items[index++] });
+          }
+          return Promise.resolve({ done: true, value: undefined });
+        },
+      };
+    },
+  };
+}
+
+interface IndexQuery {
+  eq: ReturnType<typeof vi.fn>;
+  lte: ReturnType<typeof vi.fn>;
+  gt: ReturnType<typeof vi.fn>;
+  lt: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
+}
+
+interface QueryMock {
+  withIndex: ReturnType<typeof vi.fn>;
+  filter: ReturnType<typeof vi.fn>;
+  collect: ReturnType<typeof vi.fn>;
+  first: ReturnType<typeof vi.fn>;
+  unique: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  take: ReturnType<typeof vi.fn>;
+}
+
+const mockQuery = (): QueryMock => {
+  const query: QueryMock = {
+    withIndex: vi.fn((_index: string, cb?: (q: IndexQuery) => void) => {
+      if (cb) {
+        cb({
+          eq: vi.fn().mockReturnThis(),
+          lte: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
+          lt: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+        });
+      }
+      return query;
+    }),
+    filter: vi.fn().mockReturnThis(),
+    collect: vi.fn().mockResolvedValue([]),
+    first: vi.fn().mockResolvedValue(null),
+    unique: vi.fn().mockResolvedValue(null),
+    order: vi.fn().mockReturnThis(),
+    take: vi.fn().mockResolvedValue([]),
+  };
+  return query;
+};
+
 describe("Internal Mutations Branch Coverage", () => {
   let mockCtx: {
     db: {
@@ -38,36 +96,34 @@ describe("Internal Mutations Branch Coverage", () => {
     storage: {
       delete: ReturnType<typeof vi.fn>;
     };
+    scheduler: {
+      runAfter: ReturnType<typeof vi.fn>;
+    };
   };
 
-  /**
-   * Builds a table-aware query mock. `lots`/`bids` return the supplied rows,
-   * every other table returns an empty result set.
-   *
-   * @param lots - Rows returned for queries against the `lots` table.
-   * @param bids - Rows returned for queries against the `bids` table.
-   */
   const setupTableQuery = (
     lots: Record<string, unknown>[] = [],
     bids: Record<string, unknown>[] = []
   ) => {
     mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
       if (table === "lots") {
-        return {
-          withIndex: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue(lots),
-        };
+        const q = mockQuery();
+        q.collect = vi.fn().mockResolvedValue(lots);
+        q.take = vi.fn().mockResolvedValue(lots);
+        return q;
       }
       if (table === "bids") {
-        return {
-          withIndex: vi.fn().mockReturnThis(),
-          collect: vi.fn().mockResolvedValue(bids),
-        };
+        const q = mockQuery();
+        const orderedBids = [...bids].sort(
+          (a, b) => (b.amount as number) - (a.amount as number)
+        );
+        q.order = vi.fn(() =>
+          createAsyncIterable(orderedBids as Doc<"bids">[])
+        );
+        q.collect = vi.fn().mockResolvedValue(bids);
+        return q;
       }
-      return {
-        withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue([]),
-      };
+      return mockQuery();
     });
   };
 
@@ -87,6 +143,8 @@ describe("Internal Mutations Branch Coverage", () => {
             };
           }),
           collect: vi.fn().mockResolvedValue([]),
+          order: vi.fn().mockReturnThis(),
+          take: vi.fn().mockResolvedValue([]),
         })),
         patch: vi.fn(),
         delete: vi.fn(),
@@ -95,6 +153,9 @@ describe("Internal Mutations Branch Coverage", () => {
       },
       storage: {
         delete: vi.fn(),
+      },
+      scheduler: {
+        runAfter: vi.fn(),
       },
     };
   });
@@ -117,8 +178,22 @@ describe("Internal Mutations Branch Coverage", () => {
         title: "Test",
       };
       const bids = [
-        { bidderId: "u1", amount: 200, timestamp: 100, status: "valid" },
-        { bidderId: "u2", amount: 200, timestamp: 200, status: "valid" },
+        {
+          _id: "b1" as Id<"bids">,
+          lotId: "a1" as Id<"lots">,
+          bidderId: "u1",
+          amount: 200,
+          timestamp: 100,
+          status: "valid",
+        },
+        {
+          _id: "b2" as Id<"bids">,
+          lotId: "a1" as Id<"lots">,
+          bidderId: "u2",
+          amount: 200,
+          timestamp: 200,
+          status: "valid",
+        },
       ];
 
       setupTableQuery([lot], bids);
@@ -128,7 +203,7 @@ describe("Internal Mutations Branch Coverage", () => {
         "lots",
         "a1",
         expect.objectContaining({
-          winnerId: "u1", // earliest wins
+          winnerId: "u1",
         })
       );
     });
@@ -143,8 +218,22 @@ describe("Internal Mutations Branch Coverage", () => {
         title: "Test",
       };
       const bids = [
-        { bidderId: "u1", amount: 200, timestamp: 100, status: "valid" },
-        { bidderId: "u2", amount: 150, timestamp: 200, status: "valid" },
+        {
+          _id: "b1" as Id<"bids">,
+          lotId: "a1" as Id<"lots">,
+          bidderId: "u1",
+          amount: 200,
+          timestamp: 100,
+          status: "valid",
+        },
+        {
+          _id: "b2" as Id<"bids">,
+          lotId: "a1" as Id<"lots">,
+          bidderId: "u2",
+          amount: 150,
+          timestamp: 200,
+          status: "valid",
+        },
       ];
 
       setupTableQuery([lot], bids);
@@ -169,8 +258,22 @@ describe("Internal Mutations Branch Coverage", () => {
         title: "Test",
       };
       const bids = [
-        { bidderId: "u1", amount: 150, timestamp: 100, status: "valid" },
-        { bidderId: "u2", amount: 200, timestamp: 200, status: "valid" },
+        {
+          _id: "b1" as Id<"bids">,
+          lotId: "a1" as Id<"lots">,
+          bidderId: "u1",
+          amount: 150,
+          timestamp: 100,
+          status: "valid",
+        },
+        {
+          _id: "b2" as Id<"bids">,
+          lotId: "a1" as Id<"lots">,
+          bidderId: "u2",
+          amount: 200,
+          timestamp: 200,
+          status: "valid",
+        },
       ];
 
       setupTableQuery([lot], bids);
@@ -267,7 +370,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       mockCtx.storage.delete.mockRejectedValue(new Error("Storage fail"));
       const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
-        // intentional no-op: silences the expected storage-delete warning
+        // intentional no-op
       });
 
       const result = await cleanupDraftsHandler(
@@ -291,7 +394,7 @@ describe("Internal Mutations Branch Coverage", () => {
 
       mockCtx.db.delete.mockRejectedValue(new Error("DB fail"));
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
-        // intentional no-op: silences the expected draft-delete error
+        // intentional no-op
       });
 
       const result = await cleanupDraftsHandler(

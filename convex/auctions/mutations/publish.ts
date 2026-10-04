@@ -9,12 +9,17 @@ import {
   resolveUserId,
 } from "../../lib/auth";
 import { logAudit, updateCounter } from "../../admin_utils";
-import { AUCTION_FLAG_AUTO_HIDE_THRESHOLD } from "../../constants";
-import type { Id, Doc } from "../../_generated/dataModel";
+import {
+  AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
+  MAX_FLAG_DETAILS_LENGTH,
+} from "../../constants";
+import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import {
   calculateAndRecordFees,
   logAuctionSettlementActivity,
+  findWinningBid,
+  isReserveMet,
 } from "../internal";
 
 /**
@@ -70,6 +75,15 @@ export const flagLotHandler = async (
     throw new ConvexError("You have already flagged this lot");
   }
 
+  if (args.details !== undefined) {
+    const trimmedDetails = args.details.trim();
+    if (trimmedDetails.length > MAX_FLAG_DETAILS_LENGTH) {
+      throw new ConvexError(
+        `Details is too long. Maximum ${MAX_FLAG_DETAILS_LENGTH.toString()} characters allowed.`
+      );
+    }
+  }
+
   await ctx.db.insert("lotFlags", {
     lotId: args.lotId,
     reporterId: userId,
@@ -83,7 +97,8 @@ export const flagLotHandler = async (
 
   const pendingFlags = existingFlags.filter((f) => f.status === "pending");
   if (pendingFlags.length + 1 >= AUCTION_FLAG_AUTO_HIDE_THRESHOLD) {
-    if (lot.status === "approved") {
+    const freshLot = await ctx.db.get("lots", args.lotId);
+    if (freshLot?.status === "approved") {
       await ctx.db.patch("lots", args.lotId, {
         status: "pending_review",
         hiddenByFlags: true,
@@ -250,39 +265,20 @@ export const closeLotEarlyHandler = async (
     };
   }
 
-  const bids = await ctx.db
-    .query("bids")
-    .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
-    .collect();
-
-  const validBids = bids.filter((b: Doc<"bids">) => b.status !== "voided");
-  const hasBids = validBids.length > 0;
+  const winningBid = await findWinningBid(ctx, lot._id);
+  const hasBids = winningBid !== undefined;
+  const reserveMet =
+    hasBids && isReserveMet(winningBid.amount, lot.reservePrice);
 
   type AuctionStatus = "sold" | "unsold";
   let finalStatus: AuctionStatus;
   let winnerId: string | undefined;
   let winningAmount: number | undefined;
 
-  let highestBid: Doc<"bids"> | undefined;
-  if (hasBids) {
-    highestBid = validBids.reduce((prev: Doc<"bids">, current: Doc<"bids">) => {
-      if (current.amount > prev.amount) return current;
-      if (current.amount === prev.amount) {
-        return current.timestamp < prev.timestamp ? current : prev;
-      }
-      return prev;
-    });
-  }
-
-  const reserveMet =
-    hasBids &&
-    highestBid !== undefined &&
-    highestBid.amount >= lot.reservePrice;
-
-  if (hasBids && reserveMet && highestBid) {
+  if (hasBids && reserveMet) {
     finalStatus = "sold";
-    winnerId = highestBid.bidderId;
-    winningAmount = highestBid.amount;
+    winnerId = winningBid.bidderId;
+    winningAmount = winningBid.amount;
   } else {
     finalStatus = "unsold";
   }
@@ -317,7 +313,7 @@ export const closeLotEarlyHandler = async (
       winnerId,
       winningAmount,
       reserveMet,
-      bidCount: validBids.length,
+      bidCount: hasBids ? 1 : 0,
     }),
   });
 

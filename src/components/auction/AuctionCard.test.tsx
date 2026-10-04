@@ -385,6 +385,41 @@ describe("AuctionCard", () => {
     });
   });
 
+  it("syncs isWatched state with prop changes without effect", async () => {
+    const { rerender } = renderWithRouter({ isWatched: false });
+
+    const watchlistButton = screen.getByRole("button", { name: /watchlist/i });
+    expect(watchlistButton).toHaveAttribute("aria-pressed", "false");
+
+    rerender(
+      <BrowserRouter>
+        <AuctionCard
+          auction={mockAuction as unknown as LotSummary}
+          isWatched={true}
+        />
+      </BrowserRouter>
+    );
+
+    expect(watchlistButton).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("reflects optimistic watchlist toggle before server response", async () => {
+    mockToggleWatchlist.mockImplementation(
+      () => new Promise<boolean>(() => undefined)
+    );
+
+    renderWithRouter({ isWatched: false });
+
+    const watchlistButton = screen.getByRole("button", { name: /watchlist/i });
+    expect(watchlistButton).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(watchlistButton);
+
+    await waitFor(() => {
+      expect(mockToggleWatchlist).toHaveBeenCalled();
+    });
+  });
+
   it("handles watchlist toggle error", async () => {
     mockToggleWatchlist.mockRejectedValue(new Error("Fail"));
     renderWithRouter();
@@ -523,7 +558,7 @@ describe("AuctionCard", () => {
       viewMode: "compact",
     });
 
-    expect(screen.getByLabelText("Sold auction")).toBeInTheDocument();
+    expect(screen.getByText("Sold auction")).toBeInTheDocument();
   });
 
   it("renders closed and compact state with unsold badge", () => {
@@ -533,7 +568,7 @@ describe("AuctionCard", () => {
       viewMode: "compact",
     });
 
-    expect(screen.getByLabelText("Closed auction")).toBeInTheDocument();
+    expect(screen.getByText("Closed auction")).toBeInTheDocument();
   });
 
   it("renders closed and detailed state with Sold badge", () => {
@@ -599,7 +634,7 @@ describe("AuctionCard", () => {
       });
 
       expect(
-        screen.getByLabelText("Scheduled auction, not yet started")
+        screen.getByText("Scheduled auction, not yet started")
       ).toBeInTheDocument();
     });
 

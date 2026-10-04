@@ -177,7 +177,7 @@ describe("AdminDashboard Page", () => {
     expect(screen.getByText("User Base")).toBeInTheDocument();
     const kycPendingItem = screen.getByText(/KYC Pending: 3/i);
     expect(kycPendingItem).toBeInTheDocument();
-    expect(kycPendingItem).toHaveClass("text-yellow-600");
+    expect(kycPendingItem).toHaveClass("text-warning");
     expect(screen.getByText("Lots")).toBeInTheDocument();
     expect(screen.getByText("Moderation")).toBeInTheDocument();
     expect(screen.getByText("Financials")).toBeInTheDocument();
@@ -185,7 +185,7 @@ describe("AdminDashboard Page", () => {
 
     // Verify a color branch (pendingReview > 0)
     const pendingItem = screen.getByText(/Pending Review: 5/i);
-    expect(pendingItem).toHaveClass("text-yellow-600");
+    expect(pendingItem).toHaveClass("text-warning");
   });
 
   it("renders different colors when stats are zero", () => {
@@ -205,15 +205,15 @@ describe("AdminDashboard Page", () => {
 
     // KYC Pending === 0 branch
     const kycItem = screen.getByText(/KYC Pending: 0/i);
-    expect(kycItem).not.toHaveClass("text-yellow-600");
+    expect(kycItem).not.toHaveClass("text-warning");
 
     // pendingReview === 0 branch
     const pendingItem = screen.getByText(/Pending Review: 0/i);
-    expect(pendingItem).toHaveClass("text-green-600");
+    expect(pendingItem).toHaveClass("text-success");
 
     // openTickets === 0 branch
     const supportItem = screen.getByText(/Open Tickets: 0/i);
-    expect(supportItem).toHaveClass("text-green-600");
+    expect(supportItem).toHaveClass("text-success");
   });
 
   it("renders partial data warning", () => {

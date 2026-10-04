@@ -15,6 +15,15 @@ import type { Id } from "../_generated/dataModel";
 vi.mock("../lib/auth", () => ({
   getCallerRole: vi.fn(),
   requireAdmin: vi.fn(),
+  getAuthUser: vi.fn(),
+  resolveUserId: vi.fn(),
+}));
+
+vi.mock("../admin_utils", () => ({
+  logAudit: vi.fn(),
+  updateCounter: vi.fn(),
+  decryptPII: vi.fn(),
+  encryptPII: vi.fn(),
 }));
 
 interface MockQuery {
@@ -62,6 +71,8 @@ describe("Categories Backend", () => {
       "cat_123" as Id<"equipmentCategories">
     );
 
+    const { logAudit } = await import("../admin_utils");
+
     const result = await addCategoryHandler(mockCtx, {
       name: "Tractors",
     });
@@ -71,6 +82,14 @@ describe("Categories Backend", () => {
       name: "Tractors",
       isActive: true,
     });
+    expect(logAudit).toHaveBeenCalledWith(
+      mockCtx,
+      expect.objectContaining({
+        action: "CATEGORY_CREATE",
+        targetId: "cat_123",
+        targetType: "equipmentCategory",
+      })
+    );
   });
 
   it("should throw an error if a duplicate category name exists", async () => {
@@ -204,6 +223,8 @@ describe("updateCategory", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
+    const { logAudit } = await import("../admin_utils");
+
     await updateCategoryHandler(mockCtx, {
       id: "cat_123" as Id<"equipmentCategories">,
       name: "New Name",
@@ -215,6 +236,14 @@ describe("updateCategory", () => {
       {
         name: "New Name",
       }
+    );
+    expect(logAudit).toHaveBeenCalledWith(
+      mockCtx,
+      expect.objectContaining({
+        action: "CATEGORY_UPDATE",
+        targetId: "cat_123",
+        targetType: "equipmentCategory",
+      })
     );
   });
 
@@ -418,6 +447,8 @@ describe("deleteCategory", () => {
 
     vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
 
+    const { logAudit } = await import("../admin_utils");
+
     await deleteCategoryHandler(mockCtx, {
       id: "cat_123" as Id<"equipmentCategories">,
     });
@@ -428,6 +459,14 @@ describe("deleteCategory", () => {
       {
         isActive: false,
       }
+    );
+    expect(logAudit).toHaveBeenCalledWith(
+      mockCtx,
+      expect.objectContaining({
+        action: "CATEGORY_DEACTIVATE",
+        targetId: "cat_123",
+        targetType: "equipmentCategory",
+      })
     );
   });
 

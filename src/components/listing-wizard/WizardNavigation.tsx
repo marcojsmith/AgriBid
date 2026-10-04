@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Check, Save, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 import { useListingForm } from "@/hooks/listing-wizard/useListingForm";
 
@@ -46,7 +47,7 @@ export const WizardNavigation = ({
           className="h-12 px-6 rounded-md font-bold border gap-2"
         >
           {draftSaved ? (
-            <Check className="h-4 w-4 text-green-500" />
+            <Check className="h-4 w-4 text-success" />
           ) : (
             <Save className="h-4 w-4" />
           )}
@@ -58,7 +59,10 @@ export const WizardNavigation = ({
         <Button
           onClick={onFinalSubmit}
           disabled={isSubmitting || !!getStepError(currentStep)}
-          className="h-14 px-12 rounded-md font-semibold text-xl gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all scale-105"
+          className={cn(
+            "h-14 px-12 rounded-md font-semibold text-xl gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 transition-all",
+            !isSubmitting && !getStepError(currentStep) && "scale-105"
+          )}
         >
           {isSubmitting ? (
             <>

@@ -84,6 +84,7 @@ export {
   resolveImageUrls,
   LotSummaryValidator,
   toLotSummary,
+  toLotSummaries,
   LotDetailValidator,
 } from "./auctions/helpers";
 export type { RawImages } from "./auctions/helpers";

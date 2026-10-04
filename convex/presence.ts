@@ -11,7 +11,37 @@ import { getAuthUser } from "./lib/auth";
 import { getSetting } from "./admin/settings";
 import * as constants from "./constants";
 
-export const PRESENCE_HEARTBEAT_THRESHOLD = 90 * 1000; // 90 seconds (heartbeat interval is 60s)
+/**
+ * Minimum online threshold in milliseconds.
+ * Never go below this value even if heartbeat interval is very short.
+ */
+const MIN_PRESENCE_THRESHOLD_MS = 90_000;
+
+/**
+ * Extra buffer time added to the heartbeat interval to determine the threshold.
+ * This accounts for network latency and processing delays.
+ */
+const THRESHOLD_BUFFER_MS = 30_000;
+
+/**
+ * Calculate the online presence threshold based on the configured heartbeat interval.
+ *
+ * The threshold is derived as max(90_000, interval + 30_000) to ensure users remain
+ * marked online between heartbeats, while still respecting admin-configured intervals.
+ *
+ * @param ctx - Query or Mutation context
+ * @returns The threshold in milliseconds
+ */
+export async function getPresenceThresholdMs(
+  ctx: QueryCtx | MutationCtx
+): Promise<number> {
+  const interval = await getSetting(
+    ctx,
+    "presence_heartbeat_interval_ms",
+    constants.PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT
+  );
+  return Math.max(MIN_PRESENCE_THRESHOLD_MS, interval + THRESHOLD_BUFFER_MS);
+}
 
 /**
  * Standardized presence counting logic.
@@ -20,7 +50,7 @@ export const PRESENCE_HEARTBEAT_THRESHOLD = 90 * 1000; // 90 seconds (heartbeat 
  * @returns Current online user count
  */
 export async function countOnlineUsers(ctx: QueryCtx | MutationCtx) {
-  const threshold = Date.now() - PRESENCE_HEARTBEAT_THRESHOLD;
+  const threshold = Date.now() - (await getPresenceThresholdMs(ctx));
 
   const onlineQuery = ctx.db
     .query("presence")
@@ -111,7 +141,8 @@ export const cleanup = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const threshold = Date.now() - PRESENCE_HEARTBEAT_THRESHOLD * 10;
+    const thresholdMs = await getPresenceThresholdMs(ctx);
+    const threshold = Date.now() - thresholdMs * 10;
     const BATCH_SIZE = 100;
     const MAX_ITERATIONS = 10;
     let deletedCount = 0;

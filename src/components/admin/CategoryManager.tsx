@@ -14,6 +14,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -56,6 +66,9 @@ export function CategoryManager({
 }: CategoryManagerProps) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
+    null
+  );
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
@@ -137,82 +150,123 @@ export function CategoryManager({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.map((cat) => (
-              <TableRow
-                key={cat._id}
-                className={
-                  !cat.isActive ? "bg-muted/30 text-muted-foreground" : ""
-                }
-              >
-                <TableCell className="font-bold">{cat.name}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={cat.isActive ? "outline" : "secondary"}
-                    className={
-                      cat.isActive
-                        ? "bg-green-500/10 text-green-500 border-green-500/20"
-                        : ""
-                    }
-                  >
-                    {cat.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <EditCategoryDialog
-                      category={cat}
-                      updateCategory={updateCategory}
-                    />
-                    {cat.isActive ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        aria-label={`Deactivate category ${cat.name}`}
-                        onClick={() => {
-                          if (confirm(`Deactivate category "${cat.name}"?`)) {
-                            deleteCategory({ id: cat._id }).catch(
-                              (err: unknown) =>
-                                toast.error(
-                                  err instanceof Error
-                                    ? err.message
-                                    : "Failed to delete"
-                                )
-                            );
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-primary"
-                        aria-label={`Reactivate category ${cat.name}`}
-                        onClick={async () => {
-                          try {
-                            await addCategory({ name: cat.name }); // addCategory handles reactivation
-                            toast.success("Category reactivated");
-                          } catch (err) {
-                            toast.error(
-                              err instanceof Error
-                                ? err.message
-                                : "Failed to reactivate"
-                            );
-                          }
-                        }}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    )}
+            {categories.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
+                    <p className="font-medium text-sm">No categories yet</p>
+                    <p className="text-xs">
+                      Add your first category to organize equipment listings.
+                    </p>
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              categories.map((cat) => (
+                <TableRow
+                  key={cat._id}
+                  className={
+                    !cat.isActive ? "bg-muted/30 text-muted-foreground" : ""
+                  }
+                >
+                  <TableCell className="font-bold">{cat.name}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={cat.isActive ? "outline" : "secondary"}
+                      className={
+                        cat.isActive
+                          ? "bg-success/10 text-success border-success/20"
+                          : ""
+                      }
+                    >
+                      {cat.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <EditCategoryDialog
+                        category={cat}
+                        updateCategory={updateCategory}
+                      />
+                      {cat.isActive ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          aria-label={`Deactivate category ${cat.name}`}
+                          onClick={() => {
+                            setCategoryToDelete(cat);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary"
+                          aria-label={`Reactivate category ${cat.name}`}
+                          onClick={async () => {
+                            try {
+                              await addCategory({ name: cat.name });
+                              toast.success("Category reactivated");
+                            } catch (err) {
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to reactivate"
+                              );
+                            }
+                          }}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog
+        open={categoryToDelete != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCategoryToDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate category</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate "{categoryToDelete?.name}"?
+              This will hide it from the marketplace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (categoryToDelete) {
+                  deleteCategory({ id: categoryToDelete._id }).catch(
+                    (err: unknown) =>
+                      toast.error(
+                        err instanceof Error ? err.message : "Failed to delete"
+                      )
+                  );
+                  setCategoryToDelete(null);
+                }
+              }}
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

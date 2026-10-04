@@ -21,13 +21,24 @@ describe("sweepOrphanedUploads mutation", () => {
     };
   };
 
-  const makeQueryChainMock = (results: Record<string, unknown>[] = []) => ({
+  const makeQueryChainMock = (
+    results: Record<string, unknown>[] = [],
+    page: { isDone: boolean; continueCursor: string } = {
+      isDone: true,
+      continueCursor: "",
+    }
+  ) => ({
     withIndex: vi.fn().mockReturnThis(),
     filter: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     collect: vi.fn().mockResolvedValue(results),
     take: vi.fn((n: number) => Promise.resolve(results.slice(0, n))),
     unique: vi.fn().mockResolvedValue(results[0] || null),
+    paginate: vi.fn().mockResolvedValue({
+      page: results,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    }),
   });
 
   beforeEach(() => {
@@ -93,6 +104,48 @@ describe("sweepOrphanedUploads mutation", () => {
     expect(mockCtx.storage.delete).toHaveBeenCalledTimes(2);
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("orphan_old");
     expect(mockCtx.storage.delete).toHaveBeenCalledWith("orphan_old_2");
+  });
+
+  it("continues the reference scan when a table still has more rows", async () => {
+    const lot = {
+      _id: "lot_1",
+      images: { front: "img_front" },
+      conditionReportUrl: null,
+    };
+    const profileWithoutDocs = { _id: "profile_1" };
+    const auctionWithoutBanner = { _id: "auction_1", bannerImage: null };
+    const morePages = { isDone: false, continueCursor: "next-page" };
+
+    mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
+      if (table === "lots") return makeQueryChainMock([lot], morePages);
+      if (table === "profiles")
+        return makeQueryChainMock([profileWithoutDocs], morePages);
+      if (table === "auctions")
+        return makeQueryChainMock([auctionWithoutBanner], morePages);
+      return makeQueryChainMock();
+    });
+
+    const paginated = {
+      withIndex: vi.fn().mockReturnThis(),
+      filter: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      collect: vi.fn().mockResolvedValue([]),
+      take: vi.fn().mockResolvedValue([]),
+      unique: vi.fn().mockResolvedValue(null),
+      paginate: vi.fn().mockResolvedValue({
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      }),
+    };
+    mockCtx.db.system.query = vi.fn().mockReturnValue(paginated);
+
+    const result = await sweepOrphanedUploadsHandler(
+      mockCtx as unknown as MutationCtx
+    );
+
+    expect(result.deleted).toBe(0);
+    expect(mockCtx.storage.delete).not.toHaveBeenCalled();
   });
 
   it("should respect the batch-size cap when scanning storage", async () => {
