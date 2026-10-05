@@ -12,6 +12,8 @@ import { useQuery } from "convex/react";
 import { toast } from "sonner";
 import { useClerk } from "@clerk/clerk-react";
 
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
+
 import { Header } from "./Header";
 
 // Mock convex/react
@@ -79,11 +81,15 @@ describe("Header", () => {
     });
   });
 
+  // Header reads the profile from UserProfileContext, which the layout
+  // provides at runtime; the provider keeps the mocked query in charge.
   const renderHeader = (path = "/") => {
     window.history.pushState({}, "Test page", path);
     return render(
       <BrowserRouter>
-        <Header />
+        <UserProfileProvider>
+          <Header />
+        </UserProfileProvider>
       </BrowserRouter>
     );
   };

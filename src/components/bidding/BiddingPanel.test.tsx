@@ -65,6 +65,16 @@ vi.mock("@/hooks/usePriceHighlight", () => ({
   usePriceHighlight: vi.fn().mockReturnValue(false),
 }));
 
+// BiddingPanel reads the profile from UserProfileContext; back the hook with the
+// same mocked query so per-test `useQuery` overrides keep working.
+vi.mock("@/hooks/useUserProfile", async () => {
+  const { useQuery: convexUseQuery } = await import("convex/react");
+  const { api } = await import("convex/_generated/api");
+  return {
+    useUserProfile: () => convexUseQuery(api.users.getMyProfile),
+  };
+});
+
 // Mock useNavigate
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async () => {

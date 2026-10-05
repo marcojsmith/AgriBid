@@ -2,8 +2,8 @@ import { v, ConvexError, type Infer } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin, resolveUserId } from "../../lib/auth";
-import { settleLot } from "../internal";
-import type { Doc, Id } from "../../_generated/dataModel";
+import { findWinningBid, settleLot } from "../internal";
+import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 /**
@@ -34,34 +34,6 @@ export interface CreateAuctionArgs {
   endTime: number;
   defaultBuyerPremiumPct?: number;
   defaultSellerCommissionPct?: number;
-}
-
-/**
- * Returns the earliest valid (non-voided) bid with the highest amount for a lot,
- * or undefined when the lot has no accepted bids.
- * @param ctx - Mutation context.
- * @param lotId - The lot to inspect.
- * @returns The winning bid document, if any.
- */
-async function getAcceptedBid(
-  ctx: MutationCtx,
-  lotId: Id<"lots">
-): Promise<Doc<"bids"> | undefined> {
-  const bids = await ctx.db
-    .query("bids")
-    .withIndex("by_lot", (q) => q.eq("lotId", lotId))
-    .collect();
-
-  const validBids = bids.filter((bid) => bid.status !== "voided");
-  if (validBids.length === 0) return undefined;
-
-  return validBids.reduce((prev, current) => {
-    if (current.amount > prev.amount) return current;
-    if (current.amount === prev.amount) {
-      return current.timestamp < prev.timestamp ? current : prev;
-    }
-    return prev;
-  });
 }
 
 /**
@@ -144,7 +116,7 @@ export const updateAuctionHandler = async (
 
   if (args.startTime !== undefined) {
     for (const lot of assignedLots) {
-      const acceptedBid = await getAcceptedBid(ctx, lot._id);
+      const acceptedBid = await findWinningBid(ctx, lot._id);
       if (acceptedBid && args.startTime > acceptedBid.timestamp) {
         throw new ConvexError(
           "Auction startTime cannot move later than an accepted bid on an assigned lot"

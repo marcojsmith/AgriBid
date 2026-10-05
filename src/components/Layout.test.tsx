@@ -45,7 +45,7 @@ vi.mock("@clerk/clerk-react", () => ({
 }));
 
 vi.mock("@/hooks/useBranding", () => ({
-  useBranding: vi.fn(() => ({ appName: "AgriBid" })),
+  useBranding: vi.fn(() => ({ appName: "AgriBid", businessInfo: undefined })),
 }));
 
 vi.mock("@/contexts/BrandingProvider", () => ({
@@ -62,15 +62,16 @@ describe("Layout", () => {
   const mockUseBranding = useBranding as Mock;
 
   /**
-   * Layout queries the SEO settings first and the business info second; the
-   * user profile provider issues a third (unused) query for the profile.
+   * Layout queries the SEO settings itself and reaches the business info
+   * through BrandingProvider, so the branding context supplies it here. The
+   * user profile provider issues a second (unused) query for the profile.
    *
    * @param seoSettings - Value returned for `admin.getSeoSettings`
-   * @param businessInfo - Value returned for `admin.getBusinessInfo`
+   * @param businessInfo - Business info exposed through BrandingContext
    */
-  const mockSeoQueries = (seoSettings: unknown, businessInfo: unknown) => {
-    const responses = [seoSettings, businessInfo];
-    mockUseQuery.mockImplementation(() => responses.shift());
+  const mockAdminSettings = (seoSettings: unknown, businessInfo: unknown) => {
+    mockUseQuery.mockReturnValue(seoSettings);
+    mockUseBranding.mockReturnValue({ appName: "AgriBid", businessInfo });
   };
 
   /**
@@ -100,7 +101,10 @@ describe("Layout", () => {
     document.head.innerHTML = "";
     mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true });
     mockUseUser.mockReturnValue({ user: undefined });
-    mockUseBranding.mockReturnValue({ appName: "AgriBid" });
+    mockUseBranding.mockReturnValue({
+      appName: "AgriBid",
+      businessInfo: undefined,
+    });
     mockUseQuery.mockReturnValue(undefined);
     mockUseMutation.mockReturnValue(
       vi.fn().mockResolvedValue({}) as unknown as ReturnType<
@@ -157,7 +161,7 @@ describe("Layout", () => {
   });
 
   it("renders the organization JSON-LD and verification tags from admin settings", async () => {
-    mockSeoQueries(
+    mockAdminSettings(
       {
         searchConsoleVerification: "google-token",
         bingVerification: "bing-token",
@@ -191,7 +195,7 @@ describe("Layout", () => {
   });
 
   it("falls back to default organization data when admin settings are empty", async () => {
-    mockSeoQueries({}, { businessName: "AgriBid" });
+    mockAdminSettings({}, { businessName: "AgriBid" });
 
     const { container } = renderLayout("/");
 
@@ -204,7 +208,7 @@ describe("Layout", () => {
   });
 
   it("omits the analytics scripts for a malformed GA4 measurement id", async () => {
-    mockSeoQueries({ ga4MeasurementId: "UA-12345-1" }, undefined);
+    mockAdminSettings({ ga4MeasurementId: "UA-12345-1" }, undefined);
 
     const { container } = renderLayout("/");
 
@@ -216,7 +220,7 @@ describe("Layout", () => {
   });
 
   it("omits organization tags when no business info is available", () => {
-    mockSeoQueries(undefined, undefined);
+    mockAdminSettings(undefined, undefined);
 
     const { container } = renderLayout("/");
 
@@ -226,7 +230,7 @@ describe("Layout", () => {
 
   it("uses the site name when branding has not loaded", () => {
     mockUseBranding.mockReturnValue(undefined);
-    mockSeoQueries(undefined, undefined);
+    mockAdminSettings(undefined, undefined);
 
     renderLayout("/");
 
@@ -236,7 +240,7 @@ describe("Layout", () => {
   it("renders signed-in listeners and hides the footer on admin routes", () => {
     mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
     mockUseUser.mockReturnValue({ user: { id: "user1" } });
-    mockSeoQueries(undefined, undefined);
+    mockAdminSettings(undefined, undefined);
 
     renderLayout("/admin/fees");
 

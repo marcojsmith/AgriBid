@@ -16,6 +16,7 @@ import { formatCurrency } from "@/lib/currency";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { usePriceHighlight } from "@/hooks/usePriceHighlight";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { getLotLiveWindow, useLotLiveWindow } from "@/hooks/useLotLiveWindow";
 
@@ -51,6 +52,9 @@ const UNAVAILABLE_COPY: Record<string, { title: string; description: string }> =
  * countdown timer, bid form, and confirmation dialog. This component is
  * part of the public bidding API.
  *
+ * Verification and KYC state come from `UserProfileContext`, which the layout
+ * provides, instead of subscribing to `users.getMyProfile` again.
+ *
  * @param props - The component props
  * @param props.auction - The lot detail object (status, currentPrice, minIncrement, joined auction window, etc.)
  * @returns A React element rendering the bidding panel with bid form and confirmation
@@ -59,7 +63,7 @@ export const BiddingPanel = ({
   auction,
 }: BiddingPanelProps): React.ReactElement => {
   const { data: session, isPending } = useSession();
-  const userData = useQuery(api.users.getMyProfile);
+  const userData = useUserProfile();
   const myProxyBid = useQuery(
     api.auctions.getMyProxyBid,
     session ? { lotId: auction._id } : "skip"

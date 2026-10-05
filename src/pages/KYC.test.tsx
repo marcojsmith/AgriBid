@@ -10,6 +10,8 @@ import { BrowserRouter } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
 
+import { UserProfileProvider } from "@/contexts/UserProfileContext";
+
 import KYC from "./KYC";
 
 // Mock Convex hooks
@@ -195,10 +197,14 @@ describe("KYC Page Full Coverage", () => {
     (useMutation as Mock).mockReturnValue(mockSubmitKYC);
   });
 
+  // KYC reads the profile from UserProfileContext, which the layout provides
+  // at runtime; the provider keeps the mocked query in charge.
   const renderKYC = () => {
     return render(
       <BrowserRouter>
-        <KYC />
+        <UserProfileProvider>
+          <KYC />
+        </UserProfileProvider>
       </BrowserRouter>
     );
   };
@@ -501,7 +507,9 @@ describe("KYC Page Full Coverage", () => {
 
     const { rerender } = render(
       <BrowserRouter>
-        <KYC />
+        <UserProfileProvider>
+          <KYC />
+        </UserProfileProvider>
       </BrowserRouter>
     );
 
@@ -515,7 +523,9 @@ describe("KYC Page Full Coverage", () => {
     // Rerender to ensure it works
     rerender(
       <BrowserRouter>
-        <KYC />
+        <UserProfileProvider>
+          <KYC />
+        </UserProfileProvider>
       </BrowserRouter>
     );
 

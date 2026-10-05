@@ -6,6 +6,7 @@ import { Helmet } from "react-helmet-async";
 
 import { buildTitle } from "@/lib/seo";
 import { useSession } from "@/lib/auth-client";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { LoadingPage } from "@/components/LoadingIndicator";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,7 +42,9 @@ function ToggleSwitch({
   return (
     <div className="flex items-center justify-between">
       <div>
-        <Label htmlFor={id} className="text-sm font-bold">{label}</Label>
+        <Label htmlFor={id} className="text-sm font-bold">
+          {label}
+        </Label>
         {description && (
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
@@ -84,7 +87,7 @@ function ToggleSwitch({
 export default function Settings() {
   const { data: session } = useSession();
   const preferences = useQuery(api.userPreferences.getMyPreferences, {});
-  const myProfile = useQuery(api.users.getMyProfile, {});
+  const myProfile = useUserProfile();
   const updateMyPreferences = useMutation(
     api.userPreferences.updateMyPreferences
   );
@@ -131,183 +134,198 @@ export default function Settings() {
         <meta name="robots" content="noindex" />
       </Helmet>
       <div className="max-w-2xl mx-auto py-8 px-4 space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-primary">
-          Settings
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Your preferences are saved automatically.
-        </p>
-      </div>
-
-      {/* Notification Preferences */}
-      <section className="space-y-6">
-        <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
-          Notifications
-        </h2>
-        <p className="text-xs text-muted-foreground -mt-3">
-          These settings control which in-app notification types you receive.
-        </p>
-
-        <ToggleSwitch
-          label="Outbid Alerts"
-          checked={preferences?.notificationsBidOutbid ?? true}
-          onChange={() => {
-            update({
-              notificationsBidOutbid: !(
-                preferences?.notificationsBidOutbid ?? true
-              ),
-            });
-          }}
-        />
-
-        <div className="space-y-2">
-          <Label htmlFor={watchlistEndingId} className="text-sm font-bold">Watchlist Ending Alerts</Label>
-          <Select
-            value={preferences?.notificationsWatchlistEnding ?? "1h"}
-            onValueChange={(value: "disabled" | "1h" | "3h" | "24h") => {
-              update({ notificationsWatchlistEnding: value });
-            }}
-          >
-            <SelectTrigger id={watchlistEndingId} className="w-48 h-10 rounded-md border font-bold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="disabled">Disabled</SelectItem>
-              <SelectItem value="1h">1 hour before</SelectItem>
-              <SelectItem value="3h">3 hours before</SelectItem>
-              <SelectItem value="24h">24 hours before</SelectItem>
-            </SelectContent>
-          </Select>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">
+            Settings
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Your preferences are saved automatically.
+          </p>
         </div>
 
-        <ToggleSwitch
-          label="Auction Won Notifications"
-          checked={preferences?.notificationsAuctionWon ?? true}
-          onChange={() => {
-            update({
-              notificationsAuctionWon: !(
-                preferences?.notificationsAuctionWon ?? true
-              ),
-            });
-          }}
-        />
+        {/* Notification Preferences */}
+        <section className="space-y-6">
+          <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
+            Notifications
+          </h2>
+          <p className="text-xs text-muted-foreground -mt-3">
+            These settings control which in-app notification types you receive.
+          </p>
 
-        {isSeller && (
           <ToggleSwitch
-            label="Auction Approval Notifications"
-            checked={preferences?.notificationsSellerAuctionApproved ?? true}
+            label="Outbid Alerts"
+            checked={preferences?.notificationsBidOutbid ?? true}
             onChange={() => {
               update({
-                notificationsSellerAuctionApproved: !(
-                  preferences?.notificationsSellerAuctionApproved ?? true
+                notificationsBidOutbid: !(
+                  preferences?.notificationsBidOutbid ?? true
                 ),
               });
             }}
-            description="Notify when your auction listing is approved"
           />
-        )}
 
-        <ToggleSwitch
-          label="Email Notifications"
-          checked={preferences?.notificationsEmailEnabled ?? false}
-          onChange={() => {
-            update({
-              notificationsEmailEnabled: !(
-                preferences?.notificationsEmailEnabled ?? false
-              ),
-            });
-          }}
-          description="Receive notifications via email (in addition to in-app)"
-        />
-      </section>
+          <div className="space-y-2">
+            <Label htmlFor={watchlistEndingId} className="text-sm font-bold">
+              Watchlist Ending Alerts
+            </Label>
+            <Select
+              value={preferences?.notificationsWatchlistEnding ?? "1h"}
+              onValueChange={(value: "disabled" | "1h" | "3h" | "24h") => {
+                update({ notificationsWatchlistEnding: value });
+              }}
+            >
+              <SelectTrigger
+                id={watchlistEndingId}
+                className="w-48 h-10 rounded-md border font-bold"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="disabled">Disabled</SelectItem>
+                <SelectItem value="1h">1 hour before</SelectItem>
+                <SelectItem value="3h">3 hours before</SelectItem>
+                <SelectItem value="24h">24 hours before</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Display Preferences */}
-      <section className="space-y-6">
-        <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
-          Display
-        </h2>
-
-        <div className="space-y-2">
-          <Label htmlFor={viewModeId} className="text-sm font-bold">Default View Mode</Label>
-          <Select
-            value={preferences?.viewMode ?? "detailed"}
-            onValueChange={(value: "compact" | "detailed") => {
-              update({ viewMode: value });
+          <ToggleSwitch
+            label="Auction Won Notifications"
+            checked={preferences?.notificationsAuctionWon ?? true}
+            onChange={() => {
+              update({
+                notificationsAuctionWon: !(
+                  preferences?.notificationsAuctionWon ?? true
+                ),
+              });
             }}
-          >
-            <SelectTrigger id={viewModeId} className="w-48 h-10 rounded-md border font-bold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="detailed">Detailed</SelectItem>
-              <SelectItem value="compact">Compact</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          />
 
-        <ToggleSwitch
-          label="Show Filter Sidebar by Default"
-          checked={preferences?.sidebarOpen ?? false}
-          onChange={() => {
-            update({ sidebarOpen: !(preferences?.sidebarOpen ?? false) });
-          }}
-          description="Desktop only"
-        />
+          {isSeller && (
+            <ToggleSwitch
+              label="Auction Approval Notifications"
+              checked={preferences?.notificationsSellerAuctionApproved ?? true}
+              onChange={() => {
+                update({
+                  notificationsSellerAuctionApproved: !(
+                    preferences?.notificationsSellerAuctionApproved ?? true
+                  ),
+                });
+              }}
+              description="Notify when your auction listing is approved"
+            />
+          )}
 
-        <div className="space-y-2">
-          <Label htmlFor={defaultStatusId} className="text-sm font-bold">Default Auction Status</Label>
-          <Select
-            value={preferences?.defaultStatusFilter ?? "active"}
-            onValueChange={(value: "active" | "closed" | "all") => {
-              update({ defaultStatusFilter: value });
+          <ToggleSwitch
+            label="Email Notifications"
+            checked={preferences?.notificationsEmailEnabled ?? false}
+            onChange={() => {
+              update({
+                notificationsEmailEnabled: !(
+                  preferences?.notificationsEmailEnabled ?? false
+                ),
+              });
             }}
-          >
-            <SelectTrigger id={defaultStatusId} className="w-48 h-10 rounded-md border font-bold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active Auctions</SelectItem>
-              <SelectItem value="closed">Closed Auctions</SelectItem>
-              <SelectItem value="all">All Auctions</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
+            description="Receive notifications via email (in addition to in-app)"
+          />
+        </section>
 
-      {/* Bidding Preferences */}
-      <section className="space-y-6">
-        <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
-          Bidding
-        </h2>
+        {/* Display Preferences */}
+        <section className="space-y-6">
+          <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
+            Display
+          </h2>
 
-        <ToggleSwitch
-          label="Require Bid Confirmation"
-          checked={preferences?.biddingRequireConfirmation ?? false}
-          onChange={() => {
-            update({
-              biddingRequireConfirmation: !(
-                preferences?.biddingRequireConfirmation ?? false
-              ),
-            });
-          }}
-          description="Show a confirmation dialog before placing bids"
-        />
+          <div className="space-y-2">
+            <Label htmlFor={viewModeId} className="text-sm font-bold">
+              Default View Mode
+            </Label>
+            <Select
+              value={preferences?.viewMode ?? "detailed"}
+              onValueChange={(value: "compact" | "detailed") => {
+                update({ viewMode: value });
+              }}
+            >
+              <SelectTrigger
+                id={viewModeId}
+                className="w-48 h-10 rounded-md border font-bold"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="detailed">Detailed</SelectItem>
+                <SelectItem value="compact">Compact</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <ToggleSwitch
-          label="Enable Proxy Bidding by Default"
-          checked={preferences?.biddingProxyBidDefault ?? false}
-          onChange={() => {
-            update({
-              biddingProxyBidDefault: !(
-                preferences?.biddingProxyBidDefault ?? false
-              ),
-            });
-          }}
-          description="Automatically bid up to your maximum amount"
-        />
-      </section>
-    </div>
+          <ToggleSwitch
+            label="Show Filter Sidebar by Default"
+            checked={preferences?.sidebarOpen ?? false}
+            onChange={() => {
+              update({ sidebarOpen: !(preferences?.sidebarOpen ?? false) });
+            }}
+            description="Desktop only"
+          />
+
+          <div className="space-y-2">
+            <Label htmlFor={defaultStatusId} className="text-sm font-bold">
+              Default Auction Status
+            </Label>
+            <Select
+              value={preferences?.defaultStatusFilter ?? "active"}
+              onValueChange={(value: "active" | "closed" | "all") => {
+                update({ defaultStatusFilter: value });
+              }}
+            >
+              <SelectTrigger
+                id={defaultStatusId}
+                className="w-48 h-10 rounded-md border font-bold"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active Auctions</SelectItem>
+                <SelectItem value="closed">Closed Auctions</SelectItem>
+                <SelectItem value="all">All Auctions</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </section>
+
+        {/* Bidding Preferences */}
+        <section className="space-y-6">
+          <h2 className="text-xs font-semibold text-muted-foreground border-b pb-2">
+            Bidding
+          </h2>
+
+          <ToggleSwitch
+            label="Require Bid Confirmation"
+            checked={preferences?.biddingRequireConfirmation ?? false}
+            onChange={() => {
+              update({
+                biddingRequireConfirmation: !(
+                  preferences?.biddingRequireConfirmation ?? false
+                ),
+              });
+            }}
+            description="Show a confirmation dialog before placing bids"
+          />
+
+          <ToggleSwitch
+            label="Enable Proxy Bidding by Default"
+            checked={preferences?.biddingProxyBidDefault ?? false}
+            onChange={() => {
+              update({
+                biddingProxyBidDefault: !(
+                  preferences?.biddingProxyBidDefault ?? false
+                ),
+              });
+            }}
+            description="Automatically bid up to your maximum amount"
+          />
+        </section>
+      </div>
     </>
   );
 }

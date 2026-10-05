@@ -18,6 +18,7 @@ import {
   SalesHistorySection,
 } from "@/components/profile";
 import { getTrustItems } from "@/lib/profile-utils";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 interface ActivityItem {
   _id: string;
@@ -43,11 +44,14 @@ interface Review {
  *
  * Displays loading and user-not-found states when applicable, and provides profile editing for the profile owner or reporting controls for other users.
  *
+ * The signed-in user's own profile comes from `UserProfileContext`, which the
+ * layout provides, instead of subscribing to `users.getMyProfile` again.
+ *
  * @returns The seller profile, loading state, or user-not-found view.
  */
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
-  const myProfile = useQuery(api.users.getMyProfile);
+  const myProfile = useUserProfile();
   const isProfileLoading = myProfile === undefined;
   const isOwner =
     !isProfileLoading &&

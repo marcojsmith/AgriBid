@@ -1,7 +1,5 @@
 // app/src/components/bidding/MobileBidBar.tsx
 import { useEffect, useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
 
 import type { LotDetail } from "@/types/auction";
@@ -10,6 +8,7 @@ import { useSession } from "@/lib/auth-client";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useLotLiveWindow } from "@/hooks/useLotLiveWindow";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 interface MobileBidBarProps {
   /** The lot detail to display the current price and status for */
@@ -32,13 +31,16 @@ const BIDDING_PANEL_ID = "bidding-panel";
  * - The bar hides while the bidding panel or the page footer is on screen so
  *   it never covers the panel it duplicates or the site footer.
  *
+ * Verification state comes from `UserProfileContext`, which the layout
+ * provides, instead of subscribing to `users.getMyProfile` again.
+ *
  * @param props - Component props
  * @param props.auction - The lot detail
  * @returns The rendered mobile bid bar
  */
 export const MobileBidBar = ({ auction }: MobileBidBarProps) => {
   const { data: session } = useSession();
-  const userData = useQuery(api.users.getMyProfile);
+  const userData = useUserProfile();
 
   const liveWindow = useLotLiveWindow(auction);
   const [isObscured, setIsObscured] = useState(false);

@@ -49,11 +49,13 @@ vi.mock("@/components/auction/AuctionCard", () => ({
   AuctionCard: ({
     auction,
     viewMode,
+    isWatched,
   }: {
     auction: { title: string };
     viewMode: string;
+    isWatched: boolean;
   }) => (
-    <div data-testid="auction-card">
+    <div data-testid="auction-card" data-watched={String(isWatched)}>
       {auction.title} ({viewMode})
     </div>
   ),
@@ -549,6 +551,17 @@ describe("LotBrowser", () => {
     (useQuery as Mock).mockReturnValue(undefined);
     renderLotBrowser();
     expect(screen.getAllByTestId("auction-card")).toHaveLength(2);
+  });
+
+  it("marks only the lots present in the watched ids as watched", () => {
+    // Second auction watched, first not
+    (useQuery as Mock).mockReturnValue(["2"]);
+
+    renderLotBrowser();
+
+    const cards = screen.getAllByTestId("auction-card");
+    expect(cards[0]).toHaveAttribute("data-watched", "false");
+    expect(cards[1]).toHaveAttribute("data-watched", "true");
   });
 
   it("applies saved viewMode preference on load", async () => {

@@ -34,20 +34,18 @@ interface LayoutProps {
  *
  * @param props - Component props
  * @param props.location - Current router location for canonical URLs
- * @param props.businessInfo - Business info for JSON-LD schema
  * @param props.seoSettings - SEO settings for verification tags
  * @returns Helmet element with dynamic SEO tags
  */
 const LayoutHelmet = ({
   location,
-  businessInfo,
   seoSettings,
 }: {
   location: ReturnType<typeof useLocation>;
-  businessInfo: ReturnType<typeof useQuery<typeof api.admin.getBusinessInfo>>;
   seoSettings: ReturnType<typeof useQuery<typeof api.admin.getSeoSettings>>;
 }) => {
   const branding = useBranding();
+  const businessInfo = branding?.businessInfo;
 
   return (
     <Helmet>
@@ -123,6 +121,10 @@ const LayoutHelmet = ({
 /**
  * Main application layout component.
  *
+ * Provides `UserProfileContext` and `BrandingContext` to the whole app so
+ * descendants read the signed-in profile and the business details from context
+ * instead of subscribing to those queries themselves.
+ *
  * @param props - Component props
  * @param props.children - Child components to render in the layout
  * @returns The rendered application layout
@@ -137,7 +139,6 @@ export const Layout = ({ children }: LayoutProps) => {
   const isAdminPage = location.pathname.startsWith("/admin");
 
   const seoSettings = useQuery(api.admin.getSeoSettings);
-  const businessInfo = useQuery(api.admin.getBusinessInfo);
 
   // Intentional empty dependency array: this effect runs on every render
   // to keep syncUserRef.current updated with the latest syncUser function reference,
@@ -157,11 +158,7 @@ export const Layout = ({ children }: LayoutProps) => {
   return (
     <UserProfileProvider>
       <BrandingProvider>
-        <LayoutHelmet
-          location={location}
-          businessInfo={businessInfo}
-          seoSettings={seoSettings}
-        />
+        <LayoutHelmet location={location} seoSettings={seoSettings} />
         <div className="min-h-screen flex flex-col bg-background text-foreground">
           {isSignedIn && (
             <>

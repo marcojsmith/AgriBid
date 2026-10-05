@@ -1,36 +1,16 @@
+import type { FunctionReturnType } from "convex/server";
+import type { api } from "convex/_generated/api";
+
 import { createTypedContext } from "../contexts/createTypedContext";
-import type { Id } from "../../convex/_generated/dataModel";
 
-export interface PublicProfile {
-  userId: string;
-  _id: Id<"profiles">;
-  _creationTime: number;
-  role: "buyer" | "seller" | "admin";
-  isVerified: boolean;
-  kycStatus?: "pending" | "verified" | "rejected" | null;
-  bio?: string;
-  companyName?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface KycProfile {
-  idNumber?: string;
-  phoneNumber?: string;
-  kycEmail?: string;
-  kycDocuments?: string[];
-  kycRejectionReason?: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-export interface UserProfile {
-  userId?: string | null;
-  _id?: string;
-  email?: string;
-  profile?: PublicProfile | null;
-  kyc?: KycProfile | null;
-}
+/**
+ * The signed-in user's profile exactly as `users.getMyProfile` returns it.
+ *
+ * Derived from the query's return validator rather than hand-rolled fields, so
+ * consumers under the provider always see the fields the backend actually
+ * sends.
+ */
+export type UserProfile = FunctionReturnType<typeof api.users.getMyProfile>;
 
 export const [UserProfileContext, useUserProfile] =
   createTypedContext<UserProfile>("UserProfile");

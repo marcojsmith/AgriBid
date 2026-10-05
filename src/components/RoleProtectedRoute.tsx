@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 
 import { useSession } from "@/lib/auth-client";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { isValidCallbackUrl } from "@/lib/utils";
 import { LoadingPage } from "@/components/LoadingIndicator";
 
@@ -24,6 +25,9 @@ const PROFILE_LOAD_TIMEOUT = 15000; // 15 seconds
 /**
  * Component for protecting routes based on user role.
  *
+ * Reads the signed-in user's profile from `UserProfileContext`, which the
+ * layout provides, instead of subscribing to `users.getMyProfile` again.
+ *
  * @param props - Component props
  * @param props.children - Child components to render if authorized
  * @param props.allowedRole - Role required to access the route; use "any" to allow all authenticated users
@@ -34,7 +38,7 @@ export const RoleProtectedRoute = ({
   allowedRole,
 }: RoleProtectedRouteProps) => {
   const { data: session, isPending: isAuthPending } = useSession();
-  const userData = useQuery(api.users.getMyProfile);
+  const userData = useUserProfile();
   const syncUser = useMutation(api.users.syncUser);
   const location = useLocation();
   const [hasTimedOut, setHasTimedOut] = useState(false);

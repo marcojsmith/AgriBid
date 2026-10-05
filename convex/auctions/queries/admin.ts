@@ -10,6 +10,7 @@ import {
 import type { Doc, Id } from "../../_generated/dataModel";
 import { toLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
+import { resolveDisplayNames } from "../../lib/userNames";
 import { countQuery } from "../../admin_utils";
 import { ADMIN_COLLECTION_CAP } from "../../constants";
 
@@ -126,19 +127,9 @@ export const getLotFlagsHandler = async (
     .order("desc")
     .collect();
 
-  const uniqueReporterIds = Array.from(
-    new Set(flags.map((f: Doc<"lotFlags">) => f.reporterId))
-  );
-  const reporterNames = new Map<string, string>();
-
-  await Promise.all(
-    uniqueReporterIds.map(async (reporterId) => {
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", reporterId))
-        .unique();
-      reporterNames.set(reporterId, profile?.name ?? "Unknown User");
-    })
+  const reporterNames = await resolveDisplayNames(
+    ctx,
+    flags.map((f: Doc<"lotFlags">) => f.reporterId)
   );
 
   return flags.map((flag: Doc<"lotFlags">) => ({
@@ -203,22 +194,15 @@ export const getAllPendingFlagsHandler = async (ctx: QueryCtx) => {
     new Set(flags.map((f: Doc<"lotFlags">) => f.lotId))
   );
   const lotTitles = new Map<string, string>();
-  const uniqueReporterIds = Array.from(
-    new Set(flags.map((f: Doc<"lotFlags">) => f.reporterId))
-  );
-  const reporterNames = new Map<string, string>();
 
-  await Promise.all([
+  const [reporterNames] = await Promise.all([
+    resolveDisplayNames(
+      ctx,
+      flags.map((f: Doc<"lotFlags">) => f.reporterId)
+    ),
     ...uniqueLotIds.map(async (lotId) => {
       const lot = await ctx.db.get("lots", lotId);
       lotTitles.set(lotId, lot?.title ?? "Unknown Auction");
-    }),
-    ...uniqueReporterIds.map(async (reporterId) => {
-      const profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", reporterId))
-        .unique();
-      reporterNames.set(reporterId, profile?.name ?? "Unknown User");
     }),
   ]);
 

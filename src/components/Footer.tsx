@@ -1,6 +1,4 @@
 import { Link } from "react-router-dom";
-import { useQuery } from "convex/react";
-import { api } from "convex/_generated/api";
 import {
   ShieldCheck,
   HelpCircle,
@@ -18,11 +16,14 @@ import { useBranding } from "@/hooks/useBranding";
  * Footer component for the application.
  * Displays business info from admin settings.
  *
+ * Reads the app name and business details from `BrandingContext`, which the
+ * layout provides, instead of subscribing to `admin.getBusinessInfo` again.
+ *
  * @returns The rendered footer.
  */
 export const Footer = () => {
   const branding = useBranding();
-  const businessInfo = useQuery(api.admin.getBusinessInfo);
+  const businessInfo = branding?.businessInfo;
 
   const businessName = branding?.appName ?? "AgriBid";
   const streetAddress = businessInfo?.streetAddress ?? "";
