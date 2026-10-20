@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-10-04
+Last updated: 2026-10-20
 
 ## How to keep this file useful
 
@@ -14,6 +14,7 @@ Last updated: 2026-10-04
 
 ## In progress
 
+- Branch `feat/toggleable-cron-jobs`: admin Performance page gets per-job on/off switches for every cron (`convex/cronJobs.ts` gated wrappers + `convex/cronRegistry.ts`); jobs default to **off**. Convex disabled both deployments on 2026-10-20 (Free plan limits exceeded by the 1-minute settle cron); after deploying this to prod and the plan resets/upgrades, enable jobs from `/admin/performance`.
 - Stacked PRs #374 -> #378 (Radix umbrella, backend dedupe, money-path integration test, render follow-ups, component splits). Each bases on the previous; #378 targets `main`.
 - Branch `feat/marketplace-auction-cards`: `/` shows auction-event cards with Active/Closed/All tabs (search still returns lots); `/auctions/:id` reuses the full lot browser scoped via `getActiveLots(auctionId)`.
 - Same branch, storage-and-query cleanup: storage-aware seed/reset clears (`runSeed`/`clearAuctions`/`clearAllData`/`weeklyReset` now delete image/KYC/banner blobs), daily orphaned-upload sweep cron (`convex/storageCleanup.ts`), client-side image compression before upload (`src/lib/image-resize.ts` + `useFileUpload`), `getPublishedAuctions` paginated with capped takes + manual cursor (consumed via `usePaginatedQuery` on Home/AuctionGallery), and 500-cap safety caps on admin `.collect()` queues.
@@ -33,6 +34,7 @@ Last updated: 2026-10-04
 
 ## Done (last 10)
 
+- 2026-10-20: Per-job background cron switches on the admin Performance page, jobs default off (v0.17.32).
 - 2026-10-04: Split FeeManager, MetadataCatalog and FilterSidebar into focused modules (#302) (v0.17.31).
 - 2026-10-04: Set-based lot watch lookup, split MyBids into components, reuse the profile context (#303) (v0.17.30).
 - 2026-10-04: Add a `convex-test` integration suite for bid -> proxy -> soft close -> settlement -> fees (browser E2E still open) (#299) (v0.17.29).

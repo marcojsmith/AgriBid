@@ -3,6 +3,8 @@ import { cronJobs } from "convex/server";
 
 import { internal } from "./_generated/api";
 
+// Every job targets a gated wrapper in convex/cronJobs.ts that returns early
+// when an admin has switched the job off (Settings -> Performance).
 const crons = cronJobs();
 
 /**
@@ -12,7 +14,7 @@ const crons = cronJobs();
 crons.interval(
   "settle expired auctions",
   { minutes: 1 },
-  internal.auctions.settleExpiredLots
+  internal.cronJobs.settleExpiredAuctions
 );
 
 /**
@@ -21,13 +23,13 @@ crons.interval(
 crons.daily(
   "cleanup abandoned drafts",
   { hourUTC: 0, minuteUTC: 0 },
-  internal.auctions.cleanupDrafts
+  internal.cronJobs.cleanupAbandonedDrafts
 );
 
 crons.interval(
   "cleanup presence records",
   { minutes: 15 },
-  internal.presence.cleanup
+  internal.cronJobs.cleanupPresenceRecords
 );
 
 /**
@@ -39,7 +41,7 @@ crons.interval(
 crons.interval(
   "sweep orphaned uploads",
   { hours: 24 },
-  internal.storageCleanup.sweepOrphanedUploads
+  internal.cronJobs.sweepOrphanedUploads
 );
 
 /**
@@ -49,18 +51,18 @@ crons.interval(
 crons.daily(
   "process error reports",
   { hourUTC: 2, minuteUTC: 0 },
-  internal.errors.processErrorReportsAction
+  internal.cronJobs.processErrorReports
 );
 
 /**
  * Weekly job to reset the showcase mock data so the demo deployment never
  * goes stale. Clears all mock application data (preserving admin profiles and
- * static reference data) and reseeds it via internal.seed.weeklyReset.
+ * static reference data) and reseeds it via internal.cronJobs.weeklyMockDataReset.
  */
 crons.interval(
   "weekly mock data reset",
   { hours: 24 * 7 },
-  internal.seed.weeklyReset
+  internal.cronJobs.weeklyMockDataReset
 );
 
 export default crons;

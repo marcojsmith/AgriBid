@@ -29,6 +29,10 @@ vi.mock("convex/_generated/api", () => ({
   },
 }));
 
+vi.mock("@/components/admin/CronJobsCard", () => ({
+  CronJobsCard: () => <div data-testid="cron-jobs-card" />,
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -162,17 +166,11 @@ describe("AdminPerformance", () => {
     });
   });
 
-  it("shows the read-only fixed-schedule jobs info block", () => {
+  it("renders the background jobs card", () => {
     mockConfig = makeConfig(false, 60000);
     (useQuery as Mock).mockReturnValue(mockConfig);
     render(<AdminPerformance />);
 
-    expect(screen.getByText(/fixed-schedule jobs/i)).toBeInTheDocument();
-    expect(screen.getByText(/affected by this page/i)).toBeInTheDocument();
-    expect(screen.getByText(/auction lot settlement/i)).toBeInTheDocument();
-    expect(screen.getByText(/presence record cleanup/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/requires a code change and redeployment/i)
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("cron-jobs-card")).toBeInTheDocument();
   });
 });

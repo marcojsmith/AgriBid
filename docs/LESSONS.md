@@ -72,3 +72,4 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 - 2026-09 - Removing legacy tables/fields from the schema after a migration: leftover rows are inert; drop the indexes and migration module in the same cleanup (multi-lot rollout, 2026-09-17).
 - 2026-09 - Audit for stubbed "Not implemented"/"Coming soon"/`TODO(#n)` affordances with a repo-wide grep before declaring a feature done (issue #231 follow-up).
 - 2026-09 - Pre-existing warnings encountered in unrelated files are left for a separate cleanup commit, not folded into feature work.
+- 2026-10 - A 1-minute Convex cron scanning `lots` burned ~450 MB/day per deployment and exhausted the Free plan while the app sat idle; Convex then disables the deployment (no `convex run`, no dashboard edits). Convex crons are static, so gate them in code (settings-backed wrappers in `convex/cronJobs.ts`) and keep new jobs default-off.

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Gauge, Timer } from "lucide-react";
+import { Gauge } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { CronJobsCard } from "@/components/admin/CronJobsCard";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { getErrorMessage } from "@/lib/utils";
 import {
@@ -33,8 +34,8 @@ const HEARTBEAT_INTERVAL_DEFAULT_S = 60;
  * - Demo mode: a flag other features can consult to reduce activity.
  * - Presence heartbeat interval: how often signed-in clients ping the server.
  *
- * Scheduled background jobs (auction settlement, presence cleanup, daily
- * sweeps) run on a fixed schedule set in code and are NOT editable here.
+ * Scheduled background jobs can be switched on or off individually via
+ * {@link CronJobsCard}; their schedules stay fixed in code.
  *
  * @returns The AdminPerformance page component.
  */
@@ -112,7 +113,7 @@ export default function AdminPerformance() {
       subtitle="Background Activity & Resource Usage"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-muted rounded-lg">
@@ -176,37 +177,7 @@ export default function AdminPerformance() {
           </CardContent>
         </Card>
 
-        <Card className="h-fit">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-muted rounded-lg">
-                <Timer className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div>
-                <CardTitle>Fixed-schedule jobs</CardTitle>
-                <CardDescription>
-                  Not configurable from this page
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-3">
-            <p>
-              Some background jobs run on a fixed schedule defined in code
-              (convex/crons.ts) and are <strong>not</strong> affected by this
-              page:
-            </p>
-            <ul className="list-disc pl-4 space-y-1">
-              <li>Auction lot settlement — every 1 minute</li>
-              <li>Presence record cleanup — every 15 minutes</li>
-              <li>Daily sweeps (drafts, orphaned uploads, error reports)</li>
-            </ul>
-            <p>
-              Changing their frequency requires a code change and redeployment,
-              not a setting here.
-            </p>
-          </CardContent>
-        </Card>
+        <CronJobsCard />
       </div>
     </AdminLayout>
   );

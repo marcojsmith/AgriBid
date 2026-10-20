@@ -11,20 +11,12 @@ vi.mock("convex/server", () => ({
 
 vi.mock("./_generated/api", () => ({
   internal: {
-    auctions: {
-      settleExpiredLots: "settleExpiredLots",
-      cleanupDrafts: "cleanupDrafts",
-    },
-    presence: {
-      cleanup: "presenceCleanup",
-    },
-    errors: {
-      processErrorReportsAction: "processErrorReportsAction",
-    },
-    seed: {
-      weeklyReset: "weeklyReset",
-    },
-    storageCleanup: {
+    cronJobs: {
+      settleExpiredAuctions: "settleExpiredLots",
+      cleanupAbandonedDrafts: "cleanupDrafts",
+      cleanupPresenceRecords: "presenceCleanup",
+      processErrorReports: "processErrorReportsAction",
+      weeklyMockDataReset: "weeklyReset",
       sweepOrphanedUploads: "sweepOrphanedUploads",
     },
   },
