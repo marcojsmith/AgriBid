@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Per-job background cron switches on `/admin/performance`; crons target gated wrappers and all jobs default to off (0.17.32)
 - Split FeeManager, MetadataCatalog and FilterSidebar into focused modules (#302) (0.17.31)
 - Set-based lot watch lookup, split MyBids into components, reuse the profile context (#303) (0.17.30)
 - Add a `convex-test` integration suite for bid -> proxy -> soft close -> settlement -> fees (browser E2E still open) (#299) (0.17.29)
