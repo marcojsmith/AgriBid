@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-10-20
+Last updated: 2026-10-30
 
 ## How to keep this file useful
 
@@ -21,14 +21,14 @@ Last updated: 2026-10-20
 - Same branch, admin Performance & Demo Mode settings: runtime-editable `demo_mode_enabled` + `presence_heartbeat_interval_ms` settings keys (atomic `updatePerformanceConfig` mutation), public `presence.getHeartbeatIntervalMs` read, `PresenceListener` paces itself from it (60s fallback while loading), `AdminPerformance` page at `/admin/performance` + System Settings tile; cron schedules stay code-fixed (stated in the UI copy). Presence 90s online threshold intentionally not yet derived from the interval (see `convex/constants.ts` note).
 - Same branch, review follow-ups: moderation queue badges now disclose capped results, public event status buckets retain newest rows before their cap, storage cleanup scans an overlapping creation-time window, image resizing is limited to two concurrent jobs, and Performance settings copy reflects current behaviour.
 - PR #330 `docs/restructure-docs`: one home per kind of information. Adds CHANGELOG, LESSONS, decisions, architecture overview, product docs; slims `AGENTS.md`; retires `Brief.md`, `Checklist.md`, `codebase_notes.md` and most of `conductor/` (originals kept in `docs/archive/`).
-- Dependabot PRs #324-#328 (radix slot/accordion, @types/node, jest-dom, convex-test): open, unreviewed.
+- Dependabot: #381-#384 merged (vitest trio bumped together in `chore/vitest-5.0.5`). #380 (typescript-eslint 8.71) still open: lint fails on `no-unnecessary-type-assertion`; needs the redundant casts removed.
 
 ## Next (prioritised)
 
 1. Merge the stacked PRs #374 -> #378 (#378 targets `main`; merge with a merge commit, not squash, so the others register as merged).
 2. Finish the partial issues: #302 (`convex/seed.ts` ~2000 lines, `convex/admin/settings.ts`, `src/pages/admin/AdminLots.tsx`), #303 (live search deferral in `AdminLots`, always-on listeners), #304 (install `vitest-axe` and add axe checks), #299 (browser E2E needs a Clerk test user and a live Convex deployment).
 3. Regenerate and commit `convex/_generated/api.d.ts` (stale on `main`: `bunx convex dev --once` adds 8 lines).
-4. Review the open dependabot PRs (the five I closed by mistake were asked to be recreated).
+4. Fix #380 (typescript-eslint 8.71): remove the redundant type assertions it flags, then merge.
 5. Add an ESLint override disabling `consistent-type-definitions` for `convex/**` (recorded as pending in the old notes).
 6. Decide the open questions below, then tidy `AGENTS.md` accordingly.
 

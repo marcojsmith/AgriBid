@@ -1,7 +1,7 @@
 {
   "name": "app",
   "private": true,
-  "version": "0.17.32",
+  "version": "0.17.33",
   "type": "module",
   "packageManager": "bun@1.3.11",
   "engines": {
@@ -62,8 +62,8 @@
     "@types/react-helmet-async": "^1.0.3",
     "@typescript/native-preview": "^7.0.0-dev.20260323.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "@vitest/coverage-v8": "5.0.0",
-    "@vitest/ui": "5.0.0",
+    "@vitest/coverage-v8": "5.0.5",
+    "@vitest/ui": "5.0.5",
     "convex-test": "^0.0.59",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
@@ -82,6 +82,6 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.5"
   }
 }
