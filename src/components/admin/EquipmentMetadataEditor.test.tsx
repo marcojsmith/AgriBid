@@ -142,7 +142,7 @@ describe("EquipmentMetadataEditor", () => {
   });
 
   it("should render loading state initially", () => {
-    vi.mocked(useQuery).mockReturnValue(undefined as never);
+    vi.mocked(useQuery).mockReturnValue(undefined);
 
     render(<EquipmentMetadataEditor />);
 

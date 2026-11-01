@@ -100,7 +100,7 @@ describe("reviewKYC mutation", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "admin1",
       userId: "admin1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
   });
 
   it("approves KYC and logs a verification_approved activity entry", async () => {
@@ -329,7 +329,7 @@ describe("getPendingKYC query", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "admin1",
       userId: "admin1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
   });
 
   it("returns a minimal page of pending KYC profiles", async () => {

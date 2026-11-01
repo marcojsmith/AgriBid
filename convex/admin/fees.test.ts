@@ -332,7 +332,7 @@ describe("getLotFees (admin)", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "admin1",
       userId: "admin1",
-    } as never);
+    });
 
     const rows = [
       {
@@ -458,7 +458,7 @@ describe("platform fee CRUD", () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "admin1",
       userId: "admin1",
-    } as never);
+    });
   });
 
   describe("getPlatformFees", () => {

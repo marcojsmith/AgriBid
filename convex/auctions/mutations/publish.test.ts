@@ -132,9 +132,6 @@ describe("Publish Mutations", () => {
     vi.mocked(auth.requireAuth).mockResolvedValue({
       userId: "u1",
       _id: "u1",
-    } as {
-      userId: string;
-      _id: string;
     });
     vi.mocked(auth.requireVerified).mockResolvedValue({
       userId: "u1",
@@ -400,7 +397,7 @@ describe("Publish Mutations", () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("admin-id");
       mockCtx.db.get.mockResolvedValue({
         _id: "f1",
@@ -547,7 +544,7 @@ describe("Publish Mutations", () => {
         amount: 1500,
         timestamp: 100,
         status: "valid",
-      } as Doc<"bids">);
+      });
       vi.mocked(isReserveMet).mockReturnValue(true);
 
       const result = await closeLotEarlyHandler(
@@ -608,7 +605,7 @@ describe("Publish Mutations", () => {
         amount: 1500,
         timestamp: 110,
         status: "valid",
-      } as Doc<"bids">);
+      });
       vi.mocked(isReserveMet).mockReturnValue(true);
 
       const result = await closeLotEarlyHandler(
@@ -632,7 +629,7 @@ describe("Publish Mutations", () => {
         amount: 1500,
         timestamp: 100,
         status: "valid",
-      } as Doc<"bids">);
+      });
       vi.mocked(isReserveMet).mockReturnValue(false);
 
       const result = await closeLotEarlyHandler(
@@ -658,7 +655,7 @@ describe("Publish Mutations", () => {
         amount: 1200,
         timestamp: 110,
         status: "valid",
-      } as Doc<"bids">);
+      });
       vi.mocked(isReserveMet).mockReturnValue(true);
 
       const result = await closeLotEarlyHandler(

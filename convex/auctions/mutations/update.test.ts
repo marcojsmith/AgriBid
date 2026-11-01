@@ -76,9 +76,6 @@ describe("Update Mutations", () => {
     vi.mocked(auth.requireAuth).mockResolvedValue({
       userId: "u1",
       _id: "u1",
-    } as {
-      userId: string;
-      _id: string;
     });
     vi.mocked(auth.requireVerified).mockResolvedValue({
       userId: "u1",
@@ -103,7 +100,7 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { front: "img1" },
-      } as Doc<"lots">);
+      });
 
       const result = await updateLotHandler(
         mockCtx as unknown as MutationCtx,
@@ -129,7 +126,7 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: ["img1", "img2"], // Legacy array format
-      } as unknown as Doc<"lots">);
+      });
 
       const result = await updateLotHandler(mockCtx as unknown as MutationCtx, {
         lotId: "a1" as Id<"lots">,
@@ -157,7 +154,7 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: [],
-      } as unknown as Doc<"lots">);
+      });
 
       const result = await updateLotHandler(mockCtx as unknown as MutationCtx, {
         lotId: "a1" as Id<"lots">,
@@ -182,7 +179,7 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { front: "old-img" },
-      } as unknown as Doc<"lots">);
+      });
 
       const result = await updateLotHandler(mockCtx as unknown as MutationCtx, {
         lotId: "a1" as Id<"lots">,
@@ -214,7 +211,7 @@ describe("Update Mutations", () => {
         _id: "a1",
         sellerId: "other_user",
         status: "draft",
-      } as Doc<"lots">);
+      });
 
       await expect(
         updateLotHandler(mockCtx as unknown as MutationCtx, updateArgs)
@@ -228,7 +225,7 @@ describe("Update Mutations", () => {
         _id: "a1",
         sellerId: userId,
         status: "assigned",
-      } as Doc<"lots">);
+      });
 
       await expect(
         updateLotHandler(mockCtx as unknown as MutationCtx, updateArgs)
@@ -243,7 +240,7 @@ describe("Update Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { additional: ["1", "2", "3"] },
-      } as Doc<"lots">);
+      });
 
       await expect(
         updateLotHandler(mockCtx as unknown as MutationCtx, {
@@ -267,7 +264,7 @@ describe("Update Mutations", () => {
         startingPrice: 100,
         reservePrice: 200,
         images: { front: "img1" },
-      } as Doc<"lots">);
+      });
 
       await expect(
         updateLotHandler(mockCtx as unknown as MutationCtx, {
@@ -379,7 +376,7 @@ describe("Update Mutations", () => {
 
     it("should throw if bulk update size exceeded", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
-      const ids = Array(51).fill("a1" as Id<"lots">) as Id<"lots">[];
+      const ids = Array(51).fill("a1") as Id<"lots">[];
       await expect(
         bulkUpdateLotsHandler(mockCtx as unknown as MutationCtx, {
           lotIds: ids,

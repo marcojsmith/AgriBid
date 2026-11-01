@@ -137,7 +137,7 @@ describe("Auth Utilities Coverage", () => {
         }
       );
 
-      queryMock.unique.mockResolvedValue({ role: "buyer" } as Doc<"profiles">);
+      queryMock.unique.mockResolvedValue({ role: "buyer" });
 
       expect(await getCallerRole(mockCtx as unknown as QueryCtx)).toBe("buyer");
 
@@ -160,7 +160,7 @@ describe("Auth Utilities Coverage", () => {
 
     it("requireAdmin should throw if not admin", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue(mockIdentity);
-      queryMock.unique.mockResolvedValue({ role: "buyer" } as Doc<"profiles">);
+      queryMock.unique.mockResolvedValue({ role: "buyer" });
 
       await expect(
         requireAdmin(mockCtx as unknown as QueryCtx)
@@ -169,7 +169,7 @@ describe("Auth Utilities Coverage", () => {
 
     it("requireAdmin should return user if admin", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue(mockIdentity);
-      queryMock.unique.mockResolvedValue({ role: "admin" } as Doc<"profiles">);
+      queryMock.unique.mockResolvedValue({ role: "admin" });
 
       expect(await requireAdmin(mockCtx as unknown as QueryCtx)).toEqual(
         mockAuthUser
@@ -190,7 +190,7 @@ describe("Auth Utilities Coverage", () => {
       queryMock.unique.mockResolvedValue({
         role: "buyer",
         isVerified: false,
-      } as Doc<"profiles">);
+      });
 
       await expect(
         requireVerified(mockCtx as unknown as QueryCtx)
@@ -202,7 +202,7 @@ describe("Auth Utilities Coverage", () => {
       queryMock.unique.mockResolvedValue({
         role: "buyer",
         isVerified: true,
-      } as Doc<"profiles">);
+      });
 
       await expect(
         requireVerifiedSeller(mockCtx as unknown as QueryCtx)
@@ -287,7 +287,7 @@ describe("Auth Utilities Coverage", () => {
   describe("tryRequireAdmin", () => {
     it("should return authorized: true when admin", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue(mockIdentity);
-      queryMock.unique.mockResolvedValue({ role: "admin" } as Doc<"profiles">);
+      queryMock.unique.mockResolvedValue({ role: "admin" });
 
       const result = await tryRequireAdmin(mockCtx as unknown as QueryCtx);
       expect(result).toEqual({ authorized: true, user: mockAuthUser });
@@ -295,7 +295,7 @@ describe("Auth Utilities Coverage", () => {
 
     it("should return authorized: false with error message when UnauthorizedError", async () => {
       mockCtx.auth.getUserIdentity.mockResolvedValue(mockIdentity);
-      queryMock.unique.mockResolvedValue({ role: "buyer" } as Doc<"profiles">);
+      queryMock.unique.mockResolvedValue({ role: "buyer" });
 
       const result = await tryRequireAdmin(mockCtx as unknown as QueryCtx);
       expect(result).toEqual({

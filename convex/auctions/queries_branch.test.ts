@@ -106,15 +106,15 @@ describe("Queries Branch Coverage Expansion", () => {
 
     const qObj: MockQuery = {
       withIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
-        if (cb) cb(qMock as unknown);
+        if (cb) cb(qMock);
         return qObj;
       }),
       withSearchIndex: vi.fn((_idx: string, cb?: (q: unknown) => unknown) => {
-        if (cb) cb(qMock as unknown);
+        if (cb) cb(qMock);
         return qObj;
       }),
       filter: vi.fn((cb?: (q: unknown) => unknown) => {
-        if (cb) cb(qMock as unknown);
+        if (cb) cb(qMock);
         return qObj;
       }),
       order: vi.fn().mockReturnThis(),
@@ -215,7 +215,7 @@ describe("Queries Branch Coverage Expansion", () => {
         status: "published",
         startTime: 0,
         endTime: Date.now() + 100_000,
-      } as unknown as Doc<"auctions">);
+      });
       const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
@@ -251,7 +251,7 @@ describe("Queries Branch Coverage Expansion", () => {
         status: "published",
         startTime: 0,
         endTime: Date.now() + 100_000,
-      } as unknown as Doc<"auctions">);
+      });
       const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 1, cursor: "1" },
         search: "tractor",
@@ -289,7 +289,7 @@ describe("Queries Branch Coverage Expansion", () => {
         status: "published",
         startTime: 0,
         endTime: Date.now() + 100_000,
-      } as unknown as Doc<"auctions">);
+      });
       const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
         search: "tractor",
@@ -311,7 +311,7 @@ describe("Queries Branch Coverage Expansion", () => {
         status: "published",
         startTime: 0,
         endTime: Date.now() + 100_000,
-      } as unknown as Doc<"auctions">);
+      });
 
       const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -651,7 +651,7 @@ describe("Queries Branch Coverage Expansion", () => {
       vi.mocked(dbGetMock).mockResolvedValue({
         _id: "a1" as Id<"lots">,
         sellerId: "seller1",
-      } as unknown as Doc<"lots">);
+      });
       vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
         userId: "seller1",
         profile: { role: "seller" } as unknown as Doc<"profiles">,
@@ -664,7 +664,7 @@ describe("Queries Branch Coverage Expansion", () => {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         } as AuthUser,
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
+      });
       vi.mocked(queryMock.unique).mockResolvedValue({
         _id: longBidderId,
         userId: longBidderId,
@@ -697,7 +697,7 @@ describe("Queries Branch Coverage Expansion", () => {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         } as AuthUser,
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
+      });
       vi.mocked(queryMock.unique).mockResolvedValue(null);
 
       const result = await getLotBidsHandler(mockCtx, {
@@ -733,7 +733,7 @@ describe("Queries Branch Coverage Expansion", () => {
         status: "published",
         startTime: 0,
         endTime: Date.now() + 100_000,
-      } as unknown as Doc<"auctions">);
+      });
 
       const result = await getActiveLotsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },
@@ -817,7 +817,7 @@ describe("Queries Branch Coverage Expansion", () => {
     it("getLotFlagsHandler should handle missing reporter user", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin",
-      } as AuthUser);
+      });
       queryMock.collect.mockResolvedValue([
         { _id: "f1", reporterId: "r1", lotId: "a1" },
       ]);
@@ -832,7 +832,7 @@ describe("Queries Branch Coverage Expansion", () => {
     it("getAllPendingFlagsHandler should handle missing entities", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin",
-      } as AuthUser);
+      });
       // The pending-flags queue is read through the capped .take().
       queryMock.take.mockResolvedValue([
         { _id: "f1", reporterId: "r1", lotId: "a1", status: "pending" },
@@ -866,7 +866,7 @@ describe("Queries Branch Coverage Expansion", () => {
 
     it("getAuthenticatedUserId handles Unauthenticated error", async () => {
       const { getAuthenticatedUserId } = await import("./queries");
-      vi.mocked(auth.getAuthUser).mockResolvedValue({ _id: "u1" } as AuthUser);
+      vi.mocked(auth.getAuthUser).mockResolvedValue({ _id: "u1" });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       const result = await getAuthenticatedUserId(mockCtx);
       expect(result).toBeNull();
@@ -1047,7 +1047,7 @@ describe("Queries Branch Coverage Expansion", () => {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         } as AuthUser,
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
+      });
       vi.mocked(queryMock.unique).mockResolvedValue({
         _id: "u1" as unknown as Id<"profiles">,
         userId: "u1",
@@ -1077,7 +1077,7 @@ describe("Queries Branch Coverage Expansion", () => {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         } as AuthUser,
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
+      });
       vi.mocked(queryMock.unique).mockResolvedValue({
         _id: "u1" as unknown as Id<"profiles">,
         userId: "u1",
@@ -1144,7 +1144,7 @@ describe("Queries Branch Coverage Expansion", () => {
         status: "assigned",
         currentPrice: 150,
         winnerId: "u1",
-      } as unknown as Doc<"lots">);
+      });
 
       const result = await getMyBidsHandler(mockCtx, {
         paginationOpts: { numItems: 10, cursor: null },

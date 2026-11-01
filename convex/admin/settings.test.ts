@@ -665,7 +665,7 @@ describe("Settings Config", () => {
         github_error_reporting_enabled: true,
         github_api_token: undefined,
       });
-      const result = await getSystemConfigHandler(ctx as unknown as QueryCtx);
+      const result = await getSystemConfigHandler(ctx);
       expect(result.githubConfig.tokenMasked).toBe("");
     });
   });
@@ -1220,9 +1220,7 @@ describe("Settings Config", () => {
 
   describe("getGitHubConfig fallbacks", () => {
     it("treats an empty decrypted token as missing", async () => {
-      vi.mocked(adminUtils.decryptPII).mockResolvedValueOnce(
-        undefined as unknown as string
-      );
+      vi.mocked(adminUtils.decryptPII).mockResolvedValueOnce(undefined);
       const ctx = createMockCtx({
         github_error_reporting_enabled: true,
         github_api_token: "encrypted_empty",

@@ -38,7 +38,7 @@ vi.mock("./admin/settings", () => ({
 
 vi.mock("./lib/auth", () => ({
   requireAdmin: vi.fn(),
-  getAuthUser: vi.fn().mockResolvedValue(null as never),
+  getAuthUser: vi.fn().mockResolvedValue(null),
 }));
 
 // Properly typed mock database to satisfy strict linting
@@ -230,7 +230,7 @@ describe("Errors Backend", () => {
         take: vi.fn().mockResolvedValue(existingReports),
       };
       const mockDb: MockDatabase = {
-        insert: vi.fn().mockResolvedValue("new_id" as Id<"errorReports">),
+        insert: vi.fn().mockResolvedValue("new_id"),
         patch: vi.fn().mockResolvedValue(undefined),
         query: vi.fn().mockReturnValue(queryMock),
       };

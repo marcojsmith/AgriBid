@@ -4,10 +4,7 @@ import { Check, X, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  normalizeAuctionImages,
-  type AuctionImages,
-} from "@/lib/auction-utils";
+import { normalizeAuctionImages } from "@/lib/auction-utils";
 import { formatCurrency } from "@/lib/currency";
 import type { LotSummary } from "@/types/auction";
 
@@ -34,9 +31,7 @@ export function ModerationCard({
   onReject: () => void;
   onView: () => void;
 }) {
-  const images = normalizeAuctionImages(
-    auction.images as AuctionImages | string[] | undefined
-  );
+  const images = normalizeAuctionImages(auction.images);
   return (
     <Card className="p-5 border hover:border-primary/40 transition-all bg-card/40 backdrop-blur-md group">
       <div className="flex flex-col md:flex-row gap-8">

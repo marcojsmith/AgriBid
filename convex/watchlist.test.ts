@@ -82,7 +82,7 @@ describe("Watchlist Coverage", () => {
     it("should throw if resolveUserId returns null", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
 
       await expect(
@@ -95,7 +95,7 @@ describe("Watchlist Coverage", () => {
     it("should delete if existing", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.first.mockResolvedValue({ _id: "w1" });
 
@@ -112,7 +112,7 @@ describe("Watchlist Coverage", () => {
     it("should insert if not existing", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.first.mockResolvedValue(null);
 
@@ -134,7 +134,7 @@ describe("Watchlist Coverage", () => {
     it("should return true if existing", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.first.mockResolvedValue({ _id: "w1" });
 
@@ -155,7 +155,7 @@ describe("Watchlist Coverage", () => {
     it("should return false if resolveUserId returns null", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       const result = await isWatchedHandler(mockCtx as unknown as QueryCtx, {
         lotId: "a1" as Id<"lots">,
@@ -196,7 +196,7 @@ describe("Watchlist Coverage", () => {
     it("should return empty if resolveUserId returns null", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       const result = await getWatchedLotsHandler(
         mockCtx as unknown as QueryCtx,
@@ -217,7 +217,7 @@ describe("Watchlist Coverage", () => {
     it("should return paginated auctions", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.paginate.mockResolvedValue({
         page: [{ lotId: "a1" as Id<"lots"> }],
@@ -236,7 +236,7 @@ describe("Watchlist Coverage", () => {
     it("should filter out missing auctions", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.paginate.mockResolvedValue({
         page: [{ lotId: "a1" as Id<"lots"> }],
@@ -287,7 +287,7 @@ describe("Watchlist Coverage", () => {
     it("should return empty if resolveUserId returns null", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       const result = await getWatchedLotIdsHandler(
         mockCtx as unknown as QueryCtx
@@ -298,7 +298,7 @@ describe("Watchlist Coverage", () => {
     it("should paginate through all IDs", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       queryMock.paginate
@@ -323,7 +323,7 @@ describe("Watchlist Coverage", () => {
     it("should truncate after MAX_PAGES", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as { _id: string });
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.paginate.mockResolvedValue({
         page: [{ lotId: "a" as Id<"lots"> }],

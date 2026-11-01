@@ -445,7 +445,7 @@ describe("Admin Utils", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       await logAudit(mockCtx as unknown as MutationCtx, { action: "test" });
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "auditLogs",
@@ -458,7 +458,7 @@ describe("Admin Utils", () => {
     it("should use authUser._id when userId is undefined", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "user_id_123",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       await logAudit(mockCtx as unknown as MutationCtx, { action: "test" });
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "auditLogs",

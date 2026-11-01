@@ -580,9 +580,8 @@ describe("MyListings Page", () => {
   it("handles publishing guard when already publishing", () => {
     mockSubmitForReview.mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise(() => {
           // Mock hangs indefinitely
-          void resolve;
         })
     );
     renderMyListings();

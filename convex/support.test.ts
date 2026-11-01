@@ -10,7 +10,6 @@ import {
 import * as auth from "./lib/auth";
 import * as adminUtils from "./admin_utils";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import type { AuthUser } from "./lib/auth";
 
 vi.mock("./lib/auth", () => ({
   requireAuth: vi.fn(),
@@ -97,7 +96,7 @@ describe("Support Coverage", () => {
     it("should create a ticket and return its ID", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       const args = {
@@ -131,7 +130,7 @@ describe("Support Coverage", () => {
     it("should throw if user ID cannot be resolved", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
 
       await expect(
@@ -146,7 +145,7 @@ describe("Support Coverage", () => {
     it("should throw if subject is too short", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       await expect(
@@ -161,7 +160,7 @@ describe("Support Coverage", () => {
     it("should throw if subject is too long", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       await expect(
@@ -176,7 +175,7 @@ describe("Support Coverage", () => {
     it("should throw if message is too short", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       await expect(
@@ -191,7 +190,7 @@ describe("Support Coverage", () => {
     it("should throw if message is too long", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       await expect(
@@ -208,7 +207,7 @@ describe("Support Coverage", () => {
     it("should return user tickets", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       const mockTickets = [{ _id: "t1", subject: "Test" }];
       queryMock.paginate.mockResolvedValue({
@@ -247,7 +246,7 @@ describe("Support Coverage", () => {
     it("should return empty result if userId resolution fails", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
 
       const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
@@ -268,7 +267,7 @@ describe("Support Coverage", () => {
         new Error("Database error")
       );
       const spy = vi.spyOn(console, "error").mockImplementation(() => {
-        void "suppress error logging";
+        "suppress error logging";
       });
 
       const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
@@ -291,7 +290,7 @@ describe("Support Coverage", () => {
         new Error("Unauthenticated user")
       );
       const spy = vi.spyOn(console, "error").mockImplementation(() => {
-        void "suppress error logging";
+        "suppress error logging";
       });
 
       const result = await getMyTicketsHandler(mockCtx as unknown as QueryCtx, {
@@ -312,7 +311,7 @@ describe("Support Coverage", () => {
     it("should paginate correctly", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       queryMock.paginate.mockResolvedValue({
         page: [{ _id: "t1", subject: "Test" }],

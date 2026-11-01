@@ -79,7 +79,7 @@ describe("Admin Queries - Auction Flags", () => {
         _id: "p2",
         userId: "u2",
         name: "John Doe",
-      } as unknown as Doc<"profiles">);
+      });
 
       const result = await getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
         lotId: "a1" as Id<"lots">,
@@ -130,7 +130,7 @@ describe("Admin Queries - Auction Flags", () => {
       setupDbMocks(mockFlags, {
         _id: "p2",
         userId: "u2",
-      } as unknown as Doc<"profiles">);
+      });
 
       const result = await getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
         lotId: "a1" as Id<"lots">,
@@ -166,7 +166,7 @@ describe("Admin Queries - Auction Flags", () => {
         _id: "p2",
         userId: "u2",
         name: "Reporter Name",
-      } as unknown as Doc<"profiles">);
+      });
 
       const result = await getLotFlagsHandler(mockCtx as unknown as QueryCtx, {
         lotId: "a1" as Id<"lots">,
@@ -433,7 +433,7 @@ describe("Admin Queries - Auction Flags", () => {
               _id: "p2",
               userId: "u2",
               name: "Reporter Name",
-            } as unknown as Doc<"profiles">),
+            }),
           };
         }
         return mockQuery;
@@ -479,7 +479,7 @@ describe("Admin Queries - Auction Flags", () => {
               _id: "p2",
               userId: "u2",
               name: "Reporter Name",
-            } as unknown as Doc<"profiles">),
+            }),
           };
         }
         return mockQuery;

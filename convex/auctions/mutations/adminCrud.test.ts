@@ -11,7 +11,7 @@ import {
   publishAuctionContainer,
   closeAuctionContainer,
 } from "./adminCrud";
-import type { Doc, Id } from "../../_generated/dataModel";
+import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 vi.mock("../../_generated/server", () => ({
@@ -171,9 +171,7 @@ describe("Auction container CRUD mutations", () => {
 
   describe("updateAuctionHandler", () => {
     it("patches provided fields and bumps updatedAt", async () => {
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
@@ -202,9 +200,7 @@ describe("Auction container CRUD mutations", () => {
     });
 
     it("rejects an endTime that is not after startTime", async () => {
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -220,9 +216,7 @@ describe("Auction container CRUD mutations", () => {
         status: "assigned",
         auctionId: "a1",
       };
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
       );
@@ -233,7 +227,7 @@ describe("Auction container CRUD mutations", () => {
         amount: 1500,
         timestamp: 1500,
         status: "valid",
-      } as unknown as Doc<"bids">);
+      });
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -252,9 +246,7 @@ describe("Auction container CRUD mutations", () => {
         auctionId: "a1",
         extendedEndTime: 2500,
       };
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) => {
         if (table === "lots") return makeQuery([assignedLot]);
         return makeQuery([]);
@@ -284,9 +276,7 @@ describe("Auction container CRUD mutations", () => {
     });
 
     it("scopes assigned lots to the auction being updated", async () => {
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       const lotsQuery = makeQuery([]);
       mockCtx.db.query.mockReturnValue(lotsQuery);
 
@@ -309,9 +299,7 @@ describe("Auction container CRUD mutations", () => {
         auctionId: "a1",
       };
       const bidsQuery = makeQuery([]);
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots" ? makeQuery([assignedLot]) : bidsQuery
       );
@@ -328,9 +316,7 @@ describe("Auction container CRUD mutations", () => {
     });
 
     it("checks every assigned lot's winning bid, not just the first", async () => {
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots"
           ? makeQuery([
@@ -340,8 +326,8 @@ describe("Auction container CRUD mutations", () => {
           : makeQuery([])
       );
       findWinningBid
-        .mockResolvedValueOnce({ timestamp: 1400 } as unknown as Doc<"bids">)
-        .mockResolvedValueOnce({ timestamp: 1500 } as unknown as Doc<"bids">);
+        .mockResolvedValueOnce({ timestamp: 1400 })
+        .mockResolvedValueOnce({ timestamp: 1500 });
 
       // Both lots' winning bids predate nothing above 1350, so the move stays
       // legal — but only because every assigned lot is checked.
@@ -362,9 +348,7 @@ describe("Auction container CRUD mutations", () => {
         status: "assigned",
         auctionId: "a1",
       };
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
       );
@@ -375,7 +359,7 @@ describe("Auction container CRUD mutations", () => {
         amount: 300,
         timestamp: 1500,
         status: "valid",
-      } as unknown as Doc<"bids">);
+      });
 
       await expect(
         updateAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -393,9 +377,7 @@ describe("Auction container CRUD mutations", () => {
         status: "assigned",
         auctionId: "a1",
       };
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
       );
@@ -406,7 +388,7 @@ describe("Auction container CRUD mutations", () => {
         amount: 300,
         timestamp: 1500,
         status: "valid",
-      } as unknown as Doc<"bids">);
+      });
 
       const result = await updateAuctionHandler(
         mockCtx as unknown as MutationCtx,
@@ -422,9 +404,7 @@ describe("Auction container CRUD mutations", () => {
         status: "assigned",
         auctionId: "a1",
       };
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots" ? makeQuery([assignedLot]) : makeQuery([])
       );
@@ -439,9 +419,7 @@ describe("Auction container CRUD mutations", () => {
     });
 
     it("ignores assigned lots without an extendedEndTime", async () => {
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots"
           ? makeQuery([{ _id: "l1", status: "assigned", auctionId: "a1" }])
@@ -460,9 +438,7 @@ describe("Auction container CRUD mutations", () => {
   // eslint-disable-next-line no-secrets/no-secrets -- handler function name, not a secret
   describe("publishAuctionContainerHandler", () => {
     it("publishes a draft auction", async () => {
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
 
       const result = await publishAuctionContainerHandler(
         mockCtx as unknown as MutationCtx,
@@ -491,7 +467,7 @@ describe("Auction container CRUD mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...baseAuction,
         status: "published",
-      } as unknown as Doc<"auctions">);
+      });
 
       await expect(
         publishAuctionContainerHandler(mockCtx as unknown as MutationCtx, {
@@ -504,7 +480,7 @@ describe("Auction container CRUD mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...baseAuction,
         title: "   ",
-      } as unknown as Doc<"auctions">);
+      });
 
       await expect(
         publishAuctionContainerHandler(mockCtx as unknown as MutationCtx, {
@@ -518,7 +494,7 @@ describe("Auction container CRUD mutations", () => {
         ...baseAuction,
         startTime: 2000,
         endTime: 1000,
-      } as unknown as Doc<"auctions">);
+      });
 
       await expect(
         publishAuctionContainerHandler(mockCtx as unknown as MutationCtx, {
@@ -533,7 +509,7 @@ describe("Auction container CRUD mutations", () => {
         ...baseAuction,
         startTime: futureStart,
         endTime: futureStart + 3600_000,
-      } as unknown as Doc<"auctions">);
+      });
 
       const result = await publishAuctionContainerHandler(
         mockCtx as unknown as MutationCtx,
@@ -559,7 +535,7 @@ describe("Auction container CRUD mutations", () => {
         ...baseAuction,
         startTime: pastStart,
         endTime: Date.now() + 3600_000,
-      } as unknown as Doc<"auctions">);
+      });
 
       const result = await publishAuctionContainerHandler(
         mockCtx as unknown as MutationCtx,
@@ -578,7 +554,7 @@ describe("Auction container CRUD mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...baseAuction,
         status: "published",
-      } as unknown as Doc<"auctions">);
+      });
 
       const result = await closeAuctionContainerHandler(
         mockCtx as unknown as MutationCtx,
@@ -601,7 +577,7 @@ describe("Auction container CRUD mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...baseAuction,
         status: "published",
-      } as unknown as Doc<"auctions">);
+      });
       mockCtx.db.query.mockImplementation((table: string) =>
         table === "lots" ? makeQuery(assignedLots) : makeQuery([])
       );
@@ -626,9 +602,7 @@ describe("Auction container CRUD mutations", () => {
     });
 
     it("rejects closing a non-published auction", async () => {
-      mockCtx.db.get.mockResolvedValue(
-        baseAuction as unknown as Doc<"auctions">
-      );
+      mockCtx.db.get.mockResolvedValue(baseAuction);
 
       await expect(
         closeAuctionContainerHandler(mockCtx as unknown as MutationCtx, {
@@ -653,7 +627,7 @@ describe("Auction container CRUD mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...baseAuction,
         status: "published",
-      } as unknown as Doc<"auctions">);
+      });
       const lotsQuery = makeQuery([]);
       mockCtx.db.query.mockReturnValue(lotsQuery);
 

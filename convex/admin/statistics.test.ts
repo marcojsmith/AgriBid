@@ -107,7 +107,7 @@ describe("Admin Statistics", () => {
   it("getAdminStats should return healthy status when counters are found", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue({
       total: 10,
       active: 5,
@@ -119,7 +119,7 @@ describe("Admin Statistics", () => {
       getAdminStats as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {});
+    ).handler(mockCtx, {});
 
     expect(stats).toMatchObject({
       status: "healthy",
@@ -130,7 +130,7 @@ describe("Admin Statistics", () => {
   it("getAdminStats should return partial status when counters are missing", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue(null);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(0);
 
@@ -138,7 +138,7 @@ describe("Admin Statistics", () => {
       getAdminStats as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {});
+    ).handler(mockCtx, {});
 
     expect(stats).toMatchObject({
       status: "partial",
@@ -148,7 +148,7 @@ describe("Admin Statistics", () => {
   it("initializeCounters should initialize counters successfully", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
     vi.mocked(adminUtils.countUsers).mockResolvedValue(10);
 
@@ -156,7 +156,7 @@ describe("Admin Statistics", () => {
       initializeCounters as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as MutationCtx, {});
+    ).handler(mockCtx, {});
 
     expect(result).toMatchObject({ success: true });
   });
@@ -164,7 +164,7 @@ describe("Admin Statistics", () => {
   it("initializeCounters should accumulate soldCount across multiple pages", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
     vi.mocked(adminUtils.countUsers).mockResolvedValue(10);
 
@@ -184,7 +184,7 @@ describe("Admin Statistics", () => {
       initializeCounters as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as MutationCtx, {});
+    ).handler(mockCtx, {});
 
     const insertCalls = mockCtx.db.insert.mock.calls;
     const auctionsInsert = insertCalls.find(
@@ -204,7 +204,7 @@ describe("Admin Statistics", () => {
   it("getFinancialStats should use pagination when counter.soldCount is undefined", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter)
       .mockResolvedValueOnce({
         name: "lots",
@@ -226,7 +226,7 @@ describe("Admin Statistics", () => {
       isDone: true,
     });
 
-    const stats = (await (
+    const stats = await (
       getFinancialStats as unknown as {
         handler: (...args: unknown[]) => Promise<{
           recentSales: {
@@ -236,13 +236,7 @@ describe("Admin Statistics", () => {
           };
         }>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {})) as {
-      recentSales: {
-        page: unknown[];
-        continueCursor: string;
-        totalCount: number;
-      };
-    };
+    ).handler(mockCtx, {});
 
     expect(stats.recentSales.totalCount).toBe(5);
   });
@@ -250,7 +244,7 @@ describe("Admin Statistics", () => {
   it("getFinancialStats should use correct startIndex for valid cursor", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter)
       .mockResolvedValueOnce({
         name: "lots",
@@ -272,7 +266,7 @@ describe("Admin Statistics", () => {
     }));
     queryMock.take.mockResolvedValue(allItems);
 
-    const stats = (await (
+    const stats = await (
       getFinancialStats as unknown as {
         handler: (...args: unknown[]) => Promise<{
           recentSales: {
@@ -282,15 +276,9 @@ describe("Admin Statistics", () => {
           };
         }>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {
+    ).handler(mockCtx, {
       salesPaginationOpts: { cursor: "5", numItems: 10 },
-    })) as {
-      recentSales: {
-        page: unknown[];
-        continueCursor: string;
-        totalCount: number;
-      };
-    };
+    });
 
     expect(stats.recentSales.page).toHaveLength(10);
   });
@@ -298,7 +286,7 @@ describe("Admin Statistics", () => {
   it("getFinancialStats should handle invalid cursor (non-numeric)", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter)
       .mockResolvedValueOnce({
         name: "lots",
@@ -319,7 +307,7 @@ describe("Admin Statistics", () => {
       { currentPrice: 2000 },
     ]);
 
-    const stats = (await (
+    const stats = await (
       getFinancialStats as unknown as {
         handler: (...args: unknown[]) => Promise<{
           recentSales: {
@@ -329,15 +317,9 @@ describe("Admin Statistics", () => {
           };
         }>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {
+    ).handler(mockCtx, {
       salesPaginationOpts: { cursor: "abc", numItems: 10 },
-    })) as {
-      recentSales: {
-        page: unknown[];
-        continueCursor: string;
-        totalCount: number;
-      };
-    };
+    });
 
     expect(stats.recentSales.page).toHaveLength(2);
   });
@@ -345,7 +327,7 @@ describe("Admin Statistics", () => {
   it("getFinancialStats should handle negative cursor", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter)
       .mockResolvedValueOnce({
         name: "lots",
@@ -366,7 +348,7 @@ describe("Admin Statistics", () => {
       { currentPrice: 2000 },
     ]);
 
-    const stats = (await (
+    const stats = await (
       getFinancialStats as unknown as {
         handler: (...args: unknown[]) => Promise<{
           recentSales: {
@@ -376,15 +358,9 @@ describe("Admin Statistics", () => {
           };
         }>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {
+    ).handler(mockCtx, {
       salesPaginationOpts: { cursor: "-5", numItems: 10 },
-    })) as {
-      recentSales: {
-        page: unknown[];
-        continueCursor: string;
-        totalCount: number;
-      };
-    };
+    });
 
     expect(stats.recentSales.page).toHaveLength(2);
   });
@@ -392,7 +368,7 @@ describe("Admin Statistics", () => {
   it("getAnnouncementStats should return counter total and recent count", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue({
       name: "announcements",
       total: 15,
@@ -403,7 +379,7 @@ describe("Admin Statistics", () => {
       getAnnouncementStats as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as QueryCtx);
+    ).handler(mockCtx);
 
     expect(stats).toMatchObject({
       total: 15,
@@ -414,7 +390,7 @@ describe("Admin Statistics", () => {
   it("getSupportStats should return open, resolved, total from counter", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue({
       name: "support",
       open: 5,
@@ -426,7 +402,7 @@ describe("Admin Statistics", () => {
       getSupportStats as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as QueryCtx);
+    ).handler(mockCtx);
 
     expect(stats).toMatchObject({
       open: 5,
@@ -438,7 +414,7 @@ describe("Admin Statistics", () => {
   it("getAnnouncementStats should handle missing counter", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue(null);
     vi.mocked(adminUtils.countQuery).mockResolvedValue(0);
 
@@ -446,7 +422,7 @@ describe("Admin Statistics", () => {
       getAnnouncementStats as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as QueryCtx);
+    ).handler(mockCtx);
 
     expect(stats).toMatchObject({
       total: 0,
@@ -457,14 +433,14 @@ describe("Admin Statistics", () => {
   it("getSupportStats should handle missing counter", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue(null);
 
     const stats = await (
       getSupportStats as unknown as {
         handler: (...args: unknown[]) => Promise<unknown>;
       }
-    ).handler(mockCtx as unknown as QueryCtx);
+    ).handler(mockCtx);
 
     expect(stats).toMatchObject({
       open: 0,
@@ -476,7 +452,7 @@ describe("Admin Statistics", () => {
   it("getAdminStats should re-throw errors from getCounter", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockRejectedValue(
       new Error("Database connection failed")
     );
@@ -493,7 +469,7 @@ describe("Admin Statistics", () => {
   it("initializeCountersHandler should initialize counters from scratch", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.countQuery).mockResolvedValue(5);
     vi.mocked(adminUtils.countUsers).mockResolvedValue(10);
     queryMock.paginate.mockResolvedValue({
@@ -512,7 +488,7 @@ describe("Admin Statistics", () => {
   it("getAdminStatsHandler should fetch all admin stats", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue({
       total: 100,
       active: 50,
@@ -532,7 +508,7 @@ describe("Admin Statistics", () => {
   it("initializeCounters should patch existing counter documents instead of inserting", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue({
       _id: "counter_lots",
       name: "lots",
@@ -554,7 +530,7 @@ describe("Admin Statistics", () => {
   it("getFinancialStats should recompute volume when the live sold count drifts from the counter", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     vi.mocked(adminUtils.getCounter).mockResolvedValue({
       name: "lots",
       salesVolume: 1000,
@@ -579,7 +555,7 @@ describe("Admin Statistics", () => {
           partialResults: boolean;
         }>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {});
+    ).handler(mockCtx, {});
 
     expect(stats.partialResults).toBe(true);
     expect(stats.totalSalesVolume).toBe(750);
@@ -589,7 +565,7 @@ describe("Admin Statistics", () => {
   it("getFinancialStats should group every fee of a lot onto that lot's sale", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
+    });
     // Fee totals come from the "lotFees" counter, not from the per-lot rows.
     vi.mocked(adminUtils.getCounter)
       .mockResolvedValueOnce({
@@ -636,7 +612,7 @@ describe("Admin Statistics", () => {
           recentSales: { page: { fees: { feeName: string }[] }[] };
         }>;
       }
-    ).handler(mockCtx as unknown as QueryCtx, {});
+    ).handler(mockCtx, {});
 
     expect(stats.buyerFeesTotal).toBe(40);
     expect(stats.sellerFeesTotal).toBe(15);
@@ -647,10 +623,8 @@ describe("Admin Statistics", () => {
   it("getFinancialStats should log and re-throw unexpected failures", async () => {
     vi.mocked(auth.requireAdmin).mockResolvedValue({
       _id: "u1",
-    } as Awaited<ReturnType<typeof auth.requireAdmin>>);
-    vi.mocked(adminUtils.getCounter).mockResolvedValue(
-      null as unknown as Doc<"counters">
-    );
+    });
+    vi.mocked(adminUtils.getCounter).mockResolvedValue(null);
     vi.mocked(adminUtils.countQuery).mockRejectedValue(
       new Error("counter query exploded")
     );

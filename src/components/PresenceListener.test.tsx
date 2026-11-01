@@ -56,9 +56,7 @@ describe("PresenceListener", () => {
     } as unknown as ReturnType<typeof useSession>);
 
     // Simpler: just override what useMutation returns.
-    vi.mocked(useMutation).mockReturnValue(
-      mockHeartbeat as unknown as ReturnType<typeof useMutation>
-    );
+    vi.mocked(useMutation).mockReturnValue(mockHeartbeat);
 
     // Default visibilityState to visible
     Object.defineProperty(document, "visibilityState", {

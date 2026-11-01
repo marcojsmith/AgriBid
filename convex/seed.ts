@@ -1783,12 +1783,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       .withIndex("by_seedId", (q) => q.eq("seedId", lot.seedId))
       .first();
 
-    const event = lot.auctionEventSeedId
-      ? getEventBySeedId(lot.auctionEventSeedId)
+    const { auctionEventSeedId, ...lotFields } = lot;
+    const event = auctionEventSeedId
+      ? getEventBySeedId(auctionEventSeedId)
       : undefined;
 
-    const { auctionEventSeedId, ...lotFields } = lot;
-    void auctionEventSeedId;
     // Snapshot the parent event's fee defaults onto the lot, mirroring the
     // lot-assignment mutation's behavior (issue #318): once assigned, later
     // edits to the event's defaults must not change this lot's fees.

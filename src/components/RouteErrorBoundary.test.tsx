@@ -199,7 +199,7 @@ describe("RouteErrorBoundaryBase", () => {
       .mockImplementation(() => undefined);
 
     instance.componentDidCatch(new Error("boom"), {
-      componentStack: null as unknown as string,
+      componentStack: null,
     });
 
     expect(reportSpy).toHaveBeenCalledWith(

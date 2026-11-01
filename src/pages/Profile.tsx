@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { ProfileSkeleton } from "@/components/ProfileSkeleton";
 import { Button } from "@/components/ui/button";
-import type { ActivityType } from "@/types/profile";
 import {
   ProfileSidebar,
   TrustSection,
@@ -19,25 +18,6 @@ import {
 } from "@/components/profile";
 import { getTrustItems } from "@/lib/profile-utils";
 import { useUserProfile } from "@/hooks/useUserProfile";
-
-interface ActivityItem {
-  _id: string;
-  type: ActivityType;
-  description?: string;
-  createdAt: number;
-}
-
-interface Review {
-  _id: string;
-  rating: number;
-  comment?: string;
-  createdAt: number;
-  reviewerName?: string;
-  response?: {
-    text: string;
-    createdAt: number;
-  };
-}
 
 /**
  * Renders a seller profile with account details, listings, reviews, activity, and trust information.
@@ -174,7 +154,7 @@ export default function Profile() {
             <CardContent className="p-4 sm:p-6">
               <ReviewsSection
                 reviewCount={sellerInfo.reviewCount}
-                reviews={sellerReviews as Review[]}
+                reviews={sellerReviews}
                 reviewsStatus={reviewsStatus}
                 loadMoreReviews={loadMoreReviews}
               />
@@ -183,7 +163,7 @@ export default function Profile() {
 
           <Card className="bg-card border border-primary/10 rounded-md">
             <CardContent className="p-4 sm:p-6">
-              <ActivityFeed activity={activity as ActivityItem[] | undefined} />
+              <ActivityFeed activity={activity} />
             </CardContent>
           </Card>
 

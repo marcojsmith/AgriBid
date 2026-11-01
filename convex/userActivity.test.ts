@@ -2,9 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { getSellerActivityHandler, logActivity } from "./userActivity";
 import * as auth from "./lib/auth";
-import type { QueryCtx, MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
 import type { AuthUser } from "./lib/auth";
+import type { QueryCtx, MutationCtx } from "./_generated/server";
 
 vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),
@@ -22,7 +21,7 @@ interface ActivityRow {
 }
 
 const makeRow = (overrides: Partial<ActivityRow>): ActivityRow => ({
-  _id: "activity1" as Id<"userActivity">,
+  _id: "activity1",
   _creationTime: 1000,
   userId: "user1",
   type: "bid_placed",

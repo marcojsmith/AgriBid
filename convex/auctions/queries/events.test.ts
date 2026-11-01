@@ -208,7 +208,7 @@ describe("Auction event queries", () => {
       };
 
       const mock = makePublishedMockCtx([published], [closed]);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       const result = await getPublishedAuctionsHandler(
         mockCtx as unknown as QueryCtx,
@@ -224,7 +224,7 @@ describe("Auction event queries", () => {
     it("caps each status side at PUBLISHED_AUCTIONS_STATUS_CAP", async () => {
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
       const mock = makePublishedMockCtx([], []);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       await getPublishedAuctionsHandler(mockCtx as unknown as QueryCtx, {
         paginationOpts,
@@ -242,7 +242,7 @@ describe("Auction event queries", () => {
     it("orders each status bucket newest-first before applying the cap", async () => {
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
       const mock = makePublishedMockCtx([], []);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       await getPublishedAuctionsHandler(mockCtx as unknown as QueryCtx, {
         paginationOpts,
@@ -267,7 +267,7 @@ describe("Auction event queries", () => {
         { ...auctionRow, _id: "a3" as Id<"auctions">, startTime: 1000 },
       ];
       const mock = makePublishedMockCtx(rows, []);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       const firstPage = await getPublishedAuctionsHandler(
         mockCtx as unknown as QueryCtx,
@@ -294,7 +294,7 @@ describe("Auction event queries", () => {
         { ...auctionRow, _id: "a2" as Id<"auctions">, startTime: 2000 },
       ];
       const mock = makePublishedMockCtx(rows, []);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       // A cursor that is not a number used to yield a NaN offset: an empty page
       // with a continuation cursor of "NaN" that never advanced.
@@ -327,7 +327,7 @@ describe("Auction event queries", () => {
       };
 
       const mock = makePublishedMockCtx([published], [closed]);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       const result = await getPublishedAuctionsHandler(
         mockCtx as unknown as QueryCtx,
@@ -359,7 +359,7 @@ describe("Auction event queries", () => {
       };
 
       const mock = makePublishedMockCtx([published], [closed]);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       const result = await getPublishedAuctionsHandler(
         mockCtx as unknown as QueryCtx,
@@ -391,7 +391,7 @@ describe("Auction event queries", () => {
       };
 
       const mock = makePublishedMockCtx([published], [closed]);
-      mockCtx = mock as unknown as typeof mockCtx;
+      mockCtx = mock;
 
       const result = await getPublishedAuctionsHandler(
         mockCtx as unknown as QueryCtx,

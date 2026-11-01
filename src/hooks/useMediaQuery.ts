@@ -8,7 +8,8 @@ import { useState, useEffect } from "react";
  */
 const getMatchMedia = (): ((query: string) => MediaQueryList) | undefined => {
   if (typeof window === "undefined") return undefined;
-  return window.matchMedia;
+  if (typeof window.matchMedia !== "function") return undefined;
+  return (query) => window.matchMedia(query);
 };
 
 /**

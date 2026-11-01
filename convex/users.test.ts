@@ -128,7 +128,7 @@ describe("Users Coverage", () => {
     it("should create a profile if it doesn't exist", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
 
       const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
@@ -162,7 +162,7 @@ describe("Users Coverage", () => {
     it("should not create a profile if it already exists", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({ _id: "p1" });
 
@@ -183,7 +183,7 @@ describe("Users Coverage", () => {
         userId: "user123",
         name: null,
         email: null,
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({
         _id: "p1",
@@ -207,7 +207,7 @@ describe("Users Coverage", () => {
         userId: "user123",
         name: "New Name",
         email: "new@example.com",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({
         _id: "p1",
@@ -248,7 +248,7 @@ describe("Users Coverage", () => {
     it("should return null if resolveUserId returns null", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       const result = await syncUserHandler(mockCtx as unknown as MutationCtx);
       expect(result).toBeNull();
@@ -262,7 +262,7 @@ describe("Users Coverage", () => {
         userId: "user123",
         name: "Test",
         email: "test@example.com",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       const mockProfile = { _id: "p1", userId: "user123", role: "buyer" };
       queryMock.unique.mockResolvedValue(mockProfile);
@@ -287,7 +287,7 @@ describe("Users Coverage", () => {
     it("should return null if resolveUserId fails", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
       expect(result).toBeNull();
@@ -297,7 +297,7 @@ describe("Users Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user123",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue(null);
 
@@ -308,7 +308,7 @@ describe("Users Coverage", () => {
     it("should handle missing optional auth fields", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue(null);
 
@@ -572,7 +572,7 @@ describe("Users Coverage", () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "admin_id",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       queryMock.unique.mockResolvedValue({
         _id: "p1",
         kycStatus: "pending",
@@ -731,7 +731,7 @@ describe("Users Coverage", () => {
     it("should submit KYC and update counter", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({ _id: "p1", kycStatus: "rejected" });
       mockCtx.storage.getUrl.mockResolvedValue("http://url");
@@ -779,7 +779,7 @@ describe("Users Coverage", () => {
     it("should throw if storage ID is invalid", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       mockCtx.storage.getUrl.mockResolvedValue(null);
       await expect(
@@ -795,7 +795,7 @@ describe("Users Coverage", () => {
     it("should throw if resolveUserId fails", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       await expect(
         submitKYCHandler(
@@ -808,7 +808,7 @@ describe("Users Coverage", () => {
     it("should throw if profile not found", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue(null);
       await expect(
@@ -822,7 +822,7 @@ describe("Users Coverage", () => {
     it("should not increment counter if already pending, but still log the resubmission", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({ _id: "p1", kycStatus: "pending" });
 
@@ -847,7 +847,7 @@ describe("Users Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user123",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({
         _id: "p1",
@@ -869,7 +869,7 @@ describe("Users Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user123",
-      } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({
         _id: "p1",
@@ -912,7 +912,7 @@ describe("Users Coverage", () => {
     it("should delete a KYC document", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({
         _id: "p1",
@@ -937,7 +937,7 @@ describe("Users Coverage", () => {
     it("should handle profile with no documents during deletion", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({
         _id: "p1",
@@ -954,7 +954,7 @@ describe("Users Coverage", () => {
     it("should throw if resolveUserId fails", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       await expect(
         deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
@@ -966,7 +966,7 @@ describe("Users Coverage", () => {
     it("should throw if profile not found", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue(null);
       await expect(
@@ -979,7 +979,7 @@ describe("Users Coverage", () => {
     it("should throw if KYC is pending", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({ _id: "p1", kycStatus: "pending" });
       await expect(
@@ -992,7 +992,7 @@ describe("Users Coverage", () => {
     it("should throw if document not in profile", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({ _id: "p1", kycDocuments: ["s2"] });
       await expect(
@@ -1005,7 +1005,7 @@ describe("Users Coverage", () => {
     it("should handle storage deletion failure gracefully", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAuth>>);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user123");
       queryMock.unique.mockResolvedValue({ _id: "p1", kycDocuments: ["s1"] });
       mockCtx.storage.delete.mockRejectedValue(

@@ -588,17 +588,11 @@ describe("fixMetadata", () => {
           baseQuery.collect.mockResolvedValue([
             { _id: "cat_1", name: "Tractors" },
             { _id: "cat_2", name: "Harvesters" },
-          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+          ] as unknown);
         } else if (table === "equipmentMetadata") {
-          baseQuery.collect.mockResolvedValue(
-            equipmentMetadata as unknown as ReturnType<
-              MutationCtx["db"]["query"]
-            >
-          );
+          baseQuery.collect.mockResolvedValue(equipmentMetadata);
         } else if (table === "lots") {
-          baseQuery.collect.mockResolvedValue(
-            auctions as unknown as ReturnType<MutationCtx["db"]["query"]>
-          );
+          baseQuery.collect.mockResolvedValue(auctions);
         }
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
@@ -673,11 +667,9 @@ describe("fixMetadata", () => {
               category: "NonExistent",
               categoryId: undefined,
             },
-          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+          ] as unknown);
         } else if (table === "lots") {
-          baseQuery.collect.mockResolvedValue(
-            [] as unknown as ReturnType<MutationCtx["db"]["query"]>
-          );
+          baseQuery.collect.mockResolvedValue([] as unknown);
         }
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
@@ -718,9 +710,7 @@ describe("fixMetadata", () => {
             { _id: "cat_1", name: "Tractors" },
           ]);
         } else if (table === "equipmentMetadata") {
-          baseQuery.collect.mockResolvedValue(
-            metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
-          );
+          baseQuery.collect.mockResolvedValue(metadataItems);
         } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
@@ -729,7 +719,7 @@ describe("fixMetadata", () => {
               model: "8R",
               categoryId: undefined,
             },
-          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+          ] as unknown);
         }
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
@@ -780,9 +770,7 @@ describe("fixMetadata", () => {
             { _id: "cat_2", name: "Tractors" },
           ]);
         } else if (table === "equipmentMetadata") {
-          baseQuery.collect.mockResolvedValue(
-            metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
-          );
+          baseQuery.collect.mockResolvedValue(metadataItems);
         } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
@@ -791,7 +779,7 @@ describe("fixMetadata", () => {
               model: "8R",
               categoryId: undefined,
             },
-          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+          ] as unknown);
         }
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
@@ -829,7 +817,7 @@ describe("fixMetadata", () => {
               category: "Tractors",
               categoryId: "cat_1" as Id<"equipmentCategories">,
             },
-          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+          ] as unknown);
         } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
@@ -838,7 +826,7 @@ describe("fixMetadata", () => {
               model: "8R",
               categoryId: "cat_existing" as Id<"equipmentCategories">,
             },
-          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+          ] as unknown);
         }
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;
@@ -878,9 +866,7 @@ describe("fixMetadata", () => {
             { _id: "cat_1", name: "Tractors" },
           ]);
         } else if (table === "equipmentMetadata") {
-          baseQuery.collect.mockResolvedValue(
-            metadataItems as unknown as ReturnType<MutationCtx["db"]["query"]>
-          );
+          baseQuery.collect.mockResolvedValue(metadataItems);
         } else if (table === "lots") {
           baseQuery.collect.mockResolvedValue([
             {
@@ -889,7 +875,7 @@ describe("fixMetadata", () => {
               model: "UnknownModel",
               categoryId: undefined,
             },
-          ] as unknown as ReturnType<MutationCtx["db"]["query"]>);
+          ] as unknown);
         }
 
         return baseQuery as unknown as ReturnType<MutationCtx["db"]["query"]>;

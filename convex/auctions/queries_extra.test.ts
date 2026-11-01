@@ -152,7 +152,7 @@ describe("Queries Extra Coverage", () => {
       startTime: 0,
       endTime: Date.now() + 100_000,
       status: "published",
-    } as unknown as Doc<"auctions">);
+    });
     const result = await getActiveLotsHandler(mockCtx as unknown as QueryCtx, {
       paginationOpts: { numItems: 10, cursor: null },
       search: "tractor",
@@ -177,7 +177,7 @@ describe("Queries Extra Coverage", () => {
       startTime: 0,
       endTime: Date.now() + 100_000,
       status: "published",
-    } as unknown as Doc<"auctions">);
+    });
     const result = await getActiveLotsHandler(mockCtx as unknown as QueryCtx, {
       paginationOpts: { numItems: 10, cursor: null },
     });
@@ -200,7 +200,7 @@ describe("Queries Extra Coverage", () => {
     });
     vi.mocked(mockCtx.db.get).mockResolvedValue({
       sellerId: "seller",
-    } as unknown as Doc<"lots">);
+    });
     vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
       profile: { role: "admin" },
     } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
@@ -218,7 +218,7 @@ describe("Queries Extra Coverage", () => {
       _id: "u1",
       userId: "u1",
       name: "u1",
-    } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+    });
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
     // mock bids and lots to have something to paginate. The bid window is read
@@ -253,7 +253,7 @@ describe("Queries Extra Coverage", () => {
       _id: "u1",
       userId: "u1",
       name: "u1",
-    } as unknown as Awaited<ReturnType<typeof auth.getAuthUser>>);
+    });
     vi.mocked(auth.resolveUserId).mockReturnValue("u1");
 
     // A cursor at the lot's own bid timestamp means that bid was already
@@ -267,7 +267,7 @@ describe("Queries Extra Coverage", () => {
       currentPrice: 100,
       winnerId: "u1",
       title: "a1",
-    } as unknown as Doc<"lots">);
+    });
 
     const result = await getMyBidsHandler(mockCtx as unknown as QueryCtx, {
       paginationOpts: { numItems: 1, cursor: "100" },

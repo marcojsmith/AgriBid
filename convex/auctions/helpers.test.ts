@@ -98,15 +98,15 @@ describe("resolveImageUrls", () => {
   });
 
   it("should handle null or undefined input", async () => {
-    const result1 = await resolveImageUrls(mockStorage, null as unknown);
-    const result2 = await resolveImageUrls(mockStorage, undefined as unknown);
+    const result1 = await resolveImageUrls(mockStorage, null);
+    const result2 = await resolveImageUrls(mockStorage, undefined);
 
     expect(result1.additional).toEqual([]);
     expect(result2.additional).toEqual([]);
   });
 
   it("should handle non-object, non-array input", async () => {
-    const result = await resolveImageUrls(mockStorage, "invalid" as unknown);
+    const result = await resolveImageUrls(mockStorage, "invalid");
 
     expect(result.front).toBeUndefined();
     expect(result.additional).toEqual([]);
