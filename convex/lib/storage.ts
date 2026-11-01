@@ -74,7 +74,7 @@ export function extractImageStorageIds(
   }
 
   if (images != null && typeof images === "object") {
-    const imagesObj = images as AuctionImages;
+    const imagesObj = images;
     return [
       imagesObj.front,
       imagesObj.engine,

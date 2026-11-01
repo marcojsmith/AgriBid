@@ -10,7 +10,6 @@ import {
 } from "./presence";
 import * as auth from "./lib/auth";
 import type { QueryCtx } from "./_generated/server";
-import type { AuthUser } from "./lib/auth";
 
 vi.mock("./_generated/server", () => ({
   query: vi.fn((q: unknown) => q),
@@ -151,7 +150,7 @@ describe("Presence Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
       queryMock.unique.mockResolvedValue(null);
 
       await (
@@ -173,7 +172,7 @@ describe("Presence Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
       queryMock.unique.mockResolvedValue({ _id: "p1", userId: "user1" });
 
       await (
@@ -194,7 +193,7 @@ describe("Presence Coverage", () => {
     it("should fallback to _id if userId is missing", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       queryMock.unique.mockResolvedValue(null);
 
       await (
@@ -226,7 +225,7 @@ describe("Presence Coverage", () => {
     it("should return online count if authenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       const countMock = queryMock.count;
       if (!countMock) throw new Error("queryMock.count must be defined");
       countMock.mockResolvedValue(10);

@@ -169,7 +169,7 @@ describe("MetadataCatalog Full Coverage", () => {
       categoryName: "Tractors",
       models: ["8R 410", "7R 330"],
       isActive: true,
-      updatedAt: undefined as unknown as number, // Test "Never" branch on first item
+      updatedAt: undefined, // Test "Never" branch on first item
     },
     {
       _id: "m2" as Id<"equipmentMetadata">,

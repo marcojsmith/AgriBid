@@ -213,9 +213,7 @@ describe("BiddingPanel", () => {
         withOptimisticUpdate: vi.fn().mockReturnThis(),
       }
     );
-    vi.mocked(convexReact.useMutation).mockReturnValue(
-      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
-    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
 
     render(
       <BrowserRouter>
@@ -246,9 +244,7 @@ describe("BiddingPanel", () => {
         withOptimisticUpdate: vi.fn().mockReturnThis(),
       }
     );
-    vi.mocked(convexReact.useMutation).mockReturnValue(
-      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
-    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
 
     render(
       <BrowserRouter>
@@ -283,9 +279,7 @@ describe("BiddingPanel", () => {
         withOptimisticUpdate: vi.fn().mockReturnThis(),
       }
     );
-    vi.mocked(convexReact.useMutation).mockReturnValue(
-      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
-    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
 
     render(
       <BrowserRouter>
@@ -313,9 +307,7 @@ describe("BiddingPanel", () => {
   it("prevents bidding when session is pending", () => {
     const auction = getActiveAuction();
     const sessionData = { data: null, isPending: true };
-    vi.mocked(useSession).mockReturnValue(
-      sessionData as unknown as ReturnType<typeof useSession>
-    );
+    vi.mocked(useSession).mockReturnValue(sessionData);
 
     render(
       <BrowserRouter>
@@ -538,9 +530,7 @@ describe("BiddingPanel", () => {
   it("prompts for sign in when unauthenticated", () => {
     const auction = getActiveAuction();
     const sessionData = { data: null, isPending: false };
-    vi.mocked(useSession).mockReturnValue(
-      sessionData as unknown as ReturnType<typeof useSession>
-    );
+    vi.mocked(useSession).mockReturnValue(sessionData);
     vi.mocked(convexReact.useQuery).mockImplementation(() => null);
 
     render(
@@ -626,9 +616,7 @@ describe("BiddingPanel", () => {
         withOptimisticUpdate: vi.fn().mockReturnThis(),
       }
     );
-    vi.mocked(convexReact.useMutation).mockReturnValue(
-      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
-    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
 
     render(
       <BrowserRouter>
@@ -666,9 +654,7 @@ describe("BiddingPanel", () => {
         withOptimisticUpdate: vi.fn().mockReturnThis(),
       }
     );
-    vi.mocked(convexReact.useMutation).mockReturnValue(
-      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
-    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
 
     render(
       <BrowserRouter>
@@ -803,9 +789,7 @@ describe("BiddingPanel", () => {
         withOptimisticUpdate: vi.fn().mockReturnThis(),
       }
     );
-    vi.mocked(convexReact.useMutation).mockReturnValue(
-      mockPlaceBid as unknown as ReturnType<typeof convexReact.useMutation>
-    );
+    vi.mocked(convexReact.useMutation).mockReturnValue(mockPlaceBid);
 
     render(
       <BrowserRouter>

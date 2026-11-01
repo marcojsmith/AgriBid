@@ -214,15 +214,12 @@ describe("Mutations Branch Coverage Expansion", () => {
       } as unknown as Awaited<ReturnType<typeof auth.requireVerified>>);
       vi.mocked(mockCtx.db.get).mockResolvedValue({ _id: "c1" });
 
-      await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          title: "Test Draft",
-          durationDays: 7,
-          images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
-          startingPrice: 1000,
-        } as unknown as Parameters<typeof saveDraftHandler>[1]
-      );
+      await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        title: "Test Draft",
+        durationDays: 7,
+        images: { additional: ["1", "2", "3", "4", "5", "6", "7"] },
+        startingPrice: 1000,
+      });
 
       const insertCall = vi.mocked(mockCtx.db.insert).mock
         .calls[0][1] as unknown as { images: { additional: string[] } };
@@ -236,14 +233,11 @@ describe("Mutations Branch Coverage Expansion", () => {
       vi.mocked(mockCtx.db.normalizeId).mockReturnValue(null);
 
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "bad",
-            durationDays: 7,
-            images: {},
-          } as unknown as Parameters<typeof saveDraftHandler>[1]
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "bad",
+          durationDays: 7,
+          images: {},
+        })
       ).rejects.toThrow("Invalid lotId provided");
     });
 
@@ -254,14 +248,11 @@ describe("Mutations Branch Coverage Expansion", () => {
       vi.mocked(mockCtx.db.get).mockResolvedValue(null);
 
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "a1",
-            durationDays: 7,
-            images: {},
-          } as unknown as Parameters<typeof saveDraftHandler>[1]
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1",
+          durationDays: 7,
+          images: {},
+        })
       ).rejects.toThrow("Lot not found");
     });
 
@@ -278,15 +269,12 @@ describe("Mutations Branch Coverage Expansion", () => {
 
       // Should throw because title/description are missing in restArgs
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "a1",
-            durationDays: 7,
-            title: "",
-            images: {},
-          } as unknown as Parameters<typeof saveDraftHandler>[1]
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1",
+          durationDays: 7,
+          title: "",
+          images: {},
+        })
       ).rejects.toThrow();
     });
   });
@@ -386,9 +374,7 @@ describe("Mutations Branch Coverage Expansion", () => {
           { reporterId: "u2", status: "pending" },
         ]),
       };
-      vi.mocked(mockCtx.db.query).mockReturnValue(
-        mockQuery as unknown as ReturnType<MutationCtx["db"]["query"]>
-      );
+      vi.mocked(mockCtx.db.query).mockReturnValue(mockQuery);
 
       const result = await flagLotHandler(mockCtx as unknown as MutationCtx, {
         lotId: "l1" as Id<"lots">,
@@ -499,7 +485,7 @@ describe("Mutations Branch Coverage Expansion", () => {
     it("should skip missing lots", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAdmin>>);
+      });
       vi.mocked(mockCtx.db.get).mockResolvedValue(null);
 
       const result = await bulkUpdateLotsHandler(
@@ -516,7 +502,7 @@ describe("Mutations Branch Coverage Expansion", () => {
     it("should update a found lot even with an empty title (no title validation on this mutation)", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({
         _id: "admin1",
-      } as unknown as Awaited<ReturnType<typeof auth.requireAdmin>>);
+      });
       vi.mocked(mockCtx.db.get).mockResolvedValue({
         _id: "a1",
         status: "pending_review",

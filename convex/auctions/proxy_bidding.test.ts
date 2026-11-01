@@ -10,7 +10,6 @@ import {
   getMyProxyBid,
 } from "./proxy_bidding";
 import { getAuthUser } from "../lib/auth";
-import type { AuthUser } from "../lib/auth";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -305,9 +304,9 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 100,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 1100, // Exactly the next required amount
           updatedAt: now - 100,
@@ -445,9 +444,9 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 100,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 2000,
           updatedAt: now - 100,
@@ -486,17 +485,17 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 100,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 1500,
           updatedAt: now - 100,
         },
         {
-          _id: "p2" as Id<"proxy_bids">,
+          _id: "p2",
           _creationTime: now,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u1",
           maxBid: 2000,
           updatedAt: now,
@@ -534,17 +533,17 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 200,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 2000,
           updatedAt: now - 200,
         },
         {
-          _id: "p2" as Id<"proxy_bids">,
+          _id: "p2",
           _creationTime: now - 100,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u4",
           maxBid: 2000,
           updatedAt: now - 100,
@@ -584,9 +583,9 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 100,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 1050,
           updatedAt: now - 100,
@@ -662,7 +661,7 @@ describe("Proxy Bidding Coverage", () => {
         userId: "u1",
         _id: "u1",
         email: "test@example.com",
-      } as AuthUser);
+      });
 
       const proxyBid = {
         _id: "p1" as Id<"proxy_bids">,
@@ -687,7 +686,7 @@ describe("Proxy Bidding Coverage", () => {
       vi.mocked(getAuthUser).mockResolvedValue({
         _id: "u1",
         email: "test@example.com",
-      } as AuthUser);
+      });
 
       const mockQuery = createMockQuery([]);
       mockCtx.db.query.mockReturnValue(mockQuery);
@@ -791,16 +790,16 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 200,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 3000,
         },
         {
-          _id: "p2" as Id<"proxy_bids">,
+          _id: "p2",
           _creationTime: now - 100,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u4",
           maxBid: 2000,
         },
@@ -836,9 +835,9 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 200,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 1150, // Higher than current bid (1100) but lower than next required (1200)
         },
@@ -874,9 +873,9 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 200,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 1200, // Exactly the next required amount
         },
@@ -911,16 +910,16 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           _creationTime: now - 200,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u3",
           maxBid: 5000,
         },
         {
-          _id: "p2" as Id<"proxy_bids">,
+          _id: "p2",
           _creationTime: now - 100,
-          lotId: "l1" as Id<"lots">,
+          lotId: "l1",
           bidderId: "u4",
           maxBid: 2000,
         },
@@ -952,13 +951,13 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           bidderId: "u1",
           maxBid: 1100,
           _creationTime: now,
         },
         {
-          _id: "p2" as Id<"proxy_bids">,
+          _id: "p2",
           bidderId: "u2",
           maxBid: 1050,
           _creationTime: now - 100,
@@ -993,13 +992,13 @@ describe("Proxy Bidding Coverage", () => {
 
       const proxyQuery = createMockQuery([
         {
-          _id: "p1" as Id<"proxy_bids">,
+          _id: "p1",
           bidderId: "u1",
           maxBid: 1200,
           _creationTime: now,
         }, // highest
         {
-          _id: "p2" as Id<"proxy_bids">,
+          _id: "p2",
           bidderId: "u2",
           maxBid: 1150,
           _creationTime: now - 100,

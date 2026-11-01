@@ -152,9 +152,7 @@ describe("Equipment Metadata Backend", () => {
       categoryId: "cat_123" as Id<"equipmentCategories">,
       isActive: true,
     };
-    vi.mocked(mockCtx.db.get).mockResolvedValue(
-      existingMake as unknown as Awaited<ReturnType<typeof mockCtx.db.get>>
-    );
+    vi.mocked(mockCtx.db.get).mockResolvedValue(existingMake);
 
     await addModelToMakeHandler(mockCtx, {
       id: "make_123" as Id<"equipmentMetadata">,

@@ -127,10 +127,7 @@ export const updateLotHandler = async (
         }
       }
     } else {
-      existingImages = lot.images as Record<
-        string,
-        string | string[] | undefined
-      >;
+      existingImages = lot.images;
     }
     const mergedImages = {
       ...existingImages,

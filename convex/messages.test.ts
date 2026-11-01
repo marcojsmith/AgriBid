@@ -123,7 +123,7 @@ describe("startConversation mutation", () => {
       profiles: profilesQuery,
       conversations: conversationsQuery,
       messages: messagesQuery,
-    }) as MockMutationCtx;
+    });
     mockCtx.db.insert
       .mockResolvedValueOnce(newConversationId)
       .mockResolvedValue("msg1");
@@ -402,7 +402,7 @@ describe("sendMessage mutation", () => {
       sellerId: "user_seller",
     },
     recentMessages = [],
-    senderProfile = { userId: "user_buyer", name: "Ben Buyer" } as unknown,
+    senderProfile = { userId: "user_buyer", name: "Ben Buyer" },
   }: {
     conversation?: unknown;
     recentMessages?: { createdAt: number }[];
@@ -419,7 +419,7 @@ describe("sendMessage mutation", () => {
     mockCtx = setupMockCtx({
       messages: messagesQuery,
       profiles: profilesQuery,
-    }) as MockMutationCtx;
+    });
     mockCtx.db.get.mockResolvedValue(conversation);
     mockCtx.db.insert.mockResolvedValue("msg1");
     return { messagesQuery };
@@ -537,7 +537,7 @@ describe("sendMessage mutation", () => {
     mockCtx = setupMockCtx({
       messages: messagesQuery,
       profiles: profilesQuery,
-    }) as MockMutationCtx;
+    });
     mockCtx.db.get.mockResolvedValue({
       _id: "conv123",
       buyerId: "user_buyer",
@@ -656,7 +656,7 @@ describe("getConversations query", () => {
       conversations: conversationsQuery,
       messages: messagesQuery,
       profiles: profilesQuery,
-    }) as unknown as MockQueryCtx;
+    });
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_me");
 
     const result = await getConversationsHandler(
@@ -749,7 +749,7 @@ describe("getConversations query", () => {
       conversations: conversationsQuery,
       messages: messagesQuery,
       profiles: profilesQuery,
-    }) as unknown as MockQueryCtx;
+    });
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_me");
 
     const result = await getConversationsHandler(
@@ -789,7 +789,7 @@ describe("getConversations query", () => {
 
     mockCtx = setupMockCtx({
       conversations: conversationsQuery,
-    }) as unknown as MockQueryCtx;
+    });
     vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user_me");
 
     const result = await getConversationsHandler(
@@ -841,7 +841,7 @@ describe("getMessages query", () => {
 
     mockCtx = setupMockCtx({
       messages: messagesQuery,
-    }) as unknown as MockQueryCtx;
+    });
     mockCtx.db.get.mockResolvedValue(conversation);
     return { messagesQuery };
   };
@@ -913,7 +913,7 @@ describe("markRead mutation", () => {
     });
     mockCtx = setupMockCtx({
       messages: messagesQuery,
-    }) as unknown as MockMutationCtx;
+    });
     mockCtx.db.get.mockResolvedValue(conversation);
   };
 
@@ -1046,7 +1046,7 @@ describe("getUnreadConversationCount query", () => {
     mockCtx = setupMockCtx({
       conversations: conversationsQuery,
       messages: messagesQuery,
-    }) as unknown as MockQueryCtx;
+    });
     return { conversationsQuery, messagesQuery, buyerChain, sellerChain };
   };
 

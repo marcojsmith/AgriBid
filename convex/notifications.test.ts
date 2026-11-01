@@ -10,7 +10,6 @@ import {
   batchFetchReadCounts,
 } from "./notifications";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import type { AuthUser } from "./lib/auth";
 import type { Id } from "./_generated/dataModel";
 
 vi.mock("./lib/auth", () => ({
@@ -91,10 +90,15 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
       queryMock.take
         .mockResolvedValueOnce([
-          { _id: "n1", createdAt: 100, recipientId: "user1", _creationTime: 100 },
+          {
+            _id: "n1",
+            createdAt: 100,
+            recipientId: "user1",
+            _creationTime: 100,
+          },
         ])
         .mockResolvedValueOnce([
           { _id: "a1", createdAt: 200, recipientId: "all", _creationTime: 200 },
@@ -115,7 +119,7 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
 
       const personalNotifications = Array.from({ length: 300 }, (_, i) => ({
         _id: `n${String(i).padStart(3, "0")}` as Id<"notifications">,
@@ -138,9 +142,10 @@ describe("Notifications Coverage", () => {
         isRead: false,
       }));
 
-      const allNotifications = [...personalNotifications, ...announcements].sort(
-        (a, b) => b.createdAt - a.createdAt
-      );
+      const allNotifications = [
+        ...personalNotifications,
+        ...announcements,
+      ].sort((a, b) => b.createdAt - a.createdAt);
 
       let personalCursor: number | null = null;
       let announcementCursor: number | null = null;
@@ -151,14 +156,14 @@ describe("Notifications Coverage", () => {
           let slice = personalNotifications;
           if (personalCursor !== null) {
             const cursor = personalCursor;
-            slice = personalNotifications.filter(n => n.createdAt < cursor);
+            slice = personalNotifications.filter((n) => n.createdAt < cursor);
           }
           return Promise.resolve(slice.slice(0, limit));
         } else {
           let slice = announcements;
           if (announcementCursor !== null) {
             const cursor = announcementCursor;
-            slice = announcements.filter(n => n.createdAt < cursor);
+            slice = announcements.filter((n) => n.createdAt < cursor);
           }
           return Promise.resolve(slice.slice(0, limit));
         }
@@ -180,13 +185,18 @@ describe("Notifications Coverage", () => {
         cursor = result.continueCursor || null;
 
         if (result.page.length > 0) {
-          const personalItems = result.page.filter(n => n.recipientId !== "all");
-          const announcementItems = result.page.filter(n => n.recipientId === "all");
+          const personalItems = result.page.filter(
+            (n) => n.recipientId !== "all"
+          );
+          const announcementItems = result.page.filter(
+            (n) => n.recipientId === "all"
+          );
           if (personalItems.length > 0) {
             personalCursor = personalItems[personalItems.length - 1].createdAt;
           }
           if (announcementItems.length > 0) {
-            announcementCursor = announcementItems[announcementItems.length - 1].createdAt;
+            announcementCursor =
+              announcementItems[announcementItems.length - 1].createdAt;
           }
         }
       }
@@ -203,7 +213,7 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
 
       const baseNotifications = Array.from({ length: 30 }, (_, i) => ({
         _id: `n${String(i).padStart(2, "0")}` as Id<"notifications">,
@@ -240,7 +250,7 @@ describe("Notifications Coverage", () => {
         let slice = notifications;
         if (currentCursor !== null) {
           const cursor = currentCursor;
-          slice = notifications.filter(n => n.createdAt < cursor);
+          slice = notifications.filter((n) => n.createdAt < cursor);
         }
         return Promise.resolve(slice.slice(0, limit));
       });
@@ -265,7 +275,7 @@ describe("Notifications Coverage", () => {
 
       const firstPageIds = new Set(firstPage.page.map((n) => n._id));
       const secondPageIds = new Set(secondPage.page.map((n) => n._id));
-      
+
       for (const id of secondPageIds) {
         expect(firstPageIds.has(id)).toBe(false);
       }
@@ -275,11 +285,16 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
 
       queryMock.take
         .mockResolvedValueOnce([
-          { _id: "n1", createdAt: 100, recipientId: "user1", _creationTime: 100 },
+          {
+            _id: "n1",
+            createdAt: 100,
+            recipientId: "user1",
+            _creationTime: 100,
+          },
         ])
         .mockResolvedValueOnce([]);
       queryMock.collect.mockResolvedValue([]);
@@ -297,12 +312,22 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
 
       queryMock.take
         .mockResolvedValueOnce([
-          { _id: "n1", createdAt: 300, recipientId: "user1", _creationTime: 300 },
-          { _id: "n2", createdAt: 100, recipientId: "user1", _creationTime: 100 },
+          {
+            _id: "n1",
+            createdAt: 300,
+            recipientId: "user1",
+            _creationTime: 300,
+          },
+          {
+            _id: "n2",
+            createdAt: 100,
+            recipientId: "user1",
+            _creationTime: 100,
+          },
         ])
         .mockResolvedValueOnce([
           { _id: "a1", createdAt: 200, recipientId: "all", _creationTime: 200 },
@@ -323,7 +348,7 @@ describe("Notifications Coverage", () => {
     it("should use fallback _id if userId is missing", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       queryMock.take.mockResolvedValue([]);
       queryMock.collect.mockResolvedValue([]);
       const result = await getMyNotificationsHandler(
@@ -366,9 +391,11 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
       queryMock.take
-        .mockResolvedValueOnce([{ _id: "n1", createdAt: 100, _creationTime: 100 }])
+        .mockResolvedValueOnce([
+          { _id: "n1", createdAt: 100, _creationTime: 100 },
+        ])
         .mockResolvedValueOnce([]);
       queryMock.collect.mockResolvedValue([]);
 
@@ -385,7 +412,7 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
       queryMock.take.mockResolvedValue([]);
 
       const result = await getNotificationArchiveHandler(
@@ -401,7 +428,7 @@ describe("Notifications Coverage", () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
         userId: "user1",
-      } as unknown as AuthUser);
+      });
 
       // Return personal notifications with different createdAt values
       queryMock.take
@@ -451,7 +478,7 @@ describe("Notifications Coverage", () => {
     it("should handle userId fallback", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       queryMock.take.mockResolvedValue([]);
       const result = await getNotificationArchiveHandler(
         mockCtx as unknown as QueryCtx,
@@ -502,7 +529,7 @@ describe("Notifications Coverage", () => {
     it("should throw if resolveUserId fails", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       await expect(
         markAsReadHandler(mockCtx as unknown as MutationCtx, {
@@ -514,7 +541,7 @@ describe("Notifications Coverage", () => {
     it("should throw if notification not found", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
@@ -527,7 +554,7 @@ describe("Notifications Coverage", () => {
     it("should create read receipt for global announcement", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       mockCtx.db.get.mockResolvedValue({ _id: "a1", recipientId: "all" });
       queryMock.unique.mockResolvedValue(null); // not yet read
@@ -547,7 +574,7 @@ describe("Notifications Coverage", () => {
     it("should do nothing if read receipt already exists", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       mockCtx.db.get.mockResolvedValue({ _id: "a1", recipientId: "all" });
       queryMock.unique.mockResolvedValue({ _id: "r1" }); // already exists
@@ -561,7 +588,7 @@ describe("Notifications Coverage", () => {
     it("should throw if personal notification belongs to someone else", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       mockCtx.db.get.mockResolvedValue({ _id: "n1", recipientId: "user2" });
 
@@ -575,7 +602,7 @@ describe("Notifications Coverage", () => {
     it("should successfully mark personal notification as read", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
       mockCtx.db.get.mockResolvedValue({
         _id: "n1",
@@ -599,7 +626,7 @@ describe("Notifications Coverage", () => {
     it("should mark all as read including announcements", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       // unread personal
@@ -625,7 +652,7 @@ describe("Notifications Coverage", () => {
     it("should throw if user ID cannot be resolved", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue(null);
       await expect(
         markAllReadHandler(mockCtx as unknown as MutationCtx)
@@ -635,7 +662,7 @@ describe("Notifications Coverage", () => {
     it("should handle large number of notifications via chunking", async () => {
       vi.mocked(auth.requireAuth).mockResolvedValue({
         _id: "u1",
-      } as unknown as AuthUser);
+      });
       vi.mocked(auth.resolveUserId).mockReturnValue("user1");
 
       // 60 personal notifications (2 batches of 50)

@@ -240,7 +240,7 @@ describe("MobileBidBar", () => {
     vi.mocked(useSession).mockReturnValue({
       data: null,
       isPending: false,
-    } as ReturnType<typeof useSession>);
+    });
 
     renderComponent(createMockLot());
 

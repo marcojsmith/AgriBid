@@ -244,7 +244,7 @@ describe("Support Page", () => {
 
   it("handles ticket creation failure", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
-      void "suppress error logging";
+      "suppress error logging";
     });
     mockCreateTicket.mockRejectedValue(new Error("Creation failed"));
 
@@ -319,8 +319,6 @@ describe("Support Page", () => {
     });
     renderSupport();
     expect(screen.getByText(/loading…/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /loading/i })
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /loading/i })).toBeDisabled();
   });
 });

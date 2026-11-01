@@ -426,7 +426,7 @@ describe("Internal Logic Coverage", () => {
       mockCtx.db.get.mockResolvedValue({
         status: "draft",
         endTime: Date.now() - 1000,
-      } as never);
+      });
 
       await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 
@@ -447,7 +447,7 @@ describe("Internal Logic Coverage", () => {
       mockCtx.db.get.mockResolvedValue({
         status: "published",
         endTime: Date.now() + 60_000,
-      } as never);
+      });
 
       await settleExpiredLotsHandler(mockCtx as unknown as MutationCtx);
 

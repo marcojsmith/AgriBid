@@ -52,15 +52,6 @@ interface MockCtx {
   runAction: unknown;
 }
 
-interface MockUser {
-  userId?: string | null;
-  _id: string;
-  email?: string | null;
-  name?: string | null;
-  image?: string | null;
-  _creationTime?: number;
-}
-
 describe("closeLotEarly mutation", () => {
   let mockCtx: MockCtx;
 
@@ -119,7 +110,7 @@ describe("closeLotEarly mutation", () => {
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       userId: "admin1",
       _id: "admin1",
-    } as MockUser);
+    });
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
     vi.mocked(internal.findWinningBid).mockResolvedValue(winningBid);
     vi.mocked(internal.isReserveMet).mockReturnValue(true);
@@ -256,7 +247,7 @@ describe("closeLotEarly mutation", () => {
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       userId: "admin1",
       _id: "admin1",
-    } as MockUser);
+    });
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
     vi.mocked(internal.findWinningBid).mockResolvedValue(winningBid);
     vi.mocked(internal.isReserveMet).mockReturnValue(true);
@@ -357,7 +348,7 @@ describe("closeLotEarly mutation", () => {
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       userId: "admin1",
       _id: "admin1",
-    } as MockUser);
+    });
     vi.mocked(auth.resolveUserId).mockReturnValue("admin1");
     vi.mocked(internal.findWinningBid).mockResolvedValue(winningBid);
     vi.mocked(internal.isReserveMet).mockReturnValue(true);

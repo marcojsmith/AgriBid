@@ -138,11 +138,7 @@ describe("BidForm", () => {
 
     const updatedAuction = { ...mockAuction, currentPrice: 1500 };
     rerender(
-      <BidForm
-        auction={updatedAuction as unknown as LotDetail}
-        onBid={mockOnBid}
-        isLoading={false}
-      />
+      <BidForm auction={updatedAuction} onBid={mockOnBid} isLoading={false} />
     );
     expect(screen.getByPlaceholderText(/enter amount/i)).toHaveValue(1600);
   });

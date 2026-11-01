@@ -115,7 +115,7 @@ export async function encryptPII(
     const encryptedBuffer = await crypto.subtle.encrypt(
       { name: "AES-GCM", iv: iv as BufferSource },
       key,
-      data as BufferSource
+      data
     );
 
     // Use exact bytes of the Uint8Array/ArrayBuffer for conversion

@@ -410,15 +410,13 @@ export const processErrorReportsAction = internalAction({
       return { processed: 0, created: 0, commented: 0, failed: 0 };
     }
 
-    const githubConfig = (await ctx.runQuery(
-      internal.errors.getGitHubConfigProxy
-    )) as {
+    const githubConfig: {
       enabled: boolean;
       token: string | null;
       repoOwner: string | null;
       repoName: string | null;
       labels: string | null;
-    };
+    } = await ctx.runQuery(internal.errors.getGitHubConfigProxy);
 
     if (
       !githubConfig.enabled ||

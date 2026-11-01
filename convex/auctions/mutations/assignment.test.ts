@@ -7,7 +7,7 @@ import {
   assignLotToAuction,
   unassignLot,
 } from "./assignment";
-import type { Doc, Id } from "../../_generated/dataModel";
+import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 vi.mock("../../_generated/server", () => ({
@@ -78,8 +78,8 @@ describe("Lot assignment mutations", () => {
   describe("assignLotToAuctionHandler", () => {
     it("assigns an approved lot to an auction", async () => {
       mockCtx.db.get
-        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
-        .mockResolvedValueOnce(auctionDoc as unknown as Doc<"auctions">);
+        .mockResolvedValueOnce(approvedLot)
+        .mockResolvedValueOnce(auctionDoc);
 
       const result = await assignLotToAuctionHandler(
         mockCtx as unknown as MutationCtx,
@@ -96,13 +96,11 @@ describe("Lot assignment mutations", () => {
     });
 
     it("snapshots the auction fee defaults onto the lot at assignment", async () => {
-      mockCtx.db.get
-        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
-        .mockResolvedValueOnce({
-          ...auctionDoc,
-          defaultBuyerPremiumPct: 0.05,
-          defaultSellerCommissionPct: 0.03,
-        } as unknown as Doc<"auctions">);
+      mockCtx.db.get.mockResolvedValueOnce(approvedLot).mockResolvedValueOnce({
+        ...auctionDoc,
+        defaultBuyerPremiumPct: 0.05,
+        defaultSellerCommissionPct: 0.03,
+      });
 
       const result = await assignLotToAuctionHandler(
         mockCtx as unknown as MutationCtx,
@@ -119,13 +117,11 @@ describe("Lot assignment mutations", () => {
     });
 
     it("copies undefined defaults so later auction edits cannot leak in", async () => {
-      mockCtx.db.get
-        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
-        .mockResolvedValueOnce({
-          ...auctionDoc,
-          defaultBuyerPremiumPct: undefined,
-          defaultSellerCommissionPct: undefined,
-        } as unknown as Doc<"auctions">);
+      mockCtx.db.get.mockResolvedValueOnce(approvedLot).mockResolvedValueOnce({
+        ...auctionDoc,
+        defaultBuyerPremiumPct: undefined,
+        defaultSellerCommissionPct: undefined,
+      });
 
       await assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
         lotId: "l1" as Id<"lots">,
@@ -158,7 +154,7 @@ describe("Lot assignment mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...approvedLot,
         status: "pending_review",
-      } as unknown as Doc<"lots">);
+      });
 
       await expect(
         assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -170,7 +166,7 @@ describe("Lot assignment mutations", () => {
 
     it("throws when the auction is missing", async () => {
       mockCtx.db.get
-        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
+        .mockResolvedValueOnce(approvedLot)
         .mockResolvedValueOnce(null);
 
       await expect(
@@ -182,12 +178,10 @@ describe("Lot assignment mutations", () => {
     });
 
     it("rejects assigning a lot to a closed auction", async () => {
-      mockCtx.db.get
-        .mockResolvedValueOnce(approvedLot as unknown as Doc<"lots">)
-        .mockResolvedValueOnce({
-          ...auctionDoc,
-          status: "closed",
-        } as unknown as Doc<"auctions">);
+      mockCtx.db.get.mockResolvedValueOnce(approvedLot).mockResolvedValueOnce({
+        ...auctionDoc,
+        status: "closed",
+      });
 
       await expect(
         assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
@@ -217,7 +211,7 @@ describe("Lot assignment mutations", () => {
         ...approvedLot,
         status: "assigned",
         auctionId: "a1",
-      } as unknown as Doc<"lots">);
+      });
 
       const result = await unassignLotHandler(
         mockCtx as unknown as MutationCtx,
@@ -242,7 +236,7 @@ describe("Lot assignment mutations", () => {
     });
 
     it("rejects unassigning a lot that is not assigned", async () => {
-      mockCtx.db.get.mockResolvedValue(approvedLot as unknown as Doc<"lots">);
+      mockCtx.db.get.mockResolvedValue(approvedLot);
 
       await expect(
         unassignLotHandler(mockCtx as unknown as MutationCtx, {

@@ -9,7 +9,7 @@ import {
   approveLot,
   rejectLot,
 } from "./lifecycle";
-import type { Doc, Id } from "../../_generated/dataModel";
+import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
 vi.mock("../../_generated/server", () => ({
@@ -89,7 +89,7 @@ describe("Lot lifecycle mutations", () => {
   describe("submit for review", () => {
     it("submits an owned draft lot for review", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      mockCtx.db.get.mockResolvedValue(validLot as unknown as Doc<"lots">);
+      mockCtx.db.get.mockResolvedValue(validLot);
 
       const result = await submitLotForReviewHandler(
         mockCtx as unknown as MutationCtx,
@@ -125,7 +125,7 @@ describe("Lot lifecycle mutations", () => {
 
     it("rejects a lot the caller does not own", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u2");
-      mockCtx.db.get.mockResolvedValue(validLot as unknown as Doc<"lots">);
+      mockCtx.db.get.mockResolvedValue(validLot);
 
       await expect(
         submitLotForReviewHandler(mockCtx as unknown as MutationCtx, {
@@ -139,7 +139,7 @@ describe("Lot lifecycle mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...validLot,
         status: "approved",
-      } as unknown as Doc<"lots">);
+      });
 
       await expect(
         submitLotForReviewHandler(mockCtx as unknown as MutationCtx, {
@@ -153,7 +153,7 @@ describe("Lot lifecycle mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...validLot,
         images: {},
-      } as unknown as Doc<"lots">);
+      });
 
       await expect(
         submitLotForReviewHandler(mockCtx as unknown as MutationCtx, {
@@ -171,18 +171,26 @@ describe("Lot lifecycle mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...validLot,
         status: "pending_review",
-      } as unknown as Doc<"lots">);
-
-      const result = await approveLotHandler(mockCtx as unknown as MutationCtx, {
-        lotId: "l1" as Id<"lots">,
       });
+
+      const result = await approveLotHandler(
+        mockCtx as unknown as MutationCtx,
+        {
+          lotId: "l1" as Id<"lots">,
+        }
+      );
 
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
         status: "approved",
         hiddenByFlags: false,
       });
-      expect(updateCounter).toHaveBeenCalledWith(mockCtx, "lots", "pending", -1);
+      expect(updateCounter).toHaveBeenCalledWith(
+        mockCtx,
+        "lots",
+        "pending",
+        -1
+      );
       expect(updateCounter).toHaveBeenCalledWith(mockCtx, "lots", "active", 1);
     });
 
@@ -206,7 +214,7 @@ describe("Lot lifecycle mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...validLot,
         status: "approved",
-      } as unknown as Doc<"lots">);
+      });
 
       await expect(
         approveLotHandler(mockCtx as unknown as MutationCtx, {
@@ -236,7 +244,7 @@ describe("Lot lifecycle mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...validLot,
         status: "pending_review",
-      } as unknown as Doc<"lots">);
+      });
 
       const result = await rejectLotHandler(mockCtx as unknown as MutationCtx, {
         lotId: "l1" as Id<"lots">,
@@ -247,7 +255,12 @@ describe("Lot lifecycle mutations", () => {
         status: "rejected",
         hiddenByFlags: false,
       });
-      expect(updateCounter).toHaveBeenCalledWith(mockCtx, "lots", "pending", -1);
+      expect(updateCounter).toHaveBeenCalledWith(
+        mockCtx,
+        "lots",
+        "pending",
+        -1
+      );
     });
 
     it("rejects rejecting a lot not in pending_review", async () => {
@@ -257,7 +270,7 @@ describe("Lot lifecycle mutations", () => {
       mockCtx.db.get.mockResolvedValue({
         ...validLot,
         status: "draft",
-      } as unknown as Doc<"lots">);
+      });
 
       await expect(
         rejectLotHandler(mockCtx as unknown as MutationCtx, {

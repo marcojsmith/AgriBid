@@ -110,7 +110,7 @@ export const getActiveLotsHandler = async (
   ctx: QueryCtx,
   args: ActiveAuctionsArgs
 ) => {
-  const statusFilter = args.statusFilter ?? ("active" as StatusFilter);
+  const statusFilter = args.statusFilter ?? "active";
   const statuses = statusesForFilter(statusFilter);
   const requiresWindowCheck = statusFilter === "active";
   const { auctionId } = args;

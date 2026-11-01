@@ -102,8 +102,8 @@ describe("ErrorBoundary", () => {
     const reloadSpy = vi.fn();
     const backSpy = vi.fn();
 
-    vi.stubGlobal("location", { reload: reloadSpy } as unknown as Location);
-    vi.stubGlobal("history", { back: backSpy } as unknown as History);
+    vi.stubGlobal("location", { reload: reloadSpy });
+    vi.stubGlobal("history", { back: backSpy });
 
     render(
       <ErrorBoundary>

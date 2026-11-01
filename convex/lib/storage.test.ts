@@ -60,10 +60,7 @@ describe("Storage Utilities", () => {
         mockCtx as unknown as MutationCtx,
         null as unknown as Parameters<typeof deleteAuctionImages>[1]
       );
-      await deleteAuctionImages(
-        mockCtx as unknown as MutationCtx,
-        {} as unknown as Parameters<typeof deleteAuctionImages>[1]
-      );
+      await deleteAuctionImages(mockCtx as unknown as MutationCtx, {});
       expect(mockCtx.storage.delete).not.toHaveBeenCalled();
     });
 

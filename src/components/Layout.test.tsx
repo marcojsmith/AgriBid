@@ -106,11 +106,7 @@ describe("Layout", () => {
       businessInfo: undefined,
     });
     mockUseQuery.mockReturnValue(undefined);
-    mockUseMutation.mockReturnValue(
-      vi.fn().mockResolvedValue({}) as unknown as ReturnType<
-        typeof convexReact.useMutation
-      >
-    );
+    mockUseMutation.mockReturnValue(vi.fn().mockResolvedValue({}));
   });
 
   it("renders children and includes Header and Footer", () => {
@@ -132,9 +128,7 @@ describe("Layout", () => {
     const mockSyncUser = vi.fn().mockRejectedValue(new Error("Sync Fail"));
     mockUseAuth.mockReturnValue({ isSignedIn: true, isLoaded: true });
     mockUseUser.mockReturnValue({ user: { id: "user1" } });
-    mockUseMutation.mockReturnValue(
-      mockSyncUser as unknown as ReturnType<typeof convexReact.useMutation>
-    );
+    mockUseMutation.mockReturnValue(mockSyncUser);
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
       // intentional no-op: silence console.error while asserting the sync failure

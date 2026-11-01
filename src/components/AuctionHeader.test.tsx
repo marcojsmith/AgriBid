@@ -77,7 +77,7 @@ describe("AuctionHeader", () => {
     vi.mocked(useSession).mockReturnValue({
       data: null,
       isPending: false,
-    } as ReturnType<typeof useSession>);
+    });
     vi.mocked(useQuery).mockReturnValue(false);
     vi.mocked(useMutation).mockReturnValue(
       vi.fn() as unknown as ReturnType<typeof useMutation>
@@ -275,7 +275,7 @@ describe("AuctionHeader", () => {
     vi.mocked(useSession).mockReturnValue({
       data: null,
       isPending: false,
-    } as ReturnType<typeof useSession>);
+    });
 
     mockLocation.mockReturnValue({
       pathname: "http://malicious.com",

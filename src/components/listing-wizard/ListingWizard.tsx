@@ -105,10 +105,7 @@ const ListingWizardContent = () => {
       // Only sync with server if we have a categoryId, otherwise just keep it local
       if (formData.categoryId) {
         id = await saveDraft({
-          lotId:
-            editingLotId ??
-            (formData.lotId as Id<"lots"> | undefined) ??
-            undefined,
+          lotId: editingLotId ?? formData.lotId ?? undefined,
           title: formData.title,
           categoryId: formData.categoryId as Id<"equipmentCategories">,
           make: formData.make,
@@ -225,12 +222,12 @@ const ListingWizardContent = () => {
       if (finalLotId) {
         // Persist local edits before publishing
         const savedId = await saveDraft({
-          lotId: finalLotId as Id<"lots">,
+          lotId: finalLotId,
           ...auctionData,
         });
         // Then submit it
         await submitForReview({
-          lotId: savedId as Id<"lots">,
+          lotId: savedId,
         });
       } else {
         // Create a new auction directly as pending_review

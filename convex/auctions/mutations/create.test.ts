@@ -15,15 +15,6 @@ import {
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
-type SaveDraftArgs = Parameters<typeof saveDraftHandler>[1];
-type PartialDraftArgs = Partial<SaveDraftArgs> & {
-  title?: string;
-  images?: { front?: string; additional?: string[] };
-  lotId?: Id<"lots">;
-  startingPrice?: number;
-  durationDays?: number;
-};
-
 // helper types for mocking
 interface MockCtxType {
   db: {
@@ -142,9 +133,6 @@ describe("Create Mutations", () => {
     vi.mocked(auth.requireAuth).mockResolvedValue({
       userId: "u1",
       _id: "u1",
-    } as {
-      userId: string;
-      _id: string;
     });
     vi.mocked(auth.requireVerified).mockResolvedValue({
       userId: "u1",
@@ -395,13 +383,10 @@ describe("Create Mutations", () => {
   describe("saveDraftHandler", () => {
     it("should save new draft", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
-      const result = await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          title: "T",
-          images: { front: "img1" },
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      const result = await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        title: "T",
+        images: { front: "img1" },
+      });
       expect(result).toBe("id");
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "lots",
@@ -420,14 +405,11 @@ describe("Create Mutations", () => {
         sellerId: "u1",
         status: "draft",
       });
-      const result = await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          lotId: "a1" as Id<"lots">,
-          title: "T",
-          images: { front: "img1" },
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      const result = await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "a1",
+        title: "T",
+        images: { front: "img1" },
+      });
       expect(result).toBe("a1");
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
@@ -443,14 +425,11 @@ describe("Create Mutations", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "a1" as Id<"lots">,
-            title: "T",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1",
+          title: "T",
+          images: { front: "img1" },
+        })
       ).rejects.toThrow("Lot not found");
     });
 
@@ -462,14 +441,11 @@ describe("Create Mutations", () => {
         status: "draft",
       });
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "a1" as Id<"lots">,
-            title: "T",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1",
+          title: "T",
+          images: { front: "img1" },
+        })
       ).rejects.toThrow("You can only modify your own lots");
     });
 
@@ -480,31 +456,25 @@ describe("Create Mutations", () => {
         _id: "a1",
         sellerId: userId,
         status: "pending_review",
-      } as Doc<"lots">);
+      });
 
       // Should fail because title is missing in this update
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "a1" as Id<"lots">,
-            title: "",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1",
+          title: "",
+          images: { front: "img1" },
+        })
       ).rejects.toThrow("Title is required before submitting");
     });
 
     it("should truncate additional images in saveDraftHandler", async () => {
-      const result = await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          title: "Test",
-          images: {
-            additional: ["1", "2", "3", "4", "5", "6", "7"],
-          },
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      const result = await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        title: "Test",
+        images: {
+          additional: ["1", "2", "3", "4", "5", "6", "7"],
+        },
+      });
       expect(result).toBe("id");
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "lots",
@@ -519,55 +489,43 @@ describe("Create Mutations", () => {
     it("should throw if invalid lotId provided", async () => {
       mockCtx.db.normalizeId.mockReturnValue(null);
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "invalid",
-            title: "Test",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "invalid",
+          title: "Test",
+          images: { front: "img1" },
+        })
       ).rejects.toThrow("Invalid lotId provided");
     });
 
     it("should throw if valid lot id provided but lot missing", async () => {
       mockCtx.db.get.mockResolvedValue(null);
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            lotId: "a1" as Id<"lots">,
-            title: "Test",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1",
+          title: "Test",
+          images: { front: "img1" },
+        })
       ).rejects.toThrow("Lot not found");
     });
 
     it("should set minIncrement based on startingPrice", async () => {
       // < 10000
-      await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          title: "Test",
-          startingPrice: 5000,
-          images: { front: "img1" },
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        title: "Test",
+        startingPrice: 5000,
+        images: { front: "img1" },
+      });
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "lots",
         expect.objectContaining({ minIncrement: 100 })
       );
 
       // >= 10000
-      await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          title: "Test",
-          startingPrice: 15000,
-          images: { front: "img1" },
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        title: "Test",
+        startingPrice: 15000,
+        images: { front: "img1" },
+      });
       expect(mockCtx.db.insert).toHaveBeenCalledWith(
         "lots",
         expect.objectContaining({ minIncrement: 500 })
@@ -582,15 +540,12 @@ describe("Create Mutations", () => {
         status: "draft",
       });
 
-      await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          lotId: "a1" as Id<"lots">,
-          title: "Updated Draft",
-          startingPrice: 20000,
-          images: { front: "img1" },
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "a1",
+        title: "Updated Draft",
+        startingPrice: 20000,
+        images: { front: "img1" },
+      });
       expect(mockCtx.db.patch).toHaveBeenCalledWith(
         "lots",
         "a1",
@@ -609,14 +564,11 @@ describe("Create Mutations", () => {
         status: "draft",
       });
 
-      await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          lotId: "a1" as Id<"lots">,
-          title: "Updated Draft",
-          images: { front: "img1" },
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "a1",
+        title: "Updated Draft",
+        images: { front: "img1" },
+      });
 
       expect(updateCounter).not.toHaveBeenCalledWith(
         expect.anything(),
@@ -629,13 +581,10 @@ describe("Create Mutations", () => {
     it("should increment draft counter for new draft", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
 
-      await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          title: "New Draft",
-          images: { front: "img1" },
-        } as unknown as SaveDraftArgs
-      );
+      await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        title: "New Draft",
+        images: { front: "img1" },
+      });
 
       expect(updateCounter).toHaveBeenCalledWith(
         expect.anything(),
@@ -656,15 +605,12 @@ describe("Create Mutations", () => {
         startingPrice: 1000,
         reservePrice: 2000,
         images: { front: "img1" },
-      } as Doc<"lots">);
+      });
       const pastTime = Date.now() - 2 * MS_PER_MINUTE;
-      await saveDraftHandler(
-        mockCtx as unknown as MutationCtx,
-        {
-          lotId: "a1" as Id<"lots">,
-          startTime: pastTime,
-        } as PartialDraftArgs as SaveDraftArgs
-      );
+      await saveDraftHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "a1",
+        startTime: pastTime,
+      });
 
       const patchCall = mockCtx.db.patch.mock.calls.find(
         (call) => call[0] === "lots"
@@ -681,13 +627,10 @@ describe("Create Mutations", () => {
       mockCtx.db.query.mockReturnValue(cooldownQuery);
 
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            title: "T",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          title: "T",
+          images: { front: "img1" },
+        })
       ).rejects.toThrow("You're creating listings too quickly");
 
       expect(cooldownQuery.withIndex).toHaveBeenCalledWith(
@@ -705,12 +648,9 @@ describe("Create Mutations", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
 
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          images: { front: "img1" },
+        })
       ).rejects.toThrow("Title is required to create a new draft");
 
       expect(mockCtx.db.insert).not.toHaveBeenCalled();
@@ -720,12 +660,9 @@ describe("Create Mutations", () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
 
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            title: "T",
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          title: "T",
+        })
       ).rejects.toThrow("Images are required to create a new draft");
 
       expect(mockCtx.db.insert).not.toHaveBeenCalled();
@@ -744,13 +681,10 @@ describe("Create Mutations", () => {
         .mockReturnValueOnce(draftQuery);
 
       await expect(
-        saveDraftHandler(
-          mockCtx as unknown as MutationCtx,
-          {
-            title: "T",
-            images: { front: "img1" },
-          } as PartialDraftArgs as SaveDraftArgs
-        )
+        saveDraftHandler(mockCtx as unknown as MutationCtx, {
+          title: "T",
+          images: { front: "img1" },
+        })
       ).rejects.toThrow(
         `You have reached the maximum of ${MAX_DRAFTS_PER_USER.toString()} drafts`
       );

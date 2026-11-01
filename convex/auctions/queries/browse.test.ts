@@ -1169,7 +1169,7 @@ describe("getLotByIdHandler", () => {
       authUser: { _id: "auth1" },
       userId: "auth1",
       profile: null,
-    } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
+    });
 
     const result = await getLotByIdHandler(ctx as unknown as QueryCtx, {
       lotId: "private" as Id<"lots">,

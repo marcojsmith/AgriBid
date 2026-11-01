@@ -75,9 +75,6 @@ describe("Delete Mutations", () => {
     vi.mocked(auth.requireAuth).mockResolvedValue({
       userId: "u1",
       _id: "u1",
-    } as {
-      userId: string;
-      _id: string;
     });
     vi.mocked(auth.requireVerified).mockResolvedValue({
       userId: "u1",
@@ -115,7 +112,7 @@ describe("Delete Mutations", () => {
         sellerId: userId,
         status: "draft",
         images: { front: "img1" },
-      } as Doc<"lots">);
+      });
 
       const result = await deleteDraftHandler(
         mockCtx as unknown as MutationCtx,
@@ -135,7 +132,7 @@ describe("Delete Mutations", () => {
         _id: "a1",
         sellerId: userId,
         status: "approved",
-      } as Doc<"lots">);
+      });
 
       await expect(
         deleteDraftHandler(mockCtx as unknown as MutationCtx, {
@@ -152,7 +149,7 @@ describe("Delete Mutations", () => {
         sellerId: userId,
         status: "draft",
         conditionReportUrl: "ref1",
-      } as Doc<"lots">);
+      });
       mockCtx.storage.delete.mockRejectedValue(new Error("Storage Error"));
 
       const spy = vi.spyOn(console, "warn").mockImplementation(vi.fn());
