@@ -32,7 +32,7 @@ Last updated: 2026-11-16
 
 ## Done (last 10)
 
-- 2026-11-16: Orphan sweep (`convex/storageCleanup.ts`) is now an action that scans every reference row before deleting anything; Convex codegen regenerated (v0.17.36).
+- 2026-11-16: Orphan sweep (`convex/storageCleanup.ts`) is now an action that scans every reference row before deleting anything; Convex codegen verified current (no diff) (v0.17.36).
 - 2026-11-16: Combined dependency bump: prettier, convex, eslint 10 + plugin majors; lint fixes in source (supersedes #388 #389 #390 #391) (v0.17.35).
 - 2026-10-20: Per-job background cron switches on the admin Performance page, jobs default off (v0.17.32).
 - 2026-10-04: Split FeeManager, MetadataCatalog and FilterSidebar into focused modules (#302) (v0.17.31).
