@@ -16,8 +16,7 @@ export interface KYCFormData {
  *   with `message` describing the specific failure reason.
  */
 export type ValidationResult =
-  | { valid: true }
-  | { valid: false; message: string };
+  { valid: true } | { valid: false; message: string };
 
 /**
  * Manages KYC form state, initialization from optional data, and field validation helpers.

@@ -16,11 +16,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 export type VerificationStatus =
-  | "verified"
-  | "pending"
-  | "rejected"
-  | "none"
-  | "unknown";
+  "verified" | "pending" | "rejected" | "none" | "unknown";
 
 export interface KycDetails {
   firstName?: string;
