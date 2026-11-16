@@ -23,10 +23,7 @@ interface ReviewsSectionProps {
   reviews: Review[];
   /** Pagination status for reviews */
   reviewsStatus:
-    | "LoadingFirstPage"
-    | "CanLoadMore"
-    | "LoadingMore"
-    | "Exhausted";
+    "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
   /** Function to load more reviews */
   loadMoreReviews: (count: number) => void;
 }

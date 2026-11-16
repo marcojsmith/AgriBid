@@ -161,8 +161,7 @@ describe("AdminUsers Page", () => {
       // Lookup is typed as possibly-undefined: unregistered api paths fall
       // through to a fresh no-op mock below.
       const registered = mockMutations[apiPath as unknown as string] as
-        | ReturnType<typeof vi.fn>
-        | undefined;
+        ReturnType<typeof vi.fn> | undefined;
       const mutation = registered ?? vi.fn().mockResolvedValue(undefined);
       return Object.assign(mutation, { withOptimisticUpdate: vi.fn() });
     });
