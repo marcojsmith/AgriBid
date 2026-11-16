@@ -158,11 +158,19 @@ export const deleteOrphanedFiles = internalMutation({
     }
 
     const cutoff = Date.now() - STORAGE_SWEEP_MIN_AGE_MS;
+    const windowStart = cutoff - STORAGE_SWEEP_LOOKBACK_MS;
     let deleted = 0;
     for (const storageId of args.storageIds) {
       if (fresh.has(storageId)) continue;
       const file = await ctx.db.system.get("_storage", storageId);
-      if (!file || file._creationTime >= cutoff) continue;
+      // Defence in depth: re-check both bounds of the candidate window.
+      if (
+        !file ||
+        file._creationTime >= cutoff ||
+        file._creationTime < windowStart
+      ) {
+        continue;
+      }
       await safeDelete(ctx, storageId, "orphaned upload");
       deleted++;
     }
@@ -206,7 +214,9 @@ export async function runOrphanSweep(
   if (!Number.isInteger(maxPages) || maxPages < 1) {
     throw new Error("Orphan sweep: maxPagesPerTable must be an integer >= 1.");
   }
-  const scanStartedAt = Date.now();
+  // 60s margin so clock skew between the action and mutation runtimes can
+  // never hide a row created at the very start of the scan.
+  const scanStartedAt = Date.now() - 60_000;
   const inUse = new Set<string>();
 
   for (const table of REFERENCE_TABLES) {

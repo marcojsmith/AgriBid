@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import {
   STORAGE_SWEEP_BATCH_SIZE,
   STORAGE_SWEEP_MIN_AGE_MS,
@@ -63,6 +64,43 @@ async function storeFile(t: Tester, ageMs: number): Promise<Id<"_storage">> {
   return id;
 }
 
+/**
+ * Runs a db write as if it happened two hours ago, i.e. before any sweep
+ * started in the test, so rows are not treated as created mid-scan.
+ *
+ * @param t - convex-test instance.
+ * @param fn - Writes to perform.
+ */
+async function inPast(
+  t: Tester,
+  fn: (ctx: MutationCtx) => Promise<void>
+): Promise<void> {
+  vi.setSystemTime(NOW - 2 * 60 * 60 * 1000);
+  await t.run(fn);
+  vi.setSystemTime(NOW);
+}
+
+const profileRow = (userId: string, kycDocuments?: Id<"_storage">[]) => ({
+  userId,
+  name: "n",
+  role: "buyer" as const,
+  isVerified: false,
+  kycDocuments,
+  createdAt: 1,
+  updatedAt: 1,
+});
+
+const auctionRow = (bannerImage?: Id<"_storage">) => ({
+  title: "a",
+  startTime: 1,
+  endTime: 2,
+  status: "draft" as const,
+  createdBy: "admin",
+  createdAt: 1,
+  updatedAt: 1,
+  bannerImage,
+});
+
 async function exists(t: Tester, id: Id<"_storage">): Promise<boolean> {
   return await t.run(
     async (ctx) => (await ctx.db.system.get("_storage", id)) !== null
@@ -95,9 +133,9 @@ describe("orphaned-upload sweep", () => {
     const orphan = await storeFile(t, 3 * DAY);
     const referenced = await storeFile(t, 3 * DAY);
     const young = await storeFile(t, STORAGE_SWEEP_MIN_AGE_MS / 2);
-    await t.run((ctx) =>
-      ctx.db.insert("lots", lotFields({ front: referenced }))
-    );
+    await inPast(t, async (ctx) => {
+      await ctx.db.insert("lots", lotFields({ front: referenced }));
+    });
 
     const result = await sweep();
 
@@ -111,7 +149,7 @@ describe("orphaned-upload sweep", () => {
   it("keeps a file referenced only by a lot past the first page", async () => {
     const late = await storeFile(t, 3 * DAY);
     const conditionReport = await storeFile(t, 3 * DAY);
-    await t.run(async (ctx) => {
+    await inPast(t, async (ctx) => {
       for (let i = 0; i < 5; i++) {
         await ctx.db.insert("lots", lotFields({}));
       }
@@ -130,26 +168,11 @@ describe("orphaned-upload sweep", () => {
 
   it("keeps a KYC document referenced only by a profile past the first page", async () => {
     const kyc = await storeFile(t, 3 * DAY);
-    await t.run(async (ctx) => {
+    await inPast(t, async (ctx) => {
       for (let i = 0; i < 5; i++) {
-        await ctx.db.insert("profiles", {
-          userId: `u${i.toString()}`,
-          name: "n",
-          role: "buyer",
-          isVerified: false,
-          createdAt: 1,
-          updatedAt: 1,
-        });
+        await ctx.db.insert("profiles", profileRow(`u${i.toString()}`));
       }
-      await ctx.db.insert("profiles", {
-        userId: "last",
-        name: "n",
-        role: "buyer",
-        isVerified: false,
-        kycDocuments: [kyc],
-        createdAt: 1,
-        updatedAt: 1,
-      });
+      await ctx.db.insert("profiles", profileRow("last", [kyc]));
     });
 
     await sweep();
@@ -159,18 +182,9 @@ describe("orphaned-upload sweep", () => {
 
   it("keeps a banner referenced only by an auction past the first page", async () => {
     const banner = await storeFile(t, 3 * DAY);
-    await t.run(async (ctx) => {
-      const base = {
-        title: "a",
-        startTime: 1,
-        endTime: 2,
-        status: "draft" as const,
-        createdBy: "admin",
-        createdAt: 1,
-        updatedAt: 1,
-      };
-      for (let i = 0; i < 5; i++) await ctx.db.insert("auctions", base);
-      await ctx.db.insert("auctions", { ...base, bannerImage: banner });
+    await inPast(t, async (ctx) => {
+      for (let i = 0; i < 5; i++) await ctx.db.insert("auctions", auctionRow());
+      await ctx.db.insert("auctions", auctionRow(banner));
     });
 
     await sweep();
@@ -178,23 +192,36 @@ describe("orphaned-upload sweep", () => {
     expect(await exists(t, banner)).toBe(true);
   });
 
-  it("works with the production page size when tables exceed it", async () => {
-    const late = await storeFile(t, 3 * DAY);
-    await t.run(async (ctx) => {
-      for (let i = 0; i < 501; i++) {
-        await ctx.db.insert("lots", lotFields({}));
-      }
-      await ctx.db.insert("lots", lotFields({ front: late }));
-    });
+  it.each(["lots", "profiles", "auctions"] as const)(
+    "works with the production page size when %s exceeds it",
+    async (table) => {
+      const late = await storeFile(t, 3 * DAY);
+      await inPast(t, async (ctx) => {
+        for (let i = 0; i < 501; i++) {
+          if (table === "lots") await ctx.db.insert("lots", lotFields({}));
+          else if (table === "profiles")
+            await ctx.db.insert("profiles", profileRow(`u${i.toString()}`));
+          else await ctx.db.insert("auctions", auctionRow());
+        }
+        // The referencing row is last, i.e. past the first 500-row page.
+        if (table === "lots") {
+          await ctx.db.insert("lots", lotFields({ front: late }));
+        } else if (table === "profiles") {
+          await ctx.db.insert("profiles", profileRow("last", [late]));
+        } else {
+          await ctx.db.insert("auctions", auctionRow(late));
+        }
+      });
 
-    const result = await t.action(
-      internal.storageCleanup.sweepOrphanedUploads,
-      {}
-    );
+      const result = await t.action(
+        internal.storageCleanup.sweepOrphanedUploads,
+        {}
+      );
 
-    expect(result.deleted).toBe(0);
-    expect(await exists(t, late)).toBe(true);
-  });
+      expect(result.deleted).toBe(0);
+      expect(await exists(t, late)).toBe(true);
+    }
+  );
 
   it("deletes nothing when the scan cannot finish within the page limit", async () => {
     const orphan = await storeFile(t, 3 * DAY);
@@ -224,6 +251,20 @@ describe("orphaned-upload sweep", () => {
     expect(runMutation).not.toHaveBeenCalled();
     // Candidates are never even listed after a failed scan.
     expect(runQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("delete mutation skips files older than the lookback window", async () => {
+    const ancient = await storeFile(t, 30 * DAY);
+    const inWindow = await storeFile(t, 3 * DAY);
+
+    const deleted = await t.mutation(
+      internal.storageCleanup.deleteOrphanedFiles,
+      { storageIds: [ancient, inWindow], scanStartedAt: NOW }
+    );
+
+    expect(deleted).toBe(1);
+    expect(await exists(t, ancient)).toBe(true);
+    expect(await exists(t, inWindow)).toBe(false);
   });
 
   it("delete mutation skips missing and too-young files", async () => {
