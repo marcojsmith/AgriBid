@@ -27,12 +27,12 @@ Last updated: 2026-11-16
 
 1. Merge the stacked PRs #374 -> #378 (#378 targets `main`; merge with a merge commit, not squash, so the others register as merged).
 2. Finish the partial issues: #302 (`convex/seed.ts` ~2000 lines, `convex/admin/settings.ts`, `src/pages/admin/AdminLots.tsx`), #303 (live search deferral in `AdminLots`, always-on listeners), #304 (install `vitest-axe` and add axe checks), #299 (browser E2E needs a Clerk test user and a live Convex deployment).
-3. Regenerate and commit `convex/_generated/api.d.ts` (stale on `main`: `bunx convex dev --once` adds 8 lines).
-4. Add an ESLint override disabling `consistent-type-definitions` for `convex/**` (recorded as pending in the old notes).
-5. Decide the open questions below, then tidy `AGENTS.md` accordingly.
+3. Add an ESLint override disabling `consistent-type-definitions` for `convex/**` (recorded as pending in the old notes).
+4. Decide the open questions below, then tidy `AGENTS.md` accordingly.
 
 ## Done (last 10)
 
+- 2026-11-16: Orphan sweep (`convex/storageCleanup.ts`) is now an action that scans every reference row before deleting anything; Convex codegen regenerated (v0.17.36).
 - 2026-11-16: Combined dependency bump: prettier, convex, eslint 10 + plugin majors; lint fixes in source (supersedes #388 #389 #390 #391) (v0.17.35).
 - 2026-10-20: Per-job background cron switches on the admin Performance page, jobs default off (v0.17.32).
 - 2026-10-04: Split FeeManager, MetadataCatalog and FilterSidebar into focused modules (#302) (v0.17.31).

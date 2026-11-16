@@ -17,7 +17,7 @@ import {
 import { CRON_JOBS, cronSettingKey, findCronJob } from "./cronRegistry";
 import type { CronJobKey } from "./cronRegistry";
 import { requireAdmin } from "./lib/auth";
-import { sweepOrphanedUploadsHandler } from "./storageCleanup";
+import { runOrphanSweep } from "./storageCleanup";
 
 /**
  * Resolve whether a background job is enabled.
@@ -199,14 +199,17 @@ export const cleanupPresenceRecords = internalMutation({
 /**
  * Cron wrapper: sweep orphaned uploads unless the job is disabled.
  */
-export const sweepOrphanedUploads = internalMutation({
+export const sweepOrphanedUploads = internalAction({
   args: {},
   returns: v.object({ scanned: v.number(), deleted: v.number() }),
   handler: async (ctx) => {
-    if (!(await isCronJobEnabled(ctx, "sweep_orphaned_uploads"))) {
-      return { scanned: 0, deleted: 0 };
-    }
-    return await sweepOrphanedUploadsHandler(ctx);
+    // Gate first: a disabled job must do no work at all.
+    const enabled: boolean = await ctx.runQuery(
+      internal.cronJobs.isJobEnabled,
+      { key: "sweep_orphaned_uploads" }
+    );
+    if (!enabled) return { scanned: 0, deleted: 0 };
+    return await runOrphanSweep(ctx);
   },
 });
 

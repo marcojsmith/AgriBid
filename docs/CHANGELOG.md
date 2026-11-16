@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-11
 
+- Fix the orphaned-upload sweep data-loss bug: it now pages `lots`, `profiles` and `auctions` to completion in an action and deletes nothing if the scan cannot finish; regenerate `convex/_generated` (0.17.36)
 - Bump prettier 3.10, convex 1.50, eslint 10, @eslint/js 10, @convex-dev/eslint-plugin 5 with eslint-plugin-jsdoc 65, import-x 4.18 and react-hooks 7.1; fix the new lint errors in source (supersedes #388 #389 #390 #391; TypeScript 7 #392 held) (0.17.35)
 
 ## 2026-10

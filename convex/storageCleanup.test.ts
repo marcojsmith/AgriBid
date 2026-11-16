@@ -1,234 +1,265 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { convexTest } from "convex-test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { sweepOrphanedUploadsHandler } from "./storageCleanup";
+import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import {
   STORAGE_SWEEP_BATCH_SIZE,
-  STORAGE_SWEEP_LOOKBACK_MS,
   STORAGE_SWEEP_MIN_AGE_MS,
 } from "./constants";
-import type { MutationCtx } from "./_generated/server";
+import schema from "./schema";
+import { runOrphanSweep } from "./storageCleanup";
 
-describe("sweepOrphanedUploads mutation", () => {
-  let mockCtx: {
-    db: {
-      query: ReturnType<typeof vi.fn>;
-      system: {
-        query: ReturnType<typeof vi.fn>;
-      };
-    };
-    storage: {
-      delete: ReturnType<typeof vi.fn>;
-    };
-  };
+const modules = import.meta.glob("./**/*.*s");
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = new Date("2026-03-20T00:00:00Z").getTime();
 
-  const makeQueryChainMock = (
-    results: Record<string, unknown>[] = [],
-    page: { isDone: boolean; continueCursor: string } = {
-      isDone: true,
-      continueCursor: "",
-    }
-  ) => ({
-    withIndex: vi.fn().mockReturnThis(),
-    filter: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    collect: vi.fn().mockResolvedValue(results),
-    take: vi.fn((n: number) => Promise.resolve(results.slice(0, n))),
-    unique: vi.fn().mockResolvedValue(results[0] || null),
-    paginate: vi.fn().mockResolvedValue({
-      page: results,
-      isDone: page.isDone,
-      continueCursor: page.continueCursor,
-    }),
-  });
+type Tester = ReturnType<typeof convexTest>;
+
+const lotFields = (images: {
+  additional?: string[];
+  front?: string;
+}): {
+  title: string;
+  make: string;
+  model: string;
+  year: number;
+  operatingHours: number;
+  location: string;
+  reservePrice: number;
+  startingPrice: number;
+  currentPrice: number;
+  minIncrement: number;
+  sellerId: string;
+  status: "draft";
+  images: { additional?: string[]; front?: string };
+} => ({
+  title: "Lot",
+  make: "m",
+  model: "x",
+  year: 2020,
+  operatingHours: 1,
+  location: "l",
+  reservePrice: 1,
+  startingPrice: 1,
+  currentPrice: 1,
+  minIncrement: 1,
+  sellerId: "s",
+  status: "draft",
+  images,
+});
+
+/**
+ * Stores a file with the given age.
+ *
+ * @param t - convex-test instance.
+ * @param ageMs - Age in ms before NOW.
+ * @returns The new storage ID.
+ */
+async function storeFile(t: Tester, ageMs: number): Promise<Id<"_storage">> {
+  vi.setSystemTime(NOW - ageMs);
+  const id = await t.run((ctx) => ctx.storage.store(new Blob(["x"])));
+  vi.setSystemTime(NOW);
+  return id;
+}
+
+async function exists(t: Tester, id: Id<"_storage">): Promise<boolean> {
+  return await t.run(
+    async (ctx) => (await ctx.db.system.get("_storage", id)) !== null
+  );
+}
+
+describe("orphaned-upload sweep", () => {
+  let t: Tester;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-02T00:00:00Z"));
-
-    vi.resetAllMocks();
-    mockCtx = {
-      db: {
-        query: vi.fn().mockImplementation(() => makeQueryChainMock()),
-        system: {
-          query: vi.fn().mockImplementation(() => makeQueryChainMock()),
-        },
-      },
-      storage: {
-        delete: vi.fn(),
-      },
-    };
+    vi.setSystemTime(NOW);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    t = convexTest(schema, modules);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
-  it("should delete unreferenced files and keep referenced ones", async () => {
-    const lot = {
-      _id: "lot_1",
-      images: { front: "img_front", additional: ["img_extra"] },
-      conditionReportUrl: "report_pdf",
-    };
-    const legacyImagesLot = {
-      _id: "lot_2",
-      images: ["legacy_img_1", "legacy_img_2"],
-    };
-    const profile = { _id: "profile_1", kycDocuments: ["kyc_1"] };
-    const auction = { _id: "auction_1", bannerImage: "banner_1" };
-
-    mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
-      if (table === "lots") return makeQueryChainMock([lot, legacyImagesLot]);
-      if (table === "profiles") return makeQueryChainMock([profile]);
-      if (table === "auctions") return makeQueryChainMock([auction]);
-      return makeQueryChainMock();
+  const sweep = () =>
+    t.action(internal.storageCleanup.sweepOrphanedUploads, {
+      referencePageSize: 2,
     });
 
-    const storageFiles = [
-      { _id: "img_front", _creationTime: 1000 },
-      { _id: "report_pdf", _creationTime: 1000 },
-      { _id: "legacy_img_1", _creationTime: 1000 },
-      { _id: "kyc_1", _creationTime: 1000 },
-      { _id: "banner_1", _creationTime: 1000 },
-      { _id: "orphan_old", _creationTime: 1000 },
-      { _id: "orphan_old_2", _creationTime: 1000 },
-    ];
-    mockCtx.db.system.query = vi
-      .fn()
-      .mockImplementation(() => makeQueryChainMock(storageFiles));
-
-    const result = await sweepOrphanedUploadsHandler(
-      mockCtx as unknown as MutationCtx
+  it("deletes true orphans in the window and keeps referenced, young and out-of-window files", async () => {
+    // Store oldest first: convex-test keeps creation times monotonic.
+    const ancient = await storeFile(t, 30 * DAY);
+    const orphan = await storeFile(t, 3 * DAY);
+    const referenced = await storeFile(t, 3 * DAY);
+    const young = await storeFile(t, STORAGE_SWEEP_MIN_AGE_MS / 2);
+    await t.run((ctx) =>
+      ctx.db.insert("lots", lotFields({ front: referenced }))
     );
 
-    expect(result).toEqual({ scanned: 7, deleted: 2 });
-    expect(mockCtx.storage.delete).toHaveBeenCalledTimes(2);
-    expect(mockCtx.storage.delete).toHaveBeenCalledWith("orphan_old");
-    expect(mockCtx.storage.delete).toHaveBeenCalledWith("orphan_old_2");
+    const result = await sweep();
+
+    expect(result).toEqual({ scanned: 2, deleted: 1 });
+    expect(await exists(t, orphan)).toBe(false);
+    expect(await exists(t, referenced)).toBe(true);
+    expect(await exists(t, young)).toBe(true);
+    expect(await exists(t, ancient)).toBe(true);
   });
 
-  it("continues the reference scan when a table still has more rows", async () => {
-    const lot = {
-      _id: "lot_1",
-      images: { front: "img_front" },
-      conditionReportUrl: null,
-    };
-    const profileWithoutDocs = { _id: "profile_1" };
-    const auctionWithoutBanner = { _id: "auction_1", bannerImage: null };
-    const morePages = { isDone: false, continueCursor: "next-page" };
-
-    mockCtx.db.query = vi.fn().mockImplementation((table: string) => {
-      if (table === "lots") return makeQueryChainMock([lot], morePages);
-      if (table === "profiles")
-        return makeQueryChainMock([profileWithoutDocs], morePages);
-      if (table === "auctions")
-        return makeQueryChainMock([auctionWithoutBanner], morePages);
-      return makeQueryChainMock();
+  it("keeps a file referenced only by a lot past the first page", async () => {
+    const late = await storeFile(t, 3 * DAY);
+    const conditionReport = await storeFile(t, 3 * DAY);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 5; i++) {
+        await ctx.db.insert("lots", lotFields({}));
+      }
+      await ctx.db.insert("lots", {
+        ...lotFields({ additional: [late] }),
+        conditionReportUrl: conditionReport,
+      });
     });
 
-    const paginated = {
-      withIndex: vi.fn().mockReturnThis(),
-      filter: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      collect: vi.fn().mockResolvedValue([]),
-      take: vi.fn().mockResolvedValue([]),
-      unique: vi.fn().mockResolvedValue(null),
-      paginate: vi.fn().mockResolvedValue({
-        page: [],
-        isDone: true,
-        continueCursor: "",
-      }),
-    };
-    mockCtx.db.system.query = vi.fn().mockReturnValue(paginated);
+    const result = await sweep();
 
-    const result = await sweepOrphanedUploadsHandler(
-      mockCtx as unknown as MutationCtx
+    expect(result.deleted).toBe(0);
+    expect(await exists(t, late)).toBe(true);
+    expect(await exists(t, conditionReport)).toBe(true);
+  });
+
+  it("keeps a KYC document referenced only by a profile past the first page", async () => {
+    const kyc = await storeFile(t, 3 * DAY);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 5; i++) {
+        await ctx.db.insert("profiles", {
+          userId: `u${i.toString()}`,
+          name: "n",
+          role: "buyer",
+          isVerified: false,
+          createdAt: 1,
+          updatedAt: 1,
+        });
+      }
+      await ctx.db.insert("profiles", {
+        userId: "last",
+        name: "n",
+        role: "buyer",
+        isVerified: false,
+        kycDocuments: [kyc],
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    await sweep();
+
+    expect(await exists(t, kyc)).toBe(true);
+  });
+
+  it("keeps a banner referenced only by an auction past the first page", async () => {
+    const banner = await storeFile(t, 3 * DAY);
+    await t.run(async (ctx) => {
+      const base = {
+        title: "a",
+        startTime: 1,
+        endTime: 2,
+        status: "draft" as const,
+        createdBy: "admin",
+        createdAt: 1,
+        updatedAt: 1,
+      };
+      for (let i = 0; i < 5; i++) await ctx.db.insert("auctions", base);
+      await ctx.db.insert("auctions", { ...base, bannerImage: banner });
+    });
+
+    await sweep();
+
+    expect(await exists(t, banner)).toBe(true);
+  });
+
+  it("works with the production page size when tables exceed it", async () => {
+    const late = await storeFile(t, 3 * DAY);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 501; i++) {
+        await ctx.db.insert("lots", lotFields({}));
+      }
+      await ctx.db.insert("lots", lotFields({ front: late }));
+    });
+
+    const result = await t.action(
+      internal.storageCleanup.sweepOrphanedUploads,
+      {}
     );
 
     expect(result.deleted).toBe(0);
-    expect(mockCtx.storage.delete).not.toHaveBeenCalled();
+    expect(await exists(t, late)).toBe(true);
   });
 
-  it("should respect the batch-size cap when scanning storage", async () => {
-    const storageFiles = Array.from({ length: 600 }, (_, i) => ({
-      _id: `file_${String(i)}`,
-      _creationTime: 1000,
-    }));
-    mockCtx.db.system.query = vi
-      .fn()
-      .mockImplementation(() => makeQueryChainMock(storageFiles));
-
-    const result = await sweepOrphanedUploadsHandler(
-      mockCtx as unknown as MutationCtx
-    );
-
-    // STORAGE_SWEEP_BATCH_SIZE caps the scan; the backlog drains on later runs.
-    expect(result.scanned).toBe(STORAGE_SWEEP_BATCH_SIZE);
-    expect(result.deleted).toBe(STORAGE_SWEEP_BATCH_SIZE);
-    expect(mockCtx.storage.delete).toHaveBeenCalledTimes(
-      STORAGE_SWEEP_BATCH_SIZE
-    );
-  });
-
-  it("queries the newest files in a bounded creation-time window before the cutoff", async () => {
-    const storageQuery = makeQueryChainMock([]);
-    mockCtx.db.system.query = vi.fn().mockReturnValue(storageQuery);
-
-    await sweepOrphanedUploadsHandler(mockCtx as unknown as MutationCtx);
-
-    expect(storageQuery.withIndex).toHaveBeenCalledWith(
-      "by_creation_time",
-      expect.any(Function)
-    );
-    const rangeBuilder = storageQuery.withIndex.mock.calls[0][1] as (q: {
-      gte: ReturnType<typeof vi.fn>;
-      lt: ReturnType<typeof vi.fn>;
-    }) => unknown;
-    const range = {
-      gte: vi.fn().mockReturnThis(),
-      lt: vi.fn().mockReturnThis(),
-    };
-    rangeBuilder(range);
-
-    const now = Date.now();
-    const cutoff = now - STORAGE_SWEEP_MIN_AGE_MS;
-    expect(range.gte).toHaveBeenCalledWith(
-      "_creationTime",
-      cutoff - STORAGE_SWEEP_LOOKBACK_MS
-    );
-    expect(range.lt).toHaveBeenCalledWith("_creationTime", cutoff);
-    expect(storageQuery.order).toHaveBeenCalledWith("desc");
-    expect(storageQuery.take).toHaveBeenCalledWith(STORAGE_SWEEP_BATCH_SIZE);
-  });
-
-  it("should do nothing when storage has no old unreferenced files", async () => {
-    mockCtx.db.system.query = vi
-      .fn()
-      .mockImplementation(() => makeQueryChainMock([]));
-
-    const result = await sweepOrphanedUploadsHandler(
-      mockCtx as unknown as MutationCtx
-    );
-
-    expect(result).toEqual({ scanned: 0, deleted: 0 });
-    expect(mockCtx.storage.delete).not.toHaveBeenCalled();
-  });
-
-  it("should not throw when a storage delete fails", async () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {
-      // Intentional no-op: suppress expected safeDelete failure warnings
+  it("deletes nothing when the scan cannot finish within the page limit", async () => {
+    const orphan = await storeFile(t, 3 * DAY);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 6; i++) await ctx.db.insert("lots", lotFields({}));
     });
-    mockCtx.db.system.query = vi
-      .fn()
-      .mockImplementation(() =>
-        makeQueryChainMock([{ _id: "orphan_old", _creationTime: 1000 }])
-      );
-    mockCtx.storage.delete.mockRejectedValue(new Error("already deleted"));
 
-    const result = await sweepOrphanedUploadsHandler(
-      mockCtx as unknown as MutationCtx
+    await expect(
+      t.action(internal.storageCleanup.sweepOrphanedUploads, {
+        referencePageSize: 2,
+        maxPagesPerTable: 2,
+      })
+    ).rejects.toThrow(/nothing deleted/);
+    expect(await exists(t, orphan)).toBe(true);
+  });
+
+  it("deletes nothing when a page query fails partway through the scan", async () => {
+    const runQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ ids: [], continueCursor: "c", isDone: false })
+      .mockRejectedValueOnce(new Error("boom"));
+    const runMutation = vi.fn();
+
+    await expect(runOrphanSweep({ runQuery, runMutation })).rejects.toThrow(
+      "boom"
+    );
+    expect(runMutation).not.toHaveBeenCalled();
+    // Candidates are never even listed after a failed scan.
+    expect(runQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("delete mutation skips missing and too-young files", async () => {
+    const old = await storeFile(t, 3 * DAY);
+    const gone = await storeFile(t, 3 * DAY);
+    const young = await storeFile(t, STORAGE_SWEEP_MIN_AGE_MS / 2);
+    await t.run((ctx) => ctx.storage.delete(gone));
+
+    const deleted = await t.mutation(
+      internal.storageCleanup.deleteOrphanedFiles,
+      {
+        storageIds: [young, old, gone],
+      }
     );
 
-    expect(result).toEqual({ scanned: 1, deleted: 1 });
-    consoleSpy.mockRestore();
+    expect(deleted).toBe(1);
+    expect(await exists(t, young)).toBe(true);
+    expect(await exists(t, old)).toBe(false);
+  });
+
+  it("caps candidates per run at the batch size", async () => {
+    const ids = await t.run(async (ctx) => {
+      vi.setSystemTime(NOW - 3 * DAY);
+      const out: Id<"_storage">[] = [];
+      for (let i = 0; i < STORAGE_SWEEP_BATCH_SIZE + 5; i++) {
+        out.push(await ctx.storage.store(new Blob([String(i)])));
+      }
+      vi.setSystemTime(NOW);
+      return out;
+    });
+    expect(ids.length).toBeGreaterThan(STORAGE_SWEEP_BATCH_SIZE);
+
+    const candidates = await t.query(
+      internal.storageCleanup.listSweepCandidates,
+      {}
+    );
+    expect(candidates).toHaveLength(STORAGE_SWEEP_BATCH_SIZE);
   });
 });
