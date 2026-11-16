@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-10-30
+Last updated: 2026-11-16
 
 ## How to keep this file useful
 
@@ -21,7 +21,7 @@ Last updated: 2026-10-30
 - Same branch, admin Performance & Demo Mode settings: runtime-editable `demo_mode_enabled` + `presence_heartbeat_interval_ms` settings keys (atomic `updatePerformanceConfig` mutation), public `presence.getHeartbeatIntervalMs` read, `PresenceListener` paces itself from it (60s fallback while loading), `AdminPerformance` page at `/admin/performance` + System Settings tile; cron schedules stay code-fixed (stated in the UI copy). Presence 90s online threshold intentionally not yet derived from the interval (see `convex/constants.ts` note).
 - Same branch, review follow-ups: moderation queue badges now disclose capped results, public event status buckets retain newest rows before their cap, storage cleanup scans an overlapping creation-time window, image resizing is limited to two concurrent jobs, and Performance settings copy reflects current behaviour.
 - PR #330 `docs/restructure-docs`: one home per kind of information. Adds CHANGELOG, LESSONS, decisions, architecture overview, product docs; slims `AGENTS.md`; retires `Brief.md`, `Checklist.md`, `codebase_notes.md` and most of `conductor/` (originals kept in `docs/archive/`).
-- Dependabot: none open (#380-#384 all landed or superseded).
+- Dependabot: #392 (TS 7) held until typescript-eslint supports TS 7.
 
 ## Next (prioritised)
 
@@ -33,6 +33,7 @@ Last updated: 2026-10-30
 
 ## Done (last 10)
 
+- 2026-11-16: Combined dependency bump: prettier, convex, eslint 10 + plugin majors; lint fixes in source (supersedes #388 #389 #390 #391) (v0.17.35).
 - 2026-10-20: Per-job background cron switches on the admin Performance page, jobs default off (v0.17.32).
 - 2026-10-04: Split FeeManager, MetadataCatalog and FilterSidebar into focused modules (#302) (v0.17.31).
 - 2026-10-04: Set-based lot watch lookup, split MyBids into components, reuse the profile context (#303) (v0.17.30).

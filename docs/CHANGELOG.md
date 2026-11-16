@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-10
 
+- Bump prettier 3.10, convex 1.50, eslint 10, @eslint/js 10, @convex-dev/eslint-plugin 5 with eslint-plugin-jsdoc 65, import-x 4.18 and react-hooks 7.1; fix the new lint errors in source (supersedes #388 #389 #390 #391; TypeScript 7 #392 held) (0.17.35)
 - Bump typescript-eslint to 8.71.2 and remove the redundant type assertions its stricter rules flag (#380) (0.17.34)
 - Bump tailwindcss 4.3.3, globals 17.13, lucide-react 1.59 and vitest/@vitest/coverage-v8/@vitest/ui 5.0.5 together (#381 #382 #383 #384) (0.17.33)
 - Per-job background cron switches on `/admin/performance`; crons target gated wrappers and all jobs default to off (0.17.32)
