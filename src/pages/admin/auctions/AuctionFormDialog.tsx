@@ -101,11 +101,12 @@ export function AuctionFormDialog({
     existing: typeof existing;
     auctionId: typeof auctionId;
   } | null>(null);
-  if (
-    synced?.open !== open ||
-    synced?.existing !== existing ||
-    synced?.auctionId !== auctionId
-  ) {
+  const inSync =
+    synced !== null &&
+    synced.open === open &&
+    synced.existing === existing &&
+    synced.auctionId === auctionId;
+  if (!inSync) {
     setSynced({ open, existing, auctionId });
     if (open) {
       if (existing) {
