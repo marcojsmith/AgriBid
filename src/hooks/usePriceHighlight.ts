@@ -34,7 +34,6 @@ export function usePriceHighlight(
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHighlightedRef = useRef(false);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- setting highlight state in response to an external prop change is the point of this hook */
   useLayoutEffect(() => {
     let shouldScheduleTimeout = false;
 
@@ -67,7 +66,6 @@ export function usePriceHighlight(
       }
     };
   }, [price, duration]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return isHighlighted;
 }

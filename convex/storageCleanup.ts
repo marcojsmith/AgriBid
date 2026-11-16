@@ -80,27 +80,17 @@ async function scanLotsForStorageIds(
   ctx: MutationCtx,
   inUse: Set<string>
 ): Promise<string | null> {
-  let cursor: string | null = null;
-  let scanned = 0;
+  // One bounded batch per run keeps the work bounded.
+  const page = await ctx.db
+    .query("lots")
+    .paginate({ numItems: STORAGE_SWEEP_REFERENCE_BATCH_SIZE, cursor: null });
 
-  do {
-    const page = await ctx.db
-      .query("lots")
-      .paginate({ numItems: STORAGE_SWEEP_REFERENCE_BATCH_SIZE, cursor });
+  for (const lot of page.page) {
+    for (const id of extractImageStorageIds(lot.images)) inUse.add(id);
+    if (lot.conditionReportUrl) inUse.add(lot.conditionReportUrl);
+  }
 
-    for (const lot of page.page) {
-      for (const id of extractImageStorageIds(lot.images)) inUse.add(id);
-      if (lot.conditionReportUrl) inUse.add(lot.conditionReportUrl);
-    }
-
-    scanned += page.page.length;
-    cursor = page.isDone ? null : page.continueCursor;
-
-    // Stop after one batch per run to bound work
-    break;
-  } while (cursor !== null && scanned < STORAGE_SWEEP_REFERENCE_BATCH_SIZE);
-
-  return cursor;
+  return page.isDone ? null : page.continueCursor;
 }
 
 /**
@@ -115,26 +105,16 @@ async function scanProfilesForStorageIds(
   ctx: MutationCtx,
   inUse: Set<string>
 ): Promise<string | null> {
-  let cursor: string | null = null;
-  let scanned = 0;
+  // One bounded batch per run keeps the work bounded.
+  const page = await ctx.db
+    .query("profiles")
+    .paginate({ numItems: STORAGE_SWEEP_REFERENCE_BATCH_SIZE, cursor: null });
 
-  do {
-    const page = await ctx.db
-      .query("profiles")
-      .paginate({ numItems: STORAGE_SWEEP_REFERENCE_BATCH_SIZE, cursor });
+  for (const profile of page.page) {
+    for (const id of profile.kycDocuments ?? []) inUse.add(id);
+  }
 
-    for (const profile of page.page) {
-      for (const id of profile.kycDocuments ?? []) inUse.add(id);
-    }
-
-    scanned += page.page.length;
-    cursor = page.isDone ? null : page.continueCursor;
-
-    // Stop after one batch per run to bound work
-    break;
-  } while (cursor !== null && scanned < STORAGE_SWEEP_REFERENCE_BATCH_SIZE);
-
-  return cursor;
+  return page.isDone ? null : page.continueCursor;
 }
 
 /**
@@ -149,26 +129,16 @@ async function scanAuctionsForStorageIds(
   ctx: MutationCtx,
   inUse: Set<string>
 ): Promise<string | null> {
-  let cursor: string | null = null;
-  let scanned = 0;
+  // One bounded batch per run keeps the work bounded.
+  const page = await ctx.db
+    .query("auctions")
+    .paginate({ numItems: STORAGE_SWEEP_REFERENCE_BATCH_SIZE, cursor: null });
 
-  do {
-    const page = await ctx.db
-      .query("auctions")
-      .paginate({ numItems: STORAGE_SWEEP_REFERENCE_BATCH_SIZE, cursor });
+  for (const auction of page.page) {
+    if (auction.bannerImage) inUse.add(auction.bannerImage);
+  }
 
-    for (const auction of page.page) {
-      if (auction.bannerImage) inUse.add(auction.bannerImage);
-    }
-
-    scanned += page.page.length;
-    cursor = page.isDone ? null : page.continueCursor;
-
-    // Stop after one batch per run to bound work
-    break;
-  } while (cursor !== null && scanned < STORAGE_SWEEP_REFERENCE_BATCH_SIZE);
-
-  return cursor;
+  return page.isDone ? null : page.continueCursor;
 }
 
 /**

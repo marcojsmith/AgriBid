@@ -50,9 +50,11 @@ export const AuctionCard = ({
   const [isWatched, setIsWatched] = useState(initialIsWatched);
   const liveWindow = useLotLiveWindow(auction);
 
-  const prevInitialIsWatchedRef = useRef(initialIsWatched);
-  if (prevInitialIsWatchedRef.current !== initialIsWatched) {
-    prevInitialIsWatchedRef.current = initialIsWatched;
+  // Re-sync local state when the prop changes (state-during-render pattern).
+  const [prevInitialIsWatched, setPrevInitialIsWatched] =
+    useState(initialIsWatched);
+  if (prevInitialIsWatched !== initialIsWatched) {
+    setPrevInitialIsWatched(initialIsWatched);
     setIsWatched(initialIsWatched);
   }
 
@@ -202,7 +204,9 @@ export const AuctionCard = ({
                   <Gavel className="h-3.5 w-3.5" />
                 </div>
                 <span className="sr-only">
-                  {auction.status === "sold" ? "Sold auction" : "Closed auction"}
+                  {auction.status === "sold"
+                    ? "Sold auction"
+                    : "Closed auction"}
                 </span>
               </div>
             )}
@@ -214,7 +218,9 @@ export const AuctionCard = ({
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
                 </div>
-                <span className="sr-only">Scheduled auction, not yet started</span>
+                <span className="sr-only">
+                  Scheduled auction, not yet started
+                </span>
               </div>
             )}
           </div>

@@ -157,15 +157,9 @@ export async function calculateAndRecordFees(
   let sellerFeesAdded = 0;
 
   for (const fee of activeFees) {
-    let calculatedAmount = 0;
-
-    if (fee.feeType === "percentage") {
-      calculatedAmount = salePrice * fee.value;
-    } else {
-      calculatedAmount = fee.value;
-    }
-
-    calculatedAmount = Math.round(calculatedAmount * 100) / 100;
+    const rawAmount =
+      fee.feeType === "percentage" ? salePrice * fee.value : fee.value;
+    const calculatedAmount = Math.round(rawAmount * 100) / 100;
 
     if (fee.appliesTo === "both" || fee.appliesTo === "seller") {
       const existing = await ctx.db
