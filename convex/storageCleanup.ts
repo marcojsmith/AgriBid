@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   internalAction,
   internalMutation,
@@ -25,6 +25,33 @@ const referenceTableValidator = v.union(
 );
 
 const REFERENCE_TABLES = ["lots", "profiles", "auctions"] as const;
+
+/** Max rows re-read per table by the delete mutation's freshness re-check. */
+const RECHECK_ROW_CAP = 500;
+
+/**
+ * Extracts every storage ID referenced by a reference-table row.
+ *
+ * @param table - Which reference table the row came from.
+ * @param row - The row (shape depends on `table`).
+ * @returns Referenced storage IDs.
+ */
+function idsFromRow(
+  table: (typeof REFERENCE_TABLES)[number],
+  row: Doc<"lots"> | Doc<"profiles"> | Doc<"auctions">
+): string[] {
+  if (table === "lots") {
+    const lot = row as Doc<"lots">;
+    const ids = extractImageStorageIds(lot.images);
+    if (lot.conditionReportUrl) ids.push(lot.conditionReportUrl);
+    return ids;
+  }
+  if (table === "profiles") {
+    return [...((row as Doc<"profiles">).kycDocuments ?? [])];
+  }
+  const banner = (row as Doc<"auctions">).bannerImage;
+  return banner ? [banner] : [];
+}
 
 /** Result of one orphan sweep run. */
 export interface SweepResult {
@@ -58,25 +85,10 @@ export const listReferencedStorageIdsPage = internalQuery({
   }),
   handler: async (ctx, args) => {
     const paginationOpts = { numItems: args.numItems, cursor: args.cursor };
+    const table = args.table;
+    const page = await ctx.db.query(table).paginate(paginationOpts);
     const ids: string[] = [];
-    let page;
-    if (args.table === "lots") {
-      page = await ctx.db.query("lots").paginate(paginationOpts);
-      for (const lot of page.page) {
-        ids.push(...extractImageStorageIds(lot.images));
-        if (lot.conditionReportUrl) ids.push(lot.conditionReportUrl);
-      }
-    } else if (args.table === "profiles") {
-      page = await ctx.db.query("profiles").paginate(paginationOpts);
-      for (const profile of page.page) {
-        ids.push(...(profile.kycDocuments ?? []));
-      }
-    } else {
-      page = await ctx.db.query("auctions").paginate(paginationOpts);
-      for (const auction of page.page) {
-        if (auction.bannerImage) ids.push(auction.bannerImage);
-      }
-    }
+    for (const row of page.page) ids.push(...idsFromRow(table, row));
     return {
       ids,
       continueCursor: page.continueCursor,
@@ -113,17 +125,42 @@ export const listSweepCandidates = internalQuery({
  * Deletes the given candidate files. Re-reads each from `_storage` inside the
  * transaction, skips files that no longer exist, and re-checks the age cutoff
  * so a candidate can never be younger than {@link STORAGE_SWEEP_MIN_AGE_MS}
- * at deletion time. The caller must already have proven each ID unreferenced.
+ * at deletion time.
+ *
+ * Race guard: the caller proved the candidates unreferenced as of the scan,
+ * which spans many transactions. Here, in ONE transaction, every row of the
+ * three reference tables created at or after `scanStartedAt` is re-read and
+ * any candidate it references is spared. If more than
+ * {@link RECHECK_ROW_CAP} such rows exist in any table the re-check cannot
+ * finish, so nothing is deleted.
  *
  * @returns The number of files deleted.
  */
 export const deleteOrphanedFiles = internalMutation({
-  args: { storageIds: v.array(v.id("_storage")) },
+  args: {
+    storageIds: v.array(v.id("_storage")),
+    scanStartedAt: v.number(),
+  },
   returns: v.number(),
   handler: async (ctx, args) => {
+    const fresh = new Set<string>();
+    for (const table of REFERENCE_TABLES) {
+      const rows = await ctx.db
+        .query(table)
+        .withIndex("by_creation_time", (q) =>
+          q.gte("_creationTime", args.scanStartedAt)
+        )
+        .take(RECHECK_ROW_CAP + 1);
+      if (rows.length > RECHECK_ROW_CAP) return 0;
+      for (const row of rows) {
+        for (const id of idsFromRow(table, row)) fresh.add(id);
+      }
+    }
+
     const cutoff = Date.now() - STORAGE_SWEEP_MIN_AGE_MS;
     let deleted = 0;
     for (const storageId of args.storageIds) {
+      if (fresh.has(storageId)) continue;
       const file = await ctx.db.system.get("_storage", storageId);
       if (!file || file._creationTime >= cutoff) continue;
       await safeDelete(ctx, storageId, "orphaned upload");
@@ -142,12 +179,14 @@ export const deleteOrphanedFiles = internalMutation({
  * throws, or a table needs more than `maxPagesPerTable` pages, the error
  * propagates BEFORE any candidate is selected, so nothing is deleted.
  *
- * Remaining race (accepted): a file older than the minimum age that is
- * attached to a document after the scan passed its table and before the
- * delete mutation runs would be deleted. Fresh uploads are protected by the
- * age cutoff; this needs a >1 day old, previously unreferenced upload to be
- * newly attached within the few seconds a sweep takes. Candidates are listed
- * after the scan and deleted straight away to keep that window minimal.
+ * Races: the scan spans many transactions (possibly minutes). Rows CREATED
+ * after the scan began are re-checked inside the delete transaction
+ * (`scanStartedAt`), which closes the insert race. Remaining (accepted)
+ * window: an EXISTING row EDITED mid-scan to reference an >1 day old,
+ * previously unreferenced file, after its table's scan pass and before the
+ * delete. Fresh uploads are covered by the age cutoff; attaching a day-old
+ * upload within a sweep's few minutes is rare, and these tables have no
+ * `updatedAt` index to close it cheaply.
  *
  * @param ctx - Any context able to run queries and mutations.
  * @param options - Optional page-size / page-count overrides.
@@ -161,6 +200,13 @@ export async function runOrphanSweep(
     options.referencePageSize ?? STORAGE_SWEEP_REFERENCE_BATCH_SIZE;
   const maxPages =
     options.maxPagesPerTable ?? STORAGE_SWEEP_MAX_REFERENCE_PAGES;
+  if (!Number.isInteger(numItems) || numItems < 1) {
+    throw new Error("Orphan sweep: referencePageSize must be an integer >= 1.");
+  }
+  if (!Number.isInteger(maxPages) || maxPages < 1) {
+    throw new Error("Orphan sweep: maxPagesPerTable must be an integer >= 1.");
+  }
+  const scanStartedAt = Date.now();
   const inUse = new Set<string>();
 
   for (const table of REFERENCE_TABLES) {
@@ -195,6 +241,7 @@ export async function runOrphanSweep(
     orphans.length > 0
       ? await ctx.runMutation(internal.storageCleanup.deleteOrphanedFiles, {
           storageIds: orphans,
+          scanStartedAt,
         })
       : 0;
 

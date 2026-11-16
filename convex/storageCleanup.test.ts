@@ -236,12 +236,60 @@ describe("orphaned-upload sweep", () => {
       internal.storageCleanup.deleteOrphanedFiles,
       {
         storageIds: [young, old, gone],
+        scanStartedAt: NOW,
       }
     );
 
     expect(deleted).toBe(1);
     expect(await exists(t, young)).toBe(true);
     expect(await exists(t, old)).toBe(false);
+  });
+
+  it("delete mutation spares a candidate referenced by a row created after the scan began", async () => {
+    const old = await storeFile(t, 3 * DAY);
+    const other = await storeFile(t, 3 * DAY);
+    await t.run((ctx) => ctx.db.insert("lots", lotFields({ front: old })));
+
+    const deleted = await t.mutation(
+      internal.storageCleanup.deleteOrphanedFiles,
+      { storageIds: [old, other], scanStartedAt: NOW - 1000 }
+    );
+
+    expect(deleted).toBe(1);
+    expect(await exists(t, old)).toBe(true);
+    expect(await exists(t, other)).toBe(false);
+  });
+
+  it("delete mutation deletes nothing when there are too many fresh rows to re-check", async () => {
+    const old = await storeFile(t, 3 * DAY);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 501; i++) await ctx.db.insert("lots", lotFields({}));
+    });
+
+    const deleted = await t.mutation(
+      internal.storageCleanup.deleteOrphanedFiles,
+      { storageIds: [old], scanStartedAt: NOW - 1000 }
+    );
+
+    expect(deleted).toBe(0);
+    expect(await exists(t, old)).toBe(true);
+  });
+
+  it("rejects invalid page options before doing any work", async () => {
+    const runQuery = vi.fn();
+    await expect(
+      runOrphanSweep(
+        { runQuery, runMutation: vi.fn() },
+        { referencePageSize: 0 }
+      )
+    ).rejects.toThrow(/referencePageSize/);
+    await expect(
+      runOrphanSweep(
+        { runQuery, runMutation: vi.fn() },
+        { maxPagesPerTable: 1.5 }
+      )
+    ).rejects.toThrow(/maxPagesPerTable/);
+    expect(runQuery).not.toHaveBeenCalled();
   });
 
   it("caps candidates per run at the batch size", async () => {
