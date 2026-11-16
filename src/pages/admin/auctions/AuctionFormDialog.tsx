@@ -1,5 +1,5 @@
 // app/src/pages/admin/auctions/AuctionFormDialog.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -94,28 +94,41 @@ export function AuctionFormDialog({
     cleanupUploads,
   } = useFileUpload({ maxFiles: 1, allowedTypes: ["image/png", "image/jpeg"] });
 
-  useEffect(() => {
-    if (!open) return;
-    if (existing) {
-      setForm({
-        title: existing.title,
-        description: existing.description ?? "",
-        startTime: toLocalInputValue(existing.startTime),
-        endTime: toLocalInputValue(existing.endTime),
-        defaultBuyerPremiumPct:
-          existing.defaultBuyerPremiumPct !== undefined
-            ? String(existing.defaultBuyerPremiumPct * 100)
-            : "",
-        defaultSellerCommissionPct:
-          existing.defaultSellerCommissionPct !== undefined
-            ? String(existing.defaultSellerCommissionPct * 100)
-            : "",
-      });
-    } else if (!auctionId) {
-      setForm(EMPTY_FORM);
-      setFiles([]);
+  // Reset the form when the dialog opens or the edited auction changes
+  // (state-during-render pattern, avoids setState inside an effect).
+  const [synced, setSynced] = useState<{
+    open: boolean;
+    existing: typeof existing;
+    auctionId: typeof auctionId;
+  } | null>(null);
+  if (
+    synced?.open !== open ||
+    synced?.existing !== existing ||
+    synced?.auctionId !== auctionId
+  ) {
+    setSynced({ open, existing, auctionId });
+    if (open) {
+      if (existing) {
+        setForm({
+          title: existing.title,
+          description: existing.description ?? "",
+          startTime: toLocalInputValue(existing.startTime),
+          endTime: toLocalInputValue(existing.endTime),
+          defaultBuyerPremiumPct:
+            existing.defaultBuyerPremiumPct !== undefined
+              ? String(existing.defaultBuyerPremiumPct * 100)
+              : "",
+          defaultSellerCommissionPct:
+            existing.defaultSellerCommissionPct !== undefined
+              ? String(existing.defaultSellerCommissionPct * 100)
+              : "",
+        });
+      } else if (!auctionId) {
+        setForm(EMPTY_FORM);
+        setFiles([]);
+      }
     }
-  }, [open, existing, auctionId, setFiles]);
+  }
 
   const handleSave = async () => {
     const title = form.title.trim();

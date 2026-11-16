@@ -170,7 +170,6 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     if (filesToUpload.length === 0) return [];
 
     setIsUploading(true);
-    let storageIds: string[] = [];
     try {
       const uploadResults = await Promise.allSettled(
         filesToUpload.map(async (file) => {
@@ -200,7 +199,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       const failures = uploadResults.filter(
         (r): r is PromiseRejectedResult => r.status === "rejected"
       );
-      storageIds = uploadResults
+      const storageIds = uploadResults
         .filter(
           (r): r is PromiseFulfilledResult<string> => r.status === "fulfilled"
         )

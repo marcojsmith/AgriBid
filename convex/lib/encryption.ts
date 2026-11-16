@@ -128,8 +128,11 @@ export async function encryptPII(
     return `${ivBase64}.${encryptedBase64}`;
   } catch (err) {
     console.error("Encryption error:", err);
-    throw new Error(
-      `encryptPII failed: ${err instanceof Error ? err.message : String(err)}`
+    throw Object.assign(
+      new Error(
+        `encryptPII failed: ${err instanceof Error ? err.message : String(err)}`
+      ),
+      { cause: err }
     );
   }
 }
@@ -197,8 +200,11 @@ export async function decryptPII(
     console.error("Decryption error:", err);
     // If it looked like encrypted but failed to decrypt (e.g. wrong key),
     // it's safer to throw than to return garbage or the "fake" encrypted string.
-    throw new Error(
-      `Decryption failed: ${err instanceof Error ? err.message : String(err)}`
+    throw Object.assign(
+      new Error(
+        `Decryption failed: ${err instanceof Error ? err.message : String(err)}`
+      ),
+      { cause: err }
     );
   }
 }
