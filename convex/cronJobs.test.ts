@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api, internal } from "./_generated/api";
@@ -141,9 +141,10 @@ describe("cronJobs", () => {
     expect(
       await t.mutation(internal.cronJobs.cleanupAbandonedDrafts, {})
     ).toEqual({ deleted: 0, errors: 0 });
-    expect(
-      await t.mutation(internal.cronJobs.sweepOrphanedUploads, {})
-    ).toEqual({ scanned: 0, deleted: 0 });
+    expect(await t.action(internal.cronJobs.sweepOrphanedUploads, {})).toEqual({
+      scanned: 0,
+      deleted: 0,
+    });
     expect(
       await t.mutation(internal.cronJobs.cleanupPresenceRecords, {})
     ).toBeNull();
@@ -153,6 +154,34 @@ describe("cronJobs", () => {
     expect(
       await t.action(internal.cronJobs.processErrorReports, {})
     ).toBeNull();
+  });
+
+  it("sweepOrphanedUploads deletes nothing while disabled and sweeps once enabled", async () => {
+    vi.useFakeTimers();
+    try {
+      const old = Date.now() - 3 * 24 * 60 * 60 * 1000;
+      vi.setSystemTime(old);
+      // Build everything at the old time: convex-test keeps creation times
+      // monotonic, so the file must not be created after "newer" rows.
+      const t = await setup();
+      const orphan = await t.run((ctx) => ctx.storage.store(new Blob(["x"])));
+      vi.setSystemTime(old + 3 * 24 * 60 * 60 * 1000);
+      const present = () =>
+        t.run(
+          async (ctx) => (await ctx.db.system.get("_storage", orphan)) !== null
+        );
+
+      await t.action(internal.cronJobs.sweepOrphanedUploads, {});
+      expect(await present()).toBe(true);
+
+      await t.mutation(internal.cronJobs.setAllCronJobsEnabled, {
+        enabled: true,
+      });
+      await t.action(internal.cronJobs.sweepOrphanedUploads, {});
+      expect(await present()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("gated wrappers run their job once enabled", async () => {

@@ -114,6 +114,11 @@ export const STORAGE_SWEEP_LOOKBACK_MS = 7 * MS_PER_DAY;
 // This bounds the number of documents read from each table per sweep run.
 export const STORAGE_SWEEP_REFERENCE_BATCH_SIZE = 500;
 
+// Safety valve on the reference scan: the maximum number of pages read from
+// any one table. Exceeding it aborts the sweep with nothing deleted (a scan
+// that cannot finish must never lead to deletions).
+export const STORAGE_SWEEP_MAX_REFERENCE_PAGES = 400;
+
 /**
  * Support ticket constants.
  */
