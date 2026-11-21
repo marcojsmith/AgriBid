@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgriBid Screen Mockups</title>
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap">
+<style>
+/* Layout: review board (neutral graphite) framing live product mockups in AgriBid's own tokens.
+   Each screen renders into a desktop frame and a 375px phone frame; container queries switch the layout.
+   All times derive from one fixed "now": Thu 20 Nov, 05:48 SAST. */
+:root{
+  /* board */
+  --board-bg:#efede8; --board-fg:#1f2320; --board-muted:#575c57; --board-line:#d6d3cb; --board-panel:#f8f7f3; --board-chrome:#e2dfd7;
+  /* AgriBid app (src/index.css) */
+  --a-bg:hsl(40 30% 98%); --a-fg:hsl(24 10% 10%); --a-card:#fff; --a-primary:hsl(142 30% 25%); --a-primary-fg:hsl(40 30% 98%);
+  --a-btn:hsl(142 30% 25%); --a-btn-fg:hsl(40 30% 98%);
+  --a-primary-soft:hsl(142 25% 93%); --a-brown:hsl(35 30% 45%); --a-muted:hsl(40 20% 92%); --a-muted-fg:hsl(24 10% 36%); --a-border:hsl(24 10% 86%);
+  --a-hero:hsl(142 32% 17%); --a-hero-fg:hsl(40 30% 96%); --a-hero-muted:hsl(142 12% 78%); --hero-h:142 32% 12%;
+  /* status system: solid fills carry white text (>= 4.5:1); soft pills carry dark text */
+  --live-solid:hsl(142 58% 28%); --soon-solid:hsl(32 88% 34%); --urgent-solid:hsl(0 68% 42%);
+  --live-soft:hsl(142 45% 92%); --soon-soft:hsl(38 90% 92%); --urgent-soft:hsl(0 80% 95%);
+  --ok-fg:hsl(142 60% 24%); --warn-fg:hsl(30 90% 28%); --urgent-fg:hsl(0 68% 40%);
+  --img-filter:none;
+  --font-display:"Lora",Georgia,"Times New Roman",serif; --font-ui:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --board-bg:#151816; --board-fg:#e8e9e6; --board-muted:#a0a6a0; --board-line:#2c312d; --board-panel:#1b1f1c; --board-chrome:#262b27;
+  --a-bg:hsl(150 6% 7%); --a-fg:hsl(40 20% 95%); --a-card:hsl(150 5% 11%); --a-primary:hsl(142 35% 58%); --a-primary-fg:hsl(142 50% 8%);
+  --a-btn:hsl(142 36% 32%); --a-btn-fg:hsl(40 30% 98%);
+  --a-primary-soft:hsl(142 20% 15%); --a-brown:hsl(35 35% 62%); --a-muted:hsl(150 4% 15%); --a-muted-fg:hsl(40 6% 68%); --a-border:hsl(150 4% 22%);
+  --a-hero:hsl(142 30% 12%); --a-hero-fg:hsl(40 30% 96%); --a-hero-muted:hsl(142 12% 74%); --hero-h:142 30% 8%;
+  --live-solid:hsl(142 58% 28%); --soon-solid:hsl(32 88% 34%); --urgent-solid:hsl(0 68% 42%);
+  --live-soft:hsl(142 30% 16%); --soon-soft:hsl(38 40% 16%); --urgent-soft:hsl(0 40% 17%);
+  --ok-fg:hsl(142 50% 64%); --warn-fg:hsl(38 90% 68%); --urgent-fg:hsl(0 80% 70%);
+  --img-filter:brightness(.92);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --board-bg:#151816; --board-fg:#e8e9e6; --board-muted:#a0a6a0; --board-line:#2c312d; --board-panel:#1b1f1c; --board-chrome:#262b27;
+  --a-bg:hsl(150 6% 7%); --a-fg:hsl(40 20% 95%); --a-card:hsl(150 5% 11%); --a-primary:hsl(142 35% 58%); --a-primary-fg:hsl(142 50% 8%);
+  --a-btn:hsl(142 36% 32%); --a-btn-fg:hsl(40 30% 98%);
+  --a-primary-soft:hsl(142 20% 15%); --a-brown:hsl(35 35% 62%); --a-muted:hsl(150 4% 15%); --a-muted-fg:hsl(40 6% 68%); --a-border:hsl(150 4% 22%);
+  --a-hero:hsl(142 30% 12%); --a-hero-fg:hsl(40 30% 96%); --a-hero-muted:hsl(142 12% 74%); --hero-h:142 30% 8%;
+  --live-solid:hsl(142 58% 28%); --soon-solid:hsl(32 88% 34%); --urgent-solid:hsl(0 68% 42%);
+  --live-soft:hsl(142 30% 16%); --soon-soft:hsl(38 40% 16%); --urgent-soft:hsl(0 40% 17%);
+  --ok-fg:hsl(142 50% 64%); --warn-fg:hsl(38 90% 68%); --urgent-fg:hsl(0 80% 70%);
+  --img-filter:brightness(.92);
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--board-bg);color:var(--board-fg);font-family:var(--font-ui);font-size:15px;line-height:1.5;margin:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.board{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.board-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:16px}
+.board-head h1{font-family:var(--font-display);font-weight:600;font-size:clamp(26px,4vw,34px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.board-head p{margin:4px 0 0;color:var(--board-muted);max-width:64ch}
+.tabs{display:flex;gap:4px;padding:4px;background:var(--board-chrome);border-radius:6px;flex-wrap:wrap}
+.tabs a{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:4px;color:var(--board-muted);text-decoration:none;font-weight:500;font-size:14px}
+.tabs a[aria-current="page"]{background:var(--board-panel);color:var(--board-fg);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.tabs a:focus-visible,.seg button:focus-visible,.board button:focus-visible,.desk-scroll:focus-visible{outline:2px solid var(--a-primary);outline-offset:2px}
+.stage{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+.frame{border:1px solid var(--board-line);border-radius:8px;overflow:hidden;background:var(--board-panel)}
+.chrome{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--board-chrome);font-size:12px;color:var(--board-muted)}
+.chrome i{width:9px;height:9px;border-radius:50%;background:var(--board-line);display:inline-block;flex:none}
+.chrome .url{margin-left:8px;padding:2px 10px;background:var(--board-panel);border-radius:4px;flex:1;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chrome .vp{white-space:nowrap}
+@media (max-width:600px){.chrome .vp{display:none}.chrome .url{max-width:none}}
+.desk-scroll{overflow-x:auto}
+.desk-scroll .app{min-width:1120px;height:820px}
+.lower{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
+@media (min-width:860px){.lower{grid-template-columns:400px minmax(0,1fr)}}
+.phone{width:fit-content;max-width:100%;margin:0 auto;border:1px solid var(--board-line);border-radius:28px;padding:10px;background:var(--board-chrome);overflow-x:auto}
+.phone .app{height:780px;border-radius:20px;width:375px;flex:none;scrollbar-gutter:auto;scrollbar-width:none}
+.notes{display:flex;flex-direction:column;gap:14px;min-width:0}
+.notes h2{font-family:var(--font-display);font-size:21px;font-weight:600;margin:0}
+.notes .lede{margin:0;color:var(--board-muted)}
+.notes ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;border-top:1px solid var(--board-line)}
+.notes li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid var(--board-line)}
+.notes li b{display:block;font-weight:600}
+.notes li span{color:var(--board-muted);font-size:14px}
+.notes .n{font-variant-numeric:tabular-nums;font-weight:600;color:var(--board-muted);font-size:13px;padding-top:2px}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:var(--soon-soft);color:var(--warn-fg);margin-left:6px;vertical-align:1px}
+.state-ctl{display:flex;flex-direction:column;gap:6px}
+.state-ctl label,.state-ctl .lbl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--board-muted)}
+.seg{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:var(--board-chrome);border-radius:6px}
+.seg button{font:inherit;font-size:13px;font-weight:500;border:0;background:transparent;color:var(--board-muted);min-height:40px;padding:0 12px;border-radius:4px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--board-panel);color:var(--board-fg);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.compare{font-size:14px;color:var(--board-muted);margin:0}
+@media (max-width:420px){.notes{padding-inline:16px}.lower{margin-inline:-16px}.phone{padding:0;border:0;border-radius:0;background:none;display:flex;justify-content:center;overflow:visible;width:100%}}
+
+/* ============ AgriBid app ============ */
+.app{container-type:inline-size;overflow-y:auto;overflow-x:hidden;background:var(--a-bg);color:var(--a-fg);font-family:var(--font-ui);font-size:14px;line-height:1.5;position:relative;scrollbar-gutter:stable;scrollbar-width:thin}
+.app *{min-width:0}
+.app .rules-m{display:inline-flex;min-height:44px;align-items:center;gap:6px}
+@container (min-width:760px){.app .rules-m{display:none}}
+:where(.app) button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:where(.app) a{color:inherit;text-decoration:none}
+:where(.app) ul,:where(.app) ol{margin:0;padding:0;list-style:none}
+:where(.app) p{margin:0}
+.app :focus-visible{outline:2px solid var(--a-primary);outline-offset:2px}
+.app .view button:focus-visible,.app .segctl button:focus-visible,.app .lot.row>.icon-btn:focus-visible{outline-offset:-2px}
+.app .segctl button[aria-pressed="true"]:focus-visible{outline-color:var(--a-btn-fg)}
+.app .view button[aria-pressed="true"]:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--a-primary)}
+.app .hero :focus-visible{outline-color:var(--a-hero-fg)}
+.app h1,.app h2,.app h3{font-family:var(--font-display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:-.005em}
+.num{font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wrap{padding-inline:16px}
+@container (min-width:760px){.wrap{padding-inline:40px}}
+.ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn{font:inherit;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 16px;border-radius:6px;border:1px solid transparent;cursor:pointer;white-space:nowrap;text-decoration:none;flex:none}
+.btn.primary{background:var(--a-btn);color:var(--a-btn-fg)}
+.btn.outline{background:transparent;border-color:var(--a-border);color:var(--a-fg)}
+.btn.light{background:var(--a-hero-fg);color:var(--a-hero)}
+.btn.ghost-light{background:transparent;border-color:color-mix(in srgb,var(--a-hero-fg) 55%,transparent);color:var(--a-hero-fg)}
+.btn.sm{min-height:36px;font-size:13px;padding:0 12px}
+@container (max-width:759px){.btn.sm{min-height:44px}}
+.btn.block{width:100%}
+.icon-btn{width:44px;height:44px;flex:none;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--a-border);border-radius:6px;background:var(--a-card);color:var(--a-fg)}
+.link{color:var(--a-primary);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex:none;min-height:32px}
+@container (max-width:759px){.link{min-height:44px}}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--a-muted-fg)}
+.meta{color:var(--a-muted-fg);font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px}
+.meta>span{display:inline-flex;align-items:center;gap:4px}
+.meta .ico{width:14px;height:14px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;white-space:nowrap;color:#fff;flex:none}
+.badge.live{background:var(--live-solid)}
+.badge.live::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.opens{background:var(--soon-solid)}
+.badge.urgent{background:var(--urgent-solid)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap;flex:none}
+.pill .ico{width:13px;height:13px}
+.pill.ok{background:var(--live-soft);color:var(--ok-fg)}
+.pill.warn{background:var(--soon-soft);color:var(--warn-fg)}
+.pill.neutral{background:var(--a-muted);color:var(--a-muted-fg)}
+.chip-time{position:absolute;right:10px;bottom:10px;background:rgb(15 20 16 / .82);color:#f5f3ee;font-size:12px;font-weight:600;padding:4px 8px;border-radius:4px;display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+.chip-time .ico{width:13px;height:13px}
+.chip-time.amber{background:var(--urgent-solid);color:#fff}
+.ph{position:relative;overflow:hidden;background:var(--a-muted)}
+.ph img,.gal-main img,.thumb img,.mosaic img,.hero-img{width:100%;height:100%;object-fit:cover;object-position:center 60%;display:block;filter:var(--img-filter)}
+.ph .badge{position:absolute;left:10px;top:10px}
+.stretch::after{content:"";position:absolute;inset:0;z-index:0}
+.stretch:focus-visible{outline:none}
+.stretch:focus-visible::after{outline:2px solid var(--a-primary);outline-offset:2px;border-radius:6px}
+.btn,.icon-btn{position:relative;z-index:1}
+
+/* header */
+.top{position:sticky;top:0;z-index:5;background:var(--a-bg);border-bottom:1px solid var(--a-border)}
+.top-in{display:flex;align-items:center;gap:8px;height:56px}
+.logo{display:inline-flex;align-items:center;min-height:44px;font-family:var(--font-display);font-weight:700;font-size:21px;color:var(--a-primary);letter-spacing:-.01em}
+.nav a,.nav button{display:inline-flex;align-items:center;min-height:32px}
+.nav{display:none;gap:22px;font-weight:500;color:var(--a-muted-fg)}
+.nav a:first-child,.nav button:first-child{color:var(--a-fg);font-weight:600}
+.search{display:none;flex:1;max-width:440px;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--a-border);border-radius:6px;background:var(--a-card);color:var(--a-muted-fg);font-size:13px}
+.search input{flex:1;border:0;background:none;font:inherit;color:var(--a-fg);outline:none;padding:0}
+.search input::placeholder{color:var(--a-muted-fg);opacity:1}
+.search:focus-within{outline:2px solid var(--a-primary);outline-offset:2px}
+.top .spacer{flex:1}
+.top .m-only{display:inline-flex}
+.top .d-only{display:none}
+.top .signin{font-weight:600;color:var(--a-primary);font-size:14px;min-height:44px;padding:0 6px;align-items:center}
+.me{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-weight:600;font-size:14px}
+.me .av{width:32px;height:32px;border-radius:50%;background:var(--a-primary-soft);color:var(--a-primary);display:grid;place-items:center;font-size:12px;font-weight:700}
+@container (min-width:760px){
+  .top-in{height:64px;gap:28px}
+  .nav{display:flex}.search{display:flex}
+  .top .m-only{display:none}.top .d-only{display:inline-flex}
+  .nav button{min-height:32px}
+}
+
+/* home hero */
+.hero{background:var(--a-hero);color:var(--a-hero-fg);position:relative;overflow:hidden}
+.hero-img{position:absolute;inset:0;object-position:60% 45%}
+.hero-ov{position:absolute;inset:0;background:linear-gradient(180deg,hsl(var(--hero-h) / .3) 0,hsl(var(--hero-h) / .88) 45%,hsl(var(--hero-h) / .95))}
+.hero-in{position:relative;padding-block:20px 24px;display:flex;flex-direction:column;gap:14px}
+.hero h1{font-size:28px;line-height:1.15;max-width:22ch}
+.hero p{color:var(--a-hero-fg);opacity:.9;font-size:15px;max-width:48ch}
+.hero .ctas{display:flex;flex-direction:column;gap:8px}
+.proof{display:flex;flex-direction:column;gap:2px;padding-top:4px}
+.proof span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;flex:none;font-size:13.5px;font-weight:500;min-height:28px;color:var(--a-hero-fg)}
+.proof .ico{width:15px;height:15px;color:var(--a-hero-muted)}
+@container (max-width:759px){.hero-img{position:relative;inset:auto;display:block;aspect-ratio:16/9;height:auto;object-position:70% 70%}.hero-ov{display:none}}
+@container (min-width:760px){
+  .hero-ov{background:linear-gradient(90deg,hsl(var(--hero-h) / .94) 0 42%,hsl(var(--hero-h) / .55) 70%,transparent)}
+  .hero-img{object-position:60% 45%}
+  .hero-in{padding-block:56px 44px;gap:16px}
+  .hero h1{font-size:42px}
+  .hero p{font-size:17px}
+  .hero .ctas{flex-direction:row}
+  .proof{flex-direction:row;gap:24px}.proof span{font-size:14px}
+}
+.m-search{padding-block:14px 0}
+.m-search .search{display:flex;max-width:none;height:44px}
+@container (min-width:760px){.m-search{display:none}}
+
+/* section heads + toolbar */
+.sec{padding-block:24px}
+.sec-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;margin-bottom:16px}
+.sec-head h2{font-size:22px}
+.sec-head .tools{margin-left:auto;display:flex;align-items:center;gap:12px;max-width:100%}
+.sec-head>.link{margin-left:auto}
+@container (max-width:759px){.sec-head>.link{min-height:44px}}
+@container (min-width:760px){.sec{padding-block:36px}.sec-head h2{font-size:28px}}
+.sec-head .tools{width:100%}
+@container (min-width:760px){.sec-head .tools{width:auto}}
+.segctl{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;width:100%}
+.segctl button{flex:none;font-size:13px;font-weight:600;min-height:44px;padding:0 14px;border-radius:4px;border:1px solid var(--a-border);color:var(--a-muted-fg);background:var(--a-card);display:inline-flex;align-items:center}
+@container (min-width:760px){.segctl{width:auto}.segctl button{min-height:36px}}
+.segctl button[aria-pressed="true"]{background:var(--a-btn);border-color:var(--a-btn);color:var(--a-btn-fg)}
+.selbox{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--a-muted-fg)}
+.selbox select{font:inherit;font-weight:600;color:var(--a-fg);background:var(--a-card);border:1px solid var(--a-border);border-radius:6px;min-height:36px;padding:0 8px}
+
+/* event cards */
+.events{display:grid;grid-template-columns:1fr;gap:16px}
+@container (min-width:760px){.events{grid-template-columns:repeat(2,1fr);gap:24px}}
+@container (min-width:1080px){.events{grid-template-columns:repeat(3,1fr)}}
+.ev{position:relative;background:var(--a-card);border:1px solid var(--a-border);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.mosaic{aspect-ratio:16/9;display:grid;grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;gap:2px;max-width:100%;position:relative;overflow:hidden}
+.mosaic>div{position:relative;overflow:hidden}
+.mosaic>div:first-child{grid-row:1/3}
+.mosaic.one{grid-template-columns:1fr;grid-template-rows:1fr}
+.mosaic.one>div:first-child{grid-row:auto}
+.mosaic.two{grid-template-columns:2fr 1fr;grid-template-rows:1fr}
+.ev-b{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.ev-b h3{font-size:19px;line-height:1.25}
+.ev-meta{display:grid;gap:2px}
+.ev-b .sum{color:var(--a-muted-fg);font-size:13.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ev-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--a-border);display:flex;flex-direction:column;gap:10px;font-size:12.5px;color:var(--a-muted-fg)}
+.empty{border:1px dashed var(--a-border);border-radius:6px;padding:20px;color:var(--a-muted-fg);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+
+/* lot cards */
+.lots{display:grid;grid-template-columns:1fr;gap:14px}
+@container (min-width:760px){.lots{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
+.lots.compact{grid-template-columns:1fr}}
+.lot{position:relative;background:var(--a-card);border:1px solid var(--a-border);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.lot .ph{aspect-ratio:4/3;max-width:100%}
+.lot-b{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.lot-b h3{font-size:17px;line-height:1.25}
+.price-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:6px 8px;margin-top:4px}
+.price-row .lbl{display:block;font-size:12px;color:var(--a-muted-fg);font-weight:500}
+.price-row strong{min-width:max-content;font-size:22px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap}
+.cta-row{display:flex;gap:8px;margin-top:auto;padding-top:8px}
+.cta-row .btn{flex:1}
+.lot.row{display:grid;grid-template-columns:120px 1fr;grid-template-areas:"ph b" "cta cta";align-content:start}
+.lot.row .ph{grid-area:ph;width:120px;aspect-ratio:4/3;align-self:start}
+.lot.row .lot-b{grid-area:b;padding:10px 12px 10px;gap:4px}
+.lot.row .cta-row{grid-area:cta;padding:0 12px 12px;margin-top:0}
+.lot.row .cta-row .btn{padding:0 16px;font-size:14px}
+.lot.row>.icon-btn{position:absolute;top:0;right:0;border:0;background:none;width:44px;height:44px}
+.lot.row h3{font-size:15.5px;padding-right:32px;text-wrap:balance}
+.lot.row .price-row strong{font-size:17px}
+.lot.row .badge{left:6px;top:6px;font-size:10px;padding:2px 6px}
+.lot.row .chip-time{left:6px;right:6px;bottom:6px;justify-content:center;font-size:11px}
+.lot.row .pill{font-size:11px;padding:2px 6px}
+.lots.compact .lot.row{grid-template-columns:160px minmax(0,1fr) auto auto;grid-template-areas:"ph b cta heart";grid-template-rows:auto}
+.lots.compact .lot.row .cta-row{align-self:center;padding:0 8px 0 12px}
+.lots.compact .lot.row>.icon-btn{position:static;grid-area:heart;align-self:center;margin-right:16px;border:1px solid var(--a-border);border-radius:6px;background:var(--a-card)}
+.lots.compact .lot.row .lot-b{display:grid;grid-template-columns:minmax(0,1fr) 270px;column-gap:32px;align-items:center;align-content:center}
+.lots.compact .lot.row .lot-b>*{grid-column:1}
+.lots.compact .lot.row .price-row{grid-column:2;grid-row:1/4;margin:0;flex-wrap:nowrap;justify-content:flex-start;gap:12px}
+.lots.compact .lot.row h3{padding-right:0}
+.lots.compact .lot.row{min-height:112px}
+.lots.compact .lot.row .cta-row .btn{flex:none;min-width:200px}
+.lots.compact .lot.row .ph{width:160px;align-self:stretch;aspect-ratio:auto;height:auto;min-height:100%}
+.lots.compact .lot.row .ph img{position:absolute;inset:0;width:100%;height:100%}
+.lots.compact .lot.row{grid-template-rows:1fr;align-content:stretch}
+.lot.row .meta{gap:0 10px;font-size:12.5px}
+
+/* fold rails */
+@container (min-width:760px){.rail.r3{grid-auto-columns:calc((100% - 2*20px)/3)}}
+.rail>*{scroll-snap-align:start}
+.rail .price-row{flex-direction:column;align-items:flex-start;gap:6px}
+.rail{scroll-snap-type:x mandatory;scroll-padding-inline:16px;display:grid;grid-auto-flow:column;grid-auto-columns:78%;gap:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+@container (min-width:760px){.rail{grid-auto-columns:calc((100% - 3*20px)/4);gap:20px}}
+.makes{display:grid;grid-template-columns:1fr;border-top:1px solid var(--a-border)}
+@container (min-width:760px){.makes{grid-template-columns:repeat(3,1fr);column-gap:40px}}
+.makes a{display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--a-border);font-weight:600;font-size:15px}
+.makes a small{margin-left:auto;color:var(--a-muted-fg);font-weight:500;font-size:13px}
+.makes a .ico{color:var(--a-muted-fg)}
+.how{background:var(--a-primary-soft)}
+.steps{display:grid;grid-template-columns:1fr;gap:18px;counter-reset:s}
+@container (min-width:760px){.steps{grid-template-columns:repeat(3,1fr);gap:32px}}
+.steps li{display:grid;grid-template-columns:32px 1fr;gap:12px;counter-increment:s}
+.steps li::before{content:counter(s);width:32px;height:32px;border-radius:50%;background:var(--a-btn);color:var(--a-btn-fg);display:grid;place-items:center;font-weight:700;font-size:14px}
+.steps b{display:block;font-size:15px}
+.steps span{color:var(--a-muted-fg);font-size:13.5px}
+
+/* footer */
+.foot{border-top:1px solid var(--a-border);padding-block:28px 12px;display:grid;grid-template-columns:1fr 1fr;gap:22px;font-size:13px;color:var(--a-muted-fg)}
+.foot .brand{grid-column:1/-1}
+@container (min-width:760px){.foot{grid-template-columns:1.6fr 1fr 1fr}.foot .brand{grid-column:auto}}
+.foot h2{font-family:var(--font-ui);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--a-fg);margin-bottom:4px}
+.foot .claim{display:flex;gap:8px;align-items:center;margin-top:10px;color:var(--a-fg);font-weight:600}
+.foot .claim .ico{color:var(--ok-fg)}
+.flink{display:flex;align-items:center;min-height:36px}
+@container (max-width:759px){.flink{min-height:44px}}
+.legal{display:flex;flex-wrap:wrap;align-items:center;gap:0 18px;border-top:1px solid var(--a-border);padding-block:8px 24px;font-size:12.5px;color:var(--a-muted-fg)}
+.legal .flink{min-height:36px}
+@container (max-width:759px){.legal .flink{min-height:44px;min-width:44px}}
+
+/* event page */
+.crumb{padding-block:6px 0;font-size:13px;color:var(--a-muted-fg)}
+.crumb a,.crumb button{display:inline-flex;gap:6px;align-items:center;min-height:44px;font-weight:500}
+.crumb .ico{width:14px;height:14px}
+.ev-head{display:grid;grid-template-columns:1fr;gap:16px;padding-block:6px 18px;align-items:start}
+@container (min-width:760px){.ev-head{grid-template-columns:minmax(0,1fr) 360px;gap:48px;padding-block:16px 28px;align-items:center}}
+.ev-head h1{font-size:26px;line-height:1.15}
+@container (min-width:760px){.ev-head h1{font-size:36px}}
+.ev-head .when{margin:10px 0 0;color:var(--a-muted-fg);font-size:14px}
+.ev-head .facts{margin-top:12px;font-size:14px}
+.ev-side{display:flex;flex-direction:column;gap:12px}
+.ev-photo{display:none;border-radius:8px}
+@container (min-width:760px){.ev-photo{display:grid}}
+.t-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
+.count-card{border:1px solid var(--a-border);background:var(--a-card);border-radius:6px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.count-card .k{font-size:12px;color:var(--a-muted-fg);font-weight:500}
+.count-card .v{font-size:26px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.1;white-space:nowrap}
+.terms{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--a-border);border:1px solid var(--a-border);border-radius:6px;overflow:hidden}
+.terms>div{background:var(--a-card);padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.terms .rules{display:none}
+.terms .wide{grid-column:1/-1}
+.terms .k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--a-muted-fg)}
+.terms .v{font-weight:600;font-size:13.5px}
+.terms .k,.terms .v{white-space:nowrap}
+.terms .rules{flex-direction:row;align-items:center;justify-content:center}
+@container (min-width:760px){
+  .terms{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .terms>div{padding:12px 14px}
+  .terms .wide{display:flex;grid-column:auto}.terms .rules{display:flex;justify-content:flex-start;padding-inline:14px}
+}
+.ev-body{display:grid;grid-template-columns:1fr;gap:16px;padding-block:8px 32px}
+@container (min-width:760px){.ev-body{grid-template-columns:240px minmax(0,1fr);gap:32px;padding-block:24px 40px}}
+.filters{display:none;flex-direction:column;gap:18px;align-self:start;position:sticky;top:80px}
+@container (min-width:760px){.filters{display:flex}}
+.filters h2{font-family:var(--font-ui);font-size:14px;font-weight:600}
+.fgroup{display:flex;flex-direction:column;gap:8px;padding-bottom:16px;border-bottom:1px solid var(--a-border)}
+.fgroup:last-child{border:0}
+.fgroup .k{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--a-muted-fg)}
+.check{display:flex;align-items:center;gap:10px;font-size:13.5px;min-height:28px;cursor:pointer}
+.check input{width:18px;height:18px;margin:0;accent-color:var(--a-btn);flex:none}
+.check em{margin-left:auto;font-style:normal;color:var(--a-muted-fg);font-size:12px}
+.rng{width:100%;accent-color:var(--a-btn);margin:0;-webkit-appearance:none;appearance:none;background:transparent;height:28px}
+.rng::-webkit-slider-runnable-track{height:4px;background:var(--a-border);border-radius:2px}
+.rng::-moz-range-track{height:4px;background:var(--a-border);border-radius:2px}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;margin-top:-10px;border-radius:50%;background:var(--a-btn);border:2px solid var(--a-card)}
+.rng::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--a-btn);border:2px solid var(--a-card)}
+.range-v{display:flex;justify-content:space-between;font-size:12px;color:var(--a-muted-fg)}
+.toolbar{scroll-margin-top:120px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px}
+.app h2.cnt{font-family:var(--font-ui);font-size:14px;font-weight:600;margin:0}
+.tb-right{margin-left:auto;display:none;align-items:center;gap:12px}
+@container (min-width:760px){.tb-right{display:flex}}
+.view{display:inline-flex;border:1px solid var(--a-border);border-radius:6px;overflow:hidden;font-size:13px}
+.view button{padding:0 12px;min-height:34px;color:var(--a-muted-fg)}
+.view button[aria-pressed="true"]{background:var(--a-muted);color:var(--a-fg);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center}
+.fchip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:1px solid var(--a-border);border-radius:4px;background:var(--a-card);font-size:13px;font-weight:500}
+.fchip .ico{width:12px;height:12px}
+@container (max-width:759px){.fchip,.chips .link{min-height:44px}}
+.m-filter[open] summary{border-color:var(--a-primary);color:var(--a-primary)}
+.m-bar{position:sticky;top:56px;z-index:6;background:var(--a-bg);border-bottom:1px solid var(--a-border);padding-block:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@container (min-width:760px){.m-bar{display:none}}
+.m-bar summary{list-style:none;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border:1px solid var(--a-border);border-radius:6px;font-weight:600;font-size:14px;cursor:pointer;background:var(--a-card)}
+.m-bar summary::-webkit-details-marker{display:none}
+.m-bar .selbox{position:relative;border:1px solid var(--a-border);border-radius:6px;min-height:44px;padding-left:12px;background:var(--a-card);color:var(--a-fg);font-weight:600;font-size:14px}
+.m-bar .selbox select{border:0;flex:1;height:100%;min-height:44px;background:transparent}
+.m-bar summary,.m-bar .selbox{position:relative;z-index:2}
+.m-panel{scrollbar-width:none;z-index:1;position:absolute;left:0;right:0;top:100%;background:var(--a-bg);border-bottom:1px solid var(--a-border);padding:12px 16px 16px;display:flex;flex-direction:column;gap:14px;max-height:min(420px,70vh);overflow:auto;border:1px solid var(--a-border);box-shadow:0 16px 40px rgb(0 0 0 / .18),0 0 0 100vmax rgb(0 0 0 / .32)}
+.m-panel .check{min-height:44px}
+.m-foot{position:sticky;bottom:-16px;background:var(--a-bg);padding:12px 0 4px;display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.m-panel .rng{min-height:44px;height:44px}
+
+/* lot detail */
+.lot-grid{display:flex;flex-direction:column;gap:18px;padding-block:0 28px}
+.lot-grid .col{display:contents}
+.g-gallery{order:1}.g-title{order:2}.g-bid{order:3}.g-specs{order:4}.g-cond{order:5}.g-seller{order:6}.g-hist{order:7}.g-desc{order:8}
+@container (min-width:760px){
+  .lot-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:32px;padding-block:6px 40px;align-items:stretch}
+  .lot-grid .col{display:flex;flex-direction:column;gap:28px}
+  .g-bid{position:sticky;top:84px}
+  .lot-grid .col.left{grid-column:1;grid-row:1}.lot-grid .col.right{grid-column:2;grid-row:1}
+}
+.gal-main{aspect-ratio:4/3;border-radius:8px;position:relative;overflow:hidden;max-width:100%}
+.gal-count{position:absolute;left:10px;bottom:10px;background:rgb(15 20 16 / .82);color:#f5f3ee;font-size:12px;font-weight:600;padding:3px 8px;border-radius:4px}
+.gal-act{position:absolute;right:10px;bottom:10px;width:44px;height:44px;background:rgb(15 20 16 / .82);color:#f5f3ee;border-radius:6px;display:grid;place-items:center}
+.thumbs{display:grid;grid-auto-flow:column;grid-auto-columns:92px;gap:8px;overflow-x:auto;scrollbar-width:none;margin-top:8px}
+@container (min-width:760px){.thumbs{grid-auto-columns:120px}}
+.thumb{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--a-muted-fg);font-weight:500;text-align:center;min-height:44px}
+.thumb .im{aspect-ratio:4/3;border-radius:4px;overflow:hidden;border:2px solid transparent;max-width:100%}
+.thumb[aria-pressed="true"] .im{border-color:var(--a-primary)}
+.thumb[aria-pressed="true"]{color:var(--a-fg)}
+.gal-cap{position:absolute;left:62px;bottom:10px;background:rgb(15 20 16 / .82);color:#f5f3ee;font-size:12px;font-weight:600;padding:3px 8px;border-radius:4px;max-width:calc(100% - 134px)}
+.gal-cap.solo{left:10px;max-width:calc(100% - 76px)}
+.gal-note{font-size:13px;color:var(--a-muted-fg);margin-top:8px}
+.m-gal{margin-inline:-16px}
+.m-gal .gal-main{border-radius:0}
+.m-gal .thumbs{padding-inline:16px;scroll-padding-inline:16px}
+@container (min-width:760px){.m-gal{margin-inline:0}.m-gal .gal-main{border-radius:8px}.m-gal .thumbs{padding-inline:0}}
+.g-title h1{font-size:26px;line-height:1.15}
+@container (min-width:760px){.g-title h1{font-size:30px}}
+.g-title .eyebrow{margin-bottom:6px}
+@container (max-width:759px){.g-title .sale{display:none}}
+@container (max-width:759px){.g-title{display:grid;grid-template-columns:1fr auto;column-gap:12px}.g-title>*{grid-column:1/-1}.g-title .meta{grid-column:1;grid-row:3}.g-title .watch{grid-column:2;grid-row:3;margin-top:8px;align-self:end}.g-title .watch .btn{width:44px;padding:0}.g-title .wl{display:none}}
+.g-title .meta{margin-top:8px;font-size:14px}
+.watch{display:flex;gap:8px;margin-top:12px}
+.panel{border:1px solid var(--a-border);border-radius:6px;background:var(--a-card);padding:16px;display:flex;flex-direction:column;gap:14px}
+.status-line{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.big-price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.big-price strong{font-size:36px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.big-price small{font-size:13px;color:var(--a-muted-fg)}
+.cd{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;padding:10px 12px;background:var(--a-muted);border-radius:6px}
+.cd .k,.cd .v{white-space:nowrap;flex:none}
+.cd .k{font-size:13px;color:var(--a-muted-fg);font-weight:500}
+.cd .v{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+.cd.pre .note{flex-basis:100%;margin-left:0;text-align:left;max-width:none;margin-top:4px}
+.cd .note{margin-left:auto;font-size:12px;color:var(--a-muted-fg);text-align:right;max-width:22ch;line-height:1.3}
+@container (max-width:759px){.cd .note{margin-left:0;max-width:none;flex-basis:100%;text-align:left}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label.lbl{font-size:13px;font-weight:600}
+.bid-input{display:flex;align-items:center;height:48px;border:1.5px solid var(--a-primary);border-radius:6px;padding:0 12px;gap:8px;font-size:18px;font-weight:650;font-variant-numeric:tabular-nums;background:var(--a-card)}
+.bid-input span{color:var(--a-muted-fg);font-weight:500}
+.bid-input input{height:100%;align-self:stretch;flex:1;border:0;background:none;font:inherit;color:var(--a-fg);outline:none;padding:0}
+.bid-input:focus-within{outline:2px solid var(--a-primary);outline-offset:2px}
+.hint{font-size:12.5px;color:var(--a-muted-fg)}
+.inc{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.inc button{font-size:13px;font-weight:600;min-height:44px;display:grid;place-items:center;padding:0 4px;border:1px solid var(--a-border);border-radius:4px;font-variant-numeric:tabular-nums;background:var(--a-card)}
+@container (max-width:759px){.inc button{font-size:12.5px;letter-spacing:-.01em}}
+.inc button[aria-pressed="true"]{border-color:var(--a-primary);color:var(--a-primary);background:var(--a-primary-soft)}
+.fees{border-top:1px solid var(--a-border);padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.fees .r{display:flex;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums}
+.fees .r span:first-child{color:var(--a-muted-fg)}
+.fees .tot{font-weight:700;font-size:14px;padding-top:6px;border-top:1px dashed var(--a-border)}
+.fees .tot span:first-child{color:var(--a-fg)}
+.after{font-size:12.5px;color:var(--a-muted-fg);display:flex;gap:8px;align-items:flex-start}
+.after .ico{margin-top:2px;width:14px;height:14px}
+.trust{display:flex;flex-wrap:wrap;gap:0 8px;font-size:12.5px;color:var(--a-muted-fg);align-items:flex-start}
+.trust .ico{margin-top:2px;width:14px;height:14px}
+.trust span{flex:1 1 200px}
+.trust .link{flex-basis:100%;margin-left:22px}
+.info-note{font-size:13px;color:var(--a-muted-fg);background:var(--a-muted);border-radius:6px;padding:10px 12px}
+.block h2{font-size:19px;margin-bottom:10px}
+.specs{display:grid;grid-template-columns:1fr;border-top:1px solid var(--a-border);margin:0}
+@container (min-width:760px){.specs{grid-template-columns:1fr 1fr;column-gap:28px}}
+.specs div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--a-border);font-size:13.5px}
+.specs dt{color:var(--a-muted-fg)}
+.specs dd{margin:0;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.cond{display:flex;flex-direction:column;border-top:1px solid var(--a-border)}
+.cond li{display:grid;grid-template-columns:96px minmax(0,1fr);gap:2px 10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--a-border);font-size:13.5px}
+.cond .st{display:inline-flex;align-items:center;gap:5px;font-weight:600;font-size:12.5px}
+.cond .st .ico{width:14px;height:14px}
+.cond .st.ok{color:var(--ok-fg)}.cond .st.wear{color:var(--warn-fg)}
+.cond b{font-weight:600}
+.cond .d{grid-column:2;color:var(--a-muted-fg)}
+@container (min-width:760px){.cond li{grid-template-columns:96px 110px minmax(0,1fr)}.cond .d{grid-column:3}}
+.cond-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@container (max-width:759px){.cond-act{display:grid;grid-template-columns:1fr}.cond-act .btn{width:100%}}
+.seller{display:flex;flex-direction:column;gap:10px}
+.seller-top{display:flex;gap:12px;align-items:center}
+.avatar{width:44px;height:44px;border-radius:8px;background:var(--a-primary-soft);color:var(--a-primary);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:17px;flex:none}
+.seller-top b{display:block;font-size:15px}
+.g-seller{padding:20px 0 0;border-top:1px solid var(--a-border)}
+.verified-note{font-size:12.5px;color:var(--ok-fg);font-weight:500;padding:0;display:flex;gap:8px;align-items:center}
+.verified-note .ico{color:var(--ok-fg)}
+.seller-act{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hist{display:flex;flex-direction:column;border-top:1px solid var(--a-border)}
+.hist div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--a-border);font-size:13.5px;font-variant-numeric:tabular-nums}
+.hist div span:last-child{color:var(--a-muted-fg)}
+.hist div.lead b{color:var(--a-fg)}
+.hist .tagl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ok-fg);margin-left:8px}
+.desc p{color:var(--a-fg);max-width:65ch}
+.sticky-bid{position:sticky;bottom:0;z-index:6;background:var(--a-card);border-top:1px solid var(--a-border);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:12px}
+.sticky-bid{transition:transform .15s}
+.sticky-bid.off{transform:translateY(100%);visibility:hidden}
+@media (prefers-reduced-motion:reduce){.sticky-bid{transition:none}}
+.sticky-bid>div{min-width:0}
+.sticky-bid .k{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11.5px;color:var(--a-muted-fg);line-height:1.3;display:block}
+.sticky-bid strong{display:block;font-size:17px;font-variant-numeric:tabular-nums;color:var(--a-fg)}
+.sticky-bid .btn{margin-left:auto}
+@container (min-width:760px){.sticky-bid{display:none}}
+.related{padding-block:0 28px}
+</style>
+</head>
+<body>
+<div class="sr" id="live" role="status" aria-live="polite"></div>
+<div class="board">
+  <header class="board-head">
+    <div>
+      <h1>AgriBid screen mockups</h1>
+      <p>Redesigns of the three highest-traffic screens. They're based on an executive marketing review of the current build, and use AgriBid's existing green and warm-neutral brand.</p>
+    </div>
+    <nav class="tabs" aria-label="Screens">
+      <a href="#home" data-tab="home">Home</a>
+      <a href="#event" data-tab="event">Auction event</a>
+      <a href="#lot" data-tab="lot">Lot detail</a>
+    </nav>
+  </header>
+
+  <section class="stage">
+    <div class="frame">
+      <div class="chrome"><i></i><i></i><i></i><span class="url" id="url-d">agribid.co.za</span><span class="vp">Desktop · 1440 · scrolls sideways on small screens</span></div>
+      <div class="desk-scroll" tabindex="0" role="region" aria-label="Desktop preview"><div class="app" id="app-d"></div></div>
+    </div>
+    <div class="lower">
+      <div class="phone" role="region" aria-label="Phone preview"><div class="app" id="app-m"></div></div>
+      <div class="notes" id="notes"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const SCREENS=["home","event","lot"];
+let lotState="live";
+/* interactive mock state shared by both frames */
+const st={view:"detailed",tab:"live",makes:new Set(),provs:new Set(),sort:"lot",hrs:3500,maxBid:5000000,gal:0,mf:false,add:null};
+
+/* ---------- helpers ---------- */
+const R=n=>"R\u00a0"+String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0");
+const ttl=t=>t.replace(/ (\S+)$/,"\u00a0$1").replace(/John Deere|Massey Ferguson|New Holland|Case IH/g,m=>m.replace(/ /g,"\u00a0"));
+const nbR=h=>h.replace(/R (\d{1,3}(?: \d{3})*)/g,(m,d)=>"R\u00a0"+d.replace(/ /g,"\u00a0"));
+const I={
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/>',
+  pin:'<path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11Z"/><circle cx="12" cy="10" r="2"/>',
+  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  shield:'<path d="M12 3 5 6v6c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>',
+  check:'<path d="m5 12 4 4 10-10"/>',
+  warn:'<path d="M12 4 3 20h18L12 4Z"/><path d="M12 10v4M12 17h.01"/>',
+  file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/>',
+  filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
+  sort:'<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>',
+  bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2ZM10 20a2 2 0 0 0 4 0"/>',
+  back:'<path d="m15 6-6 6 6 6"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  chev:'<path d="m9 6 6 6-6 6"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  chat:'<path d="M4 5h16v11H9l-5 4V5Z"/>',
+  cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  card:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>'
+};
+const ic=(n,c="")=>`<svg class="ico ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+const nbn=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0");
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+
+/* ---------- time: one fixed "now" = Thu 20 Nov, 05:48 SAST (minutes from 1 Nov 00:00) ---------- */
+const at=(d,h,m)=>d*1440+h*60+m;
+const NOW=at(20,5,48);
+function dur(t){const x=t-NOW,d=Math.floor(x/1440),h=Math.floor(x%1440/60),m=x%60;return d?`${d}d ${h}h ${m}m`:h?`${h}h ${m}m`:`${m}m`;}
+const durFull=dur;
+
+/* ---------- photos (real seed photos in assets/) ---------- */
+const IM={
+  caseFront:{src:"assets/case-front.jpeg",alt:"Red Case IH Magnum 380 tractor on a gravel track, towing a disc cultivator",label:"Front"},
+  jdFront:{src:"assets/jd-front.jpeg",alt:"John Deere 8R 410 tractor with dual rear wheels on tilled soil",label:"Front",pos:"center 55%"},
+  jdField:{src:"assets/jd-cabin.jpeg",alt:"John Deere 8R tractor pulling a slurry tanker across a ploughed field",label:"In the field"},
+  jdYard:{src:"assets/jd-engine.jpeg",alt:"John Deere 8R 410 parked in a dealer yard with other tractors behind it",label:"Yard view",pos:"center 50%"},
+  nhSide:{src:"assets/nh-cabin.jpeg",alt:"New Holland T7.315 left side profile on a concrete yard",label:"Left side",pos:"center 60%"},
+  mfCab:{src:"assets/mf-cabin.jpeg",alt:"Massey Ferguson 8S.305 front three-quarter view with front weight, beside a brick shed",label:"Front left",pos:"center 45%"},
+  fendtGrass:{src:"assets/fendt-cabin.jpeg",alt:"Green Fendt Vario tractor with red rims on grass",label:"Front left",pos:"center 50%"}
+};
+const img=(k,eager=false)=>{const m=IM[k];return `<img src="${m.src}" alt="${esc(m.alt)}" ${eager?'fetchpriority="high"':'loading="lazy"'} decoding="async" style="object-position:${m.pos||"center 60%"}">`;};
+
+/* ---------- data ---------- */
+const LOTS=[
+  {no:7,make:"Case IH",prov:"Free State",cat:"Tractor",title:"2022 Case IH Magnum 380",hrs:820,hp:380,loc:"Bothaville, FS",bid:3950000,bids:14,res:"met",close:at(22,10,0),imgs:["caseFront"]},
+  {no:8,make:"John Deere",prov:"Mpumalanga",cat:"Tractor",title:"2021 John Deere 8R 410",hrs:450,hp:410,loc:"Bethal, MP",bid:4250000,bids:9,res:"not",close:at(22,10,2),imgs:["jdFront"]},
+  {no:11,make:"Fendt",prov:"KwaZulu-Natal",cat:"Tractor",title:"2022 Fendt 939 Vario",hrs:3050,hp:390,loc:"Vryheid, KZN",bid:2650000,bids:11,res:"not",close:at(22,10,4),imgs:["fendtGrass"]}
+];
+const MF={no:1,make:"Massey Ferguson",prov:"North West",cat:"Tractor",title:"2021 Massey Ferguson 8S.305",hrs:1380,hp:305,loc:"Lichtenburg, NW",bid:2150000,bids:6,res:"met",close:at(20,6,30),imgs:["mfCab"]};
+/* the only lot in Round 2: its own photos and seller */
+const R2LOT={no:1,make:"New Holland",prov:"Free State",cat:"Tractor",title:"2019 New Holland T7.315",hrs:2140,hp:315,loc:"Kroonstad, FS",bid:1450000,bids:0,res:"none",close:at(29,10,0),imgs:["nhSide"]};
+const ALL=[...LOTS,R2LOT,MF]; /* 5 listed lots: 3 + 1 + 1 */
+const EVENTS=[
+  {title:"Lichtenburg Farm Dispersal",sum:"One-owner Massey Ferguson 8S.305, closing this morning",status:"urgent",time:"Closes in "+dur(MF.close),region:"North West",lots:1,lbl:"Current bid",from:2150000,foot:"Closes Thu 20 Nov, 06:30 SAST",imgs:["mfCab"]},
+  {title:"Row Crop Tractor Sale",sum:"Low- and high-hour row crop tractors from three sellers",status:"live",time:"Closes in "+dur(LOTS[0].close),region:"Free State, Mpumalanga, KwaZulu-Natal",lots:3,from:2650000,foot:"Lots close from Sat 22 Nov, 10:00 SAST",imgs:["caseFront","jdFront","fendtGrass"]},
+  {title:"Row Crop Tractor Sale: Round 2",sum:"A New Holland T7.315, approved for the next row crop window",status:"opens",time:"Opens in "+dur(at(24,9,0)),region:"Free State",lots:1,lbl:"Opening bid",from:1450000,foot:"Bidding opens Mon 24 Nov, 09:00 SAST",imgs:["nhSide"]}
+];
+const STATUS={live:'<span class="badge live">Live</span>',urgent:'<span class="badge urgent">Closing soon</span>',opens:'<span class="badge opens">Upcoming</span>'};
+const MAKES=[...ALL.reduce((m,l)=>m.set(l.make,(m.get(l.make)||0)+1),new Map())].concat([["All makes",ALL.length]]);
+
+/* ---------- shared chrome ---------- */
+const header=(user,auc)=>`<header class="top"><div class="wrap top-in">
+  <a class="logo" href="#home">AgriBid</a>
+  <nav class="nav" aria-label="Main"><a href="#event"${auc?' aria-current="page"':""}>Auctions</a><button type="button">Sell equipment</button><button type="button">How it works</button><button type="button">Support</button></nav>
+  <label class="search">${ic("search")}<span class="sr">Search</span><input type="search" name="q" placeholder="Search make or model"></label>
+  <span class="spacer"></span>
+  <button type="button" class="icon-btn m-only" style="border:0;background:none" aria-label="Search">${ic("search")}</button>
+  ${user?`<button type="button" class="me"><span class="av" aria-hidden="true">TN</span><span>My bids</span></button>`
+        :`<button type="button" class="signin m-only">Sign in</button><button type="button" class="btn outline sm d-only">Sign in</button><button type="button" class="btn primary sm d-only">Register to bid</button>`}
+</div></header>`;
+const footer=()=>`<footer><div class="wrap foot">
+  <div class="brand"><span class="logo">AgriBid</span><p style="margin-top:8px">South Africa's online auction floor for farm machinery.</p>
+    <div class="claim">${ic("shield")}Every seller FICA-verified before listing</div></div>
+  <div><h2>Buy</h2><button type="button" class="flink">Live auctions</button><button type="button" class="flink">Auction rules</button><button type="button" class="flink">Buyer's premium &amp; fees</button></div>
+  <div><h2>Sell and help</h2><button type="button" class="flink">List equipment</button><button type="button" class="flink">Seller fees</button><button type="button" class="flink">Contact support</button></div>
+</div>
+<div class="wrap legal"><span>© 2025 AgriBid</span><button type="button" class="flink">Terms</button><button type="button" class="flink">Privacy</button><button type="button" class="flink">PAIA manual</button></div></footer>`;
+
+/* ---------- cards ---------- */
+function evCard(e){
+  return `<article class="ev">
+    <div class="ph mosaic${e.imgs.length===1?" one":e.imgs.length===2?" two":""}">${e.imgs.map(k=>`<div>${img(k)}</div>`).join("")}
+      ${STATUS[e.status]}<span class="chip-time${e.status==="urgent"?" amber":""}">${ic("clock")}${e.time}</span></div>
+    <div class="ev-b"><h3><a class="stretch" href="#event">${e.title}</a></h3><p class="sum">${e.sum}</p>
+      <div class="meta ev-meta"><span>${ic("pin")}${e.region}</span><span class="nw num">${e.lots} ${e.lots===1?"lot":"lots"} · ${e.lbl||"From"} ${R(e.from)}</span></div>
+      <div class="ev-foot"><span>${e.foot}</span><a class="btn outline sm block" href="#event">View lots</a></div></div>
+  </article>`;
+}
+function resPill(r){return r==="met"?`<span class="pill ok">${ic("check")}Reserve met</span>`:r==="none"?`<span class="pill ok">${ic("check")}No reserve</span>`:`<span class="pill warn">${ic("warn")}Reserve not met</span>`;}
+function lotCard(l,compact){
+  const urgent=l.close-NOW<1440, next=l.bids?l.bid+25000:l.bid, label=l.bids?"Current bid":"Opening bid";
+  const badge=urgent?'<span class="badge urgent">Closing soon</span>':'<span class="badge live">Live</span>';
+  const chip=`<span class="chip-time${urgent?" amber":""}">${ic("clock")}${compact?dur(l.close):"Closes in "+dur(l.close)}</span>`;
+  const btn=`<a class="btn primary" href="#lot">Bid ${R(next)}</a>`, heart=`<button type="button" class="icon-btn" aria-label="Watch lot ${l.no}">${ic("heart")}</button>`;
+  return `<article class="lot${compact?" row":""}">
+    <div class="ph">${img(l.imgs[0])}${compact?"":badge}${chip}</div>
+    <div class="lot-b"><div class="eyebrow">Lot ${l.no} · ${compact?l.loc:l.cat}</div><h3><a class="stretch" href="#lot">${ttl(l.title)}</a></h3>
+      <div class="meta num"><span class="nw">${nbn(l.hrs)} hrs · ${l.hp} hp</span>${compact?"":`<span class="nw">${ic("pin")}${l.loc}</span>`}</div>
+      <div class="price-row"><div><span class="lbl">${label}${l.bids?` · ${l.bids} bids`:""}</span><strong>${R(l.bid)}</strong></div>${resPill(l.res)}</div>
+      ${compact?"":`<div class="cta-row">${btn}${heart}</div>`}</div>
+    ${compact?`<div class="cta-row">${btn}</div>${heart}`:""}
+  </article>`;
+}
+const fk=(k)=>`data-fk="${k}"`;
+
+/* ---------- screens ---------- */
+function home(fr){
+  const evs=st.tab==="live"?EVENTS:st.tab==="soon"?EVENTS.filter(e=>e.status==="urgent"):[];
+  const empty=st.tab==="results"?`<div class="empty"><p>Results appear here once a sale closes. The first sale to close is the Lichtenburg Farm Dispersal, Thu 20 Nov, 06:30 SAST.</p><a class="btn outline sm" href="#event">Browse live auctions</a></div>`:"";
+  const tabs=[["live","Live & upcoming"],["soon","Closing soon"],["results","Results"]];
+  const rail=[MF,LOTS[0],LOTS[1],LOTS[2]];
+  return header(false,false)+`<main>
+  <section class="hero" aria-labelledby="h-${fr}"><img class="hero-img" src="assets/jd-cabin.jpeg" alt="" fetchpriority="high"><div class="hero-ov"></div>
+    <div class="wrap hero-in">
+      <h1 id="h-${fr}">South Africa's online auction floor for serious farm machinery</h1>
+      <p>Verified sellers. Inspected equipment. Every bid on the record.</p>
+      <div class="ctas"><a class="btn light" href="#event">Browse live auctions</a><button type="button" class="btn ghost-light">Sell your equipment</button></div>
+      <div class="proof"><span>${ic("shield")}FICA-verified sellers</span><span>${ic("file")}Condition-reported lots</span><span>${ic("clock")}Anti-sniping soft close</span></div></div></section>
+  <div class="wrap m-search"><label class="search">${ic("search")}<span class="sr">Search</span><input type="search" name="q" placeholder="Search make or model"></label></div>
+  <section class="wrap sec" aria-labelledby="a-${fr}">
+    <div class="sec-head"><h2 id="a-${fr}">Auctions</h2>
+      <div class="tools"><div class="segctl" role="group" aria-label="Show auctions">${tabs.map(([k,t])=>`<button type="button" data-act="tab" data-v="${k}" ${fk("tab-"+k)} aria-pressed="${st.tab===k}">${t}</button>`).join("")}</div></div></div>
+    ${evs.length?`<div class="events">${evs.map(evCard).join("")}</div>`:empty||`<div class="empty"><p>Nothing closes in the next 24 hours.</p></div>`}
+  </section>
+  <section class="wrap sec" style="padding-top:0" aria-labelledby="e-${fr}">
+    <div class="sec-head"><h2 id="e-${fr}">Ending this week</h2><a class="link" href="#event">See all lots ${ic("arrow")}</a></div>
+    <div class="rail" tabindex="0" role="region" aria-label="Lots ending this week">${rail.map(l=>lotCard(l,false)).join("")}</div>
+  </section>
+  <section class="wrap sec" style="padding-top:0" aria-labelledby="m-${fr}">
+    <div class="sec-head"><h2 id="m-${fr}">Browse by make</h2></div>
+    <div class="makes">${MAKES.map(([n,c])=>`<a href="#event">${n}<small class="num">${c} ${c===1?"lot":"lots"}</small>${ic("chev")}</a>`).join("")}</div>
+  </section>
+  <section class="how"><div class="wrap sec">
+    <div class="sec-head"><h2>How AgriBid works</h2><a class="link" href="#home">Read the auction rules ${ic("arrow")}</a></div>
+    <ol class="steps">
+      <li><div><b>Register and get FICA-verified</b><span>Once, in about 5 minutes. You need your ID and proof of address.</span></div></li>
+      <li><div><b>Inspect before you bid</b><span>Photos, an AgriBid condition report, or book a viewing on the farm.</span></div></li>
+      <li><div><b>Win, pay and collect</b><span>Pay by EFT within 48 hours and collect within 7 days.</span></div></li>
+    </ol></div></section></main>`+footer();
+}
+
+/* filter controls shared by the desktop sidebar and the phone panel */
+function matching(){
+  let list=LOTS.filter(l=>(!st.makes.size||st.makes.has(l.make))&&(!st.provs.size||st.provs.has(l.prov))&&l.hrs<=st.hrs&&l.bid<=st.maxBid);
+  if(st.sort==="price")list=[...list].sort((a,b)=>a.bid-b.bid);
+  return list;
+}
+function countText(){
+  const nf=st.makes.size+st.provs.size+(st.hrs<3500?1:0)+(st.maxBid<5000000?1:0);
+  return nf?`${matching().length} of ${LOTS.length} lots`:`${LOTS.length} lots`;
+}
+function filtersUI(fr){
+  const mk=[...new Set(LOTS.map(l=>l.make))], pv=[...new Set(LOTS.map(l=>l.prov))];
+  const cnt=(f,v)=>LOTS.filter(l=>l[f]===v).length;
+  const box=(f,v)=>`<label class="check"><input type="checkbox" name="${f}" data-act="${f}" value="${v}" ${fk(f+"-"+fr+"-"+v)} ${(f==="make"?st.makes:st.provs).has(v)?"checked":""}><span>${v}</span><em class="num">${cnt(f,v)}</em></label>`;
+  return `<div class="fgroup"><span class="k">Make</span>${mk.map(v=>box("make",v)).join("")}</div>
+    <div class="fgroup"><span class="k">Province</span>${pv.map(v=>box("prov",v)).join("")}</div>
+    <div class="fgroup"><label class="k" for="hr-${fr}">Hours</label><input class="rng" id="hr-${fr}" name="hrs" type="range" min="0" max="3500" step="100" value="${st.hrs}" data-act="hrs" ${fk("hrs-"+fr)}><div class="range-v num"><span>0</span><span>${st.hrs>=3500?"Any hours":"Up to "+nbn(st.hrs)+" hrs"}</span></div></div>
+    <div class="fgroup"><label class="k" for="bd-${fr}">Current bid</label><input class="rng" id="bd-${fr}" name="maxbid" type="range" min="1000000" max="5000000" step="250000" value="${st.maxBid}" data-act="bid" ${fk("bid-"+fr)}><div class="range-v num"><span>R 1 000 000</span><span>${st.maxBid>=5000000?"Any price":"Up to "+R(st.maxBid)}</span></div></div>`;
+}
+function eventScreen(fr){
+  const compact=fr==="m"||st.view==="compact";
+  const total=LOTS.length, list=matching();
+  const nf=st.makes.size+st.provs.size+(st.hrs<3500?1:0)+(st.maxBid<5000000?1:0);
+  const chips=[...[...st.makes].map(v=>["make",v,v]),...[...st.provs].map(v=>["prov",v,v]),...(st.hrs<3500?[["hrs","","Up to "+nbn(st.hrs)+" hrs"]]:[]),...(st.maxBid<5000000?[["bid","","Up to "+R(st.maxBid)]]:[])];
+  const sortSel=(c)=>`<label class="selbox ${c}">${c?ic("sort"):""}<span${c?' class="sr"':""}>Sort${c?"":":"}</span><select name="sort" data-act="sort" ${fk("sort-"+fr+c)}><option value="lot"${st.sort==="lot"?" selected":""}>Lot number</option><option value="price"${st.sort==="price"?" selected":""}>Price, low to high</option></select></label>`;
+  const viewBtn=(v,t)=>`<button type="button" data-act="view" data-v="${v}" ${fk("view-"+fr+v)} aria-pressed="${st.view===v}">${t}</button>`;
+  const open=st.mf?" open":"";
+  const nl=list.length===1?"lot":"lots";
+  return header(false,true)+`<main>
+  <nav class="wrap crumb" aria-label="Breadcrumb"><a href="#home">${ic("back")}Auctions</a></nav>
+  <section class="wrap ev-head" aria-labelledby="t-${fr}">
+    <div><div class="t-chips"><span class="badge live">Live</span></div>
+      <h1 id="t-${fr}">Row Crop Tractor Sale</h1>
+      <p class="when">Online auction · Opened Mon 17 Nov · Lots close from <span class="nw">Sat 22 Nov, 10:00 SAST</span>, 2 minutes apart.</p>
+      <div class="meta facts"><span class="nw num">3 lots</span><span class="nw num">From ${R(2650000)}</span><span class="nw num">3 sellers</span><span>Free State, Mpumalanga, KwaZulu-Natal</span></div>
+<dl class="terms" style="margin:20px 0 0">
+    <div><dt class="k">Buyer's premium</dt><dd class="v" style="margin:0">5% + VAT</dd></div>
+    <div><dt class="k">Payment</dt><dd class="v" style="margin:0">EFT within 48h</dd></div>
+    <div><dt class="k">Viewing</dt><dd class="v" style="margin:0">By appointment</dd></div>
+    <div><dt class="k">Collection</dt><dd class="v" style="margin:0">Within 7 days</dd></div>
+    <div class="wide"><dt class="k">Reserve</dt><dd class="v" style="margin:0">Shown on each lot</dd></div>
+    <div class="rules"><a class="link" href="#event">Full auction rules ${ic("arrow")}</a></div>
+  </dl><a class="link rules-m" href="#event">Full auction rules ${ic("arrow")}</a></div>
+    <div class="ev-side"><div class="ph mosaic ev-photo">${["caseFront","jdFront","fendtGrass"].map(k=>`<div>${img(k)}</div>`).join("")}</div>
+      <div class="count-card"><div><div class="k">First lot closes in</div><div class="v">${durFull(LOTS[0].close)}</div></div><button type="button" class="btn outline sm">${ic("bell")}Remind me</button></div></div>
+  </section>
+  <div class="wrap m-bar" style="margin-top:14px"><details class="m-filter"${open}><summary>${ic("filter")}Filters${nf?` (${nf})`:""}</summary><div class="m-panel">${filtersUI(fr+"m")}<div class="m-foot"><button type="button" class="btn outline" data-act="clear" ${fk("clear-"+fr)}>Clear</button><button type="button" class="btn primary" data-act="close" ${fk("close-"+fr)}>Show ${list.length} ${nl}</button></div></div></details>${sortSel("m")}</div>
+  <section class="wrap ev-body" aria-label="Lots">
+    <aside class="filters" aria-label="Filter lots"><h2>Filter lots</h2>${filtersUI(fr)}</aside>
+    <div>
+      <div class="toolbar"><h2 class="cnt num">${nf?`${list.length} of ${total} lots`:`${total} lots`}</h2>
+        <div class="tb-right">${sortSel("")}<div class="view" role="group" aria-label="Card size">${viewBtn("detailed","Detailed")}${viewBtn("compact","Compact")}</div></div></div>
+      ${nf?`<div class="chips">${chips.map(([k,v,t])=>`<button type="button" class="fchip" data-act="rm" data-k="${k}" data-v="${v}" aria-label="Remove filter: ${t}">${t}${ic("x")}</button>`).join("")}<button type="button" class="link" data-act="clear">Clear filters</button></div>`:""}
+      ${list.length?`<div class="lots${compact&&fr==="d"?" compact":""}">${list.map(l=>lotCard(l,compact)).join("")}</div>`:`<div class="empty"><p>No lots match these filters.</p><button type="button" class="btn outline sm" data-act="clear">Clear filters</button></div>`}
+    </div>
+  </section></main>`+footer();
+}
+
+/* lot detail data: the live lot, and a different lot (own photos, own seller) that sits in Round 2 for the pre-start states */
+const DET={
+  7:{watch:23,seller:["VB","Van Biljon Boerdery","Bothaville, FS"],
+    specs:[["Hours","820"],["Engine power","380 hp"],["Transmission","CVXDrive"],["PTO","540 / 1000"],["Hydraulic flow","220 L/min"],["Tyres front / rear","70% / 65%"],["Guidance","AFS Connect ready"],["Serial number","On request"]],
+    cond:[["ok","Engine","Starts cold, no blow-by, service history supplied"],["ok","Hydraulics","No leaks, all remotes working"],["ok","Transmission","Smooth through range, no warnings"],["wear","Cab","Seat wear and a cracked rear-left window"],["wear","Tyres","Rear 65%, uneven wear on the right"]],
+    desc:"One-owner tractor from a maize and soybean operation near Bothaville. Serviced by the Case IH dealer at 250-hour intervals. Front weights included. Seller will help with loading on the farm."},
+  r2:{watch:11,seller:["DP","Du Plessis Landbou","Kroonstad, FS"],
+    specs:[["Hours","2 140"],["Engine power","315 hp"],["Transmission","Auto Command"],["PTO","540 / 1000"],["Hydraulic flow","165 L/min"],["Tyres front / rear","75% / 70%"],["Guidance","IntelliSteer ready"],["Serial number","On request"]],
+    cond:[["ok","Engine","Starts cold, no blow-by, full service history"],["ok","Hydraulics","No leaks, all remotes working"],["ok","Transmission","Smooth through range, no warnings"],["wear","Cab","Light seat wear, one scuffed door panel"],["ok","Tyres","Rear 70%, even wear"]],
+    desc:"Two-owner tractor from a wheat and canola operation near Kroonstad. Serviced by the New Holland dealer at 600-hour intervals. Front linkage included. Seller will help with loading on the farm."}
+};
+function lotScreen(fr){
+  const pre=lotState==="guest"||lotState==="reg";
+  const l=pre?R2LOT:LOTS[0], D=pre?DET.r2:DET[7];
+  const sale=pre?"Row Crop Tractor Sale: Round 2":"Row Crop Tractor Sale";
+  const opens=at(24,9,0);
+  const preNote='Bidding Mon 24 Nov, 09:00 to <span class="nw">Sat 29 Nov, 10:00 SAST</span>';
+  const add=st.add??(lotState==="live"?25000:0);
+  const bid=lotState==="live"||lotState==="reg"?l.bid+add:lotState==="glive"?l.bid+25000:l.bid;
+  const S={
+    guest:{pill:'<span class="badge opens">Upcoming</span>',lbl:"Opening bid",cdK:"Opens in",cdV:durFull(opens),note:preNote,cta:"Register to bid",bar:["Opening bid","Opens in "+dur(opens)],input:false},
+    reg:{pill:'<span class="badge opens">Upcoming</span>',lbl:"Opening bid",cdK:"Opens in",cdV:durFull(opens),note:preNote,cta:"Set max bid "+R(bid),bar:["Opening bid","Opens in "+dur(opens)],input:true},
+    live:{pill:`<span class="badge live">Live · ${l.bids} bids</span>`,lbl:"Current bid",cdK:"Closes in",cdV:durFull(l.close),note:"Bids in the last 2 min extend the close by 2 min",cta:"Place bid "+R(bid),bar:["Current bid","Closes in "+dur(l.close)],input:true},
+    glive:{pill:`<span class="badge live">Live · ${l.bids} bids</span>`,lbl:"Current bid",cdK:"Closes in",cdV:durFull(l.close),note:"Bids in the last 2 min extend the close by 2 min",cta:"Register to bid",bar:["Current bid","Closes in "+dur(l.close)],input:false}
+  }[lotState];
+  const prem=bid*0.05, vat=(bid+prem)*0.15;
+  const feeLbl=lotState==="guest"?"At the opening bid":lotState==="glive"?`At the next bid ${R(bid)}`:lotState==="reg"?`At your maximum ${R(bid)}`:`If you win at ${R(bid)}`;
+  const totLbl=lotState==="reg"?"Most you'd pay":"Total if you win";
+  const gal=Math.min(st.gal,l.imgs.length-1);
+  const ids="bid-"+fr;
+  const inputLbl=lotState==="reg"?"Your maximum bid":"Your bid";
+  const incLbl=lotState==="reg"?"Raise your maximum by":"Raise your bid by";
+  const steps=[25000,50000,100000,250000];
+  const userHdr=lotState==="reg"||lotState==="live";
+  return header(userHdr,true)+`<main>
+  <nav class="wrap crumb" aria-label="Breadcrumb"><a href="#event">${ic("back")}${sale}</a></nav>
+  <div class="wrap lot-grid">
+    <div class="col right">
+      <div class="g-title"><div class="eyebrow">Lot ${l.no} · Tractor<span class="sale"> · ${sale}</span></div>
+        <h1>${ttl(l.title)}</h1>
+        <div class="meta num"><span>${ic("pin")}${l.loc}</span><span class="nw">${nbn(l.hrs)} hrs · ${l.hp} hp</span></div>
+        <div class="watch"><button type="button" class="btn outline sm" aria-label="Watch this lot, ${D.watch} watching">${ic("heart")}<span class="wl">Watch · ${D.watch}</span></button></div></div>
+      <section class="g-bid panel" aria-label="Bidding">
+        <div class="status-line">${S.pill}${resPill(l.res)}</div>
+        <div><div class="eyebrow">${S.lbl}</div><div class="big-price"><strong>${R(l.bid)}</strong><small>excl. VAT</small></div></div>
+        <div class="cd${pre?" pre":""}"><span class="k">${S.cdK}</span><span class="v">${S.cdV}</span><span class="note">${S.note}</span></div>
+        ${S.input?`<div class="field"><label class="lbl" for="${ids}">${inputLbl}</label><label class="bid-input" for="${ids}"><span aria-hidden="true">R</span><input id="${ids}" name="bid" inputmode="numeric" autocomplete="off" value="${nbn(bid)}"></label>
+          ${lotState==="reg"?`<p class="hint">${bid===l.bid?`Your maximum is the opening bid. Raise it and, once bidding opens on Mon 24 Nov, we bid for you in ${R(25000)} steps, only as far as needed.`:`When bidding opens we bid for you in ${R(25000)} steps, only as far as needed, up to ${R(bid)}.`}</p>`:""}</div>
+        <div><p class="hint" id="il-${fr}" style="margin-bottom:6px">${incLbl}</p><div class="inc" role="group" aria-labelledby="il-${fr}">${steps.map((n,i)=>`<button type="button" data-act="inc" data-v="${n}" ${fk("inc-"+fr+n)} aria-pressed="${n===add}" aria-label="Add ${R(n)}">+${nbn(n)}</button>`).join("")}</div></div>`:`<p class="info-note">Register once with your ID and proof of address to bid on any lot.</p>`}
+        <button type="button" class="btn primary block">${S.cta}</button>
+        <div class="fees"><div class="r"><span>${feeLbl}</span><span>${R(bid)}</span></div><div class="r"><span>Buyer's premium (5%)</span><span>${R(prem)}</span></div><div class="r"><span>VAT (15%)</span><span>${R(vat)}</span></div><div class="r tot"><span>${totLbl}</span><span>${R(bid+prem+vat)}</span></div></div>
+        <div class="after">${ic("card")}Pay by EFT within 48 hours, collect within 7 days. Viewing by appointment.</div>
+        <div class="trust">${ic("lock")}<span>Bids are binding and kept in a permanent bid record.</span><a class="link" href="#lot">How bidding works</a></div>
+      </section>
+    </div>
+    <div class="col left">
+      <div class="g-gallery m-gal"><div class="gal-main">${img(l.imgs[gal],true)}${l.imgs.length>1?`<span class="gal-count num">${gal+1} / ${l.imgs.length}</span>`:""}<span class="gal-cap${l.imgs.length>1?"":" solo"}">More photos requested from the seller</span><button type="button" class="gal-act" aria-label="View photo full screen">${ic("expand")}</button></div>
+        ${l.imgs.length>1?`<div class="thumbs" role="group" aria-label="Photos">${l.imgs.map((k,i)=>`<button type="button" class="thumb" data-act="thumb" data-i="${i}" ${fk("th-"+fr+i)} aria-pressed="${i===gal}" aria-label="Photo ${i+1} of ${l.imgs.length}: ${IM[k].label}"><span class="im">${img(k)}</span>${IM[k].label}</button>`).join("")}</div>`:""}</div>
+      <section class="g-specs block"><h2>Specifications</h2><dl class="specs">
+        ${D.specs.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl></section>
+      <section class="g-cond block"><h2>Condition report</h2><p class="hint" style="margin:-4px 0 10px">Inspected by AgriBid on Tue 11 Nov · Full report <span class="nw">below as PDF</span></p><ul class="cond">
+        ${D.cond.map(([s,n,d])=>`<li><span class="st ${s}">${ic(s==="ok"?"check":"warn")}${s==="ok"?"Good":"Wear noted"}</span><b>${n}</b><span class="d">${d}</span></li>`).join("")}</ul>
+        <div class="cond-act"><button type="button" class="btn outline sm">${ic("file")}Download inspection PDF</button><button type="button" class="btn outline sm">${ic("cal")}Book a viewing</button></div></section>
+      <section class="g-seller seller" aria-label="Seller">
+        <div class="seller-top"><div class="avatar" aria-hidden="true">${D.seller[0]}</div><div><b>Sold by ${D.seller[1]}</b><div class="meta"><span>${ic("pin")}${D.seller[2]}</span><span class="nw">Replies within 4 hours</span></div></div></div>
+        <div class="verified-note">${ic("shield")}Identity and company registration verified by AgriBid.</div>
+        <div class="seller-act"><button type="button" class="btn outline sm">${ic("chat")}Ask the seller</button><a class="link" href="#lot">View profile</a></div>
+      </section>
+      <section class="g-hist block"><h2>Bid history</h2>${lotState==="live"||lotState==="glive"?`<div class="hist">
+        <div class="lead"><span><b class="num">${R(3950000)}</b><span class="tagl">Leading</span></span><span>Bidder #41 · 2 min ago</span></div>
+        <div><span class="num">${R(3925000)}</span><span>Bidder #27 · 9 min ago</span></div>
+        <div><span class="num">${R(3900000)}</span><span>Bidder #41 · 1 hr ago</span></div></div>
+        <a class="link" href="#lot" style="margin-top:6px">View all ${l.bids} bids ${ic("arrow")}</a>`:`<p class="info-note">No bids yet. Opening bid ${R(l.bid)}.</p>`}</section>
+      <section class="g-desc block desc"><h2>Description</h2><p>${D.desc}</p></section>
+    </div>
+  </div>
+  <section class="wrap related" aria-labelledby="rl-${fr}">
+    <div class="sec-head"><h2 id="rl-${fr}">More live lots</h2><a class="link" href="#event">All live lots ${ic("arrow")}</a></div>
+    ${(()=>{const rel=[LOTS[1],LOTS[2],MF].concat(pre?[LOTS[0]]:[]);return `<div class="rail${rel.length===3?" r3":""}" tabindex="0" role="region" aria-label="More live lots">${rel.map(x=>lotCard(x,false)).join("")}</div>`})()}
+  </section>
+  <div class="sticky-bid"><div><span class="k">${S.bar[0]}</span><strong>${R(l.bid)}</strong><span class="k num">${S.bar[1]}</span></div><button type="button" class="btn primary">${S.cta}</button></div></main>`+footer();
+}
+
+/* ---------- notes ---------- */
+const NOTES={
+  home:{h:"Home",lede:"Answers \"why trust this over my local auctioneer\" above the fold, and makes each event card sell the sale instead of listing metadata.",items:[
+    ["Value-proposition hero","A real John Deere 8R photo (scenery, tied to no lot; a 16:9 band above the copy on phones), headline, two CTAs and three proof points (FICA-verified sellers, condition-reported lots, soft close). No sales numbers until they're real."],
+    ["Event cards that sell","16:9 photo mosaic, status badge, countdown chip, region, lot count, price floor and a clear View lots button. The whole card is a link. Every time derives from one fixed \"now\": Thu 20 Nov, 05:48 SAST."],
+    ["One filter control","\"Live & upcoming / Closing soon / Results\" replaces Active, Closed, All and the duplicate All Auctions and Sell buttons. The tabs work: Closing soon shows only sales ending within 24 hours."],
+    ["Search on mobile","A header icon plus a full-width search field. \"Login / Register\" becomes \"Sign in\"."],
+    ["Ending this week and browse by make","Lots closing this week, then makes with real counts that add up to the 5 listed lots. Category tiles are gone: there are no combine, planter or sprayer photos or lots yet."],
+    ["How it works and a clean footer","Three steps ending in the auction rules. The footer drops the empty Headquarters heading and the placeholder phone, registration and VAT numbers, and adds a legal row (Terms, Privacy, PAIA).",true]]},
+  event:{h:"Auction event",lede:"Puts the terms a R1m–R5m buyer needs on the page, and swaps the disabled \"Not Started\" button for an action.",items:[
+    ["Sale summary header","Title, close schedule in SAST, a lead photo mosaic and a countdown card with Remind me. Replaces the 290px empty banner. The internal \"Published\" state is hidden."],
+    ["Sale terms row","Buyer's premium, payment, viewing, collection and reserve policy, linked to the full rules.",true],
+    ["Scannable lot cards","Lot number and category eyebrow; make and model as the title; hours, hp and location; \"Current\" or \"Opening bid\" used consistently; no cents; a reserve status with an icon and text."],
+    ["State-driven CTA","\"Bid R 3 975 000\" when live, \"Set max bid R 1 450 000\" or \"Register to bid\" before the start. Never a grey dead end. Opening-bid lots show the opening bid, not +R 25 000."],
+    ["Filters that match results","Make, province, hours and bid (R 1m to R 5m) filters work, with removable chips, \"N of 3 lots\" and Clear filters. Province data doesn't exist yet.",true],
+    ["Mobile compact rows","4:3 thumbnails, a countdown chip that turns red only when closing soon, reserve status beside the price, and a full-width 44px green button under the row. A sticky Filters and Sort bar opens a panel with a scrim and a Show N lots button, which returns to the list with the count and chips visible. On desktop, Compact is a one-column table-style list: photo, title and meta, price with its reserve status, then the Bid button and Watch."]]},
+  lot:{h:"Lot detail",lede:"Builds the bid panel around the decision and makes inspection data the product. Use the switcher to see each bidding state. The two pre-start states show a different lot, a New Holland T7.315 in Round 2; the two live states cover registered and guest bidders.",items:[
+    ["Bid panel in decision order","Status, price excl. VAT, reserve, countdown, proxy-bid explanation, increment chips that update the amount, fees and button, fee breakdown, payment and collection terms, then the bid-record promise.",true],
+    ["Gallery first","A 4:3 photo at top-left (full-bleed on mobile). A caption on the photo says more are requested; a counter and thumbnail strip appear once a lot has more than one photo."],
+    ["Specs and condition report","A key/value table plus condition rows with an icon and a word (Good or Wear noted), an inspector and date line, the inspection PDF (conditionReportUrl) and Book a viewing.",true],
+    ["Seller card for trust","Business name, location, reply time and a verification note. The \"0 items sold\" count is hidden, and View profile is demoted to a link.",true],
+    ["Clean title and header","\"{T}\" with no status in the H1 and no database ID. Watch shows a count. Registered buyers see My bids instead of Sign in and Register; the guest live state offers Register to bid.",true],
+    ["Mobile order and sticky bar","Gallery, title, bid, specs, condition, seller, history, description, more lots. The sticky bar always matches the bid state and hides while the panel's own CTA is on screen."]]}
+};
+function notesHTML(s){
+  let n=NOTES[s];
+  if(s==="lot"){const pre=lotState==="guest"||lotState==="reg";n={...n,items:n.items.map(x=>[...x])};n.items[4][1]=n.items[4][1].replace("{T}",pre?R2LOT.title:LOTS[0].title);if(pre)n.items[1][1]="A 4:3 photo at top-left (full-bleed on mobile) with a caption saying more are requested. One real photo exists for this lot (left side). nh-front shows a newer T7 HD and nh-engine a third unit, so neither is used.";}
+  const ctl=s==="lot"?`<div class="state-ctl"><span class="lbl" id="st-l">Bidding state</span><div class="seg" role="group" aria-labelledby="st-l">
+    ${[["guest","Guest, before start"],["reg","Registered, before start"],["live","Registered, live"],["glive","Guest, live"]].map(([k,t])=>`<button type="button" id="st-${k}" data-state="${k}" aria-pressed="${lotState===k}">${t}</button>`).join("")}</div></div>`:"";
+  return `<h2>${n.h}</h2><p class="lede">${n.lede}</p>${ctl}<ol>${n.items.map((it,i)=>`<li><span class="n">${String(i+1).padStart(2,"0")}</span><div><b>${it[0]}${it[2]?'<span class="tag">Needs decision</span>':""}</b><span>${it[1]}</span></div></li>`).join("")}</ol>
+  <p class="compare">"Needs decision" marks data that doesn't exist yet: buyer's premium rate, seller reply time, watcher count, province, contact details, registration and VAT numbers. The finance estimate is dropped until a rate exists. Photos are the seed images in assets/, and no photo appears on two lots; the only clean Fendt photo is a 350×220 source (the 640×480 alternative carries a dealer watermark) and looks soft on large and high-DPI screens, so a seller re-upload is requested. Lots have one photo until the seller uploads a full set; only photos that plausibly show the same unit are grouped. Prices are market-plausible seed values.</p>`;
+}
+
+/* ---------- render ---------- */
+const URLS={home:"agribid.co.za",event:"agribid.co.za/auctions/row-crop-tractor-sale",lot:"agribid.co.za/auction/lot-7-case-ih-magnum-380"};
+let io=null;
+function screenHTML(s,fr){return s==="home"?home(fr):s==="event"?eventScreen(fr):lotScreen(fr);}
+function curScreen(){let s=(location.hash||"#home").slice(1);return SCREENS.includes(s)?s:"home";}
+function paint(keep,focusKey,focusFrame){
+  const s=curScreen();
+  if(io){io.disconnect();io=null;}
+  for(const fr of ["d","m"]){
+    const el=document.getElementById("app-"+fr), top=keep?el.scrollTop:0;
+    el.innerHTML=nbR(screenHTML(s,fr)); el.scrollTop=top;
+    if(focusKey&&fr===focusFrame){const f=el.querySelector(`[data-fk="${focusKey}"]`);if(f)f.focus({preventScroll:true});}
+  }
+  /* phone: hide the sticky bar while the panel's own CTA is visible, so one primary action shows at a time */
+  const m=document.getElementById("app-m"), cta=m.querySelector(".g-bid .btn.primary.block"), bar=m.querySelector(".sticky-bid");
+  if(cta&&bar&&"IntersectionObserver" in window){
+    io=new IntersectionObserver(es=>{bar.classList.toggle("off",es[0].intersectionRatio>.9);},{root:m,threshold:[0,.5,.9,1]});
+    io.observe(cta);
+  }
+}
+function render(){
+  const s=curScreen();
+  document.querySelectorAll("[data-tab]").forEach(a=>{if(a.dataset.tab===s)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
+  paint(false);
+  document.getElementById("url-d").textContent=s==="lot"&&(lotState==="guest"||lotState==="reg")?"agribid.co.za/auction/lot-1-new-holland-t7-315":URLS[s];
+  document.getElementById("notes").innerHTML=nbR(notesHTML(s));
+}
+function act(t){
+  const a=t.dataset.act; if(!a)return false;
+  const fkey=t.dataset.fk||"";
+  if(a==="tab")st.tab=t.dataset.v;
+  else if(a==="thumb")st.gal=+t.dataset.i;
+  else if(a==="view")st.view=t.dataset.v;
+  else if(a==="close")st.mf=false;
+  else if(a==="inc")st.add=+t.dataset.v;
+  else if(a==="clear"){st.makes.clear();st.provs.clear();st.hrs=3500;st.maxBid=5000000;}
+  else if(a==="rm"){const k=t.dataset.k,v=t.dataset.v;if(k==="make")st.makes.delete(v);else if(k==="prov")st.provs.delete(v);else if(k==="hrs")st.hrs=3500;else st.maxBid=5000000;}
+  else if(a==="make"||a==="prov"){const set=a==="make"?st.makes:st.provs;t.checked?set.add(t.value):set.delete(t.value);}
+  else if(a==="hrs")st.hrs=+t.value;
+  else if(a==="bid")st.maxBid=+t.value;
+  else if(a==="sort")st.sort=t.value;
+  else return false;
+  const host=t.closest(".app");
+  paint(true,fkey,host?host.id.slice(4):"");
+  if(a==="close"){const m=document.getElementById("app-m"),tb=m.querySelector(".toolbar"),bar=m.querySelector(".m-bar");if(tb&&bar){const top=tb.getBoundingClientRect().top-m.getBoundingClientRect().top,lim=bar.getBoundingClientRect().bottom-m.getBoundingClientRect().top;m.scrollTop+=top-lim-8;}}
+  const lv=document.getElementById("live"); if(lv)lv.textContent=countText();
+  return true;
+}
+for(const id of ["app-d","app-m"]){
+  const el=document.getElementById(id);
+  el.addEventListener("click",e=>{const t=e.target.closest("button[data-act]");if(t){act(t);return;}if(st.mf&&!e.target.closest(".m-bar")){e.preventDefault();st.mf=false;paint(true);}});
+  el.addEventListener("change",e=>{const t=e.target.closest("[data-act]");if(t&&t.tagName!=="BUTTON")act(t);});
+  el.addEventListener("toggle",e=>{if(e.target.matches&&e.target.matches("details.m-filter"))st.mf=e.target.open;},true);
+}
+document.getElementById("notes").addEventListener("click",e=>{
+  const b=e.target.closest("[data-state]"); if(!b) return;
+  lotState=b.dataset.state; st.add=null; render();
+  const nb=document.getElementById("st-"+lotState); if(nb) nb.focus();
+});
+window.addEventListener("hashchange",render);
+render();
+})();
+</script>
+</body>
+</html>
