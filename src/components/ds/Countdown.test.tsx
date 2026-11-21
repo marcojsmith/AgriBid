@@ -55,4 +55,23 @@ describe("Countdown", () => {
     render(<Countdown endTime={Date.now() - 1} className="custom" />);
     expect(screen.getByText("Ended")).toHaveClass("custom");
   });
+
+  it("lets a caller text colour override the tone colour", () => {
+    render(
+      <Countdown endTime={Date.now() + 5 * 3_600_000} className="text-white" />
+    );
+    const el = screen.getByText(/5h/);
+    expect(el).toHaveClass("text-white");
+    expect(el).not.toHaveClass("text-foreground");
+  });
+
+  it("refreshes immediately when the end time changes", () => {
+    const { rerender } = render(<Countdown endTime={null} />);
+    vi.setSystemTime(new Date("2026-11-21T10:30:00Z"));
+    rerender(<Countdown endTime={Date.now() + 5 * 3_600_000} />);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByText(/^5h 0m/)).toBeInTheDocument();
+  });
 });

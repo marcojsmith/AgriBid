@@ -41,6 +41,7 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   className,
 }: SegmentedControlProps<T>) {
+  const hasSelection = options.some((o) => o.value === value);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const move = (from: number, delta: number) => {
@@ -82,7 +83,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={selected || (!hasSelection && index === 0) ? 0 : -1}
             onClick={() => {
               onChange(option.value);
             }}

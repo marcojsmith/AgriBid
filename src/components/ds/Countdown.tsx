@@ -27,7 +27,8 @@ interface CountdownProps {
  * hour, red under two minutes, tabular figures (no monospace). With
  * `absolute` it shows the SAST closing time instead.
  *
- * Use it for every closing time. Add the label ("Closes in") yourself.
+ * A `className` text colour overrides the tone colour (e.g. `text-white` on
+ * a dark photo overlay). Use it for every closing time. Add the label ("Closes in") yourself.
  *
  * @param props - Component props
  * @param props.endTime - End time in ms since epoch (null shows TBD)
@@ -44,31 +45,39 @@ export function Countdown({
 
   useEffect(() => {
     if (absolute || endTime === undefined || endTime === null) return;
+    // Refresh straight away (not synchronously) so a changed endTime never
+    // shows a stale value for a second.
+    const refresh = setTimeout(() => {
+      setNow(Date.now());
+    }, 0);
     const interval = setInterval(() => {
       const current = Date.now();
       setNow(current);
       if (endTime - current <= 0) clearInterval(interval);
     }, 1000);
     return () => {
+      clearTimeout(refresh);
       clearInterval(interval);
     };
   }, [endTime, absolute]);
 
-  const base = cn("num font-semibold", className);
+  const base = (color: string) => cn("num font-semibold", color, className);
 
   if (endTime === undefined || endTime === null) {
-    return <span className={cn(base, "text-muted-foreground")}>TBD</span>;
+    return <span className={base("text-muted-foreground")}>TBD</span>;
   }
   if (absolute) {
-    return <span className={base}>{formatSastDate(endTime)}</span>;
+    return (
+      <span className={base("text-foreground")}>{formatSastDate(endTime)}</span>
+    );
   }
   const remaining = endTime - now;
   if (remaining <= 0) {
-    return <span className={cn(base, "text-muted-foreground")}>Ended</span>;
+    return <span className={base("text-muted-foreground")}>Ended</span>;
   }
   const tone = countdownTone(remaining);
   return (
-    <span data-tone={tone} className={cn(base, TONE_CLASS[tone])}>
+    <span data-tone={tone} className={base(TONE_CLASS[tone])}>
       {formatRemaining(remaining)}
     </span>
   );

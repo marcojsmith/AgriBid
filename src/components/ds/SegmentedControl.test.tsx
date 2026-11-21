@@ -35,6 +35,20 @@ describe("SegmentedControl", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
   });
 
+  it("keeps the group reachable by keyboard when the value matches no option", () => {
+    render(
+      <SegmentedControl
+        options={OPTIONS}
+        value={"stale" as never}
+        onChange={vi.fn()}
+        ariaLabel="v"
+      />
+    );
+    const radios = screen.getAllByRole("radio");
+    expect(radios[0]).toHaveAttribute("tabindex", "0");
+    expect(radios[1]).toHaveAttribute("tabindex", "-1");
+  });
+
   it("is 44px on phone", () => {
     render(
       <SegmentedControl

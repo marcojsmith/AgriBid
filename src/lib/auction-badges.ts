@@ -58,7 +58,8 @@ export type DisplayStatus =
 /**
  * Derives the single display status for an auction or lot.
  *
- * Outcome wins over time. Otherwise: before `startTime` it is "opens"; after
+ * Callers MUST pass `outcome` for closed lots: with no outcome, an ended lot
+ * is reported as "passed" because the result is not known here. Outcome wins over time. Otherwise: before `startTime` it is "opens"; after
  * `endTime` with no outcome it is "passed"; within 24h of the end it is
  * "closing-soon" (urgent inside 1h); else "live".
  *

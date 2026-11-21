@@ -81,7 +81,7 @@ export function ConditionReport({
           href={pdfHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-block font-medium text-primary underline underline-offset-4"
+          className="mt-3 inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4"
         >
           Inspection report (PDF)
         </a>

@@ -259,7 +259,7 @@ export default function DesignSystem() {
             Absolute: <Countdown endTime={NOW + 86_400_000} absolute />
           </span>
           <span>
-            Ended: <Countdown endTime={NOW - 1000} />
+            Past: <Countdown endTime={NOW - 1000} />
           </span>
           <span>SAST: {formatSastDate(NOW)}</span>
         </div>

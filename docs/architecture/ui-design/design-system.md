@@ -87,8 +87,9 @@ All have JSDoc and tests. Import from the file (`@/components/ds/Money`).
 
 Notes:
 
-- `Countdown` ticks every second. The older `CountdownTimer` is kept for existing callers and delegates to `Countdown`; new code uses `Countdown`.
-- Pages that use `StickyActionBar` add bottom padding (about 5rem) so content is not covered.
+- `StatusBadge`: pass the outcome (sold / passed) to `deriveDisplayStatus` for closed lots; with no outcome an ended lot reads "Passed in".
+- `Countdown` ticks every second; a `className` text colour (e.g. `text-white` on a photo overlay) overrides the tone colour. The older `CountdownTimer` is kept for existing callers and delegates to `Countdown`; new code uses `Countdown`.
+- Pages that use `StickyActionBar` add bottom padding (about 5rem) to the page, and must also keep the app footer reachable (the bar is fixed over it on phone). Standalone links in components have a 44px tap area on phone.
 
 ### Formatters
 
