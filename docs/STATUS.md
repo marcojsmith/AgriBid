@@ -14,6 +14,7 @@ Last updated: 2026-11-21
 
 ## In progress
 
+- Branch `feat/auction-event-redesign` (track `improve-screen-mockups`, WP5): redesigned `/auctions/:id` (sale header, terms row, filters, new lot cards, state-correct CTAs); `getActiveLots(auctionId)` and `getPublishedAuction` now order lots by `lotNumber` (no schema change, no migration, deploy only). WP4c (#404) is merged.
 - Branch `feat/legal-pages` (track `improve-screen-mockups`, WP4c): new `legalPages` table (run `bunx convex deploy`), `/terms`, `/privacy`, `/paia` and the admin editor at `/admin/legal`. Starter drafts are created by `seed:weeklyReset` (or the "Create starter drafts" button) and stay **unpublished**: an admin must complete the text, have it legally reviewed, then publish it; the footer links appear only after that. Adds `react-markdown` 10.1.0. WP4b (#403) is merged.
 - Branch `feat/closing-soon-strip` (track `improve-screen-mockups`, WP4b): public query `getClosingSoonLots` (new index `auctions.by_status_endTime`, run `bunx convex deploy`) and the Home "Closing in the next 24 hours" lot strip. No migration; run `seed:weeklyReset` only to refresh local demo data. WP4 (#402) is merged; categories on Home are still a follow-up.
 - Branch `feat/lot-number-province-watchers` (track `improve-screen-mockups`, WP3b): `lots.lotNumber` + `lots.province`, `profiles.sellerResponseTime`, per-lot watcher counters, two backfill migrations (`migrations:backfillLotNumbers`, `migrations:backfillWatcherCounts`; run once after deploy), wizard province field, admin controls. **Run both migrations immediately after deploy**: until `backfillLotNumbers` runs, existing lots have no number and new assignments start at 1 ahead of older lots (breaking creation order); until `backfillWatcherCounts` runs, watcher counts for already-watched lots are 0. WP2 (#398) and WP3a (#399) are merged.
@@ -36,6 +37,7 @@ Last updated: 2026-11-21
 
 ## Done (last 10)
 
+- 2026-11-21: Admin-editable Terms, Privacy and PAIA pages (WP4c, #404) (v0.25.0).
 - 2026-11-21: Closing-soon lot strip on Home (WP4b, #403) (v0.24.0).
 - 2026-11-21: VAT rate and company details for fees and the footer (WP3c, #401) (v0.22.0).
 - 2026-11-21: Lot numbers, province, seller response time and watcher counts (WP3b, #400) (v0.21.0).

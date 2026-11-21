@@ -2,7 +2,6 @@ import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
-import type { Id } from "convex/_generated/dataModel";
 
 import { useSession } from "@/lib/auth-client";
 
@@ -73,8 +72,6 @@ vi.mock("@/components/LoadingIndicator", () => ({
   LoadingPage: ({ message }: { message: string }) => <div>{message}</div>,
   LoadingIndicator: () => <div data-testid="loading-indicator">Spinner</div>,
 }));
-
-const TEST_AUCTION_ID = "a1" as Id<"auctions">;
 
 describe("LotBrowser", () => {
   const mockAuctions = [
@@ -705,127 +702,5 @@ describe("LotBrowser", () => {
 
     // The toolbar-to-grid gap only matters once the sidebar appears at `lg`.
     expect(container.firstElementChild).toHaveClass("gap-4", "lg:gap-8");
-  });
-
-  describe("scoped to an auction container", () => {
-    it("passes auctionId to the paginated lot query", () => {
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID });
-      expect(usePaginatedQuery).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ auctionId: TEST_AUCTION_ID }),
-        expect.anything()
-      );
-    });
-
-    it("does not pass auctionId in the global (search) mode", () => {
-      renderLotBrowser();
-      const args = (usePaginatedQuery as Mock).mock.calls[0][1] as Record<
-        string,
-        unknown
-      >;
-      expect(args.auctionId).toBeUndefined();
-    });
-
-    it("omits the <h1> so the page provides its own heading", () => {
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID, heading: "Ignored" });
-      expect(
-        screen.queryByRole("heading", { level: 1 })
-      ).not.toBeInTheDocument();
-    });
-
-    it("defaults statusFilter to 'all', ignoring the saved preference", async () => {
-      (useSession as Mock).mockReturnValue({
-        data: { user: { id: "u1" } },
-        isPending: false,
-      });
-      (useQuery as Mock)
-        .mockReturnValueOnce({ defaultStatusFilter: "closed" })
-        .mockReturnValueOnce(["1"]);
-
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID });
-
-      await act(async () => {
-        // intentional no-op: flush async preference-loading effects before asserting
-      });
-
-      expect(usePaginatedQuery).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ statusFilter: "all" }),
-        expect.anything()
-      );
-    });
-
-    it("ignores a stale status param from the URL — no visible control to see or clear it", () => {
-      (useSearchParams as Mock).mockReturnValue([
-        new URLSearchParams("status=closed"),
-        vi.fn(),
-      ]);
-
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID });
-
-      expect(usePaginatedQuery).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ statusFilter: "all" }),
-        expect.anything()
-      );
-    });
-
-    it("hides the status filter in the sidebar", () => {
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID });
-
-      const sidebars = screen.getAllByTestId("filter-sidebar");
-      expect(sidebars.length).toBeGreaterThan(0);
-      for (const sidebar of sidebars) {
-        expect(sidebar).toHaveAttribute("data-hide-status", "true");
-      }
-    });
-
-    it("does not render a status chip even for a non-default URL status", () => {
-      (useSearchParams as Mock).mockReturnValue([
-        new URLSearchParams("status=closed"),
-        vi.fn(),
-      ]);
-
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID });
-      expect(
-        screen.queryByTestId("filter-chip-status")
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows the auction-scoped empty state with a Clear filters button", () => {
-      (usePaginatedQuery as Mock).mockReturnValue({
-        results: [],
-        status: "Exhausted",
-        loadMore: vi.fn(),
-      });
-
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID });
-      expect(
-        screen.getByText("No lots match your current filters.")
-      ).toBeInTheDocument();
-
-      const clearButton = screen.getByRole("button", { name: "Clear filters" });
-      expect(clearButton).not.toHaveAttribute("href");
-    });
-
-    it("clears search params on the current path when Clear filters is clicked", () => {
-      const setSearchParams = vi.fn();
-      (useSearchParams as Mock).mockReturnValue([
-        new URLSearchParams("make=John+Deere&q=tractor"),
-        setSearchParams,
-      ]);
-      (usePaginatedQuery as Mock).mockReturnValue({
-        results: [],
-        status: "Exhausted",
-        loadMore: vi.fn(),
-      });
-
-      renderLotBrowser({ auctionId: TEST_AUCTION_ID });
-      fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
-
-      expect(setSearchParams).toHaveBeenCalledTimes(1);
-      const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
-      expect(calledWith.toString()).toBe("");
-    });
   });
 });

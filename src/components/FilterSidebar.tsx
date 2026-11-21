@@ -51,11 +51,11 @@ export const FilterSidebar = ({
   } = useFilterSidebar({ hideStatus, onClose });
 
   return (
-    <div className="flex flex-col h-full bg-card border rounded-lg overflow-hidden shadow-sm animate-in slide-in-from-left-4 duration-300">
+    <div className="flex flex-col h-full max-h-[inherit] bg-card border rounded-md overflow-hidden">
       <div className="p-4 border-b flex justify-between items-center bg-muted/30">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-primary" />
-          <h2 className="font-semibold text-sm">Filter Equipment</h2>
+          <h2 className="font-semibold text-base">Filters</h2>
         </div>
         <div className="flex items-center gap-1">
           <Button

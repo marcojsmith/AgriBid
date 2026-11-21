@@ -4,20 +4,25 @@ import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Clock, MapPin, Gavel, CalendarClock } from "lucide-react";
+import { Heart, MapPin } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
 import { getLotLiveWindow, useLotLiveWindow } from "@/hooks/useLotLiveWindow";
-import { Badge } from "@/components/ui/badge";
+import { useNow } from "@/hooks/useNow";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BidConfirmation } from "@/components/BidConfirmation";
+import { Countdown } from "@/components/ds/Countdown";
+import { Money } from "@/components/ds/Money";
+import { PhotoFrame } from "@/components/ds/PhotoFrame";
+import { ReservePill, type ReserveState } from "@/components/ds/ReservePill";
+import { StatusBadge } from "@/components/ds/StatusBadge";
+import { deriveDisplayStatus } from "@/lib/auction-badges";
 import { formatCurrency } from "@/lib/currency";
+import { getLotCta, type LotCtaPhase } from "@/lib/lotCta";
+import { PROVINCE_LABELS } from "@/lib/provinces";
 import { isValidCallbackUrl, cn, getErrorMessage } from "@/lib/utils";
 import type { LotSummary } from "@/types/auction";
-
-import { AuctionCardThumbnail } from "./AuctionCardThumbnail";
-import { AuctionCardPrice } from "./AuctionCardPrice";
 
 interface AuctionCardProps {
   auction: LotSummary;
@@ -26,13 +31,32 @@ interface AuctionCardProps {
 }
 
 /**
- * Component for rendering a single auction listing card.
+ * Reserve state for the pill: no reserve, met once the price reaches it, else
+ * not met.
+ *
+ * @param lot - The lot to read
+ * @returns The reserve state
+ */
+function reserveStateOf(lot: LotSummary): ReserveState {
+  if (lot.reservePrice <= 0) return "none";
+  return lot.currentPrice >= lot.reservePrice ? "met" : "not-met";
+}
+
+/**
+ * One lot in the auction event grid and other lot lists: photo, "LOT n ·
+ * category" eyebrow, make/model title, hours and place, price with reserve
+ * pill, countdown and one state-correct call to action (at least 44px tall).
+ *
+ * `detailed` stacks photo over text; `compact` is a row with a 4:3 thumbnail.
+ * The title link covers the whole card; the watch and bid buttons sit above it.
+ * The label ("Opening bid" or "Current bid") follows whether the price has
+ * moved above the opening price.
  *
  * @param props - Component props
- * @param props.auction - The auction document
+ * @param props.auction - The lot summary to show
  * @param props.viewMode - Visual mode (compact or detailed)
- * @param props.isWatched - Whether the auction is on the user's watchlist
- * @returns The rendered auction card
+ * @param props.isWatched - Whether the lot is on the user's watchlist
+ * @returns The rendered lot card
  */
 export const AuctionCard = ({
   auction,
@@ -40,7 +64,9 @@ export const AuctionCard = ({
   isWatched: initialIsWatched = false,
 }: AuctionCardProps) => {
   const { data: session } = useSession();
+  const userProfile = useUserProfile();
   const navigate = useNavigate();
+  const now = useNow();
   const placeBid = useMutation(api.auctions.mutations.bidding.placeBid);
   const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
   const [isBidding, setIsBidding] = useState(false);
@@ -58,17 +84,22 @@ export const AuctionCard = ({
     setIsWatched(initialIsWatched);
   }
 
+  const lotPath = `/auction/${auction._id}`;
+
+  const goToLogin = () => {
+    const callbackUrl = isValidCallbackUrl(lotPath)
+      ? encodeURIComponent(lotPath)
+      : "/";
+    void navigate(`/login?callbackUrl=${callbackUrl}`);
+  };
+
   const handleWatchlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!session) {
       toast.info("Please sign in to watch an auction");
-      const rawUrl = `/auction/${auction._id}`;
-      const callbackUrl = isValidCallbackUrl(rawUrl)
-        ? encodeURIComponent(rawUrl)
-        : "/";
-      void navigate(`/login?callbackUrl=${callbackUrl}`);
+      goToLogin();
       return;
     }
 
@@ -83,33 +114,32 @@ export const AuctionCard = ({
     }
   };
 
-  const handleBidInitiate = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const nextBid = auction.currentPrice + auction.minIncrement;
+  const phase: LotCtaPhase = liveWindow.phase;
+  // Verification only matters once the profile has loaded for a signed-in user.
+  const isVerified =
+    session && userProfile !== undefined
+      ? (userProfile?.profile?.isVerified ?? false)
+      : undefined;
+  const cta = getLotCta({
+    phase,
+    signedIn: !!session,
+    isVerified,
+    nextBid,
+  });
 
+  const handleBidInitiate = () => {
     const window = getLotLiveWindow(auction, Date.now());
-    if (window.isUpcoming) {
-      toast.error("This auction has not started yet");
-      return;
-    }
-
     if (!window.isLive) {
       toast.error("This auction is not open for bidding");
       return;
     }
-
     if (!session) {
       toast.info("Please sign in to place a bid");
-      const rawUrl = `/auction/${auction._id}`;
-      const callbackUrl = isValidCallbackUrl(rawUrl)
-        ? encodeURIComponent(rawUrl)
-        : "/";
-      void navigate(`/login?callbackUrl=${callbackUrl}`);
+      goToLogin();
       return;
     }
-
-    const amount = auction.currentPrice + auction.minIncrement;
-    setPendingBid(amount);
+    setPendingBid(nextBid);
     setIsConfirmOpen(true);
   };
 
@@ -150,210 +180,169 @@ export const AuctionCard = ({
     images.additional[0];
 
   const isCompact = viewMode === "compact";
-  /**
-   * Whether the lot is closed (sold, unsold, rejected, or its auction window
-   * has passed). Controls closed-state rendering branches in AuctionCard.
-   */
-  const isClosed = liveWindow.isEnded;
-  /**
-   * Whether the lot is assigned to a published auction that hasn't started
-   * yet — bidding is blocked server-side until then, so the card must make
-   * this distinguishable from a live, biddable lot. `useLotLiveWindow`
-   * self-updates as the window boundaries pass.
-   */
-  const isNotStarted = liveWindow.isUpcoming;
-  const isUnavailable = liveWindow.isUnavailable;
+  const isEnded = liveWindow.isEnded;
+  const isUpcoming = liveWindow.isUpcoming;
+  const name = `${String(auction.year)} ${auction.make} ${auction.model}`;
+  const place = auction.province
+    ? PROVINCE_LABELS[auction.province]
+    : auction.location;
+  const hasBids = auction.currentPrice > auction.startingPrice;
+  const moneyLabel =
+    auction.status === "sold"
+      ? "Sold for"
+      : hasBids
+        ? auction.status === "unsold"
+          ? "Highest bid"
+          : "Current bid"
+        : "Opening bid";
+  const eyebrow =
+    auction.lotNumber === undefined
+      ? auction.categoryName
+      : `Lot ${String(auction.lotNumber)} · ${auction.categoryName}`;
+
+  const displayStatus = deriveDisplayStatus({
+    startTime: liveWindow.effectiveStartTime,
+    endTime: liveWindow.effectiveEndTime,
+    now,
+    outcome:
+      auction.status === "sold"
+        ? "sold"
+        : isEnded || auction.status === "unsold"
+          ? "passed"
+          : null,
+  });
+
+  const ctaClasses = "min-h-11 flex-1 font-semibold";
+  const ctaButton =
+    cta.kind === "bid" ? (
+      <Button
+        type="button"
+        className={ctaClasses}
+        onClick={handleBidInitiate}
+        disabled={isBidding}
+      >
+        {isBidding ? "Placing bid…" : cta.label}
+      </Button>
+    ) : (
+      <Button
+        asChild
+        variant={
+          cta.kind === "result" || cta.kind === "view" ? "outline" : "default"
+        }
+        className={ctaClasses}
+      >
+        {cta.kind === "register" ? (
+          <Link to={`/login?callbackUrl=${encodeURIComponent(lotPath)}`}>
+            {cta.label}
+          </Link>
+        ) : cta.kind === "verify" ? (
+          <Link to="/kyc">{cta.label}</Link>
+        ) : (
+          <Link to={lotPath}>{cta.label}</Link>
+        )}
+      </Button>
+    );
+
+  const countdown =
+    isEnded || phase === "unavailable" ? null : (
+      <span className="flex flex-col items-end text-right">
+        <span className="text-[13px] text-muted-foreground">
+          {isUpcoming ? "Opens in" : "Closes in"}
+        </span>
+        <Countdown
+          endTime={
+            isUpcoming
+              ? liveWindow.effectiveStartTime
+              : liveWindow.effectiveEndTime
+          }
+        />
+      </span>
+    );
 
   return (
-    <Card
+    <article
+      data-slot="lot-card"
+      data-view-mode={viewMode}
       className={cn(
-        "overflow-hidden border hover:border-primary/60 transition-shadow duration-200 hover:shadow-md bg-card group rounded-lg h-full shadow-none"
+        "relative flex h-full overflow-hidden rounded-md border border-border bg-card",
+        isCompact ? "flex-row" : "flex-col"
       )}
     >
-      <div className="relative flex h-full flex-col">
-        <Link
-          to={`/auction/${auction._id}`}
-          className={cn("flex flex-1", isCompact ? "flex-row" : "flex-col")}
-        >
-          <div className="relative shrink-0 self-stretch">
-            <AuctionCardThumbnail
-              primaryImage={primaryImage}
-              title={auction.title}
-              make={auction.make}
-              model={auction.model}
-              isCompact={isCompact}
-              isWatched={isWatched}
-              onWatchlistToggle={handleWatchlistToggle}
-              endTime={liveWindow.effectiveEndTime}
-              isClosed={isClosed}
-              startTime={liveWindow.effectiveStartTime}
-              isNotStarted={isNotStarted}
-            />
-            {isClosed && isCompact && (
-              <div className="absolute top-1.5 right-1.5 z-10">
-                <div
-                  className={cn(
-                    "rounded-full flex items-center justify-center shadow-lg",
-                    auction.status === "sold"
-                      ? "bg-secondary text-secondary-foreground"
-                      : "bg-destructive text-destructive-foreground",
-                    "h-6 w-6"
-                  )}
-                  aria-hidden="true"
-                >
-                  <Gavel className="h-3.5 w-3.5" />
-                </div>
-                <span className="sr-only">
-                  {auction.status === "sold"
-                    ? "Sold auction"
-                    : "Closed auction"}
-                </span>
-              </div>
-            )}
-            {isNotStarted && isCompact && (
-              <div className="absolute top-1.5 right-1.5 z-10">
-                <div
-                  className="rounded-full flex items-center justify-center shadow-lg bg-warning text-warning-foreground h-6 w-6"
-                  aria-hidden="true"
-                >
-                  <CalendarClock className="h-3.5 w-3.5" />
-                </div>
-                <span className="sr-only">
-                  Scheduled auction, not yet started
-                </span>
-              </div>
-            )}
-          </div>
+      <div
+        className={cn(
+          "relative shrink-0",
+          isCompact ? "w-28 self-start sm:w-40" : "w-full"
+        )}
+      >
+        <PhotoFrame
+          src={primaryImage}
+          alt={primaryImage ? "" : `${name}, no photo yet`}
+          ratio="4:3"
+          className={cn("rounded-none", isCompact && "aspect-[4/3]")}
+        />
+        <div className="absolute left-2 top-2">
+          <StatusBadge status={displayStatus} />
+        </div>
+      </div>
 
-          {isClosed && !isCompact && (
-            <div className="absolute top-3 right-3 z-10">
-              <Badge
-                variant={
-                  auction.status === "sold" ? "secondary" : "destructive"
-                }
-                className="font-semibold shadow-lg"
-              >
-                {auction.status === "sold"
-                  ? "Sold"
-                  : auction.status === "unsold"
-                    ? "Unsold"
-                    : "Closed"}
-              </Badge>
-            </div>
-          )}
-
-          {isNotStarted && !isCompact && (
-            <div className="absolute top-3 right-3 z-10">
-              <Badge className="font-semibold shadow-lg bg-warning text-warning-foreground gap-1">
-                <CalendarClock className="h-3 w-3" />
-                Scheduled
-              </Badge>
-            </div>
-          )}
-
-          <div className="flex-1 flex flex-col min-w-0">
-            <CardHeader
-              className={cn(
-                isCompact ? "p-3 pb-1" : "p-3 sm:p-4 md:p-5 pb-0 md:pb-0"
-              )}
-            >
-              <div className="flex flex-wrap gap-1 mb-1">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "h-4 py-0 px-1 border-primary/20 text-primary bg-primary/5 font-medium",
-                    isCompact ? "text-[10px]" : "text-xs"
-                  )}
-                >
-                  {auction.categoryName}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-start gap-2">
-                <CardTitle
-                  className={cn(
-                    "leading-tight font-semibold group-hover:text-primary transition-colors",
-                    isCompact
-                      ? "line-clamp-3 text-xs sm:text-sm md:text-base"
-                      : "line-clamp-2 text-lg md:text-xl"
-                  )}
-                >
-                  {auction.title}
-                </CardTitle>
-              </div>
-
-              {isCompact ? (
-                <p className="text-[10px] sm:text-xs leading-tight text-muted-foreground font-medium line-clamp-2 mt-1.5 italic">
-                  {auction.description}
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-muted-foreground font-medium text-sm">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="text-primary/60 h-4 w-4" />
-                    <span className="truncate">{auction.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="text-primary/60 h-4 w-4" />
-                    <span>{auction.operatingHours.toLocaleString()} hrs</span>
-                  </div>
-                </div>
-              )}
-            </CardHeader>
-
-            <CardContent
-              className={cn(
-                "@container flex-1 flex flex-col justify-end pt-0 md:pt-0",
-                isCompact ? "p-3" : "p-3 sm:p-4 md:p-5"
-              )}
-            >
-              {/* Compact cards hide the full price block, so surface the current
-                  bid on phones where the bid button truncates the figure. */}
-              {isCompact && (
-                <p className="text-[11px] font-medium text-muted-foreground whitespace-nowrap sm:hidden">
-                  Current bid{" "}
-                  <span className="font-bold tabular-nums text-primary">
-                    {formatCurrency(auction.currentPrice)}
-                  </span>
-                </p>
-              )}
-              <AuctionCardPrice
-                currentPrice={auction.currentPrice}
-                endTime={liveWindow.effectiveEndTime}
-                isCompact={isCompact}
-                isClosed={isClosed}
-                startTime={liveWindow.effectiveStartTime}
-                isNotStarted={isNotStarted}
-              />
-            </CardContent>
-          </div>
-        </Link>
-
-        <div
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 md:p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {eyebrow}
+        </p>
+        <h3
           className={cn(
-            "bg-muted/20 border-t flex gap-2 items-center mt-auto shrink-0",
-            isCompact ? "p-3 h-12" : "p-3 sm:p-4 md:p-5"
+            "leading-snug",
+            isCompact ? "text-base" : "text-[19px]"
           )}
         >
-          <Button
-            size="sm"
-            variant={isCompact ? "default" : "outline"}
-            className={cn(
-              "flex-1 font-semibold shadow-sm",
-              isCompact
-                ? "text-[13px] h-8 rounded-md"
-                : "text-xs h-11 rounded-md"
-            )}
-            onClick={handleBidInitiate}
-            disabled={isBidding || !liveWindow.isLive}
+          <Link
+            to={lotPath}
+            className="rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {isBidding
-              ? "..."
-              : isNotStarted
-                ? "Not Started"
-                : isUnavailable
-                  ? "Unavailable"
-                  : isClosed
-                    ? "Closed"
-                    : `Bid ${formatCurrency(auction.currentPrice + auction.minIncrement)}`}
+            {name}
+          </Link>
+        </h3>
+        <p className="flex items-center gap-1 text-[13px] text-muted-foreground">
+          <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="num">
+            {auction.operatingHours.toLocaleString("en-ZA")} hrs
+          </span>
+          <span aria-hidden="true">·</span>
+          <span className="truncate">{place}</span>
+        </p>
+
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-1.5">
+          <div className="flex flex-col items-start gap-1">
+            <Money
+              label={moneyLabel}
+              amount={hasBids ? auction.currentPrice : auction.startingPrice}
+            />
+            {!isEnded && phase !== "unavailable" ? (
+              <ReservePill state={reserveStateOf(auction)} />
+            ) : null}
+          </div>
+          {countdown}
+        </div>
+
+        <div className="relative z-10 flex items-center gap-2 pt-1">
+          {ctaButton}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-11 shrink-0"
+            aria-label={
+              isWatched
+                ? `Remove ${name} from watchlist`
+                : `Add ${name} to watchlist`
+            }
+            aria-pressed={isWatched}
+            onClick={handleWatchlistToggle}
+          >
+            <Heart
+              aria-hidden="true"
+              className={cn("size-5", isWatched && "fill-current")}
+            />
           </Button>
         </div>
       </div>
@@ -367,6 +356,6 @@ export const AuctionCard = ({
           setPendingBid(null);
         }}
       />
-    </Card>
+    </article>
   );
 };

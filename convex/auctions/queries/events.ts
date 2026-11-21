@@ -409,7 +409,11 @@ export const getPublishedAuctionHandler = async (
     toAuction(ctx, auction),
     ctx.db
       .query("lots")
-      .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
+      // Lot-number order; lots without a number (legacy) come first, then
+      // follow creation order.
+      .withIndex("by_auctionId_lotNumber", (q) =>
+        q.eq("auctionId", auction._id)
+      )
       .collect(),
   ]);
 

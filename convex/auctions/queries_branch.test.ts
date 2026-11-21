@@ -419,7 +419,7 @@ describe("Queries Branch Coverage Expansion", () => {
       ]);
       expect(result.totalCount).toBe(3);
       expect(queryMock.withIndex).toHaveBeenCalledWith(
-        "by_auctionId",
+        "by_auctionId_lotNumber",
         expect.any(Function)
       );
       expect(qMock.eq).toHaveBeenCalledWith("auctionId", "auction1");
@@ -469,7 +469,7 @@ describe("Queries Branch Coverage Expansion", () => {
       expect(queryMock.take).not.toHaveBeenCalled();
     });
 
-    it("should scope by auction when combined with make", async () => {
+    it("should scope by auction (lot-number index) when combined with make", async () => {
       vi.mocked(queryMock.take).mockResolvedValue([
         { _id: "lot1", ...baseLot, status: "assigned", auctionId: "auction1" },
         { _id: "lot2", ...baseLot, status: "assigned", auctionId: "auction2" },
@@ -484,10 +484,9 @@ describe("Queries Branch Coverage Expansion", () => {
       expect(result.page).toHaveLength(1);
       expect(result.page[0]._id).toBe("lot1");
       expect(queryMock.withIndex).toHaveBeenCalledWith(
-        "by_status_make",
+        "by_auctionId_lotNumber",
         expect.any(Function)
       );
-      expect(qMock.eq).toHaveBeenCalledWith("make", "John Deere");
     });
 
     it("should scope by auction when combined with search", async () => {
@@ -524,7 +523,7 @@ describe("Queries Branch Coverage Expansion", () => {
       });
 
       expect(queryMock.withIndex).not.toHaveBeenCalledWith(
-        "by_auctionId",
+        "by_auctionId_lotNumber",
         expect.any(Function)
       );
       expect(qMock.field).not.toHaveBeenCalledWith("auctionId");

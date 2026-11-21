@@ -1,23 +1,39 @@
 // app/src/pages/AuctionContainerDetail.tsx
-import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Calendar, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingPage } from "@/components/LoadingIndicator";
-import { LotBrowser } from "@/components/LotBrowser";
+import { EventLotBrowser } from "@/components/auction-event/EventLotBrowser";
+import { SaleHeader } from "@/components/auction-event/SaleHeader";
+import { SaleTerms } from "@/components/ds/SaleTerms";
+import { useVatRate } from "@/hooks/useVatRate";
 import { buildTitle, buildCanonical, DEFAULT_DESCRIPTION } from "@/lib/seo";
 
 /**
- * Public detail page for a scheduled auction container, showing the container
- * banner and header above a full lot browser scoped to the auction's lots.
- * Only published/closed containers are reachable; draft containers resolve to
- * a not-found state.
+ * Converts the stored buyer's premium (a fraction, 0.05 = 5%) into a
+ * percentage for display, without floating-point noise.
+ *
+ * @param fraction - The stored rate, or undefined when unset
+ * @returns The percentage, or undefined when unset
+ */
+function premiumPercent(fraction: number | undefined): number | undefined {
+  return fraction === undefined
+    ? undefined
+    : Math.round(fraction * 10_000) / 100;
+}
+
+/**
+ * Public page for one auction event (`/auctions/:id`): a sale summary header
+ * with a countdown, the platform-wide sale terms (with this sale's buyer's
+ * premium and the VAT rate), then the filterable lot grid.
+ *
+ * Only published or closed sales are reachable; a draft or unknown id shows a
+ * not-found state.
  *
  * @returns The AuctionContainerDetail page component.
  */
@@ -28,9 +44,7 @@ export default function AuctionContainerDetail() {
     api.auctions.getPublishedAuction,
     auctionId ? { auctionId } : "skip"
   );
-  // Lazy initializer keeps this a pure read during render (the "Live Now"
-  // badge doesn't need to tick; a page refresh is enough).
-  const [now] = useState(() => Date.now());
+  const vatPct = useVatRate();
 
   if (auction === undefined) {
     return <LoadingPage message="Loading auction..." />;
@@ -39,26 +53,21 @@ export default function AuctionContainerDetail() {
   if (auction === null) {
     return (
       <div className="max-w-lg mx-auto px-4 py-24 text-center space-y-4">
-        <h1 className="text-2xl font-bold">Auction Not Found</h1>
+        <h1 className="text-2xl font-bold">Auction not found</h1>
         <p className="text-muted-foreground">
           This auction may not exist or is not yet published.
         </p>
         <Button asChild variant="outline">
-          <Link to="/">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Marketplace
+          <Link to="/auctions">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to auctions
           </Link>
         </Button>
       </div>
     );
   }
 
-  const isLive =
-    auction.status === "published" &&
-    auction.startTime <= now &&
-    now < auction.endTime;
-
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+    <div className="space-y-6 lg:space-y-8">
       <Helmet>
         <title>{buildTitle(auction.title)}</title>
         <meta
@@ -71,54 +80,26 @@ export default function AuctionContainerDetail() {
         />
       </Helmet>
 
-      <Button asChild variant="ghost" size="sm" className="gap-2 -ml-2">
-        <Link to="/">
-          <ArrowLeft className="h-4 w-4" /> Back to Marketplace
-        </Link>
-      </Button>
-
-      <div
-        data-testid="auction-hero"
-        className="relative h-40 sm:h-56 md:h-72 rounded-lg overflow-hidden bg-muted border"
+      <Link
+        to="/auctions"
+        className="-ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0"
       >
-        {auction.bannerImageUrl ? (
-          <img
-            src={auction.bannerImageUrl}
-            alt={auction.title}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
-          </div>
-        )}
-        {isLive && (
-          <Badge className="absolute top-3 right-3 bg-success/90 text-success-foreground font-semibold animate-pulse">
-            Live Now
-          </Badge>
-        )}
+        <ArrowLeft aria-hidden="true" className="size-4" />
+        All auctions
+      </Link>
+
+      <SaleHeader auction={auction} />
+
+      <div className="border-y border-border py-4">
+        <SaleTerms
+          buyersPremiumPct={premiumPercent(auction.defaultBuyerPremiumPct)}
+          vatPct={vatPct}
+          rulesHref="/faq"
+          className="lg:[&>dl]:grid-cols-3"
+        />
       </div>
 
-      <div data-testid="auction-header" className="space-y-1.5 sm:space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">
-          {auction.title}
-        </h1>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Calendar className="h-4 w-4" />
-            {new Date(auction.startTime).toLocaleString()} –{" "}
-            {new Date(auction.endTime).toLocaleString()}
-          </span>
-          <Badge className="capitalize">{auction.status}</Badge>
-        </div>
-        {auction.description && (
-          <p className="text-muted-foreground max-w-3xl mt-1 sm:mt-2">
-            {auction.description}
-          </p>
-        )}
-      </div>
-
-      <LotBrowser auctionId={auction._id} showSellButton={false} />
+      <EventLotBrowser auctionId={auction._id} />
     </div>
   );
 }

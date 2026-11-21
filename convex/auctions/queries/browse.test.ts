@@ -840,7 +840,7 @@ describe("getActiveLotsHandler", () => {
     });
 
     expect(lotsQuery.withIndex).toHaveBeenCalledWith(
-      "by_auctionId",
+      "by_auctionId_lotNumber",
       expect.any(Function)
     );
     expect(lotsQuery.filterBuilder.eq).toHaveBeenCalledWith(
