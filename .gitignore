@@ -53,3 +53,8 @@ conductor/opencode_tasks/
 
 # stale pre-restructure app/ skeleton (local only; may hold .env.local)
 /app/
+
+# Mockup track images: third-party seed photos and renders of them, kept local only
+conductor/tracks/*/assets/
+conductor/tracks/*/final/
+conductor/tracks/*/screenshots/
