@@ -159,6 +159,7 @@ describe("Auction event queries", () => {
         withIndex: vi.fn().mockReturnThis(),
         count: vi.fn().mockResolvedValue(0),
         collect: vi.fn().mockResolvedValue([]),
+        take: vi.fn().mockResolvedValue([]),
       };
       const db = {
         get: vi.fn(),

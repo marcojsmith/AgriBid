@@ -23,6 +23,11 @@ const baseEvent: AuctionEvent = {
   createdAt: 0,
   updatedAt: 0,
   lotCount: 3,
+  lotCountCapped: false,
+  fromPrice: null,
+  leadImageUrls: [],
+  location: null,
+  effectiveEndTime: NOW + 100000,
   defaultBuyerPremiumPct: undefined,
   defaultSellerCommissionPct: undefined,
 };
@@ -59,6 +64,16 @@ describe("AuctionEventCard", () => {
     expect(screen.getByText("1 lot")).toBeInTheDocument();
   });
 
+  it("shows the from-price after the lot count when lots exist", () => {
+    renderCard({ ...baseEvent, fromPrice: 200000 });
+    expect(screen.getByText(/^3 lots · from R\s200\s000$/)).toBeInTheDocument();
+  });
+
+  it("marks a capped lot count with a plus and plural label", () => {
+    renderCard({ ...baseEvent, lotCount: 1, lotCountCapped: true });
+    expect(screen.getByText("1+ lots")).toBeInTheDocument();
+  });
+
   it("renders the banner image when a banner URL is present", () => {
     renderCard({ ...baseEvent, bannerImageUrl: "https://cdn/banner.jpg" });
     expect(screen.getByRole("img", { name: "Spring Sale" })).toHaveAttribute(
@@ -83,7 +98,11 @@ describe("AuctionEventCard", () => {
   });
 
   it("does not show the Live Now badge for a published event whose window has ended", () => {
-    renderCard({ ...baseEvent, endTime: NOW - 1000 });
+    renderCard({
+      ...baseEvent,
+      endTime: NOW - 1000,
+      effectiveEndTime: NOW - 1000,
+    });
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
   });
 
@@ -92,8 +111,18 @@ describe("AuctionEventCard", () => {
       ...baseEvent,
       startTime: NOW + 100000,
       endTime: NOW + 200000,
+      effectiveEndTime: NOW + 200000,
     });
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Live Now badge during a soft-close extension past the scheduled end", () => {
+    renderCard({
+      ...baseEvent,
+      endTime: NOW - 1000,
+      effectiveEndTime: NOW + 60000,
+    });
+    expect(screen.getByText("Live Now")).toBeInTheDocument();
   });
 
   it("links to the container detail page", () => {
