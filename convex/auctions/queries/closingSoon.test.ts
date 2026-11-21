@@ -10,6 +10,7 @@ import {
   CLOSING_SOON_BID_PROBE,
   CLOSING_SOON_ENDED_AUCTION_CAP,
   CLOSING_SOON_LOT_LIMIT,
+  CLOSING_SOON_REFRESH_BUCKET_MS,
   CLOSING_SOON_LOTS_PER_AUCTION,
   CLOSING_SOON_UPCOMING_AUCTION_CAP,
 } from "../../constants";
@@ -396,7 +397,30 @@ describe("getClosingSoonLots", () => {
     expect((await strip(t))[0].hasBids).toBe(false);
   });
 
-  it("looks at only the first few bids, so all-voided early bids read as none", async () => {
+  it("looks at only the newest few bids, so all-voided recent bids read as none", async () => {
+    const auction = await insertAuction(t);
+    const lotId = await insertLot(t, auction);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < CLOSING_SOON_BID_PROBE; i++) {
+        await ctx.db.insert("bids", {
+          lotId,
+          bidderId: "user_bidder",
+          amount: 500 + i,
+          timestamp: NOW - 10 * MIN + i,
+          status: "voided",
+        });
+      }
+      await ctx.db.insert("bids", {
+        lotId,
+        bidderId: "user_bidder",
+        amount: 900,
+        timestamp: NOW - 100 * MIN,
+      });
+    });
+    expect((await strip(t))[0].hasBids).toBe(false);
+  });
+
+  it("sees a valid bid placed after many voided ones (newest first probe)", async () => {
     const auction = await insertAuction(t);
     const lotId = await insertLot(t, auction);
     await t.run(async (ctx) => {
@@ -416,7 +440,42 @@ describe("getClosingSoonLots", () => {
         timestamp: NOW - MIN,
       });
     });
-    expect((await strip(t))[0].hasBids).toBe(false);
+    expect((await strip(t))[0].hasBids).toBe(true);
+  });
+
+  it("keeps the first 13 visible lots when hidden lots come first", async () => {
+    const auction = await insertAuction(t);
+    for (let i = 0; i < 5; i++) {
+      await insertLot(t, auction, { hiddenByFlags: true });
+    }
+    const visible: Id<"lots">[] = [];
+    for (let i = 0; i < CLOSING_SOON_LOTS_PER_AUCTION + 2; i++) {
+      visible.push(await insertLot(t, auction, { lotNumber: i + 1 }));
+    }
+    const ids = (await strip(t)).map((lot) => lot._id);
+    expect(ids).toEqual(visible.slice(0, CLOSING_SOON_LOT_LIMIT));
+  });
+
+  it("ignores and logs an out-of-range or off-bucket asOf", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const auction = await insertAuction(t);
+    const lot = await insertLot(t, auction);
+    const onBucket = NOW - (NOW % CLOSING_SOON_REFRESH_BUCKET_MS);
+    for (const asOf of [onBucket + 1, onBucket + 3 * HOUR, 0]) {
+      const result = await t.query(api.auctions.getClosingSoonLots, {
+        limit: 12,
+        asOf,
+      });
+      expect(result.map((row) => row._id)).toEqual([lot]);
+    }
+    expect(warn).toHaveBeenCalledTimes(3);
+    warn.mockClear();
+    await t.query(api.auctions.getClosingSoonLots, {
+      limit: 12,
+      asOf: onBucket,
+    });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it("uses the same lead-image priority as the event cards", async () => {

@@ -161,6 +161,15 @@ describe("ClosingSoonStrip", () => {
     }
   });
 
+  it("describes each link by its lot and sale line", () => {
+    renderStrip([makeLot("a"), makeLot("b")]);
+    for (const link of screen.getAllByRole("link")) {
+      expect(link).toHaveAccessibleDescription(
+        "Lot 7 · Material Handling Sale"
+      );
+    }
+  });
+
   it("keeps list semantics explicit for Safari", () => {
     renderStrip([makeLot("a")]);
     expect(screen.getByRole("list")).toHaveAttribute("role", "list");

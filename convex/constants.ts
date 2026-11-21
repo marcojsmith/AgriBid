@@ -127,8 +127,15 @@ export const CLOSING_SOON_UPCOMING_AUCTION_CAP = 20;
 // Recently ended sales read as soft-close candidates (most recently ended first).
 export const CLOSING_SOON_ENDED_AUCTION_CAP = 10;
 
-// Lots read per sale; the strip returns at most CLOSING_SOON_LOT_LIMIT.
+// Visible lots kept per sale; the strip returns at most CLOSING_SOON_LOT_LIMIT.
 export const CLOSING_SOON_LOTS_PER_AUCTION = 13;
+
+// Lots read per sale, so hidden lots do not crowd out visible ones.
+export const CLOSING_SOON_LOTS_READ_PER_AUCTION = 20;
+
+// Largest distance (ms) between a client `asOf` and the server clock before it
+// is treated as bogus (and ignored).
+export const CLOSING_SOON_AS_OF_MAX_SKEW_MS = MS_PER_HOUR;
 
 // Most lots the strip returns.
 export const CLOSING_SOON_LOT_LIMIT = 12;

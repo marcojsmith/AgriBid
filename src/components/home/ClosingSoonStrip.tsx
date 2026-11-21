@@ -69,10 +69,16 @@ function ClosingSoonCard({ lot }: { lot: ClosingSoonLot }) {
         src={lot.leadImageUrl}
         alt={lot.leadImageUrl ? "" : `${name}, no photo yet`}
       />
-      <p className="truncate text-[13px] text-muted-foreground">{sale}</p>
+      <p
+        id={`closing-soon-sale-${lot._id}`}
+        className="truncate text-[13px] text-muted-foreground"
+      >
+        {sale}
+      </p>
       <h3 className="text-base leading-snug">
         <Link
           to={`/auction/${lot._id}`}
+          aria-describedby={`closing-soon-sale-${lot._id}`}
           className="block rounded-sm py-1.5 font-semibold after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {name}

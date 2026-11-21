@@ -6,11 +6,14 @@ import { compareLotsInSale, pickLeadImageRef } from "./events";
 import { resolveUrlCached } from "../../image_cache";
 import { provinceValidator } from "../../lib/provinces";
 import {
+  CLOSING_SOON_AS_OF_MAX_SKEW_MS,
   CLOSING_SOON_BID_PROBE,
   CLOSING_SOON_ENDED_AUCTION_CAP,
   CLOSING_SOON_EXTENSION_LOOKBACK_MS,
   CLOSING_SOON_LOT_LIMIT,
   CLOSING_SOON_LOTS_PER_AUCTION,
+  CLOSING_SOON_LOTS_READ_PER_AUCTION,
+  CLOSING_SOON_REFRESH_BUCKET_MS,
   CLOSING_SOON_UPCOMING_AUCTION_CAP,
   CLOSING_SOON_WINDOW_MS,
 } from "../../constants";
@@ -62,14 +65,18 @@ async function candidatesForAuction(
     .withIndex("by_status_auctionId", (q) =>
       q.eq("status", "assigned").eq("auctionId", auction._id)
     )
-    .take(CLOSING_SOON_LOTS_PER_AUCTION);
+    .take(CLOSING_SOON_LOTS_READ_PER_AUCTION);
 
-  return lots.flatMap((lot) => {
-    const effectiveEndTime = lot.extendedEndTime ?? auction.endTime;
-    if (lot.hiddenByFlags === true) return [];
-    if (effectiveEndTime <= now || effectiveEndTime > windowEnd) return [];
-    return [{ lot, auctionTitle: auction.title, effectiveEndTime }];
-  });
+  // Hidden lots are skipped before the per-sale cap so they cannot crowd out
+  // visible ones (within the rows read).
+  return lots
+    .filter((lot) => lot.hiddenByFlags !== true)
+    .slice(0, CLOSING_SOON_LOTS_PER_AUCTION)
+    .flatMap((lot) => {
+      const effectiveEndTime = lot.extendedEndTime ?? auction.endTime;
+      if (effectiveEndTime <= now || effectiveEndTime > windowEnd) return [];
+      return [{ lot, auctionTitle: auction.title, effectiveEndTime }];
+    });
 }
 
 /**
@@ -89,9 +96,10 @@ async function candidatesForAuction(
  *    is kept only if its own `extendedEndTime` is still in the future.
  * A lot running on more than 24 h past its sale's `endTime` is not listed.
  *
- * Reads at most 30 sales, then 13 `assigned` lots per sale (390 lot documents),
+ * Reads at most 30 sales, then 20 `assigned` lots per sale (600 lot documents,
+ * of which the first 13 visible ones per sale are kept),
  * then for the 12 returned lots one image resolve and at most
- * {@link CLOSING_SOON_BID_PROBE} bids each (120): about 540 documents in the
+ * {@link CLOSING_SOON_BID_PROBE} bids each (120): about 750 documents in the
  * worst case.
  *
  * Known limits of those caps (all rare, all bounded):
@@ -99,10 +107,11 @@ async function candidatesForAuction(
  *   `startTime` check runs after the read);
  * - when more than 20 sales end inside the window and their lots were extended,
  *   a sale ending sooner than the 20th may be missed;
- * - the 13 lots per sale are the oldest created (hidden lots included), not the
- *   lowest lot numbers, so a sale with more than 13 assigned lots may omit some;
- * - `hasBids` looks at the first {@link CLOSING_SOON_BID_PROBE} bids only, so a
- *   lot whose earliest bids were all voided reads as "no bids".
+ * - the 13 lots per sale are the oldest created visible ones among the first 20
+ *   read, not the lowest lot numbers, so a sale with more than 13 assigned lots
+ *   may omit some;
+ * - `hasBids` looks at the newest {@link CLOSING_SOON_BID_PROBE} bids only, so a
+ *   lot whose latest bids were all voided reads as "no bids".
  *
  * Time and caching: Convex does not re-run a query as time passes, only when a
  * document it read changes. The handler derives the window from `Date.now()`
@@ -110,7 +119,8 @@ async function candidatesForAuction(
  * listed; a sale that entered the window is missing). The client therefore
  * (a) drops lots whose `effectiveEndTime` has passed and (b) passes `asOf`, the
  * time rounded down to {@link CLOSING_SOON_REFRESH_BUCKET_MS}, so each bucket
- * is a fresh cache entry. `asOf` is a cache key only and is never read. The
+ * is a fresh cache entry. `asOf` is a cache key only: never used, and an
+ * out-of-range value is logged and ignored. The
  * query also re-runs when a read lot changes (including on bids to those
  * lots), which is acceptable at this cap.
  *
@@ -125,6 +135,15 @@ export const getClosingSoonLotsHandler = async (
   args: { limit: number; asOf?: number }
 ) => {
   const now = Date.now();
+  // `asOf` is only a cache key. A value that is not on a bucket boundary or is
+  // far from the server clock is ignored (logged), never used.
+  if (
+    args.asOf !== undefined &&
+    (args.asOf % CLOSING_SOON_REFRESH_BUCKET_MS !== 0 ||
+      Math.abs(args.asOf - now) > CLOSING_SOON_AS_OF_MAX_SKEW_MS)
+  ) {
+    console.warn("getClosingSoonLots: ignoring out-of-range asOf");
+  }
   const windowEnd = now + CLOSING_SOON_WINDOW_MS;
   const limit = Math.max(
     1,
@@ -181,6 +200,7 @@ export const getClosingSoonLotsHandler = async (
         ctx.db
           .query("bids")
           .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
+          .order("desc")
           .take(CLOSING_SOON_BID_PROBE),
       ]);
       return {
