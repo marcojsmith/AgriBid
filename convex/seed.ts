@@ -1219,7 +1219,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       description: "Live sale featuring telehandlers and wheel loaders.",
       status: "published",
       startTime: now - 4 * MS_PER_DAY,
-      endTime: now + MS_PER_DAY,
+      // Inside the Home "Closing soon" window (24 h) with room to spare, so
+      // the strip shows for a day after each reset.
+      endTime: now + 20 * MS_PER_HOUR,
     },
     {
       seedId: "row-crop-tractor-sale-next-round",

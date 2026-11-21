@@ -5,10 +5,12 @@ import { api } from "convex/_generated/api";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
+import { ClosingSoonStrip } from "@/components/home/ClosingSoonStrip";
 import { EventsSection } from "@/components/home/EventsSection";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { LotBrowser } from "@/components/LotBrowser";
+import { useClosingSoonLots } from "@/hooks/useClosingSoonLots";
 import { useNow } from "@/hooks/useNow";
 import { getEventBucket } from "@/lib/auction-utils";
 import {
@@ -109,6 +111,8 @@ export default function Home() {
       ? "Exhausted"
       : "LoadingFirstPage";
   const showingFirstOnly = openCapped && active.status !== "Exhausted";
+  // Lots ending in the next 24 h across all live sales (capped by the backend).
+  const closingSoon = useClosingSoonLots(now, !searching);
   const heroImage = active.results.find(
     (event) => getEventBucket(event, now) === "live"
   )?.leadImageUrls[0];
@@ -172,6 +176,7 @@ export default function Home() {
               current.loadMore(PAGINATION_LOAD_MORE_ITEMS);
             }}
           />
+          <ClosingSoonStrip lots={closingSoon} now={now} />
           <HowItWorks />
         </>
       )}

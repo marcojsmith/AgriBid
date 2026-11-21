@@ -44,6 +44,9 @@ export {
   getAssignmentCandidates,
 } from "./auctions/queries/events";
 
+// Re-export the Home "Closing soon" lot strip query
+export { getClosingSoonLots } from "./auctions/queries/closingSoon";
+
 // Re-export mutations from the new modular structure
 export {
   generateUploadUrl,

@@ -111,6 +111,43 @@ export const PUBLISHED_AUCTIONS_MAX_PAGE_SIZE = 12;
 // Number of lead photos returned per auction event summary.
 export const AUCTION_SUMMARY_IMAGE_COUNT = 3;
 
+// Closing-soon lot strip (`getClosingSoonLots`).
+// Lots closing within this long from now are listed.
+export const CLOSING_SOON_WINDOW_MS = MS_PER_DAY;
+
+// Soft-close extensions have no maximum (each late bid pushes a lot's end out by
+// SOFT_CLOSE_THRESHOLD_MS), so a sale that already passed its `endTime` can still
+// have running lots. Only sales that ended within this look-back are checked for
+// such lots; a lot running on past it is no longer listed.
+export const CLOSING_SOON_EXTENSION_LOOKBACK_MS = MS_PER_DAY;
+
+// Sales still to end inside the window (read soonest first).
+export const CLOSING_SOON_UPCOMING_AUCTION_CAP = 20;
+
+// Recently ended sales read as soft-close candidates (most recently ended first).
+export const CLOSING_SOON_ENDED_AUCTION_CAP = 10;
+
+// Visible lots kept per sale; the strip returns at most CLOSING_SOON_LOT_LIMIT.
+export const CLOSING_SOON_LOTS_PER_AUCTION = 13;
+
+// Lots read per sale, so hidden lots do not crowd out visible ones.
+export const CLOSING_SOON_LOTS_READ_PER_AUCTION = 20;
+
+// Largest distance (ms) between a client `asOf` and the server clock before it
+// is treated as bogus (and ignored).
+export const CLOSING_SOON_AS_OF_MAX_SKEW_MS = MS_PER_HOUR;
+
+// Most lots the strip returns.
+export const CLOSING_SOON_LOT_LIMIT = 12;
+
+// Bids read per returned lot to learn whether it has a (non-voided) bid.
+export const CLOSING_SOON_BID_PROBE = 10;
+
+// Convex caches query results and does not re-run them as time passes, so the
+// client passes the current time rounded down to this bucket as `asOf`; a new
+// bucket is a new cache entry, which re-evaluates the 24 h window.
+export const CLOSING_SOON_REFRESH_BUCKET_MS = 5 * MS_PER_MINUTE;
+
 // Maximum number of storage files examined (and deleted) per orphaned-upload
 // sweep run.
 export const STORAGE_SWEEP_BATCH_SIZE = 500;
