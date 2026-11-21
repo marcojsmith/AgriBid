@@ -45,7 +45,7 @@ When you start, finish or change the scope of work, update `docs/STATUS.md` in t
 | `bunx coderabbit --prompt-only --type uncommitted` | CodeRabbit review (uncommitted)                                             |
 | `bunx coderabbit review --prompt-only --base main` | CodeRabbit review (PR vs main)                                              |
 
-**URLs:** Dev: `https://localhost:5173` · Dev (Tailscale): `https://trio5700x.taila18a1c.ts.net:5173` · Prod: `https://agribid.vercel.app`
+**URLs:** Dev: `https://localhost:5173` · Dev (Tailscale): `https://trio5700x.taila18a1c.ts.net:5173` · Prod: `https://agribid-iota.vercel.app` (Convex backend: self-hosted, ADR 0016)
 
 The dev server runs HTTPS using a Tailscale-issued cert for this machine's MagicDNS name (`vite.config.ts` loads it from `certs/`, which is git-ignored). Regenerate with `tailscale cert --cert-file certs/trio5700x.taila18a1c.ts.net.crt --key-file certs/trio5700x.taila18a1c.ts.net.key trio5700x.taila18a1c.ts.net` if it expires. The cert matches `trio5700x.taila18a1c.ts.net`, so that URL is warning-free on every tailnet device; `https://localhost:5173` works but shows a name-mismatch warning.
 

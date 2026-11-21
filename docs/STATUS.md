@@ -38,6 +38,7 @@ Last updated: 2026-11-21
 ## Done (last 10)
 
 - 2026-11-21: Admin-editable Terms, Privacy and PAIA pages (WP4c, #404) (v0.25.0).
+- 2026-11-21: Production moved from Convex Cloud (`tangible-marmot-95`, kept as rollback) to the self-hosted backend at `https://agribid-convex.duckdns.org` (ADR 0016). Cloud prod data imported; WP3b backfills and legal drafts ran on it.
 - 2026-11-21: Closing-soon lot strip on Home (WP4b, #403) (v0.24.0).
 - 2026-11-21: VAT rate and company details for fees and the footer (WP3c, #401) (v0.22.0).
 - 2026-11-21: Lot numbers, province, seller response time and watcher counts (WP3b, #400) (v0.21.0).
@@ -65,7 +66,7 @@ Package manager is bun. Run before opening a PR: `bun run lint`, `bun run test -
 - Dev server: `bun run dev` (HTTPS, cert in git-ignored `certs/`; regeneration in `AGENTS.md`)
 - Convex backend: `bunx convex dev`
 - Seed data: `bunx convex run seed`
-- Deploy: Vercel; build command `bunx convex deploy --cmd 'bun run build'`
+- Deploy: Vercel; build command `bunx convex deploy --cmd 'bun run build'`. Production Convex is **self-hosted** (`agribid-local` Docker on the owner's PC, public at `https://agribid-convex.duckdns.org`); runbook and rollback in [`architecture/overview.md`](./architecture/overview.md#deployment), decision in ADR 0016. Prod URL: `https://agribid-iota.vercel.app`.
 - Showcase bootstrap needs `seed.weeklyReset` run once when there are no Clerk sign-ins.
 
 ## Open questions

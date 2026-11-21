@@ -8,7 +8,7 @@
 
 **AgriBid** is a high-integrity, real-time auction platform purpose-built for the agricultural machinery marketplace. It delivers a fast, secure, and transparent bidding experience for heavy equipment, bridging the trust gap in high-value online transactions.
 
-[Explore the Marketplace](https://agribid.vercel.app) • [Read the Docs](docs/) • [Report a Bug](https://github.com/marcojsmith/AgriBid/issues)
+[Explore the Marketplace](https://agribid-iota.vercel.app) • [Read the Docs](docs/) • [Report a Bug](https://github.com/marcojsmith/AgriBid/issues)
 
 ---
 
