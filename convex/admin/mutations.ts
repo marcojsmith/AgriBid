@@ -33,6 +33,7 @@ export {
   updatePerformanceConfig,
   updateSeoSettings,
   updateBusinessInfo,
+  updateVatRate,
 } from "./settings";
 
 export {

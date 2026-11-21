@@ -7,6 +7,7 @@ import {
   Mail,
   Phone,
   MapPin,
+  MessageCircle,
   CalendarClock,
 } from "lucide-react";
 
@@ -30,7 +31,12 @@ export const Footer = () => {
   const addressLocality = businessInfo?.addressLocality ?? "";
   const addressCountry = businessInfo?.addressCountry ?? "";
   const postalCode = businessInfo?.postalCode ?? "";
-  const telephone = businessInfo?.telephone ?? "";
+  const telephone = businessInfo?.telephone?.trim() ?? "";
+  const whatsapp = businessInfo?.whatsapp?.trim() ?? "";
+  const registrationNo = businessInfo?.registrationNo?.trim() ?? "";
+  const vatNo = businessInfo?.vatNo?.trim() ?? "";
+  // wa.me links take digits only (country code included, no "+").
+  const whatsappDigits = whatsapp.replace(/\D/g, "");
 
   const addressParts = [
     streetAddress,
@@ -40,6 +46,10 @@ export const Footer = () => {
   ]
     .filter((part) => part)
     .join(", ");
+
+  const hasCompanyDetails = Boolean(
+    addressParts || telephone || whatsappDigits || registrationNo || vatNo
+  );
 
   const footerSections = [
     {
@@ -123,36 +133,61 @@ export const Footer = () => {
             </div>
           ))}
 
-          {/* Contact Info */}
-          <div className="col-span-2 md:col-span-1 space-y-4 md:space-y-6">
-            <h3 className="text-xs font-semibold text-primary">Headquarters</h3>
-            <ul className="space-y-3 md:space-y-4">
-              {addressParts && (
-                <li className="flex items-start gap-2 md:gap-3 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressParts)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-primary transition-colors"
-                  >
-                    {addressParts}
-                  </a>
-                </li>
-              )}
-              {telephone && (
-                <li className="flex items-center gap-2 md:gap-3 text-xs text-muted-foreground">
-                  <Phone className="h-3.5 w-3.5" />
-                  <a
-                    href={`tel:${telephone.replace(/[^0-9+]/g, "")}`}
-                    className="hover:text-primary transition-colors"
-                  >
-                    {telephone}
-                  </a>
-                </li>
-              )}
-            </ul>
-          </div>
+          {/* Company details: each row (and the whole column) only renders when set. */}
+          {hasCompanyDetails && (
+            <div className="col-span-2 md:col-span-1 space-y-4 md:space-y-6">
+              <h3 className="text-xs font-semibold text-primary">Company</h3>
+              <ul className="space-y-3 md:space-y-4">
+                {addressParts && (
+                  <li className="flex items-start gap-2 md:gap-3 text-xs text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressParts)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary transition-colors"
+                    >
+                      {addressParts}
+                    </a>
+                  </li>
+                )}
+                {telephone && (
+                  <li className="flex items-center gap-2 md:gap-3 text-xs text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5" />
+                    <a
+                      href={`tel:${telephone.replace(/[^0-9+]/g, "")}`}
+                      className="hover:text-primary transition-colors"
+                    >
+                      {telephone}
+                    </a>
+                  </li>
+                )}
+                {whatsappDigits && (
+                  <li className="flex items-center gap-2 md:gap-3 text-xs text-muted-foreground">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <a
+                      href={`https://wa.me/${whatsappDigits}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary transition-colors"
+                    >
+                      WhatsApp {whatsapp}
+                    </a>
+                  </li>
+                )}
+                {registrationNo && (
+                  <li className="text-xs text-muted-foreground">
+                    Reg. no. {registrationNo}
+                  </li>
+                )}
+                {vatNo && (
+                  <li className="text-xs text-muted-foreground">
+                    VAT no. {vatNo}
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="mt-8 pt-6 md:mt-16 md:pt-8 border-t border-muted flex flex-col md:flex-row justify-between items-center gap-4">

@@ -643,6 +643,11 @@ Global application configuration.
 | `description` | `string` (optional) | No       | Setting description                     |
 | `updatedAt`   | `number`            | Yes      | Last update timestamp                   |
 
+### Known keys with a public read
+
+- `vat_rate_pct` (number, 0-100, default 15 when unset or invalid): read by `admin:getVatRate`, written by admin-only `admin:updateVatRate`.
+- `business.registrationNo`, `business.vatNo`, `business.whatsapp` (plus the existing `business.*` keys): read by `admin:getBusinessInfo`, written by `admin:updateBusinessInfo`. The public read returns only the fixed `business.*` keys, never other settings.
+
 ### Indexes
 
 - `by_key`: Find setting by key

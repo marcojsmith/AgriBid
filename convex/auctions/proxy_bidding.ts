@@ -222,9 +222,7 @@ async function extendLotIfNeeded(
 
   const auction = await ctx.db.get("auctions", lot.auctionId);
   if (!auction) {
-    console.warn(
-      `Lot ${lot._id} references missing auction ${lot.auctionId}`
-    );
+    console.warn(`Lot ${lot._id} references missing auction ${lot.auctionId}`);
     return;
   }
 

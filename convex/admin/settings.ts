@@ -671,7 +671,112 @@ const BUSINESS_KEYS = {
   website: "business.website",
   logoUrl: "business.logoUrl",
   sameAs: "business.sameAs",
+  registrationNo: "business.registrationNo",
+  vatNo: "business.vatNo",
+  whatsapp: "business.whatsapp",
 } as const;
+
+const VAT_RATE_KEY = "vat_rate_pct";
+
+/**
+ * Handler for the public getVatRate query.
+ *
+ * Returns the admin-configured VAT rate, or the default (15) when the setting
+ * is unset, not a number or outside 0-100.
+ *
+ * @param ctx - Convex Query context
+ * @returns The effective VAT rate as a percentage
+ */
+export async function getVatRateHandler(
+  ctx: QueryCtx
+): Promise<{ vatRatePct: number }> {
+  const setting = await ctx.db
+    .query("settings")
+    .withIndex("by_key", (q) => q.eq("key", VAT_RATE_KEY))
+    .unique();
+  const value = setting?.value;
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= 100
+  ) {
+    return { vatRatePct: value };
+  }
+  return { vatRatePct: constants.DEFAULT_VAT_RATE_PCT };
+}
+
+/**
+ * Public query: the effective VAT rate used for fee estimates.
+ *
+ * Intentionally unauthenticated. The rate is public information and returns
+ * nothing but the number.
+ */
+export const getVatRate = query({
+  args: {},
+  returns: v.object({ vatRatePct: v.number() }),
+  handler: getVatRateHandler,
+});
+
+/**
+ * Handler for the admin updateVatRate mutation.
+ *
+ * @param ctx - Convex Mutation context
+ * @param args - Mutation arguments
+ * @param args.vatRatePct - New VAT rate, a finite number from 0 to 100
+ * @returns Success object
+ */
+export async function updateVatRateHandler(
+  ctx: MutationCtx,
+  args: { vatRatePct: number }
+): Promise<{ success: boolean }> {
+  await requireAdmin(ctx);
+
+  if (
+    !Number.isFinite(args.vatRatePct) ||
+    args.vatRatePct < 0 ||
+    args.vatRatePct > 100
+  ) {
+    throw new Error("VAT rate must be a number between 0 and 100");
+  }
+
+  const existing = await ctx.db
+    .query("settings")
+    .withIndex("by_key", (q) => q.eq("key", VAT_RATE_KEY))
+    .unique();
+
+  if (existing) {
+    await ctx.db.patch("settings", existing._id, {
+      value: args.vatRatePct,
+      updatedAt: Date.now(),
+    });
+  } else {
+    await ctx.db.insert("settings", {
+      key: VAT_RATE_KEY,
+      value: args.vatRatePct,
+      description: "VAT rate (percent) shown in buyer fee estimates (0-100)",
+      updatedAt: Date.now(),
+    });
+  }
+
+  await logAudit(ctx, {
+    action: "UPDATE_SETTING",
+    targetId: "vat-rate",
+    targetType: "setting",
+    details: `Updated ${VAT_RATE_KEY} to ${String(args.vatRatePct)}`,
+  });
+
+  return { success: true };
+}
+
+/**
+ * Admin-only: set the VAT rate (percent, 0-100).
+ */
+export const updateVatRate = mutation({
+  args: { vatRatePct: v.number() },
+  returns: v.object({ success: v.boolean() }),
+  handler: updateVatRateHandler,
+});
 
 /**
  * Query SEO and analytics settings.
@@ -818,6 +923,9 @@ export async function getBusinessInfoHandler(ctx: QueryCtx) {
     websiteSetting,
     logoUrlSetting,
     sameAsSetting,
+    registrationNoSetting,
+    vatNoSetting,
+    whatsappSetting,
   ] = settings;
 
   const toText = (
@@ -853,6 +961,9 @@ export async function getBusinessInfoHandler(ctx: QueryCtx) {
     website: toText(websiteSetting),
     logoUrl: toText(logoUrlSetting),
     sameAs,
+    registrationNo: toText(registrationNoSetting),
+    vatNo: toText(vatNoSetting),
+    whatsapp: toText(whatsappSetting),
   };
 }
 
@@ -870,6 +981,9 @@ export const getBusinessInfo = query({
     website: v.union(v.string(), v.null()),
     logoUrl: v.union(v.string(), v.null()),
     sameAs: v.union(v.array(v.string()), v.null()),
+    registrationNo: v.union(v.string(), v.null()),
+    vatNo: v.union(v.string(), v.null()),
+    whatsapp: v.union(v.string(), v.null()),
   }),
   handler: getBusinessInfoHandler,
 });
@@ -889,6 +1003,9 @@ export const getBusinessInfo = query({
  * @param args.website - Website URL
  * @param args.logoUrl - Logo URL
  * @param args.sameAs - Social media links array
+ * @param args.registrationNo - Company registration number (public footer)
+ * @param args.vatNo - Company VAT number (public footer)
+ * @param args.whatsapp - WhatsApp contact number (public footer)
  * @returns Success object
  */
 export async function updateBusinessInfoHandler(
@@ -905,6 +1022,9 @@ export async function updateBusinessInfoHandler(
     website?: string;
     logoUrl?: string;
     sameAs?: string[];
+    registrationNo?: string;
+    vatNo?: string;
+    whatsapp?: string;
   }
 ) {
   await requireAdmin(ctx);
@@ -988,6 +1108,27 @@ export async function updateBusinessInfoHandler(
       description: "Social media links as JSON array for SEO structured data",
     });
   }
+  if (args.registrationNo !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.registrationNo,
+      value: args.registrationNo,
+      description: "Company registration number shown in the public footer",
+    });
+  }
+  if (args.vatNo !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.vatNo,
+      value: args.vatNo,
+      description: "Company VAT number shown in the public footer",
+    });
+  }
+  if (args.whatsapp !== undefined) {
+    updates.push({
+      key: BUSINESS_KEYS.whatsapp,
+      value: args.whatsapp,
+      description: "WhatsApp contact number shown in the public footer",
+    });
+  }
 
   if (updates.length === 0) return { success: true };
 
@@ -1035,6 +1176,9 @@ export const updateBusinessInfo = mutation({
     website: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
     sameAs: v.optional(v.array(v.string())),
+    registrationNo: v.optional(v.string()),
+    vatNo: v.optional(v.string()),
+    whatsapp: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean() }),
   handler: updateBusinessInfoHandler,

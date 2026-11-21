@@ -280,7 +280,6 @@ describe("Bidding Coverage", () => {
       expect(result.confirmedMaxBid).toBe(500);
     });
 
-
     it("should throw if seller bids on own auction", async () => {
       const userId = "u1";
       vi.mocked(auth.requireVerified).mockResolvedValue({

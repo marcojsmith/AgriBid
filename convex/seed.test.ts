@@ -286,6 +286,42 @@ describe("Seed Coverage", () => {
       expect(profiles.some((p) => p.userId === "mock-seller-3")).toBe(true);
     });
 
+    it("seeds only the default VAT rate, never overwrites it, and never writes business.* keys", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+      mockDb.db.insert("settings", {
+        key: "vat_rate_pct",
+        value: 10,
+        updatedAt: 1,
+      });
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const settings = mockDb.rows("settings");
+      const valueOf = (key: string) =>
+        settings.find((s) => s.key === key)?.value;
+      // An existing admin-set rate is kept, and nothing is duplicated.
+      expect(valueOf("vat_rate_pct")).toBe(10);
+      expect(settings.filter((s) => s.key === "vat_rate_pct")).toHaveLength(1);
+      // Company details are real data an admin enters: no seed path invents them.
+      expect(
+        settings.filter((s) => String(s.key).startsWith("business."))
+      ).toEqual([]);
+    });
+
+    it("weeklyReset leaves every business.* key absent and seeds the default VAT rate", async () => {
+      seedExistingProfiles();
+
+      await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
+
+      const settings = mockDb.rows("settings");
+      expect(
+        settings.filter((s) => String(s.key).startsWith("business."))
+      ).toEqual([]);
+      expect(settings.find((s) => s.key === "vat_rate_pct")?.value).toBe(15);
+    });
+
     it("does not duplicate synthetic records when run twice without clearing", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       seedExistingProfiles();

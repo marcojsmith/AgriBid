@@ -24,6 +24,10 @@ vi.mock("@/components/admin/AdminLayout", () => ({
   ),
 }));
 
+vi.mock("@/components/admin/VatRateCard", () => ({
+  VatRateCard: () => <div data-testid="vat-rate-card" />,
+}));
+
 // Mocking Convex hooks
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
@@ -94,6 +98,12 @@ describe("AdminSettings Page", () => {
     expect(
       screen.getByText("Audit administrative actions and access.")
     ).toBeInTheDocument();
+  });
+
+  it("renders the VAT rate section", () => {
+    (useQuery as Mock).mockReturnValue(mockAdminStats);
+    renderPage();
+    expect(screen.getByTestId("vat-rate-card")).toBeInTheDocument();
   });
 
   it("navigates to equipment catalog when Equipment Metadata card is clicked", () => {

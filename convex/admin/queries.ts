@@ -34,7 +34,12 @@ export {
   getSupportStats,
 } from "./statistics";
 
-export { getSystemConfig, getSeoSettings, getBusinessInfo } from "./settings";
+export {
+  getSystemConfig,
+  getSeoSettings,
+  getBusinessInfo,
+  getVatRate,
+} from "./settings";
 
 export { getAllFaqItems } from "./faq";
 
@@ -105,14 +110,9 @@ export const getRecentBids = query({
       };
     }
 
-    const uniqueLotIds = [
-      ...new Set(bidsResult.page.map((b) => b.lotId)),
-    ];
+    const uniqueLotIds = [...new Set(bidsResult.page.map((b) => b.lotId))];
 
-    const lotMap = new Map<
-      Id<"lots">,
-      Doc<"lots"> | null | { _error: true }
-    >();
+    const lotMap = new Map<Id<"lots">, Doc<"lots"> | null | { _error: true }>();
     const failedLotIds: Id<"lots">[] = [];
     await Promise.all(
       uniqueLotIds.map(async (id) => {

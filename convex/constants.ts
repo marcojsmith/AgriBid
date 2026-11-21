@@ -33,6 +33,10 @@ export const MS_PER_DAY = 24 * MS_PER_HOUR;
 // Whether demo mode is enabled when no admin has configured it.
 export const DEMO_MODE_ENABLED_DEFAULT = false;
 
+// VAT rate (percent) applied in fee estimates when no admin has set one.
+// South African standard rate. Keep in sync with `src/lib/vat.ts`.
+export const DEFAULT_VAT_RATE_PCT = 15;
+
 // Default presence heartbeat interval in ms. Must stay in sync with the
 // client-side fallback in src/components/PresenceListener.tsx.
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT = 60 * MS_PER_SECOND;

@@ -24,6 +24,9 @@ const businessInfo: BusinessInfo = {
   website: null,
   logoUrl: null,
   sameAs: [],
+  registrationNo: "2019/123456/07",
+  vatNo: "4123456789",
+  whatsapp: "+27 82 555 0100",
 };
 
 describe("Footer", () => {
@@ -54,6 +57,59 @@ describe("Footer", () => {
 
     const phoneLink = screen.getByRole("link", { name: "+27-11-000-0000" });
     expect(phoneLink).toHaveAttribute("href", "tel:+27110000000");
+  });
+
+  it("shows registration no., VAT no. and a WhatsApp link when set", () => {
+    renderFooter();
+
+    expect(screen.getByText("Reg. no. 2019/123456/07")).toBeInTheDocument();
+    expect(screen.getByText("VAT no. 4123456789")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "WhatsApp +27 82 555 0100" })
+    ).toHaveAttribute("href", "https://wa.me/27825550100");
+  });
+
+  it("hides each unset company row", () => {
+    vi.mocked(useBranding).mockReturnValue({
+      appName: "AgriBid",
+      businessInfo: {
+        ...businessInfo,
+        registrationNo: null,
+        vatNo: "  ",
+        whatsapp: null,
+        telephone: null,
+      },
+    });
+    renderFooter();
+
+    expect(screen.queryByText(/Reg\. no\./)).toBeNull();
+    expect(screen.queryByText(/VAT no\./)).toBeNull();
+    expect(screen.queryByText(/WhatsApp/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /000-0000/ })).toBeNull();
+    // The address is still set, so the column and its heading stay.
+    expect(screen.getByText("Company")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Main Road/ })).toBeInTheDocument();
+  });
+
+  it("removes the whole company column and heading when nothing is set", () => {
+    vi.mocked(useBranding).mockReturnValue({
+      appName: "AgriBid",
+      businessInfo: {
+        ...businessInfo,
+        streetAddress: null,
+        addressLocality: null,
+        addressCountry: null,
+        postalCode: null,
+        telephone: null,
+        registrationNo: null,
+        vatNo: null,
+        whatsapp: null,
+      },
+    });
+    renderFooter();
+
+    expect(screen.queryByText("Company")).toBeNull();
+    expect(screen.queryByText("Headquarters")).toBeNull();
   });
 
   it("omits the contact details while business info is unavailable", () => {
@@ -117,7 +173,7 @@ describe("Footer", () => {
     const brandColumn = screen.getAllByText(/AGRIBID/i)[0].parentElement;
     const platformColumn = screen.getByText("Platform").parentElement;
     const supportColumn = screen.getByText("Support").parentElement;
-    const headquartersColumn = screen.getByText("Headquarters").parentElement;
+    const headquartersColumn = screen.getByText("Company").parentElement;
 
     // Four stacked columns left the footer ~737px tall on a 375px phone.
     // Mobile is a two-column grid: Platform and Support share a row while the

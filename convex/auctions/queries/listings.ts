@@ -93,9 +93,7 @@ export const getMyListingsCountHandler = async (
 
   if (args.status && args.status !== "all") {
     // The UI's "active" filter maps to a lot's stored `assigned` status.
-    const status = (args.status === "active"
-      ? "assigned"
-      : args.status) as
+    const status = (args.status === "active" ? "assigned" : args.status) as
       | "draft"
       | "pending_review"
       | "approved"

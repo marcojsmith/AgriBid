@@ -762,6 +762,37 @@ async function seedMockBids(
 }
 
 /**
+ * Inserts the default VAT rate when none has been set.
+ *
+ * Deliberately seeds nothing under `business.*`: those keys feed the public
+ * footer and SEO data, and `weeklyReset` also runs against production, so a
+ * seed must never invent a registration, VAT, phone or address. Admins enter
+ * real company details on `/admin/business-info`.
+ *
+ * Never overwrites an existing value.
+ *
+ * @param ctx - Mutation context.
+ * @param now - Timestamp for `updatedAt`.
+ */
+async function seedPublicSettings(
+  ctx: MutationCtx,
+  now: number
+): Promise<void> {
+  const existing = await ctx.db
+    .query("settings")
+    .withIndex("by_key", (q) => q.eq("key", "vat_rate_pct"))
+    .unique();
+  if (!existing) {
+    await ctx.db.insert("settings", {
+      key: "vat_rate_pct",
+      value: 15,
+      description: "VAT rate (percent) shown in buyer fee estimates (0-100)",
+      updatedAt: now,
+    });
+  }
+}
+
+/**
  * Populates the database with the full showcase dataset: categories, equipment
  * metadata, mock users, auction events, lots, and every related record (bids,
  * proxy bids, reviews, lot fees, watchlist, conversations, notifications,
@@ -780,6 +811,8 @@ async function seedMockBids(
  */
 async function performSeed(ctx: MutationCtx): Promise<void> {
   const now = Date.now();
+
+  await seedPublicSettings(ctx, now);
 
   // 0. Seed Categories
   const categories = [
