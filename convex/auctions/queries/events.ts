@@ -112,24 +112,20 @@ async function toAuction(
   };
 }
 
-/** Event-card bucket derived from the auction status and window. */
-export type AuctionBucket = "live" | "upcoming" | "closed";
-
 /**
  * Validator for a public auction event: the container plus the summary the
- * event cards need. `lotCount` here counts buyer-visible lots only (a lower
- * bound when `lotCountCapped` is true).
+ * event cards need. `lotCount` here counts buyer-visible lots only. When
+ * `lotCountCapped` is true, `lotCount`, `fromPrice` and `effectiveEndTime` are
+ * lower/partial bounds over the lots read, and hidden lots count toward the cap.
+ * The live/upcoming/closed bucket is derived on the client from
+ * `status`/`startTime`/`effectiveEndTime` (a cached query cannot track time).
  */
 export const PublishedAuctionValidator = AuctionValidator.extend({
   lotCountCapped: v.boolean(),
   fromPrice: v.union(v.number(), v.null()),
   leadImageUrls: v.array(v.string()),
   location: v.union(v.string(), v.null()),
-  bucket: v.union(
-    v.literal("live"),
-    v.literal("upcoming"),
-    v.literal("closed")
-  ),
+  effectiveEndTime: v.number(),
 });
 
 /** Lot statuses buyers can see. */
@@ -161,10 +157,10 @@ export function pickLeadImageRef(images: Doc<"lots">["images"]) {
  * Builds the public event summary for one auction: buyer-visible lot count,
  * lowest current price, up to {@link AUCTION_SUMMARY_IMAGE_COUNT} lead photos
  * (one per lot, first lots in the sale), the first lot's location and the
- * live/upcoming/closed bucket.
+ * effective end time (auction end or the latest soft-close extension).
  *
  * Reads at most {@link AUCTION_SUMMARY_LOT_CAP}+1 lots per public status via
- * `by_status_auctionId`. "First lots" means oldest `_creationTime` (there is no
+ * `by_status_auctionId`; hidden lots count toward that cap. "First lots" means oldest `_creationTime` (there is no
  * lot number yet).
  *
  * @param ctx - Query context.
@@ -200,16 +196,10 @@ async function summarizeAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
     if (url) leadImageUrls.push(url);
   }
 
-  const now = Date.now();
-  const effectiveEnd = lots.reduce(
+  const effectiveEndTime = lots.reduce(
     (end, lot) => Math.max(end, lot.extendedEndTime ?? 0),
     auction.endTime
   );
-  let bucket: AuctionBucket = "closed";
-  if (auction.status === "published") {
-    if (now < auction.startTime) bucket = "upcoming";
-    else if (now < effectiveEnd) bucket = "live";
-  }
 
   // On an open sale, "from" prices only lots still open for bidding; settled
   // lots (sold/unsold) only count when nothing is still assigned. When
@@ -217,8 +207,7 @@ async function summarizeAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
   const firstLot: Doc<"lots"> | undefined =
     lots.length > 0 ? lots[0] : undefined;
   const assignedLots = lots.filter((lot) => lot.status === "assigned");
-  const pricedLots =
-    bucket !== "closed" && assignedLots.length > 0 ? assignedLots : lots;
+  const pricedLots = assignedLots.length > 0 ? assignedLots : lots;
 
   return {
     lotCount: lots.length,
@@ -228,7 +217,7 @@ async function summarizeAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
       : null,
     leadImageUrls,
     location: firstLot ? firstLot.location : null,
-    bucket,
+    effectiveEndTime,
   };
 }
 
@@ -337,9 +326,9 @@ export const getPublishedAuctionsHandler = async (
   );
 
   // Each event reads up to 3 x (cap+1) lots, so the page size is clamped.
-  const numItems = Math.min(
-    args.paginationOpts.numItems,
-    PUBLISHED_AUCTIONS_MAX_PAGE_SIZE
+  const numItems = Math.max(
+    1,
+    Math.min(args.paginationOpts.numItems, PUBLISHED_AUCTIONS_MAX_PAGE_SIZE)
   );
   const startIndex = parseOffsetCursor(args.paginationOpts.cursor);
 

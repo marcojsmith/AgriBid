@@ -118,40 +118,42 @@ describe("getPublishedAuctions event summary", () => {
     vi.useRealTimers();
   });
 
-  it("derives live, upcoming and closed buckets", async () => {
-    await insertAuction(t, { title: "live" });
-    await insertAuction(t, {
-      title: "upcoming",
-      startTime: NOW + HOUR,
-      endTime: NOW + 2 * HOUR,
-    });
-    await insertAuction(t, {
-      title: "ended-but-published",
-      startTime: NOW - 3 * HOUR,
-      endTime: NOW - HOUR,
-    });
-    await insertAuction(t, { title: "closed", status: "closed" });
-    await insertAuction(t, { title: "draft", status: "draft" });
-
-    const { page } = await t.query(api.auctions.getPublishedAuctions, {
-      paginationOpts: PAGE,
-    });
-    const byTitle = Object.fromEntries(page.map((e) => [e.title, e.bucket]));
-    expect(byTitle).toEqual({
-      live: "live",
-      upcoming: "upcoming",
-      "ended-but-published": "closed",
-      closed: "closed",
-    });
+  it("returns the scheduled end as effectiveEndTime without extensions", async () => {
+    await insertAuction(t);
+    expect((await firstEvent(t)).effectiveEndTime).toBe(NOW + HOUR);
   });
 
-  it("keeps a published auction live while a soft-close extension runs", async () => {
+  it("picks up a lot's extendedEndTime in effectiveEndTime", async () => {
     const auctionId = await insertAuction(t, {
       startTime: NOW - 2 * HOUR,
       endTime: NOW - 1000,
     });
     await insertLot(t, auctionId, { extendedEndTime: NOW + 60_000 });
-    expect((await firstEvent(t)).bucket).toBe("live");
+    await insertLot(t, auctionId, { extendedEndTime: NOW + 30_000 });
+    expect((await firstEvent(t)).effectiveEndTime).toBe(NOW + 60_000);
+  });
+
+  it("excludes draft, pending and rejected lots from price and photos", async () => {
+    const auctionId = await insertAuction(t);
+    for (const status of ["draft", "pending_review", "rejected"] as const) {
+      await insertLot(t, auctionId, {
+        status,
+        currentPrice: 1,
+        images: { front: "https://cdn/private.jpg" },
+      });
+    }
+    await insertLot(t, auctionId, { currentPrice: 600 });
+    const event = await firstEvent(t);
+    expect(event.fromPrice).toBe(600);
+    expect(event.leadImageUrls).toEqual([]);
+  });
+
+  it("excludes draft auctions from the feed", async () => {
+    await insertAuction(t, { status: "draft" });
+    const result = await t.query(api.auctions.getPublishedAuctions, {
+      paginationOpts: PAGE,
+    });
+    expect(result.page).toEqual([]);
   });
 
   it("returns an empty summary for an auction with no lots", async () => {
@@ -253,7 +255,7 @@ describe("getPublishedAuctions event summary", () => {
   });
 
   it("clamps oversized pages", async () => {
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < PUBLISHED_AUCTIONS_MAX_PAGE_SIZE + 2; i++) {
       await insertAuction(t, { title: `s${String(i)}` });
     }
     const result = await t.query(api.auctions.getPublishedAuctions, {
@@ -328,6 +330,33 @@ describe("getPublishedAuctions event summary", () => {
     const event = await firstEvent(t);
     expect(event.lotCount).toBe(AUCTION_SUMMARY_LOT_CAP);
     expect(event.lotCountCapped).toBe(true);
+  });
+
+  it("makes progress when numItems is 0", async () => {
+    await insertAuction(t, { title: "a" });
+    await insertAuction(t, { title: "b" });
+    const first = await t.query(api.auctions.getPublishedAuctions, {
+      paginationOpts: { numItems: 0, cursor: null },
+    });
+    expect(first.page).toHaveLength(1);
+    expect(first.isDone).toBe(false);
+    const second = await t.query(api.auctions.getPublishedAuctions, {
+      paginationOpts: { numItems: 0, cursor: first.continueCursor },
+    });
+    expect(second.page).toHaveLength(1);
+    expect(second.isDone).toBe(true);
+  });
+
+  it("finishes with an empty cursor when the clamped page ends the list exactly", async () => {
+    for (let i = 0; i < PUBLISHED_AUCTIONS_MAX_PAGE_SIZE; i++) {
+      await insertAuction(t, { title: `s${String(i)}` });
+    }
+    const result = await t.query(api.auctions.getPublishedAuctions, {
+      paginationOpts: { numItems: 50, cursor: null },
+    });
+    expect(result.page).toHaveLength(PUBLISHED_AUCTIONS_MAX_PAGE_SIZE);
+    expect(result.isDone).toBe(true);
+    expect(result.continueCursor).toBe("");
   });
 
   it("still paginates with the manual cursor", async () => {

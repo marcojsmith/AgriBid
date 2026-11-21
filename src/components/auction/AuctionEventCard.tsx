@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNow } from "@/hooks/useNow";
 import { formatRand } from "@/lib/currency";
+import { getEventBucket } from "@/lib/auction-utils";
 
 /**
  * A published auction event as returned by `api.auctions.getPublishedAuctions`
@@ -37,10 +38,7 @@ interface AuctionEventCardProps {
  */
 export const AuctionEventCard = ({ event }: AuctionEventCardProps) => {
   const now = useNow();
-  const isLive =
-    event.status === "published" &&
-    event.startTime <= now &&
-    now < event.endTime;
+  const isLive = getEventBucket(event, now) === "live";
 
   const lotLabel = `${String(event.lotCount)}${event.lotCountCapped ? "+" : ""} lot${
     event.lotCount === 1 && !event.lotCountCapped ? "" : "s"

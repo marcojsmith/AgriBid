@@ -98,11 +98,11 @@ export const PUBLISHED_AUCTIONS_STATUS_CAP = 50;
 // Maximum lots read per public status (assigned/sold/unsold) when summarising
 // one auction event for the public event cards. Beyond this the summary's
 // lot count is a lower bound and `lotCountCapped` is true.
-export const AUCTION_SUMMARY_LOT_CAP = 50;
+export const AUCTION_SUMMARY_LOT_CAP = 20;
 
 // Largest page the public event feed serves, bounding per-call lot reads
 // (page size x 3 statuses x AUCTION_SUMMARY_LOT_CAP+1).
-export const PUBLISHED_AUCTIONS_MAX_PAGE_SIZE = 24;
+export const PUBLISHED_AUCTIONS_MAX_PAGE_SIZE = 12;
 
 // Number of lead photos returned per auction event summary.
 export const AUCTION_SUMMARY_IMAGE_COUNT = 3;

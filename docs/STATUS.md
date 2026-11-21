@@ -14,7 +14,7 @@ Last updated: 2026-11-21
 
 ## In progress
 
-- Branch `feat/auction-event-summary` (track `improve-screen-mockups`, WP3a): `getPublishedAuctions` returns an event summary (buyer-visible lot count, from-price, 3 lead photos, location, bucket) for the redesigned Home cards; `AuctionEventCard` shows lot count and from-price only. WP2 (#398) is merged.
+- Branch `feat/auction-event-summary` (track `improve-screen-mockups`, WP3a): `getPublishedAuctions` returns an event summary (buyer-visible lot count, from-price, 3 lead photos, location, effective end time) for the redesigned Home cards; `AuctionEventCard` shows lot count and from-price only. WP2 (#398) is merged.
 - Track [`improve-screen-mockups`](../conductor/tracks/improve-screen-mockups/plan.md): new Home / Auction event / Lot detail design plus an app-wide design system, delivered as WP0 to WP8 (tracker in the plan). Rollout to the rest of the app is a separate track after owner review.
 - Branch `feat/toggleable-cron-jobs` (1 commit not yet on `main`): admin Performance page gets per-job on/off switches for every cron (`convex/cronJobs.ts` gated wrappers + `convex/cronRegistry.ts`); jobs default to **off**. Convex disabled both deployments on 2026-10-20 (Free plan limits exceeded by the 1-minute settle cron); after deploying this to prod and the plan resets/upgrades, enable jobs from `/admin/performance`.
 - Stacked PRs #374 -> #378 (Radix umbrella, backend dedupe, money-path integration test, render follow-ups, component splits). Each bases on the previous; #378 targets `main`.

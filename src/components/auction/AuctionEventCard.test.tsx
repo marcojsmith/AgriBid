@@ -27,7 +27,7 @@ const baseEvent: AuctionEvent = {
   fromPrice: null,
   leadImageUrls: [],
   location: null,
-  bucket: "live",
+  effectiveEndTime: NOW + 100000,
   defaultBuyerPremiumPct: undefined,
   defaultSellerCommissionPct: undefined,
 };
@@ -98,7 +98,11 @@ describe("AuctionEventCard", () => {
   });
 
   it("does not show the Live Now badge for a published event whose window has ended", () => {
-    renderCard({ ...baseEvent, endTime: NOW - 1000 });
+    renderCard({
+      ...baseEvent,
+      endTime: NOW - 1000,
+      effectiveEndTime: NOW - 1000,
+    });
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
   });
 
@@ -107,8 +111,18 @@ describe("AuctionEventCard", () => {
       ...baseEvent,
       startTime: NOW + 100000,
       endTime: NOW + 200000,
+      effectiveEndTime: NOW + 200000,
     });
     expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Live Now badge during a soft-close extension past the scheduled end", () => {
+    renderCard({
+      ...baseEvent,
+      endTime: NOW - 1000,
+      effectiveEndTime: NOW + 60000,
+    });
+    expect(screen.getByText("Live Now")).toBeInTheDocument();
   });
 
   it("links to the container detail page", () => {
