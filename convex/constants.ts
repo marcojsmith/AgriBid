@@ -95,6 +95,18 @@ export const ADMIN_COLLECTION_CAP = 500;
 // public auction-event feed, before merging and sorting.
 export const PUBLISHED_AUCTIONS_STATUS_CAP = 50;
 
+// Maximum lots read per public status (assigned/sold/unsold) when summarising
+// one auction event for the public event cards. Beyond this the summary's
+// lot count is a lower bound and `lotCountCapped` is true.
+export const AUCTION_SUMMARY_LOT_CAP = 50;
+
+// Largest page the public event feed serves, bounding per-call lot reads
+// (page size x 3 statuses x AUCTION_SUMMARY_LOT_CAP+1).
+export const PUBLISHED_AUCTIONS_MAX_PAGE_SIZE = 24;
+
+// Number of lead photos returned per auction event summary.
+export const AUCTION_SUMMARY_IMAGE_COUNT = 3;
+
 // Maximum number of storage files examined (and deleted) per orphaned-upload
 // sweep run.
 export const STORAGE_SWEEP_BATCH_SIZE = 500;

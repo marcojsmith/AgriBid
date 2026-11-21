@@ -10,8 +10,8 @@ Reference for every WP: `spec.md`, `mockups.html` and `final/*.png` in this fold
 | --- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | --------- | ---------------- | --------------------------------------------------------------------------- | ---- |
 | 0   | Land the track docs (spec, plan, rubric, feedback, reviews, mockup; images git-ignored)                                        | docs                                          | none      | done (#396)      | coordinator                                                                 |      |
 | 1   | Foundations: tokens, Lora, type scale, focus ring, shadcn primitives restyled                                                  | medium (app-wide visual)                      | 0         | in review (#397) | mcp:launch:8cd07688d6a8f32fb11de3e7c5c7ecbbb1742316fd7a0bff9fd8f9bbcb607c31 | #397 |
-| 2   | Domain components + design-system doc + dev-only `/design-system` page                                                         | low                                           | 1         | in review        | mcp:launch (worker thread)                                                  | #398 |
-| 3a  | Backend read: auction event summary for cards (lot count, from-price, 3 lead photo URLs, location)                             | **risky** (query shape, pagination)           | 0         | todo             |                                                                             |      |
+| 2   | Domain components + design-system doc + dev-only `/design-system` page                                                         | low                                           | 1         | done (#398)      | mcp:launch (worker thread)                                                  | #398 |
+| 3a  | Backend read: auction event summary for cards (lot count, from-price, 3 lead photo URLs, location)                             | **risky** (query shape, pagination)           | 0         | in review (#PR)  | worker thread                                                               | #PR  |
 | 3b  | Backend schema: `lots.lotNumber`, `lots.province`, `profiles.sellerResponseTime`, watcher counter + backfills                  | **risky** (schema, migration, preview deploy) | 3a        | todo             |                                                                             |      |
 | 3c  | Admin settings: VAT rate, company reg/VAT/phone/address for the footer; admin editing of seller response time and lot province | **risky** (settings mutations, admin auth)    | 3b        | todo             |                                                                             |      |
 | 4   | Home screen                                                                                                                    | low                                           | 2, 3a, 3c | todo             |                                                                             |      |
@@ -50,6 +50,7 @@ Order: 0 → 1 → 2 → 3a → 3b → 3c → 4 → 5 → 6 → 7 → 8. The 3x 
 
 - Extend `getPublishedAuctions` (or add `getAuctionSummaries`) to return per event: lot count, lowest opening/current price, up to 3 lead lot image URLs (front first), first lot location/province, live/upcoming/closed bucket. Keep capped takes and the manual cursor; argument + return validators; no N+1 beyond the cap.
 - `convex-test` tests for buckets, caps, missing images. Coordinator Opus review before merge.
+- Done as: `getPublishedAuctions` extended (not a sibling). New fields `lotCountCapped`, `fromPrice`, `leadImageUrls`, `location` (first lot's free-text location; province arrives with WP3b), `bucket`. `lotCount` on this public query now counts buyer-visible lots only (assigned/sold/unsold, not `hiddenByFlags`). Lots are read via `by_status_auctionId`, capped at 50 per status (`AUCTION_SUMMARY_LOT_CAP`); `lotCountCapped` marks a lower bound. "First lots" = oldest `_creationTime` until WP3b adds `lotNumber`. Bucket is soft-close aware and uses `Date.now()`, so it can be stale until the query re-runs.
 
 ### WP3b · Backend schema (risky, preview deploy)
 
@@ -64,6 +65,7 @@ Order: 0 → 1 → 2 → 3a → 3b → 3c → 4 → 5 → 6 → 7 → 8. The 3x 
 - Settings keys: `vat_rate_pct` (default 15), `company_registration_no`, `company_vat_no`, `company_phone`, `company_address`, `company_whatsapp` (optional). Public read for the footer and fee breakdown; admin-only update mutation with validators and audit log.
 - Admin UI: fields on the System Settings page; seller response time on the admin user/profile view; province on admin lot edit.
 - Fee breakdown and footer read these; when a value is unset the row is hidden.
+- Note: company name/address/phone already exist in admin Business Info (`/admin/business-info`, `BrandingContext.businessInfo`); WP3c only adds registration no., VAT no. and WhatsApp there, plus VAT rate, seller response time and lot province.
 
 ### WP4 · Home
 

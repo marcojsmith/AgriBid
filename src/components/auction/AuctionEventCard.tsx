@@ -7,6 +7,7 @@ import type { api } from "convex/_generated/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNow } from "@/hooks/useNow";
+import { formatRand } from "@/lib/currency";
 
 /**
  * A published auction event as returned by `api.auctions.getPublishedAuctions`
@@ -40,6 +41,14 @@ export const AuctionEventCard = ({ event }: AuctionEventCardProps) => {
     event.status === "published" &&
     event.startTime <= now &&
     now < event.endTime;
+
+  const lotLabel = `${String(event.lotCount)}${event.lotCountCapped ? "+" : ""} lot${
+    event.lotCount === 1 && !event.lotCountCapped ? "" : "s"
+  }`;
+  const summaryLine =
+    typeof event.fromPrice === "number"
+      ? `${lotLabel} · from ${formatRand(event.fromPrice)}`
+      : lotLabel;
 
   return (
     <Link to={`/auctions/${event._id}`} className="block group">
@@ -75,9 +84,7 @@ export const AuctionEventCard = ({ event }: AuctionEventCardProps) => {
             {new Date(event.startTime).toLocaleDateString()} –{" "}
             {new Date(event.endTime).toLocaleDateString()}
           </p>
-          <p className="text-xs text-muted-foreground">
-            {event.lotCount} lot{event.lotCount === 1 ? "" : "s"}
-          </p>
+          <p className="text-xs text-muted-foreground">{summaryLine}</p>
         </div>
       </Card>
     </Link>

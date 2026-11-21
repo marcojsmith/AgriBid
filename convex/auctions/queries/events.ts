@@ -10,9 +10,12 @@ import { resolveUrlCached } from "../../image_cache";
 import { countQuery } from "../../admin_utils";
 import {
   ADMIN_COLLECTION_CAP,
+  AUCTION_SUMMARY_IMAGE_COUNT,
+  AUCTION_SUMMARY_LOT_CAP,
+  PUBLISHED_AUCTIONS_MAX_PAGE_SIZE,
   PUBLISHED_AUCTIONS_STATUS_CAP,
 } from "../../constants";
-import type { Id } from "../../_generated/dataModel";
+import type { Doc, Id } from "../../_generated/dataModel";
 
 /**
  * Validator for an auction (scheduled sale container) with a resolved banner
@@ -72,16 +75,23 @@ interface AuctionContainerDoc {
  *
  * @param ctx - Query context.
  * @param auction - The auction container document.
+ * @param knownLotCount - When given, used as the lot count and the index count
+ *   is skipped (public feed supplies its buyer-visible count).
  * @returns The auction with a resolved banner URL and lot count.
  */
-async function toAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
+async function toAuction(
+  ctx: QueryCtx,
+  auction: AuctionContainerDoc,
+  knownLotCount?: number
+) {
   const [bannerImageUrl, lotCount] = await Promise.all([
     resolveUrlCached(ctx.storage, auction.bannerImage),
-    countQuery(
-      ctx.db
-        .query("lots")
-        .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
-    ),
+    knownLotCount ??
+      countQuery(
+        ctx.db
+          .query("lots")
+          .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
+      ),
   ]);
 
   return {
@@ -99,6 +109,126 @@ async function toAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
     createdAt: auction.createdAt,
     updatedAt: auction.updatedAt,
     lotCount,
+  };
+}
+
+/** Event-card bucket derived from the auction status and window. */
+export type AuctionBucket = "live" | "upcoming" | "closed";
+
+/**
+ * Validator for a public auction event: the container plus the summary the
+ * event cards need. `lotCount` here counts buyer-visible lots only (a lower
+ * bound when `lotCountCapped` is true).
+ */
+export const PublishedAuctionValidator = AuctionValidator.extend({
+  lotCountCapped: v.boolean(),
+  fromPrice: v.union(v.number(), v.null()),
+  leadImageUrls: v.array(v.string()),
+  location: v.union(v.string(), v.null()),
+  bucket: v.union(
+    v.literal("live"),
+    v.literal("upcoming"),
+    v.literal("closed")
+  ),
+});
+
+/** Lot statuses buyers can see. */
+const PUBLIC_LOT_STATUSES = ["assigned", "sold", "unsold"] as const;
+
+/**
+ * Picks one image reference (storage id or absolute URL) to represent a lot:
+ * `front`, then `cabin`, `engine`, `rear`, then `additional[0]`. The legacy
+ * array format uses its first entry.
+ *
+ * @param images - The lot's raw `images` value.
+ * @returns The chosen reference, or undefined when the lot has no image.
+ */
+export function pickLeadImageRef(images: Doc<"lots">["images"]) {
+  const isRef = (value: unknown): value is string =>
+    typeof value === "string" && value.trim().length > 0;
+
+  if (Array.isArray(images)) return images.find(isRef);
+  return [
+    images.front,
+    images.cabin,
+    images.engine,
+    images.rear,
+    ...(images.additional?.slice(0, 1) ?? []),
+  ].find(isRef);
+}
+
+/**
+ * Builds the public event summary for one auction: buyer-visible lot count,
+ * lowest current price, up to {@link AUCTION_SUMMARY_IMAGE_COUNT} lead photos
+ * (one per lot, first lots in the sale), the first lot's location and the
+ * live/upcoming/closed bucket.
+ *
+ * Reads at most {@link AUCTION_SUMMARY_LOT_CAP}+1 lots per public status via
+ * `by_status_auctionId`. "First lots" means oldest `_creationTime` (there is no
+ * lot number yet).
+ *
+ * @param ctx - Query context.
+ * @param auction - The auction container document.
+ * @returns The summary fields to merge into the auction view.
+ */
+async function summarizeAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
+  const perStatus = await Promise.all(
+    PUBLIC_LOT_STATUSES.map((status) =>
+      ctx.db
+        .query("lots")
+        .withIndex("by_status_auctionId", (q) =>
+          q.eq("status", status).eq("auctionId", auction._id)
+        )
+        .take(AUCTION_SUMMARY_LOT_CAP + 1)
+    )
+  );
+  const lotCountCapped = perStatus.some(
+    (rows) => rows.length > AUCTION_SUMMARY_LOT_CAP
+  );
+  const lots = perStatus
+    .flatMap((rows) => rows.slice(0, AUCTION_SUMMARY_LOT_CAP))
+    .filter((lot) => lot.hiddenByFlags !== true)
+    .sort((a, b) => a._creationTime - b._creationTime);
+
+  // Resolve while iterating so a deleted storage file is skipped in favour of
+  // the next lot's photo (bounded by the lots read above).
+  const leadImageUrls: string[] = [];
+  for (const lot of lots) {
+    if (leadImageUrls.length >= AUCTION_SUMMARY_IMAGE_COUNT) break;
+    const ref = pickLeadImageRef(lot.images);
+    const url = ref ? await resolveUrlCached(ctx.storage, ref) : undefined;
+    if (url) leadImageUrls.push(url);
+  }
+
+  const now = Date.now();
+  const effectiveEnd = lots.reduce(
+    (end, lot) => Math.max(end, lot.extendedEndTime ?? 0),
+    auction.endTime
+  );
+  let bucket: AuctionBucket = "closed";
+  if (auction.status === "published") {
+    if (now < auction.startTime) bucket = "upcoming";
+    else if (now < effectiveEnd) bucket = "live";
+  }
+
+  // On an open sale, "from" prices only lots still open for bidding; settled
+  // lots (sold/unsold) only count when nothing is still assigned. When
+  // `lotCountCapped` is true this is a bound over the lots read, not exact.
+  const firstLot: Doc<"lots"> | undefined =
+    lots.length > 0 ? lots[0] : undefined;
+  const assignedLots = lots.filter((lot) => lot.status === "assigned");
+  const pricedLots =
+    bucket !== "closed" && assignedLots.length > 0 ? assignedLots : lots;
+
+  return {
+    lotCount: lots.length,
+    lotCountCapped,
+    fromPrice: pricedLots.length
+      ? Math.min(...pricedLots.map((lot) => lot.currentPrice))
+      : null,
+    leadImageUrls,
+    location: firstLot ? firstLot.location : null,
+    bucket,
   };
 }
 
@@ -206,12 +336,21 @@ export const getPublishedAuctionsHandler = async (
     (a, b) => b.startTime - a.startTime
   );
 
-  const numItems = args.paginationOpts.numItems;
+  // Each event reads up to 3 x (cap+1) lots, so the page size is clamped.
+  const numItems = Math.min(
+    args.paginationOpts.numItems,
+    PUBLISHED_AUCTIONS_MAX_PAGE_SIZE
+  );
   const startIndex = parseOffsetCursor(args.paginationOpts.cursor);
 
   const paginatedSlice = all.slice(startIndex, startIndex + numItems);
   const page = await Promise.all(
-    paginatedSlice.map((auction) => toAuction(ctx, auction))
+    paginatedSlice.map(async (auction) => {
+      const summary = await summarizeAuction(ctx, auction);
+      // The buyer-visible lotCount replaces the all-lots index count.
+      const view = await toAuction(ctx, auction, summary.lotCount);
+      return { ...view, ...summary };
+    })
   );
 
   const nextIndex = startIndex + numItems;
@@ -232,7 +371,7 @@ export const getPublishedAuctions = query({
     ),
   },
   returns: v.object({
-    page: v.array(AuctionValidator),
+    page: v.array(PublishedAuctionValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
   }),

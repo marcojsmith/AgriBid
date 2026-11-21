@@ -23,6 +23,11 @@ const baseEvent: AuctionEvent = {
   createdAt: 0,
   updatedAt: 0,
   lotCount: 3,
+  lotCountCapped: false,
+  fromPrice: null,
+  leadImageUrls: [],
+  location: null,
+  bucket: "live",
   defaultBuyerPremiumPct: undefined,
   defaultSellerCommissionPct: undefined,
 };
@@ -57,6 +62,16 @@ describe("AuctionEventCard", () => {
   it("uses the singular 'lot' label for a single lot", () => {
     renderCard({ ...baseEvent, lotCount: 1 });
     expect(screen.getByText("1 lot")).toBeInTheDocument();
+  });
+
+  it("shows the from-price after the lot count when lots exist", () => {
+    renderCard({ ...baseEvent, fromPrice: 200000 });
+    expect(screen.getByText(/^3 lots · from R\s200\s000$/)).toBeInTheDocument();
+  });
+
+  it("marks a capped lot count with a plus and plural label", () => {
+    renderCard({ ...baseEvent, lotCount: 1, lotCountCapped: true });
+    expect(screen.getByText("1+ lots")).toBeInTheDocument();
   });
 
   it("renders the banner image when a banner URL is present", () => {
