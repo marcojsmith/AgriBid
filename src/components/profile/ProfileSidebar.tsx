@@ -115,7 +115,7 @@ export function ProfileSidebar({
   return (
     <aside>
       <Card className="bg-card border border-primary/10 rounded-md overflow-hidden">
-        <div className="h-14 sm:h-20 bg-gradient-to-br from-primary to-accent" />
+        <div className="h-14 sm:h-20 bg-gradient-to-br from-primary to-primary/70" />
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-center gap-4 -mt-10 mb-4">
             <div className="h-16 w-16 rounded-md bg-primary/10 flex items-center justify-center border-4 border-card shadow-md">

@@ -158,12 +158,13 @@
     --muted-foreground: 40 6% 68%;
     --accent: 142 20% 15%;
     --accent-foreground: 40 20% 95%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 142 58% 28%;
-    --success-foreground: 0 0% 100%;
-    --warning: 32 88% 34%;
-    --warning-foreground: 0 0% 100%;
+    /* Dark: lifted so they read as text (errors, notices) on the dark surfaces; fills use dark text */
+    --destructive: 0 80% 70%;
+    --destructive-foreground: 150 6% 7%;
+    --success: 142 50% 64%;
+    --success-foreground: 150 6% 7%;
+    --warning: 38 90% 68%;
+    --warning-foreground: 150 6% 7%;
     --border: 150 4% 22%;
     --input: 150 4% 22%;
     --ring: 142 35% 58%;

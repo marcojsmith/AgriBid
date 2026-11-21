@@ -10,7 +10,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-btn text-btn-foreground hover:bg-btn/90",
-        destructive: "bg-destructive text-white hover:bg-destructive/90",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
           "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
@@ -19,13 +20,13 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        // Below md the default, sm, lg and icon sizes are 44px tall (tap target).
-        default: "h-11 px-4 py-2 has-[>svg]:px-3 md:h-9",
+        // Below md the default, sm, lg and icon sizes are 44px tall via max-md (so caller h-* overrides still win on desktop) (tap target).
+        default: "h-9 px-4 py-2 has-[>svg]:px-3 max-md:h-11",
         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-11 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5 md:h-8",
-        lg: "h-11 rounded-md px-6 has-[>svg]:px-4 md:h-10",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5 max-md:h-11",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4 max-md:h-11",
         touch: "h-11 px-4 py-2 has-[>svg]:px-3",
-        icon: "size-11 md:size-9",
+        icon: "size-9 max-md:size-11",
         "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8",
         "icon-lg": "size-10",
