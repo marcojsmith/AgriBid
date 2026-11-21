@@ -1,5 +1,4 @@
-// app/src/components/CountdownTimer.tsx
-import { useState, useEffect } from "react";
+import { Countdown } from "@/components/ds/Countdown";
 
 interface CountdownTimerProps {
   endTime?: number | null;
@@ -7,86 +6,15 @@ interface CountdownTimerProps {
 }
 
 /**
- * Component for a countdown timer.
+ * Countdown for an auction or lot. Kept for existing callers; it delegates to
+ * the design-system `Countdown` (neutral, amber under 1h, red under 2 min,
+ * tabular figures). New code should import `Countdown` from `@/components/ds`.
  *
  * @param props - Component props.
- * @param props.endTime - The end time of the countdown.
+ * @param props.endTime - The end time of the countdown (ms since epoch).
  * @param props.className - The CSS class name for the component.
  * @returns The rendered countdown timer.
  */
-export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => {
-  const [remainingMs, setRemainingMs] = useState<number>(
-    () => (endTime ?? 0) - Date.now()
-  );
-
-  useEffect(() => {
-    if (endTime === undefined || endTime === null) {
-      return;
-    }
-
-    const calculateTime = () => {
-      setRemainingMs(endTime - Date.now());
-    };
-
-    calculateTime();
-    const interval = setInterval(() => {
-      const nextRemaining = endTime - Date.now();
-      setRemainingMs(nextRemaining);
-      if (nextRemaining <= 0) {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [endTime]);
-
-  if (endTime === undefined || endTime === null) {
-    return (
-      <span
-        className={`font-mono font-bold tabular-nums text-muted-foreground ${className ?? ""}`}
-      >
-        TBD
-      </span>
-    );
-  }
-
-  const isLowTime = remainingMs > 0 && remainingMs < 3600000; // Less than 1 hour
-
-  if (remainingMs <= 0) {
-    return (
-      <span
-        className={`font-mono font-bold tabular-nums text-primary ${className ?? ""}`}
-      >
-        Ended
-      </span>
-    );
-  }
-
-  const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(
-    (remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-  );
-  const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
-
-  const parts = [];
-  if (days > 0) parts.push(`${String(days)}d`);
-  if (hours > 0 || days > 0) parts.push(`${String(hours)}h`);
-  parts.push(`${String(minutes)}m`);
-  parts.push(`${String(seconds)}s`);
-  const timeLeft = parts.join(" ");
-
-  const stateColorClass = isLowTime
-    ? "text-destructive animate-pulse"
-    : "text-primary";
-
-  return (
-    <span
-      className={`font-mono font-bold tabular-nums ${stateColorClass} ${className ?? ""}`}
-    >
-      {timeLeft}
-    </span>
-  );
-};
+export const CountdownTimer = ({ endTime, className }: CountdownTimerProps) => (
+  <Countdown endTime={endTime} className={className} />
+);

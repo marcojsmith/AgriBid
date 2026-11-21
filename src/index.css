@@ -38,7 +38,7 @@
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
 
-  /* Design-system tokens (WP1): see docs/architecture/ui-design/theme.md */
+  /* Design-system tokens (WP1): see docs/architecture/ui-design/design-system.md */
   --color-primary-soft: hsl(var(--primary-soft));
   --color-btn: hsl(var(--btn));
   --color-btn-foreground: hsl(var(--btn-foreground));
@@ -167,7 +167,7 @@
     --warning-foreground: 150 6% 7%;
     --border: 150 4% 22%;
     --input: 150 4% 22%;
-    --ring: 142 35% 58%;
+    --ring: 142 40% 66%; /* lifted: 3:1 against both the page and filled buttons */
 
     --btn: 142 36% 32%;
     --btn-foreground: 40 30% 98%;
@@ -216,8 +216,10 @@
     font-family: var(--font-display);
     font-weight: 600;
   }
+  /* Focus ring: --ring is lifted in dark so it stays visible next to the
+     filled (btn) buttons; asserted in theme-tokens.test.ts. */
   :focus-visible {
-    outline: 2px solid hsl(var(--primary));
+    outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
 }

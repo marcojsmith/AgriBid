@@ -20,6 +20,7 @@ One short ADR per architectural or product decision. Status is `Accepted` unless
 | 0012 | [Convex file storage for images](0012-convex-file-storage-images.md)              | undated    |
 | 0013 | [Hierarchical equipment catalog](0013-hierarchical-equipment-catalog.md)          | 2026-03    |
 | 0014 | [Keep CORS helpers without consumers](0014-keep-cors-helpers.md)                  | 2026-09    |
+| 0015 | [One design system](0015-design-system.md)                                        | 2026-11    |
 
 ## Template
 

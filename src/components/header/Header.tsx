@@ -121,7 +121,7 @@ export const Header = () => {
             <Button
               size="sm"
               asChild
-              className="font-semibold text-xs rounded-md h-10 px-6 shadow-lg shadow-primary/20"
+              className="font-semibold text-xs rounded-md h-10 px-6"
             >
               <Link to="/login">Login / Register</Link>
             </Button>

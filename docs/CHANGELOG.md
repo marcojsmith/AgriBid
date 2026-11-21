@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-11
 
+- Design-system components and reference (WP2 of improve-screen-mockups): `src/components/ds/` (StatusBadge, ReservePill, Money, Countdown, PhotoFrame, EventMosaic, SaleTerms, SpecTable, ConditionReport, SectionHeader, SegmentedControl, FilterChips, StickyActionBar), `formatRand` and `formatSastDate`, `deriveDisplayStatus`, `CountdownTimer` now wraps `Countdown`, dev-only `/design-system` page, `docs/architecture/ui-design/design-system.md` (+ ADR 0015); WP1 follow-ups: no glow on header/mobile-menu buttons, compact lot-card Bid label 13px, dark-mode focus ring lifted and contrast-tested (0.19.0)
 - Design-system foundations (WP1 of improve-screen-mockups): new tokens in `src/index.css` (surfaces, `btn`, `hero`, status solid/soft/fg, `ok-fg`/`warn-fg`), Lora display font, `.num`, 4/6/8px radius, global focus ring; Button (44px touch targets below md, `touch` size, `btn` token), Badge (`rounded-sm` + status variants), Input, Tabs and Card restyled; WCAG AA contrast tests for both themes (0.18.0)
 - Fix the orphaned-upload sweep data-loss bug: it now pages `lots`, `profiles` and `auctions` to completion in an action and deletes nothing if the scan cannot finish; `bunx convex codegen` confirmed `convex/_generated` already current (0.17.36)
 - Bump prettier 3.10, convex 1.50, eslint 10, @eslint/js 10, @convex-dev/eslint-plugin 5 with eslint-plugin-jsdoc 65, import-x 4.18 and react-hooks 7.1; fix the new lint errors in source (supersedes #388 #389 #390 #391; TypeScript 7 #392 held) (0.17.35)
