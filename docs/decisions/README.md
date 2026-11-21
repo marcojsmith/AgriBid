@@ -21,6 +21,7 @@ One short ADR per architectural or product decision. Status is `Accepted` unless
 | 0013 | [Hierarchical equipment catalog](0013-hierarchical-equipment-catalog.md)          | 2026-03    |
 | 0014 | [Keep CORS helpers without consumers](0014-keep-cors-helpers.md)                  | 2026-09    |
 | 0015 | [One design system](0015-design-system.md)                                        | 2026-11    |
+| 0016 | [Production backend on self-hosted Convex](0016-self-hosted-convex-prod.md)       | 2026-11    |
 
 ## Template
 

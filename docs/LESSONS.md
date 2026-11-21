@@ -57,6 +57,11 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 
 ## Build/CI
 
+- 2026-11 - Self-hosted Convex: the CLI errors when `CONVEX_DEPLOY_KEY` (or a `CONVEX_DEPLOYMENT` in `.env.local`) is set alongside `CONVEX_SELF_HOSTED_URL`/`CONVEX_SELF_HOSTED_ADMIN_KEY` → remove the deploy key in Vercel, and run self-hosted CLI commands from a checkout with no `.env.local` (ADR 0016).
+- 2026-11 - Vercel masks sensitive env values in build logs, so `convex deploy` prints "Deploying to [REDACTED]" for a sensitive `CONVEX_SELF_HOSTED_URL` → confirm the target from the backend log (`deploy2/finish_push`) and the built bundle, not the Vercel log.
+- 2026-11 - nginx on trio5700x runs as an NSSM service under LocalSystem; `nginx -s reload` fails with `OpenEvent("Global\ngx_reload_*") ... Access is denied` even from an admin shell → `Restart-Service nginx` (elevated).
+- 2026-11 - `https://agribid.vercel.app` is not this project (it returns 200 with another site); production is `https://agribid-iota.vercel.app` → check `vercel inspect <deployment>` aliases before trusting a URL in docs.
+
 - 2026-09 - `strictTypeChecked` is permanently on. Deliberate exceptions, do not "fix": ~16 `prefer-nullish-coalescing` (empty string means missing), 2 `consistent-type-definitions` (Convex args), 3 `no-deprecated` (`COMMISSION_RATE` fallback tests). `--fix` re-converts Convex args types to interfaces every run and breaks distant call sites → add an override for `convex/**` (issue #171).
 - 2026-09 - Strict preset sets `restrict-template-expressions` with no number/boolean allowance → wrap in `String(...)`; use `getErrorMessage(err)` not `String(unknown)` (`no-base-to-string`); use `arr.at(i) ?? "x"` not `arr[i]` (`detect-object-injection`).
 - 2026-09 - `security/detect-object-injection` is purely syntactic (`obj[identifier]`); `hasOwnProperty` does not silence it → use `Map`, computed destructuring, or zipped pairs.
