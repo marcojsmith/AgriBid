@@ -4,6 +4,10 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
 import { settleExpiredLotsHandler, cleanupDraftsHandler } from "./internal";
 
+vi.mock("../lib/lotCounters", () => ({
+  removeLotWatchData: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
   logAudit: vi.fn(),

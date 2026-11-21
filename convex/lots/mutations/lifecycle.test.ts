@@ -58,6 +58,7 @@ const validLot = {
   sellerId: "u1",
   status: "draft",
   title: "Tractor",
+  province: "gauteng",
   description: "A fine tractor",
   startingPrice: 100,
   reservePrice: 200,
@@ -87,6 +88,18 @@ describe("Lot lifecycle mutations", () => {
   });
 
   describe("submit for review", () => {
+    it("rejects a draft lot without a province", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ ...validLot, province: undefined });
+
+      await expect(
+        submitLotForReviewHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+        })
+      ).rejects.toThrow("Province is required");
+      expect(mockCtx.db.patch).not.toHaveBeenCalled();
+    });
+
     it("submits an owned draft lot for review", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue(validLot);

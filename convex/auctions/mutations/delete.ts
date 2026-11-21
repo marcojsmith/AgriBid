@@ -4,6 +4,7 @@ import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { deleteAuctionImages, safeDelete } from "../../lib/storage";
 import { logAudit, updateCounter } from "../../admin_utils";
+import { removeLotWatchData } from "../../lib/lotCounters";
 import {
   assertLotOwnership,
   assertLotEditable,
@@ -73,6 +74,7 @@ export const deleteDraftHandler = async (
     await safeDelete(ctx, lot.conditionReportUrl, "condition report");
   }
 
+  await removeLotWatchData(ctx, args.lotId);
   await ctx.db.delete("lots", args.lotId);
   await updateCounter(ctx, "lots", "draft", -1);
   await updateCounter(ctx, "lots", "total", -1);

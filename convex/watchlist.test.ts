@@ -17,6 +17,10 @@ vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),
 }));
 
+vi.mock("./lib/lotCounters", () => ({
+  adjustWatcherCount: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("./auctions", () => ({
   toLotSummary: vi.fn((_ctx: unknown, a: { _id: unknown }) =>
     Promise.resolve({ _id: a._id, title: "Auction" })
@@ -73,7 +77,9 @@ describe("Watchlist Coverage", () => {
         query: vi.fn(() => queryMock),
         insert: vi.fn().mockResolvedValue("id123"),
         delete: vi.fn().mockResolvedValue(undefined),
-        get: vi.fn().mockResolvedValue({ _id: "a1", title: "Test" }),
+        get: vi
+          .fn()
+          .mockResolvedValue({ _id: "a1", title: "Test", status: "assigned" }),
       },
     };
   });
@@ -107,6 +113,20 @@ describe("Watchlist Coverage", () => {
       );
       expect(result).toBe(false);
       expect(mockCtx.db.delete).toHaveBeenCalledWith("watchlist", "w1");
+    });
+
+    it("rejects lots buyers cannot see (e.g. drafts)", async () => {
+      vi.mocked(auth.requireAuth).mockResolvedValue({ _id: "u1" });
+      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+      queryMock.first.mockResolvedValue(null);
+      mockCtx.db.get.mockResolvedValue({ _id: "a1", status: "draft" });
+
+      await expect(
+        toggleWatchlistHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "a1" as Id<"lots">,
+        })
+      ).rejects.toThrow("Lot not found");
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
     });
 
     it("should insert if not existing", async () => {

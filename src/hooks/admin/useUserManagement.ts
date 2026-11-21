@@ -4,6 +4,8 @@ import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
+import type { SellerResponseTime } from "@/lib/provinces";
+
 /**
  * KYC review user data interface
  */
@@ -29,6 +31,8 @@ export interface AdminProfile {
   role: string;
   isVerified?: boolean;
   kycStatus?: string;
+  /** Admin-set seller reply time, if any. */
+  sellerResponseTime?: SellerResponseTime;
   createdAt: number;
   isOnline?: boolean;
 }

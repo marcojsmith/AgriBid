@@ -87,6 +87,8 @@ const mockAuction = {
   conditionReportUrl: undefined,
   isExtended: undefined,
   seedId: undefined,
+  lotNumber: undefined,
+  province: undefined,
   conditionChecklist: undefined,
   bidCount: 5,
   images: {

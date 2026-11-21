@@ -49,6 +49,7 @@ export {
   resolveTicket,
   createAnnouncement,
   syncLotWinners,
+  setSellerResponseTime,
   reviewKYC,
   initializeCounters,
   updateSystemConfig,

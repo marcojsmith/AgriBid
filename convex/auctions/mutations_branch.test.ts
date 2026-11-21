@@ -16,6 +16,10 @@ import type { Id } from "../_generated/dataModel";
 import { logAudit } from "../admin_utils";
 
 // Mocking necessary modules
+vi.mock("../lib/lotCounters", () => ({
+  removeLotWatchData: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../_generated/server", () => ({
   query: vi.fn((q: unknown) => q),
   mutation: vi.fn((m: unknown) => m),

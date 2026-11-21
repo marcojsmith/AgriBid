@@ -2,6 +2,7 @@ import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin } from "../../lib/auth";
+import { issueNextLotNumber } from "../../lib/lotCounters";
 import { adjustLotStatusCounters } from "../../lots/mutations/helpers";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
@@ -48,8 +49,10 @@ export const assignLotToAuctionHandler = async (
 
   // Resolve the auction's fee defaults onto the lot now, so later edits to the
   // auction's defaults cannot change an already-assigned lot's fees (issue #318).
+  const lotNumber = await issueNextLotNumber(ctx, args.auctionId);
   await ctx.db.patch("lots", args.lotId, {
     auctionId: args.auctionId,
+    lotNumber,
     status: "assigned",
     resolvedBuyerPremiumPct: auction.defaultBuyerPremiumPct,
     resolvedSellerCommissionPct: auction.defaultSellerCommissionPct,
@@ -95,6 +98,7 @@ export const unassignLotHandler = async (
 
   await ctx.db.patch("lots", args.lotId, {
     auctionId: undefined,
+    lotNumber: undefined,
     status: "approved",
   });
   await adjustLotStatusCounters(ctx, "assigned", "approved");

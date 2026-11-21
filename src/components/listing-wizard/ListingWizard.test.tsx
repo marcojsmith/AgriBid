@@ -178,6 +178,9 @@ describe("ListingWizard Full Coverage", () => {
     fireEvent.change(screen.getByPlaceholderText(/Johannesburg/i), {
       target: { value: "Pretoria" },
     });
+    fireEvent.change(screen.getByLabelText(/Province/i), {
+      target: { value: "gauteng" },
+    });
     fireEvent.change(screen.getByLabelText(/Operating Hours/i), {
       target: { value: "100" },
     });
@@ -410,6 +413,7 @@ describe("ListingWizard Full Coverage", () => {
       year: 2024,
       operatingHours: 100,
       location: "Pretoria",
+      province: "gauteng",
       description: "Desc",
       conditionChecklist: {
         engine: true,

@@ -19,6 +19,7 @@ import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { requireAdmin, getAuthUser } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
+import { sellerResponseTimeValidator } from "../lib/provinces";
 
 // --- Re-export specialized mutation modules ---
 
@@ -100,6 +101,45 @@ export const voidBid = mutation({
       targetId: args.bidId,
       targetType: "bid",
       details: `Reason: ${args.reason}. New Price: ${String(newPrice)}${lot.winnerId !== newWinnerId ? `. Winner recalculated to ${String(newWinnerId)}` : ""}`,
+    });
+
+    return { success: true };
+  },
+});
+
+// --- Seller profile ---
+
+/**
+ * Set (or clear) how quickly a seller usually replies, shown on their public
+ * seller card. Pass `responseTime: null` to clear it, which hides the line.
+ * Admin only; writes an audit log entry.
+ */
+export const setSellerResponseTime = mutation({
+  args: {
+    userId: v.string(),
+    responseTime: v.union(sellerResponseTimeValidator, v.null()),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+    if (!profile) throw new Error("Profile not found");
+
+    const previous = profile.sellerResponseTime ?? null;
+    await ctx.db.patch("profiles", profile._id, {
+      sellerResponseTime: args.responseTime ?? undefined,
+      updatedAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      action: "SET_SELLER_RESPONSE_TIME",
+      targetId: args.userId,
+      targetType: "profile",
+      details: JSON.stringify({ from: previous, to: args.responseTime }),
     });
 
     return { success: true };

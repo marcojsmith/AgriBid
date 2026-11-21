@@ -149,6 +149,7 @@ describe("Create Mutations", () => {
       year: 2020,
       operatingHours: 100,
       location: "Loc",
+      province: "gauteng" as const,
       description: "Desc",
       startingPrice: 1000,
       reservePrice: 2000,
@@ -172,6 +173,48 @@ describe("Create Mutations", () => {
       );
       expect(result).toBeDefined();
       expect(mockCtx.db.insert).toHaveBeenCalled();
+    });
+
+    it("persists the province on the lot", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+
+      await createLotHandler(mockCtx as unknown as MutationCtx, validArgs);
+
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "lots",
+        expect.objectContaining({ province: "gauteng" })
+      );
+    });
+
+    it("rejects a non-draft listing without a province", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+      const withoutProvince: Omit<typeof validArgs, "province"> &
+        Partial<Pick<typeof validArgs, "province">> = { ...validArgs };
+      delete withoutProvince.province;
+
+      await expect(
+        createLotHandler(mockCtx as unknown as MutationCtx, withoutProvince)
+      ).rejects.toThrow("Province is required");
+    });
+
+    it("allows a draft without a province", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+      const withoutProvince: Omit<typeof validArgs, "province"> &
+        Partial<Pick<typeof validArgs, "province">> = { ...validArgs };
+      delete withoutProvince.province;
+
+      await createLotHandler(mockCtx as unknown as MutationCtx, {
+        ...withoutProvince,
+        isDraft: true,
+      });
+
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "lots",
+        expect.not.objectContaining({ province: expect.anything() as unknown })
+      );
     });
 
     it("should log listing_created activity when created as a non-draft", async () => {

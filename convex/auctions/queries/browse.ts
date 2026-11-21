@@ -11,6 +11,7 @@ import {
 } from "../helpers";
 import { getAuthenticatedProfile } from "../../lib/auth";
 import { parseOffsetCursor } from "../../lib/pagination";
+import { sellerResponseTimeValidator } from "../../lib/provinces";
 import { countQuery } from "../../admin_utils";
 import { getSellerRatingSummary } from "../../reviews";
 import { MAX_RESULTS_CAP } from "../../constants";
@@ -495,6 +496,7 @@ export const getSellerInfoHandler = async (
     bio: profile.bio,
     companyName: profile.companyName,
     location: profile.location,
+    sellerResponseTime: profile.sellerResponseTime,
     emailVerified: profile.emailVerified,
     phoneVerified: profile.phoneVerified,
     bankingVerified: profile.bankingVerified,
@@ -534,6 +536,7 @@ export const getSellerInfo = query({
       bio: v.optional(v.string()),
       companyName: v.optional(v.string()),
       location: v.optional(v.string()),
+      sellerResponseTime: v.optional(sellerResponseTimeValidator),
       emailVerified: v.optional(v.boolean()),
       phoneVerified: v.optional(v.boolean()),
       bankingVerified: v.optional(v.boolean()),

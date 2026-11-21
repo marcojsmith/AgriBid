@@ -1,3 +1,5 @@
+import type { Province } from "@/lib/provinces";
+
 /**
  * Represents the condition checklist for equipment condition assessment.
  * Each key corresponds to a specific component or feature.
@@ -49,6 +51,8 @@ export interface ListingFormData {
   model: string;
   /** Auction location */
   location: string;
+  /** South African province the equipment is in (required to submit) */
+  province?: Province;
   /** Detailed description of the equipment */
   description: string;
   /** Operating hours on the equipment */

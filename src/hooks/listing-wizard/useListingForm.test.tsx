@@ -47,11 +47,14 @@ describe("useListingForm", () => {
 
     currentFormData = { ...DEFAULT_FORM_DATA, title: "Test", location: "Loc" };
     rerender();
+    expect(result.current.getStepError(0)).toBe("Province is required");
+
     // Default year is current year, so we need to set an invalid year to test this
     currentFormData = {
       ...DEFAULT_FORM_DATA,
       title: "Test",
       location: "Loc",
+      province: "gauteng" as const,
       year: 0,
     };
     rerender();
@@ -61,6 +64,7 @@ describe("useListingForm", () => {
       ...DEFAULT_FORM_DATA,
       title: "Test",
       location: "Loc",
+      province: "gauteng" as const,
       year: 2020,
       operatingHours: -1,
     };
@@ -73,6 +77,7 @@ describe("useListingForm", () => {
       ...DEFAULT_FORM_DATA,
       title: "Test",
       location: "Loc",
+      province: "gauteng" as const,
       year: 2020,
       operatingHours: undefined as unknown as number,
     };
@@ -83,6 +88,7 @@ describe("useListingForm", () => {
       ...DEFAULT_FORM_DATA,
       title: "Test",
       location: "Loc",
+      province: "gauteng" as const,
       year: 2020,
       operatingHours: 100,
     };
@@ -127,6 +133,7 @@ describe("useListingForm", () => {
       ...DEFAULT_FORM_DATA,
       title: "Test",
       location: "Loc",
+      province: "gauteng" as const,
       year: 2020,
       operatingHours: 100,
     };

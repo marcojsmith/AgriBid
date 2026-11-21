@@ -51,6 +51,8 @@ describe("ModerationCard", () => {
     conditionReportUrl: undefined,
     isExtended: undefined,
     seedId: undefined,
+    lotNumber: undefined,
+    province: undefined,
     images: {
       front: "https://example.com/image.jpg",
       engine: undefined,

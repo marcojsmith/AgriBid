@@ -67,6 +67,8 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 - 2026-09 - `eslint --stdin --stdin-filename` lints the on-disk file with the type-aware config → use a path-scoped stash baseline.
 - 2026-09 - `git diff -- 'convex/'` is an invalid pathspec → use `git diff -- convex/`.
 
+- 2026-11 - convex-test `t.run` serialises its return value, so `undefined` comes back as `null`; normalise with `?? undefined` before asserting a field was cleared.
+
 ## Process
 
 - 2026-09 - Removing legacy tables/fields from the schema after a migration: leftover rows are inert; drop the indexes and migration module in the same cleanup (multi-lot rollout, 2026-09-17).

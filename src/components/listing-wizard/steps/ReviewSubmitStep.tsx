@@ -4,6 +4,7 @@ import { api } from "convex/_generated/api";
 
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/currency";
+import { PROVINCE_LABELS } from "@/lib/provinces";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 import { PHOTO_SLOTS } from "../constants";
@@ -79,7 +80,12 @@ export const ReviewSubmitStep = () => {
               <p className="text-xs font-semibold text-muted-foreground">
                 Location
               </p>
-              <p className="font-bold">{formData.location}</p>
+              <p className="font-bold">
+                {formData.location}
+                {formData.province
+                  ? `, ${PROVINCE_LABELS[formData.province]}`
+                  : ""}
+              </p>
             </div>
             <div>
               <p className="text-xs font-semibold text-muted-foreground">

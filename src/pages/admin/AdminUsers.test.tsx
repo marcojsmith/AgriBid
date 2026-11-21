@@ -45,6 +45,7 @@ vi.mock("convex/_generated/api", () => ({
     admin: {
       getAdminStats: "admin:getAdminStats",
       reviewKYC: "admin:reviewKYC",
+      setSellerResponseTime: "admin:setSellerResponseTime",
     },
     users: {
       listAllProfiles: "users:listAllProfiles",
@@ -569,5 +570,80 @@ describe("AdminUsers Page", () => {
     expect(
       within(dialog).getByText("No documents uploaded.")
     ).toBeInTheDocument();
+  });
+  describe("seller response time", () => {
+    const sellerProfile = {
+      _id: "id5",
+      userId: "seller5",
+      name: "Highveld Machinery",
+      email: "seller@example.com",
+      role: "seller",
+      isVerified: true,
+      kycStatus: "approved",
+      createdAt: Date.now(),
+    };
+
+    beforeEach(() => {
+      vi.mocked(usePaginatedQuery).mockReturnValue({
+        results: [...mockProfiles, sellerProfile],
+        status: "Exhausted",
+        loadMore: vi.fn(),
+        isLoading: false,
+      });
+    });
+
+    it("only offers the control for sellers", () => {
+      renderPage();
+      expect(
+        screen.getAllByRole("button", { name: "Response time" })
+      ).toHaveLength(1);
+    });
+
+    it("saves the chosen response time", async () => {
+      const setTime = vi.fn().mockResolvedValue({ success: true });
+      mockMutations[api.admin.setSellerResponseTime as unknown as string] =
+        setTime;
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "Response time" }));
+      fireEvent.change(await screen.findByLabelText("Typical reply time"), {
+        target: { value: "within_hours" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(setTime).toHaveBeenCalledWith({
+          userId: "seller5",
+          responseTime: "within_hours",
+        });
+      });
+      expect(toast.success).toHaveBeenCalledWith(
+        "Seller response time updated"
+      );
+      await waitFor(() => {
+        expect(screen.queryByLabelText("Typical reply time")).toBeNull();
+      });
+    });
+
+    it("shows an error toast when saving fails", async () => {
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: suppress expected failure logging
+      });
+      mockMutations[api.admin.setSellerResponseTime as unknown as string] = vi
+        .fn()
+        .mockRejectedValue(new Error("nope"));
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "Response time" }));
+      await screen.findByLabelText("Typical reply time");
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "Failed to update response time"
+        );
+      });
+      errSpy.mockRestore();
+    });
   });
 });

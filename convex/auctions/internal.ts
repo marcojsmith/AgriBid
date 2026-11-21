@@ -5,6 +5,7 @@ import { internal } from "../_generated/api";
 import { updateCounter, logAudit } from "../admin_utils";
 import { logActivity } from "../userActivity";
 import { deleteAuctionImages, safeDelete } from "../lib/storage";
+import { removeLotWatchData } from "../lib/lotCounters";
 import {
   DRAFT_RETENTION_MS,
   CLEANUP_BATCH_SIZE,
@@ -308,7 +309,9 @@ export async function settleLot(
     winnerId,
     settledAt: now,
     // Unsold lots return to the pool for admin reassignment.
-    ...(finalStatus === "unsold" ? { auctionId: undefined } : {}),
+    ...(finalStatus === "unsold"
+      ? { auctionId: undefined, lotNumber: undefined }
+      : {}),
   });
 
   await updateCounter(ctx, "lots", "active", -1);
@@ -462,6 +465,7 @@ export const cleanupDraftsHandler = async (
         await safeDelete(ctx, lot.conditionReportUrl, "condition report");
       }
 
+      await removeLotWatchData(ctx, lot._id);
       await ctx.db.delete("lots", lot._id);
       deleted++;
     } catch (e) {

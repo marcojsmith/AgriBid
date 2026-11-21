@@ -134,6 +134,7 @@ vi.mock("convex/_generated/api", () => ({
     },
     auctions: {
       getAllLots: "auctions:getAllLots",
+      adminUpdateLot: "auctions:adminUpdateLot",
       mutations: {
         publish: {
           closeLotEarly: "auctions/mutations/publish:closeLotEarly",
@@ -203,6 +204,7 @@ const mockAuctions = [
 describe("AdminLots", () => {
   const closeAuctionEarlyMock = vi.fn();
   const bulkUpdateAuctionsMock = vi.fn();
+  const adminUpdateLotMock = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -223,6 +225,7 @@ describe("AdminLots", () => {
         return closeAuctionEarlyMock;
       if (name === "auctions/mutations/update:bulkUpdateLots")
         return bulkUpdateAuctionsMock;
+      if (name === "auctions:adminUpdateLot") return adminUpdateLotMock;
       return vi.fn();
     });
   });
@@ -914,5 +917,45 @@ describe("AdminLots", () => {
     await waitFor(() => {
       expect(screen.queryByText("Close Lot Early?")).not.toBeInTheDocument();
     });
+  });
+  it("lets an admin set a lot's province", async () => {
+    adminUpdateLotMock.mockResolvedValue({ success: true });
+    renderComponent();
+
+    openDropdown(getRowActionButton(getRowByText("John Deere Tractor")));
+    fireEvent.click(await screen.findByText("Set Province"));
+
+    fireEvent.change(await screen.findByLabelText("Province"), {
+      target: { value: "kwazulu_natal" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(adminUpdateLotMock).toHaveBeenCalledWith({
+        lotId: "auction1",
+        updates: { province: "kwazulu_natal" },
+      });
+    });
+    expect(toast.success).toHaveBeenCalledWith("Lot province updated");
+  });
+
+  it("shows an error toast when the province update fails", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected failure logging
+    });
+    adminUpdateLotMock.mockRejectedValue(new Error("nope"));
+    renderComponent();
+
+    openDropdown(getRowActionButton(getRowByText("John Deere Tractor")));
+    fireEvent.click(await screen.findByText("Set Province"));
+    fireEvent.change(await screen.findByLabelText("Province"), {
+      target: { value: "limpopo" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to update province");
+    });
+    errSpy.mockRestore();
   });
 });
