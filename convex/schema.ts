@@ -47,6 +47,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_startTime", ["startTime"])
     .index("by_status_startTime", ["status", "startTime"])
+    .index("by_status_endTime", ["status", "endTime"])
     .searchIndex("search_title", {
       searchField: "title",
       filterFields: ["status"],

@@ -2,7 +2,7 @@ import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter, useSearchParams } from "react-router-dom";
-import { usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 
 import type { AuctionEvent } from "@/components/auction/AuctionEventCard";
 import { PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
@@ -11,6 +11,7 @@ import Home from "./Home";
 
 vi.mock("convex/react", () => ({
   usePaginatedQuery: vi.fn(),
+  useQuery: vi.fn(),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -97,6 +98,7 @@ describe("Home Page", () => {
       loadMore: vi.fn(),
     };
     setSearchParams = vi.fn();
+    (useQuery as Mock).mockReturnValue([]);
     (usePaginatedQuery as Mock).mockImplementation(
       (_query: unknown, args: { status?: string } | "skip") => {
         if (args === "skip") {
@@ -405,6 +407,58 @@ describe("Home Page", () => {
       "skip",
       expect.anything()
     );
+  });
+
+  it("skips the closing-soon query while searching", () => {
+    setUrl("q=tractor");
+    renderHome();
+    expect(useQuery).toHaveBeenCalledWith(expect.anything(), "skip");
+  });
+
+  it("requests 12 closing-soon lots and shows the strip below the events", () => {
+    (useQuery as Mock).mockReturnValue([
+      {
+        _id: "lot1",
+        title: "T",
+        make: "John Deere",
+        model: "8R",
+        year: 2020,
+        auctionId: "a1",
+        auctionTitle: "Sale a1",
+        currentPrice: 500,
+        startingPrice: 500,
+        hasBids: false,
+        effectiveEndTime: NOW + HOUR,
+        location: "Bothaville",
+      },
+    ]);
+    renderHome();
+    expect(useQuery).toHaveBeenCalledWith(expect.anything(), { limit: 12 });
+    const strip = screen.getByRole("heading", {
+      level: 2,
+      name: "Closing in the next 24 hours",
+    });
+    const auctions = screen.getByRole("heading", {
+      level: 2,
+      name: "Auctions",
+    });
+    const how = screen.getByRole("heading", {
+      level: 2,
+      name: "How AgriBid works",
+    });
+    expect(
+      auctions.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      strip.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it("hides the closing-soon strip when there are no lots", () => {
+    renderHome();
+    expect(
+      screen.queryByRole("heading", { name: "Closing in the next 24 hours" })
+    ).not.toBeInTheDocument();
   });
 
   it("treats an empty q param as no search", () => {

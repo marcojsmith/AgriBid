@@ -1,10 +1,11 @@
 // app/src/pages/Home.tsx
 import { useEffect, useMemo } from "react";
-import { usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
+import { ClosingSoonStrip } from "@/components/home/ClosingSoonStrip";
 import { EventsSection } from "@/components/home/EventsSection";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HowItWorks } from "@/components/home/HowItWorks";
@@ -29,6 +30,9 @@ import {
   PAGINATION_INITIAL_ITEMS,
   PAGINATION_LOAD_MORE_ITEMS,
 } from "@/lib/constants";
+
+/** Lots requested for the "Closing soon" strip (the backend maximum). */
+const CLOSING_SOON_LIMIT = 12;
 
 /**
  * Render the AgriBid home page: a hero with the value proposition, the list of
@@ -109,6 +113,11 @@ export default function Home() {
       ? "Exhausted"
       : "LoadingFirstPage";
   const showingFirstOnly = openCapped && active.status !== "Exhausted";
+  // Lots ending in the next 24 h across all live sales (capped by the backend).
+  const closingSoon = useQuery(
+    api.auctions.getClosingSoonLots,
+    searching ? "skip" : { limit: CLOSING_SOON_LIMIT }
+  );
   const heroImage = active.results.find(
     (event) => getEventBucket(event, now) === "live"
   )?.leadImageUrls[0];
@@ -172,6 +181,7 @@ export default function Home() {
               current.loadMore(PAGINATION_LOAD_MORE_ITEMS);
             }}
           />
+          <ClosingSoonStrip lots={closingSoon} now={now} />
           <HowItWorks />
         </>
       )}

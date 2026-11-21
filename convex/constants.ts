@@ -111,6 +111,28 @@ export const PUBLISHED_AUCTIONS_MAX_PAGE_SIZE = 12;
 // Number of lead photos returned per auction event summary.
 export const AUCTION_SUMMARY_IMAGE_COUNT = 3;
 
+// Closing-soon lot strip (`getClosingSoonLots`).
+// Lots closing within this long from now are listed.
+export const CLOSING_SOON_WINDOW_MS = MS_PER_DAY;
+
+// Soft-close extensions have no maximum (each late bid pushes a lot's end out by
+// SOFT_CLOSE_THRESHOLD_MS), so a sale that already passed its `endTime` can still
+// have running lots. Only sales that ended within this look-back are checked for
+// such lots; a lot running on past it is no longer listed.
+export const CLOSING_SOON_EXTENSION_LOOKBACK_MS = MS_PER_DAY;
+
+// Sales still to end inside the window (read soonest first).
+export const CLOSING_SOON_UPCOMING_AUCTION_CAP = 20;
+
+// Recently ended sales read as soft-close candidates (most recently ended first).
+export const CLOSING_SOON_ENDED_AUCTION_CAP = 10;
+
+// Lots read per sale; the strip returns at most CLOSING_SOON_LOT_LIMIT.
+export const CLOSING_SOON_LOTS_PER_AUCTION = 13;
+
+// Most lots the strip returns.
+export const CLOSING_SOON_LOT_LIMIT = 12;
+
 // Maximum number of storage files examined (and deleted) per orphaned-upload
 // sweep run.
 export const STORAGE_SWEEP_BATCH_SIZE = 500;
