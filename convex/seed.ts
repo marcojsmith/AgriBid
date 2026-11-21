@@ -10,6 +10,7 @@ import { deleteAuctionImages, safeDelete } from "./lib/storage";
 import { updateCounter, logAudit } from "./admin_utils";
 import { getLotCounterKey } from "./lots/mutations/helpers";
 import { issueNextLotNumber, watcherCounterName } from "./lib/lotCounters";
+import { ensureLegalPageDraftRows } from "./lib/legalPages";
 import {
   PROVINCES,
   SELLER_RESPONSE_TIMES,
@@ -2429,6 +2430,16 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     );
     console.log(
       `Seeded ${defaultFaqItems.length.toString()} default FAQ items.`
+    );
+  }
+
+  // 4.5. Seed the legal page drafts. Idempotent: existing rows (body, title and
+  // publish state) are never touched, and new rows are always unpublished, so
+  // `weeklyReset` on production cannot overwrite or publish legal text.
+  const createdLegalPages = await ensureLegalPageDraftRows(ctx);
+  if (createdLegalPages.length > 0) {
+    console.log(
+      `Seeded unpublished legal page drafts: ${createdLegalPages.join(", ")}.`
     );
   }
 

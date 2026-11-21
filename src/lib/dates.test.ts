@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { formatSastDate } from "./dates";
+import { formatSastDate, formatSastDay } from "./dates";
 
 describe("formatSastDate", () => {
   it("formats a UTC time as SAST (+2h)", () => {
@@ -23,5 +23,19 @@ describe("formatSastDate", () => {
 
   it("returns an empty string for non-finite input", () => {
     expect(formatSastDate(Number.NaN)).toBe("");
+  });
+});
+
+describe("formatSastDay", () => {
+  it("formats a calendar date in SAST", () => {
+    expect(formatSastDay(Date.UTC(2026, 10, 21, 9, 0))).toBe("21 Nov 2026");
+  });
+
+  it("rolls over midnight and the year", () => {
+    expect(formatSastDay(Date.UTC(2025, 11, 31, 22, 30))).toBe("1 Jan 2026");
+  });
+
+  it("returns an empty string for non-finite input", () => {
+    expect(formatSastDay(Number.NaN)).toBe("");
   });
 });

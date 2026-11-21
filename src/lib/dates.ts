@@ -34,3 +34,18 @@ export function formatSastDate(timestamp: number): string {
   const mm = String(d.getUTCMinutes()).padStart(2, "0");
   return `${weekday} ${String(d.getUTCDate())} ${month}, ${hh}:${mm} SAST`;
 }
+
+/**
+ * Formats a timestamp as a South African calendar date with no time: `21 Nov 2026`.
+ *
+ * Uses the same fixed UTC+2 offset as {@link formatSastDate}.
+ *
+ * @param timestamp - Milliseconds since the Unix epoch
+ * @returns The formatted string, or an empty string for a non-finite input
+ */
+export function formatSastDay(timestamp: number): string {
+  if (!Number.isFinite(timestamp)) return "";
+  const d = new Date(timestamp + SAST_OFFSET_MS);
+  const month = MONTHS[d.getUTCMonth()] ?? "";
+  return `${String(d.getUTCDate())} ${month} ${String(d.getUTCFullYear())}`;
+}
