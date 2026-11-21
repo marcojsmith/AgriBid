@@ -5,33 +5,43 @@ import type { Id } from "convex/_generated/dataModel";
 import { Receipt, Users, Building2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/currency";
+import { useVatRate } from "@/hooks/useVatRate";
+import { formatCurrency, formatRand } from "@/lib/currency";
+import { calculateBuyerTotal } from "@/lib/vat";
 
 /**
  * Component displaying fee breakdown for auction participants.
  * @param lotId - The ID of the lot
  * @param isWinner - Whether the user won the lot
  * @param isSeller - Whether the user is the seller
+ * @param hammerPrice - The winning bid; enables the VAT and estimated total rows for the buyer
  */
 interface FeeBreakdownProps {
   lotId: Id<"lots"> | undefined;
   isWinner: boolean;
   isSeller: boolean;
+  hammerPrice?: number;
 }
 
 /**
  * Displays the fee breakdown for a sold lot to the winner or seller.
+ *
+ * When `hammerPrice` is given the buyer section also shows VAT (on the hammer
+ * price plus buyer fees, at the admin-set rate) and an estimated total.
  * @param props - The component props.
  * @param props.lotId - The ID of the lot.
  * @param props.isWinner - Whether the user is the lot winner.
  * @param props.isSeller - Whether the user is the lot seller.
+ * @param props.hammerPrice - The winning bid, when known.
  * @returns The FeeBreakdown React component or null if no fees.
  */
 export function FeeBreakdown({
   lotId,
   isWinner,
   isSeller,
+  hammerPrice,
 }: FeeBreakdownProps): React.JSX.Element | null {
+  const vatRatePct = useVatRate();
   const fees = useQuery(
     api.admin.getLotFeesForUser,
     lotId ? { lotId } : "skip"
@@ -57,6 +67,15 @@ export function FeeBreakdown({
     0
   );
 
+  const estimate =
+    showBuyerFees && hammerPrice !== undefined && vatRatePct !== undefined
+      ? calculateBuyerTotal({
+          bid: hammerPrice,
+          premium: totalBuyerFees,
+          vatRatePct,
+        })
+      : null;
+
   return (
     <Card className="border border-primary/20">
       <CardHeader className="pb-3">
@@ -73,18 +92,49 @@ export function FeeBreakdown({
               Your Fees (as Buyer)
             </div>
             <div className="space-y-1">
+              {/* With an estimate every row is whole rand so the lines add up. */}
+              {estimate && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Hammer price</span>
+                  <span className="font-medium">
+                    {formatRand(estimate.bid)}
+                  </span>
+                </div>
+              )}
               {fees.buyerFees.map((fee) => (
                 <div key={fee.feeName} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{fee.feeName}</span>
                   <span className="font-medium">
-                    {formatCurrency(fee.calculatedAmount)}
+                    {estimate
+                      ? formatRand(fee.calculatedAmount)
+                      : formatCurrency(fee.calculatedAmount)}
                   </span>
                 </div>
               ))}
               <div className="flex justify-between text-sm font-bold border-t pt-1">
-                <span>Total</span>
-                <span>{formatCurrency(totalBuyerFees)}</span>
+                <span>{estimate ? "Total fees" : "Total"}</span>
+                <span>
+                  {estimate
+                    ? formatRand(estimate.premium)
+                    : formatCurrency(totalBuyerFees)}
+                </span>
               </div>
+              {estimate && vatRatePct !== undefined && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      VAT ({vatRatePct}% on bid + fees)
+                    </span>
+                    <span className="font-medium">
+                      {formatRand(estimate.vat)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold border-t pt-1">
+                    <span>Estimated total incl. VAT</span>
+                    <span>{formatRand(estimate.total)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

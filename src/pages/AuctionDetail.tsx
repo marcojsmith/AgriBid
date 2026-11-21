@@ -484,6 +484,7 @@ export default function AuctionDetail() {
                   lotId={auction._id}
                   isWinner={auction.winnerId === session.user.id}
                   isSeller={auction.sellerId === session.user.id}
+                  hammerPrice={auction.currentPrice}
                 />
               )}
 

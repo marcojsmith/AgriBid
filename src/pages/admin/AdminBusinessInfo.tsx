@@ -38,6 +38,9 @@ export default function AdminBusinessInfo() {
   const [website, setWebsite] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [sameAs, setSameAs] = useState("");
+  const [registrationNo, setRegistrationNo] = useState("");
+  const [vatNo, setVatNo] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const initializedRef = useRef(false);
 
@@ -54,6 +57,9 @@ export default function AdminBusinessInfo() {
       setWebsite(businessInfo.website ?? "");
       setLogoUrl(businessInfo.logoUrl ?? "");
       setSameAs(businessInfo.sameAs?.join("\n") ?? "");
+      setRegistrationNo(businessInfo.registrationNo ?? "");
+      setVatNo(businessInfo.vatNo ?? "");
+      setWhatsapp(businessInfo.whatsapp ?? "");
       initializedRef.current = true;
     }
   }, [businessInfo]);
@@ -101,6 +107,7 @@ export default function AdminBusinessInfo() {
     const trimmedTelephone = telephone.trim();
     const trimmedEmail = email.trim();
     const trimmedSameAs = sameAs.trim();
+    const trimmedWhatsapp = whatsapp.trim();
 
     if (trimmedWebsite && !validateUrl(trimmedWebsite)) {
       toast.error("Website must be a valid URL");
@@ -112,6 +119,10 @@ export default function AdminBusinessInfo() {
     }
     if (trimmedTelephone && !validatePhone(trimmedTelephone)) {
       toast.error("Telephone must be a valid phone number (7-20 characters)");
+      return;
+    }
+    if (trimmedWhatsapp && !validatePhone(trimmedWhatsapp)) {
+      toast.error("WhatsApp must be a valid phone number (7-20 characters)");
       return;
     }
     if (trimmedEmail && !validateEmail(trimmedEmail)) {
@@ -146,6 +157,9 @@ export default function AdminBusinessInfo() {
         website: trimmedWebsite,
         logoUrl: trimmedLogoUrl,
         sameAs: sameAsUrls,
+        registrationNo: registrationNo.trim(),
+        vatNo: vatNo.trim(),
+        whatsapp: trimmedWhatsapp,
       });
       toast.success("Business info saved");
       initializedRef.current = false;
@@ -306,6 +320,50 @@ export default function AdminBusinessInfo() {
                   placeholder="https://agribid.co.za/logo.png"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="registration-no">
+                  Company Registration No.
+                </Label>
+                <Input
+                  id="registration-no"
+                  type="text"
+                  value={registrationNo}
+                  onChange={(e) => {
+                    setRegistrationNo(e.target.value);
+                  }}
+                  placeholder="2019/123456/07"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="vat-no">VAT No.</Label>
+                <Input
+                  id="vat-no"
+                  type="text"
+                  value={vatNo}
+                  onChange={(e) => {
+                    setVatNo(e.target.value);
+                  }}
+                  placeholder="4123456789"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp">WhatsApp</Label>
+                <Input
+                  id="whatsapp"
+                  type="tel"
+                  value={whatsapp}
+                  onChange={(e) => {
+                    setWhatsapp(e.target.value);
+                  }}
+                  placeholder="+27 82 555 0100"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground md:col-span-2">
+                Shown in the public site footer. Leave a field empty to hide it.
+              </p>
             </div>
 
             <div className="space-y-2 border-t pt-4">

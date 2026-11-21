@@ -182,6 +182,7 @@ const mockAuctions = [
     model: "Axial-Flow 8250",
     year: 2020,
     status: "pending_review",
+    province: "gauteng",
     currentPrice: 0,
     reservePrice: 250000,
     auctionEndTime: Date.now() + 172800000, // 2 days from now
@@ -937,6 +938,25 @@ describe("AdminLots", () => {
       });
     });
     expect(toast.success).toHaveBeenCalledWith("Lot province updated");
+  });
+
+  it("lets an admin clear a lot's province", async () => {
+    adminUpdateLotMock.mockResolvedValue({ success: true });
+    renderComponent();
+
+    openDropdown(getRowActionButton(getRowByText("Case IH Combine")));
+    fireEvent.click(await screen.findByText("Set Province"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Clear province" })
+    );
+
+    await waitFor(() => {
+      expect(adminUpdateLotMock).toHaveBeenCalledWith({
+        lotId: "auction2",
+        updates: { clearProvince: true },
+      });
+    });
+    expect(toast.success).toHaveBeenCalledWith("Lot province cleared");
   });
 
   it("shows an error toast when the province update fails", async () => {

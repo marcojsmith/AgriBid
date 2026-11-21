@@ -762,6 +762,81 @@ async function seedMockBids(
 }
 
 /**
+ * Sample values for the public settings the fee breakdown and footer read.
+ * Sample data only: the registration, VAT and phone numbers are fictional.
+ */
+const SEED_PUBLIC_SETTINGS: {
+  key: string;
+  value: string | number;
+  description: string;
+}[] = [
+  {
+    key: "vat_rate_pct",
+    value: 15,
+    description: "VAT rate (percent) shown in buyer fee estimates (0-100)",
+  },
+  {
+    key: "business.registrationNo",
+    value: "2019/123456/07",
+    description: "Company registration number shown in the public footer",
+  },
+  {
+    key: "business.vatNo",
+    value: "4123456789",
+    description: "Company VAT number shown in the public footer",
+  },
+  {
+    key: "business.whatsapp",
+    value: "+27 82 555 0100",
+    description: "WhatsApp contact number shown in the public footer",
+  },
+  {
+    key: "business.telephone",
+    value: "+27 11 555 0123",
+    description: "Contact phone number for SEO structured data",
+  },
+  {
+    key: "business.streetAddress",
+    value: "12 Harvest Road",
+    description: "Street address for SEO structured data",
+  },
+  {
+    key: "business.addressLocality",
+    value: "Centurion",
+    description: "City/locality for SEO structured data",
+  },
+  {
+    key: "business.addressCountry",
+    value: "ZA",
+    description: "Country code for SEO structured data (e.g. ZA)",
+  },
+];
+
+/**
+ * Inserts the sample VAT rate and company details when absent.
+ *
+ * Never overwrites a value that already exists, so settings an admin changed
+ * survive a re-seed.
+ *
+ * @param ctx - Mutation context.
+ * @param now - Timestamp for `updatedAt`.
+ */
+async function seedPublicSettings(
+  ctx: MutationCtx,
+  now: number
+): Promise<void> {
+  for (const setting of SEED_PUBLIC_SETTINGS) {
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", setting.key))
+      .unique();
+    if (!existing) {
+      await ctx.db.insert("settings", { ...setting, updatedAt: now });
+    }
+  }
+}
+
+/**
  * Populates the database with the full showcase dataset: categories, equipment
  * metadata, mock users, auction events, lots, and every related record (bids,
  * proxy bids, reviews, lot fees, watchlist, conversations, notifications,
@@ -780,6 +855,8 @@ async function seedMockBids(
  */
 async function performSeed(ctx: MutationCtx): Promise<void> {
   const now = Date.now();
+
+  await seedPublicSettings(ctx, now);
 
   // 0. Seed Categories
   const categories = [

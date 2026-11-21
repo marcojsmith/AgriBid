@@ -21,6 +21,9 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 - 2026-09 - Seeds must be idempotent: insert-if-absent by natural unique key, seed keyless tables only while empty → plain re-runs never duplicate.
 - Undated - `getMyBids` paginates via `indexOf(cursor) + 1` over an in-memory array → refactor to a real cursor query if per-user bid-on auctions exceed ~1,000.
 
+- 2026-11 - `lots.resolvedBuyerPremiumPct` and `auctions.defaultBuyerPremiumPct` are named "Pct" but hold a fraction (`0.05` = 5%): the backend multiplies them straight onto the price. Use `premiumFromRate` in `src/lib/vat.ts`, and do not divide by 100. `vat_rate_pct` is a real percentage (15 = 15%).
+- 2026-11 - Patching a Convex field with `undefined` removes it (that is how `adminUpdateLot` clears `province`), but `convex-test`'s `t.run` returns `null` for a missing field, so assert with `?? undefined` or `not.toHaveProperty`.
+
 ## Testing
 
 - 2026-09 - Vitest 4 asymmetric matchers (`expect.any`, `stringContaining`, `arrayContaining`, `objectContaining`) return `any`; as object-literal properties they trip `no-unsafe-assignment` → cast the property value (`as unknown` / `as Record<string, unknown>`).

@@ -132,18 +132,20 @@ export default function AdminLots() {
   const adminUpdateLot = useMutation(api.auctions.adminUpdateLot);
 
   /**
-   * Saves the chosen province for the lot being edited.
-   * @param province - The new province.
+   * Saves the chosen province for the lot being edited, or clears it.
+   * @param province - The new province, or `null` to remove the lot's province.
    */
-  const handleSaveProvince = async (province: Province): Promise<void> => {
+  const handleSaveProvince = async (
+    province: Province | null
+  ): Promise<void> => {
     if (!provinceLot) return;
     setIsSavingProvince(true);
     try {
       await adminUpdateLot({
         lotId: provinceLot._id,
-        updates: { province },
+        updates: province ? { province } : { clearProvince: true },
       });
-      toast.success("Lot province updated");
+      toast.success(province ? "Lot province updated" : "Lot province cleared");
       setProvinceLot(null);
     } catch (err) {
       console.error("Failed to update lot province:", err);
@@ -510,6 +512,9 @@ export default function AdminLots() {
         }}
         onSave={(province) => {
           void handleSaveProvince(province);
+        }}
+        onClear={() => {
+          void handleSaveProvince(null);
         }}
       />
       <BulkActionDialog

@@ -10,7 +10,8 @@ import { logAudit } from "./admin_utils";
  */
 function validateProductionConfig(): void {
   const isProduction = process.env.NODE_ENV === "production";
-  const allowDevPromotionFlag = process.env.ALLOW_DEV_ADMIN_PROMOTION === "true";
+  const allowDevPromotionFlag =
+    process.env.ALLOW_DEV_ADMIN_PROMOTION === "true";
 
   if (isProduction && allowDevPromotionFlag) {
     throw new Error(
@@ -28,7 +29,8 @@ export const promoteToAdmin = mutation({
     const callerRole = await getCallerRole(ctx);
 
     const isProduction = process.env.NODE_ENV === "production";
-    const allowDevPromotionFlag = process.env.ALLOW_DEV_ADMIN_PROMOTION === "true";
+    const allowDevPromotionFlag =
+      process.env.ALLOW_DEV_ADMIN_PROMOTION === "true";
     const allowDevPromotion = !isProduction && allowDevPromotionFlag;
 
     if (!allowDevPromotion && callerRole !== "admin") {

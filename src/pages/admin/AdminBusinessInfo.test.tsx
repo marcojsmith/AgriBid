@@ -18,6 +18,9 @@ interface BusinessInfo {
   website: string | null;
   logoUrl: string | null;
   sameAs: string[] | null;
+  registrationNo: string | null;
+  vatNo: string | null;
+  whatsapp: string | null;
 }
 
 const blankBusinessInfo: BusinessInfo = {
@@ -32,6 +35,9 @@ const blankBusinessInfo: BusinessInfo = {
   website: null,
   logoUrl: null,
   sameAs: null,
+  registrationNo: null,
+  vatNo: null,
+  whatsapp: null,
 };
 
 let mockBusinessInfo: BusinessInfo | undefined;
@@ -111,6 +117,9 @@ describe("AdminBusinessInfo", () => {
       website: "https://agribid.co.za",
       logoUrl: "https://agribid.co.za/logo.png",
       sameAs: ["https://facebook.com/agribid", "https://twitter.com/agribid"],
+      registrationNo: "2019/123456/07",
+      vatNo: "4123456789",
+      whatsapp: "+27 82 555 0100",
     };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     render(<AdminBusinessInfo />);
@@ -135,6 +144,69 @@ describe("AdminBusinessInfo", () => {
     const value = (sameAsTextarea as HTMLTextAreaElement).value;
     expect(value).toMatch(/facebook\.com\/agribid/);
     expect(value).toMatch(/twitter\.com\/agribid/);
+    expect(screen.getByLabelText(/company registration no/i)).toHaveValue(
+      "2019/123456/07"
+    );
+    expect(screen.getByLabelText(/vat no/i)).toHaveValue("4123456789");
+    expect(screen.getByLabelText(/whatsapp/i)).toHaveValue("+27 82 555 0100");
+  });
+
+  it("renders the company registration, VAT and WhatsApp fields", () => {
+    mockBusinessInfo = { ...blankBusinessInfo };
+    (useQuery as Mock).mockReturnValue(mockBusinessInfo);
+    render(<AdminBusinessInfo />);
+
+    expect(
+      screen.getByLabelText(/company registration no/i)
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/vat no/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/whatsapp/i)).toBeInTheDocument();
+  });
+
+  it("saves trimmed company details", async () => {
+    mockBusinessInfo = { ...blankBusinessInfo };
+    (useQuery as Mock).mockReturnValue(mockBusinessInfo);
+    mockUpdateBusinessInfo.mockResolvedValue(null);
+    render(<AdminBusinessInfo />);
+
+    fireEvent.change(screen.getByLabelText(/company registration no/i), {
+      target: { value: " 2019/123456/07 " },
+    });
+    fireEvent.change(screen.getByLabelText(/vat no/i), {
+      target: { value: " 4123456789 " },
+    });
+    fireEvent.change(screen.getByLabelText(/whatsapp/i), {
+      target: { value: " +27 82 555 0100 " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateBusinessInfo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          registrationNo: "2019/123456/07",
+          vatNo: "4123456789",
+          whatsapp: "+27 82 555 0100",
+        })
+      );
+    });
+  });
+
+  it("shows error toast when WhatsApp is not a valid phone number", async () => {
+    mockBusinessInfo = { ...blankBusinessInfo };
+    (useQuery as Mock).mockReturnValue(mockBusinessInfo);
+    render(<AdminBusinessInfo />);
+
+    fireEvent.change(screen.getByLabelText(/whatsapp/i), {
+      target: { value: "abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save settings/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "WhatsApp must be a valid phone number (7-20 characters)"
+      );
+      expect(mockUpdateBusinessInfo).not.toHaveBeenCalled();
+    });
   });
 
   it("shows error toast when website is not a valid URL", async () => {
@@ -220,6 +292,9 @@ describe("AdminBusinessInfo", () => {
       website: null,
       logoUrl: null,
       sameAs: null,
+      registrationNo: null,
+      vatNo: null,
+      whatsapp: null,
     };
     (useQuery as Mock).mockReturnValue(mockBusinessInfo);
     mockUpdateBusinessInfo.mockResolvedValue(null);
@@ -229,6 +304,9 @@ describe("AdminBusinessInfo", () => {
 
     await waitFor(() => {
       expect(mockUpdateBusinessInfo).toHaveBeenCalledWith({
+        registrationNo: "",
+        vatNo: "",
+        whatsapp: "",
         businessName: "Existing",
         businessDescription: "",
         streetAddress: "",

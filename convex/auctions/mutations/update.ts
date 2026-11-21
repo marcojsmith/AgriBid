@@ -232,6 +232,7 @@ export const updateLot = mutation({
  * @param args.updates.operatingHours - New operating hours
  * @param args.updates.location - New location
  * @param args.updates.province - New province
+ * @param args.updates.clearProvince - Remove the lot's province (cannot be combined with `province`)
  * @param args.updates.description - New description
  * @param args.updates.startingPrice - New starting price
  * @param args.updates.reservePrice - New reserve price
@@ -252,6 +253,7 @@ export const adminUpdateLotHandler = async (
       operatingHours?: number;
       location?: string;
       province?: Province;
+      clearProvince?: boolean;
       description?: string;
       startingPrice?: number;
       reservePrice?: number;
@@ -262,19 +264,28 @@ export const adminUpdateLotHandler = async (
 ) => {
   await requireAdmin(ctx);
 
+  if (args.updates.clearProvince && args.updates.province) {
+    throw new ConvexError("Cannot set and clear the province in one update");
+  }
+
   const lot = await ctx.db.get("lots", args.lotId);
   if (!lot) throw new ConvexError("Lot not found");
 
   const oldStatus = lot.status;
   const newStatus = args.updates.status;
 
-  const patchData: typeof args.updates & {
+  const { clearProvince, ...fieldUpdates } = args.updates;
+  const patchData: typeof fieldUpdates & {
     hiddenByFlags?: boolean;
     currentPrice?: number;
     minIncrement?: number;
   } = {
-    ...args.updates,
+    ...fieldUpdates,
   };
+  // Patching a field with `undefined` removes it from the document.
+  if (clearProvince) {
+    patchData.province = undefined;
+  }
   if (
     oldStatus === "pending_review" &&
     newStatus &&
@@ -323,6 +334,7 @@ export const adminUpdateLot = mutation({
       operatingHours: v.optional(v.number()),
       location: v.optional(v.string()),
       province: v.optional(provinceValidator),
+      clearProvince: v.optional(v.boolean()),
       description: v.optional(v.string()),
       startingPrice: v.optional(v.number()),
       reservePrice: v.optional(v.number()),

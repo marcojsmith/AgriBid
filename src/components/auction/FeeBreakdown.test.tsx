@@ -11,12 +11,196 @@ vi.mock("lucide-react", () => ({
 const { mockUseQuery } = vi.hoisted(() => ({ mockUseQuery: vi.fn() }));
 vi.mock("convex/react", () => ({ useQuery: mockUseQuery }));
 vi.mock("convex/_generated/api", () => ({
-  api: { admin: { getLotFeesForUser: "admin:getLotFeesForUser" } },
+  api: {
+    admin: {
+      getLotFeesForUser: "admin:getLotFeesForUser",
+      getVatRate: "admin:getVatRate",
+    },
+  },
 }));
 
 import { FeeBreakdown } from "./FeeBreakdown";
 
 const mockLotId = "lot123" as Id<"lots">;
+
+const buyerPremiumFees = {
+  buyerFees: [
+    {
+      feeName: "Buyer's Premium",
+      feeType: "percentage" as const,
+      rate: 0.05,
+      calculatedAmount: 10_000,
+    },
+  ],
+  sellerFees: [],
+};
+
+describe("FeeBreakdown VAT and estimated total", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Routes the two queries FeeBreakdown makes to their mocked results.
+   *
+   * @param fees - Result of `getLotFeesForUser`
+   * @param vat - Result of `getVatRate`
+   */
+  const mockQueries = (fees: unknown, vat: unknown) => {
+    mockUseQuery.mockImplementation((ref: string) =>
+      ref === "admin:getVatRate" ? vat : fees
+    );
+  };
+
+  it("shows VAT and the estimated total for the winner at the configured rate", () => {
+    mockQueries(buyerPremiumFees, { vatRatePct: 15 });
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={100_000}
+      />
+    );
+    expect(screen.getByText("VAT (15% on bid + fees)")).toBeInTheDocument();
+    // VAT = (100 000 + 10 000) * 15% = 16 500; total = 126 500.
+    expect(screen.getByText(/R\s*16\s*500/)).toBeInTheDocument();
+    expect(screen.getByText("Estimated total incl. VAT")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*126\s*500/)).toBeInTheDocument();
+    expect(screen.getByText("Total fees")).toBeInTheDocument();
+    // The hammer price is shown so the lines visibly add up to the total.
+    expect(screen.getByText("Hammer price")).toBeInTheDocument();
+    expect(screen.getAllByText(/R\s*100\s*000/)).toHaveLength(1);
+    expect(screen.getAllByText(/R\s*10\s*000/)).toHaveLength(2);
+  });
+
+  it("shows fees in whole rand next to the estimate", () => {
+    mockQueries(
+      {
+        buyerFees: [
+          {
+            feeName: "Buyer's Premium",
+            feeType: "percentage" as const,
+            rate: 0.05,
+            calculatedAmount: 10_000.4,
+          },
+        ],
+        sellerFees: [],
+      },
+      { vatRatePct: 0 }
+    );
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={100_000}
+      />
+    );
+    expect(screen.queryByText(/,40/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/R\s*10\s*000/)).toHaveLength(2);
+  });
+
+  it("uses an admin-changed rate", () => {
+    mockQueries(buyerPremiumFees, { vatRatePct: 10 });
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={100_000}
+      />
+    );
+    expect(screen.getByText("VAT (10% on bid + fees)")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*121\s*000/)).toBeInTheDocument();
+  });
+
+  it("shows a zero-VAT line at a 0% rate", () => {
+    mockQueries(buyerPremiumFees, { vatRatePct: 0 });
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={100_000}
+      />
+    );
+    expect(screen.getByText("VAT (0% on bid + fees)")).toBeInTheDocument();
+    expect(screen.getByText(/R\s*110\s*000/)).toBeInTheDocument();
+  });
+
+  it("works without a buyer's premium (no buyer fee besides others)", () => {
+    mockQueries(
+      {
+        buyerFees: [
+          {
+            feeName: "Admin",
+            feeType: "fixed" as const,
+            rate: 0,
+            calculatedAmount: 0,
+          },
+        ],
+        sellerFees: [],
+      },
+      { vatRatePct: 15 }
+    );
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={1_000}
+      />
+    );
+    expect(screen.getByText(/R\s*1\s*150/)).toBeInTheDocument();
+  });
+
+  it("hides VAT rows until the rate has loaded", () => {
+    mockQueries(buyerPremiumFees, undefined);
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={100_000}
+      />
+    );
+    expect(screen.queryByText(/VAT/)).not.toBeInTheDocument();
+    expect(screen.getByText("Total")).toBeInTheDocument();
+  });
+
+  it("hides VAT rows when no hammer price is supplied", () => {
+    mockQueries(buyerPremiumFees, { vatRatePct: 15 });
+    render(<FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={false} />);
+    expect(screen.queryByText(/VAT/)).not.toBeInTheDocument();
+  });
+
+  it("never shows VAT in the seller-only view", () => {
+    mockQueries(
+      {
+        buyerFees: [],
+        sellerFees: [
+          {
+            feeName: "Seller Commission",
+            feeType: "percentage" as const,
+            rate: 0.05,
+            calculatedAmount: 500,
+          },
+        ],
+      },
+      { vatRatePct: 15 }
+    );
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={false}
+        isSeller={true}
+        hammerPrice={10_000}
+      />
+    );
+    expect(screen.queryByText(/VAT/)).not.toBeInTheDocument();
+  });
+});
 
 describe("FeeBreakdown", () => {
   beforeEach(() => {
@@ -26,11 +210,7 @@ describe("FeeBreakdown", () => {
   it("returns null when fees is undefined", () => {
     mockUseQuery.mockReturnValue(undefined);
     const { container } = render(
-      <FeeBreakdown
-        lotId={mockLotId}
-        isWinner={true}
-        isSeller={false}
-      />
+      <FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={false} />
     );
     expect(container.firstChild).toBeNull();
   });
@@ -38,11 +218,7 @@ describe("FeeBreakdown", () => {
   it("returns null when both fee arrays are empty", () => {
     mockUseQuery.mockReturnValue({ buyerFees: [], sellerFees: [] });
     const { container } = render(
-      <FeeBreakdown
-        lotId={mockLotId}
-        isWinner={true}
-        isSeller={false}
-      />
+      <FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={false} />
     );
     expect(container.firstChild).toBeNull();
   });
@@ -67,11 +243,7 @@ describe("FeeBreakdown", () => {
       ],
     });
     const { container } = render(
-      <FeeBreakdown
-        lotId={mockLotId}
-        isWinner={false}
-        isSeller={false}
-      />
+      <FeeBreakdown lotId={mockLotId} isWinner={false} isSeller={false} />
     );
     expect(container.firstChild).toBeNull();
   });
@@ -88,13 +260,7 @@ describe("FeeBreakdown", () => {
       ],
       sellerFees: [],
     });
-    render(
-      <FeeBreakdown
-        lotId={mockLotId}
-        isWinner={true}
-        isSeller={false}
-      />
-    );
+    render(<FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={false} />);
     expect(screen.getByText("Your Fees (as Buyer)")).toBeInTheDocument();
     expect(screen.getByText("Buyer Commission")).toBeInTheDocument();
   });
@@ -111,13 +277,7 @@ describe("FeeBreakdown", () => {
         },
       ],
     });
-    render(
-      <FeeBreakdown
-        lotId={mockLotId}
-        isWinner={false}
-        isSeller={true}
-      />
-    );
+    render(<FeeBreakdown lotId={mockLotId} isWinner={false} isSeller={true} />);
     expect(screen.getByText("Your Fees (as Seller)")).toBeInTheDocument();
     expect(screen.getByText("Seller Commission")).toBeInTheDocument();
   });
@@ -141,9 +301,7 @@ describe("FeeBreakdown", () => {
         },
       ],
     });
-    render(
-      <FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={true} />
-    );
+    render(<FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={true} />);
     expect(screen.getByText("Your Fees (as Buyer)")).toBeInTheDocument();
     expect(screen.getByText("Your Fees (as Seller)")).toBeInTheDocument();
   });
@@ -166,13 +324,7 @@ describe("FeeBreakdown", () => {
       ],
       sellerFees: [],
     });
-    render(
-      <FeeBreakdown
-        lotId={mockLotId}
-        isWinner={true}
-        isSeller={false}
-      />
-    );
+    render(<FeeBreakdown lotId={mockLotId} isWinner={true} isSeller={false} />);
     expect(screen.getByText(/R\s*600/)).toBeInTheDocument();
   });
 
@@ -194,21 +346,13 @@ describe("FeeBreakdown", () => {
         },
       ],
     });
-    render(
-      <FeeBreakdown
-        lotId={mockLotId}
-        isWinner={false}
-        isSeller={true}
-      />
-    );
+    render(<FeeBreakdown lotId={mockLotId} isWinner={false} isSeller={true} />);
     expect(screen.getByText(/R\s*600/)).toBeInTheDocument();
   });
 
   it('passes "skip" to useQuery when lotId is undefined', () => {
     mockUseQuery.mockReturnValue({ buyerFees: [], sellerFees: [] });
-    render(
-      <FeeBreakdown lotId={undefined} isWinner={true} isSeller={false} />
-    );
+    render(<FeeBreakdown lotId={undefined} isWinner={true} isSeller={false} />);
     expect(mockUseQuery).toHaveBeenCalledWith(
       "admin:getLotFeesForUser",
       "skip"

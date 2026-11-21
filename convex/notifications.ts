@@ -100,7 +100,9 @@ function encodeCursor(cursor: CompoundCursor | null): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64");
 }
 
-function decodeCursor(cursor: string | null | undefined): CompoundCursor | null {
+function decodeCursor(
+  cursor: string | null | undefined
+): CompoundCursor | null {
   if (!cursor) return null;
   try {
     const decoded = Buffer.from(cursor, "base64").toString("utf8");
@@ -167,7 +169,10 @@ export const getMyNotificationsHandler = async (
       .withIndex("by_recipient_createdAt", (q) => {
         const eqQuery = q.eq("recipientId", "all");
         if (compoundCursor?.announcements) {
-          return eqQuery.lt("createdAt", compoundCursor.announcements.createdAt);
+          return eqQuery.lt(
+            "createdAt",
+            compoundCursor.announcements.createdAt
+          );
         }
         return eqQuery;
       })
@@ -204,12 +209,8 @@ export const getMyNotificationsHandler = async (
     let nextAnnouncementsCursor = compoundCursor?.announcements ?? null;
 
     if (page.length > 0) {
-      const personalItems = page.filter(
-        (n) => n.recipientId !== "all"
-      );
-      const announcementItems = page.filter(
-        (n) => n.recipientId === "all"
-      );
+      const personalItems = page.filter((n) => n.recipientId !== "all");
+      const announcementItems = page.filter((n) => n.recipientId === "all");
 
       if (personalItems.length > 0) {
         const lastPersonal = personalItems[personalItems.length - 1];
@@ -220,7 +221,8 @@ export const getMyNotificationsHandler = async (
       }
 
       if (announcementItems.length > 0) {
-        const lastAnnouncement = announcementItems[announcementItems.length - 1];
+        const lastAnnouncement =
+          announcementItems[announcementItems.length - 1];
         nextAnnouncementsCursor = {
           createdAt: lastAnnouncement.createdAt,
           _id: lastAnnouncement._id,
@@ -228,8 +230,16 @@ export const getMyNotificationsHandler = async (
       }
     }
 
-    const isDone = !hasMore && personal.length <= numItems && announcements.length <= numItems;
-    const continueCursor = isDone ? "" : encodeCursor({ personal: nextPersonalCursor, announcements: nextAnnouncementsCursor });
+    const isDone =
+      !hasMore &&
+      personal.length <= numItems &&
+      announcements.length <= numItems;
+    const continueCursor = isDone
+      ? ""
+      : encodeCursor({
+          personal: nextPersonalCursor,
+          announcements: nextAnnouncementsCursor,
+        });
 
     return {
       page,

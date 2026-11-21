@@ -29,6 +29,8 @@ export interface LotProvinceDialogProps {
   onClose: () => void;
   /** Called with the chosen province. */
   onSave: (province: Province) => void;
+  /** Called to remove the lot's province. */
+  onClear: () => void;
 }
 
 /**
@@ -39,6 +41,7 @@ export interface LotProvinceDialogProps {
  * @param props.isSaving - Whether a save is in flight.
  * @param props.onClose - Dismiss handler.
  * @param props.onSave - Save handler.
+ * @param props.onClear - Handler that removes the stored province.
  * @returns The dialog body.
  */
 function ProvinceForm({
@@ -46,6 +49,7 @@ function ProvinceForm({
   isSaving,
   onClose,
   onSave,
+  onClear,
 }: LotProvinceDialogProps & { lot: LotProvinceTarget }) {
   const [province, setProvince] = useState<Province | undefined>(lot.province);
 
@@ -70,6 +74,16 @@ function ProvinceForm({
         />
       </div>
       <DialogFooter>
+        {lot.province && (
+          <Button
+            variant="ghost"
+            className="text-destructive sm:mr-auto"
+            onClick={onClear}
+            disabled={isSaving}
+          >
+            Clear province
+          </Button>
+        )}
         <Button variant="outline" onClick={onClose} disabled={isSaving}>
           Cancel
         </Button>

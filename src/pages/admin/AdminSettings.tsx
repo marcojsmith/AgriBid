@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { SettingsCard } from "@/components/admin/SettingsCard";
+import { VatRateCard } from "@/components/admin/VatRateCard";
 
 /**
  * Render the System Settings admin page, showing administrative statistics and actions for equipment metadata, platform fees, security logs, and error reporting.
@@ -50,6 +51,7 @@ export default function AdminSettings() {
       subtitle="Platform Configuration & Metadata Management"
     >
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+        <VatRateCard />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <SettingsCard
             title="Branding"

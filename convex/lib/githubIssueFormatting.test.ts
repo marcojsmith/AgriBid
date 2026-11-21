@@ -17,7 +17,11 @@ describe("githubIssueFormatting", () => {
         breadcrumbs: [
           { timestamp: now, type: "click", description: "clicked button" },
         ],
-        metadata: { url: "https://example.com", userAgent: "ua", timestamp: now },
+        metadata: {
+          url: "https://example.com",
+          userAgent: "ua",
+          timestamp: now,
+        },
         instanceCount: 1,
       };
 
@@ -25,7 +29,9 @@ describe("githubIssueFormatting", () => {
 
       expect(body).toContain("## Production Error Report");
       expect(body).toContain("**Error Type:** TypeError");
-      expect(body).toContain("**Error Message:** Cannot read properties of undefined");
+      expect(body).toContain(
+        "**Error Message:** Cannot read properties of undefined"
+      );
       expect(body).toContain("**Instance Count:** 1");
       expect(body).toContain("Error: boom");
       expect(body).toContain("**User ID:** u1");
@@ -38,7 +44,11 @@ describe("githubIssueFormatting", () => {
         errorType: "Error",
         errorMessage: "Something went wrong",
         breadcrumbs: [],
-        metadata: { url: "https://example.com", userAgent: "ua", timestamp: now },
+        metadata: {
+          url: "https://example.com",
+          userAgent: "ua",
+          timestamp: now,
+        },
         instanceCount: 1,
       };
 

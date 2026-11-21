@@ -13,6 +13,7 @@ describe("LotProvinceDialog", () => {
         isSaving={false}
         onClose={vi.fn()}
         onSave={vi.fn()}
+        onClear={vi.fn()}
       />
     );
     expect(screen.queryByText("Lot province")).not.toBeInTheDocument();
@@ -26,6 +27,7 @@ describe("LotProvinceDialog", () => {
         isSaving={false}
         onClose={vi.fn()}
         onSave={onSave}
+        onClear={vi.fn()}
       />
     );
     const save = screen.getByRole("button", { name: "Save" });
@@ -38,6 +40,34 @@ describe("LotProvinceDialog", () => {
     expect(onSave).toHaveBeenCalledWith("western_cape");
   });
 
+  it("offers Clear province only when the lot has one, and calls onClear", () => {
+    const onClear = vi.fn();
+    const { rerender } = render(
+      <LotProvinceDialog
+        lot={lot}
+        isSaving={false}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        onClear={onClear}
+      />
+    );
+    expect(
+      screen.queryByRole("button", { name: "Clear province" })
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <LotProvinceDialog
+        lot={{ ...lot, province: "gauteng" }}
+        isSaving={false}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        onClear={onClear}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear province" }));
+    expect(onClear).toHaveBeenCalledTimes(1);
+  });
+
   it("starts from the stored province and closes on cancel", () => {
     const onClose = vi.fn();
     render(
@@ -46,6 +76,7 @@ describe("LotProvinceDialog", () => {
         isSaving={false}
         onClose={onClose}
         onSave={vi.fn()}
+        onClear={vi.fn()}
       />
     );
     expect(screen.getByLabelText("Province")).toHaveValue("gauteng");

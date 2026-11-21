@@ -286,6 +286,29 @@ describe("Seed Coverage", () => {
       expect(profiles.some((p) => p.userId === "mock-seller-3")).toBe(true);
     });
 
+    it("seeds the VAT rate and sample company details without overwriting admin values", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+      mockDb.db.insert("settings", {
+        key: "vat_rate_pct",
+        value: 10,
+        updatedAt: 1,
+      });
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const settings = mockDb.rows("settings");
+      const valueOf = (key: string) =>
+        settings.find((s) => s.key === key)?.value;
+      // An existing admin-set rate is kept, and nothing is duplicated.
+      expect(valueOf("vat_rate_pct")).toBe(10);
+      expect(settings.filter((s) => s.key === "vat_rate_pct")).toHaveLength(1);
+      expect(valueOf("business.registrationNo")).toBe("2019/123456/07");
+      expect(valueOf("business.vatNo")).toBe("4123456789");
+      expect(valueOf("business.whatsapp")).toBe("+27 82 555 0100");
+    });
+
     it("does not duplicate synthetic records when run twice without clearing", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       seedExistingProfiles();
