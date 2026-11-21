@@ -1,89 +1,122 @@
 // app/src/pages/Home.tsx
+import { useEffect, useMemo } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Link, useSearchParams } from "react-router-dom";
-import { Calendar, ChevronDown } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { AuctionEventCard } from "@/components/auction/AuctionEventCard";
+import { EventsSection } from "@/components/home/EventsSection";
+import { HomeHero } from "@/components/home/HomeHero";
+import { HowItWorks } from "@/components/home/HowItWorks";
 import { LotBrowser } from "@/components/LotBrowser";
+import { useNow } from "@/hooks/useNow";
+import { getEventBucket } from "@/lib/auction-utils";
+import {
+  parseHomeSort,
+  parseHomeView,
+  selectEvents,
+  type HomeSort,
+  type HomeView,
+} from "@/lib/homeEvents";
 import {
   buildTitle,
   buildCanonical,
   DEFAULT_DESCRIPTION,
   DEFAULT_OG_IMAGE,
 } from "@/lib/seo";
-import { LoadingPage, LoadingIndicator } from "@/components/LoadingIndicator";
 import {
   PAGINATION_INITIAL_ITEMS,
   PAGINATION_LOAD_MORE_ITEMS,
 } from "@/lib/constants";
 
-/** Status tabs available for the auction-event listing. */
-type StatusTab = "active" | "closed" | "all";
-
-const isValidTab = (value: string | null): value is StatusTab => {
-  return value === "active" || value === "closed" || value === "all";
-};
-
-/** Tab definitions rendered on the event-card view, in display order. */
-const STATUS_TABS: readonly { value: StatusTab; label: string }[] = [
-  { value: "active", label: "Active" },
-  { value: "closed", label: "Closed" },
-  { value: "all", label: "All" },
-];
-
 /**
- * Render the AgriBid home page: a gallery of auction-event cards with
- * Active / Closed / All status tabs. When a search query (`?q=`) is present,
- * the global lot-results view is rendered instead.
+ * Render the AgriBid home page: a hero with the value proposition, the list of
+ * auction events (Live & upcoming, Closing soon or Results, with a sort) and a
+ * short "How AgriBid works". When a search query (`?q=`) is present, the global
+ * lot-results view is rendered instead.
+ *
+ * The open and upcoming sales are always loaded (the hero photo and the first
+ * two views use them); ended sales load only on the Results view. The view and
+ * sort live in the URL (`?view=`, `?sort=`).
  *
  * @returns The JSX element for the Home page
  */
 export default function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const now = useNow();
 
   const rawQuery = searchParams.get("q");
   // Empty strings are treated as no search at all
   const searchQuery =
     rawQuery === null || rawQuery === "" ? undefined : rawQuery;
+  const searching = searchQuery !== undefined;
 
-  // The feed is a union of published + closed auction containers sorted by
-  // startTime; the backend caps each side and pages with a manual cursor, and
-  // this hook consumes it with the standard load-more pattern.
-  const rawStatus = searchParams.get("status");
-  const statusTab: StatusTab = isValidTab(rawStatus) ? rawStatus : "active";
+  const view = parseHomeView(
+    searchParams.get("view"),
+    searchParams.get("status")
+  );
+  const sort = parseHomeSort(searchParams.get("sort"));
 
-  const {
-    results: events,
-    status: eventsStatus,
-    loadMore,
-  } = usePaginatedQuery(
+  // Each side is capped by the backend and paged with a manual cursor; this
+  // hook consumes it with the standard load-more pattern.
+  const active = usePaginatedQuery(
     api.auctions.getPublishedAuctions,
-    searchQuery !== undefined
-      ? "skip"
-      : { status: statusTab },
+    searching ? "skip" : { status: "active" },
+    { initialNumItems: PAGINATION_INITIAL_ITEMS }
+  );
+  const closed = usePaginatedQuery(
+    api.auctions.getPublishedAuctions,
+    searching || view !== "results" ? "skip" : { status: "closed" },
     { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
 
-  const setTab = (tab: StatusTab) => {
-    const newParams = new URLSearchParams(searchParams.toString());
-    if (tab === "active") {
-      newParams.delete("status");
-    } else {
-      newParams.set("status", tab);
+  // Closing soon and "Closing soonest" need every open sale: the backend pages
+  // by start time, so the sales ending first can sit on a later page. Load all
+  // pages (at most a few, the backend caps the list) before showing them.
+  const loadAllOpen = view !== "results";
+  useEffect(() => {
+    if (loadAllOpen && active.status === "CanLoadMore") {
+      active.loadMore(PAGINATION_LOAD_MORE_ITEMS);
     }
-    setSearchParams(newParams);
-  };
+  }, [loadAllOpen, active]);
 
-  const emptyStateMessage =
-    statusTab === "active"
-      ? "No active auctions right now."
-      : statusTab === "closed"
-        ? "No closed auctions yet."
-        : "No auction events have been published yet.";
+  const current = view === "results" ? closed : active;
+  // A sale can stay `published` after its window ends (until it settles), so
+  // Results also takes ended sales from the open query.
+  const source = useMemo(() => {
+    if (view !== "results") return active.results;
+    const seen = new Set(closed.results.map((event) => event._id));
+    return [
+      ...closed.results,
+      ...active.results.filter((event) => !seen.has(event._id)),
+    ];
+  }, [view, active.results, closed.results]);
+  const shown = useMemo(
+    () => selectEvents(source, view, sort, now),
+    [source, view, sort, now]
+  );
+  const listStatus =
+    loadAllOpen && active.status !== "Exhausted"
+      ? "LoadingFirstPage"
+      : current.status;
+  const heroImage = active.results.find(
+    (event) => getEventBucket(event, now) === "live"
+  )?.leadImageUrls[0];
+
+  const updateParam = (key: string, value: string | null) => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("status"); // retired param; the view replaces it
+    if (value === null) next.delete(key);
+    else next.set(key, value);
+    // Replace, so Back leaves Home instead of stepping through every view.
+    setSearchParams(next, { replace: true });
+  };
+  const setView = (next: HomeView) => {
+    updateParam("view", next === "live" ? null : next);
+  };
+  const setSort = (next: HomeSort) => {
+    updateParam("sort", next === "soonest" ? null : next);
+  };
 
   const pageTitle = buildTitle("Agricultural Equipment Auctions");
   const canonical = buildCanonical("/");
@@ -106,98 +139,26 @@ export default function Home() {
         <meta name="twitter:image" content={DEFAULT_OG_IMAGE} />
         <meta name="twitter:url" content={canonical} />
       </Helmet>
-      {searchQuery !== undefined ? (
-        <LotBrowser />
-      ) : (
-        <div className="pb-12 space-y-6 md:space-y-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-primary">
-                Auctions
-              </h1>
-              <div
-                className="flex gap-2 mt-3"
-                role="group"
-                aria-label="Auction status"
-              >
-                {STATUS_TABS.map((tab) => (
-                  <Button
-                    key={tab.value}
-                    variant={statusTab === tab.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setTab(tab.value);
-                    }}
-                    aria-pressed={statusTab === tab.value}
-                    data-testid={`status-tab-${tab.value}`}
-                    className="rounded-md text-xs font-medium"
-                  >
-                    {tab.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <Button
-                variant="outline"
-                className="flex-1 md:flex-none font-medium h-10 px-6 rounded-md"
-                asChild
-              >
-                <Link to="/auctions">All Auctions</Link>
-              </Button>
-              <Button
-                className="flex-1 md:flex-none font-semibold h-10 px-6 rounded-md shadow-lg shadow-primary/20"
-                asChild
-              >
-                <Link to="/sell">Sell</Link>
-              </Button>
-            </div>
-          </div>
-
-          {eventsStatus === "LoadingFirstPage" ? (
-            <LoadingPage message="Loading auctions..." />
-          ) : events.length === 0 &&
-            eventsStatus !== "CanLoadMore" &&
-            eventsStatus !== "LoadingMore" ? (
-            <Card className="border border-dashed">
-              <div className="text-center py-20 space-y-4">
-                <Calendar className="h-10 w-10 text-muted-foreground/20 mx-auto" />
-                <p className="text-muted-foreground font-bold">
-                  {emptyStateMessage}
-                </p>
-              </div>
-            </Card>
-          ) : (
-            <div className="space-y-8">
-              {events.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {events.map((event) => (
-                    <AuctionEventCard key={event._id} event={event} />
-                  ))}
-                </div>
-              )}
-              {eventsStatus === "CanLoadMore" && (
-                <div className="flex justify-center pt-4">
-                  <Button
-                    onClick={() => {
-                      loadMore(PAGINATION_LOAD_MORE_ITEMS);
-                    }}
-                    variant="outline"
-                    className="rounded-md font-medium px-12 border gap-2 h-12 text-xs"
-                  >
-                    Load More Auctions
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              {eventsStatus === "LoadingMore" && (
-                <div className="flex justify-center py-8">
-                  <LoadingIndicator />
-                </div>
-              )}
-            </div>
-          )}
+      {searching ? (
+        <div className="container mx-auto px-4 py-4 md:px-8 md:py-8">
+          <LotBrowser />
         </div>
+      ) : (
+        <>
+          <HomeHero imageUrl={heroImage} />
+          <EventsSection
+            events={shown}
+            view={view}
+            sort={sort}
+            status={listStatus}
+            onViewChange={setView}
+            onSortChange={setSort}
+            onLoadMore={() => {
+              current.loadMore(PAGINATION_LOAD_MORE_ITEMS);
+            }}
+          />
+          <HowItWorks />
+        </>
       )}
     </>
   );

@@ -5,6 +5,7 @@ import {
   fireEvent,
   waitFor,
   act,
+  within,
 } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { BrowserRouter } from "react-router-dom";
@@ -16,14 +17,15 @@ import { UserProfileProvider } from "@/contexts/UserProfileContext";
 
 import { Header } from "./Header";
 
+// Whether the mocked Convex auth boundary treats the visitor as signed in.
+const auth = vi.hoisted(() => ({ signedIn: true }));
+
 // Mock convex/react
 vi.mock("convex/react", () => ({
-  Authenticated: ({ children }: React.PropsWithChildren) => (
-    <div data-testid="authenticated">{children}</div>
-  ),
-  Unauthenticated: ({ children }: React.PropsWithChildren) => (
-    <div data-testid="unauthenticated">{children}</div>
-  ),
+  Authenticated: ({ children }: React.PropsWithChildren) =>
+    auth.signedIn ? <div data-testid="authenticated">{children}</div> : null,
+  Unauthenticated: ({ children }: React.PropsWithChildren) =>
+    auth.signedIn ? null : <div data-testid="unauthenticated">{children}</div>,
   useQuery: vi.fn(),
 }));
 
@@ -42,8 +44,12 @@ vi.mock("sonner", () => ({
 
 // Mock child components
 vi.mock("./SearchBar", () => ({
-  SearchBar: ({ id }: { id: string }) => (
-    <div data-testid={`search-${id}`}>Search</div>
+  SearchBar: ({ id, onSearch }: { id: string; onSearch?: () => void }) => (
+    <div data-testid={`search-${id}`}>
+      <button type="button" onClick={onSearch}>
+        Run search
+      </button>
+    </div>
   ),
 }));
 
@@ -70,6 +76,7 @@ describe("Header", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.signedIn = true;
     (useClerk as Mock).mockReturnValue({ signOut: mockSignOut });
     (useQuery as Mock).mockReturnValue({
       profile: {
@@ -97,9 +104,22 @@ describe("Header", () => {
   it("renders brand name and navigation links", () => {
     renderHeader();
     expect(screen.getByText("AgriBid")).toBeInTheDocument();
-    expect(screen.getByText("Marketplace")).toBeInTheDocument();
-    expect(screen.getByText("Sell")).toBeInTheDocument();
-    expect(screen.getByText("Support")).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Main navigation" });
+    expect(within(nav).getByRole("link", { name: "Auctions" })).toHaveAttribute(
+      "href",
+      "/auctions"
+    );
+    expect(
+      within(nav).getByRole("link", { name: "Sell equipment" })
+    ).toHaveAttribute("href", "/sell");
+    expect(
+      within(nav).getByRole("link", { name: "How it works" })
+    ).toHaveAttribute("href", "/faq");
+    expect(within(nav).getByRole("link", { name: "Support" })).toHaveAttribute(
+      "href",
+      "/support"
+    );
+    expect(within(nav).queryByText("About")).toBeNull();
   });
 
   it("handles successful sign out", async () => {
@@ -139,10 +159,14 @@ describe("Header", () => {
     consoleSpy.mockRestore();
   });
 
-  it("applies active link styling", () => {
-    renderHeader("/");
-    const marketplaceLink = screen.getByText("Marketplace");
-    expect(marketplaceLink).toHaveClass("text-primary");
+  it("marks the current page in the navigation", () => {
+    renderHeader("/auctions");
+    const link = screen.getByRole("link", { name: "Auctions" });
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(link).toHaveClass("text-foreground");
+    expect(screen.getByRole("link", { name: "Support" })).not.toHaveAttribute(
+      "aria-current"
+    );
   });
 
   it("renders loading profile state", () => {
@@ -152,11 +176,54 @@ describe("Header", () => {
     expect(screen.getByText("AgriBid")).toBeInTheDocument();
   });
 
-  it("renders login button when unauthenticated", () => {
-    // Note: Authenticated/Unauthenticated components are mocked
-    // to render their children if they match the state.
-    // In our test we can just check if the login button is there.
+  it("signed in: shows the account menu and My bids, but no Sign in or Register", () => {
     renderHeader();
-    expect(screen.getByText(/Login \/ Register/i)).toBeInTheDocument();
+    expect(screen.getByTestId("user-dropdown")).toBeInTheDocument();
+    expect(screen.getByTestId("notifications")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "My bids" })).toHaveAttribute(
+      "href",
+      "/dashboard/bids"
+    );
+    expect(screen.queryByText(/Sign in/i)).toBeNull();
+    expect(screen.queryByText(/Register/i)).toBeNull();
+    expect(screen.queryByText(/Login/i)).toBeNull();
+  });
+
+  it("signed out: shows only Sign in", () => {
+    auth.signedIn = false;
+    renderHeader();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login"
+    );
+    expect(screen.queryByRole("link", { name: "My bids" })).toBeNull();
+    expect(screen.queryByTestId("user-dropdown")).toBeNull();
+  });
+
+  it("keeps the desktop search field and hides the phone field until the icon is pressed", () => {
+    renderHeader();
+    expect(screen.getByTestId("search-search-desktop")).toBeInTheDocument();
+    expect(screen.queryByTestId("search-search-mobile")).toBeNull();
+
+    const toggle = screen.getByRole("button", { name: "Search" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+
+    expect(screen.getByTestId("search-search-mobile")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Close search" })
+    ).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Close search" }));
+    expect(screen.queryByTestId("search-search-mobile")).toBeNull();
+  });
+
+  it("closes the phone search after a search is submitted", () => {
+    renderHeader();
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.click(
+      within(screen.getByTestId("search-search-mobile")).getByText("Run search")
+    );
+    expect(screen.queryByTestId("search-search-mobile")).toBeNull();
   });
 });

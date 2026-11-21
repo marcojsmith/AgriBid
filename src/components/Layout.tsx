@@ -137,6 +137,8 @@ export const Layout = ({ children }: LayoutProps) => {
   const syncUserRef = useRef(syncUser);
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith("/admin");
+  // Home lays out its own full-width sections (the hero bleeds to the edges).
+  const isFullBleed = isAdminPage || location.pathname === "/";
 
   const seoSettings = useQuery(api.admin.getSeoSettings);
 
@@ -170,7 +172,7 @@ export const Layout = ({ children }: LayoutProps) => {
           <main
             className={cn(
               "flex-1",
-              !isAdminPage && "container mx-auto px-4 md:px-8 py-4 md:py-8"
+              !isFullBleed && "container mx-auto px-4 md:px-8 py-4 md:py-8"
             )}
           >
             {children}

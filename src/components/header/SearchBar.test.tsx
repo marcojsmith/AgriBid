@@ -19,20 +19,24 @@ describe("SearchBar", () => {
   it("renders correctly", () => {
     render(<SearchBar />);
     expect(
-      screen.getByPlaceholderText(/Search equipment/i)
+      screen.getByPlaceholderText(/Search make, model or category/i)
     ).toBeInTheDocument();
   });
 
   it("updates input value on change", () => {
     render(<SearchBar />);
-    const input = screen.getByPlaceholderText(/Search equipment/i);
+    const input = screen.getByPlaceholderText(
+      /Search make, model or category/i
+    );
     fireEvent.change(input, { target: { value: "Tractor" } });
     expect(input).toHaveValue("Tractor");
   });
 
   it("navigates to search results on submit", () => {
     render(<SearchBar />);
-    const input = screen.getByPlaceholderText(/Search equipment/i);
+    const input = screen.getByPlaceholderText(
+      /Search make, model or category/i
+    );
     const form = input.closest("form");
     if (!form) {
       throw new Error("Expected SearchBar to render a <form> element");
@@ -48,7 +52,9 @@ describe("SearchBar", () => {
   it("calls onSearch callback on submit", () => {
     const onSearch = vi.fn();
     render(<SearchBar onSearch={onSearch} />);
-    const input = screen.getByPlaceholderText(/Search equipment/i);
+    const input = screen.getByPlaceholderText(
+      /Search make, model or category/i
+    );
     const form = input.closest("form");
     if (!form) {
       throw new Error("Expected SearchBar to render a <form> element");
@@ -62,7 +68,9 @@ describe("SearchBar", () => {
 
   it("does not navigate if query is empty", () => {
     render(<SearchBar />);
-    const input = screen.getByPlaceholderText(/Search equipment/i);
+    const input = screen.getByPlaceholderText(
+      /Search make, model or category/i
+    );
     const form = input.closest("form");
     if (!form) {
       throw new Error("Expected SearchBar to render a <form> element");

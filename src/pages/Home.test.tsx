@@ -1,9 +1,10 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { HelmetProvider } from "react-helmet-async";
-import { BrowserRouter, useSearchParams } from "react-router-dom";
+import { MemoryRouter, useSearchParams } from "react-router-dom";
 import { usePaginatedQuery } from "convex/react";
 
+import type { AuctionEvent } from "@/components/auction/AuctionEventCard";
 import { PAGINATION_LOAD_MORE_ITEMS } from "@/lib/constants";
 
 import Home from "./Home";
@@ -24,294 +25,362 @@ vi.mock("@/components/LotBrowser", () => ({
   LotBrowser: () => <div data-testid="lot-browser">Lot Browser</div>,
 }));
 
-vi.mock("@/components/auction/AuctionEventCard", () => ({
-  AuctionEventCard: ({ event }: { event: { title: string } }) => (
-    <div data-testid="auction-event-card">{event.title}</div>
-  ),
-}));
-
 vi.mock("@/components/LoadingIndicator", () => ({
-  LoadingPage: ({ message }: { message: string }) => <div>{message}</div>,
   LoadingIndicator: () => <div data-testid="loading-indicator">Spinner</div>,
 }));
 
-describe("Home Page", () => {
-  const NOW = Date.now();
+const NOW = Date.now();
+const HOUR = 60 * 60 * 1000;
 
-  const activeEvent = {
-    _id: "a1",
-    title: "Spring Sale",
+/**
+ * Builds a full auction event for the card.
+ *
+ * @param id - Event id (also used in the title)
+ * @param over - Fields to override
+ * @returns An event as `getPublishedAuctions` returns it
+ */
+const makeEvent = (id: string, over: Partial<AuctionEvent> = {}) =>
+  ({
+    _id: id,
+    _creationTime: 0,
+    title: `Sale ${id}`,
+    description: "A sale",
+    startTime: NOW - HOUR,
+    endTime: NOW + 48 * HOUR,
+    effectiveEndTime: NOW + 48 * HOUR,
     status: "published",
-    startTime: NOW - 1000,
-    endTime: NOW + 100000,
+    createdBy: "admin",
+    createdAt: 0,
+    updatedAt: 0,
     lotCount: 3,
-  };
+    lotCountCapped: false,
+    fromPrice: 100000,
+    leadImageUrls: [],
+    location: "Bothaville, FS",
+    ...over,
+  }) as AuctionEvent;
 
-  const closedEvent = {
-    _id: "a2",
-    title: "Past Sale",
-    status: "closed",
-    startTime: NOW - 200000,
-    endTime: NOW - 1000,
-    lotCount: 1,
+interface Page {
+  results: AuctionEvent[];
+  status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
+  loadMore: Mock;
+}
+
+describe("Home Page", () => {
+  let active: Page;
+  let closed: Page;
+  let setSearchParams: Mock;
+
+  const setUrl = (qs: string) => {
+    (useSearchParams as Mock).mockReturnValue([
+      new URLSearchParams(qs),
+      setSearchParams,
+    ]);
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    active = {
+      results: [makeEvent("a1", { leadImageUrls: ["https://cdn/hero.jpg"] })],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    };
+    closed = {
+      results: [
+        makeEvent("c1", {
+          status: "closed",
+          endTime: NOW - HOUR,
+          effectiveEndTime: NOW - HOUR,
+        }),
+      ],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    };
+    setSearchParams = vi.fn();
     (usePaginatedQuery as Mock).mockImplementation(
-      (_query: unknown, args: { status?: string } | string) => {
+      (_query: unknown, args: { status?: string } | "skip") => {
         if (args === "skip") {
           return { results: [], status: "Exhausted", loadMore: vi.fn() };
         }
-        const status =
-          typeof args === "string" ? "active" : (args.status ?? "active");
-        let results = [activeEvent, closedEvent];
-        if (status === "active") {
-          results = [activeEvent];
-        } else if (status === "closed") {
-          results = [closedEvent];
-        }
-        return {
-          results,
-          status: "Exhausted",
-          loadMore: vi.fn(),
-        };
+        return args.status === "closed" ? closed : active;
       }
     );
-
-    (useSearchParams as Mock).mockReturnValue([new URLSearchParams(), vi.fn()]);
+    setUrl("");
   });
 
-  const renderHome = () => {
-    return render(
+  const renderHome = () =>
+    render(
       <HelmetProvider>
-        <BrowserRouter>
+        <MemoryRouter>
           <Home />
-        </BrowserRouter>
+        </MemoryRouter>
       </HelmetProvider>
     );
-  };
 
-  it("renders the auction-event card view with heading and Sell button by default", () => {
+  it("renders the hero h1, the Auctions section and How AgriBid works", () => {
     renderHome();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Auctions" })
+      screen.getByRole("heading", { level: 1, name: /online auction floor/i })
     ).toBeInTheDocument();
-    expect(screen.getByTestId("auction-event-card")).toBeInTheDocument();
-    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sell" })).toHaveAttribute(
-      "href",
-      "/sell"
-    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Auctions" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "How AgriBid works" })
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("lot-browser")).not.toBeInTheDocument();
   });
 
-  it("shows only active events on the default Active tab", () => {
-    renderHome();
-    const cards = screen.getAllByTestId("auction-event-card");
-    expect(cards).toHaveLength(1);
-    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
-    expect(screen.queryByText("Past Sale")).not.toBeInTheDocument();
+  it("uses the first live event's first photo as the hero image", () => {
+    const { container } = renderHome();
+    const hero = container.querySelector('[data-slot="home-hero"] img');
+    expect(hero).toHaveAttribute("src", "https://cdn/hero.jpg");
   });
 
-  it("passes status='active' to query when on Active tab (default)", () => {
+  it("falls back to the plain hero colour when no live event has a photo", () => {
+    active.results = [makeEvent("a1")];
+    const { container } = renderHome();
+    expect(container.querySelector('[data-slot="home-hero"] img')).toBeNull();
+  });
+
+  it("shows live and upcoming events on the default view", () => {
+    active.results = [
+      makeEvent("a1"),
+      makeEvent("a2", {
+        startTime: NOW + 10 * HOUR,
+        endTime: NOW + 80 * HOUR,
+        effectiveEndTime: NOW + 80 * HOUR,
+      }),
+    ];
+    renderHome();
+    expect(screen.getAllByRole("article")).toHaveLength(2);
+    expect(
+      screen.getByRole("radio", { name: "Live & upcoming" })
+    ).toBeChecked();
+  });
+
+  it("loads only the open sales by default (ended sales are skipped)", () => {
     renderHome();
     expect(usePaginatedQuery).toHaveBeenCalledWith(
       expect.anything(),
       { status: "active" },
       { initialNumItems: 12 }
     );
+    expect(usePaginatedQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      "skip",
+      expect.anything()
+    );
   });
 
-  it("passes status='closed' to query when on Closed tab", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=closed"),
-      vi.fn(),
-    ]);
+  it("drops sales whose window has ended from the live view", () => {
+    active.results = [
+      makeEvent("a1"),
+      makeEvent("gone", {
+        endTime: NOW - HOUR,
+        effectiveEndTime: NOW - HOUR,
+      }),
+    ];
+    renderHome();
+    expect(screen.getByText("Sale a1")).toBeInTheDocument();
+    expect(screen.queryByText("Sale gone")).not.toBeInTheDocument();
+  });
+
+  it("closing soon view lists only sales ending within 24 hours", () => {
+    setUrl("view=soon");
+    active.results = [
+      makeEvent("far"),
+      makeEvent("near", { effectiveEndTime: NOW + 5 * HOUR }),
+    ];
+    renderHome();
+    expect(screen.getByText("Sale near")).toBeInTheDocument();
+    expect(screen.queryByText("Sale far")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state with a way back when nothing closes within 24 hours", () => {
+    setUrl("view=soon");
+    renderHome();
+    expect(screen.getByTestId("events-empty")).toHaveTextContent(
+      "No sales close in the next 24 hours."
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show live & upcoming" })
+    );
+    const params = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(params.has("view")).toBe(false);
+  });
+
+  it("results view loads ended sales", () => {
+    setUrl("view=results");
     renderHome();
     expect(usePaginatedQuery).toHaveBeenCalledWith(
       expect.anything(),
       { status: "closed" },
       { initialNumItems: 12 }
     );
+    expect(screen.getByText("Sale c1")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Sort")).not.toBeInTheDocument();
   });
 
-  it("passes status='all' to query when on All tab", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=all"),
-      vi.fn(),
-    ]);
+  it("keeps the hero photo while on the results view", () => {
+    setUrl("view=results");
+    const { container } = renderHome();
+    expect(
+      container.querySelector('[data-slot="home-hero"] img')
+    ).toHaveAttribute("src", "https://cdn/hero.jpg");
+  });
+
+  it("maps the retired status=closed link to results", () => {
+    setUrl("status=closed");
     renderHome();
-    expect(usePaginatedQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      { status: "all" },
-      { initialNumItems: 12 }
+    expect(screen.getByRole("radio", { name: "Results" })).toBeChecked();
+  });
+
+  it("shows the empty state for results", () => {
+    setUrl("view=results");
+    closed.results = [];
+    renderHome();
+    expect(screen.getByTestId("events-empty")).toHaveTextContent(
+      "Results appear here once a sale closes."
     );
   });
 
-  it("excludes a published event whose window has ended from the Active tab", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [activeEvent],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
+  it("shows the empty state when no sale is live or scheduled", () => {
+    active.results = [];
     renderHome();
-    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
-    expect(screen.queryByText("Ended Sale")).not.toBeInTheDocument();
+    expect(screen.getByTestId("events-empty")).toHaveTextContent(
+      "No auctions are live or scheduled right now."
+    );
   });
 
-  it("renders a loading state while the first page is loading", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "LoadingFirstPage",
-      loadMore: vi.fn(),
-    });
+  it("shows a loading skeleton while the first page loads", () => {
+    active.results = [];
+    active.status = "LoadingFirstPage";
     renderHome();
-    expect(screen.getByText(/Loading auctions/i)).toBeInTheDocument();
-    expect(screen.queryByTestId("auction-event-card")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("event-card-skeleton")).toHaveLength(3);
+    expect(screen.queryByTestId("events-empty")).not.toBeInTheDocument();
   });
 
-  it("shows the Active-tab empty state when no events are active", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
+  it("writes the chosen view to the URL and removes it for the default", () => {
     renderHome();
+    fireEvent.click(screen.getByRole("radio", { name: "Closing soon" }));
     expect(
-      screen.getByText("No active auctions right now.")
+      (setSearchParams.mock.calls[0][0] as URLSearchParams).get("view")
+    ).toBe("soon");
+
+    expect(setSearchParams.mock.calls[0][1]).toEqual({ replace: true });
+  });
+
+  it("clears the view and the retired status param when going back to Live & upcoming", () => {
+    setUrl("view=soon&status=closed");
+    renderHome();
+    fireEvent.click(screen.getByRole("radio", { name: "Live & upcoming" }));
+    const params = setSearchParams.mock.calls[0][0] as URLSearchParams;
+    expect(params.has("view")).toBe(false);
+    expect(params.has("status")).toBe(false);
+  });
+
+  it("sorts newest first when asked and writes the sort to the URL", () => {
+    active.results = [
+      makeEvent("old", { startTime: NOW - 5 * HOUR }),
+      makeEvent("new", {
+        startTime: NOW - HOUR,
+        effectiveEndTime: NOW + 90 * HOUR,
+      }),
+    ];
+    setUrl("sort=newest");
+    renderHome();
+    const titles = screen
+      .getAllByRole("article")
+      .map((a) => within(a).getByRole("heading").textContent);
+    expect(titles).toEqual(["Sale new", "Sale old"]);
+
+    fireEvent.change(screen.getByLabelText("Sort"), {
+      target: { value: "soonest" },
+    });
+    expect(
+      (setSearchParams.mock.calls[0][0] as URLSearchParams).has("sort")
+    ).toBe(false);
+    fireEvent.change(screen.getByLabelText("Sort"), {
+      target: { value: "newest" },
+    });
+    expect(
+      (setSearchParams.mock.calls[1][0] as URLSearchParams).get("sort")
+    ).toBe("newest");
+  });
+
+  it("auto-loads every page of open sales before showing them", () => {
+    active.status = "CanLoadMore";
+    renderHome();
+    expect(active.loadMore).toHaveBeenCalledWith(PAGINATION_LOAD_MORE_ITEMS);
+    // Not shown half-sorted while pages are still arriving.
+    expect(screen.getAllByTestId("event-card-skeleton")).toHaveLength(3);
+    expect(screen.queryByText("Sale a1")).not.toBeInTheDocument();
+  });
+
+  it("finds a sale that closes soon on a later page", () => {
+    setUrl("view=soon");
+    active.status = "Exhausted";
+    active.results = [
+      makeEvent("p1"),
+      makeEvent("p2", { effectiveEndTime: NOW + 3 * HOUR }),
+    ];
+    renderHome();
+    expect(screen.getByText("Sale p2")).toBeInTheDocument();
+  });
+
+  it("shows Load more on Results and loads the next page", () => {
+    setUrl("view=results");
+    closed.status = "CanLoadMore";
+    renderHome();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Load more auctions/i })
+    );
+    expect(closed.loadMore).toHaveBeenCalledWith(PAGINATION_LOAD_MORE_ITEMS);
+    expect(active.loadMore).not.toHaveBeenCalled();
+  });
+
+  it("offers Load more on Results instead of the empty state while more pages exist", () => {
+    setUrl("view=results");
+    closed.results = [];
+    closed.status = "CanLoadMore";
+    renderHome();
+    expect(screen.queryByTestId("events-empty")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Load more auctions/i })
     ).toBeInTheDocument();
   });
 
-  it("shows the All-tab empty state when no events exist at all", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=all"),
-      vi.fn(),
-    ]);
+  it("shows the spinner while the next page of results loads", () => {
+    setUrl("view=results");
+    closed.status = "LoadingMore";
+    renderHome();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
+  it("includes sales still published after their window ended in Results", () => {
+    setUrl("view=results");
+    active.results = [
+      makeEvent("stuck", { endTime: NOW - HOUR, effectiveEndTime: NOW - HOUR }),
+    ];
+    renderHome();
+    expect(screen.getByText("Sale stuck")).toBeInTheDocument();
+    expect(screen.getByText("Sale c1")).toBeInTheDocument();
+  });
+
+  it("hides Load more when everything is loaded", () => {
     renderHome();
     expect(
-      screen.getByText("No auction events have been published yet.")
-    ).toBeInTheDocument();
-  });
-
-  it("shows only closed events on the Closed tab (server-filtered)", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [closedEvent],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=closed"),
-      vi.fn(),
-    ]);
-    renderHome();
-    const cards = screen.getAllByTestId("auction-event-card");
-    expect(cards).toHaveLength(1);
-    expect(screen.getByText("Past Sale")).toBeInTheDocument();
-    expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
-  });
-
-  it("shows both active and closed events on the All tab", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [activeEvent, closedEvent],
-      status: "Exhausted",
-      loadMore: vi.fn(),
-    });
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=all"),
-      vi.fn(),
-    ]);
-    renderHome();
-    const cards = screen.getAllByTestId("auction-event-card");
-    expect(cards).toHaveLength(2);
-    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
-    expect(screen.getByText("Past Sale")).toBeInTheDocument();
-  });
-
-  it("switches to the Closed tab by writing the status URL param", () => {
-    const setSearchParams = vi.fn();
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams(),
-      setSearchParams,
-    ]);
-    renderHome();
-    fireEvent.click(screen.getByTestId("status-tab-closed"));
-
-    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
-    expect(calledWith.get("status")).toBe("closed");
-  });
-
-  it("switching back to Active removes the status URL param", () => {
-    const setSearchParams = vi.fn();
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=all"),
-      setSearchParams,
-    ]);
-    renderHome();
-    fireEvent.click(screen.getByTestId("status-tab-active"));
-
-    const calledWith = setSearchParams.mock.calls[0][0] as URLSearchParams;
-    expect(calledWith.has("status")).toBe(false);
-  });
-
-  it("falls back to the Active tab for an invalid status param", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=bogus"),
-      vi.fn(),
-    ]);
-    (usePaginatedQuery as Mock).mockImplementation(
-      (_query: unknown, args: { status?: string } | string) => {
-        if (args === "skip") {
-          return { results: [], status: "Exhausted", loadMore: vi.fn() };
-        }
-        const status =
-          typeof args === "string" ? "active" : (args.status ?? "active");
-        return {
-          results: status === "active" ? [activeEvent] : [closedEvent],
-          status: "Exhausted",
-          loadMore: vi.fn(),
-        };
-      }
-    );
-    renderHome();
-    expect(screen.getByTestId("status-tab-active")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    expect(screen.queryByText("Past Sale")).not.toBeInTheDocument();
-  });
-
-  it("marks the pressed tab with aria-pressed", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("status=closed"),
-      vi.fn(),
-    ]);
-    renderHome();
-    expect(screen.getByTestId("status-tab-closed")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    expect(screen.getByTestId("status-tab-active")).toHaveAttribute(
-      "aria-pressed",
-      "false"
-    );
+      screen.queryByRole("button", { name: /Load more auctions/i })
+    ).not.toBeInTheDocument();
   });
 
   it("renders the global lot browser when a q param is present", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("q=tractor"),
-      vi.fn(),
-    ]);
+    setUrl("q=tractor");
     renderHome();
-
     expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
-    expect(screen.queryByText("Spring Sale")).not.toBeInTheDocument();
-    // The events query is skipped while searching
+    expect(screen.queryByText("Sale a1")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(usePaginatedQuery).toHaveBeenCalledWith(
       expect.anything(),
       "skip",
@@ -320,73 +389,9 @@ describe("Home Page", () => {
   });
 
   it("treats an empty q param as no search", () => {
-    (useSearchParams as Mock).mockReturnValue([
-      new URLSearchParams("q="),
-      vi.fn(),
-    ]);
+    setUrl("q=");
     renderHome();
-
     expect(screen.queryByTestId("lot-browser")).not.toBeInTheDocument();
-    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
-  });
-
-  it("fetches published events with pagination options when not searching", () => {
-    renderHome();
-    expect(usePaginatedQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      { status: "active" },
-      { initialNumItems: 12 }
-    );
-  });
-
-  it("shows a Load More button and loads more when status is CanLoadMore", () => {
-    const loadMore = vi.fn();
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [activeEvent],
-      status: "CanLoadMore",
-      loadMore,
-    });
-    renderHome();
-
-    const button = screen.getByRole("button", { name: /Load More Auctions/i });
-    fireEvent.click(button);
-    expect(loadMore).toHaveBeenCalledWith(PAGINATION_LOAD_MORE_ITEMS);
-  });
-
-  it("hides the Load More button when all pages are loaded", () => {
-    renderHome();
-    expect(
-      screen.queryByRole("button", { name: /Load More Auctions/i })
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows Load More instead of the empty state when status is CanLoadMore", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [activeEvent],
-      status: "CanLoadMore",
-      loadMore: vi.fn(),
-    });
-    renderHome();
-
-    expect(
-      screen.queryByText("No active auctions right now.")
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Load More Auctions/i })
-    ).toBeInTheDocument();
-  });
-
-  it("shows the LoadingMore spinner instead of the empty state while fetching the next page", () => {
-    (usePaginatedQuery as Mock).mockReturnValue({
-      results: [closedEvent],
-      status: "LoadingMore",
-      loadMore: vi.fn(),
-    });
-    renderHome();
-
-    expect(
-      screen.queryByText("No active auctions right now.")
-    ).not.toBeInTheDocument();
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.getByText("Sale a1")).toBeInTheDocument();
   });
 });

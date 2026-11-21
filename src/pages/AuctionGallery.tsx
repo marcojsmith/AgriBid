@@ -65,7 +65,11 @@ export default function AuctionGallery() {
         <div className="space-y-6 sm:space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {events.map((event) => (
-              <AuctionEventCard key={event._id} event={event} />
+              <AuctionEventCard
+                key={event._id}
+                event={event}
+                headingLevel="h2"
+              />
             ))}
           </div>
           {eventsStatus === "CanLoadMore" && (

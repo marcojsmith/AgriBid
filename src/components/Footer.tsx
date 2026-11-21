@@ -1,24 +1,41 @@
 import { Link } from "react-router-dom";
-import {
-  ShieldCheck,
-  HelpCircle,
-  BookOpen,
-  Scale,
-  Mail,
-  Phone,
-  MapPin,
-  MessageCircle,
-  CalendarClock,
-} from "lucide-react";
+import { MapPin, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 
 import { useBranding } from "@/hooks/useBranding";
 
+const FOOTER_SECTIONS = [
+  {
+    title: "Buy",
+    links: [
+      { name: "Live auctions", href: "/auctions" },
+      { name: "Auction rules", href: "/faq" },
+    ],
+  },
+  {
+    title: "Sell and help",
+    links: [
+      { name: "List equipment", href: "/sell" },
+      { name: "Contact support", href: "/support" },
+    ],
+  },
+] as const;
+
+/**
+ * The legal pages named in the footer. There are no routes for them yet, so
+ * they render as plain text rather than as dead links.
+ */
+const LEGAL_PAGES = ["Terms", "Privacy", "PAIA manual"] as const;
+
+const LINK_CLASS =
+  "inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground transition-colors hover:text-primary md:min-h-8";
+
 /**
  * Footer component for the application.
- * Displays business info from admin settings.
  *
- * Reads the app name and business details from `BrandingContext`, which the
- * layout provides, instead of subscribing to `admin.getBusinessInfo` again.
+ * Reads the app name and the company details from `BrandingContext`, which the
+ * layout provides. Each company row (address, phone, WhatsApp, registration
+ * and VAT number) is hidden when it is not set, and the whole "Company" column
+ * goes when nothing is set, so there is never an empty heading.
  *
  * @returns The rendered footer.
  */
@@ -27,10 +44,6 @@ export const Footer = () => {
   const businessInfo = branding?.businessInfo;
 
   const businessName = branding?.appName ?? "AgriBid";
-  const streetAddress = businessInfo?.streetAddress ?? "";
-  const addressLocality = businessInfo?.addressLocality ?? "";
-  const addressCountry = businessInfo?.addressCountry ?? "";
-  const postalCode = businessInfo?.postalCode ?? "";
   const telephone = businessInfo?.telephone?.trim() ?? "";
   const whatsapp = businessInfo?.whatsapp?.trim() ?? "";
   const registrationNo = businessInfo?.registrationNo?.trim() ?? "";
@@ -38,170 +51,123 @@ export const Footer = () => {
   // wa.me links take digits only (country code included, no "+").
   const whatsappDigits = whatsapp.replace(/\D/g, "");
 
-  const addressParts = [
-    streetAddress,
-    addressLocality,
-    addressCountry,
-    postalCode,
+  const address = [
+    businessInfo?.streetAddress,
+    businessInfo?.addressLocality,
+    businessInfo?.addressCountry,
+    businessInfo?.postalCode,
   ]
+    .map((part) => part?.trim() ?? "")
     .filter((part) => part)
     .join(", ");
 
   const hasCompanyDetails = Boolean(
-    addressParts || telephone || whatsappDigits || registrationNo || vatNo
+    address || telephone || whatsappDigits || registrationNo || vatNo
   );
 
-  const footerSections = [
-    {
-      title: "Platform",
-      links: [
-        { name: "Auctions", href: "/auctions", icon: CalendarClock },
-        { name: "How it Works", href: "/faq", icon: BookOpen },
-        { name: "Safety & Trust", href: "#", icon: ShieldCheck },
-        { name: "Auction Rules", href: "#", icon: Scale },
-      ],
-    },
-    {
-      title: "Support",
-      links: [
-        { name: "Help Center", href: "#", icon: HelpCircle },
-        { name: "Contact Us", href: "/support", icon: Mail },
-        { name: "Terms of Service", href: "#", icon: Scale },
-      ],
-    },
-  ];
-
   return (
-    <footer className="bg-muted/30 border-t py-8 md:py-16">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 gap-8 md:gap-10 lg:grid-cols-4 lg:gap-12">
-          {/* Brand Column */}
-          <div className="col-span-2 md:col-span-1 space-y-4 md:space-y-6">
-            <div className="font-bold text-3xl text-primary">
-              {businessName.toUpperCase()}
+    <footer className="border-t border-border bg-muted/30">
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 lg:grid-cols-4 lg:gap-12">
+          <div className="col-span-2 space-y-3 lg:col-span-1">
+            <div className="font-display text-[21px] font-bold text-primary">
+              {businessName}
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              The national marketplace for heavy machinery. Built for farmers,
-              by farmers. We provide a transparent, high-integrity platform for
-              equipment liquidation.
+            <p className="text-sm text-muted-foreground">
+              South Africa&rsquo;s online auction floor for farm machinery.
             </p>
-            <div className="flex gap-3 md:gap-4">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-              <p className="text-xs font-semibold text-primary leading-tight">
-                Verified Seller
-                <br />
-                Network
-              </p>
-            </div>
+            <p className="flex items-start gap-2 text-sm font-medium text-primary">
+              <ShieldCheck
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0"
+              />
+              Every seller FICA-verified before listing
+            </p>
           </div>
 
-          {/* Navigation Sections */}
-          {footerSections.map((section) => (
-            <div key={section.title} className="space-y-4 md:space-y-6">
-              <h3 className="text-xs font-semibold text-primary">
+          {FOOTER_SECTIONS.map((section) => (
+            <nav key={section.title} aria-label={section.title}>
+              <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-foreground">
                 {section.title}
-              </h3>
-              <ul className="space-y-3 md:space-y-4">
-                {section.links.map((link) => {
-                  const isPlaceholder = link.href.startsWith("#");
-                  const content = (
-                    <>
-                      <link.icon className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+              </h2>
+              <ul>
+                {section.links.map((link) => (
+                  <li key={link.name}>
+                    <Link to={link.href} className={LINK_CLASS}>
                       {link.name}
-                    </>
-                  );
-                  const className =
-                    "group flex items-center gap-2 md:gap-3 text-xs text-muted-foreground hover:text-primary transition-colors";
-
-                  return (
-                    <li key={link.name}>
-                      {isPlaceholder ? (
-                        <a href={link.href} className={className}>
-                          {content}
-                        </a>
-                      ) : (
-                        <Link to={link.href} className={className}>
-                          {content}
-                        </Link>
-                      )}
-                    </li>
-                  );
-                })}
+                    </Link>
+                  </li>
+                ))}
               </ul>
-            </div>
+            </nav>
           ))}
 
-          {/* Company details: each row (and the whole column) only renders when set. */}
           {hasCompanyDetails && (
-            <div className="col-span-2 md:col-span-1 space-y-4 md:space-y-6">
-              <h3 className="text-xs font-semibold text-primary">Company</h3>
-              <ul className="space-y-3 md:space-y-4">
-                {addressParts && (
-                  <li className="flex items-start gap-2 md:gap-3 text-xs text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <div className="col-span-2 lg:col-span-1">
+              <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-foreground">
+                Company
+              </h2>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {address && (
+                  <li className="flex items-start gap-2">
+                    <MapPin
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0"
+                    />
                     <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressParts)}`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-primary transition-colors"
+                      className="rounded-sm hover:text-primary"
                     >
-                      {addressParts}
+                      {address}
                     </a>
                   </li>
                 )}
                 {telephone && (
-                  <li className="flex items-center gap-2 md:gap-3 text-xs text-muted-foreground">
-                    <Phone className="h-3.5 w-3.5" />
+                  <li className="flex items-center gap-2">
+                    <Phone aria-hidden="true" className="size-4 shrink-0" />
                     <a
                       href={`tel:${telephone.replace(/[^0-9+]/g, "")}`}
-                      className="hover:text-primary transition-colors"
+                      className="rounded-sm hover:text-primary"
                     >
                       {telephone}
                     </a>
                   </li>
                 )}
                 {whatsappDigits && (
-                  <li className="flex items-center gap-2 md:gap-3 text-xs text-muted-foreground">
-                    <MessageCircle className="h-3.5 w-3.5" />
+                  <li className="flex items-center gap-2">
+                    <MessageCircle
+                      aria-hidden="true"
+                      className="size-4 shrink-0"
+                    />
                     <a
                       href={`https://wa.me/${whatsappDigits}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-primary transition-colors"
+                      className="rounded-sm hover:text-primary"
                     >
                       WhatsApp {whatsapp}
                     </a>
                   </li>
                 )}
-                {registrationNo && (
-                  <li className="text-xs text-muted-foreground">
-                    Reg. no. {registrationNo}
-                  </li>
-                )}
-                {vatNo && (
-                  <li className="text-xs text-muted-foreground">
-                    VAT no. {vatNo}
-                  </li>
-                )}
+                {registrationNo && <li>Reg. no. {registrationNo}</li>}
+                {vatNo && <li>VAT no. {vatNo}</li>}
               </ul>
             </div>
           )}
         </div>
 
-        <div className="mt-8 pt-6 md:mt-16 md:pt-8 border-t border-muted flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} {businessName}. All rights reserved.
-          </p>
-          <div className="flex gap-6 text-xs text-muted-foreground">
-            <a href="#" className="hover:text-primary transition-colors">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Cookie Policy
-            </a>
-          </div>
+        <div
+          data-testid="footer-legal"
+          className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-5 text-[13px] text-muted-foreground"
+        >
+          <span>
+            &copy; {new Date().getFullYear()} {businessName}
+          </span>
+          {LEGAL_PAGES.map((page) => (
+            <span key={page}>{page}</span>
+          ))}
         </div>
       </div>
     </footer>

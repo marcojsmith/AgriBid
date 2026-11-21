@@ -22,6 +22,21 @@ vi.mock("convex/_generated/api", () => ({
   },
 }));
 
+/**
+ * Adds the summary fields `getPublishedAuctions` returns to a minimal event.
+ *
+ * @param event - Event fields under test
+ * @returns A full event for the card
+ */
+const gallery = (event: { endTime: number } & Record<string, unknown>) => ({
+  leadImageUrls: [],
+  location: null,
+  fromPrice: null,
+  lotCountCapped: false,
+  effectiveEndTime: event.endTime,
+  ...event,
+});
+
 describe("AuctionGallery Page", () => {
   const loadMore = vi.fn();
 
@@ -63,7 +78,7 @@ describe("AuctionGallery Page", () => {
   it("renders event cards with title, window and lot count", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
       results: [
-        {
+        gallery({
           _id: "a1",
           title: "Spring Sale",
           description: "Tractors and combines",
@@ -72,7 +87,7 @@ describe("AuctionGallery Page", () => {
           endTime: Date.now() + 100000,
           status: "published",
           lotCount: 3,
-        },
+        }),
       ],
       status: "Exhausted",
       loadMore,
@@ -81,13 +96,13 @@ describe("AuctionGallery Page", () => {
     expect(screen.getByText("Spring Sale")).toBeInTheDocument();
     expect(screen.getByText("Tractors and combines")).toBeInTheDocument();
     expect(screen.getByText("3 lots")).toBeInTheDocument();
-    expect(screen.getByText("Live Now")).toBeInTheDocument();
+    expect(screen.getByText("Closing soon")).toBeInTheDocument();
   });
 
-  it("does not show the Live Now badge for a closed event", () => {
+  it("does not show the Live badge for a closed event", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
       results: [
-        {
+        gallery({
           _id: "a2",
           title: "Past Sale",
           bannerImageUrl: undefined,
@@ -95,20 +110,20 @@ describe("AuctionGallery Page", () => {
           endTime: Date.now() - 1000,
           status: "closed",
           lotCount: 1,
-        },
+        }),
       ],
       status: "Exhausted",
       loadMore,
     });
     renderPage();
     expect(screen.getByText("Past Sale")).toBeInTheDocument();
-    expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
+    expect(screen.queryByText("Live")).not.toBeInTheDocument();
   });
 
   it("links each card to its container detail page", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
       results: [
-        {
+        gallery({
           _id: "a1",
           title: "Spring Sale",
           bannerImageUrl: undefined,
@@ -116,13 +131,13 @@ describe("AuctionGallery Page", () => {
           endTime: Date.now() + 100000,
           status: "published",
           lotCount: 3,
-        },
+        }),
       ],
       status: "Exhausted",
       loadMore,
     });
     renderPage();
-    expect(screen.getByRole("link", { name: /Spring Sale/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Spring Sale" })).toHaveAttribute(
       "href",
       "/auctions/a1"
     );
@@ -131,7 +146,7 @@ describe("AuctionGallery Page", () => {
   it("subscribes with the paginated query hook and shows Load More when more pages exist", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
       results: [
-        {
+        gallery({
           _id: "a1",
           title: "Spring Sale",
           bannerImageUrl: undefined,
@@ -139,7 +154,7 @@ describe("AuctionGallery Page", () => {
           endTime: Date.now() + 100000,
           status: "published",
           lotCount: 3,
-        },
+        }),
       ],
       status: "CanLoadMore",
       loadMore,
@@ -182,7 +197,7 @@ describe("AuctionGallery Page", () => {
   it("tightens the page wrapper and card grid on phones", () => {
     (usePaginatedQuery as Mock).mockReturnValue({
       results: [
-        {
+        gallery({
           _id: "a1",
           title: "Spring Sale",
           description: "Tractors and combines",
@@ -191,7 +206,7 @@ describe("AuctionGallery Page", () => {
           endTime: Date.now() + 100000,
           status: "published",
           lotCount: 3,
-        },
+        }),
       ],
       status: "Exhausted",
       loadMore,
