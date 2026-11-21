@@ -34,7 +34,7 @@ export function StatusFilter({ status, onStatusChange }: StatusFilterProps) {
         onChange={(e) => {
           onStatusChange(e.target.value);
         }}
-        className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+        className="w-full h-11 lg:h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
       >
         <option value="active">Active Auctions</option>
         <option value="closed">Closed Auctions</option>

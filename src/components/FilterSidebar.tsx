@@ -126,15 +126,15 @@ export const FilterSidebar = ({
         )}
       </div>
 
-      <div className="p-4 border-t bg-muted/10">
-        {isSignedIn && (
+      {isSignedIn && (
+        <div className="p-4 border-t bg-muted/10">
           <FilterDefaultsActions
             pendingAction={pendingDefaultsAction}
             onSaveDefaults={saveDefaults}
             onClearDefaults={clearDefaults}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

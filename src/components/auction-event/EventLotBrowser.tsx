@@ -196,18 +196,22 @@ export function EventLotBrowser({ auctionId }: EventLotBrowserProps) {
 
   const gridClasses =
     viewMode === "compact"
-      ? "grid grid-cols-1 gap-3 md:grid-cols-2"
+      ? "grid grid-cols-1 gap-3 lg:grid-cols-2"
       : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 lg:grid-cols-2";
 
   return (
     <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-8">
-      <aside
-        data-testid="desktop-sidebar"
-        aria-label="Filter lots"
-        className="sticky top-20 hidden max-h-[calc(100vh-6rem)] lg:block"
-      >
-        <FilterSidebar hideStatus />
-      </aside>
+      {/* Only one FilterSidebar is ever mounted: each keeps its own draft and
+          syncs the URL, so a hidden second copy would fight the visible one. */}
+      {isDesktop ? (
+        <aside
+          data-testid="desktop-sidebar"
+          aria-label="Filter lots"
+          className="sticky top-20 max-h-[calc(100vh-6rem)]"
+        >
+          <FilterSidebar hideStatus />
+        </aside>
+      ) : null}
 
       <section aria-labelledby="event-lots-heading" className="min-w-0">
         <h2 id="event-lots-heading" className="sr-only">

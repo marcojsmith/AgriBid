@@ -251,6 +251,12 @@ describe("AuctionCard", () => {
       expect(screen.getByText("Sold")).toBeInTheDocument();
     });
 
+    it("an ended lot with bids reads Highest bid, not Current bid", () => {
+      renderCard({ ...ended, status: "assigned", currentPrice: 1500 });
+      expect(screen.getByText("Highest bid")).toBeInTheDocument();
+      expect(screen.queryByText("Current bid")).not.toBeInTheDocument();
+    });
+
     it("unsold: shows Passed in", () => {
       renderCard({ ...ended, status: "unsold" });
       expect(screen.getByText("Passed in")).toBeInTheDocument();
@@ -415,6 +421,15 @@ describe("AuctionCard", () => {
       const bid = screen.getByRole("button", { name: /^Bid R/ });
       expect(bid.className).toMatch(/min-h-11/);
       expect(bid.textContent).not.toMatch(/[.,]\d{2}$/);
+    });
+
+    it("shows the status in the text column, not over the narrow photo", () => {
+      renderCard(upcoming, { viewMode: "compact" });
+      const badge = screen.getByText(/^Opens .*SAST$/);
+      const photoColumn = document.querySelector(
+        "[data-slot='lot-card'] > div:first-child"
+      );
+      expect(photoColumn).not.toContainElement(badge);
     });
 
     it("shows no italic description", () => {

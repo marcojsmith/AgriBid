@@ -95,7 +95,7 @@ export default function AuctionContainerDetail() {
           buyersPremiumPct={premiumPercent(auction.defaultBuyerPremiumPct)}
           vatPct={vatPct}
           rulesHref="/faq"
-          className="lg:[&>dl]:grid-cols-3"
+          className="[&>dl]:grid-cols-2 lg:[&>dl]:grid-cols-3"
         />
       </div>
 

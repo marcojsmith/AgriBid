@@ -305,6 +305,12 @@ describe("EventLotBrowser", () => {
       (useMediaQuery as Mock).mockReturnValue(false);
     });
 
+    it("mounts no desktop sidebar, so only the sheet's filters sync the URL", () => {
+      renderBrowser();
+      expect(screen.queryByTestId("desktop-sidebar")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("sidebar-filters")).not.toBeInTheDocument();
+    });
+
     it("always uses compact rows", () => {
       renderBrowser();
       expect(screen.getAllByTestId("card")[0]).toHaveAttribute(

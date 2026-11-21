@@ -203,7 +203,7 @@ export const AuctionCard = ({
     auction.status === "sold"
       ? "Sold for"
       : hasBids
-        ? auction.status === "unsold"
+        ? isEnded
           ? "Highest bid"
           : "Current bid"
         : "Opening bid";
@@ -286,21 +286,29 @@ export const AuctionCard = ({
       <div
         className={cn(
           "relative shrink-0",
-          isCompact ? "w-28 self-start sm:w-40" : "w-full"
+          // Compact: at least 4:3, growing with the text beside it so no
+          // empty strip is left under the photo.
+          isCompact ? "aspect-[4/3] w-28 self-stretch sm:w-40" : "w-full"
         )}
       >
         <PhotoFrame
           src={primaryImage}
           alt={primaryImage ? "" : `${name}, no photo yet`}
           ratio="4:3"
-          className={cn("rounded-none", isCompact && "aspect-[4/3]")}
+          fill={isCompact}
+          className="rounded-none"
         />
-        <div className="absolute left-2 top-2">
-          <StatusBadge status={displayStatus} />
-        </div>
+        {isCompact ? null : (
+          <div className="absolute left-2 top-2">
+            <StatusBadge status={displayStatus} />
+          </div>
+        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-3 md:p-4">
+        {/* Compact rows show the status here: "Opens Sat 22 Nov, 10:00 SAST"
+            is wider than the 112px photo. */}
+        {isCompact ? <StatusBadge status={displayStatus} /> : null}
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {eyebrow}
         </p>
