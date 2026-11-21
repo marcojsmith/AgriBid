@@ -11,6 +11,7 @@ import {
 } from "./_generated/server";
 import { LotSummaryValidator, toLotSummaries } from "./auctions";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
+import { adjustWatcherCount } from "./lib/lotCounters";
 import type { Id, Doc } from "./_generated/dataModel";
 
 /**
@@ -37,12 +38,16 @@ export const toggleWatchlistHandler = async (
 
   if (existing) {
     await ctx.db.delete("watchlist", existing._id);
+    await adjustWatcherCount(ctx, args.lotId, -1);
     return false; // Not watched anymore
   } else {
+    const lot = await ctx.db.get("lots", args.lotId);
+    if (!lot) throw new Error("Lot not found");
     await ctx.db.insert("watchlist", {
       userId,
       lotId: args.lotId,
     });
+    await adjustWatcherCount(ctx, args.lotId, 1);
     return true; // Now watched
   }
 };

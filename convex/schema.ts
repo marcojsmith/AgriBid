@@ -2,6 +2,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import {
+  provinceValidator,
+  sellerResponseTimeValidator,
+} from "./lib/provinces";
+
 export default defineSchema({
   // AgriBid Tables
   equipmentCategories: defineTable({
@@ -73,6 +78,11 @@ export default defineSchema({
       v.literal("rejected")
     ),
     auctionId: v.optional(v.id("auctions")),
+    // Sequential number within the parent sale, assigned on auction assignment
+    // from a monotonic per-auction counter. Stable; cleared when `auctionId` is.
+    lotNumber: v.optional(v.number()),
+    // South African province the equipment is located in (seller-set, admin-editable).
+    province: v.optional(provinceValidator),
     extendedEndTime: v.optional(v.number()), // effectiveLotEndTime = extendedEndTime ?? auction.endTime
     // Snapshot of the parent auction's fee defaults at assignment time, so later auction edits don't change an already-assigned lot's fees.
     resolvedBuyerPremiumPct: v.optional(v.number()),
@@ -113,6 +123,7 @@ export default defineSchema({
     .index("by_status_year", ["status", "year"])
     .index("by_status_settledAt", ["status", "settledAt"])
     .index("by_auctionId", ["auctionId"])
+    .index("by_auctionId_lotNumber", ["auctionId", "lotNumber"])
     .index("by_status_auctionId", ["status", "auctionId"])
     .index("by_seller_createdAt", ["sellerId", "createdAt"])
     .searchIndex("search_title", {
@@ -247,6 +258,8 @@ export default defineSchema({
     phoneNumber: v.optional(v.string()), // Encrypted PII
     companyName: v.optional(v.string()),
     location: v.optional(v.string()),
+    // Admin-set: how quickly this seller usually replies (public copy).
+    sellerResponseTime: v.optional(sellerResponseTimeValidator),
     emailVerified: v.optional(v.boolean()),
     phoneVerified: v.optional(v.boolean()),
     bankingVerified: v.optional(v.boolean()),
@@ -377,7 +390,8 @@ export default defineSchema({
     lotId: v.id("lots"),
   })
     .index("by_user", ["userId"])
-    .index("by_user_lot", ["userId", "lotId"]),
+    .index("by_user_lot", ["userId", "lotId"])
+    .index("by_lot", ["lotId"]),
 
   presence: defineTable({
     userId: v.string(),
@@ -417,7 +431,9 @@ export default defineSchema({
   }).index("by_userId", ["userId"]),
 
   counters: defineTable({
-    name: v.string(), // e.g., "auctions", "profiles", "support", "announcements"
+    // e.g., "auctions", "profiles", "support", "announcements",
+    // "lotNumber:<auctionId>" (last lot number issued) or "watchers:<lotId>" (`total`).
+    name: v.string(),
     total: v.number(),
     active: v.optional(v.number()),
     pending: v.optional(v.number()),

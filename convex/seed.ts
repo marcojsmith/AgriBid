@@ -7,8 +7,14 @@ import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCallerRole } from "./lib/auth";
 import { deleteAuctionImages, safeDelete } from "./lib/storage";
-import { updateCounter, logAudit } from "./admin_utils";
+import { updateCounter, logAudit, getCounter } from "./admin_utils";
 import { getLotCounterKey } from "./lots/mutations/helpers";
+import { lotNumberCounterName, watcherCounterName } from "./lib/lotCounters";
+import {
+  PROVINCES,
+  SELLER_RESPONSE_TIMES,
+  type SellerResponseTime,
+} from "./lib/provinces";
 
 export type DestructiveAccessPath = "admin" | "secret" | "dev";
 
@@ -363,7 +369,17 @@ const WATCHLIST_PLANS: { userId: string; seedId: string }[] = [
   { userId: "mock-buyer-4", seedId: "nh-speedrower-260" },
   { userId: "mock-buyer-5", seedId: "bell-l1206e" },
   { userId: "mock-buyer-6", seedId: "jd-r4038" },
+  // Extra watchers so the watcher count shows more than 1 on popular lots.
+  { userId: "mock-buyer-2", seedId: "case-axial-flow-8250" },
+  { userId: "mock-buyer-3", seedId: "case-axial-flow-8250" },
+  { userId: "mock-buyer-4", seedId: "case-axial-flow-8250" },
+  { userId: "mock-buyer-1", seedId: "jd-8r-410" },
+  { userId: "mock-buyer-5", seedId: "jd-8r-410" },
 ];
+
+/** Response times cycled across seeded sellers so every copy variant shows. */
+const MOCK_SELLER_RESPONSE_TIMES: readonly SellerResponseTime[] =
+  SELLER_RESPONSE_TIMES;
 
 /** Sentinel standing in for the live mock seller's Clerk-synced userId. */
 const MOCK_SELLER_KEY = "mock-seller";
@@ -1777,7 +1793,11 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     },
   ];
 
-  for (const lot of mockLots) {
+  // Lot numbers follow mockLots order within each sale (1, 2, 3, ...), and the
+  // per-auction counters are set to the highest number issued.
+  const lotNumbersByAuction = new Map<Id<"auctions">, number>();
+
+  for (const [lotIndex, lot] of mockLots.entries()) {
     const existing = await ctx.db
       .query("lots")
       .withIndex("by_seedId", (q) => q.eq("seedId", lot.seedId))
@@ -1791,10 +1811,19 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     // Snapshot the parent event's fee defaults onto the lot, mirroring the
     // lot-assignment mutation's behavior (issue #318): once assigned, later
     // edits to the event's defaults must not change this lot's fees.
+    const lotNumber = event
+      ? (lotNumbersByAuction.get(event._id) ?? 0) + 1
+      : undefined;
+    if (event && lotNumber !== undefined) {
+      lotNumbersByAuction.set(event._id, lotNumber);
+    }
+
     const lotData = {
       ...lotFields,
       description: lot.description || "No description provided.",
       auctionId: event?._id,
+      lotNumber,
+      province: PROVINCES[lotIndex % PROVINCES.length],
       resolvedBuyerPremiumPct: event
         ? MOCK_DEFAULT_BUYER_PREMIUM_PCT
         : undefined,
@@ -1808,6 +1837,38 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     } else {
       await ctx.db.patch("lots", existing._id, lotData);
     }
+  }
+
+  for (const [auctionId, highest] of lotNumbersByAuction) {
+    // Never lower a counter that has already issued higher numbers.
+    const existingCounter = await getCounter(
+      ctx,
+      lotNumberCounterName(auctionId)
+    );
+    await updateCounter(
+      ctx,
+      lotNumberCounterName(auctionId),
+      "total",
+      Math.max(highest, existingCounter?.total ?? 0),
+      true
+    );
+  }
+
+  // 3.2b. Admin-set seller response times (cycled so every variant shows)
+  const responseTimeSellerIds = [
+    sellerId,
+    ...MOCK_EXTRA_SELLER_PROFILES.map((seller) => seller.userId),
+  ];
+  for (const [index, userId] of responseTimeSellerIds.entries()) {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!profile) continue;
+    await ctx.db.patch("profiles", profile._id, {
+      sellerResponseTime:
+        MOCK_SELLER_RESPONSE_TIMES[index % MOCK_SELLER_RESPONSE_TIMES.length],
+    });
   }
 
   // 3.3. Index the seeded lots for related-record seeding
@@ -1985,6 +2046,23 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         lotId: lot._id,
       });
     }
+  }
+
+  // Watcher counters mirror the watchlist rows (absolute, so reseeds stay exact).
+  for (const lotId of new Set(
+    WATCHLIST_PLANS.map((plan) => getLotBySeedId(plan.seedId)._id)
+  )) {
+    const watchers = await ctx.db
+      .query("watchlist")
+      .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+      .collect();
+    await updateCounter(
+      ctx,
+      watcherCounterName(lotId),
+      "total",
+      watchers.length,
+      true
+    );
   }
 
   // 3.10. Seed buyer/seller conversations with message threads

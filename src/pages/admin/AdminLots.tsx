@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Clock, MoreVertical, Eye, AlertCircle, Search } from "lucide-react";
+import {
+  Clock,
+  MoreVertical,
+  Eye,
+  AlertCircle,
+  MapPin,
+  Search,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -36,12 +43,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/currency";
+import type { Province } from "@/lib/provinces";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { LotSummary } from "@/types/auction";
 import { useBulkOperations } from "@/hooks/admin/useBulkOperations";
 
 import { BulkActionDialog } from "./dialogs/BulkActionDialog";
+import { LotProvinceDialog } from "./dialogs/LotProvinceDialog";
 
 /**
  * Format time remaining until a given timestamp.
@@ -117,6 +126,32 @@ export default function AdminLots() {
 
   const [closingAuction, setClosingAuction] = useState<LotSummary | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+
+  const [provinceLot, setProvinceLot] = useState<LotSummary | null>(null);
+  const [isSavingProvince, setIsSavingProvince] = useState(false);
+  const adminUpdateLot = useMutation(api.auctions.adminUpdateLot);
+
+  /**
+   * Saves the chosen province for the lot being edited.
+   * @param province - The new province.
+   */
+  const handleSaveProvince = async (province: Province): Promise<void> => {
+    if (!provinceLot) return;
+    setIsSavingProvince(true);
+    try {
+      await adminUpdateLot({
+        lotId: provinceLot._id,
+        updates: { province },
+      });
+      toast.success("Lot province updated");
+      setProvinceLot(null);
+    } catch (err) {
+      console.error("Failed to update lot province:", err);
+      toast.error("Failed to update province");
+    } finally {
+      setIsSavingProvince(false);
+    }
+  };
 
   const closeLotEarly = useMutation(
     api.auctions.mutations.publish.closeLotEarly
@@ -425,6 +460,14 @@ export default function AdminLots() {
                           >
                             <Eye className="h-4 w-4" /> View Details
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setProvinceLot(a);
+                            }}
+                            className="rounded-lg font-bold gap-2"
+                          >
+                            <MapPin className="h-4 w-4" /> Set Province
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive font-bold rounded-lg gap-2"
@@ -459,6 +502,16 @@ export default function AdminLots() {
           )}
         </Card>
       </div>
+      <LotProvinceDialog
+        lot={provinceLot}
+        isSaving={isSavingProvince}
+        onClose={() => {
+          setProvinceLot(null);
+        }}
+        onSave={(province) => {
+          void handleSaveProvince(province);
+        }}
+      />
       <BulkActionDialog
         isOpen={!!bulkStatusTarget}
         onClose={() => {

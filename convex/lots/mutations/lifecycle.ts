@@ -38,6 +38,9 @@ export const submitLotForReviewHandler = async (
   }
 
   validateLotBeforeSubmit(lot);
+  if (!lot.province) {
+    throw new ConvexError("Province is required");
+  }
 
   await ctx.db.patch("lots", args.lotId, { status: "pending_review" });
   await adjustLotStatusCounters(ctx, "draft", "pending_review");

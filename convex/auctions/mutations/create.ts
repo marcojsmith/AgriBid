@@ -7,6 +7,7 @@ import {
   getAuthenticatedUserId,
 } from "../../lib/auth";
 import { normalizeImages } from "../../lib/storage";
+import { provinceValidator, type Province } from "../../lib/provinces";
 import { updateCounter } from "../../admin_utils";
 import { logActivity } from "../../userActivity";
 import {
@@ -52,6 +53,7 @@ export const generateUploadUrl = mutation({
  * @param args.year - The year of the equipment.
  * @param args.operatingHours - The operating hours of the equipment.
  * @param args.location - The location of the equipment.
+ * @param args.province - The province the equipment is in (required unless a draft).
  * @param args.description - The description of the listing.
  * @param args.startingPrice - The starting price of the listing.
  * @param args.reservePrice - The reserve price of the listing.
@@ -82,6 +84,7 @@ export const createLotHandler = async (
     year: number;
     operatingHours: number;
     location: string;
+    province?: Province;
     description: string;
     startingPrice: number;
     reservePrice: number;
@@ -159,6 +162,9 @@ export const createLotHandler = async (
   const status = isDraft ? "draft" : "pending_review";
 
   if (!isDraft) {
+    if (!args.province) {
+      throw new ConvexError("Province is required");
+    }
     validateLotBeforeSubmit({
       title: args.title,
       description: args.description,
@@ -179,6 +185,7 @@ export const createLotHandler = async (
     year: args.year,
     operatingHours: args.operatingHours,
     location: args.location,
+    ...(args.province && { province: args.province }),
     description: args.description,
     startingPrice: args.startingPrice,
     reservePrice: args.reservePrice,
@@ -229,6 +236,7 @@ export const createLot = mutation({
     year: v.number(),
     operatingHours: v.number(),
     location: v.string(),
+    province: v.optional(provinceValidator),
     description: v.string(),
     startingPrice: v.number(),
     reservePrice: v.number(),
@@ -267,6 +275,7 @@ export const createLot = mutation({
  * @param args.year - The year of the equipment (optional for drafts).
  * @param args.operatingHours - The operating hours of the equipment (optional for drafts).
  * @param args.location - The location of the equipment (optional for drafts).
+ * @param args.province - The province the equipment is in (optional for drafts).
  * @param args.description - The description of the listing (optional for drafts).
  * @param args.startingPrice - The starting price of the listing (optional for drafts).
  * @param args.reservePrice - The reserve price of the listing (optional for drafts).
@@ -297,6 +306,7 @@ export const saveDraftHandler = async (
     year?: number;
     operatingHours?: number;
     location?: string;
+    province?: Province;
     description?: string;
     startingPrice?: number;
     reservePrice?: number;
@@ -328,7 +338,9 @@ export const saveDraftHandler = async (
     const recentLots = await ctx.db
       .query("lots")
       .withIndex("by_seller_createdAt", (q) =>
-        q.eq("sellerId", userId).gte("createdAt", now - LOT_CREATION_COOLDOWN_MS)
+        q
+          .eq("sellerId", userId)
+          .gte("createdAt", now - LOT_CREATION_COOLDOWN_MS)
       )
       .collect();
     if (recentLots.length > 0) {
@@ -432,6 +444,7 @@ export const saveDraftHandler = async (
     year: args.year ?? 0,
     operatingHours: args.operatingHours ?? 0,
     location: args.location ?? "",
+    ...(args.province && { province: args.province }),
     description: args.description ?? "",
     startingPrice: args.startingPrice ?? 0,
     reservePrice: args.reservePrice ?? args.startingPrice ?? 0,
@@ -470,6 +483,7 @@ export const saveDraft = mutation({
     year: v.optional(v.number()),
     operatingHours: v.optional(v.number()),
     location: v.optional(v.string()),
+    province: v.optional(provinceValidator),
     description: v.optional(v.string()),
     startingPrice: v.optional(v.number()),
     reservePrice: v.optional(v.number()),

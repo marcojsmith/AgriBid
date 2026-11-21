@@ -78,6 +78,8 @@ const UNSET_OPTIONAL_LOT_FIELDS = {
   conditionReportUrl: undefined,
   isExtended: undefined,
   seedId: undefined,
+  lotNumber: undefined,
+  province: undefined,
   conditionChecklist: undefined,
 } satisfies Partial<MyBidAuction>;
 

@@ -1,8 +1,9 @@
-import { useMemo } from "react";
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useMemo, useState } from "react";
+import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { ShieldCheck, AlertCircle, ArrowRight, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,9 +23,11 @@ import {
   useUserManagement,
   type AdminProfile,
 } from "@/hooks/admin/useUserManagement";
+import type { SellerResponseTime } from "@/lib/provinces";
 
 import { KycReviewDialog } from "./dialogs/KycReviewDialog";
 import { PromoteAdminDialog } from "./dialogs/PromoteAdminDialog";
+import { SellerResponseTimeDialog } from "./dialogs/SellerResponseTimeDialog";
 
 /**
  * Render the Admin Users page with search, paginated user list, status indicators and actions for KYC review, manual verification and promotion.
@@ -62,6 +65,35 @@ export default function AdminUsers() {
     verifyingUserIds,
     handleManualVerify,
   } = useUserManagement();
+
+  const setSellerResponseTime = useMutation(api.admin.setSellerResponseTime);
+  const [responseTimeTarget, setResponseTimeTarget] =
+    useState<AdminProfile | null>(null);
+  const [isSavingResponseTime, setIsSavingResponseTime] = useState(false);
+
+  /**
+   * Saves the seller's response time and closes the dialog on success.
+   * @param responseTime - The chosen value, or null to clear it.
+   */
+  const handleSaveResponseTime = async (
+    responseTime: SellerResponseTime | null
+  ): Promise<void> => {
+    if (!responseTimeTarget) return;
+    setIsSavingResponseTime(true);
+    try {
+      await setSellerResponseTime({
+        userId: responseTimeTarget.userId,
+        responseTime,
+      });
+      toast.success("Seller response time updated");
+      setResponseTimeTarget(null);
+    } catch (err) {
+      console.error("Failed to set seller response time:", err);
+      toast.error("Failed to update response time");
+    } finally {
+      setIsSavingResponseTime(false);
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     return (allProfiles as AdminProfile[]).filter(
@@ -228,6 +260,18 @@ export default function AdminUsers() {
                             Verify
                           </Button>
                         )}
+                        {p.role === "seller" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border font-semibold text-xs"
+                            onClick={() => {
+                              setResponseTimeTarget(p);
+                            }}
+                          >
+                            Response time
+                          </Button>
+                        )}
                         {p.role !== "admin" && (
                           <Button
                             size="sm"
@@ -283,6 +327,16 @@ export default function AdminUsers() {
         setRejectionReason={setKycRejectionReason}
         showFullId={showFullId}
         setShowFullId={setShowFullId}
+      />
+      <SellerResponseTimeDialog
+        user={responseTimeTarget}
+        isSaving={isSavingResponseTime}
+        onClose={() => {
+          setResponseTimeTarget(null);
+        }}
+        onSave={(responseTime) => {
+          void handleSaveResponseTime(responseTime);
+        }}
       />
       <PromoteAdminDialog
         isOpen={!!promoteTarget}

@@ -393,7 +393,7 @@ describe("Seed Coverage", () => {
       expect(mockDb.rows("reviews").length).toBe(3);
       expect(mockDb.rows("lotFees").length).toBe(6);
       expect(mockDb.rows("platformFees").length).toBe(2);
-      expect(mockDb.rows("watchlist").length).toBe(6);
+      expect(mockDb.rows("watchlist").length).toBe(11);
       expect(mockDb.rows("conversations").length).toBe(3);
       expect(mockDb.rows("messages").length).toBeGreaterThanOrEqual(9);
       expect(mockDb.rows("notifications").length).toBe(4);

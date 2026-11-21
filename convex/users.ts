@@ -23,6 +23,7 @@ import {
   countQuery,
 } from "./admin_utils";
 import { logActivity } from "./userActivity";
+import { sellerResponseTimeValidator } from "./lib/provinces";
 import { getPresenceThresholdMs } from "./presence";
 import {
   MAX_PROFILE_BIO_LENGTH,
@@ -54,6 +55,7 @@ export const ProfileValidator = v.object({
   phoneNumber: v.optional(v.string()),
   companyName: v.optional(v.string()),
   location: v.optional(v.string()),
+  sellerResponseTime: v.optional(sellerResponseTimeValidator),
   emailVerified: v.optional(v.boolean()),
   phoneVerified: v.optional(v.boolean()),
   bankingVerified: v.optional(v.boolean()),
@@ -77,7 +79,9 @@ export const UserProfileValidator = v.object({
 /**
  * Validator for profile with decrypted PII (used in getProfileForKYC).
  */
-export const ProfileForKYCValidator = ProfileValidator;
+export const ProfileForKYCValidator = ProfileValidator.extend({
+  kycDocumentUrls: v.array(v.string()),
+});
 
 /**
  * Validator for KYC details (used in getMyKYCDetails).
@@ -247,9 +251,7 @@ export const listAllProfilesHandler = async (
   const page = profiles.page.map((p: Doc<"profiles">) => {
     const presence = presenceMap.get(p.userId);
 
-    const isOnline = presence
-      ? now - presence.updatedAt < thresholdMs
-      : false;
+    const isOnline = presence ? now - presence.updatedAt < thresholdMs : false;
 
     return {
       _id: p._id,
@@ -260,6 +262,7 @@ export const listAllProfilesHandler = async (
       kycStatus: p.kycStatus,
       name: p.name,
       email: p.email,
+      sellerResponseTime: p.sellerResponseTime,
       createdAt: p.createdAt,
       isOnline,
     };
@@ -290,6 +293,7 @@ export const listAllProfiles = query({
         kycStatus: v.optional(v.string()),
         name: v.optional(v.string()),
         email: v.optional(v.string()),
+        sellerResponseTime: v.optional(sellerResponseTimeValidator),
         createdAt: v.number(),
         isOnline: v.boolean(),
       })
@@ -540,10 +544,7 @@ export const submitKYCHandler = async (
   // Rate limiting: max MAX_KYC_SUBMISSIONS_PER_WINDOW per KYC_RATE_LIMIT_WINDOW_MS
   const now = Date.now();
   const windowStart = now - KYC_RATE_LIMIT_WINDOW_MS;
-  if (
-    profile.kycStatus === "pending" &&
-    profile.updatedAt >= windowStart
-  ) {
+  if (profile.kycStatus === "pending" && profile.updatedAt >= windowStart) {
     throw new ConvexError(
       "You're submitting KYC documents too quickly. Please wait before submitting again."
     );

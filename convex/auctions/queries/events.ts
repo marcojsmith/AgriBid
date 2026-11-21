@@ -154,14 +154,35 @@ export function pickLeadImageRef(images: Doc<"lots">["images"]) {
 }
 
 /**
+ * Orders lots within a sale: by `lotNumber` ascending, numbered lots before
+ * un-numbered ones, falling back to `_creationTime` ascending.
+ *
+ * @param a - First lot.
+ * @param b - Second lot.
+ * @returns Negative when `a` comes first, positive when `b` does.
+ */
+export function compareLotsInSale(a: Doc<"lots">, b: Doc<"lots">): number {
+  if (a.lotNumber !== undefined && b.lotNumber !== undefined) {
+    if (a.lotNumber !== b.lotNumber) return a.lotNumber - b.lotNumber;
+  } else if (a.lotNumber !== undefined) {
+    return -1;
+  } else if (b.lotNumber !== undefined) {
+    return 1;
+  }
+  return a._creationTime - b._creationTime;
+}
+
+/**
  * Builds the public event summary for one auction: buyer-visible lot count,
  * lowest current price, up to {@link AUCTION_SUMMARY_IMAGE_COUNT} lead photos
  * (one per lot, first lots in the sale), the first lot's location and the
  * effective end time (auction end or the latest soft-close extension).
  *
  * Reads at most {@link AUCTION_SUMMARY_LOT_CAP}+1 lots per public status via
- * `by_status_auctionId`; hidden lots count toward that cap. "First lots" means oldest `_creationTime` (there is no
- * lot number yet).
+ * `by_status_auctionId`; hidden lots count toward that cap. "First lots" means
+ * lowest `lotNumber`, with oldest `_creationTime` for lots that have none yet,
+ * chosen among the lots read: in a sale larger than the cap the lowest-numbered
+ * lots may be missed, which is why `lotCountCapped` flags those results.
  *
  * @param ctx - Query context.
  * @param auction - The auction container document.
@@ -184,7 +205,7 @@ async function summarizeAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
   const lots = perStatus
     .flatMap((rows) => rows.slice(0, AUCTION_SUMMARY_LOT_CAP))
     .filter((lot) => lot.hiddenByFlags !== true)
-    .sort((a, b) => a._creationTime - b._creationTime);
+    .sort(compareLotsInSale);
 
   // Resolve while iterating so a deleted storage file is skipped in favour of
   // the next lot's photo (bounded by the lots read above).

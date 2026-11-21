@@ -3,6 +3,7 @@ import { v, ConvexError } from "convex/values";
 import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { safeDelete } from "../../lib/storage";
+import { provinceValidator, type Province } from "../../lib/provinces";
 import { logAudit } from "../../admin_utils";
 import {
   MAX_ADDITIONAL_IMAGES,
@@ -53,6 +54,7 @@ export interface AuctionUpdates {
   year?: number;
   operatingHours?: number;
   location?: string;
+  province?: Province;
   description?: string;
   startingPrice?: number;
   reservePrice?: number;
@@ -186,6 +188,7 @@ export const updateLot = mutation({
       year: v.optional(v.number()),
       operatingHours: v.optional(v.number()),
       location: v.optional(v.string()),
+      province: v.optional(provinceValidator),
       description: v.optional(v.string()),
       startingPrice: v.optional(v.number()),
       reservePrice: v.optional(v.number()),
@@ -228,6 +231,7 @@ export const updateLot = mutation({
  * @param args.updates.year - New year
  * @param args.updates.operatingHours - New operating hours
  * @param args.updates.location - New location
+ * @param args.updates.province - New province
  * @param args.updates.description - New description
  * @param args.updates.startingPrice - New starting price
  * @param args.updates.reservePrice - New reserve price
@@ -247,6 +251,7 @@ export const adminUpdateLotHandler = async (
       year?: number;
       operatingHours?: number;
       location?: string;
+      province?: Province;
       description?: string;
       startingPrice?: number;
       reservePrice?: number;
@@ -317,6 +322,7 @@ export const adminUpdateLot = mutation({
       year: v.optional(v.number()),
       operatingHours: v.optional(v.number()),
       location: v.optional(v.string()),
+      province: v.optional(provinceValidator),
       description: v.optional(v.string()),
       startingPrice: v.optional(v.number()),
       reservePrice: v.optional(v.number()),

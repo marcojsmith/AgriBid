@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 
+import { ProvinceSelect } from "@/components/ProvinceSelect";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
@@ -107,6 +108,22 @@ export const GeneralInfoStep = () => {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <label
+          htmlFor="province"
+          className="text-xs font-semibold text-muted-foreground ml-1"
+        >
+          Province
+        </label>
+        <ProvinceSelect
+          id="province"
+          value={formData.province}
+          onChange={(province) => {
+            updateField("province", province);
+          }}
+        />
       </div>
 
       <div className="space-y-2">

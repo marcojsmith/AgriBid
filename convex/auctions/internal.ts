@@ -308,7 +308,9 @@ export async function settleLot(
     winnerId,
     settledAt: now,
     // Unsold lots return to the pool for admin reassignment.
-    ...(finalStatus === "unsold" ? { auctionId: undefined } : {}),
+    ...(finalStatus === "unsold"
+      ? { auctionId: undefined, lotNumber: undefined }
+      : {}),
   });
 
   await updateCounter(ctx, "lots", "active", -1);

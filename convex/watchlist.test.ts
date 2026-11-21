@@ -17,6 +17,10 @@ vi.mock("./lib/auth", () => ({
   getAuthUser: vi.fn(),
 }));
 
+vi.mock("./lib/lotCounters", () => ({
+  adjustWatcherCount: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("./auctions", () => ({
   toLotSummary: vi.fn((_ctx: unknown, a: { _id: unknown }) =>
     Promise.resolve({ _id: a._id, title: "Auction" })

@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
+import { getWatcherCount } from "../lib/lotCounters";
+import { provinceValidator } from "../lib/provinces";
 
 export interface RawImages {
   front?: string;
@@ -137,6 +139,8 @@ export const LotSummaryValidator = v.object({
   sellerId: v.string(),
   status: v.string(),
   auctionId: v.optional(v.id("auctions")),
+  lotNumber: v.optional(v.number()),
+  province: v.optional(provinceValidator),
   auctionStartTime: v.optional(v.number()),
   auctionEndTime: v.optional(v.number()),
   auctionStatus: v.optional(
@@ -191,18 +195,21 @@ export async function toLotSummary(
   ctx: QueryCtx,
   lot: Doc<"lots">,
   preloaded?: {
-    categories: Map<Id<"equipmentCategories">, Doc<"equipmentCategories"> | null>;
+    categories: Map<
+      Id<"equipmentCategories">,
+      Doc<"equipmentCategories"> | null
+    >;
     auctions: Map<Id<"auctions">, Doc<"auctions"> | null>;
   }
 ) {
   const [category, auction] = await Promise.all([
     lot.categoryId
-      ? preloaded?.categories.get(lot.categoryId) ??
-        ctx.db.get("equipmentCategories", lot.categoryId)
+      ? (preloaded?.categories.get(lot.categoryId) ??
+        ctx.db.get("equipmentCategories", lot.categoryId))
       : null,
     lot.auctionId
-      ? preloaded?.auctions.get(lot.auctionId) ??
-        ctx.db.get("auctions", lot.auctionId)
+      ? (preloaded?.auctions.get(lot.auctionId) ??
+        ctx.db.get("auctions", lot.auctionId))
       : null,
   ]);
 
@@ -220,6 +227,8 @@ export async function toLotSummary(
     durationDays: lot.durationDays,
     status: lot.status,
     auctionId: lot.auctionId,
+    lotNumber: lot.lotNumber,
+    province: lot.province,
     auctionStartTime: auction?.startTime,
     auctionEndTime: auction?.endTime,
     auctionStatus: auction?.status,
@@ -255,9 +264,7 @@ export async function toLotSummary(
 export async function toLotSummaries(
   ctx: QueryCtx,
   lots: Doc<"lots">[]
-): Promise<
-  Awaited<ReturnType<typeof toLotSummary>>[]
-> {
+): Promise<Awaited<ReturnType<typeof toLotSummary>>[]> {
   const categoryIds = new Set<Id<"equipmentCategories">>();
   const auctionIds = new Set<Id<"auctions">>();
 
@@ -270,12 +277,13 @@ export async function toLotSummaries(
     Promise.all(
       Array.from(categoryIds, (id) => ctx.db.get("equipmentCategories", id))
     ),
-    Promise.all(
-      Array.from(auctionIds, (id) => ctx.db.get("auctions", id))
-    ),
+    Promise.all(Array.from(auctionIds, (id) => ctx.db.get("auctions", id))),
   ]);
 
-  const categories = new Map<Id<"equipmentCategories">, Doc<"equipmentCategories"> | null>();
+  const categories = new Map<
+    Id<"equipmentCategories">,
+    Doc<"equipmentCategories"> | null
+  >();
   const auctions = new Map<Id<"auctions">, Doc<"auctions"> | null>();
 
   const categoryIdArray = Array.from(categoryIds);
@@ -325,6 +333,9 @@ export const LotDetailValidator = v.object({
   currentPrice: v.number(),
   minIncrement: v.number(),
   auctionId: v.optional(v.id("auctions")),
+  lotNumber: v.optional(v.number()),
+  province: v.optional(provinceValidator),
+  watcherCount: v.number(),
   auctionStartTime: v.optional(v.number()),
   auctionEndTime: v.optional(v.number()),
   auctionStatus: v.optional(
@@ -348,19 +359,21 @@ export const LotDetailValidator = v.object({
  * sellerEmail may be undefined if no seller is found.
  */
 export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
-  const [sellerProfile, category, identity, auction] = await Promise.all([
-    ctx.db
-      .query("profiles")
-      .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
-      .unique(),
-    lot.categoryId
-      ? ctx.db.get("equipmentCategories", lot.categoryId)
-      : Promise.resolve(null),
-    ctx.auth.getUserIdentity(),
-    lot.auctionId
-      ? ctx.db.get("auctions", lot.auctionId)
-      : Promise.resolve(null),
-  ]);
+  const [sellerProfile, category, identity, auction, watcherCount] =
+    await Promise.all([
+      ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
+        .unique(),
+      lot.categoryId
+        ? ctx.db.get("equipmentCategories", lot.categoryId)
+        : Promise.resolve(null),
+      ctx.auth.getUserIdentity(),
+      lot.auctionId
+        ? ctx.db.get("auctions", lot.auctionId)
+        : Promise.resolve(null),
+      getWatcherCount(ctx, lot._id),
+    ]);
   const isAuthenticated = identity !== null;
 
   return {
@@ -383,6 +396,9 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     currentPrice: lot.currentPrice,
     minIncrement: lot.minIncrement,
     auctionId: lot.auctionId,
+    lotNumber: lot.lotNumber,
+    province: lot.province,
+    watcherCount,
     auctionStartTime: auction?.startTime,
     auctionEndTime: auction?.endTime,
     auctionStatus: auction?.status,

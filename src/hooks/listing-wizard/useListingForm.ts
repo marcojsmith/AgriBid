@@ -21,6 +21,7 @@ export function useListingForm() {
         // General Info
         if (!formData.title.trim()) return "Title is required";
         if (!formData.location.trim()) return "Location is required";
+        if (!formData.province) return "Province is required";
         if (!formData.year || formData.year < 1900)
           return "Valid year is required";
         // operatingHours is typed `number`, but drafts restored from storage

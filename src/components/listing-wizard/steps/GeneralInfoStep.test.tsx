@@ -38,6 +38,26 @@ describe("GeneralInfoStep", () => {
     expect(screen.getByLabelText(/Operating Hours/i)).toBeInTheDocument();
   });
 
+  it("renders the province select and updates the form on change", () => {
+    render(<GeneralInfoStep />);
+    const select = screen.getByLabelText(/Province/i);
+    expect(select).toHaveValue("");
+    fireEvent.change(select, { target: { value: "free_state" } });
+    expect(mockUpdateField).toHaveBeenCalledWith("province", "free_state");
+  });
+
+  it("shows the stored province", () => {
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        ...mockFormData,
+        province: "limpopo",
+      } as unknown as ListingFormData,
+      updateField: mockUpdateField,
+    } as unknown as ListingWizardContextType);
+    render(<GeneralInfoStep />);
+    expect(screen.getByLabelText(/Province/i)).toHaveValue("limpopo");
+  });
+
   it("calls updateField on year change", () => {
     render(<GeneralInfoStep />);
     const input = screen.getByLabelText(/Manufacturing Year/i);

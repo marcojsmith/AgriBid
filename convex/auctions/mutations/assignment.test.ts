@@ -26,6 +26,12 @@ const { updateCounter } = vi.hoisted(() => ({
 
 vi.mock("../../admin_utils", () => ({ updateCounter }));
 
+const { issueNextLotNumber } = vi.hoisted(() => ({
+  issueNextLotNumber: vi.fn().mockResolvedValue(7),
+}));
+
+vi.mock("../../lib/lotCounters", () => ({ issueNextLotNumber }));
+
 interface MockDb {
   get: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
@@ -89,10 +95,12 @@ describe("Lot assignment mutations", () => {
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
         auctionId: "a1",
+        lotNumber: 7,
         status: "assigned",
         resolvedBuyerPremiumPct: undefined,
         resolvedSellerCommissionPct: undefined,
       });
+      expect(issueNextLotNumber).toHaveBeenCalledWith(mockCtx, "a1");
     });
 
     it("snapshots the auction fee defaults onto the lot at assignment", async () => {
@@ -110,6 +118,7 @@ describe("Lot assignment mutations", () => {
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
         auctionId: "a1",
+        lotNumber: 7,
         status: "assigned",
         resolvedBuyerPremiumPct: 0.05,
         resolvedSellerCommissionPct: 0.03,
@@ -221,6 +230,7 @@ describe("Lot assignment mutations", () => {
       expect(result.success).toBe(true);
       expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", "l1", {
         auctionId: undefined,
+        lotNumber: undefined,
         status: "approved",
       });
     });
