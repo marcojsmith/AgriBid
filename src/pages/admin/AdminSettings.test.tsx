@@ -201,6 +201,13 @@ describe("AdminSettings Page", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/faq");
   });
 
+  it("navigates to the legal pages editor when the Legal pages card is clicked", () => {
+    (useQuery as Mock).mockReturnValue(mockAdminStats);
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Legal pages/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/legal");
+  });
+
   it("navigates to performance page when Performance & Demo Mode card is clicked", () => {
     (useQuery as Mock).mockReturnValue(mockAdminStats);
     renderPage();

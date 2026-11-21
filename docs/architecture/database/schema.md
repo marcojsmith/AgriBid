@@ -30,6 +30,7 @@ This document describes the complete database schema for AgriBid, including all 
 | `counters`            | Aggregated statistics counters                           |
 | `settings`            | Global application configuration                         |
 | `faqItems`            | Public FAQ items managed by admins                       |
+| `legalPages`          | Admin-edited Terms, Privacy and PAIA markdown pages      |
 | `platformFees`        | Platform fee configuration                               |
 | `lotFees`             | Fee ledger per lot at settlement                         |
 | `errorReports`        | Error reports queued for GitHub issues                   |
@@ -846,3 +847,33 @@ Error reports queued for GitHub issues.
 
 _Last Updated: 2026-10-03_
 _Source: `convex/schema.ts`_
+
+---
+
+## legalPages
+
+The Terms, Privacy policy and PAIA manual: one row per slug, admin-edited markdown. Starter drafts come from `convex/lib/legalTemplates.ts`.
+
+### Fields
+
+| Field         | Type                             | Required | Description                                                                                       |
+| ------------- | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `slug`        | `"terms" \| "privacy" \| "paia"` | Yes      | Which page (also the public route)                                                                |
+| `title`       | `string`                         | Yes      | Page title (1 to 200 characters)                                                                  |
+| `body`        | `string`                         | Yes      | Markdown, at most 100,000 characters                                                              |
+| `isPublished` | `boolean`                        | Yes      | Public only when true; drafts are never returned by public queries                                |
+| `publishedAt` | `number`                         | No       | Set on publish; kept when unpublished                                                             |
+| `updatedAt`   | `number`                         | Yes      | Last content edit (publish and unpublish do not change it); shown to the public as "Last updated" |
+| `updatedBy`   | `string`                         | Yes      | Admin user id, or `SYSTEM` for seeded drafts                                                      |
+
+### Indexes
+
+- `by_slug`: One row per slug (looked up by slug only)
+
+### Notes
+
+- `legal:getLegalPage` returns `null` for an unpublished or missing page; `legal:getPublishedLegalSlugs` drives the footer links.
+- `legal:ensureLegalPageDrafts` (called by the seed, including `weeklyReset` on production) only creates missing rows, always unpublished, and never touches an existing row.
+- `updateLegalPage` takes `expectedUpdatedAt` and rejects a stale save; `setLegalPagePublished` refuses a body that still has the draft notice or equals the starter template, and re-validates title and body limits. User-facing errors are `ConvexError`s so the message reaches the editor in production.
+- Admin writes (`admin:legal.updateLegalPage`, `setLegalPagePublished`, `createMissingLegalPageDrafts`) require the admin role and write an audit entry (action, slug and sizes only, never the body).
+- Rendered with `react-markdown` with raw HTML disabled, images disallowed and the default safe URL transform; do not add `rehype-raw`.

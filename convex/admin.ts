@@ -21,6 +21,7 @@ import { requireAdmin } from "./lib/auth";
 // Re-export specialized modules for hierarchical access
 export * as categories from "./admin/categories";
 export * as equipmentMetadata from "./admin/equipmentMetadata";
+export * as legal from "./admin/legal";
 
 // Re-export query functions
 export {

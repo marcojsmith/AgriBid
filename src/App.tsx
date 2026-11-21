@@ -45,6 +45,8 @@ const AdminFAQ = lazy(() => import("./pages/admin/AdminFAQ"));
 const AdminFees = lazy(() => import("./pages/admin/AdminFees"));
 const AdminPerformance = lazy(() => import("./pages/admin/AdminPerformance"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+const AdminLegal = lazy(() => import("./pages/admin/AdminLegal"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -96,6 +98,7 @@ function withBoundary(element: ReactElement): ReactElement {
  * - "/sellers/:userId/listings/sold" → SellerListings (past sales)
  * - "/sell" → Sell
  * - "/faq" → FAQ
+ * - "/terms", "/privacy", "/paia" → LegalPage (published admin-edited markdown)
  * - "/auctions" → AuctionGallery (public gallery of past/present auctions)
  * - "/auctions/:id" → AuctionContainerDetail (public lot list for one auction)
  * - "/watchlist" → Watchlist (protected, allowedRole="any")
@@ -106,7 +109,7 @@ function withBoundary(element: ReactElement): ReactElement {
  *   - /admin/marketplace, /admin/lots, /admin/auctions, /admin/auctions/:id, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
  *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq, /admin/fees
- *   - /admin/performance
+ *   - /admin/performance, /admin/legal
  * - "/kyc" → KYC (protected, allowedRole="any")
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")
@@ -144,6 +147,9 @@ function App() {
             />
             <Route path="/sell" element={withBoundary(<Sell />)} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path="/terms" element={<LegalPage slug="terms" />} />
+            <Route path="/privacy" element={<LegalPage slug="privacy" />} />
+            <Route path="/paia" element={<LegalPage slug="paia" />} />
             <Route path="/auctions" element={<AuctionGallery />} />
             <Route
               path="/auctions/:id"
@@ -211,6 +217,7 @@ function App() {
                 element={<AdminBusinessInfo />}
               />
               <Route path="/admin/faq" element={<AdminFAQ />} />
+              <Route path="/admin/legal" element={<AdminLegal />} />
               <Route path="/admin/fees" element={<AdminFees />} />
               <Route path="/admin/performance" element={<AdminPerformance />} />
             </Route>

@@ -1,6 +1,9 @@
+import { useQuery } from "convex/react";
+import { api } from "convex/_generated/api";
 import { Link } from "react-router-dom";
 import { MapPin, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 
+import { LEGAL_PAGE_META } from "@/components/legal/legalPages";
 import { useBranding } from "@/hooks/useBranding";
 
 const FOOTER_SECTIONS = [
@@ -20,12 +23,6 @@ const FOOTER_SECTIONS = [
   },
 ] as const;
 
-/**
- * The legal pages named in the footer. There are no routes for them yet, so
- * they render as plain text rather than as dead links.
- */
-const LEGAL_PAGES = ["Terms", "Privacy", "PAIA manual"] as const;
-
 const LINK_CLASS =
   "inline-flex min-h-11 items-center rounded-sm text-sm text-muted-foreground transition-colors hover:text-primary md:min-h-8";
 
@@ -35,13 +32,19 @@ const LINK_CLASS =
  * Reads the app name and the company details from `BrandingContext`, which the
  * layout provides. Each company row (address, phone, WhatsApp, registration
  * and VAT number) is hidden when it is not set, and the whole "Company" column
- * goes when nothing is set, so there is never an empty heading.
+ * goes when nothing is set, so there is never an empty heading. The legal row
+ * links Terms, Privacy and PAIA manual only for pages an admin has published.
  *
  * @returns The rendered footer.
  */
 export const Footer = () => {
   const branding = useBranding();
   const businessInfo = branding?.businessInfo;
+  // Only published legal pages are linked; unpublished ones are hidden.
+  const publishedLegalSlugs = useQuery(api.legal.getPublishedLegalSlugs);
+  const legalLinks = LEGAL_PAGE_META.filter((page) =>
+    publishedLegalSlugs?.includes(page.slug)
+  );
 
   const businessName = branding?.appName ?? "AgriBid";
   const telephone = businessInfo?.telephone?.trim() ?? "";
@@ -165,8 +168,14 @@ export const Footer = () => {
           <span>
             &copy; {new Date().getFullYear()} {businessName}
           </span>
-          {LEGAL_PAGES.map((page) => (
-            <span key={page}>{page}</span>
+          {legalLinks.map((page) => (
+            <Link
+              key={page.slug}
+              to={page.path}
+              className="inline-flex min-h-11 items-center rounded-sm hover:text-primary md:min-h-8"
+            >
+              {page.label}
+            </Link>
           ))}
         </div>
       </div>

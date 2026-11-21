@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Palette,
   Gauge,
+  Scale,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -94,6 +95,12 @@ export default function AdminSettings() {
             description="Manage public FAQ questions and answers."
             icon={<HelpCircle />}
             action={() => navigate("/admin/faq")}
+          />
+          <SettingsCard
+            title="Legal pages"
+            description="Edit and publish the Terms, Privacy policy and PAIA manual."
+            icon={<Scale />}
+            action={() => navigate("/admin/legal")}
           />
           <SettingsCard
             title="Performance & Demo Mode"

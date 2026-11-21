@@ -467,6 +467,18 @@ export default defineSchema({
     .index("by_order", ["order"])
     .index("by_published_order", ["isPublished", "order"]),
 
+  // Legal pages (Terms, Privacy, PAIA manual) — admin-authored markdown, one
+  // row per slug. Drafts are never served publicly (see convex/legal.ts).
+  legalPages: defineTable({
+    slug: v.union(v.literal("terms"), v.literal("privacy"), v.literal("paia")),
+    title: v.string(),
+    body: v.string(), // markdown, max LEGAL_BODY_MAX_LENGTH chars
+    isPublished: v.boolean(),
+    publishedAt: v.optional(v.number()), // first/most recent publish time
+    updatedAt: v.number(),
+    updatedBy: v.string(), // admin userId, or "SYSTEM" for seeded drafts
+  }).index("by_slug", ["slug"]),
+
   // Platform Fee Configuration
   platformFees: defineTable({
     name: v.string(),

@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
+import { useQuery } from "convex/react";
 
 import { useBranding } from "@/hooks/useBranding";
 import type { BusinessInfo } from "@/hooks/useBranding";
@@ -9,6 +10,16 @@ import { Footer } from "./Footer";
 
 vi.mock("@/hooks/useBranding", () => ({
   useBranding: vi.fn(),
+}));
+
+vi.mock("convex/react", () => ({
+  useQuery: vi.fn(),
+}));
+
+vi.mock("convex/_generated/api", () => ({
+  api: {
+    legal: { getPublishedLegalSlugs: { name: "legal:getPublishedLegalSlugs" } },
+  },
 }));
 
 /** Business details as `admin.getBusinessInfo` returns them. */
@@ -48,6 +59,7 @@ describe("Footer", () => {
       appName: "AgriBid",
       businessInfo,
     });
+    vi.mocked(useQuery).mockReturnValue([]);
   });
 
   const renderFooter = () =>
@@ -183,16 +195,48 @@ describe("Footer", () => {
     }
   });
 
-  it("shows the legal row as plain text: year, Terms, Privacy, PAIA", () => {
+  it("shows the copyright and no legal links while none are published", () => {
     renderFooter();
     const legal = screen.getByTestId("footer-legal");
     expect(legal).toHaveTextContent(
       `© ${String(new Date().getFullYear())} AgriBid`
     );
-    for (const page of ["Terms", "Privacy", "PAIA manual"]) {
-      expect(within(legal).getByText(page)).toBeInTheDocument();
-    }
-    // No routes exist for these yet, so they must not be dead links.
     expect(within(legal).queryAllByRole("link")).toHaveLength(0);
+    for (const page of ["Terms", "Privacy", "PAIA manual"]) {
+      expect(within(legal).queryByText(page)).toBeNull();
+    }
+  });
+
+  it("hides the legal links while the published list is loading", () => {
+    vi.mocked(useQuery).mockReturnValue(undefined);
+    renderFooter();
+    expect(
+      within(screen.getByTestId("footer-legal")).queryAllByRole("link")
+    ).toHaveLength(0);
+  });
+
+  it("links only the published legal pages, in footer order", () => {
+    vi.mocked(useQuery).mockReturnValue(["privacy", "terms"]);
+    renderFooter();
+    const links = within(screen.getByTestId("footer-legal")).getAllByRole(
+      "link"
+    );
+    expect(links.map((l) => [l.textContent, l.getAttribute("href")])).toEqual([
+      ["Terms", "/terms"],
+      ["Privacy", "/privacy"],
+    ]);
+    expect(
+      within(screen.getByTestId("footer-legal")).queryByText("PAIA manual")
+    ).toBeNull();
+  });
+
+  it("links all three pages when all are published", () => {
+    vi.mocked(useQuery).mockReturnValue(["terms", "privacy", "paia"]);
+    renderFooter();
+    expect(
+      within(screen.getByTestId("footer-legal")).getByRole("link", {
+        name: "PAIA manual",
+      })
+    ).toHaveAttribute("href", "/paia");
   });
 });
