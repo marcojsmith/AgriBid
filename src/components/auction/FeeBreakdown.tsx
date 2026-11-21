@@ -53,9 +53,10 @@ export function FeeBreakdown({
 
   // A winner always gets the VAT estimate once the price and rate are known,
   // even when no buyer fee applies (premium 0).
-  const canEstimate =
-    isWinner && hammerPrice !== undefined && vatRatePct !== undefined;
-  const showBuyerFees = isWinner && (fees.buyerFees.length > 0 || canEstimate);
+  const showBuyerFees =
+    isWinner &&
+    (fees.buyerFees.length > 0 ||
+      (hammerPrice !== undefined && vatRatePct !== undefined));
   const showSellerFees = isSeller && fees.sellerFees.length > 0;
 
   if (!showBuyerFees && !showSellerFees) {
@@ -77,7 +78,7 @@ export function FeeBreakdown({
     Math.round(f.calculatedAmount)
   );
   const estimate =
-    canEstimate && hammerPrice !== undefined && vatRatePct !== undefined
+    isWinner && hammerPrice !== undefined && vatRatePct !== undefined
       ? calculateBuyerTotal({
           bid: hammerPrice,
           premium: roundedBuyerFees.reduce((sum, n) => sum + n, 0),
@@ -110,12 +111,12 @@ export function FeeBreakdown({
                   </span>
                 </div>
               )}
-              {fees.buyerFees.map((fee, index) => (
+              {fees.buyerFees.map((fee) => (
                 <div key={fee.feeName} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{fee.feeName}</span>
                   <span className="font-medium">
                     {estimate
-                      ? formatRand(roundedBuyerFees[index])
+                      ? formatRand(Math.round(fee.calculatedAmount))
                       : formatCurrency(fee.calculatedAmount)}
                   </span>
                 </div>
