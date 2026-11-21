@@ -4,29 +4,41 @@ import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { useQuery } from "convex/react";
 
+import { useVatRate } from "@/hooks/useVatRate";
+
 import AuctionContainerDetail from "./AuctionContainerDetail";
 
-vi.mock("convex/react", () => ({
-  useQuery: vi.fn(),
-}));
+vi.mock("convex/react", () => ({ useQuery: vi.fn() }));
 
 vi.mock("convex/_generated/api", () => ({
-  api: {
-    auctions: {
-      getPublishedAuction: { name: "auctions:getPublishedAuction" },
-    },
-  },
+  api: { auctions: { getPublishedAuction: { name: "x" } } },
 }));
 
-vi.mock("@/components/LotBrowser", () => ({
-  LotBrowser: ({ auctionId }: { auctionId?: string }) => (
+vi.mock("@/hooks/useVatRate", () => ({ useVatRate: vi.fn() }));
+
+vi.mock("@/components/auction-event/EventLotBrowser", () => ({
+  EventLotBrowser: ({ auctionId }: { auctionId?: string }) => (
     <div data-testid="lot-browser">{auctionId}</div>
   ),
 }));
 
+const HOUR = 3_600_000;
+
+const auction = (over: Record<string, unknown> = {}) => ({
+  _id: "a1",
+  title: "Spring Sale",
+  description: "Tractors and combines",
+  startTime: Date.now() + 2 * HOUR,
+  endTime: Date.now() + 50 * HOUR,
+  status: "published",
+  defaultBuyerPremiumPct: 0.05,
+  ...over,
+});
+
 describe("AuctionContainerDetail Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (useVatRate as Mock).mockReturnValue(15);
   });
 
   const renderPage = () =>
@@ -49,70 +61,80 @@ describe("AuctionContainerDetail Page", () => {
   it("renders a not-found state when the auction is null", () => {
     (useQuery as Mock).mockReturnValue(null);
     renderPage();
-    expect(screen.getByText(/Auction Not Found/i)).toBeInTheDocument();
-  });
-
-  it("renders the container header and a lot browser scoped to the auction", () => {
-    (useQuery as Mock).mockReturnValue({
-      _id: "a1",
-      title: "Spring Sale",
-      description: "Tractors and combines",
-      bannerImageUrl: undefined,
-      startTime: Date.now() - 1000,
-      endTime: Date.now() + 100000,
-      status: "published",
-      lotCount: 2,
-      lots: [],
-    });
-    renderPage();
+    expect(screen.getByText(/Auction not found/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Spring Sale" })
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
-    expect(screen.getByTestId("lot-browser")).toHaveTextContent("a1");
-    expect(screen.getByText("Live Now")).toBeInTheDocument();
+      screen.getByRole("link", { name: /Back to auctions/i })
+    ).toHaveAttribute("href", "/auctions");
   });
 
-  it("renders the lot browser without a legacy 'Lots (n)' heading or inline lot cards", () => {
-    (useQuery as Mock).mockReturnValue({
-      _id: "a1",
-      title: "Spring Sale",
-      description: undefined,
-      bannerImageUrl: undefined,
-      startTime: Date.now() - 100000,
-      endTime: Date.now() - 1000,
-      status: "closed",
-      lotCount: 0,
-      lots: [],
+  describe("upcoming sale", () => {
+    beforeEach(() => {
+      (useQuery as Mock).mockReturnValue(auction());
     });
-    renderPage();
-    expect(screen.queryByText(/Lots \(/i)).not.toBeInTheDocument();
-    expect(screen.getByTestId("lot-browser")).toBeInTheDocument();
+
+    it("renders the summary header, with no banner box", () => {
+      renderPage();
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Spring Sale" })
+      ).toBeInTheDocument();
+      expect(screen.getByText(/^Opens /)).toBeInTheDocument();
+      expect(screen.getByText("Bidding opens in")).toBeInTheDocument();
+      expect(screen.queryByTestId("auction-hero")).not.toBeInTheDocument();
+      expect(screen.queryByText("published")).not.toBeInTheDocument();
+    });
+
+    it("shows the sale terms with this sale's buyer's premium and the VAT rate", () => {
+      renderPage();
+      expect(screen.getByText("5% of the winning bid")).toBeInTheDocument();
+      expect(
+        screen.getByText("15% added where applicable")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Full auction rules" })
+      ).toHaveAttribute("href", "/faq");
+    });
+
+    it("scopes the lot browser to the auction", () => {
+      renderPage();
+      expect(screen.getByTestId("lot-browser")).toHaveTextContent("a1");
+    });
   });
 
-  it("uses a shorter hero and tighter vertical gaps on phones", () => {
-    (useQuery as Mock).mockReturnValue({
-      _id: "a1",
-      title: "Spring Sale",
-      description: "Tractors and combines",
-      bannerImageUrl: "https://cdn/banner.jpg",
-      startTime: Date.now() - 1000,
-      endTime: Date.now() + 100000,
-      status: "published",
-      lotCount: 2,
-      lots: [],
-    });
+  it("hides the buyer's premium row when the premium is unset", () => {
+    (useQuery as Mock).mockReturnValue(
+      auction({ defaultBuyerPremiumPct: undefined })
+    );
     renderPage();
+    expect(screen.queryByText("Buyer's premium")).not.toBeInTheDocument();
+    expect(screen.getByText("Payment")).toBeInTheDocument();
+  });
 
-    // A 224px hero plus `space-y-8` pushed the first lot well below the fold.
-    expect(screen.getByTestId("auction-hero")).toHaveClass(
-      "h-40",
-      "sm:h-56",
-      "md:h-72"
+  it("hides the VAT row while the rate is unknown", () => {
+    (useVatRate as Mock).mockReturnValue(undefined);
+    (useQuery as Mock).mockReturnValue(auction());
+    renderPage();
+    expect(screen.queryByText("VAT")).not.toBeInTheDocument();
+  });
+
+  it("shows a live sale with a closing countdown", () => {
+    (useQuery as Mock).mockReturnValue(
+      auction({ startTime: Date.now() - HOUR })
     );
-    expect(screen.getByTestId("auction-header")).toHaveClass(
-      "space-y-1.5",
-      "sm:space-y-2"
+    renderPage();
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText("First lot closes in")).toBeInTheDocument();
+  });
+
+  it("shows an ended sale as closed with no countdown", () => {
+    (useQuery as Mock).mockReturnValue(
+      auction({
+        status: "closed",
+        startTime: Date.now() - 50 * HOUR,
+        endTime: Date.now() - HOUR,
+      })
     );
+    renderPage();
+    expect(screen.getByText("Closed")).toBeInTheDocument();
+    expect(screen.queryByTestId("sale-countdown")).not.toBeInTheDocument();
   });
 });

@@ -36,7 +36,7 @@ export function MakeFilter({ makes, value, onChange }: MakeFilterProps) {
         onChange={(e) => {
           onChange(e.target.value);
         }}
-        className="w-full h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+        className="w-full h-11 lg:h-10 rounded-md border bg-background px-3 font-medium text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
       >
         <option value="">All Manufacturers</option>
         {makes.map((make) => (

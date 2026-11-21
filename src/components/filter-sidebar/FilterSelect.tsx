@@ -76,7 +76,7 @@ export function FilterSelect({
       <SelectTrigger
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
-        className="h-10 rounded-md border font-medium"
+        className="rounded-md border font-medium data-[size=default]:h-11 lg:data-[size=default]:h-10"
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

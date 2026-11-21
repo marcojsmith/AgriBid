@@ -96,7 +96,11 @@ function matchesLotFilter(
  * Returns paginated active lots with optional filtering.
  * Supports search, make, year range, price range, and hours filtering.
  * When `auctionId` is provided, results are scoped to that auction's lots;
- * a missing or draft auction yields an empty page (drafts are never exposed).
+ * a missing or draft auction yields an empty page (drafts are never exposed),
+ * and lots come back in ascending `lotNumber` order (unnumbered legacy lots
+ * first, then by creation time) rather than newest first. The active filter
+ * keeps that order within the first MAX_RESULTS_CAP lots; beyond that cap the
+ * rest are not returned.
  *
  * "Active" is derived at query time: a lot must be `assigned` to a published,
  * currently in-window parent auction. Because that requires joining the parent
@@ -139,6 +143,20 @@ export const getActiveLotsHandler = async (
       );
     }
 
+    // Event page: walk the sale's lots in lot-number order. Lots that have no
+    // number yet sort first (an absent field sorts before any number in a
+    // Convex index) and then follow `_creationTime`. Only legacy lots lack a
+    // number and the lot-number backfill numbers them, so this is acceptable.
+    // Status, make, year and price are enforced by `getFilteredQuery`, so
+    // this branch must come before the make/year index branches below.
+    if (auctionId !== undefined) {
+      return lotsQuery
+        .withIndex("by_auctionId_lotNumber", (q) =>
+          q.eq("auctionId", auctionId)
+        )
+        .order("asc");
+    }
+
     if (args.make) {
       if (statuses.length === 1) {
         return lotsQuery.withIndex("by_status_make", (q) =>
@@ -166,12 +184,6 @@ export const getActiveLotsHandler = async (
         });
       }
       return lotsQuery.order("desc");
-    }
-
-    if (auctionId !== undefined) {
-      return lotsQuery
-        .withIndex("by_auctionId", (q) => q.eq("auctionId", auctionId))
-        .order("desc");
     }
 
     if (statuses.length === 1) {
@@ -213,6 +225,8 @@ export const getActiveLotsHandler = async (
         expressions.push(f.gte(f.field("currentPrice"), args.minPrice));
       if (args.maxPrice !== undefined)
         expressions.push(f.lte(f.field("currentPrice"), args.maxPrice));
+      if (args.maxHours !== undefined)
+        expressions.push(f.lte(f.field("operatingHours"), args.maxHours));
 
       return expressions.length > 0 ? f.and(...expressions) : true;
     });

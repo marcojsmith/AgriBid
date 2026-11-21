@@ -4,7 +4,6 @@ import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, useSearchParams } from "react-router-dom";
 import { SlidersHorizontal, ChevronDown, X } from "lucide-react";
-import type { Id } from "convex/_generated/dataModel";
 
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -27,17 +26,7 @@ type StatusFilterValue = "active" | "closed" | "all";
  * Props for the LotBrowser component.
  */
 export interface LotBrowserProps {
-  /**
-   * Scope the browser to a single auction container's lots. Changes the
-   * default status filter to "all" (ignoring the saved preference), hides the
-   * sidebar status select, drops the status chip and swaps the empty state
-   * for an auction-scoped one.
-   */
-  auctionId?: Id<"auctions">;
-  /**
-   * Overrides the default `<h1>` heading. Ignored (and no `<h1>` rendered)
-   * when `auctionId` is set — the page provides its own heading.
-   */
+  /** Overrides the default `<h1>` heading. */
   heading?: string;
   /**
    * Whether to render the Sell button in the toolbar. Defaults to true.
@@ -54,17 +43,15 @@ const isValidStatus = (value: string | null): value is StatusFilterValue => {
  * sidebar and mobile filter overlay, removable filter chips, view-mode toggle
  * with saved preferences, watchlist state and load-more pagination.
  *
- * Used for global search results (no `auctionId`) and for browsing the lots
- * of a single auction container (`auctionId` set).
+ * Used for global search results. One auction's lots are browsed with
+ * `EventLotBrowser` instead.
  *
  * @param props - Component props.
- * @param props.auctionId - Optional auction container to scope lots to.
  * @param props.heading - Optional heading override for the `<h1>`.
  * @param props.showSellButton - Whether to show the Sell button.
  * @returns The JSX element for the lot browser.
  */
 export const LotBrowser = ({
-  auctionId,
   heading,
   showSellButton = true,
 }: LotBrowserProps) => {
@@ -121,16 +108,10 @@ export const LotBrowser = ({
   make = make === "" ? undefined : make;
 
   const rawStatus = searchParams.get("status");
-  // Inside an auction container the status control is hidden, so it is
-  // always "all" — a stale/crafted `?status=` in the URL must not silently
-  // filter out lots with no visible way to see or clear it. Elsewhere the
-  // URL wins, then saved preferences.
-  const statusFilter =
-    auctionId !== undefined
-      ? "all"
-      : isValidStatus(rawStatus)
-        ? rawStatus
-        : (preferences?.defaultStatusFilter ?? "active");
+  // The URL wins, then saved preferences.
+  const statusFilter = isValidStatus(rawStatus)
+    ? rawStatus
+    : (preferences?.defaultStatusFilter ?? "active");
 
   const parseFiniteInt = (key: string) => {
     const val = searchParams.get(key);
@@ -160,7 +141,6 @@ export const LotBrowser = ({
       maxPrice,
       maxHours,
       statusFilter,
-      auctionId,
     },
     { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
@@ -253,11 +233,7 @@ export const LotBrowser = ({
       paramKeys: ["maxHours"],
     });
   }
-  if (
-    auctionId === undefined &&
-    isValidStatus(rawStatus) &&
-    rawStatus !== "active"
-  ) {
+  if (isValidStatus(rawStatus) && rawStatus !== "active") {
     activeFilterChips.push({
       key: "status",
       label: `Status: ${rawStatus === "closed" ? "Closed" : "All"}`,
@@ -271,13 +247,6 @@ export const LotBrowser = ({
       newParams.delete(key);
     });
     setSearchParams(newParams);
-  };
-
-  /**
-   * Clear every search param on the current path (auction-scoped empty state).
-   */
-  const clearFilters = () => {
-    setSearchParams(new URLSearchParams());
   };
 
   const getGridClasses = (mode: "compact" | "detailed", sidebarOpen: boolean) =>
@@ -336,7 +305,7 @@ export const LotBrowser = ({
         )}
       >
         <div className="h-full w-80">
-          <FilterSidebar hideStatus={auctionId !== undefined} />
+          <FilterSidebar />
         </div>
       </aside>
 
@@ -357,7 +326,6 @@ export const LotBrowser = ({
           {/* Sidebar Container */}
           <div className="absolute inset-y-0 left-0 w-[280px] sm:w-80 z-20">
             <FilterSidebar
-              hideStatus={auctionId !== undefined}
               onClose={() => {
                 setIsMobileFilterOpen(false);
               }}
@@ -368,27 +336,23 @@ export const LotBrowser = ({
 
       <div className="flex-1 space-y-6 md:space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          {auctionId === undefined ? (
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-primary">
-                {heading ?? defaultHeading}
-              </h1>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {searchQuery && (
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-muted-foreground hover:text-primary font-medium text-xs"
-                    asChild
-                  >
-                    <Link to="/">Clear search results</Link>
-                  </Button>
-                )}
-                {filterChips}
-              </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">
+              {heading ?? defaultHeading}
+            </h1>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {searchQuery && (
+                <Button
+                  variant="link"
+                  className="p-0 h-auto text-muted-foreground hover:text-primary font-medium text-xs"
+                  asChild
+                >
+                  <Link to="/">Clear search results</Link>
+                </Button>
+              )}
+              {filterChips}
             </div>
-          ) : (
-            filterChips
-          )}
+          </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
             {/* Sidebar Toggle (Desktop Only) */}
             <Button
@@ -474,41 +438,23 @@ export const LotBrowser = ({
             ))}
           </div>
         ) : auctions.length === 0 ? (
-          auctionId !== undefined ? (
-            <div className="text-center py-24 bg-card rounded-lg border border-dashed">
-              <div className="text-5xl mb-4" aria-hidden="true">
-                🚜
-              </div>
-              <p className="text-muted-foreground font-medium mb-6 px-4">
-                No lots match your current filters.
-              </p>
-              <Button
-                variant="outline"
-                onClick={clearFilters}
-                className="rounded-md font-medium px-8 border"
-              >
-                Clear filters
-              </Button>
+          <div className="text-center py-24 bg-card rounded-lg border border-dashed">
+            <div className="text-5xl mb-4" aria-hidden="true">
+              🚜
             </div>
-          ) : (
-            <div className="text-center py-24 bg-card rounded-lg border border-dashed">
-              <div className="text-5xl mb-4" aria-hidden="true">
-                🚜
-              </div>
-              <p className="text-muted-foreground font-medium mb-6 px-4">
-                {searchQuery
-                  ? `No auctions found matching "${searchQuery}".`
-                  : "No auctions found matching your current filters."}
-              </p>
-              <Button
-                asChild
-                variant="outline"
-                className="rounded-md font-medium px-8 border"
-              >
-                <Link to="/">Clear All Filters</Link>
-              </Button>
-            </div>
-          )
+            <p className="text-muted-foreground font-medium mb-6 px-4">
+              {searchQuery
+                ? `No auctions found matching "${searchQuery}".`
+                : "No auctions found matching your current filters."}
+            </p>
+            <Button
+              asChild
+              variant="outline"
+              className="rounded-md font-medium px-8 border"
+            >
+              <Link to="/">Clear All Filters</Link>
+            </Button>
+          </div>
         ) : (
           <div className="space-y-8">
             <div

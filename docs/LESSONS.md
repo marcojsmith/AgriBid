@@ -8,6 +8,7 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 
 ## Convex
 
+- 2026-11-21 - In a Convex index an absent optional field sorts before every number, so `by_auctionId_lotNumber` lists unnumbered lots first; combined filters (make, year, price) must stay as `.filter` after the index rather than switching to another index, or the lot-number order is lost → check `getActiveLots(auctionId)` ordering tests (WP5).
 - 2026-09 - Convex `returns` validators reject extra fields, not just `args`. Spreading a whole doc (`{...profile}`) through a hand-rolled validator broke once `profiles` gained `emailVerified` etc. → extend the validator whenever the table schema gains fields (issue #219).
 - 2026-09 - `paginationOpts` must be a required validator field for `usePaginatedQuery` type inference; paginated queries cannot return `null` for authz denial (the hook throws) → throw `ConvexError` and catch it with a local error boundary (issue #231).
 - 2026-09 - Convex array-field indexes are not "contains" lookups → for two-party data use two scalar indexed fields and union the queries, not a `participantIds` array (issue #231).

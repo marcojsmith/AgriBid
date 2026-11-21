@@ -46,6 +46,8 @@ export const AuctionValidator = v.object({
  * Auction container with its lots, used by the public container-detail page.
  */
 export const AuctionWithLotsValidator = AuctionValidator.extend({
+  /** The scheduled end or the latest soft-close extension of any lot. */
+  effectiveEndTime: v.number(),
   lots: v.array(LotSummaryValidator),
 });
 
@@ -409,12 +411,22 @@ export const getPublishedAuctionHandler = async (
     toAuction(ctx, auction),
     ctx.db
       .query("lots")
-      .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
+      // Lot-number order; lots without a number (legacy) come first, then
+      // follow creation order.
+      .withIndex("by_auctionId_lotNumber", (q) =>
+        q.eq("auctionId", auction._id)
+      )
       .collect(),
   ]);
 
+  const effectiveEndTime = lots.reduce(
+    (end, lot) => Math.max(end, lot.extendedEndTime ?? 0),
+    auction.endTime
+  );
+
   return {
     ...auctionView,
+    effectiveEndTime,
     lots: await toLotSummaries(ctx, lots),
   };
 };

@@ -166,6 +166,9 @@ export function useFilterSidebar({
     const q = searchParams.get("q");
     const newParams = new URLSearchParams();
     if (q) newParams.set("q", q);
+    // Sort is not a filter: resetting filters keeps the chosen order.
+    const sort = searchParams.get("sort");
+    if (sort) newParams.set("sort", sort);
     setSearchParams(newParams);
     setFilters(getDefaultFilters());
     onClose?.();

@@ -21,7 +21,7 @@ export const AuctionCardSkeleton = ({
     <Card
       aria-hidden="true"
       className={cn(
-        "overflow-hidden border bg-card h-full shadow-none animate-pulse rounded-lg"
+        "overflow-hidden border bg-card h-full shadow-none animate-pulse rounded-md"
       )}
     >
       <div className={cn("flex h-full", isCompact ? "flex-row" : "flex-col")}>
@@ -38,7 +38,12 @@ export const AuctionCardSkeleton = ({
               isCompact ? "aspect-[4/3] border-r" : "aspect-video"
             )}
           >
-            <span className={isCompact ? "text-2xl" : "text-4xl"} aria-hidden="true">🚜</span>
+            <span
+              className={isCompact ? "text-2xl" : "text-4xl"}
+              aria-hidden="true"
+            >
+              🚜
+            </span>
           </div>
 
           {/* Timer area placeholder - Under Image (Compact) */}
@@ -110,12 +115,7 @@ export const AuctionCardSkeleton = ({
               isCompact ? "p-3 h-12" : "p-4 md:p-5"
             )}
           >
-            <div
-              className={cn(
-                "flex-1 bg-muted",
-                isCompact ? "h-8 rounded-lg" : "h-11 rounded-md"
-              )}
-            />
+            <div className={cn("flex-1 bg-muted", "h-11 rounded-md")} />
           </div>
         </div>
       </div>
