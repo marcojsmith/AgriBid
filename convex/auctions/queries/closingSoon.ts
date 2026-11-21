@@ -6,6 +6,7 @@ import { compareLotsInSale, pickLeadImageRef } from "./events";
 import { resolveUrlCached } from "../../image_cache";
 import { provinceValidator } from "../../lib/provinces";
 import {
+  CLOSING_SOON_BID_PROBE,
   CLOSING_SOON_ENDED_AUCTION_CAP,
   CLOSING_SOON_EXTENSION_LOOKBACK_MS,
   CLOSING_SOON_LOT_LIMIT,
@@ -18,7 +19,6 @@ import type { Doc, Id } from "../../_generated/dataModel";
 /** Validator for one lot on the Home "Closing soon" strip. */
 export const ClosingSoonLotValidator = v.object({
   _id: v.id("lots"),
-  title: v.string(),
   make: v.string(),
   model: v.string(),
   year: v.number(),
@@ -89,24 +89,40 @@ async function candidatesForAuction(
  *    is kept only if its own `extendedEndTime` is still in the future.
  * A lot running on more than 24 h past its sale's `endTime` is not listed.
  *
- * Reads at most 30 sales, then 13 `assigned` lots per sale (390 lot documents;
- * lots beyond the 13th in a sale, in creation order, are not considered), then
- * for the 12 returned lots one image resolve and one `bids` read each: about
- * 450 documents in the worst case.
+ * Reads at most 30 sales, then 13 `assigned` lots per sale (390 lot documents),
+ * then for the 12 returned lots one image resolve and at most
+ * {@link CLOSING_SOON_BID_PROBE} bids each (120): about 540 documents in the
+ * worst case.
  *
- * `Date.now()` is fixed when Convex caches the result, so the list can include
- * a lot that has ended since; the client must also drop lots whose
- * `effectiveEndTime` has passed. The query re-runs when a read lot changes
- * (including on bids to those lots), which is acceptable at this cap.
+ * Known limits of those caps (all rare, all bounded):
+ * - sales that have not started yet still use up the 20 upcoming slots (the
+ *   `startTime` check runs after the read);
+ * - when more than 20 sales end inside the window and their lots were extended,
+ *   a sale ending sooner than the 20th may be missed;
+ * - the 13 lots per sale are the oldest created (hidden lots included), not the
+ *   lowest lot numbers, so a sale with more than 13 assigned lots may omit some;
+ * - `hasBids` looks at the first {@link CLOSING_SOON_BID_PROBE} bids only, so a
+ *   lot whose earliest bids were all voided reads as "no bids".
+ *
+ * Time and caching: Convex does not re-run a query as time passes, only when a
+ * document it read changes. The handler derives the window from `Date.now()`
+ * when it runs, so a cached result can go stale (a lot that has ended is still
+ * listed; a sale that entered the window is missing). The client therefore
+ * (a) drops lots whose `effectiveEndTime` has passed and (b) passes `asOf`, the
+ * time rounded down to {@link CLOSING_SOON_REFRESH_BUCKET_MS}, so each bucket
+ * is a fresh cache entry. `asOf` is a cache key only and is never read. The
+ * query also re-runs when a read lot changes (including on bids to those
+ * lots), which is acceptable at this cap.
  *
  * @param ctx - Query context.
  * @param args - Handler arguments.
  * @param args.limit - Maximum lots to return, clamped to 1..12.
+ * @param args.asOf - Cache key only (client time bucket); ignored.
  * @returns Lean lot cards ordered by `effectiveEndTime` ascending.
  */
 export const getClosingSoonLotsHandler = async (
   ctx: QueryCtx,
-  args: { limit: number }
+  args: { limit: number; asOf?: number }
 ) => {
   const now = Date.now();
   const windowEnd = now + CLOSING_SOON_WINDOW_MS;
@@ -160,17 +176,15 @@ export const getClosingSoonLotsHandler = async (
   return await Promise.all(
     top.map(async ({ lot, auctionTitle, effectiveEndTime }) => {
       const ref = pickLeadImageRef(lot.images);
-      const [leadImageUrl, firstBid] = await Promise.all([
+      const [leadImageUrl, bids] = await Promise.all([
         ref ? resolveUrlCached(ctx.storage, ref) : undefined,
         ctx.db
           .query("bids")
           .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
-          .filter((q) => q.neq(q.field("status"), "voided"))
-          .first(),
+          .take(CLOSING_SOON_BID_PROBE),
       ]);
       return {
         _id: lot._id,
-        title: lot.title,
         make: lot.make,
         model: lot.model,
         year: lot.year,
@@ -180,7 +194,7 @@ export const getClosingSoonLotsHandler = async (
         auctionTitle,
         currentPrice: lot.currentPrice,
         startingPrice: lot.startingPrice,
-        hasBids: firstBid !== null,
+        hasBids: bids.some((bid) => bid.status !== "voided"),
         effectiveEndTime,
         leadImageUrl: leadImageUrl ?? undefined,
         location: lot.location,
@@ -190,8 +204,12 @@ export const getClosingSoonLotsHandler = async (
   );
 };
 
+/**
+ * Public query behind the Home "Closing in the next 24 hours" strip. See
+ * {@link getClosingSoonLotsHandler} for the window, caps and caching.
+ */
 export const getClosingSoonLots = query({
-  args: { limit: v.number() },
+  args: { limit: v.number(), asOf: v.optional(v.number()) },
   returns: v.array(ClosingSoonLotValidator),
   handler: getClosingSoonLotsHandler,
 });

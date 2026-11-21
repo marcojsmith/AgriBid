@@ -133,6 +133,14 @@ export const CLOSING_SOON_LOTS_PER_AUCTION = 13;
 // Most lots the strip returns.
 export const CLOSING_SOON_LOT_LIMIT = 12;
 
+// Bids read per returned lot to learn whether it has a (non-voided) bid.
+export const CLOSING_SOON_BID_PROBE = 10;
+
+// Convex caches query results and does not re-run them as time passes, so the
+// client passes the current time rounded down to this bucket as `asOf`; a new
+// bucket is a new cache entry, which re-evaluates the 24 h window.
+export const CLOSING_SOON_REFRESH_BUCKET_MS = 5 * MS_PER_MINUTE;
+
 // Maximum number of storage files examined (and deleted) per orphaned-upload
 // sweep run.
 export const STORAGE_SWEEP_BATCH_SIZE = 500;

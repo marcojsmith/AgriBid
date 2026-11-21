@@ -433,7 +433,10 @@ describe("Home Page", () => {
       },
     ]);
     renderHome();
-    expect(useQuery).toHaveBeenCalledWith(expect.anything(), { limit: 12 });
+    expect(useQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ limit: 12 })
+    );
     const strip = screen.getByRole("heading", {
       level: 2,
       name: "Closing in the next 24 hours",

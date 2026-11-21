@@ -32,7 +32,7 @@ const makeLot = (id: string, over: Partial<ClosingSoonLot> = {}) =>
     effectiveEndTime: NOW + 30 * 60 * 1000,
     location: "Bothaville",
     ...over,
-  }) as ClosingSoonLot;
+  }) as unknown as ClosingSoonLot;
 
 const renderStrip = (lots: ClosingSoonLot[] | undefined, now = NOW) =>
   render(
@@ -87,7 +87,8 @@ describe("ClosingSoonStrip", () => {
     renderStrip([makeLot("lot42")]);
     const link = screen.getByRole("link", { name: "2020 John Deere 8R 370" });
     expect(link).toHaveAttribute("href", "/auction/lot42");
-    expect(link.className).toContain("min-h-11");
+    // The whole card is the tap target (see the stretched-link test).
+    expect(link.className).toContain("after:inset-0");
   });
 
   it("shows the opening bid when there are no bids", () => {
@@ -146,14 +147,57 @@ describe("ClosingSoonStrip", () => {
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
-  it("scrolls sideways on desktop when there are more than four lots", () => {
+  it("is a horizontal snap scroller whatever the number of lots", () => {
     const five = ["a", "b", "c", "d", "e"].map((id) => makeLot(id));
     renderStrip(five);
-    expect(screen.getByRole("list").className).not.toContain("md:grid-cols-4");
+    const list = screen.getByRole("list");
+    expect(list.className).toContain("overflow-x-auto");
+    expect(list.className).toContain("snap-x");
+    expect(screen.getAllByRole("listitem")).toHaveLength(5);
+    for (const item of screen.getAllByRole("listitem")) {
+      expect(item.className).toContain("shrink-0");
+      expect(item.className).toContain("w-[260px]");
+      expect(item.className).toContain("lg:w-[calc((100%-3rem)/4)]");
+    }
   });
 
-  it("uses a four-up grid on desktop for four lots or fewer", () => {
-    renderStrip([makeLot("a"), makeLot("b")]);
-    expect(screen.getByRole("list").className).toContain("md:grid-cols-4");
+  it("keeps list semantics explicit for Safari", () => {
+    renderStrip([makeLot("a")]);
+    expect(screen.getByRole("list")).toHaveAttribute("role", "list");
+  });
+
+  it("stretches the lot link over the whole card", () => {
+    renderStrip([makeLot("a")]);
+    const item = screen.getByRole("listitem");
+    expect(item.className).toContain("relative");
+    expect(screen.getByRole("link").className).toContain("after:absolute");
+    expect(screen.getByRole("link").className).toContain("after:inset-0");
+  });
+
+  it("names the empty photo state and leaves a real photo decorative", () => {
+    renderStrip([
+      makeLot("nophoto", { year: 2018 }),
+      makeLot("photo", { year: 2022, leadImageUrl: "https://cdn/a.jpg" }),
+    ]);
+    expect(
+      screen.getByRole("img", { name: "2018 John Deere 8R 370, no photo yet" })
+    ).toBeInTheDocument();
+    expect(document.querySelector("img")).toHaveAttribute("alt", "");
+  });
+
+  it("drops a lot live once the clock passes its end time", () => {
+    const lots = [
+      makeLot("soon", { year: 2001, effectiveEndTime: NOW + 1000 }),
+      makeLot("later", { year: 2002 }),
+    ];
+    const { rerender } = renderStrip(lots);
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    rerender(
+      <MemoryRouter>
+        <ClosingSoonStrip lots={lots} now={NOW + 2000} />
+      </MemoryRouter>
+    );
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByText(/2001/)).not.toBeInTheDocument();
   });
 });

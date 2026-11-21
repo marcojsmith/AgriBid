@@ -7,6 +7,8 @@ import { api } from "../../_generated/api";
 import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
 import {
+  CLOSING_SOON_BID_PROBE,
+  CLOSING_SOON_ENDED_AUCTION_CAP,
   CLOSING_SOON_LOT_LIMIT,
   CLOSING_SOON_LOTS_PER_AUCTION,
   CLOSING_SOON_UPCOMING_AUCTION_CAP,
@@ -222,27 +224,118 @@ describe("getClosingSoonLots", () => {
     }
     expect(await strip(t, 100)).toHaveLength(CLOSING_SOON_LOT_LIMIT);
     expect(await strip(t, 3)).toHaveLength(3);
+    expect(await strip(t, 2.9)).toHaveLength(2);
+    expect(await strip(t, -3)).toHaveLength(1);
     expect(await strip(t, 0)).toHaveLength(1);
     expect(await strip(t, Number.NaN)).toHaveLength(1);
   });
 
-  it("reads at most the per-sale lot cap and the upcoming sale cap", async () => {
-    const capped = await insertAuction(t);
-    for (let i = 0; i < CLOSING_SOON_LOTS_PER_AUCTION + 3; i++) {
-      await insertLot(t, capped);
+  it("reads only the first 13 assigned lots (creation order) of a sale", async () => {
+    const auction = await insertAuction(t);
+    // The lot created last has the lowest number but is beyond the read cap.
+    for (let i = 0; i < CLOSING_SOON_LOTS_PER_AUCTION; i++) {
+      await insertLot(t, auction, { lotNumber: 100 + i });
     }
-    // Both limits together never return more than the strip limit.
-    expect(await strip(t)).toHaveLength(CLOSING_SOON_LOT_LIMIT);
+    const beyondCap = await insertLot(t, auction, { lotNumber: 1 });
+    const ids = (await strip(t)).map((lot) => lot._id);
+    expect(ids).toHaveLength(CLOSING_SOON_LOT_LIMIT);
+    expect(ids).not.toContain(beyondCap);
+  });
 
-    for (let i = 0; i < CLOSING_SOON_UPCOMING_AUCTION_CAP + 3; i++) {
-      const auction = await insertAuction(t, { endTime: NOW + (i + 3) * MIN });
-      await insertLot(t, auction);
+  it("reads only the 20 soonest-ending sales inside the window", async () => {
+    const lotIds: Id<"lots">[] = [];
+    // Sale i ends i+1 minutes out; the 21st (latest) sale is beyond the cap.
+    for (let i = 0; i < CLOSING_SOON_UPCOMING_AUCTION_CAP + 1; i++) {
+      const auction = await insertAuction(t, { endTime: NOW + (i + 1) * MIN });
+      lotIds.push(await insertLot(t, auction));
     }
-    const result = await strip(t);
-    expect(result).toHaveLength(CLOSING_SOON_LOT_LIMIT);
-    expect(result.map((lot) => lot.effectiveEndTime)).toEqual(
-      [...result.map((lot) => lot.effectiveEndTime)].sort((a, b) => a - b)
+    const ids = (await strip(t, 12)).map((lot) => lot._id);
+    expect(ids).toEqual(lotIds.slice(0, CLOSING_SOON_LOT_LIMIT));
+    // Extending every capped sale's lots past the 21st sale's end shows the
+    // cap: the 21st sale's lot (ends soonest then) is never read.
+    for (const id of lotIds.slice(0, CLOSING_SOON_UPCOMING_AUCTION_CAP)) {
+      await t.run(async (ctx) => {
+        await ctx.db.patch("lots", id, { extendedEndTime: NOW + 10 * HOUR });
+      });
+    }
+    const after = (await strip(t, 12)).map((lot) => lot._id);
+    expect(after).not.toContain(
+      lotIds.slice(CLOSING_SOON_UPCOMING_AUCTION_CAP)[0]
     );
+  });
+
+  it("checks only the 10 most recently ended sales for soft-close lots", async () => {
+    const lotIds: Id<"lots">[] = [];
+    // Sale i ended i+1 minutes ago, newest first; the 11th is the oldest.
+    for (let i = 0; i < CLOSING_SOON_ENDED_AUCTION_CAP + 1; i++) {
+      const auction = await insertAuction(t, {
+        startTime: NOW - 5 * HOUR,
+        endTime: NOW - (i + 1) * MIN,
+      });
+      lotIds.push(
+        await insertLot(t, auction, { extendedEndTime: NOW + (i + 1) * MIN })
+      );
+    }
+    const ids = (await strip(t)).map((lot) => lot._id);
+    expect(ids).toEqual(lotIds.slice(0, CLOSING_SOON_ENDED_AUCTION_CAP));
+    expect(ids).not.toContain(lotIds.slice(CLOSING_SOON_ENDED_AUCTION_CAP)[0]);
+  });
+
+  it("handles exact boundaries", async () => {
+    // endTime === NOW is read but the lot has ended (end <= now).
+    const atNow = await insertAuction(t, { endTime: NOW });
+    await insertLot(t, atNow);
+    // extendedEndTime === NOW is over; === NOW + 24h is still included.
+    const ended = await insertAuction(t, { endTime: NOW - MIN });
+    await insertLot(t, ended, { extendedEndTime: NOW });
+    const edge = await insertAuction(t, { endTime: NOW - MIN });
+    const included = await insertLot(t, edge, {
+      extendedEndTime: NOW + 24 * HOUR,
+    });
+    // Sale that ended exactly 24 h ago is still looked at; one that starts
+    // exactly now counts as started.
+    const lookback = await insertAuction(t, {
+      startTime: NOW - 3 * 24 * HOUR,
+      endTime: NOW - 24 * HOUR,
+    });
+    const running = await insertLot(t, lookback, {
+      extendedEndTime: NOW + MIN,
+    });
+    const starting = await insertAuction(t, { startTime: NOW });
+    const startingLot = await insertLot(t, starting);
+    const ids = (await strip(t)).map((lot) => lot._id);
+    expect(ids).toEqual([running, startingLot, included]);
+  });
+
+  it("excludes hidden lots even when extended in an ended sale", async () => {
+    const ended = await insertAuction(t, { endTime: NOW - MIN });
+    await insertLot(t, ended, {
+      extendedEndTime: NOW + MIN,
+      hiddenByFlags: true,
+    });
+    expect(await strip(t)).toEqual([]);
+  });
+
+  it("ignores asOf: the window always comes from the server clock", async () => {
+    const inside = await insertAuction(t);
+    const insideLot = await insertLot(t, inside);
+    const far = await insertAuction(t, { endTime: NOW + 10 * 24 * HOUR });
+    await insertLot(t, far);
+    const expected = [insideLot];
+    for (const asOf of [
+      undefined,
+      123,
+      NOW,
+      NOW + 10 * 24 * HOUR, // a client trying to open a later window
+      NOW - 10 * 24 * HOUR,
+      Number.MAX_SAFE_INTEGER,
+    ]) {
+      const result = await t.query(api.auctions.getClosingSoonLots, {
+        limit: 12,
+        asOf,
+      });
+      expect(result.map((row) => row._id)).toEqual(expected);
+    }
   });
 
   it("returns the lean card shape with sale title, lot number and location", async () => {
@@ -256,7 +349,6 @@ describe("getClosingSoonLots", () => {
     const [lot] = await strip(t);
     expect(lot).toEqual({
       _id: lotId,
-      title: "Lot",
       make: "John Deere",
       model: "8R",
       year: 2020,
@@ -272,6 +364,7 @@ describe("getClosingSoonLots", () => {
     });
     expect(lot).not.toHaveProperty("reservePrice");
     expect(lot).not.toHaveProperty("sellerId");
+    expect(lot).not.toHaveProperty("title");
   });
 
   it("reports hasBids once a bid exists, even at the starting price", async () => {
@@ -298,6 +391,29 @@ describe("getClosingSoonLots", () => {
         amount: 500,
         timestamp: NOW - MIN,
         status: "voided",
+      });
+    });
+    expect((await strip(t))[0].hasBids).toBe(false);
+  });
+
+  it("looks at only the first few bids, so all-voided early bids read as none", async () => {
+    const auction = await insertAuction(t);
+    const lotId = await insertLot(t, auction);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < CLOSING_SOON_BID_PROBE; i++) {
+        await ctx.db.insert("bids", {
+          lotId,
+          bidderId: "user_bidder",
+          amount: 500 + i,
+          timestamp: NOW - 100 * MIN + i,
+          status: "voided",
+        });
+      }
+      await ctx.db.insert("bids", {
+        lotId,
+        bidderId: "user_bidder",
+        amount: 900,
+        timestamp: NOW - MIN,
       });
     });
     expect((await strip(t))[0].hasBids).toBe(false);
