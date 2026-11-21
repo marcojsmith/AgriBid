@@ -18,7 +18,9 @@ export function countdownTone(remainingMs: number): CountdownTone {
 }
 
 /**
- * Formats remaining milliseconds as `2d 3h 4m 5s` (leading zero units dropped).
+ * Formats remaining milliseconds compactly. Under one hour it shows minutes
+ * and seconds (`42m 10s`); from one hour it shows the two largest units
+ * (`23h 38m`, `5d 23h`), because seconds are noise on a long countdown.
  *
  * @param remainingMs - Milliseconds left (above 0)
  * @returns The compact duration text
@@ -29,9 +31,7 @@ export function formatRemaining(remainingMs: number): string {
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${String(days)}d`);
-  if (hours > 0 || days > 0) parts.push(`${String(hours)}h`);
-  parts.push(`${String(minutes)}m`, `${String(seconds)}s`);
-  return parts.join(" ");
+  if (days > 0) return `${String(days)}d ${String(hours)}h`;
+  if (hours > 0) return `${String(hours)}h ${String(minutes)}m`;
+  return `${String(minutes)}m ${String(seconds)}s`;
 }

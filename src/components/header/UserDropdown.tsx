@@ -31,8 +31,8 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import type { UserDataWithProfile } from "@/types/auth";
 
 const navLinks = [
-  { name: "Marketplace", href: "/", icon: ShoppingBasket },
-  { name: "Sell", href: "/sell", icon: Tag },
+  { name: "Auctions", href: "/auctions", icon: ShoppingBasket },
+  { name: "Sell equipment", href: "/sell", icon: Tag },
 ] as const;
 
 interface UserDropdownProps {
@@ -108,6 +108,7 @@ export function UserDropdown({
                   userData?.name || "User"}
             </span>
           </div>
+          <span className="sr-only sm:hidden">Account menu</span>
           <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all border border-primary/20">
             {isLoadingProfile ? (
               <LoadingIndicator size="sm" />
@@ -115,7 +116,10 @@ export function UserDropdown({
               <User className="h-4 w-4 transition-colors" />
             )}
           </div>
-          <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
+          <ChevronDown
+            aria-hidden="true"
+            className="hidden sm:block h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform"
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

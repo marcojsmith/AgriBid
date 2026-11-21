@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 
 import { useBranding } from "@/hooks/useBranding";
@@ -29,6 +29,19 @@ const businessInfo: BusinessInfo = {
   whatsapp: "+27 82 555 0100",
 };
 
+/** Every company field unset, as a fresh install has it. */
+const emptyInfo: BusinessInfo = {
+  ...businessInfo,
+  streetAddress: null,
+  addressLocality: null,
+  addressCountry: null,
+  postalCode: null,
+  telephone: null,
+  registrationNo: null,
+  vatNo: null,
+  whatsapp: null,
+};
+
 describe("Footer", () => {
   beforeEach(() => {
     vi.mocked(useBranding).mockReturnValue({
@@ -44,7 +57,7 @@ describe("Footer", () => {
       </BrowserRouter>
     );
 
-  it("renders the headquarters address and phone from the branding context", () => {
+  it("renders the address and phone from the branding context", () => {
     renderFooter();
 
     const addressLink = screen.getByRole("link", {
@@ -87,24 +100,16 @@ describe("Footer", () => {
     expect(screen.queryByText(/WhatsApp/)).toBeNull();
     expect(screen.queryByRole("link", { name: /000-0000/ })).toBeNull();
     // The address is still set, so the column and its heading stay.
-    expect(screen.getByText("Company")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Company" })
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Main Road/ })).toBeInTheDocument();
   });
 
   it("removes the whole company column and heading when nothing is set", () => {
     vi.mocked(useBranding).mockReturnValue({
       appName: "AgriBid",
-      businessInfo: {
-        ...businessInfo,
-        streetAddress: null,
-        addressLocality: null,
-        addressCountry: null,
-        postalCode: null,
-        telephone: null,
-        registrationNo: null,
-        vatNo: null,
-        whatsapp: null,
-      },
+      businessInfo: emptyInfo,
     });
     renderFooter();
 
@@ -112,7 +117,21 @@ describe("Footer", () => {
     expect(screen.queryByText("Headquarters")).toBeNull();
   });
 
-  it("omits the contact details while business info is unavailable", () => {
+  it("never renders an empty heading", () => {
+    vi.mocked(useBranding).mockReturnValue({
+      appName: "AgriBid",
+      businessInfo: emptyInfo,
+    });
+    renderFooter();
+
+    for (const heading of screen.getAllByRole("heading")) {
+      expect(heading.textContent?.trim()).not.toBe("");
+      const list = heading.nextElementSibling;
+      expect(list?.querySelectorAll("li").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("omits the company details while business info is unavailable", () => {
     vi.mocked(useBranding).mockReturnValue({
       appName: "AgriBid",
       businessInfo: undefined,
@@ -120,76 +139,60 @@ describe("Footer", () => {
 
     renderFooter();
 
-    expect(
-      screen.queryByRole("link", { name: "Headquarters" })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Company")).toBeNull();
     expect(screen.queryByRole("link", { name: /Main Road/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /000-0000/ })).toBeNull();
   });
 
-  it("renders the brand name and copyright", () => {
+  it("falls back to AgriBid when branding is unavailable", () => {
+    vi.mocked(useBranding).mockReturnValue(undefined);
     renderFooter();
-    expect(screen.getAllByText(/AGRIBID/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/All rights reserved/i)).toBeInTheDocument();
+    expect(screen.getByText("AgriBid")).toBeInTheDocument();
   });
 
-  it("contains the mission statement", () => {
+  it("renders the brand, tagline and verification claim", () => {
     renderFooter();
-    expect(screen.getByText(/built for farmers/i)).toBeInTheDocument();
+    expect(screen.getByText("AgriBid")).toBeInTheDocument();
+    expect(
+      screen.getByText(/online auction floor for farm machinery/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Every seller FICA-verified before listing")
+    ).toBeInTheDocument();
   });
 
-  it("renders all required navigation sections and links", () => {
+  it("links only to routes that exist", () => {
     renderFooter();
-    expect(screen.getByText(/How it Works/i)).toBeInTheDocument();
-    expect(screen.getByText(/Safety & Trust/i)).toBeInTheDocument();
-    expect(screen.getByText(/Terms of Service/i)).toBeInTheDocument();
-    expect(screen.getByText(/Help Center/i)).toBeInTheDocument();
+    const nav = (name: string) => screen.getByRole("navigation", { name });
+    expect(
+      within(nav("Buy")).getByRole("link", { name: "Live auctions" })
+    ).toHaveAttribute("href", "/auctions");
+    expect(
+      within(nav("Buy")).getByRole("link", { name: "Auction rules" })
+    ).toHaveAttribute("href", "/faq");
+    expect(
+      within(nav("Sell and help")).getByRole("link", { name: "List equipment" })
+    ).toHaveAttribute("href", "/sell");
+    expect(
+      within(nav("Sell and help")).getByRole("link", {
+        name: "Contact support",
+      })
+    ).toHaveAttribute("href", "/support");
+    for (const link of screen.getAllByRole("link")) {
+      expect(link.getAttribute("href")).not.toBe("#");
+    }
   });
 
-  it("links 'How it Works' to the /faq page", () => {
+  it("shows the legal row as plain text: year, Terms, Privacy, PAIA", () => {
     renderFooter();
-    const link = screen.getByRole("link", { name: /how it works/i });
-    expect(link).toHaveAttribute("href", "/faq");
-  });
-
-  it("tightens vertical padding, column gaps and the bottom bar on phones", () => {
-    renderFooter();
-    const footer = screen.getByRole("contentinfo");
-    const inner = footer.firstElementChild;
-    const grid = inner?.firstElementChild;
-    const bottomBar = inner?.lastElementChild;
-
-    // The footer used a flat `py-16`, which made it ~950px tall on a 375px
-    // phone. Phones/tablets get a compact rhythm; desktop keeps today's values.
-    expect(footer).toHaveClass("py-8", "md:py-16");
-    expect(grid).toHaveClass("gap-8", "md:gap-10", "lg:gap-12");
-    expect(bottomBar).toHaveClass("mt-8", "pt-6", "md:mt-16", "md:pt-8");
-  });
-
-  it("puts Platform and Support side by side on phones and keeps md+ layout unchanged", () => {
-    renderFooter();
-    const grid =
-      screen.getByRole("contentinfo").firstElementChild?.firstElementChild;
-    const brandColumn = screen.getAllByText(/AGRIBID/i)[0].parentElement;
-    const platformColumn = screen.getByText("Platform").parentElement;
-    const supportColumn = screen.getByText("Support").parentElement;
-    const headquartersColumn = screen.getByText("Company").parentElement;
-
-    // Four stacked columns left the footer ~737px tall on a 375px phone.
-    // Mobile is a two-column grid: Platform and Support share a row while the
-    // brand block and Headquarters span the full width.
-    expect(grid).toHaveClass("grid-cols-2", "lg:grid-cols-4");
-    expect(brandColumn).toHaveClass("col-span-2", "md:col-span-1");
-    expect(headquartersColumn).toHaveClass("col-span-2", "md:col-span-1");
-    // The two link columns keep a single track on every breakpoint.
-    expect(platformColumn?.className).not.toContain("col-span-2");
-    expect(supportColumn?.className).not.toContain("col-span-2");
-
-    // Source order is untouched, so md/lg still read brand → links → contact.
-    const columns = Array.from(grid?.children ?? []) as HTMLElement[];
-    expect(columns[0]).toBe(brandColumn);
-    expect(columns[1]).toBe(platformColumn);
-    expect(columns[2]).toBe(supportColumn);
-    expect(columns[3]).toBe(headquartersColumn);
+    const legal = screen.getByTestId("footer-legal");
+    expect(legal).toHaveTextContent(
+      `© ${String(new Date().getFullYear())} AgriBid`
+    );
+    for (const page of ["Terms", "Privacy", "PAIA manual"]) {
+      expect(within(legal).getByText(page)).toBeInTheDocument();
+    }
+    // No routes exist for these yet, so they must not be dead links.
+    expect(within(legal).queryAllByRole("link")).toHaveLength(0);
   });
 });

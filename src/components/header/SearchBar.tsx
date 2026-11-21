@@ -10,6 +10,8 @@ interface SearchBarProps {
   onSearch?: () => void;
   className?: string;
   id?: string;
+  /** Focus the field when it mounts (used when the phone search panel opens). */
+  autoFocus?: boolean;
 }
 
 /**
@@ -22,12 +24,14 @@ interface SearchBarProps {
  * @param props.onSearch - Optional callback invoked after a successful search submission
  * @param props.className - Optional additional CSS classes
  * @param props.id - Optional id for the input element
+ * @param props.autoFocus - Focus the input on mount
  * @returns The rendered search bar
  */
 export function SearchBar({
   onSearch,
   className,
   id = "search",
+  autoFocus = false,
 }: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
@@ -42,18 +46,26 @@ export function SearchBar({
   };
 
   return (
-    <form onSubmit={handleSearch} className={cn("relative", className)}>
+    <form
+      onSubmit={handleSearch}
+      role="search"
+      className={cn("relative", className)}
+    >
       <label htmlFor={id} className="sr-only">
-        Search equipment
+        Search make, model or category
       </label>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Search
+        aria-hidden="true"
+        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+      />
       <Input
         id={id}
         type="search"
         enterKeyHint="search"
         autoComplete="off"
-        placeholder="Search equipment..."
-        className="pl-10 h-10 bg-muted/50 border rounded-md focus-visible:ring-primary focus-visible:border-primary font-medium"
+        autoFocus={autoFocus}
+        placeholder="Search make, model or category"
+        className="pl-10 h-11 md:h-10 bg-card border rounded-md focus-visible:ring-primary focus-visible:border-primary"
         value={searchQuery}
         onChange={(e) => {
           setSearchQuery(e.target.value);

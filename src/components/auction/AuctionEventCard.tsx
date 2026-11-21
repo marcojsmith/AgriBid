@@ -1,14 +1,20 @@
 // app/src/components/auction/AuctionEventCard.tsx
 import { Link } from "react-router-dom";
-import { Image as ImageIcon } from "lucide-react";
+import { Clock, MapPin } from "lucide-react";
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "convex/_generated/api";
 
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Countdown } from "@/components/ds/Countdown";
+import { EventMosaic, type MosaicPhoto } from "@/components/ds/EventMosaic";
+import { Money } from "@/components/ds/Money";
+import { StatusBadge } from "@/components/ds/StatusBadge";
 import { useNow } from "@/hooks/useNow";
-import { formatRand } from "@/lib/currency";
+import { deriveDisplayStatus } from "@/lib/auction-badges";
 import { getEventBucket } from "@/lib/auction-utils";
+import { formatSastDate } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 
 /**
  * A published auction event as returned by `api.auctions.getPublishedAuctions`
@@ -21,70 +27,171 @@ export type AuctionEvent = FunctionReturnType<
 interface AuctionEventCardProps {
   /** The auction event document to render. */
   event: AuctionEvent;
+  /** The single featured card on desktop: photos about 2/3 wide, text centred beside them. */
+  featured?: boolean;
+  /** Heading element for the title; use `h2` when no section heading sits above. */
+  headingLevel?: "h2" | "h3";
+  className?: string;
 }
 
 /**
- * Card for a published auction event (scheduled sale container) in a gallery
- * grid. Shows the banner image, title, description, date window, lot count and
- * a "Live Now" badge while the event's window is open, and links to the
- * container detail page.
+ * Card for an auction event (scheduled sale) on Home and the auction gallery.
+ * Shows a 16:9 photo mosaic of the lead lots with the sale's status and a
+ * countdown chip, then the title, a one-line summary, where the lots are, the
+ * lot count and starting price, when the lots close and a "View lots" link.
  *
- * Uses `useNow` internally for live-badge timing, so the parent does not need
+ * Uses `useNow` for status and countdown timing, so the parent does not need
  * to pass a timestamp or re-render on every tick.
  *
  * @param props - Component props.
  * @param props.event - The auction event document to render.
+ * @param props.featured - Use the featured layout from `lg`.
+ * @param props.headingLevel - Heading element for the title (default `h3`).
+ * @param props.className - Extra classes merged onto the card (e.g. a side-by-side layout from `lg`).
  * @returns The rendered auction event card.
  */
-export const AuctionEventCard = ({ event }: AuctionEventCardProps) => {
+export const AuctionEventCard = ({
+  event,
+  featured = false,
+  headingLevel = "h3",
+  className,
+}: AuctionEventCardProps) => {
   const now = useNow();
-  const isLive = getEventBucket(event, now) === "live";
+  const bucket = getEventBucket(event, now);
+  const Heading = headingLevel;
 
-  const lotLabel = `${String(event.lotCount)}${event.lotCountCapped ? "+" : ""} lot${
-    event.lotCount === 1 && !event.lotCountCapped ? "" : "s"
+  const status =
+    bucket === "closed"
+      ? null
+      : deriveDisplayStatus({
+          startTime: event.startTime,
+          endTime: event.effectiveEndTime,
+          now,
+        });
+  const urgent = status?.kind === "closing-soon" && status.urgent;
+
+  const photoUrls =
+    event.leadImageUrls.length > 0
+      ? event.leadImageUrls
+      : event.bannerImageUrl
+        ? [event.bannerImageUrl]
+        : [];
+  const photos: MosaicPhoto[] = photoUrls.map((src, index) => ({
+    src,
+    alt: `${event.title}, photo ${String(index + 1)}`,
+  }));
+
+  const lotLabel = `${String(event.lotCount)}${event.lotCountCapped ? "+" : ""} ${
+    event.lotCount === 1 && !event.lotCountCapped ? "lot" : "lots"
   }`;
-  const summaryLine =
-    typeof event.fromPrice === "number"
-      ? `${lotLabel} · from ${formatRand(event.fromPrice)}`
-      : lotLabel;
+  const href = `/auctions/${event._id}`;
 
   return (
-    <Link to={`/auctions/${event._id}`} className="block group">
-      <Card className="overflow-hidden border hover:shadow-lg transition-shadow h-full">
-        <div className="h-32 sm:h-40 bg-muted relative">
-          {event.bannerImageUrl ? (
-            <img
-              src={event.bannerImageUrl}
-              alt={event.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+    <article
+      data-slot="auction-event-card"
+      className={cn(
+        "flex flex-col overflow-hidden rounded-md border border-border bg-card",
+        featured && "lg:grid lg:grid-cols-[2fr_1fr]",
+        className
+      )}
+    >
+      <div className="relative">
+        <EventMosaic
+          photos={photos}
+          emptyAlt={`${event.title}: no photos yet`}
+          className="rounded-none"
+        />
+        <div className="absolute left-2.5 top-2.5">
+          {status ? (
+            <StatusBadge status={status} />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
-            </div>
-          )}
-          {isLive && (
-            <Badge className="absolute top-3 right-3 bg-success/90 text-success-foreground font-semibold animate-pulse">
-              Live Now
-            </Badge>
+            <Badge variant="passed">Closed</Badge>
           )}
         </div>
-        <div className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
-          <h2 className="font-bold text-base leading-tight group-hover:text-primary transition-colors">
+        {bucket !== "closed" && (
+          <span
+            className={cn(
+              "absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-semibold",
+              urgent
+                ? "bg-urgent-solid text-white"
+                : "bg-hero/85 text-hero-foreground"
+            )}
+          >
+            <Clock aria-hidden="true" className="size-3.5" />
+            {bucket === "live" ? (
+              <>
+                Closes in{" "}
+                <Countdown
+                  endTime={event.effectiveEndTime}
+                  className="text-inherit"
+                />
+              </>
+            ) : (
+              <>
+                Opens in{" "}
+                <Countdown endTime={event.startTime} className="text-inherit" />
+              </>
+            )}
+          </span>
+        )}
+      </div>
+
+      <div
+        className={cn(
+          "flex flex-1 flex-col gap-2 p-4",
+          featured && "lg:justify-center lg:gap-3 lg:p-6"
+        )}
+      >
+        <Heading className="text-[19px] leading-tight">
+          <Link
+            to={href}
+            className="inline-block rounded-sm hover:text-primary max-md:-my-2.5 max-md:py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             {event.title}
-          </h2>
-          {event.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {event.description}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground font-medium pt-0.5 sm:pt-1">
-            {new Date(event.startTime).toLocaleDateString()} –{" "}
-            {new Date(event.endTime).toLocaleDateString()}
+          </Link>
+        </Heading>
+        {event.description ? (
+          <p className="line-clamp-1 text-sm text-muted-foreground">
+            {event.description}
           </p>
-          <p className="text-xs text-muted-foreground">{summaryLine}</p>
+        ) : null}
+        <p className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
+          {event.location ? (
+            <>
+              <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
+              <span>{event.location}</span>
+              <span aria-hidden="true">·</span>
+            </>
+          ) : null}
+          <span className="num">{lotLabel}</span>
+          {bucket !== "closed" && typeof event.fromPrice === "number" ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>
+                From{" "}
+                <Money amount={event.fromPrice} className="text-foreground" />
+              </span>
+            </>
+          ) : null}
+        </p>
+        <div
+          className={cn(
+            "mt-auto flex flex-col gap-2.5 border-t border-border pt-3 text-[13px] text-muted-foreground",
+            featured && "lg:mt-2"
+          )}
+        >
+          <span>
+            {bucket === "closed"
+              ? `Sale closed ${formatSastDate(event.effectiveEndTime)}`
+              : `Lots close from ${formatSastDate(event.endTime)}`}
+          </span>
+          <Button variant="outline" size="sm" className="w-full" asChild>
+            <Link to={href} aria-label={`View lots: ${event.title}`}>
+              View lots
+            </Link>
+          </Button>
         </div>
-      </Card>
-    </Link>
+      </div>
+    </article>
   );
 };

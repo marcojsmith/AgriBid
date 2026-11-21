@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -9,6 +9,7 @@ import { AuctionEventCard, type AuctionEvent } from "./AuctionEventCard";
 vi.mock("@/hooks/useNow");
 
 const NOW = Date.now();
+const HOUR = 60 * 60 * 1000;
 
 const baseEvent: AuctionEvent = {
   _id: "a1" as AuctionEvent["_id"],
@@ -16,8 +17,8 @@ const baseEvent: AuctionEvent = {
   title: "Spring Sale",
   description: "Tractors and combines",
   bannerImageUrl: undefined,
-  startTime: NOW - 1000,
-  endTime: NOW + 100000,
+  startTime: NOW - HOUR,
+  endTime: NOW + 48 * HOUR,
   status: "published",
   createdBy: "admin1",
   createdAt: 0,
@@ -27,15 +28,22 @@ const baseEvent: AuctionEvent = {
   fromPrice: null,
   leadImageUrls: [],
   location: null,
-  effectiveEndTime: NOW + 100000,
+  effectiveEndTime: NOW + 48 * HOUR,
   defaultBuyerPremiumPct: undefined,
   defaultSellerCommissionPct: undefined,
 };
 
-const renderCard = (event: AuctionEvent) =>
+const renderCard = (
+  event: AuctionEvent,
+  props: {
+    className?: string;
+    featured?: boolean;
+    headingLevel?: "h2" | "h3";
+  } = {}
+) =>
   render(
     <MemoryRouter>
-      <AuctionEventCard event={event} />
+      <AuctionEventCard event={event} {...props} />
     </MemoryRouter>
   );
 
@@ -45,28 +53,54 @@ describe("AuctionEventCard", () => {
     vi.mocked(useNow).mockReturnValue(NOW);
   });
 
-  it("renders title, description, date window and lot count", () => {
-    renderCard({ ...baseEvent, endTime: NOW + 100000 });
-    expect(screen.getByText("Spring Sale")).toBeInTheDocument();
-    expect(screen.getByText("Tractors and combines")).toBeInTheDocument();
-    expect(screen.getByText("3 lots")).toBeInTheDocument();
-    const dateText = `${new Date(baseEvent.startTime).toLocaleDateString()} – ${new Date(baseEvent.endTime).toLocaleDateString()}`;
+  it("renders the title as an h3 link to the sale and a one-line summary", () => {
+    renderCard(baseEvent);
+    const heading = screen.getByRole("heading", {
+      level: 3,
+      name: "Spring Sale",
+    });
+    expect(within(heading).getByRole("link")).toHaveAttribute(
+      "href",
+      "/auctions/a1"
+    );
+    expect(screen.getByText("Tractors and combines")).toHaveClass(
+      "line-clamp-1"
+    );
+  });
+
+  it("can render the title as an h2", () => {
+    renderCard(baseEvent, { headingLevel: "h2" });
     expect(
-      screen.getByText(
-        (_, element) =>
-          element?.tagName === "P" && element.textContent === dateText
-      )
+      screen.getByRole("heading", { level: 2, name: "Spring Sale" })
     ).toBeInTheDocument();
   });
 
-  it("uses the singular 'lot' label for a single lot", () => {
-    renderCard({ ...baseEvent, lotCount: 1 });
-    expect(screen.getByText("1 lot")).toBeInTheDocument();
+  it("omits the summary when there is no description", () => {
+    renderCard({ ...baseEvent, description: undefined });
+    expect(screen.queryByText("Tractors and combines")).toBeNull();
   });
 
-  it("shows the from-price after the lot count when lots exist", () => {
-    renderCard({ ...baseEvent, fromPrice: 200000 });
-    expect(screen.getByText(/^3 lots · from R\s200\s000$/)).toBeInTheDocument();
+  it("shows the location, lot count and from-price", () => {
+    renderCard({
+      ...baseEvent,
+      location: "Bothaville, FS",
+      fromPrice: 200000,
+    });
+    expect(screen.getByText("Bothaville, FS")).toBeInTheDocument();
+    expect(screen.getByText("3 lots")).toBeInTheDocument();
+    expect(screen.getByText(/^R\s200\s000$/)).toBeInTheDocument();
+    expect(screen.getByText(/^From/)).toBeInTheDocument();
+  });
+
+  it("hides the location and price rows when unknown", () => {
+    renderCard(baseEvent);
+    expect(screen.queryByText(/^From/)).toBeNull();
+    expect(screen.getByText("3 lots")).toBeInTheDocument();
+  });
+
+  it("uses the singular label for exactly one lot", () => {
+    renderCard({ ...baseEvent, lotCount: 1 });
+    expect(screen.getByText("1 lot")).toBeInTheDocument();
   });
 
   it("marks a capped lot count with a plus and plural label", () => {
@@ -74,74 +108,130 @@ describe("AuctionEventCard", () => {
     expect(screen.getByText("1+ lots")).toBeInTheDocument();
   });
 
-  it("renders the banner image when a banner URL is present", () => {
-    renderCard({ ...baseEvent, bannerImageUrl: "https://cdn/banner.jpg" });
-    expect(screen.getByRole("img", { name: "Spring Sale" })).toHaveAttribute(
-      "src",
-      "https://cdn/banner.jpg"
+  it("shows a Live badge and a Closes in countdown for an open sale", () => {
+    renderCard(baseEvent);
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText(/Closes in/)).toBeInTheDocument();
+  });
+
+  it("shows Closing soon (never colour alone) inside the last 24 hours", () => {
+    renderCard({ ...baseEvent, effectiveEndTime: NOW + 5 * HOUR });
+    expect(screen.getByText("Closing soon")).toBeInTheDocument();
+  });
+
+  it("uses the urgent chip colour inside the last hour", () => {
+    renderCard({ ...baseEvent, effectiveEndTime: NOW + 20 * 60 * 1000 });
+    expect(screen.getByText(/Closes in/).closest("span")).toHaveClass(
+      "bg-urgent-solid"
     );
   });
 
-  it("renders a placeholder when no banner URL is present", () => {
-    renderCard(baseEvent);
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
-  });
-
-  it("shows the Live Now badge for a published event inside its window", () => {
-    renderCard({ ...baseEvent, status: "published" });
-    expect(screen.getByText("Live Now")).toBeInTheDocument();
-  });
-
-  it("does not show the Live Now badge for a closed event", () => {
-    renderCard({ ...baseEvent, status: "closed" });
-    expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
-  });
-
-  it("does not show the Live Now badge for a published event whose window has ended", () => {
+  it("shows when an upcoming sale opens and an Opens in chip", () => {
     renderCard({
       ...baseEvent,
-      endTime: NOW - 1000,
-      effectiveEndTime: NOW - 1000,
+      startTime: NOW + 10 * HOUR,
+      endTime: NOW + 80 * HOUR,
+      effectiveEndTime: NOW + 80 * HOUR,
     });
-    expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
+    expect(screen.getByText(/^Opens .*SAST$/)).toBeInTheDocument();
+    expect(screen.getByText(/Opens in/)).toBeInTheDocument();
+    expect(screen.queryByText("Live")).toBeNull();
   });
 
-  it("does not show the Live Now badge when the event has not started yet", () => {
+  it("shows Closed and the sale-closed date, with no price, for an ended sale", () => {
     renderCard({
       ...baseEvent,
-      startTime: NOW + 100000,
-      endTime: NOW + 200000,
-      effectiveEndTime: NOW + 200000,
+      status: "closed",
+      endTime: NOW - 5 * HOUR,
+      effectiveEndTime: NOW - 5 * HOUR,
     });
-    expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
+    expect(screen.getByText("Closed")).toBeInTheDocument();
+    expect(screen.queryByText(/Closes in|Opens in/)).toBeNull();
+    expect(screen.getByText(/^Sale closed .*SAST$/)).toBeInTheDocument();
+    expect(screen.queryByText(/^From/)).toBeNull();
+    expect(screen.queryByText("Live")).toBeNull();
   });
 
-  it("keeps the Live Now badge during a soft-close extension past the scheduled end", () => {
+  it("keeps the sale Live during a soft-close extension past the scheduled end", () => {
     renderCard({
       ...baseEvent,
       endTime: NOW - 1000,
       effectiveEndTime: NOW + 60000,
     });
-    expect(screen.getByText("Live Now")).toBeInTheDocument();
+    expect(screen.getByText(/Closes in/)).toBeInTheDocument();
   });
 
-  it("links to the container detail page", () => {
+  it("states when the lots close in SAST", () => {
     renderCard(baseEvent);
-    expect(screen.getByRole("link", { name: /Spring Sale/i })).toHaveAttribute(
-      "href",
-      "/auctions/a1"
+    expect(screen.getByText(/^Lots close from .*SAST$/)).toBeInTheDocument();
+  });
+
+  it("has a View lots link of at least 44px on phones", () => {
+    renderCard(baseEvent);
+    const link = screen.getByRole("link", { name: "View lots: Spring Sale" });
+    expect(link).toHaveAttribute("href", "/auctions/a1");
+    expect(link).toHaveClass("max-md:h-11");
+  });
+
+  it("renders the lead photos as a mosaic", () => {
+    renderCard({
+      ...baseEvent,
+      leadImageUrls: [
+        "https://cdn/1.jpg",
+        "https://cdn/2.jpg",
+        "https://cdn/3.jpg",
+      ],
+    });
+    expect(screen.getAllByRole("img")).toHaveLength(3);
+    expect(
+      screen.getByRole("img", { name: "Spring Sale, photo 1" })
+    ).toHaveAttribute("src", "https://cdn/1.jpg");
+  });
+
+  it("falls back to the banner image when there are no lead photos", () => {
+    renderCard({ ...baseEvent, bannerImageUrl: "https://cdn/banner.jpg" });
+    expect(screen.getAllByRole("img")).toHaveLength(1);
+    expect(screen.getByRole("img")).toHaveAttribute(
+      "src",
+      "https://cdn/banner.jpg"
     );
   });
 
-  it("uses a shorter banner and tighter body padding on phones", () => {
-    renderCard({ ...baseEvent, bannerImageUrl: "https://cdn/banner.jpg" });
-
+  it("shows the branded empty state when there are no photos at all", () => {
+    renderCard(baseEvent);
     expect(
-      screen.getByRole("img", { name: "Spring Sale" }).parentElement
-    ).toHaveClass("h-32", "sm:h-40");
-    expect(screen.getByText("Spring Sale").parentElement).toHaveClass(
-      "p-3",
-      "sm:p-4"
+      screen.getByRole("img", { name: "Spring Sale: no photos yet" })
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the from-price on closed sales out of the card but shows the lot count", () => {
+    renderCard({
+      ...baseEvent,
+      status: "closed",
+      endTime: NOW - HOUR,
+      effectiveEndTime: NOW - HOUR,
+      fromPrice: 60000,
+    });
+    expect(screen.getByText("3 lots")).toBeInTheDocument();
+    expect(screen.queryByText(/R\s60\s000/)).toBeNull();
+  });
+
+  it("uses the featured layout and centres its text only when featured", () => {
+    const { container, rerender } = renderCard(baseEvent, { featured: true });
+    expect(container.firstElementChild).toHaveClass("lg:grid-cols-[2fr_1fr]");
+    expect(screen.getByRole("heading").parentElement).toHaveClass(
+      "lg:justify-center"
     );
+    rerender(
+      <MemoryRouter>
+        <AuctionEventCard event={baseEvent} />
+      </MemoryRouter>
+    );
+    expect(container.firstElementChild).not.toHaveClass("lg:grid");
+  });
+
+  it("merges extra layout classes onto the card", () => {
+    const { container } = renderCard(baseEvent, { className: "lg:grid" });
+    expect(container.firstElementChild).toHaveClass("lg:grid");
   });
 });

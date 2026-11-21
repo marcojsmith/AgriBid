@@ -14,7 +14,7 @@ Last updated: 2026-11-21
 
 ## In progress
 
-- Branch `feat/admin-vat-company-settings` (track `improve-screen-mockups`, WP3c): admin VAT rate (`vat_rate_pct`, default 15), company registration/VAT/WhatsApp on Business Info and the footer (seed never writes `business.*`), VAT + estimated total in `FeeBreakdown`, clearable lot province. **VAT base (hammer price + buyer fees) is an assumption the owner should confirm.** No migration or backfill needed.
+- Branch `feat/home-redesign` (track `improve-screen-mockups`, WP4): redesigned Home (hero, view switch + sort, new event cards, how it works), header and footer. Closing-soon lot rail and categories omitted pending backend (follow-ups in the track plan). Frontend only; no backend or ops needed.
 - Branch `feat/lot-number-province-watchers` (track `improve-screen-mockups`, WP3b): `lots.lotNumber` + `lots.province`, `profiles.sellerResponseTime`, per-lot watcher counters, two backfill migrations (`migrations:backfillLotNumbers`, `migrations:backfillWatcherCounts`; run once after deploy), wizard province field, admin controls. **Run both migrations immediately after deploy**: until `backfillLotNumbers` runs, existing lots have no number and new assignments start at 1 ahead of older lots (breaking creation order); until `backfillWatcherCounts` runs, watcher counts for already-watched lots are 0. WP2 (#398) and WP3a (#399) are merged.
 - Track [`improve-screen-mockups`](../conductor/tracks/improve-screen-mockups/plan.md): new Home / Auction event / Lot detail design plus an app-wide design system, delivered as WP0 to WP8 (tracker in the plan). Rollout to the rest of the app is a separate track after owner review.
 - Branch `feat/toggleable-cron-jobs` (1 commit not yet on `main`): admin Performance page gets per-job on/off switches for every cron (`convex/cronJobs.ts` gated wrappers + `convex/cronRegistry.ts`); jobs default to **off**. Convex disabled both deployments on 2026-10-20 (Free plan limits exceeded by the 1-minute settle cron); after deploying this to prod and the plan resets/upgrades, enable jobs from `/admin/performance`.
@@ -35,6 +35,7 @@ Last updated: 2026-11-21
 
 ## Done (last 10)
 
+- 2026-11-21: VAT rate and company details for fees and the footer (WP3c, #401) (v0.22.0).
 - 2026-11-21: Lot numbers, province, seller response time and watcher counts (WP3b, #400) (v0.21.0).
 - 2026-11-21: Auction event summary for the Home cards (WP3a, #399) (v0.20.0).
 - 2026-11-21: Design-system domain components, formatters, design-system doc and dev-only `/design-system` page (WP2, #398) (v0.19.0).

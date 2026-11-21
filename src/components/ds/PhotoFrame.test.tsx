@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 
 import { PhotoFrame } from "./PhotoFrame";
@@ -24,6 +24,22 @@ describe("PhotoFrame", () => {
     const el = screen.getByRole("img", { name: "No photo for lot 4" });
     expect(el).toHaveAttribute("data-empty", "true");
     expect(screen.getByText("No photo yet")).toBeInTheDocument();
+  });
+
+  it("falls back to the branded empty state when the image fails to load", () => {
+    render(<PhotoFrame src="/missing.jpg" alt="Lot 4 front" />);
+    fireEvent.error(screen.getByAltText("Lot 4 front"));
+    const el = screen.getByRole("img", { name: "Lot 4 front" });
+    expect(el).toHaveAttribute("data-empty", "true");
+    expect(el.tagName).not.toBe("IMG");
+    expect(screen.getByText("No photo yet")).toBeInTheDocument();
+  });
+
+  it("tries again when the source changes after a failure", () => {
+    const { rerender } = render(<PhotoFrame src="/missing.jpg" alt="Lot" />);
+    fireEvent.error(screen.getByAltText("Lot"));
+    rerender(<PhotoFrame src="/other.jpg" alt="Lot" />);
+    expect(screen.getByAltText("Lot")).toHaveAttribute("src", "/other.jpg");
   });
 
   it("fills its parent when asked", () => {
