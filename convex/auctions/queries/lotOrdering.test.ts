@@ -111,6 +111,8 @@ describe("event lot ordering by lotNumber", () => {
     });
     expect(first.page.map((l) => l.title)).toEqual(["A", "B"]);
     expect(first.isDone).toBe(false);
+    // The whole sale is not counted per page; totalCount is the page size.
+    expect(first.totalCount).toBe(2);
     const second = await t.query(api.auctions.getActiveLots, {
       paginationOpts: { numItems: 2, cursor: first.continueCursor },
       auctionId,
@@ -173,11 +175,11 @@ describe("event lot ordering by lotNumber", () => {
     ]);
   });
 
-  it("getPublishedAuction lists lots in ascending lot number", async () => {
+  it("getPublishedAuction returns the header only; the lots page through getActiveLots", async () => {
     const auction = await t.query(api.auctions.getPublishedAuction, {
       auctionId,
     });
-    expect(auction?.lots.map((l) => l.title)).toEqual(["A", "B", "C"]);
+    expect(auction).not.toHaveProperty("lots");
   });
 
   it("getPublishedAuction reports the latest soft-close extension as effectiveEndTime", async () => {

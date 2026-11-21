@@ -28,8 +28,17 @@ vi.mock("convex/_generated/api", () => ({
 vi.mock("@/lib/auth-client", () => ({ useSession: vi.fn() }));
 vi.mock("@/hooks/useMediaQuery", () => ({ useMediaQuery: vi.fn() }));
 vi.mock("@/components/FilterSidebar", () => ({
-  FilterSidebar: ({ onClose }: { onClose?: () => void }) => (
-    <div data-testid={onClose ? "sheet-filters" : "sidebar-filters"} />
+  FilterSidebar: ({
+    onClose,
+    applySavedDefaults,
+  }: {
+    onClose?: () => void;
+    applySavedDefaults?: boolean;
+  }) => (
+    <div
+      data-testid={onClose ? "sheet-filters" : "sidebar-filters"}
+      data-apply-defaults={String(applySavedDefaults)}
+    />
   ),
 }));
 vi.mock("@/components/AuctionCardSkeleton", () => ({
@@ -360,6 +369,21 @@ describe("EventLotBrowser", () => {
         within(sheet).getByRole("button", { name: "Show 3 lots" })
       );
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("never re-merges saved default filters when the sheet reopens", () => {
+      renderBrowser();
+      for (let i = 0; i < 2; i++) {
+        fireEvent.click(screen.getByRole("button", { name: "Filters (0)" }));
+        const sheet = screen.getByRole("dialog", { name: "Filter lots" });
+        expect(within(sheet).getByTestId("sheet-filters")).toHaveAttribute(
+          "data-apply-defaults",
+          "false"
+        );
+        fireEvent.click(
+          within(sheet).getByRole("button", { name: "Show 3 lots" })
+        );
+      }
     });
   });
 });

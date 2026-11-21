@@ -43,12 +43,12 @@ export const AuctionValidator = v.object({
 });
 
 /**
- * Auction container with its lots, used by the public container-detail page.
+ * Auction container header for the public container-detail page. The lots are
+ * not part of it: the page lists them through the paginated `getActiveLots`.
  */
-export const AuctionWithLotsValidator = AuctionValidator.extend({
+export const AuctionDetailValidator = AuctionValidator.extend({
   /** The scheduled end or the latest soft-close extension of any lot. */
   effectiveEndTime: v.number(),
-  lots: v.array(LotSummaryValidator),
 });
 
 /** Raw auction container document shape consumed by {@link toAuction}. */
@@ -391,14 +391,17 @@ export const getPublishedAuctions = query({
 });
 
 /**
- * Returns a single published or closed auction container together with its
- * lots, for the public container-detail page. Draft containers are never
+ * Returns a single published or closed auction container for the public
+ * container-detail page, with `effectiveEndTime` (the latest soft-close
+ * extension of any lot). It returns no lot summaries: the page pages through
+ * them with `getActiveLots`. Only lot documents are read (no image or
+ * category lookups), to find the latest extension. Draft containers are never
  * exposed publicly.
  *
  * @param ctx - Convex Query context.
  * @param args - Handler arguments.
  * @param args.auctionId - The auction container id.
- * @returns The auction with its lots, or null if missing or still a draft.
+ * @returns The auction header, or null if missing or still a draft.
  */
 export const getPublishedAuctionHandler = async (
   ctx: QueryCtx,
@@ -411,8 +414,6 @@ export const getPublishedAuctionHandler = async (
     toAuction(ctx, auction),
     ctx.db
       .query("lots")
-      // Lot-number order; lots without a number (legacy) come first, then
-      // follow creation order.
       .withIndex("by_auctionId_lotNumber", (q) =>
         q.eq("auctionId", auction._id)
       )
@@ -424,16 +425,12 @@ export const getPublishedAuctionHandler = async (
     auction.endTime
   );
 
-  return {
-    ...auctionView,
-    effectiveEndTime,
-    lots: await toLotSummaries(ctx, lots),
-  };
+  return { ...auctionView, effectiveEndTime };
 };
 
 export const getPublishedAuction = query({
   args: { auctionId: v.id("auctions") },
-  returns: v.union(AuctionWithLotsValidator, v.null()),
+  returns: v.union(AuctionDetailValidator, v.null()),
   handler: getPublishedAuctionHandler,
 });
 

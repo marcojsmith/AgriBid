@@ -209,7 +209,7 @@ export function EventLotBrowser({ auctionId }: EventLotBrowserProps) {
           aria-label="Filter lots"
           className="sticky top-20 max-h-[calc(100vh-6rem)]"
         >
-          <FilterSidebar hideStatus />
+          <FilterSidebar hideStatus applySavedDefaults={false} />
         </aside>
       ) : null}
 
@@ -325,8 +325,11 @@ export function EventLotBrowser({ auctionId }: EventLotBrowserProps) {
             Narrow the lots in this sale by make, year, price and hours.
           </DialogDescription>
           <div className="min-h-0 flex-1">
+            {/* The sheet remounts on every open: merging saved defaults here
+                would bring back filters the user already removed. */}
             <FilterSidebar
               hideStatus
+              applySavedDefaults={false}
               onClose={() => {
                 setIsSheetOpen(false);
               }}

@@ -23,6 +23,11 @@ interface FilterSidebarProps {
    * sync. Used on auction container pages where status is fixed.
    */
   hideStatus?: boolean;
+  /**
+   * Merge the user's saved default filters in when they load (default true).
+   * Turn off where the sidebar remounts, so removed filters stay removed.
+   */
+  applySavedDefaults?: boolean;
 }
 
 /**
@@ -32,11 +37,13 @@ interface FilterSidebarProps {
  * @param props.onClose - Callback when the sidebar is closed.
  * @param props.hideStatus - When true, hides the status select and excludes
  *   status from URL and preference syncing.
+ * @param props.applySavedDefaults - Merge saved defaults on load (default true).
  * @returns The rendered filter sidebar.
  */
 export const FilterSidebar = ({
   onClose,
   hideStatus = false,
+  applySavedDefaults = true,
 }: FilterSidebarProps) => {
   const {
     filters,
@@ -48,7 +55,7 @@ export const FilterSidebar = ({
     resetFilters,
     saveDefaults,
     clearDefaults,
-  } = useFilterSidebar({ hideStatus, onClose });
+  } = useFilterSidebar({ hideStatus, onClose, applySavedDefaults });
 
   return (
     <div className="flex flex-col h-full max-h-[inherit] bg-card border rounded-md overflow-hidden">

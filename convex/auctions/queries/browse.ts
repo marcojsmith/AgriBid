@@ -109,7 +109,8 @@ function matchesLotFilter(
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments including pagination options and filters
- * @returns Paginated lot results with total count
+ * @returns Paginated lot results with total count (for a single sale on the
+ *   paginated path `totalCount` is just the size of the returned page)
  */
 export const getActiveLotsHandler = async (
   ctx: QueryCtx,
@@ -272,14 +273,21 @@ export const getActiveLotsHandler = async (
     };
   }
 
+  // The event page lists one sale and ignores `totalCount`, so counting the
+  // whole sale on every page would only add reads: it reports the page size.
   const [results, totalCount] = await Promise.all([
     getFilteredQuery().paginate(args.paginationOpts),
-    countQuery(getFilteredQuery()),
+    auctionId === undefined ? countQuery(getFilteredQuery()) : null,
   ]);
 
   const page = await toLotSummaries(ctx, results.page);
 
-  const finalTotalCount = totalCount > 1000 ? "1000+" : totalCount;
+  const finalTotalCount =
+    totalCount === null
+      ? page.length
+      : totalCount > 1000
+        ? "1000+"
+        : totalCount;
 
   return {
     ...results,

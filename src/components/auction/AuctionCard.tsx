@@ -127,6 +127,8 @@ export const AuctionCard = ({
     signedIn: !!session,
     isVerified,
     nextBid,
+    isWatched,
+    isOwnLot: !!session && session.user.id === auction.sellerId,
   });
 
   const handleBidInitiate = () => {
@@ -236,6 +238,17 @@ export const AuctionCard = ({
         disabled={isBidding}
       >
         {isBidding ? "Placing bid…" : cta.label}
+      </Button>
+    ) : cta.kind === "watch" ? (
+      <Button
+        type="button"
+        variant={isWatched ? "outline" : "default"}
+        className={ctaClasses}
+        aria-describedby={titleId}
+        aria-pressed={isWatched}
+        onClick={handleWatchlistToggle}
+      >
+        {cta.label}
       </Button>
     ) : (
       <Button

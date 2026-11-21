@@ -39,7 +39,22 @@ describe("SaleHeader", () => {
       />
     );
     expect(screen.getByText("Live")).toBeInTheDocument();
-    expect(screen.getByText("First lot closes in")).toBeInTheDocument();
+    expect(screen.getByText("Sale closes in")).toBeInTheDocument();
+  });
+
+  it("counts down to the soft-close extended end, not the scheduled end", () => {
+    render(
+      <SaleHeader
+        auction={sale({
+          startTime: Date.now() - HOUR,
+          endTime: Date.now() + 2 * HOUR,
+          effectiveEndTime: Date.now() + 50 * HOUR,
+        })}
+      />
+    );
+    // 50 hours is "2d 2h"; the scheduled end would read "1h 59m"-ish.
+    const card = screen.getByTestId("sale-countdown");
+    expect(card.textContent).toMatch(/2d/);
   });
 
   it("ended: shows Closed, the closing date and no countdown", () => {

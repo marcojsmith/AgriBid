@@ -427,7 +427,7 @@ describe("Auction event queries", () => {
       expect(result).toBeNull();
     });
 
-    it("returns the auction with its lots without requiring admin", async () => {
+    it("returns the auction header without lot summaries and without requiring admin", async () => {
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
       mockCtx.db.get.mockResolvedValue(auctionRow);
       const lots = [
@@ -446,7 +446,8 @@ describe("Auction event queries", () => {
       );
 
       expect(auth.requireAdmin).not.toHaveBeenCalled();
-      expect(result?.lots.map((lot) => lot._id)).toEqual(["l1", "l2"]);
+      expect(result).not.toHaveProperty("lots");
+      expect(result?.effectiveEndTime).toBe(auctionRow.endTime);
     });
   });
 

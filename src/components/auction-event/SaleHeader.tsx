@@ -72,11 +72,13 @@ export function SaleHeader({ auction }: { auction: SaleHeaderAuction }) {
           className="shrink-0 rounded-md border border-border bg-card px-4 py-3 lg:min-w-60"
         >
           <p className="text-[13px] text-muted-foreground">
-            {bucket === "upcoming" ? "Bidding opens in" : "First lot closes in"}
+            {bucket === "upcoming" ? "Bidding opens in" : "Sale closes in"}
           </p>
           <Countdown
             endTime={
-              bucket === "upcoming" ? auction.startTime : auction.endTime
+              bucket === "upcoming"
+                ? auction.startTime
+                : (auction.effectiveEndTime ?? auction.endTime)
             }
             className="text-2xl"
           />

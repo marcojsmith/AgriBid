@@ -35,6 +35,13 @@ export interface UseFilterSidebarOptions {
    * Invoked after filters are reset, used to close the mobile overlay.
    */
   onClose?: () => void;
+  /**
+   * Whether the user's saved default filters are merged into the filters when
+   * they load (default true). Pages whose filter UI remounts, such as the
+   * event page's phone sheet, turn this off so filters the user removed do
+   * not come back.
+   */
+  applySavedDefaults?: boolean;
 }
 
 /**
@@ -44,6 +51,7 @@ export interface UseFilterSidebarOptions {
  * @param options - Hook options.
  * @param options.hideStatus - Whether the status filter is hidden for this page.
  * @param options.onClose - Callback invoked when the filters are reset.
+ * @param options.applySavedDefaults - Merge saved defaults into the filters on load (default true).
  * @returns An object with:
  * - `filters` — the current filter values.
  * - `activeMakes` — manufacturers available to filter by.
@@ -58,13 +66,14 @@ export interface UseFilterSidebarOptions {
 export function useFilterSidebar({
   hideStatus,
   onClose,
+  applySavedDefaults = true,
 }: UseFilterSidebarOptions) {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMakes = useQuery(api.auctions.getActiveMakes) ?? [];
   const { data: session } = useSession();
   const preferences = useQuery(
     api.userPreferences.getMyPreferences,
-    session ? {} : "skip"
+    session && applySavedDefaults ? {} : "skip"
   );
   const updateMyPreferences = useMutation(
     api.userPreferences.updateMyPreferences

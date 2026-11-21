@@ -16,19 +16,25 @@ export interface LotCtaInput {
   isVerified?: boolean;
   /** The next bid in rand, shown on the live button ("Bid R 217 500"). */
   nextBid: number;
+  /** Whether the signed-in user already watches the lot. */
+  isWatched?: boolean;
+  /** Whether the signed-in user is the lot's seller (sellers cannot bid). */
+  isOwnLot?: boolean;
 }
 
 /**
  * What the call to action does:
  * - `register`: signed out, goes to sign-in.
  * - `verify`: signed in but not verified, goes to `/kyc`.
- * - `set-max`: verified, bidding not open yet, opens the lot to set a maximum bid.
+ * - `watch`: verified, bidding not open yet, toggles the watchlist. The
+ *   backend rejects every bid before the start, max bids included, so there
+ *   is nothing to bid with yet.
  * - `bid`: bidding is open, places the next bid (signed out goes to sign-in first).
  * - `result`: bidding ended, opens the lot to see the result.
- * - `view`: any other state, opens the lot.
+ * - `view`: any other state, or the user's own lot, opens the lot.
  */
 export type LotCtaKind =
-  "register" | "verify" | "set-max" | "bid" | "result" | "view";
+  "register" | "verify" | "watch" | "bid" | "result" | "view";
 
 /** The resolved call to action. */
 export interface LotCta {
@@ -47,15 +53,22 @@ export interface LotCta {
  * - Signed out: "Register to bid" before the start, "Bid R x" once live
  *   (the click sends them to sign in).
  * - Signed in but not verified: "Verify to bid".
- * - Verified: "Set max bid" before the start, "Bid R x" once live.
+ * - Verified: "Watch lot" ("Watching" when on) before the start, "Bid R x"
+ *   once live.
+ * - The seller's own lot: "View lot" (sellers cannot bid on it).
  *
- * @param input - Phase, session, verification and the next bid
+ * The result is `bid` only when the backend would accept a bid: bidding is
+ * open and the user is not the seller.
+ *
+ * @param input - Phase, session, verification, ownership, watch state and the next bid
  * @returns The call to action kind and label
  */
 export function getLotCta(input: LotCtaInput): LotCta {
-  const { phase, signedIn, isVerified, nextBid } = input;
+  const { phase, signedIn, isVerified, nextBid, isWatched, isOwnLot } = input;
   if (phase === "ended") return { kind: "result", label: "View result" };
-  if (phase === "unavailable") return { kind: "view", label: "View lot" };
+  if (phase === "unavailable" || isOwnLot) {
+    return { kind: "view", label: "View lot" };
+  }
 
   if (!signedIn) {
     return phase === "live"
@@ -65,5 +78,5 @@ export function getLotCta(input: LotCtaInput): LotCta {
   if (isVerified === false) return { kind: "verify", label: "Verify to bid" };
   return phase === "live"
     ? { kind: "bid", label: `Bid ${formatRand(nextBid)}` }
-    : { kind: "set-max", label: "Set max bid" };
+    : { kind: "watch", label: isWatched ? "Watching" : "Watch lot" };
 }

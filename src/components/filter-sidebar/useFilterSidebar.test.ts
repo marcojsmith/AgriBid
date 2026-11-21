@@ -59,10 +59,12 @@ describe("useFilterSidebar hook", () => {
     mockSearchParams = new URLSearchParams();
     preferences = null;
     (useSession as Mock).mockReturnValue({ data: null });
-    (useQuery as Mock).mockImplementation((apiPath: string) => {
+    (useQuery as Mock).mockImplementation((apiPath: string, args?: unknown) => {
       if (apiPath === "auctions:getActiveMakes")
         return ["John Deere", "Case IH"];
-      if (apiPath === "userPreferences:getMyPreferences") return preferences;
+      // Like Convex, a skipped query returns undefined.
+      if (apiPath === "userPreferences:getMyPreferences")
+        return args === "skip" ? undefined : preferences;
       return undefined;
     });
     (useMutation as Mock).mockReturnValue(mockUpdateMyPreferences);
@@ -329,6 +331,30 @@ describe("useFilterSidebar hook", () => {
 
     expect(result.current.filters.status).toBe("closed");
     expect(result.current.filters.make).toBe("Case IH");
+  });
+
+  it("keeps removed filters removed across remounts when saved defaults are not applied", () => {
+    (useSession as Mock).mockReturnValue({ data: { user: { id: "u1" } } });
+    preferences = { defaultMake: "John Deere", defaultMinYear: 2018 };
+    // The event page's phone sheet remounts the hook on every open. The URL
+    // holds no make (the user removed that chip), so it must stay empty.
+    for (let i = 0; i < 2; i++) {
+      const { result, unmount } = renderHook(() =>
+        useFilterSidebar({ hideStatus: true, applySavedDefaults: false })
+      );
+      expect(result.current.filters.make).toBe("");
+      expect(result.current.filters.minYear).toBe("");
+      expect(result.current.hasFilters).toBe(false);
+      unmount();
+    }
+    // The saved defaults are not even requested.
+    const calls = (useQuery as Mock).mock.calls as unknown[][];
+    expect(
+      calls.filter(
+        ([ref, args]) =>
+          ref === "userPreferences:getMyPreferences" && args !== "skip"
+      )
+    ).toHaveLength(0);
   });
 
   it("re-applies preferences after the signed-in user changes", () => {

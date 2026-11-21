@@ -122,7 +122,7 @@ describe("AuctionContainerDetail Page", () => {
     );
     renderPage();
     expect(screen.getByText("Live")).toBeInTheDocument();
-    expect(screen.getByText("First lot closes in")).toBeInTheDocument();
+    expect(screen.getByText("Sale closes in")).toBeInTheDocument();
   });
 
   it("shows an ended sale as closed with no countdown", () => {

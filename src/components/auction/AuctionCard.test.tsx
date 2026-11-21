@@ -209,12 +209,41 @@ describe("AuctionCard", () => {
       expect(screen.queryByText(/Not Started/i)).not.toBeInTheDocument();
     });
 
-    it("pre-start verified user: Set max bid opens the lot", () => {
+    it("pre-start verified user: Watch lot toggles the watchlist (no pre-start bid exists)", async () => {
+      mockToggleWatchlist.mockResolvedValue(true);
       renderCard(upcoming);
-      expect(screen.getByRole("link", { name: "Set max bid" })).toHaveAttribute(
+      const watch = screen.getByRole("button", { name: "Watch lot" });
+      expect(watch).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(watch);
+      await waitFor(() => {
+        expect(mockToggleWatchlist).toHaveBeenCalledWith({ lotId: "lot123" });
+      });
+      expect(
+        await screen.findByRole("button", { name: "Watching" })
+      ).toHaveAttribute("aria-pressed", "true");
+      expect(screen.queryByText(/max bid/i)).not.toBeInTheDocument();
+    });
+
+    it("pre-start verified user already watching sees Watching", () => {
+      renderCard(upcoming, { isWatched: true });
+      expect(screen.getByRole("button", { name: "Watching" })).toBeVisible();
+    });
+
+    it("the seller's own lot offers View lot, never Bid", () => {
+      (useSession as Mock).mockReturnValue({
+        data: { user: { id: "seller1" } },
+      });
+      const { unmount } = renderCard();
+      expect(screen.getByRole("link", { name: "View lot" })).toHaveAttribute(
         "href",
         "/auction/lot123"
       );
+      expect(
+        screen.queryByRole("button", { name: /^Bid R/ })
+      ).not.toBeInTheDocument();
+      unmount();
+      renderCard(upcoming);
+      expect(screen.getByRole("link", { name: "View lot" })).toBeVisible();
     });
 
     it("signed in but unverified: Verify to bid links to /kyc", () => {
@@ -231,7 +260,7 @@ describe("AuctionCard", () => {
       (useUserProfile as Mock).mockReturnValue(undefined);
       renderCard(upcoming);
       expect(
-        screen.getByRole("link", { name: "Set max bid" })
+        screen.getByRole("button", { name: "Watch lot" })
       ).toBeInTheDocument();
     });
 
