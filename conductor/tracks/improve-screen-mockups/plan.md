@@ -20,10 +20,11 @@ Reference for every WP: `spec.md`, `mockups.html` and `final/*.png` in this fold
 | 5   | Auction event screen                                                                                                                                              | low                                                         | 2, 3a, 3b | in review (#406) |                                                                             |      |
 | 6   | Lot detail screen (gallery, bid panel states, fees, mobile sticky bar)                                                                                            | **risky** (bid flow UI)                                     | 2, 3b, 3c | todo             |                                                                             |      |
 | 6b  | Seed realism: SA locations/provinces, a distinct photo per lot, realistic ZAR prices, before WP7 scoring                                                          | low                                                         | 6         | todo             |                                                                             |      |
+| 6c  | Pre-start max bids: store proxy max bids before the sale opens, activate at start, tie-break rules; update getLotCta pre-start to "Set max bid"                   | **risky** (core bidding engine)                             | 6         | todo             |                                                                             |      |
 | 7   | Rubric re-score of the real app (Opus agent, coordinator) + fix round on the same worker                                                                          | review                                                      | 4, 5, 6   | todo             |                                                                             |      |
 | 8   | **Stop: ask the owner to walk the rest of the app**, then open a rollout track                                                                                    | owner                                                       | 7         | todo             |                                                                             |      |
 
-Order: 0 → 1 → 2 → 3a → 3b → 3c → 4 → 4b → 4c → 5 → 6 → 6b → 7 → 8. The 3x backend WPs can run before WP2 if WP2 stalls (no code overlap).
+Order: 0 → 1 → 2 → 3a → 3b → 3c → 4 → 4b → 4c → 5 → 6 → 6b → 6c → 7 → 8. The 3x backend WPs can run before WP2 if WP2 stalls (no code overlap).
 
 ## Work packages
 
