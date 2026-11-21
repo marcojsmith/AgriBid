@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-11-16
+Last updated: 2026-11-21
 
 ## How to keep this file useful
 
@@ -14,6 +14,7 @@ Last updated: 2026-11-16
 
 ## In progress
 
+- Branch `feat/design-foundations` (track `improve-screen-mockups`, WP1): app-wide design tokens, Lora, focus ring and restyled shadcn primitives. Other screens are not migrated here.
 - Branch `feat/toggleable-cron-jobs`: admin Performance page gets per-job on/off switches for every cron (`convex/cronJobs.ts` gated wrappers + `convex/cronRegistry.ts`); jobs default to **off**. Convex disabled both deployments on 2026-10-20 (Free plan limits exceeded by the 1-minute settle cron); after deploying this to prod and the plan resets/upgrades, enable jobs from `/admin/performance`.
 - Stacked PRs #374 -> #378 (Radix umbrella, backend dedupe, money-path integration test, render follow-ups, component splits). Each bases on the previous; #378 targets `main`.
 - Branch `feat/marketplace-auction-cards`: `/` shows auction-event cards with Active/Closed/All tabs (search still returns lots); `/auctions/:id` reuses the full lot browser scoped via `getActiveLots(auctionId)`.

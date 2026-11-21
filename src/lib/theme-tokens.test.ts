@@ -11,7 +11,9 @@ const ALLOWLIST: string[] = [];
 const PROJECT_ROOT = process.cwd();
 
 function isAllowlisted(filePath: string): boolean {
-  const relativePath = path.relative(PROJECT_ROOT, filePath).replace(/\\/g, "/");
+  const relativePath = path
+    .relative(PROJECT_ROOT, filePath)
+    .replace(/\\/g, "/");
   for (const pattern of ALLOWLIST) {
     if (pattern.includes("*")) {
       const regex = new RegExp(`^${pattern.replace(/\*/g, ".*")}$`);
@@ -23,7 +25,9 @@ function isAllowlisted(filePath: string): boolean {
 }
 
 function isInUiPrimitives(filePath: string): boolean {
-  const relativePath = path.relative(PROJECT_ROOT, filePath).replace(/\\/g, "/");
+  const relativePath = path
+    .relative(PROJECT_ROOT, filePath)
+    .replace(/\\/g, "/");
   return relativePath.startsWith(UI_PRIMITIVES_DIR);
 }
 
@@ -92,5 +96,130 @@ describe("theme tokens guard", () => {
     }
 
     expect(violations).toHaveLength(0);
+  });
+});
+
+type Hsl = readonly [number, number, number];
+
+const INDEX_CSS = fs.readFileSync(
+  path.join(process.cwd(), "src/index.css"),
+  "utf-8"
+);
+
+/**
+ * Extract the `--name: H S% L%` declarations of one selector block.
+ *
+ * @param selector - The CSS selector whose block is read.
+ * @returns Map of token name to its HSL triple.
+ */
+function readTokens(selector: ":root" | ".dark"): Map<string, Hsl> {
+  const start = INDEX_CSS.indexOf(`${selector} {`);
+  if (start === -1) throw new Error(`Missing ${selector} block in index.css`);
+  const end = INDEX_CSS.indexOf("}", start);
+  const block = INDEX_CSS.slice(start, end);
+  const tokens = new Map<string, Hsl>();
+  for (const m of block.matchAll(
+    /--([a-z0-9-]+):\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/g
+  )) {
+    const [, name, h, s, l] = m;
+    if (name && h && s && l) {
+      tokens.set(name, [Number(h), Number(s), Number(l)]);
+    }
+  }
+  return tokens;
+}
+
+function toRgb([h, s, l]: Hsl): [number, number, number] {
+  const sat = s / 100;
+  const light = l / 100;
+  const a = sat * Math.min(light, 1 - light);
+  const f = (n: number): number => {
+    const k = (n + h / 30) % 12;
+    return light - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+  };
+  return [f(0), f(8), f(4)];
+}
+
+function luminance(color: Hsl): number {
+  const [r = 0, g = 0, b = 0] = toRgb(color).map((v) =>
+    v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  );
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: Hsl, b: Hsl): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+const WHITE: Hsl = [0, 0, 100];
+const STATUSES = ["live", "soon", "urgent", "sold", "passed"] as const;
+
+/** [foreground token, background token] pairs that must reach AA (4.5:1). */
+const TOKEN_PAIRS: [string, string][] = [
+  ["foreground", "background"],
+  ["card-foreground", "card"],
+  ["popover-foreground", "popover"],
+  ["primary-foreground", "primary"],
+  ["primary", "background"],
+  ["primary", "primary-soft"],
+  ["foreground", "primary-soft"],
+  ["btn-foreground", "btn"],
+  ["secondary-foreground", "secondary"],
+  ["secondary", "background"],
+  ["muted-foreground", "background"],
+  ["muted-foreground", "card"],
+  ["muted-foreground", "muted"],
+  ["foreground", "muted"],
+  ["accent-foreground", "accent"],
+  ["destructive-foreground", "destructive"],
+  ["success-foreground", "success"],
+  ["warning-foreground", "warning"],
+  ["hero-foreground", "hero"],
+  ["hero-muted", "hero"],
+  ["ok-fg", "background"],
+  ["ok-fg", "card"],
+  ["warn-fg", "background"],
+  ["warn-fg", "card"],
+  ...STATUSES.map((s): [string, string] => [`${s}-fg`, `${s}-soft`]),
+  ...STATUSES.map((s): [string, string] => [`${s}-fg`, "background"]),
+];
+
+describe.each([":root", ".dark"] as const)("WCAG AA contrast (%s)", (sel) => {
+  const tokens = readTokens(sel);
+
+  it.each(TOKEN_PAIRS)("%s on %s is at least 4.5:1", (fg, bg) => {
+    const fgColor = tokens.get(fg);
+    const bgColor = tokens.get(bg);
+    if (!fgColor || !bgColor) {
+      throw new Error(`${fg} or ${bg} missing in ${sel}`);
+    }
+    expect(contrast(fgColor, bgColor)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(STATUSES)("white text on %s-solid is at least 4.5:1", (status) => {
+    const solid = tokens.get(`${status}-solid`);
+    if (!solid) throw new Error(`${status}-solid missing in ${sel}`);
+    expect(contrast(WHITE, solid)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("theme token exposure", () => {
+  it("exposes the new tokens as Tailwind colours and Lora as display font", () => {
+    for (const name of [
+      "primary-soft",
+      "btn",
+      "btn-foreground",
+      "hero",
+      "hero-foreground",
+      "hero-muted",
+      "ok-fg",
+      "warn-fg",
+      ...STATUSES.flatMap((s) => [`${s}-solid`, `${s}-soft`, `${s}-fg`]),
+    ]) {
+      expect(INDEX_CSS).toContain(`--color-${name}:`);
+    }
+    expect(INDEX_CSS).toContain("--font-display:");
   });
 });

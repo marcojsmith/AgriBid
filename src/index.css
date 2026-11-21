@@ -6,6 +6,7 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -37,6 +38,31 @@
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
 
+  /* Design-system tokens (WP1): see docs/architecture/ui-design/theme.md */
+  --color-primary-soft: hsl(var(--primary-soft));
+  --color-btn: hsl(var(--btn));
+  --color-btn-foreground: hsl(var(--btn-foreground));
+  --color-hero: hsl(var(--hero));
+  --color-hero-foreground: hsl(var(--hero-foreground));
+  --color-hero-muted: hsl(var(--hero-muted));
+  --color-ok-fg: hsl(var(--ok-fg));
+  --color-warn-fg: hsl(var(--warn-fg));
+  --color-live-solid: hsl(var(--live-solid));
+  --color-live-soft: hsl(var(--live-soft));
+  --color-live-fg: hsl(var(--live-fg));
+  --color-soon-solid: hsl(var(--soon-solid));
+  --color-soon-soft: hsl(var(--soon-soft));
+  --color-soon-fg: hsl(var(--soon-fg));
+  --color-urgent-solid: hsl(var(--urgent-solid));
+  --color-urgent-soft: hsl(var(--urgent-soft));
+  --color-urgent-fg: hsl(var(--urgent-fg));
+  --color-sold-solid: hsl(var(--sold-solid));
+  --color-sold-soft: hsl(var(--sold-soft));
+  --color-sold-fg: hsl(var(--sold-fg));
+  --color-passed-solid: hsl(var(--passed-solid));
+  --color-passed-soft: hsl(var(--passed-soft));
+  --color-passed-fg: hsl(var(--passed-fg));
+
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -60,24 +86,56 @@
     --card-foreground: 24 10% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 24 10% 10%;
-    --primary: 142 30% 25%; /* Forest Green */
+    --primary: 142 30% 25%; /* Forest green */
     --primary-foreground: 40 30% 98%;
-    --secondary: 35 30% 45%; /* Earthy Brown */
+    --primary-soft: 142 25% 93%;
+    --secondary: 35 30% 40%; /* Earthy brown, darkened from the mockup's 45% for AA text */
     --secondary-foreground: 40 30% 98%;
-    --muted: 40 20% 90%;
-    --muted-foreground: 24 10% 40%;
-    --accent: 142 20% 40%;
-    --accent-foreground: 40 30% 98%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 142 76% 36%;
-    --success-foreground: 142 30% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 38 30% 98%;
-    --border: 24 10% 85%;
-    --input: 24 10% 85%;
+    --muted: 40 20% 92%;
+    --muted-foreground: 24 10% 36%;
+    --accent: 142 25% 93%;
+    --accent-foreground: 24 10% 10%;
+    --destructive: 0 68% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 58% 28%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 88% 34%;
+    --warning-foreground: 0 0% 100%;
+    --border: 24 10% 86%;
+    --input: 24 10% 86%;
     --ring: 142 30% 25%;
-    --radius: 0.5rem;
+    --radius: 0.5rem; /* lg 8px, md 6px, sm 4px */
+
+    /* Filled buttons: same green in both themes, light text */
+    --btn: 142 30% 25%;
+    --btn-foreground: 40 30% 98%;
+
+    /* Hero band */
+    --hero: 142 32% 17%;
+    --hero-foreground: 40 30% 96%;
+    --hero-muted: 142 12% 78%;
+
+    /* Status: solid = badge fill (white text), soft = pill bg, fg = text on soft */
+    --live-solid: 142 58% 28%;
+    --live-soft: 142 45% 92%;
+    --live-fg: 142 60% 24%;
+    --soon-solid: 32 88% 34%;
+    --soon-soft: 38 90% 92%;
+    --soon-fg: 30 90% 28%;
+    --urgent-solid: 0 68% 42%;
+    --urgent-soft: 0 80% 95%;
+    --urgent-fg: 0 68% 40%;
+    --sold-solid: 215 70% 38%;
+    --sold-soft: 215 70% 94%;
+    --sold-fg: 215 70% 32%;
+    --passed-solid: 24 6% 38%;
+    --passed-soft: 40 12% 92%;
+    --passed-fg: 24 8% 32%;
+
+    /* Feedback text */
+    --ok-fg: 142 60% 24%;
+    --warn-fg: 30 90% 28%;
+
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -85,29 +143,57 @@
     --chart-5: 340 75% 55%;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 142 35% 55%; /* Forest green, lifted for dark backgrounds */
+    --background: 150 6% 7%;
+    --foreground: 40 20% 95%;
+    --card: 150 5% 11%;
+    --card-foreground: 40 20% 95%;
+    --popover: 150 5% 11%;
+    --popover-foreground: 40 20% 95%;
+    --primary: 142 35% 58%; /* Forest green, lifted for dark backgrounds */
     --primary-foreground: 142 50% 8%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 142 20% 16%;
-    --accent-foreground: 142 20% 92%;
+    --primary-soft: 142 20% 15%;
+    --secondary: 35 35% 62%;
+    --secondary-foreground: 150 6% 7%;
+    --muted: 150 4% 15%;
+    --muted-foreground: 40 6% 68%;
+    --accent: 142 20% 15%;
+    --accent-foreground: 40 20% 95%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --success: 142 60% 25%;
-    --success-foreground: 142 30% 98%;
-    --warning: 38 80% 25%;
-    --warning-foreground: 38 30% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 142 30% 60%;
+    --success: 142 58% 28%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 88% 34%;
+    --warning-foreground: 0 0% 100%;
+    --border: 150 4% 22%;
+    --input: 150 4% 22%;
+    --ring: 142 35% 58%;
+
+    --btn: 142 36% 32%;
+    --btn-foreground: 40 30% 98%;
+
+    --hero: 142 30% 12%;
+    --hero-foreground: 40 30% 96%;
+    --hero-muted: 142 12% 74%;
+
+    --live-solid: 142 58% 28%;
+    --live-soft: 142 30% 16%;
+    --live-fg: 142 50% 64%;
+    --soon-solid: 32 88% 34%;
+    --soon-soft: 38 40% 16%;
+    --soon-fg: 38 90% 68%;
+    --urgent-solid: 0 68% 42%;
+    --urgent-soft: 0 40% 17%;
+    --urgent-fg: 0 80% 70%;
+    --sold-solid: 215 70% 38%;
+    --sold-soft: 215 35% 17%;
+    --sold-fg: 215 80% 75%;
+    --passed-solid: 24 6% 38%;
+    --passed-soft: 150 4% 18%;
+    --passed-fg: 40 6% 72%;
+
+    --ok-fg: 142 50% 64%;
+    --warn-fg: 38 90% 68%;
+
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -123,4 +209,19 @@
   body {
     @apply bg-background text-foreground;
   }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+}
+
+/* Money, counts and times: fixed-width digits so values don't jitter. */
+@utility num {
+  font-variant-numeric: tabular-nums;
 }
