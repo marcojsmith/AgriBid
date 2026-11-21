@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { formatCurrency, formatNumber } from "./currency";
+import { formatCurrency, formatNumber, formatRand } from "./currency";
 
 describe("formatCurrency", () => {
   it("formats whole numbers", () => {
@@ -59,5 +59,20 @@ describe("formatNumber", () => {
 
   it("groups long fractional numbers correctly", () => {
     expect(formatNumber(1234567.891)).toBe("1 234 567.891");
+  });
+});
+
+describe("formatRand", () => {
+  const N = " ";
+  it("groups with narrow no-break spaces and drops cents", () => {
+    expect(formatRand(200000)).toBe(`R${N}200${N}000`);
+  });
+  it("rounds to the nearest rand", () => {
+    expect(formatRand(1234.5)).toBe(`R${N}1${N}235`);
+    expect(formatRand(0.4)).toBe(`R${N}0`);
+  });
+  it("handles negatives and avoids -R 0", () => {
+    expect(formatRand(-1500)).toBe(`-R${N}1${N}500`);
+    expect(formatRand(-0.2)).toBe(`R${N}0`);
   });
 });

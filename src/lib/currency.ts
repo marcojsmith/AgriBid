@@ -50,3 +50,23 @@ export function formatCurrency(amount: number): string {
     .split(".");
   return `${sign}R ${groupThousands(integerPart)},${fractionalPart}`;
 }
+
+const NNBSP = " ";
+
+/**
+ * Formats a numeric value as whole Rand for display: `R 200 000`.
+ *
+ * Uses narrow no-break spaces (U+202F) for both the symbol gap and the
+ * thousands groups so a price never wraps, and drops cents (rounded to the
+ * nearest rand). Deterministic: no Intl/locale dependencies. Use this for
+ * display of bids, prices and fees; `formatCurrency` keeps cents for
+ * statements.
+ *
+ * @param amount - The numeric value in rand
+ * @returns The display string (e.g. "R 200 000"); negatives are "-R 100"
+ */
+export function formatRand(amount: number): string {
+  const rounded = Math.round(Math.abs(amount));
+  const sign = amount < 0 && rounded !== 0 ? "-" : "";
+  return `${sign}R${NNBSP}${groupThousands(String(rounded)).replace(/ /g, NNBSP)}`;
+}

@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { contrastRatio, readHslTokens, type Hsl } from "./color-contrast";
+
 const PALETTE_CLASS_REGEX =
   /\b(bg|text|border|ring|from|to|via|fill|stroke)-(gray|slate|zinc|neutral|stone|red|green|blue|yellow|amber|orange|emerald|teal|sky|indigo|purple|pink|rose)-[0-9]{2,3}\b/g;
 
@@ -99,59 +101,14 @@ describe("theme tokens guard", () => {
   });
 });
 
-type Hsl = readonly [number, number, number];
-
 const INDEX_CSS = fs.readFileSync(
   path.join(process.cwd(), "src/index.css"),
   "utf-8"
 );
 
-/**
- * Extract the `--name: H S% L%` declarations of one selector block.
- *
- * @param selector - The CSS selector whose block is read.
- * @returns Map of token name to its HSL triple.
- */
-function readTokens(selector: ":root" | ".dark"): Map<string, Hsl> {
-  const start = INDEX_CSS.indexOf(`${selector} {`);
-  if (start === -1) throw new Error(`Missing ${selector} block in index.css`);
-  const end = INDEX_CSS.indexOf("}", start);
-  const block = INDEX_CSS.slice(start, end);
-  const tokens = new Map<string, Hsl>();
-  for (const m of block.matchAll(
-    /--([a-z0-9-]+):\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/g
-  )) {
-    const [, name, h, s, l] = m;
-    if (name && h && s && l) {
-      tokens.set(name, [Number(h), Number(s), Number(l)]);
-    }
-  }
-  return tokens;
-}
-
-function toRgb([h, s, l]: Hsl): [number, number, number] {
-  const sat = s / 100;
-  const light = l / 100;
-  const a = sat * Math.min(light, 1 - light);
-  const f = (n: number): number => {
-    const k = (n + h / 30) % 12;
-    return light - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
-  };
-  return [f(0), f(8), f(4)];
-}
-
-function luminance(color: Hsl): number {
-  const [r = 0, g = 0, b = 0] = toRgb(color).map((v) =>
-    v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
-  );
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function contrast(a: Hsl, b: Hsl): number {
-  const la = luminance(a);
-  const lb = luminance(b);
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-}
+const readTokens = (selector: ":root" | ".dark") =>
+  readHslTokens(INDEX_CSS, selector);
+const contrast = contrastRatio;
 
 const WHITE: Hsl = [0, 0, 100];
 const STATUSES = ["live", "soon", "urgent", "sold", "passed"] as const;
@@ -208,6 +165,32 @@ describe.each([":root", ".dark"] as const)("WCAG AA contrast (%s)", (sel) => {
     const solid = tokens.get(`${status}-solid`);
     if (!solid) throw new Error(`${status}-solid missing in ${sel}`);
     expect(contrast(WHITE, solid)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe.each([":root", ".dark"] as const)("focus ring (%s)", (sel) => {
+  const tokens = readTokens(sel);
+  const ring = tokens.get("ring");
+  const background = tokens.get("background");
+  const btn = tokens.get("btn");
+
+  it("is at least 3:1 (WCAG 1.4.11) against the page background", () => {
+    if (!ring || !background) throw new Error("ring/background missing");
+    expect(contrast(ring, background)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("is at least 3:1 against the filled button it surrounds", () => {
+    if (!ring || !btn) throw new Error("ring/btn missing");
+    // Light: the ring is the button colour itself, separated by the 2px
+    // offset gap, so only the gap (background) contrast matters there.
+    if (sel === ":root") return;
+    expect(contrast(ring, btn)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("is applied through the --ring token with a 2px offset", () => {
+    expect(INDEX_CSS).toMatch(
+      /:focus-visible\s*{[^}]*outline:\s*2px solid hsl\(var\(--ring\)\);[^}]*outline-offset:\s*2px/
+    );
   });
 });
 

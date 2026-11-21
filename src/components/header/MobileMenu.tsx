@@ -191,7 +191,11 @@ export function MobileMenu({
                 </Button>
               )}
 
-              <nav id={secondaryNavId} className="grid grid-cols-2 gap-3" aria-label="User account">
+              <nav
+                id={secondaryNavId}
+                className="grid grid-cols-2 gap-3"
+                aria-label="User account"
+              >
                 {role === "admin" && (
                   <Button
                     variant="outline"
@@ -264,7 +268,7 @@ export function MobileMenu({
               </nav>
               <Button
                 variant="destructive"
-                className="w-full font-semibold text-xs h-14 rounded-md shadow-lg shadow-destructive/10"
+                className="w-full font-semibold text-xs h-14 rounded-md"
                 onClick={async () => {
                   try {
                     await onSignOut();
@@ -282,7 +286,7 @@ export function MobileMenu({
 
           <Unauthenticated>
             <Button
-              className="w-full h-16 text-lg font-bold rounded-lg shadow-xl shadow-primary/20"
+              className="w-full h-16 text-lg font-bold rounded-lg"
               asChild
             >
               <Link to="/login" onClick={onClose}>

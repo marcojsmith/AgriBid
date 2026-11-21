@@ -58,6 +58,12 @@ const Messages = lazy(() => import("./pages/Messages"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+// Dev-only design-system reference. `import.meta.env.DEV` is a build-time constant,
+// so the import (and the page) is removed from production bundles.
+const DesignSystem = import.meta.env.DEV
+  ? lazy(() => import("./pages/DesignSystem"))
+  : null;
+
 /**
  * Global loading fallback for lazy-loaded routes.
  * @returns A loading spinner centered in the viewport
@@ -107,6 +113,7 @@ function withBoundary(element: ReactElement): ReactElement {
  * - "/messages" → Messages inbox (protected, allowedRole="any")
  * - "/messages/:conversationId" → Messages thread view (protected, allowedRole="any")
  * - "/settings" → Settings (protected, allowedRole="any")
+ * - "/design-system" → DesignSystem (development builds only)
  * - "*" → NotFound (catch-all for unknown routes)
  *
  * @returns The root JSX element containing the BrowserRouter, layout and route definitions
@@ -173,18 +180,36 @@ function App() {
               <Route path="/admin/marketplace" element={<AdminMarketplace />} />
               <Route path="/admin/lots" element={<AdminLots />} />
               <Route path="/admin/auctions" element={<AdminAuctions />} />
-              <Route path="/admin/auctions/:id" element={<AdminAuctionDetail />} />
+              <Route
+                path="/admin/auctions/:id"
+                element={<AdminAuctionDetail />}
+              />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/finance" element={<AdminFinance />} />
-              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+              <Route
+                path="/admin/announcements"
+                element={<AdminAnnouncements />}
+              />
               <Route path="/admin/support" element={<AdminSupport />} />
               <Route path="/admin/audit" element={<AdminAudit />} />
-              <Route path="/admin/equipment-catalog" element={<AdminEquipmentCatalog />} />
+              <Route
+                path="/admin/equipment-catalog"
+                element={<AdminEquipmentCatalog />}
+              />
               <Route path="/admin/settings" element={<AdminSettings />} />
-              <Route path="/admin/error-reports" element={<AdminErrorReports />} />
-              <Route path="/admin/error-reporting" element={<AdminErrorReportingSettings />} />
+              <Route
+                path="/admin/error-reports"
+                element={<AdminErrorReports />}
+              />
+              <Route
+                path="/admin/error-reporting"
+                element={<AdminErrorReportingSettings />}
+              />
               <Route path="/admin/seo" element={<AdminSEOSettings />} />
-              <Route path="/admin/business-info" element={<AdminBusinessInfo />} />
+              <Route
+                path="/admin/business-info"
+                element={<AdminBusinessInfo />}
+              />
               <Route path="/admin/faq" element={<AdminFAQ />} />
               <Route path="/admin/fees" element={<AdminFees />} />
               <Route path="/admin/performance" element={<AdminPerformance />} />
@@ -237,6 +262,9 @@ function App() {
                 </RoleProtectedRoute>
               }
             />
+            {DesignSystem ? (
+              <Route path="/design-system" element={<DesignSystem />} />
+            ) : null}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

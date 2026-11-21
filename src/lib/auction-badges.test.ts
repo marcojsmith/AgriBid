@@ -5,6 +5,7 @@ import {
   FLAG_REASON_BADGE_VARIANTS,
   isEditableStatus,
   getAuctionStatusLabel,
+  deriveDisplayStatus,
 } from "./auction-badges";
 
 describe("AUCTION_STATUS_BADGE_VARIANTS", () => {
@@ -74,5 +75,53 @@ describe("getAuctionStatusLabel", () => {
     expect(getAuctionStatusLabel("pending_review_again")).toBe(
       "pending review again"
     );
+  });
+});
+
+describe("deriveDisplayStatus", () => {
+  const now = Date.UTC(2026, 10, 21, 10, 0);
+  const H = 3_600_000;
+
+  it("outcome wins over time", () => {
+    expect(
+      deriveDisplayStatus({ now, endTime: now + H, outcome: "sold" })
+    ).toEqual({ kind: "sold" });
+    expect(deriveDisplayStatus({ now, outcome: "passed" })).toEqual({
+      kind: "passed",
+    });
+  });
+
+  it("is opens before the start time", () => {
+    expect(
+      deriveDisplayStatus({ now, startTime: now + 1, endTime: now + 5 * H })
+    ).toEqual({ kind: "opens", startTime: now + 1 });
+  });
+
+  it("is passed once ended without an outcome", () => {
+    expect(deriveDisplayStatus({ now, endTime: now })).toEqual({
+      kind: "passed",
+    });
+  });
+
+  it("is closing soon under 24h and urgent under 1h", () => {
+    expect(deriveDisplayStatus({ now, endTime: now + 24 * H - 1 })).toEqual({
+      kind: "closing-soon",
+      urgent: false,
+    });
+    expect(deriveDisplayStatus({ now, endTime: now + H - 1 })).toEqual({
+      kind: "closing-soon",
+      urgent: true,
+    });
+    expect(deriveDisplayStatus({ now, endTime: now + H })).toEqual({
+      kind: "closing-soon",
+      urgent: false,
+    });
+  });
+
+  it("is live otherwise, including with no end time", () => {
+    expect(
+      deriveDisplayStatus({ now, startTime: now - H, endTime: now + 24 * H })
+    ).toEqual({ kind: "live" });
+    expect(deriveDisplayStatus({ now })).toEqual({ kind: "live" });
   });
 });

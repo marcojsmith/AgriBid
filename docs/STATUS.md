@@ -14,7 +14,7 @@ Last updated: 2026-11-21
 
 ## In progress
 
-- Branch `feat/design-foundations` (track `improve-screen-mockups`, WP1): app-wide design tokens, Lora, focus ring and restyled shadcn primitives. Other screens are not migrated here.
+- Branch `feat/design-system-components` (track `improve-screen-mockups`, WP2): `ds` domain components, `formatRand`/`formatSastDate`, design-system doc + ADR 0015, dev-only `/design-system` page. WP1 (#397) is merged. Home, Auction event and Lot detail are not migrated here.
 - Track [`improve-screen-mockups`](../conductor/tracks/improve-screen-mockups/plan.md): new Home / Auction event / Lot detail design plus an app-wide design system, delivered as WP0 to WP8 (tracker in the plan). Rollout to the rest of the app is a separate track after owner review.
 - Branch `feat/toggleable-cron-jobs` (1 commit not yet on `main`): admin Performance page gets per-job on/off switches for every cron (`convex/cronJobs.ts` gated wrappers + `convex/cronRegistry.ts`); jobs default to **off**. Convex disabled both deployments on 2026-10-20 (Free plan limits exceeded by the 1-minute settle cron); after deploying this to prod and the plan resets/upgrades, enable jobs from `/admin/performance`.
 - Stacked PRs #374 -> #378 (Radix umbrella, backend dedupe, money-path integration test, render follow-ups, component splits). Each bases on the previous; #378 targets `main`.
