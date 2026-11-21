@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { mutation, query } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
@@ -6,6 +6,7 @@ import type { Doc } from "../_generated/dataModel";
 import { logAudit } from "../admin_utils";
 import { requireAdmin } from "../lib/auth";
 import {
+  assertPublishable,
   ensureLegalPageDraftRows,
   validateLegalContent,
 } from "../lib/legalPages";
@@ -40,7 +41,7 @@ async function getLegalPageRow(
     .query("legalPages")
     .withIndex("by_slug", (q) => q.eq("slug", slug))
     .first();
-  if (!page) throw new Error("Legal page not found");
+  if (!page) throw new ConvexError("Legal page not found");
   return page;
 }
 
@@ -111,19 +112,32 @@ export const createMissingLegalPageDrafts = mutation({
  * published, so the change is live immediately. Admin only.
  */
 export const updateLegalPage = mutation({
-  args: { slug: legalSlugValidator, title: v.string(), body: v.string() },
+  args: {
+    slug: legalSlugValidator,
+    title: v.string(),
+    body: v.string(),
+    /** The `updatedAt` the editor loaded; a mismatch means someone else saved first. */
+    expectedUpdatedAt: v.number(),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const { title, body } = validateLegalContent(args.title, args.body);
     const page = await getLegalPageRow(ctx, args.slug);
+    if (page.updatedAt !== args.expectedUpdatedAt) {
+      throw new ConvexError(
+        "This page was changed by someone else. Reload the page and try again."
+      );
+    }
     if (page.isPublished && !body.trim()) {
-      throw new Error("A published page cannot have an empty body");
+      throw new ConvexError("A published page cannot have an empty body");
     }
     await ctx.db.patch("legalPages", page._id, {
       title,
       body,
-      updatedAt: Date.now(),
+      // Strictly increasing, so `updatedAt` works as an edit token even for
+      // two saves within the same millisecond.
+      updatedAt: Math.max(Date.now(), page.updatedAt + 1),
       updatedBy: admin.userId ?? admin._id,
     });
     // Details carry sizes only, never the body text.
@@ -139,7 +153,8 @@ export const updateLegalPage = mutation({
 
 /**
  * Publish or unpublish a legal page. Publishing stamps `publishedAt` and needs
- * a non-empty body; unpublishing keeps the body. Admin only.
+ * reviewed content (no draft notice, not the unedited starter template);
+ * unpublishing keeps the body. Admin only.
  */
 export const setLegalPagePublished = mutation({
   args: { slug: legalSlugValidator, isPublished: v.boolean() },
@@ -150,9 +165,7 @@ export const setLegalPagePublished = mutation({
     // Publishing changes visibility only, so `updatedAt` (the public "Last
     // updated" date) and `updatedBy` keep describing the last content edit.
     if (args.isPublished) {
-      if (!page.body.trim()) {
-        throw new Error("Cannot publish a page with an empty body");
-      }
+      assertPublishable(page);
       await ctx.db.patch("legalPages", page._id, {
         isPublished: true,
         publishedAt: Date.now(),

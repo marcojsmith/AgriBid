@@ -76,6 +76,10 @@ describe("LegalPage", () => {
       "href",
       "/"
     );
+    // Only the title, the notice and the home link: no stored text at all.
+    expect(document.body.textContent).toBe(
+      "Privacy policyThis page is not published yet.Back to home"
+    );
     await waitFor(() => {
       expect(
         document.querySelector('meta[name="robots"]')?.getAttribute("content")

@@ -1,5 +1,9 @@
+import { ConvexError } from "convex/values";
+
 import type { MutationCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import {
+  DRAFT_NOTICE_MARKER,
   LEGAL_BODY_MAX_LENGTH,
   LEGAL_TEMPLATE_LIST,
   LEGAL_TITLE_MAX_LENGTH,
@@ -58,16 +62,48 @@ export function validateLegalContent(
   body: string
 ): { title: string; body: string } {
   const trimmedTitle = title.trim();
-  if (!trimmedTitle) throw new Error("Title is required");
+  if (!trimmedTitle) throw new ConvexError("Title is required");
   if (trimmedTitle.length > LEGAL_TITLE_MAX_LENGTH) {
-    throw new Error(
+    throw new ConvexError(
       `Title must be ${LEGAL_TITLE_MAX_LENGTH.toLocaleString("en-ZA")} characters or fewer`
     );
   }
   if (body.length > LEGAL_BODY_MAX_LENGTH) {
-    throw new Error(
+    throw new ConvexError(
       `Body must be ${LEGAL_BODY_MAX_LENGTH.toLocaleString("en-ZA")} characters or fewer`
     );
   }
   return { title: trimmedTitle, body };
+}
+
+/**
+ * Normalises line endings and surrounding whitespace for comparison.
+ *
+ * @param text - The text to normalise.
+ * @returns The text with LF line endings and no surrounding whitespace.
+ */
+const normalise = (text: string): string => text.replace(/\r\n/g, "\n").trim();
+
+/**
+ * Refuse to publish a page that is empty, invalid, still carries the draft
+ * notice or is identical to its starter template.
+ *
+ * @param page - The stored page row.
+ * @throws ConvexError with an admin-readable message when it must not go live.
+ */
+export function assertPublishable(page: Doc<"legalPages">): void {
+  if (!page.body.trim()) {
+    throw new ConvexError("Cannot publish a page with an empty body");
+  }
+  // Re-validate stored content (title present, lengths within limits).
+  validateLegalContent(page.title, page.body);
+  const template = LEGAL_TEMPLATE_LIST.find((t) => t.slug === page.slug);
+  if (
+    page.body.toLowerCase().includes(DRAFT_NOTICE_MARKER.toLowerCase()) ||
+    (template && normalise(page.body) === normalise(template.body))
+  ) {
+    throw new ConvexError(
+      `This page still contains the "${DRAFT_NOTICE_MARKER}" notice or the unedited starter template. Complete and review the text, and remove the notice, before publishing.`
+    );
+  }
 }

@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { toast } from "sonner";
 
 import AdminLegal from "./AdminLegal";
@@ -139,6 +140,7 @@ describe("AdminLegal", () => {
         slug: "terms",
         title: "Terms of use",
         body: "## Starter for terms\n\n[Describe it]",
+        expectedUpdatedAt: Date.UTC(2026, 10, 21, 9, 0),
       });
     });
     expect(toast.success).toHaveBeenCalledWith("Legal page saved");
@@ -193,6 +195,31 @@ describe("AdminLegal", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalled();
+    });
+  });
+
+  it("shows the server's publish-guard message in a toast", async () => {
+    const message =
+      'This page still contains the "Draft, needs legal review" notice or the unedited starter template.';
+    setLegalPagePublished.mockRejectedValue(new ConvexError(message));
+    render(<AdminLegal />);
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(message);
+    });
+  });
+
+  it("shows the conflict message when someone else saved first", async () => {
+    const message =
+      "This page was changed by someone else. Reload the page and try again.";
+    updateLegalPage.mockRejectedValue(new ConvexError(message));
+    render(<AdminLegal />);
+    setValue(screen.getByLabelText("Title"), "Edited");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(message);
     });
   });
 

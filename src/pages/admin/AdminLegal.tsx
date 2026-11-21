@@ -74,7 +74,12 @@ function LegalPageEditor({ page }: LegalPageEditorProps) {
   const save = async () => {
     setIsBusy(true);
     try {
-      await updateLegalPage({ slug: page.slug, title, body });
+      await updateLegalPage({
+        slug: page.slug,
+        title,
+        body,
+        expectedUpdatedAt: page.updatedAt,
+      });
       toast.success("Legal page saved");
       setPending(null);
     } catch (err) {

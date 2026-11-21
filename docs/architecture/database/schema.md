@@ -874,5 +874,6 @@ The Terms, Privacy policy and PAIA manual: one row per slug, admin-edited markdo
 
 - `legal:getLegalPage` returns `null` for an unpublished or missing page; `legal:getPublishedLegalSlugs` drives the footer links.
 - `legal:ensureLegalPageDrafts` (called by the seed, including `weeklyReset` on production) only creates missing rows, always unpublished, and never touches an existing row.
+- `updateLegalPage` takes `expectedUpdatedAt` and rejects a stale save; `setLegalPagePublished` refuses a body that still has the draft notice or equals the starter template, and re-validates title and body limits. User-facing errors are `ConvexError`s so the message reaches the editor in production.
 - Admin writes (`admin:legal.updateLegalPage`, `setLegalPagePublished`, `createMissingLegalPageDrafts`) require the admin role and write an audit entry (action, slug and sizes only, never the body).
 - Rendered with `react-markdown` with raw HTML disabled, images disallowed and the default safe URL transform; do not add `rehype-raw`.

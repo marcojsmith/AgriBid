@@ -69,6 +69,22 @@ describe("MarkdownContent", () => {
     expect(container.innerHTML).not.toMatch(/href="\s*javascript:/i);
   });
 
+  it("neutralises reference-style links that point at javascript:", () => {
+    const { container } = render(
+      <MarkdownContent
+        markdown={
+          "Click [x][1] or [y][2] or <javascript:alert(1)>\n\n[1]: javascript:alert(1)\n[2]: JaVaScRiPt:alert(2)"
+        }
+      />
+    );
+    // The unsafe protocol may survive as visible text, but never as a URL.
+    expect(container.innerHTML).not.toMatch(/(href|src)="\s*javascript:/i);
+    for (const a of Array.from(container.querySelectorAll("a"))) {
+      expect(a.getAttribute("href") ?? "").not.toMatch(/^\s*javascript:/i);
+    }
+    expect(screen.getByText("x")).toBeInTheDocument();
+  });
+
   it("keeps safe links and opens external ones in a new tab safely", () => {
     render(
       <MarkdownContent

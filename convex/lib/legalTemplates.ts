@@ -19,6 +19,9 @@ export const LEGAL_TITLE_MAX_LENGTH = 200;
 /** Maximum length of a legal page body (markdown), in characters. */
 export const LEGAL_BODY_MAX_LENGTH = 100_000;
 
+/** Text that marks a page as an unreviewed draft; publishing is refused while it is present. */
+export const DRAFT_NOTICE_MARKER = "Draft, needs legal review";
+
 /** Banner placed at the top of every starter template. */
 const DRAFT_NOTICE =
   "> **Draft, needs legal review.** This is a starter outline, not final legal text. Replace every bracketed note with reviewed wording before publishing.";
