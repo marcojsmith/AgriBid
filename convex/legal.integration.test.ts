@@ -307,6 +307,43 @@ describe("legal pages: admin functions", () => {
     expect(await auditRows(t, "unpublish_legal_page")).toHaveLength(1);
   });
 
+  it("keeps the public updated date when publishing and unpublishing, and refuses emptying a live page", async () => {
+    const t = createTestContext();
+    await seedUsers(t);
+    await t.mutation(internal.legal.ensureLegalPageDrafts, {});
+    const admin = asAdmin(t);
+    await admin.mutation(api.admin.legal.updateLegalPage, {
+      slug: "terms",
+      title: "Terms",
+      body: "Real text",
+    });
+    const edited = await t.run((ctx) => ctx.db.query("legalPages").first());
+    await admin.mutation(api.admin.legal.setLegalPagePublished, {
+      slug: "terms",
+      isPublished: true,
+    });
+    const page = await t.query(api.legal.getLegalPage, { slug: "terms" });
+    expect(page?.updatedAt).toBe(edited?.updatedAt);
+
+    await expect(
+      admin.mutation(api.admin.legal.updateLegalPage, {
+        slug: "terms",
+        title: "Terms",
+        body: "  ",
+      })
+    ).rejects.toThrow("empty body");
+    await admin.mutation(api.admin.legal.setLegalPagePublished, {
+      slug: "terms",
+      isPublished: false,
+    });
+    // Once unpublished, a blank body is allowed again (it is only a draft).
+    await admin.mutation(api.admin.legal.updateLegalPage, {
+      slug: "terms",
+      title: "Terms",
+      body: "",
+    });
+  });
+
   it("createMissingLegalPageDrafts fills gaps once and audits only when it created rows", async () => {
     const t = createTestContext();
     await seedUsers(t);

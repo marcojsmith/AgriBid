@@ -117,6 +117,9 @@ export const updateLegalPage = mutation({
     const admin = await requireAdmin(ctx);
     const { title, body } = validateLegalContent(args.title, args.body);
     const page = await getLegalPageRow(ctx, args.slug);
+    if (page.isPublished && !body.trim()) {
+      throw new Error("A published page cannot have an empty body");
+    }
     await ctx.db.patch("legalPages", page._id, {
       title,
       body,
@@ -142,25 +145,20 @@ export const setLegalPagePublished = mutation({
   args: { slug: legalSlugValidator, isPublished: v.boolean() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    await requireAdmin(ctx);
     const page = await getLegalPageRow(ctx, args.slug);
-    const now = Date.now();
+    // Publishing changes visibility only, so `updatedAt` (the public "Last
+    // updated" date) and `updatedBy` keep describing the last content edit.
     if (args.isPublished) {
       if (!page.body.trim()) {
         throw new Error("Cannot publish a page with an empty body");
       }
       await ctx.db.patch("legalPages", page._id, {
         isPublished: true,
-        publishedAt: now,
-        updatedAt: now,
-        updatedBy: admin.userId ?? admin._id,
+        publishedAt: Date.now(),
       });
     } else {
-      await ctx.db.patch("legalPages", page._id, {
-        isPublished: false,
-        updatedAt: now,
-        updatedBy: admin.userId ?? admin._id,
-      });
+      await ctx.db.patch("legalPages", page._id, { isPublished: false });
     }
     await logAudit(ctx, {
       action: args.isPublished ? "publish_legal_page" : "unpublish_legal_page",

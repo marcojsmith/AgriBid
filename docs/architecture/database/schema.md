@@ -856,15 +856,15 @@ The Terms, Privacy policy and PAIA manual: one row per slug, admin-edited markdo
 
 ### Fields
 
-| Field         | Type                             | Required | Description                                                        |
-| ------------- | -------------------------------- | -------- | ------------------------------------------------------------------ |
-| `slug`        | `"terms" \| "privacy" \| "paia"` | Yes      | Which page (also the public route)                                 |
-| `title`       | `string`                         | Yes      | Page title (1 to 200 characters)                                   |
-| `body`        | `string`                         | Yes      | Markdown, at most 100,000 characters                               |
-| `isPublished` | `boolean`                        | Yes      | Public only when true; drafts are never returned by public queries |
-| `publishedAt` | `number`                         | No       | Set on publish; kept when unpublished                              |
-| `updatedAt`   | `number`                         | Yes      | Last edit or publish change; shown to the public as "Last updated" |
-| `updatedBy`   | `string`                         | Yes      | Admin user id, or `SYSTEM` for seeded drafts                       |
+| Field         | Type                             | Required | Description                                                                                       |
+| ------------- | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `slug`        | `"terms" \| "privacy" \| "paia"` | Yes      | Which page (also the public route)                                                                |
+| `title`       | `string`                         | Yes      | Page title (1 to 200 characters)                                                                  |
+| `body`        | `string`                         | Yes      | Markdown, at most 100,000 characters                                                              |
+| `isPublished` | `boolean`                        | Yes      | Public only when true; drafts are never returned by public queries                                |
+| `publishedAt` | `number`                         | No       | Set on publish; kept when unpublished                                                             |
+| `updatedAt`   | `number`                         | Yes      | Last content edit (publish and unpublish do not change it); shown to the public as "Last updated" |
+| `updatedBy`   | `string`                         | Yes      | Admin user id, or `SYSTEM` for seeded drafts                                                      |
 
 ### Indexes
 

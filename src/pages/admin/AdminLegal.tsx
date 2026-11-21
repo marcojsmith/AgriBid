@@ -39,7 +39,7 @@ type AdminLegalPage = FunctionReturnType<
 >[number];
 
 /** The confirm dialog currently open, if any. */
-type PendingAction = "save" | "publish" | null;
+type PendingAction = "save" | "publish" | "unpublish" | null;
 
 /** Props for {@link LegalPageEditor}. */
 interface LegalPageEditorProps {
@@ -67,7 +67,8 @@ function LegalPageEditor({ page }: LegalPageEditorProps) {
   const [pending, setPending] = useState<PendingAction>(null);
 
   const meta = LEGAL_PAGE_META.find((m) => m.slug === page.slug);
-  const isDirty = title !== page.title || body !== page.body;
+  // The server trims the title, so compare trimmed to avoid a permanent dirty state.
+  const isDirty = title.trim() !== page.title || body !== page.body;
   const titleOk = title.trim().length > 0;
 
   const save = async () => {
@@ -102,8 +103,7 @@ function LegalPageEditor({ page }: LegalPageEditorProps) {
   };
 
   const handlePublishClick = () => {
-    if (page.isPublished) void changePublished(false);
-    else setPending("publish");
+    setPending(page.isPublished ? "unpublish" : "publish");
   };
 
   return (
@@ -207,14 +207,17 @@ function LegalPageEditor({ page }: LegalPageEditorProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pending === "publish"
-                ? `Publish ${page.title}?`
-                : "Save changes to a live page?"}
+              {pending === "publish" && `Publish ${page.title}?`}
+              {pending === "unpublish" && `Unpublish ${page.title}?`}
+              {pending === "save" && "Save changes to a live page?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {pending === "publish"
-                ? "The page becomes public at once and is linked from the site footer. Make sure the text has been reviewed by a legal practitioner."
-                : "This page is published, so this change goes live immediately."}
+              {pending === "publish" &&
+                "The page becomes public at once and is linked from the site footer. Make sure the text has been reviewed by a legal practitioner."}
+              {pending === "unpublish" &&
+                "The page is taken down at once and its footer link is removed. The text is kept."}
+              {pending === "save" &&
+                "This page is published, so this change goes live immediately."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -224,10 +227,13 @@ function LegalPageEditor({ page }: LegalPageEditorProps) {
               onClick={(e) => {
                 e.preventDefault();
                 if (pending === "publish") void changePublished(true);
+                else if (pending === "unpublish") void changePublished(false);
                 else void save();
               }}
             >
-              {pending === "publish" ? "Publish" : "Save"}
+              {pending === "publish" && "Publish"}
+              {pending === "unpublish" && "Unpublish"}
+              {pending === "save" && "Save"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

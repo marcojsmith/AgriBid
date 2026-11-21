@@ -196,7 +196,7 @@ describe("AdminLegal", () => {
     });
   });
 
-  it("warns that a published page is live, confirms Save, and unpublishes without a dialog", async () => {
+  it("warns that a published page is live, confirms Save, and confirms Unpublish", async () => {
     vi.mocked(useQuery).mockReturnValue([
       {
         ...draft("terms", "Terms and conditions"),
@@ -235,12 +235,25 @@ describe("AdminLegal", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Unpublish" }));
+    const unpublishDialog = await screen.findByRole("alertdialog");
+    expect(setLegalPagePublished).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(unpublishDialog).getByRole("button", { name: "Unpublish" })
+    );
     await waitFor(() => {
       expect(setLegalPagePublished).toHaveBeenCalledWith({
         slug: "terms",
         isPublished: false,
       });
     });
+  });
+
+  it("is not stuck dirty when the saved title differs only by whitespace", () => {
+    vi.mocked(useQuery).mockReturnValue(allDrafts());
+    render(<AdminLegal />);
+    setValue(screen.getByLabelText("Title"), "  Terms and conditions  ");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
   });
 
   it("switches tabs to edit another page", async () => {
