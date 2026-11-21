@@ -57,6 +57,20 @@ describe("SaleHeader", () => {
     expect(screen.queryByTestId("sale-countdown")).not.toBeInTheDocument();
   });
 
+  it("stays live past the scheduled end while a soft-close extension runs", () => {
+    render(
+      <SaleHeader
+        auction={sale({
+          startTime: Date.now() - 50 * HOUR,
+          endTime: Date.now() - HOUR,
+          effectiveEndTime: Date.now() + HOUR,
+        })}
+      />
+    );
+    expect(screen.queryByText("Closed")).not.toBeInTheDocument();
+    expect(screen.getByTestId("sale-countdown")).toBeInTheDocument();
+  });
+
   it("never shows internal states or a Remind me action", () => {
     render(<SaleHeader auction={sale()} />);
     expect(screen.queryByText(/published/i)).not.toBeInTheDocument();

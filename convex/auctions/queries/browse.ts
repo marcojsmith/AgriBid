@@ -225,6 +225,8 @@ export const getActiveLotsHandler = async (
         expressions.push(f.gte(f.field("currentPrice"), args.minPrice));
       if (args.maxPrice !== undefined)
         expressions.push(f.lte(f.field("currentPrice"), args.maxPrice));
+      if (args.maxHours !== undefined)
+        expressions.push(f.lte(f.field("operatingHours"), args.maxHours));
 
       return expressions.length > 0 ? f.and(...expressions) : true;
     });

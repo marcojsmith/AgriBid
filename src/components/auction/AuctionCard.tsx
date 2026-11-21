@@ -85,6 +85,7 @@ export const AuctionCard = ({
   }
 
   const lotPath = `/auction/${auction._id}`;
+  const titleId = `lot-title-${auction._id}`;
 
   const goToLogin = () => {
     const callbackUrl = isValidCallbackUrl(lotPath)
@@ -139,6 +140,10 @@ export const AuctionCard = ({
       goToLogin();
       return;
     }
+    if (userProfile === undefined) {
+      toast.info("Verifying account status...");
+      return;
+    }
     setPendingBid(nextBid);
     setIsConfirmOpen(true);
   };
@@ -152,6 +157,13 @@ export const AuctionCard = ({
         `Price updated to ${formatCurrency(minimum)} due to a newer bid.`
       );
       setPendingBid(minimum);
+      return;
+    }
+
+    if (!getLotLiveWindow(auction, Date.now()).isLive) {
+      setIsConfirmOpen(false);
+      setPendingBid(null);
+      toast.error("This auction is not open for bidding");
       return;
     }
 
@@ -212,12 +224,14 @@ export const AuctionCard = ({
           : null,
   });
 
+  // The title names the lot, so every button reads "Bid R x, 2020 John Deere".
   const ctaClasses = "min-h-11 flex-1 font-semibold";
   const ctaButton =
     cta.kind === "bid" ? (
       <Button
         type="button"
         className={ctaClasses}
+        aria-describedby={titleId}
         onClick={handleBidInitiate}
         disabled={isBidding}
       >
@@ -230,6 +244,7 @@ export const AuctionCard = ({
           cta.kind === "result" || cta.kind === "view" ? "outline" : "default"
         }
         className={ctaClasses}
+        aria-describedby={titleId}
       >
         {cta.kind === "register" ? (
           <Link to={`/login?callbackUrl=${encodeURIComponent(lotPath)}`}>
@@ -290,6 +305,7 @@ export const AuctionCard = ({
           {eyebrow}
         </p>
         <h3
+          id={titleId}
           className={cn(
             "leading-snug",
             isCompact ? "text-base" : "text-[19px]"
@@ -331,11 +347,7 @@ export const AuctionCard = ({
             variant="outline"
             size="icon"
             className="size-11 shrink-0"
-            aria-label={
-              isWatched
-                ? `Remove ${name} from watchlist`
-                : `Add ${name} to watchlist`
-            }
+            aria-label={`Watch ${name}`}
             aria-pressed={isWatched}
             onClick={handleWatchlistToggle}
           >

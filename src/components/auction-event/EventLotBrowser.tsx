@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "convex/_generated/api";
@@ -43,6 +43,9 @@ export interface EventLotBrowserProps {
 
 type ViewMode = "compact" | "detailed";
 
+/** Lots requested per extra page while a non-lot-number sort loads the rest. */
+const EVENT_SORT_LOAD_SIZE = 50;
+
 const VIEW_OPTIONS = [
   { value: "detailed", label: "Detailed" },
   { value: "compact", label: "Compact" },
@@ -74,7 +77,7 @@ function SortSelect({ value, onChange, className }: SortSelectProps) {
         if (next) onChange(next.value);
       }}
       className={cn(
-        "min-h-11 rounded-md border border-border bg-card px-3 text-sm font-medium md:min-h-9",
+        "min-h-11 rounded-md border border-border bg-card px-3 text-sm font-medium lg:min-h-9",
         className
       )}
     >
@@ -92,7 +95,8 @@ function SortSelect({ value, onChange, className }: SortSelectProps) {
  * desktop, a sticky "Filters (n)" / "Sort" bar with a filter sheet on phones.
  *
  * Filters and sort live in the URL. Lots arrive in lot-number order; the sort
- * control reorders the lots loaded so far. "N lots" is the number of lots
+ * control reorders the lots (loading the rest of the sale first for price and
+ * closing-time sorts). "N lots" is the number of lots
  * listed (with a "+" while more can be loaded), so it always matches the grid.
  * Phones and tablets always use compact rows; the Detailed/Compact toggle is
  * desktop only.
@@ -135,8 +139,15 @@ export function EventLotBrowser({ auctionId }: EventLotBrowserProps) {
     { initialNumItems: PAGINATION_INITIAL_ITEMS }
   );
 
-  const lots = useMemo(() => sortLots(results, sort), [results, sort]);
   const canLoadMore = queryStatus === "CanLoadMore";
+
+  // A price or closing-time sort is only right across every lot, so load the
+  // rest of the sale (the query caps it) before ordering; lot order streams.
+  useEffect(() => {
+    if (sort !== "lot" && canLoadMore) loadMore(EVENT_SORT_LOAD_SIZE);
+  }, [sort, canLoadMore, loadMore]);
+
+  const lots = useMemo(() => sortLots(results, sort), [results, sort]);
   const countLabel = `${String(lots.length)}${canLoadMore ? "+" : ""} ${
     lots.length === 1 && !canLoadMore ? "lot" : "lots"
   }`;
@@ -186,7 +197,7 @@ export function EventLotBrowser({ auctionId }: EventLotBrowserProps) {
   const gridClasses =
     viewMode === "compact"
       ? "grid grid-cols-1 gap-3 md:grid-cols-2"
-      : "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3";
+      : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 lg:grid-cols-2";
 
   return (
     <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-8">
@@ -300,7 +311,7 @@ export function EventLotBrowser({ auctionId }: EventLotBrowserProps) {
         )}
       </section>
 
-      <Dialog open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+      <Dialog open={isSheetOpen && !isDesktop} onOpenChange={setIsSheetOpen}>
         <DialogContent
           showCloseIcon={false}
           className="top-auto bottom-0 left-0 flex h-[85vh] max-w-none translate-x-0 translate-y-0 flex-col gap-3 rounded-b-none rounded-t-md p-3 sm:max-w-none lg:hidden"

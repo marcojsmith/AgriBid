@@ -167,6 +167,19 @@ describe("useFilterSidebar hook", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the chosen sort when filters are reset", () => {
+    setSearchParams({ sort: "price-asc", make: "John Deere" });
+    const { result } = renderHook(() => useFilterSidebar({ hideStatus: true }));
+
+    act(() => {
+      result.current.resetFilters();
+    });
+
+    const [written] = mockSetSearchParams.mock.calls[0] as [URLSearchParams];
+    expect(written.get("sort")).toBe("price-asc");
+    expect(written.has("make")).toBe(false);
+  });
+
   it("resets without an onClose callback", () => {
     setSearchParams({ make: "John Deere" });
     const { result } = renderHook(() =>

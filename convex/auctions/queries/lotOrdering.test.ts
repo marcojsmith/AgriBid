@@ -131,6 +131,31 @@ describe("event lot ordering by lotNumber", () => {
     expect(result.page.map((l) => l.title)).toEqual(["A", "B", "C"]);
   });
 
+  it("applies the hours filter on the paginated (all statuses) path", async () => {
+    await insertLot(t, auctionId, "Low hours", {
+      lotNumber: 4,
+      operatingHours: 50,
+    });
+    await insertLot(t, auctionId, "High hours", {
+      lotNumber: 5,
+      operatingHours: 9000,
+    });
+    const result = await t.query(api.auctions.getActiveLots, {
+      paginationOpts: { numItems: 10, cursor: null },
+      auctionId,
+      statusFilter: "all",
+      maxHours: 100,
+    });
+    // A, B and C carry the default 100 hours, which is within the limit.
+    expect(result.page.map((l) => l.title)).toEqual([
+      "A",
+      "B",
+      "C",
+      "Low hours",
+    ]);
+    expect(result.totalCount).toBe(4);
+  });
+
   it("puts lots without a number first, in creation order", async () => {
     await insertLot(t, auctionId, "Legacy 1");
     await insertLot(t, auctionId, "Legacy 2");
@@ -153,6 +178,24 @@ describe("event lot ordering by lotNumber", () => {
       auctionId,
     });
     expect(auction?.lots.map((l) => l.title)).toEqual(["A", "B", "C"]);
+  });
+
+  it("getPublishedAuction reports the latest soft-close extension as effectiveEndTime", async () => {
+    await insertLot(t, auctionId, "Extended", {
+      lotNumber: 4,
+      extendedEndTime: NOW + 3 * HOUR,
+    });
+    const auction = await t.query(api.auctions.getPublishedAuction, {
+      auctionId,
+    });
+    expect(auction?.effectiveEndTime).toBe(NOW + 3 * HOUR);
+  });
+
+  it("getPublishedAuction falls back to the scheduled end without extensions", async () => {
+    const auction = await t.query(api.auctions.getPublishedAuction, {
+      auctionId,
+    });
+    expect(auction?.effectiveEndTime).toBe(NOW + HOUR);
   });
 
   it("does not expose another sale's lots", async () => {

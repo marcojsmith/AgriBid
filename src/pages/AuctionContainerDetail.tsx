@@ -82,7 +82,7 @@ export default function AuctionContainerDetail() {
 
       <Link
         to="/auctions"
-        className="-ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0"
+        className="-ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 text-sm font-medium text-muted-foreground hover:text-foreground lg:min-h-0"
       >
         <ArrowLeft aria-hidden="true" className="size-4" />
         All auctions

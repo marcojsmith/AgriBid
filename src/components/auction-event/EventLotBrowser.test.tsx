@@ -225,6 +225,20 @@ describe("EventLotBrowser", () => {
       expect(titles()).toEqual(["Bravo", "Charlie", "Alpha"]);
     });
 
+    it("loads the rest of the sale before a price sort, but not for lot order", () => {
+      paginated.status = "CanLoadMore";
+      const { unmount } = renderBrowser();
+      expect(loadMore).not.toHaveBeenCalled();
+      unmount();
+      renderBrowser("/auctions/a1?sort=price-asc");
+      expect(loadMore).toHaveBeenCalledWith(50);
+    });
+
+    it("does not keep loading once the sale is exhausted", () => {
+      renderBrowser("/auctions/a1?sort=closing");
+      expect(loadMore).not.toHaveBeenCalled();
+    });
+
     it("writes the chosen sort to the URL and drops it for lot number", () => {
       renderBrowser();
       const [select] = screen.getAllByLabelText("Sort lots");
@@ -314,6 +328,20 @@ describe("EventLotBrowser", () => {
       expect(
         screen.getByRole("button", { name: "Filters (0)" })
       ).toBeInTheDocument();
+    });
+
+    it("does not leave a filter sheet open after the window widens to desktop", () => {
+      const { rerender } = renderBrowser();
+      fireEvent.click(screen.getByRole("button", { name: "Filters (0)" }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      (useMediaQuery as Mock).mockReturnValue(true);
+      rerender(
+        <MemoryRouter initialEntries={["/auctions/a1"]}>
+          <EventLotBrowser auctionId={AUCTION_ID} />
+          <Search />
+        </MemoryRouter>
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("opens the filter sheet and closes it with Show N lots", () => {

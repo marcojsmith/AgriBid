@@ -12,6 +12,8 @@ export interface SaleHeaderAuction {
   description?: string;
   startTime: number;
   endTime: number;
+  /** Latest lot close including soft-close extensions; defaults to `endTime`. */
+  effectiveEndTime?: number;
   status: "draft" | "published" | "closed";
 }
 
@@ -36,7 +38,7 @@ export function SaleHeader({ auction }: { auction: SaleHeaderAuction }) {
       ? null
       : deriveDisplayStatus({
           startTime: auction.startTime,
-          endTime: auction.endTime,
+          endTime: auction.effectiveEndTime ?? auction.endTime,
           now,
         });
 
@@ -56,7 +58,7 @@ export function SaleHeader({ auction }: { auction: SaleHeaderAuction }) {
         </h1>
         <p className="text-[15px] text-muted-foreground">
           {bucket === "closed"
-            ? `Online auction · Sale closed ${formatSastDate(auction.endTime)}`
+            ? `Online auction · Sale closed ${formatSastDate(auction.effectiveEndTime ?? auction.endTime)}`
             : `Online auction · Opens ${formatSastDate(auction.startTime)} · Lots close from ${formatSastDate(auction.endTime)}`}
         </p>
         {auction.description ? (

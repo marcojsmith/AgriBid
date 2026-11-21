@@ -62,7 +62,7 @@ export const FilterSidebar = ({
             variant="ghost"
             size="icon"
             onClick={resetFilters}
-            className="h-8 w-8 rounded-full"
+            className="size-11 rounded-full lg:size-8"
             aria-label="Reset filters"
             disabled={!hasFilters}
           >
@@ -73,7 +73,7 @@ export const FilterSidebar = ({
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8 rounded-full"
+              className="size-11 rounded-full lg:size-8"
               aria-label="Close filters"
             >
               <X className="h-4 w-4" />

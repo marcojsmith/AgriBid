@@ -256,6 +256,15 @@ describe("AuctionCard", () => {
       expect(screen.getByText("Passed in")).toBeInTheDocument();
     });
 
+    it("names the lot for assistive tech on every call to action", () => {
+      renderCard();
+      const bid = screen.getByRole("button", { name: /^Bid R/ });
+      const title = document.getElementById(
+        bid.getAttribute("aria-describedby") ?? ""
+      );
+      expect(title).toHaveTextContent("2020 John Deere 6155R");
+    });
+
     it("every call to action is at least 44px tall", () => {
       renderCard();
       expect(screen.getByRole("button", { name: /^Bid R/ }).className).toMatch(
@@ -265,6 +274,29 @@ describe("AuctionCard", () => {
   });
 
   describe("bidding", () => {
+    it("waits for the profile instead of opening the confirmation", () => {
+      (useUserProfile as Mock).mockReturnValue(undefined);
+      renderCard();
+      fireEvent.click(screen.getByRole("button", { name: /^Bid R/ }));
+      expect(toast.info).toHaveBeenCalledWith("Verifying account status...");
+      expect(screen.queryByText(/Confirm Your Bid/i)).not.toBeInTheDocument();
+    });
+
+    it("refuses to bid when the sale closed while the confirmation was open", () => {
+      const { rerender } = renderCard();
+      fireEvent.click(screen.getByRole("button", { name: /^Bid R/ }));
+      rerender(
+        <BrowserRouter>
+          <AuctionCard auction={{ ...mockAuction, ...ended }} />
+        </BrowserRouter>
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^Confirm Bid$/i }));
+      expect(toast.error).toHaveBeenCalledWith(
+        "This auction is not open for bidding"
+      );
+      expect(mockPlaceBid).not.toHaveBeenCalled();
+    });
+
     it("cancels the confirmation", () => {
       renderCard();
       fireEvent.click(screen.getByRole("button", { name: /^Bid R/ }));
@@ -317,38 +349,39 @@ describe("AuctionCard", () => {
     it("toggles the watchlist", async () => {
       mockToggleWatchlist.mockResolvedValue(true);
       renderCard();
-      const button = screen.getByRole("button", {
-        name: /Add .* to watchlist/,
-      });
+      const button = screen.getByRole("button", { name: /^Watch / });
       expect(button).toHaveAttribute("aria-pressed", "false");
       fireEvent.click(button);
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith("Added to watchlist");
       });
-      expect(
-        screen.getByRole("button", { name: /Remove .* from watchlist/ })
-      ).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: /^Watch / })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
     });
 
     it("shows a watched lot as watched and follows the prop", () => {
       const { rerender } = renderCard({}, { isWatched: true });
-      expect(
-        screen.getByRole("button", { name: /Remove .* from watchlist/ })
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Watch / })).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
       rerender(
         <BrowserRouter>
           <AuctionCard auction={mockAuction} isWatched={false} />
         </BrowserRouter>
       );
-      expect(
-        screen.getByRole("button", { name: /Add .* to watchlist/ })
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Watch / })).toHaveAttribute(
+        "aria-pressed",
+        "false"
+      );
     });
 
     it("reports a failed toggle", async () => {
       mockToggleWatchlist.mockRejectedValue(new Error("x"));
       renderCard();
-      fireEvent.click(screen.getByRole("button", { name: /to watchlist/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^Watch / }));
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith("Failed to update watchlist");
       });
@@ -357,7 +390,7 @@ describe("AuctionCard", () => {
     it("sends a guest to sign in", () => {
       (useSession as Mock).mockReturnValue({ data: null });
       renderCard();
-      fireEvent.click(screen.getByRole("button", { name: /to watchlist/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^Watch / }));
       expect(toast.info).toHaveBeenCalledWith(
         expect.stringContaining("sign in to watch")
       );
