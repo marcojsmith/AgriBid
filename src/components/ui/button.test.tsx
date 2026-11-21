@@ -32,7 +32,34 @@ describe("Button", () => {
     expect(button).toHaveAttribute("data-variant", "destructive");
     expect(button).toHaveAttribute("data-size", "sm");
     expect(button).toHaveClass("bg-destructive");
-    expect(button).toHaveClass("text-white");
+    expect(button).toHaveClass("text-destructive-foreground");
+  });
+
+  it("uses the btn token for the default variant", () => {
+    render(<Button>Bid</Button>);
+
+    const button = screen.getByRole("button", { name: "Bid" });
+    expect(button).toHaveClass("bg-btn");
+    expect(button).toHaveClass("text-btn-foreground");
+  });
+
+  it.each(["default", "sm", "lg", "icon"] as const)(
+    "keeps the %s size at least 44px tall below md",
+    (size) => {
+      render(<Button size={size}>Tap</Button>);
+
+      const button = screen.getByRole("button", { name: "Tap" });
+      expect(button.className).toMatch(/max-md:(h|size)-11(\s|$)/);
+    }
+  );
+
+  it("offers a touch size that is always 44px tall", () => {
+    render(<Button size="touch">Tap</Button>);
+
+    const button = screen.getByRole("button", { name: "Tap" });
+    expect(button).toHaveAttribute("data-size", "touch");
+    expect(button).toHaveClass("h-11");
+    expect(button).not.toHaveClass("max-md:h-11");
   });
 
   it("merges a caller-supplied className", () => {

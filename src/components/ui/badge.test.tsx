@@ -22,6 +22,26 @@ describe("Badge", () => {
     expect(badge).toHaveClass("bg-destructive");
   });
 
+  it("uses sharp (rounded-sm) corners rather than pills", () => {
+    render(<Badge>Fresh</Badge>);
+
+    const badge = screen.getByText("Fresh");
+    expect(badge).toHaveClass("rounded-sm");
+    expect(badge).not.toHaveClass("rounded-full");
+  });
+
+  it.each(["live", "soon", "urgent", "sold", "passed"] as const)(
+    "renders the %s status variant with its solid token and white text",
+    (status) => {
+      render(<Badge variant={status}>{status}</Badge>);
+
+      const badge = screen.getByText(status);
+      expect(badge).toHaveAttribute("data-variant", status);
+      expect(badge).toHaveClass(`bg-${status}-solid`);
+      expect(badge).toHaveClass("text-white");
+    }
+  );
+
   it("merges a caller-supplied className", () => {
     render(<Badge className="custom-class">Lot 12</Badge>);
 
@@ -46,6 +66,6 @@ describe("Badge", () => {
     expect(link).toHaveAttribute("href", "/categories/veg");
     expect(link).toHaveAttribute("data-slot", "badge");
     expect(link).toHaveClass("inline-flex");
-    expect(link).toHaveClass("rounded-full");
+    expect(link).toHaveClass("rounded-sm");
   });
 });

@@ -6,19 +6,19 @@ Reference for every WP: `spec.md`, `mockups.html` and `final/*.png` in this fold
 
 ## Tracker
 
-| WP  | Title                                                                                                                          | Risk                                          | Depends   | Status      | Thread      | PR  |
-| --- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | --------- | ----------- | ----------- | --- |
-| 0   | Land the track docs (spec, plan, rubric, feedback, reviews, mockup; images git-ignored)                                        | docs                                          | none      | in progress | coordinator |     |
-| 1   | Foundations: tokens, Lora, type scale, focus ring, shadcn primitives restyled                                                  | medium (app-wide visual)                      | 0         | todo        |             |     |
-| 2   | Domain components + design-system doc + dev-only `/design-system` page                                                         | low                                           | 1         | todo        |             |     |
-| 3a  | Backend read: auction event summary for cards (lot count, from-price, 3 lead photo URLs, location)                             | **risky** (query shape, pagination)           | 0         | todo        |             |     |
-| 3b  | Backend schema: `lots.lotNumber`, `lots.province`, `profiles.sellerResponseTime`, watcher counter + backfills                  | **risky** (schema, migration, preview deploy) | 3a        | todo        |             |     |
-| 3c  | Admin settings: VAT rate, company reg/VAT/phone/address for the footer; admin editing of seller response time and lot province | **risky** (settings mutations, admin auth)    | 3b        | todo        |             |     |
-| 4   | Home screen                                                                                                                    | low                                           | 2, 3a, 3c | todo        |             |     |
-| 5   | Auction event screen                                                                                                           | low                                           | 2, 3a, 3b | todo        |             |     |
-| 6   | Lot detail screen (gallery, bid panel states, fees, mobile sticky bar)                                                         | **risky** (bid flow UI)                       | 2, 3b, 3c | todo        |             |     |
-| 7   | Rubric re-score of the real app (Opus agent, coordinator) + fix round on the same worker                                       | review                                        | 4, 5, 6   | todo        |             |     |
-| 8   | **Stop: ask the owner to walk the rest of the app**, then open a rollout track                                                 | owner                                         | 7         | todo        |             |     |
+| WP  | Title                                                                                                                          | Risk                                          | Depends   | Status           | Thread                                                                      | PR   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | --------- | ---------------- | --------------------------------------------------------------------------- | ---- |
+| 0   | Land the track docs (spec, plan, rubric, feedback, reviews, mockup; images git-ignored)                                        | docs                                          | none      | done (#396)      | coordinator                                                                 |      |
+| 1   | Foundations: tokens, Lora, type scale, focus ring, shadcn primitives restyled                                                  | medium (app-wide visual)                      | 0         | in review (#397) | mcp:launch:8cd07688d6a8f32fb11de3e7c5c7ecbbb1742316fd7a0bff9fd8f9bbcb607c31 | #397 |
+| 2   | Domain components + design-system doc + dev-only `/design-system` page                                                         | low                                           | 1         | todo             |                                                                             |      |
+| 3a  | Backend read: auction event summary for cards (lot count, from-price, 3 lead photo URLs, location)                             | **risky** (query shape, pagination)           | 0         | todo             |                                                                             |      |
+| 3b  | Backend schema: `lots.lotNumber`, `lots.province`, `profiles.sellerResponseTime`, watcher counter + backfills                  | **risky** (schema, migration, preview deploy) | 3a        | todo             |                                                                             |      |
+| 3c  | Admin settings: VAT rate, company reg/VAT/phone/address for the footer; admin editing of seller response time and lot province | **risky** (settings mutations, admin auth)    | 3b        | todo             |                                                                             |      |
+| 4   | Home screen                                                                                                                    | low                                           | 2, 3a, 3c | todo             |                                                                             |      |
+| 5   | Auction event screen                                                                                                           | low                                           | 2, 3a, 3b | todo             |                                                                             |      |
+| 6   | Lot detail screen (gallery, bid panel states, fees, mobile sticky bar)                                                         | **risky** (bid flow UI)                       | 2, 3b, 3c | todo             |                                                                             |      |
+| 7   | Rubric re-score of the real app (Opus agent, coordinator) + fix round on the same worker                                       | review                                        | 4, 5, 6   | todo             |                                                                             |      |
+| 8   | **Stop: ask the owner to walk the rest of the app**, then open a rollout track                                                 | owner                                         | 7         | todo             |                                                                             |      |
 
 Order: 0 → 1 → 2 → 3a → 3b → 3c → 4 → 5 → 6 → 7 → 8. The 3x backend WPs can run before WP2 if WP2 stalls (no code overlap).
 
@@ -96,3 +96,5 @@ Order: 0 → 1 → 2 → 3a → 3b → 3c → 4 → 5 → 6 → 7 → 8. The 3x 
 ## Deviations
 
 <!-- record any change from spec.md here -->
+
+- WP1: light `--secondary` is 35 30% 40% (mockup 45% fails AA on cream).

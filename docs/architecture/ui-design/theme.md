@@ -1,5 +1,7 @@
 # UI/UX Design System
 
+> **Foundations (WP1, 2026-11).** The token source of truth is now `src/index.css` (`:root` and `.dark` HSL variables, exposed to Tailwind through `@theme`). The hex values below are **historical** and do not match the app. In `index.css`: surfaces (`background`, `card`, `muted`, `border`), `primary` / `primary-soft` / `secondary`, `btn` (filled button, light text in both themes), `hero*`, status `live|soon|urgent|sold|passed` each with `-solid` (badge fill, white text) / `-soft` / `-fg`, and `ok-fg` / `warn-fg`. Type: Lora (`font-display`, used by `h1`-`h3`) and Inter; `num` utility = tabular figures. Radius: `rounded-sm` 4px, `rounded-md` 6px, `rounded-lg` 8px. Global `:focus-visible` ring is 2px primary with a 2px offset. Buttons, inputs are 44px tall below `md` (`Button size="touch"` is always 44px). `src/lib/theme-tokens.test.ts` asserts WCAG AA for every text/background pair in both themes. The full design-system doc replaces this file in WP2 (`conductor/tracks/improve-screen-mockups/`).
+
 This document describes the design system for AgriBid, including color palette, typography, component library, and design principles.
 
 ## Design Philosophy
