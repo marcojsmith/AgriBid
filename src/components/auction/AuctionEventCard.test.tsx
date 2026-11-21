@@ -35,7 +35,11 @@ const baseEvent: AuctionEvent = {
 
 const renderCard = (
   event: AuctionEvent,
-  props: { className?: string; headingLevel?: "h2" | "h3" } = {}
+  props: {
+    className?: string;
+    featured?: boolean;
+    headingLevel?: "h2" | "h3";
+  } = {}
 ) =>
   render(
     <MemoryRouter>
@@ -134,7 +138,7 @@ describe("AuctionEventCard", () => {
     expect(screen.queryByText("Live")).toBeNull();
   });
 
-  it("shows Closed with the close date for an ended sale", () => {
+  it("shows Closed and the sale-closed date, with no price, for an ended sale", () => {
     renderCard({
       ...baseEvent,
       status: "closed",
@@ -143,7 +147,8 @@ describe("AuctionEventCard", () => {
     });
     expect(screen.getByText("Closed")).toBeInTheDocument();
     expect(screen.queryByText(/Closes in|Opens in/)).toBeNull();
-    expect(screen.getByText(/^Closed .*SAST$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Sale closed .*SAST$/)).toBeInTheDocument();
+    expect(screen.queryByText(/^From/)).toBeNull();
     expect(screen.queryByText("Live")).toBeNull();
   });
 
@@ -197,6 +202,32 @@ describe("AuctionEventCard", () => {
     expect(
       screen.getByRole("img", { name: "Spring Sale: no photos yet" })
     ).toBeInTheDocument();
+  });
+
+  it("keeps the from-price on closed sales out of the card but shows the lot count", () => {
+    renderCard({
+      ...baseEvent,
+      status: "closed",
+      endTime: NOW - HOUR,
+      effectiveEndTime: NOW - HOUR,
+      fromPrice: 60000,
+    });
+    expect(screen.getByText("3 lots")).toBeInTheDocument();
+    expect(screen.queryByText(/R\s60\s000/)).toBeNull();
+  });
+
+  it("uses the featured layout and centres its text only when featured", () => {
+    const { container, rerender } = renderCard(baseEvent, { featured: true });
+    expect(container.firstElementChild).toHaveClass("lg:grid-cols-[2fr_1fr]");
+    expect(screen.getByRole("heading").parentElement).toHaveClass(
+      "lg:justify-center"
+    );
+    rerender(
+      <MemoryRouter>
+        <AuctionEventCard event={baseEvent} />
+      </MemoryRouter>
+    );
+    expect(container.firstElementChild).not.toHaveClass("lg:grid");
   });
 
   it("merges extra layout classes onto the card", () => {

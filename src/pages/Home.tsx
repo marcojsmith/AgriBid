@@ -12,6 +12,7 @@ import { LotBrowser } from "@/components/LotBrowser";
 import { useNow } from "@/hooks/useNow";
 import { getEventBucket } from "@/lib/auction-utils";
 import {
+  HOME_OPEN_SALES_CAP,
   parseHomeSort,
   parseHomeView,
   selectEvents,
@@ -71,11 +72,18 @@ export default function Home() {
   );
 
   // Closing soon and "Closing soonest" need every open sale: the backend pages
-  // by start time, so the sales ending first can sit on a later page. Load all
-  // pages (at most a few, the backend caps the list) before showing them.
+  // by start time, so the sales ending first can sit on a later page. Load up
+  // to HOME_OPEN_SALES_CAP sales (3 pages) before showing them; reads stay
+  // bounded and the list says so when more exist.
   const loadAllOpen = view !== "results";
+  const openCapped =
+    loadAllOpen && active.results.length >= HOME_OPEN_SALES_CAP;
   useEffect(() => {
-    if (loadAllOpen && active.status === "CanLoadMore") {
+    if (
+      loadAllOpen &&
+      active.status === "CanLoadMore" &&
+      active.results.length < HOME_OPEN_SALES_CAP
+    ) {
       active.loadMore(PAGINATION_LOAD_MORE_ITEMS);
     }
   }, [loadAllOpen, active]);
@@ -95,10 +103,12 @@ export default function Home() {
     () => selectEvents(source, view, sort, now),
     [source, view, sort, now]
   );
-  const listStatus =
-    loadAllOpen && active.status !== "Exhausted"
-      ? "LoadingFirstPage"
-      : current.status;
+  const listStatus = !loadAllOpen
+    ? current.status
+    : active.status === "Exhausted" || openCapped
+      ? "Exhausted"
+      : "LoadingFirstPage";
+  const showingFirstOnly = openCapped && active.status !== "Exhausted";
   const heroImage = active.results.find(
     (event) => getEventBucket(event, now) === "live"
   )?.leadImageUrls[0];
@@ -151,6 +161,11 @@ export default function Home() {
             view={view}
             sort={sort}
             status={listStatus}
+            capNotice={
+              showingFirstOnly
+                ? `Showing the first ${String(HOME_OPEN_SALES_CAP)} sales.`
+                : undefined
+            }
             onViewChange={setView}
             onSortChange={setSort}
             onLoadMore={() => {

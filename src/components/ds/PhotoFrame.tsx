@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Tractor } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -18,7 +19,8 @@ interface PhotoFrameProps {
 
 /**
  * A photo in a fixed aspect ratio with `object-fit: cover`, 8px radius and
- * lazy loading. Shows a branded placeholder when there is no image.
+ * lazy loading. Shows a branded placeholder when there is no image or it
+ * fails to load.
  *
  * Use it for every event, lot or gallery photo so crops stay consistent.
  *
@@ -39,12 +41,15 @@ export function PhotoFrame({
   eager = false,
   className,
 }: PhotoFrameProps) {
+  // A photo whose URL fails to load (deleted file, bad link) falls back to the
+  // branded empty state instead of a broken-image icon with alt text.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const frame = cn(
     "relative overflow-hidden rounded-lg bg-muted",
     fill ? "size-full" : ratio === "16:9" ? "aspect-video" : "aspect-[4/3]",
     className
   );
-  if (!src) {
+  if (!src || failedSrc === src) {
     return (
       <div
         role="img"
@@ -68,6 +73,9 @@ export function PhotoFrame({
         alt={alt}
         loading={eager ? "eager" : "lazy"}
         decoding="async"
+        onError={() => {
+          setFailedSrc(src);
+        }}
         className="absolute inset-0 size-full object-cover"
       />
     </div>

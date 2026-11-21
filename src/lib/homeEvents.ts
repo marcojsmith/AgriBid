@@ -83,24 +83,28 @@ export function selectEvents<T extends EventWindow>(
   );
 }
 
-/** Classes that lay out the event cards so the grid never ends in a gap. */
+/**
+ * The most open sales Home loads (3 pages of 12). Closing soon and the sort
+ * need every open sale, but reads are bounded: past this the list says so.
+ */
+export const HOME_OPEN_SALES_CAP = 36;
+
+/** Classes that lay out the event cards. */
 export interface EventGridPlan {
   /** Classes for the grid container. */
   gridClass: string;
-  /** Extra classes for the first card (it may span several columns and lay out side by side). */
+  /** Extra classes for the first card (on tablet it spans both columns when the count is odd). */
   firstClass: string;
+  /** Whether the first card is the single featured card (photos 2/3, text centred) on desktop. */
+  featuredFirst: boolean;
 }
-
-const SIDE_BY_SIDE_FULL = "lg:grid lg:grid-cols-[2fr_3fr]";
-const SIDE_BY_SIDE_DOUBLE = "lg:grid lg:grid-cols-[3fr_2fr]";
 
 /**
  * Chooses the grid for `count` events. Phone: one column. Tablet: two columns,
- * the first card spans both when the count is odd. Desktop: three columns,
- * where the first card spans the leftover so the last row is always full:
- * 1 event spans all, 2 events share two columns, 4 and 7 put a full-width
- * first card (photos left, details right) above rows of three, and 5 and 8
- * have a double-width first card.
+ * the first card spanning both when the count is odd (so no orphan). Desktop:
+ * 1 event is a featured card (mosaic about 2/3, text centred), 2 events take
+ * two columns, 3 take three, 4 make a 2x2 grid and 5 or more use three columns
+ * (the last row may be short).
  *
  * @param count - Number of events shown
  * @returns The grid plan
@@ -109,32 +113,18 @@ export function eventGridPlan(count: number): EventGridPlan {
   if (count <= 1) {
     return {
       gridClass: "grid grid-cols-1 gap-4 md:gap-6",
-      firstClass: SIDE_BY_SIDE_FULL,
-    };
-  }
-  if (count === 2) {
-    return {
-      gridClass: "grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6",
       firstClass: "",
+      featuredFirst: true,
     };
   }
-  const base = "grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3";
-  const oddAtTablet = count % 2 === 1;
-  const remainder = count % 3;
-  if (remainder === 1) {
-    return {
-      gridClass: base,
-      firstClass: `${oddAtTablet ? "md:col-span-2 " : ""}lg:col-span-3 ${SIDE_BY_SIDE_FULL}`,
-    };
-  }
-  if (remainder === 2) {
-    return {
-      gridClass: base,
-      firstClass: `${oddAtTablet ? "md:col-span-2 " : ""}lg:col-span-2 ${SIDE_BY_SIDE_DOUBLE}`,
-    };
+  const tablet = "grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6";
+  const oddFirst = count % 2 === 1 ? "md:col-span-2 lg:col-span-1" : "";
+  if (count === 2 || count === 4) {
+    return { gridClass: tablet, firstClass: "", featuredFirst: false };
   }
   return {
-    gridClass: base,
-    firstClass: oddAtTablet ? "md:col-span-2 lg:col-span-1" : "",
+    gridClass: `${tablet} lg:grid-cols-3`,
+    firstClass: oddFirst,
+    featuredFirst: false,
   };
 }

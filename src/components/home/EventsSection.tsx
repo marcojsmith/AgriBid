@@ -43,6 +43,8 @@ interface EventsSectionProps {
   onViewChange: (view: HomeView) => void;
   onSortChange: (sort: HomeSort) => void;
   onLoadMore: () => void;
+  /** Shown under the list when more sales exist than were loaded. */
+  capNotice?: string;
 }
 
 /**
@@ -89,6 +91,7 @@ function EventCardSkeletons() {
  * @param props.onViewChange - Called when another view is chosen
  * @param props.onSortChange - Called when another sort order is chosen
  * @param props.onLoadMore - Called when "Load more auctions" is pressed
+ * @param props.capNotice - Note shown under the list when it is cut off
  * @returns The events section
  */
 export function EventsSection({
@@ -99,6 +102,7 @@ export function EventsSection({
   onViewChange,
   onSortChange,
   onLoadMore,
+  capNotice,
 }: EventsSectionProps) {
   const plan = eventGridPlan(events.length);
   const hasMore = status === "CanLoadMore" || status === "LoadingMore";
@@ -172,10 +176,16 @@ export function EventsSection({
                 <AuctionEventCard
                   key={event._id}
                   event={event}
+                  featured={index === 0 && plan.featuredFirst}
                   className={index === 0 ? plan.firstClass : undefined}
                 />
               ))}
             </div>
+          ) : null}
+          {capNotice ? (
+            <p className="text-center text-sm text-muted-foreground">
+              {capNotice}
+            </p>
           ) : null}
           {status === "CanLoadMore" ? (
             <div className="flex justify-center pt-2">

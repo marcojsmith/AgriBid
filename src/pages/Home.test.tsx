@@ -318,6 +318,25 @@ describe("Home Page", () => {
     expect(screen.queryByText("Sale a1")).not.toBeInTheDocument();
   });
 
+  it("stops loading at 36 sales and says the list is cut off", () => {
+    active.status = "CanLoadMore";
+    active.results = Array.from({ length: 36 }, (_, i) =>
+      makeEvent(`s${String(i)}`)
+    );
+    renderHome();
+    expect(active.loadMore).not.toHaveBeenCalled();
+    expect(screen.getByText("Showing the first 36 sales.")).toBeInTheDocument();
+    expect(screen.getAllByRole("article")).toHaveLength(36);
+    expect(
+      screen.queryByRole("button", { name: /Load more auctions/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show the cut-off note when everything fits", () => {
+    renderHome();
+    expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument();
+  });
+
   it("finds a sale that closes soon on a later page", () => {
     setUrl("view=soon");
     active.status = "Exhausted";

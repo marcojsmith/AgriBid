@@ -27,6 +27,8 @@ export type AuctionEvent = FunctionReturnType<
 interface AuctionEventCardProps {
   /** The auction event document to render. */
   event: AuctionEvent;
+  /** The single featured card on desktop: photos about 2/3 wide, text centred beside them. */
+  featured?: boolean;
   /** Heading element for the title; use `h2` when no section heading sits above. */
   headingLevel?: "h2" | "h3";
   className?: string;
@@ -43,12 +45,14 @@ interface AuctionEventCardProps {
  *
  * @param props - Component props.
  * @param props.event - The auction event document to render.
+ * @param props.featured - Use the featured layout from `lg`.
  * @param props.headingLevel - Heading element for the title (default `h3`).
  * @param props.className - Extra classes merged onto the card (e.g. a side-by-side layout from `lg`).
  * @returns The rendered auction event card.
  */
 export const AuctionEventCard = ({
   event,
+  featured = false,
   headingLevel = "h3",
   className,
 }: AuctionEventCardProps) => {
@@ -87,6 +91,7 @@ export const AuctionEventCard = ({
       data-slot="auction-event-card"
       className={cn(
         "flex flex-col overflow-hidden rounded-md border border-border bg-card",
+        featured && "lg:grid lg:grid-cols-[2fr_1fr]",
         className
       )}
     >
@@ -131,7 +136,12 @@ export const AuctionEventCard = ({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div
+        className={cn(
+          "flex flex-1 flex-col gap-2 p-4",
+          featured && "lg:justify-center lg:gap-3 lg:p-6"
+        )}
+      >
         <Heading className="text-[19px] leading-tight">
           <Link
             to={href}
@@ -154,7 +164,7 @@ export const AuctionEventCard = ({
             </>
           ) : null}
           <span className="num">{lotLabel}</span>
-          {typeof event.fromPrice === "number" ? (
+          {bucket !== "closed" && typeof event.fromPrice === "number" ? (
             <>
               <span aria-hidden="true">·</span>
               <span>
@@ -164,10 +174,15 @@ export const AuctionEventCard = ({
             </>
           ) : null}
         </p>
-        <div className="mt-auto flex flex-col gap-2.5 border-t border-border pt-3 text-[13px] text-muted-foreground">
+        <div
+          className={cn(
+            "mt-auto flex flex-col gap-2.5 border-t border-border pt-3 text-[13px] text-muted-foreground",
+            featured && "lg:mt-2"
+          )}
+        >
           <span>
             {bucket === "closed"
-              ? `Closed ${formatSastDate(event.effectiveEndTime)}`
+              ? `Sale closed ${formatSastDate(event.effectiveEndTime)}`
               : `Lots close from ${formatSastDate(event.endTime)}`}
           </span>
           <Button variant="outline" size="sm" className="w-full" asChild>

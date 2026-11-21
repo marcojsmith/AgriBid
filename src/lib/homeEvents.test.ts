@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   eventGridPlan,
+  HOME_OPEN_SALES_CAP,
   parseHomeSort,
   parseHomeView,
   selectEvents,
@@ -119,53 +120,41 @@ describe("selectEvents", () => {
 });
 
 describe("eventGridPlan", () => {
-  it("gives a single event the full width, photos beside details", () => {
+  it("features a single event (and treats none the same)", () => {
     const plan = eventGridPlan(1);
-    expect(plan.firstClass).toContain("lg:grid-cols-[2fr_3fr]");
-    expect(plan.gridClass).not.toContain("lg:grid-cols-3");
-    expect(eventGridPlan(0).firstClass).toBe(plan.firstClass);
+    expect(plan.featuredFirst).toBe(true);
+    expect(plan.gridClass).not.toContain("md:grid-cols-2");
+    expect(eventGridPlan(0)).toEqual(plan);
   });
 
-  it("shares two columns between two events", () => {
-    const plan = eventGridPlan(2);
-    expect(plan.gridClass).toContain("md:grid-cols-2");
-    expect(plan.gridClass).not.toContain("lg:grid-cols-3");
-    expect(plan.firstClass).toBe("");
-  });
-
-  it("uses plain thirds for 6 and 9 events", () => {
-    for (const n of [6, 12]) {
+  it("uses two columns for 2 events and a 2x2 grid for 4", () => {
+    for (const n of [2, 4]) {
       const plan = eventGridPlan(n);
-      expect(plan.gridClass).toContain("lg:grid-cols-3");
+      expect(plan.gridClass).toContain("md:grid-cols-2");
+      expect(plan.gridClass).not.toContain("lg:grid-cols-3");
       expect(plan.firstClass).toBe("");
+      expect(plan.featuredFirst).toBe(false);
     }
   });
 
-  it("spans the odd tablet row for 3 and 9 events and resets it on desktop", () => {
-    expect(eventGridPlan(3).firstClass).toBe("md:col-span-2 lg:col-span-1");
-    expect(eventGridPlan(9).firstClass).toBe("md:col-span-2 lg:col-span-1");
+  it("uses three columns for 3 events and for 5 or more", () => {
+    for (const n of [3, 5, 6, 7, 12, 36]) {
+      const plan = eventGridPlan(n);
+      expect(plan.gridClass).toContain("lg:grid-cols-3");
+      expect(plan.featuredFirst).toBe(false);
+    }
   });
 
-  it("makes the first of 4 events full width on desktop", () => {
-    const { firstClass } = eventGridPlan(4);
-    expect(firstClass).toContain("lg:col-span-3");
-    expect(firstClass).not.toContain("md:col-span-2");
-    expect(firstClass).toContain("lg:grid-cols-[2fr_3fr]");
+  it("spans the first card across the tablet row when the count is odd", () => {
+    for (const n of [3, 5, 7, 9]) {
+      expect(eventGridPlan(n).firstClass).toBe("md:col-span-2 lg:col-span-1");
+    }
+    for (const n of [6, 8, 12]) {
+      expect(eventGridPlan(n).firstClass).toBe("");
+    }
   });
 
-  it("makes the first of 5 events double width on desktop and full on tablet", () => {
-    const { firstClass } = eventGridPlan(5);
-    expect(firstClass).toContain("md:col-span-2");
-    expect(firstClass).toContain("lg:col-span-2");
-    expect(firstClass).toContain("lg:grid-cols-[3fr_2fr]");
-  });
-
-  it("covers 7 (odd, one over a multiple of three) and 8", () => {
-    expect(eventGridPlan(7).firstClass).toContain(
-      "md:col-span-2 lg:col-span-3"
-    );
-    expect(eventGridPlan(8).firstClass).toBe(
-      "lg:col-span-2 lg:grid lg:grid-cols-[3fr_2fr]"
-    );
+  it("caps the open sales Home loads at 3 pages of 12", () => {
+    expect(HOME_OPEN_SALES_CAP).toBe(36);
   });
 });
