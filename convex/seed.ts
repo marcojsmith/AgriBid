@@ -7,9 +7,9 @@ import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCallerRole } from "./lib/auth";
 import { deleteAuctionImages, safeDelete } from "./lib/storage";
-import { updateCounter, logAudit, getCounter } from "./admin_utils";
+import { updateCounter, logAudit } from "./admin_utils";
 import { getLotCounterKey } from "./lots/mutations/helpers";
-import { lotNumberCounterName, watcherCounterName } from "./lib/lotCounters";
+import { issueNextLotNumber, watcherCounterName } from "./lib/lotCounters";
 import {
   PROVINCES,
   SELLER_RESPONSE_TIMES,
@@ -99,6 +99,31 @@ const MOCK_IMAGE_URLS = {
 };
 
 const BATCH_SIZE = 500;
+
+/**
+ * Deletes the `lotNumber:*` and `watchers:*` counters, which are scoped to
+ * lots and auctions that no longer exist after a lots/auctions clear.
+ *
+ * @param ctx - Mutation context.
+ */
+async function clearLotScopedCounters(ctx: MutationCtx): Promise<void> {
+  for (const [from, to] of [
+    ["lotNumber:", "lotNumber;"],
+    ["watchers:", "watchers;"],
+  ] as const) {
+    let batch = await ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.gte("name", from).lt("name", to))
+      .take(BATCH_SIZE);
+    while (batch.length > 0) {
+      await Promise.all(batch.map((c) => ctx.db.delete("counters", c._id)));
+      batch = await ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.gte("name", from).lt("name", to))
+        .take(BATCH_SIZE);
+    }
+  }
+}
 
 /**
  * Resets the lotFees counter to zero after clearing the table.
@@ -1793,10 +1818,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     },
   ];
 
-  // Lot numbers follow mockLots order within each sale (1, 2, 3, ...), and the
-  // per-auction counters are set to the highest number issued.
-  const lotNumbersByAuction = new Map<Id<"auctions">, number>();
-
+  // Lots that are in a sale and have no number yet are numbered through the
+  // sale's counter (mockLots order). Existing numbers are never overwritten, so
+  // re-seeding alongside real assignments cannot create duplicates.
   for (const [lotIndex, lot] of mockLots.entries()) {
     const existing = await ctx.db
       .query("lots")
@@ -1811,18 +1835,19 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     // Snapshot the parent event's fee defaults onto the lot, mirroring the
     // lot-assignment mutation's behavior (issue #318): once assigned, later
     // edits to the event's defaults must not change this lot's fees.
-    const lotNumber = event
-      ? (lotNumbersByAuction.get(event._id) ?? 0) + 1
-      : undefined;
-    if (event && lotNumber !== undefined) {
-      lotNumbersByAuction.set(event._id, lotNumber);
-    }
+    const needsNumber =
+      event !== undefined &&
+      (existing?.lotNumber === undefined || existing.auctionId !== event._id);
+    const lotNumber =
+      event && needsNumber
+        ? await issueNextLotNumber(ctx, event._id)
+        : existing?.lotNumber;
 
     const lotData = {
       ...lotFields,
       description: lot.description || "No description provided.",
       auctionId: event?._id,
-      lotNumber,
+      lotNumber: event ? lotNumber : undefined,
       province: PROVINCES[lotIndex % PROVINCES.length],
       resolvedBuyerPremiumPct: event
         ? MOCK_DEFAULT_BUYER_PREMIUM_PCT
@@ -1837,21 +1862,6 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     } else {
       await ctx.db.patch("lots", existing._id, lotData);
     }
-  }
-
-  for (const [auctionId, highest] of lotNumbersByAuction) {
-    // Never lower a counter that has already issued higher numbers.
-    const existingCounter = await getCounter(
-      ctx,
-      lotNumberCounterName(auctionId)
-    );
-    await updateCounter(
-      ctx,
-      lotNumberCounterName(auctionId),
-      "total",
-      Math.max(highest, existingCounter?.total ?? 0),
-      true
-    );
   }
 
   // 3.2b. Admin-set seller response times (cycled so every variant shows)
@@ -2585,6 +2595,9 @@ export const clearAuctions = mutation({
 
     const totalBidsDeleted = await clearTable(ctx, "bids");
     const lotsCount = await clearLotsTableWithStorage(ctx);
+    // Watch rows and per-lot / per-sale counters belong to the lots just deleted.
+    await clearTable(ctx, "watchlist");
+    await clearLotScopedCounters(ctx);
     const auctionsCount = await clearAuctionsTableWithStorage(ctx);
     const lotFeesCount = await clearTable(ctx, "lotFees");
 
@@ -2622,6 +2635,7 @@ export const clearAllData = mutation({
     const appTables: SeedTableNames[] = [
       "bids",
       "watchlist",
+      "counters",
       "equipmentMetadata",
       "lotFees",
     ];

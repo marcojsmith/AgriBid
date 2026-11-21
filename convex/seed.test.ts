@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import { runSeed, weeklyReset, clearAuctions, clearAllData } from "./seed";
 import * as auth from "./lib/auth";
+import { issueNextLotNumber } from "./lib/lotCounters";
 import * as adminUtils from "./admin_utils";
 import type { MutationCtx } from "./_generated/server";
 
@@ -25,6 +26,8 @@ type MockRow = { _id: string } & Record<string, unknown>;
 
 interface MockIndexFilter {
   eq: (field: string, value: unknown) => MockIndexFilter;
+  gte: (field: string, value: string) => MockIndexFilter;
+  lt: (field: string, value: string) => MockIndexFilter;
 }
 
 interface MockQueryFilter {
@@ -55,15 +58,27 @@ function createMockDb() {
 
   const makeBuilder = (table: string) => {
     let constraints: [string, unknown][] = [];
+    let ranges: ((row: MockRow) => boolean)[] = [];
     const matches = (row: MockRow) =>
-      constraints.every(([field, value]) => Reflect.get(row, field) === value);
+      constraints.every(
+        ([field, value]) => Reflect.get(row, field) === value
+      ) && ranges.every((inRange) => inRange(row));
 
     const builder = {
       withIndex: vi.fn(
         (_indexName: string, cb?: (q: MockIndexFilter) => void) => {
           constraints = [];
+          ranges = [];
           if (cb) {
             const filter: MockIndexFilter = {
+              gte: (field: string, value: string) => {
+                ranges.push((row) => String(Reflect.get(row, field)) >= value);
+                return filter;
+              },
+              lt: (field: string, value: string) => {
+                ranges.push((row) => String(Reflect.get(row, field)) < value);
+                return filter;
+              },
               eq: (field: string, value: unknown) => {
                 constraints.push([field, value]);
                 return filter;
@@ -280,6 +295,50 @@ describe("Seed Coverage", () => {
       await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
 
       expect(snapshotCounts()).toEqual(firstSnapshot);
+    });
+
+    it("never reuses or overwrites lot numbers when re-seeding next to real assignments", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const auctionId = mockDb
+        .rows("lots")
+        .map((l) => l.auctionId)
+        .find((id): id is string => typeof id === "string");
+      if (!auctionId) throw new Error("expected a seeded sale");
+
+      // A real lot is assigned to the seeded sale between two seed runs.
+      const realNumber = await issueNextLotNumber(
+        mockCtx as unknown as MutationCtx,
+        auctionId as never
+      );
+      await mockCtx.db.insert("lots", {
+        title: "Real lot",
+        status: "assigned",
+        auctionId,
+        lotNumber: realNumber,
+      });
+      const seededBefore = mockDb
+        .rows("lots")
+        .filter((l) => l.auctionId === auctionId && l.seedId !== undefined)
+        .map((l) => [l.seedId, l.lotNumber]);
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const inSale = mockDb
+        .rows("lots")
+        .filter((l) => l.auctionId === auctionId);
+      const numbers = inSale.map((l) => l.lotNumber);
+      expect(new Set(numbers).size).toBe(numbers.length);
+      expect(inSale.find((l) => l.title === "Real lot")?.lotNumber).toBe(
+        realNumber
+      );
+      expect(
+        inSale
+          .filter((l) => l.seedId !== undefined)
+          .map((l) => [l.seedId, l.lotNumber])
+      ).toEqual(seededBefore);
     });
 
     it("clears every table and reseeds when clear is requested", async () => {

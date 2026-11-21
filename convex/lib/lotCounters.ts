@@ -53,6 +53,35 @@ export async function adjustWatcherCount(
   await updateCounter(ctx, watcherCounterName(lotId), "total", delta);
 }
 
+/** Watchlist rows deleted per batch when removing a lot's watch data. */
+const WATCH_DELETE_BATCH = 500;
+
+/**
+ * Deletes a lot's watchlist rows and its watcher counter. Call when a lot is
+ * deleted so no orphaned rows or counters remain.
+ *
+ * @param ctx - Mutation context.
+ * @param lotId - The lot being deleted.
+ */
+export async function removeLotWatchData(
+  ctx: MutationCtx,
+  lotId: Id<"lots">
+): Promise<void> {
+  let rows = await ctx.db
+    .query("watchlist")
+    .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+    .take(WATCH_DELETE_BATCH);
+  while (rows.length > 0) {
+    await Promise.all(rows.map((row) => ctx.db.delete("watchlist", row._id)));
+    rows = await ctx.db
+      .query("watchlist")
+      .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+      .take(WATCH_DELETE_BATCH);
+  }
+  const counter = await getCounter(ctx, watcherCounterName(lotId));
+  if (counter) await ctx.db.delete("counters", counter._id);
+}
+
 /**
  * Reads a lot's watcher count from its counter row (a single indexed read).
  *

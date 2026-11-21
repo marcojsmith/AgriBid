@@ -28,6 +28,10 @@ interface MockCtxType {
   runAction: unknown;
 }
 
+vi.mock("../lib/lotCounters", () => ({
+  removeLotWatchData: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../lib/auth", () => ({
   getAuthenticatedUserId: vi.fn(),
   getAuthUser: vi.fn().mockResolvedValue({ id: "user123" }),

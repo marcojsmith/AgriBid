@@ -11,7 +11,11 @@ import { convexTest } from "convex-test";
 
 import { api, internal } from "./_generated/api";
 import { LOT_NUMBER_BACKFILL_BATCH } from "./migrations";
-import { adjustWatcherCount, getWatcherCount } from "./lib/lotCounters";
+import {
+  adjustWatcherCount,
+  getWatcherCount,
+  removeLotWatchData,
+} from "./lib/lotCounters";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
 
@@ -280,6 +284,43 @@ describe("lot number assignment", () => {
     expect(detail?.lotNumber).toBe(1);
     expect(detail?.province).toBe("western_cape");
     expect(detail?.watcherCount).toBe(1);
+  });
+});
+
+describe("lot number backfill alongside live assignments", () => {
+  it("keeps numbers unique when assignments interleave with the backfill", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const legacy = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        insertLot(t, world, {
+          status: "assigned",
+          auctionId: world.auctionA,
+        })
+      )
+    );
+    const fresh = await Promise.all(
+      Array.from({ length: 3 }, () => insertLot(t, world))
+    );
+
+    await Promise.all([
+      t.mutation(internal.migrations.backfillLotNumbers, {}),
+      ...fresh.map((lotId) =>
+        asAdmin(t).mutation(
+          api.auctions.mutations.assignment.assignLotToAuction,
+          {
+            lotId,
+            auctionId: world.auctionA,
+          }
+        )
+      ),
+    ]);
+
+    const numbers = await Promise.all(
+      [...legacy, ...fresh].map((id) => lotNumberOf(t, id))
+    );
+    expect(numbers.every((n) => typeof n === "number")).toBe(true);
+    expect(new Set(numbers).size).toBe(7);
   });
 });
 
@@ -577,7 +618,10 @@ describe("watcher counts", () => {
   it("tracks watch and unwatch per lot", async () => {
     const t = createTestContext();
     const world = await seedWorld(t);
-    const lot = await insertLot(t, world);
+    const lot = await insertLot(t, world, {
+      status: "assigned",
+      auctionId: world.auctionA,
+    });
     const buyerA = t.withIdentity({ subject: BUYER_A });
     const buyerB = t.withIdentity({ subject: BUYER_B });
     const count = () => t.run(async (ctx) => getWatcherCount(ctx, lot));
@@ -620,6 +664,93 @@ describe("watcher counts", () => {
       await adjustWatcherCount(ctx, lot, -1);
     });
     expect(await t.run(async (ctx) => getWatcherCount(ctx, lot))).toBe(0);
+  });
+
+  it("rejects watching lots buyers cannot see", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const approved = await insertLot(t, world);
+
+    await expect(
+      t
+        .withIdentity({ subject: BUYER_A })
+        .mutation(api.watchlist.toggleWatchlist, { lotId: approved })
+    ).rejects.toThrow("Lot not found");
+    expect(await t.run(async (ctx) => getWatcherCount(ctx, approved))).toBe(0);
+  });
+
+  it("removes watch rows and the counter when a draft is deleted", async () => {
+    const t = createTestContext();
+    await seedWorld(t);
+    const lotId = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("lots", {
+        title: "Draft",
+        make: "M",
+        model: "X",
+        year: 2020,
+        operatingHours: 1,
+        location: "L",
+        reservePrice: 1,
+        startingPrice: 1,
+        currentPrice: 1,
+        minIncrement: 1,
+        sellerId: SELLER,
+        status: "draft",
+        images: { additional: [] },
+        createdAt: Date.now(),
+      });
+      // Legacy data: a watch row and counter exist for the draft.
+      await ctx.db.insert("watchlist", { userId: BUYER_A, lotId: id });
+      await adjustWatcherCount(ctx, id, 1);
+      return id;
+    });
+
+    await t
+      .withIdentity({ subject: SELLER })
+      .mutation(api.auctions.mutations.delete.deleteDraft, { lotId });
+
+    const left = await t.run(async (ctx) => ({
+      rows: await ctx.db
+        .query("watchlist")
+        .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+        .collect(),
+      counter: await ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", `watchers:${lotId}`))
+        .unique(),
+    }));
+    expect(left.rows).toHaveLength(0);
+    expect(left.counter).toBeNull();
+  });
+
+  it("leaves no orphan counter when a watched lot is deleted, then rebuilt", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const lot = await insertLot(t, world, {
+      status: "assigned",
+      auctionId: world.auctionA,
+    });
+    await t
+      .withIdentity({ subject: BUYER_A })
+      .mutation(api.watchlist.toggleWatchlist, { lotId: lot });
+
+    // Delete the lot the way the delete paths do: watch data first.
+    await t.run(async (ctx) => {
+      await removeLotWatchData(ctx, lot);
+      await ctx.db.delete("lots", lot);
+    });
+    await t.mutation(internal.migrations.backfillWatcherCounts, {});
+
+    const orphans = await t.run(async (ctx) => {
+      const counters = await ctx.db.query("counters").collect();
+      const rows = await ctx.db.query("watchlist").collect();
+      return {
+        counters: counters.filter((c) => c.name.startsWith("watchers:")),
+        rows,
+      };
+    });
+    expect(orphans.counters).toHaveLength(0);
+    expect(orphans.rows).toHaveLength(0);
   });
 
   it("rejects watching a lot that does not exist", async () => {

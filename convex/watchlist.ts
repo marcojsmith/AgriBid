@@ -14,6 +14,9 @@ import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import { adjustWatcherCount } from "./lib/lotCounters";
 import type { Id, Doc } from "./_generated/dataModel";
 
+/** Lot statuses buyers can see (and therefore watch). */
+const PUBLIC_LOT_STATUSES: readonly string[] = ["assigned", "sold", "unsold"];
+
 /**
  * Handler for toggling a lot in the user's watchlist.
  * @param ctx - Convex mutation context
@@ -41,8 +44,11 @@ export const toggleWatchlistHandler = async (
     await adjustWatcherCount(ctx, args.lotId, -1);
     return false; // Not watched anymore
   } else {
+    // Same visibility rule as the public lot query: only buyer-visible lots.
     const lot = await ctx.db.get("lots", args.lotId);
-    if (!lot) throw new Error("Lot not found");
+    if (!lot || !PUBLIC_LOT_STATUSES.includes(lot.status)) {
+      throw new Error("Lot not found");
+    }
     await ctx.db.insert("watchlist", {
       userId,
       lotId: args.lotId,
