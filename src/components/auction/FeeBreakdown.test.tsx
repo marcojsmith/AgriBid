@@ -74,6 +74,64 @@ describe("FeeBreakdown VAT and estimated total", () => {
     expect(screen.getAllByText(/R\s*10\s*000/)).toHaveLength(2);
   });
 
+  it("still shows VAT and the total for a winner when there are no buyer fees", () => {
+    mockQueries({ buyerFees: [], sellerFees: [] }, { vatRatePct: 15 });
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={1_000}
+      />
+    );
+    expect(screen.getByText("Hammer price")).toBeInTheDocument();
+    expect(screen.getByText("Total fees")).toBeInTheDocument();
+    expect(screen.getByText("VAT (15% on bid + fees)")).toBeInTheDocument();
+    // VAT = 150, total = 1 150.
+    expect(screen.getByText(/R\s*1\s*150/)).toBeInTheDocument();
+  });
+
+  it("renders nothing for a winner with no buyer fees while the rate is loading", () => {
+    mockQueries({ buyerFees: [], sellerFees: [] }, undefined);
+    const { container } = render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={1_000}
+      />
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("rounds each fee first so the rows add up to Total fees", () => {
+    const fee = (feeName: string, calculatedAmount: number) => ({
+      feeName,
+      feeType: "fixed" as const,
+      rate: 0,
+      calculatedAmount,
+    });
+    // Rounded separately: 100.4 -> 100, 100.4 -> 100 (sum 200). Rounding the
+    // raw sum (200.8) would give 201 and break the visible addition.
+    mockQueries(
+      { buyerFees: [fee("Fee A", 100.4), fee("Fee B", 100.4)], sellerFees: [] },
+      { vatRatePct: 0 }
+    );
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={1_000}
+      />
+    );
+    expect(screen.getAllByText(/R\s*100$/)).toHaveLength(2);
+    expect(screen.getByText("Total fees").nextSibling).toHaveTextContent(
+      /R\s*200$/
+    );
+    expect(screen.getByText(/R\s*1\s*200$/)).toBeInTheDocument();
+  });
+
   it("shows fees in whole rand next to the estimate", () => {
     mockQueries(
       {

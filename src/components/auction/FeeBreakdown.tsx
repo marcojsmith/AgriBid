@@ -47,11 +47,15 @@ export function FeeBreakdown({
     lotId ? { lotId } : "skip"
   );
 
-  if (!fees || (fees.buyerFees.length === 0 && fees.sellerFees.length === 0)) {
+  if (!fees) {
     return null;
   }
 
-  const showBuyerFees = isWinner && fees.buyerFees.length > 0;
+  // A winner always gets the VAT estimate once the price and rate are known,
+  // even when no buyer fee applies (premium 0).
+  const canEstimate =
+    isWinner && hammerPrice !== undefined && vatRatePct !== undefined;
+  const showBuyerFees = isWinner && (fees.buyerFees.length > 0 || canEstimate);
   const showSellerFees = isSeller && fees.sellerFees.length > 0;
 
   if (!showBuyerFees && !showSellerFees) {
@@ -67,11 +71,16 @@ export function FeeBreakdown({
     0
   );
 
+  // Round each fee first and sum the rounded values, so the rows shown with an
+  // estimate always add up to "Total fees".
+  const roundedBuyerFees = fees.buyerFees.map((f) =>
+    Math.round(f.calculatedAmount)
+  );
   const estimate =
-    showBuyerFees && hammerPrice !== undefined && vatRatePct !== undefined
+    canEstimate && hammerPrice !== undefined && vatRatePct !== undefined
       ? calculateBuyerTotal({
           bid: hammerPrice,
-          premium: totalBuyerFees,
+          premium: roundedBuyerFees.reduce((sum, n) => sum + n, 0),
           vatRatePct,
         })
       : null;
@@ -101,12 +110,12 @@ export function FeeBreakdown({
                   </span>
                 </div>
               )}
-              {fees.buyerFees.map((fee) => (
+              {fees.buyerFees.map((fee, index) => (
                 <div key={fee.feeName} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{fee.feeName}</span>
                   <span className="font-medium">
                     {estimate
-                      ? formatRand(fee.calculatedAmount)
+                      ? formatRand(roundedBuyerFees[index])
                       : formatCurrency(fee.calculatedAmount)}
                   </span>
                 </div>
