@@ -10,26 +10,24 @@ interface ReservePillProps {
   className?: string;
 }
 
-const CONFIG: Record<
-  ReserveState,
-  { label: string; classes: string; Icon: typeof Lock }
-> = {
-  met: {
-    label: "Reserve met",
-    classes: "bg-live-soft text-live-fg",
-    Icon: CheckCircle2,
-  },
-  "not-met": {
-    label: "Reserve not met",
-    classes: "bg-soon-soft text-soon-fg",
-    Icon: Lock,
-  },
-  none: {
-    label: "No reserve",
-    classes: "bg-primary-soft text-primary",
-    Icon: CircleSlash,
-  },
+const MET = {
+  label: "Reserve met",
+  classes: "bg-live-soft text-live-fg",
+  Icon: CheckCircle2,
 };
+const NOT_MET = {
+  label: "Reserve not met",
+  classes: "bg-soon-soft text-soon-fg",
+  Icon: Lock,
+};
+const NONE = {
+  label: "No reserve",
+  classes: "bg-primary-soft text-primary",
+  Icon: CircleSlash,
+};
+
+const reserveConfig = (state: ReserveState) =>
+  state === "met" ? MET : state === "not-met" ? NOT_MET : NONE;
 
 /**
  * Shows whether a lot's reserve has been met, with an icon and text.
@@ -37,12 +35,12 @@ const CONFIG: Record<
  * Use it in the bid panel and on lot cards. Do not show it for ended lots.
  *
  * @param props - Component props
- * @param props.state
- * @param props.className
+ * @param props.state - Reserve state: met, not-met or none
+ * @param props.className - Extra classes merged onto the root element
  * @returns The reserve pill
  */
 export function ReservePill({ state, className }: ReservePillProps) {
-  const { label, classes, Icon } = CONFIG[state];
+  const { label, classes, Icon } = reserveConfig(state);
   return (
     <span
       data-slot="reserve-pill"

@@ -18,13 +18,6 @@ interface ConditionReportProps {
   className?: string;
 }
 
-const ITEMS = [
-  { key: "engine", label: "Engine" },
-  { key: "hydraulics", label: "Hydraulics" },
-  { key: "tires", label: "Tyres" },
-  { key: "serviceHistory", label: "Service history" },
-] as const;
-
 /**
  * Condition rows with an icon and text (never colour alone): Good, Wear
  * noted or Not reported, plus the seller's notes and an optional PDF link.
@@ -32,9 +25,9 @@ const ITEMS = [
  * Use it on the lot page. A missing value is "Not reported", not "Good".
  *
  * @param props - Component props
- * @param props.checklist
- * @param props.pdfHref
- * @param props.className
+ * @param props.checklist - Condition checklist from the lot; missing values show "Not reported"
+ * @param props.pdfHref - Link to the full inspection PDF, if there is one
+ * @param props.className - Extra classes merged onto the root element
  * @returns The condition report
  */
 export function ConditionReport({
@@ -43,11 +36,16 @@ export function ConditionReport({
   className,
 }: ConditionReportProps) {
   const notes = checklist?.notes?.trim();
+  const items = [
+    { label: "Engine", value: checklist?.engine },
+    { label: "Hydraulics", value: checklist?.hydraulics },
+    { label: "Tyres", value: checklist?.tires },
+    { label: "Service history", value: checklist?.serviceHistory },
+  ];
   return (
     <div data-slot="condition-report" className={cn("text-sm", className)}>
       <ul className="divide-y divide-border">
-        {ITEMS.map(({ key, label }) => {
-          const value = checklist?.[key];
+        {items.map(({ label, value }) => {
           const [text, Icon, tone] =
             value === true
               ? (["Good", Check, "text-ok-fg"] as const)
@@ -55,7 +53,7 @@ export function ConditionReport({
                 ? (["Wear noted", AlertTriangle, "text-warn-fg"] as const)
                 : (["Not reported", Minus, "text-muted-foreground"] as const);
           return (
-            <li key={key} className="flex items-center justify-between py-2">
+            <li key={label} className="flex items-center justify-between py-2">
               <span>{label}</span>
               <span
                 className={cn(

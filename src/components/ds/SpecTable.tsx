@@ -21,8 +21,8 @@ interface SpecTableProps {
  * Use it for lot specifications (make, model, year, hours...).
  *
  * @param props - Component props
- * @param props.items
- * @param props.className
+ * @param props.items - Specification rows; rows without a value are dropped
+ * @param props.className - Extra classes merged onto the root element
  * @returns The spec list, or null when nothing has a value
  */
 export function SpecTable({ items, className }: SpecTableProps) {

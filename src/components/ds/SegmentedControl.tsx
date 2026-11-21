@@ -27,11 +27,11 @@ interface SegmentedControlProps<T extends string> {
  * Results). For navigation between pages use links, not this.
  *
  * @param props - Component props
- * @param props.options
- * @param props.value
- * @param props.onChange
- * @param props.ariaLabel
- * @param props.className
+ * @param props.options - The selectable options
+ * @param props.value - The currently selected value
+ * @param props.onChange - Called with the new value when the selection changes
+ * @param props.ariaLabel - Accessible name of the group
+ * @param props.className - Extra classes merged onto the root element
  * @returns The control
  */
 export function SegmentedControl<T extends string>({
@@ -42,14 +42,14 @@ export function SegmentedControl<T extends string>({
   className,
 }: SegmentedControlProps<T>) {
   const hasSelection = options.some((o) => o.value === value);
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const refs = useRef(new Map<number, HTMLButtonElement>());
 
   const move = (from: number, delta: number) => {
     const next = (from + delta + options.length) % options.length;
-    const option = options[next];
+    const option = options.at(next);
     if (!option) return;
     onChange(option.value);
-    refs.current[next]?.focus();
+    refs.current.get(next)?.focus();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -78,7 +78,8 @@ export function SegmentedControl<T extends string>({
           <button
             key={option.value}
             ref={(el) => {
-              refs.current[index] = el;
+              if (el) refs.current.set(index, el);
+              else refs.current.delete(index);
             }}
             type="button"
             role="radio"

@@ -19,10 +19,10 @@ interface StickyActionBarProps {
  * mobile page. The page needs bottom padding so content isn't covered.
  *
  * @param props - Component props
- * @param props.children
- * @param props.label
- * @param props.hidden
- * @param props.className
+ * @param props.children - Content of the bar, usually the primary action
+ * @param props.label - Accessible name of the bar
+ * @param props.hidden - Hide the bar
+ * @param props.className - Extra classes merged onto the root element
  * @returns The bar
  */
 export function StickyActionBar({

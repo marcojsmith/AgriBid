@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import { CheckCircle2, Clock, MinusCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -6,21 +7,29 @@ import type { DisplayStatus } from "@/lib/auction-badges";
 
 type Tone = "live" | "soon" | "urgent" | "sold" | "passed";
 
-const SOLID: Record<Tone, string> = {
-  live: "bg-live-solid text-white",
-  soon: "bg-soon-solid text-white",
-  urgent: "bg-urgent-solid text-white",
-  sold: "bg-sold-solid text-white",
-  passed: "bg-passed-solid text-white",
-};
+const SOLID = cva("", {
+  variants: {
+    tone: {
+      live: "bg-live-solid text-white",
+      soon: "bg-soon-solid text-white",
+      urgent: "bg-urgent-solid text-white",
+      sold: "bg-sold-solid text-white",
+      passed: "bg-passed-solid text-white",
+    },
+  },
+});
 
-const SOFT: Record<Tone, string> = {
-  live: "bg-live-soft text-live-fg",
-  soon: "bg-soon-soft text-soon-fg",
-  urgent: "bg-urgent-soft text-urgent-fg",
-  sold: "bg-sold-soft text-sold-fg",
-  passed: "bg-passed-soft text-passed-fg",
-};
+const SOFT = cva("", {
+  variants: {
+    tone: {
+      live: "bg-live-soft text-live-fg",
+      soon: "bg-soon-soft text-soon-fg",
+      urgent: "bg-urgent-soft text-urgent-fg",
+      sold: "bg-sold-soft text-sold-fg",
+      passed: "bg-passed-soft text-passed-fg",
+    },
+  },
+});
 
 interface StatusBadgeProps {
   /** Status from `deriveDisplayStatus`. */
@@ -84,9 +93,9 @@ function describeStatus(status: DisplayStatus): {
  * from `Badge` colours for status.
  *
  * @param props - Component props
- * @param props.status
- * @param props.variant
- * @param props.className
+ * @param props.status - The display status from deriveDisplayStatus
+ * @param props.variant - solid (on photos) or soft (on plain surfaces)
+ * @param props.className - Extra classes merged onto the root element
  * @returns The status badge
  */
 export function StatusBadge({
@@ -101,7 +110,7 @@ export function StatusBadge({
       data-tone={tone}
       className={cn(
         "inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-sm px-2 py-0.5 text-xs font-semibold [&>svg]:size-3",
-        variant === "solid" ? SOLID[tone] : SOFT[tone],
+        variant === "solid" ? SOLID({ tone }) : SOFT({ tone }),
         className
       )}
     >

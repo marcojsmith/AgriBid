@@ -23,12 +23,12 @@ interface PhotoFrameProps {
  * Use it for every event, lot or gallery photo so crops stay consistent.
  *
  * @param props - Component props
- * @param props.src
- * @param props.alt
- * @param props.ratio
- * @param props.fill
- * @param props.eager
- * @param props.className
+ * @param props.src - Image URL; a branded empty state is shown when missing
+ * @param props.alt - Required alt text (also labels the empty state)
+ * @param props.ratio - Aspect ratio, 16:9 or 4:3 (default 4:3)
+ * @param props.fill - Fill the parent instead of using an aspect ratio
+ * @param props.eager - Load eagerly (above-the-fold hero only)
+ * @param props.className - Extra classes merged onto the root element
  * @returns The framed photo
  */
 export function PhotoFrame({

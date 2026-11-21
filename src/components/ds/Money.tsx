@@ -20,11 +20,11 @@ interface MoneyProps {
  * Use it for every price shown to a user. Do not format money by hand.
  *
  * @param props - Component props
- * @param props.amount
- * @param props.label
- * @param props.exclVat
- * @param props.display
- * @param props.className
+ * @param props.amount - Amount in rand
+ * @param props.label - Optional label shown above the amount
+ * @param props.exclVat - Append "excl. VAT" after the amount
+ * @param props.display - Use the display serif for the figure
+ * @param props.className - Extra classes merged onto the root element
  * @returns The price element
  */
 export function Money({

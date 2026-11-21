@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -7,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Vitest does not return the CSS source for `?raw` CSS imports; supply it.
 vi.mock("@/index.css?raw", () => ({
-  default: fs.readFileSync(path.join(process.cwd(), "src/index.css"), "utf-8"),
+  default: fs.readFileSync("src/index.css", "utf-8"),
 }));
 
 import DesignSystem from "./DesignSystem";

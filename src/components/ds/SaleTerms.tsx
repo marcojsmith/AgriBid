@@ -20,10 +20,10 @@ interface SaleTermsProps {
  * Use it on the auction event page and next to the bid panel.
  *
  * @param props - Component props
- * @param props.buyersPremiumPct
- * @param props.vatPct
- * @param props.rulesHref
- * @param props.className
+ * @param props.buyersPremiumPct - Buyer's premium percentage; the row is hidden when unset
+ * @param props.vatPct - VAT percentage; the row is hidden when unset
+ * @param props.rulesHref - Target of the "Full auction rules" link
+ * @param props.className - Extra classes merged onto the root element
  * @returns The sale terms list
  */
 export function SaleTerms({

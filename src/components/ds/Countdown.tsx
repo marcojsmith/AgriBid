@@ -8,11 +8,12 @@ import {
 } from "@/lib/countdown";
 import { formatSastDate } from "@/lib/dates";
 
-const TONE_CLASS: Record<CountdownTone, string> = {
-  neutral: "text-foreground",
-  warn: "text-warn-fg",
-  urgent: "text-urgent-fg",
-};
+const toneClass = (tone: CountdownTone): string =>
+  tone === "urgent"
+    ? "text-urgent-fg"
+    : tone === "warn"
+      ? "text-warn-fg"
+      : "text-foreground";
 
 interface CountdownProps {
   /** End time in ms since epoch; null/undefined shows "TBD". */
@@ -77,7 +78,7 @@ export function Countdown({
   }
   const tone = countdownTone(remaining);
   return (
-    <span data-tone={tone} className={base(TONE_CLASS[tone])}>
+    <span data-tone={tone} className={base(toneClass(tone))}>
       {formatRemaining(remaining)}
     </span>
   );

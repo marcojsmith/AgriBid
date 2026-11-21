@@ -23,14 +23,16 @@ interface EventMosaicProps {
  * Use it on event cards and event headers. Lot photos use `PhotoFrame`.
  *
  * @param props - Component props
- * @param props.photos
- * @param props.emptyAlt
- * @param props.className
+ * @param props.photos - Up to three photos (large first); extras are ignored
+ * @param props.emptyAlt - Alt text for the empty state when there are no photos
+ * @param props.className - Extra classes merged onto the root element
  * @returns The mosaic
  */
 export function EventMosaic({ photos, emptyAlt, className }: EventMosaicProps) {
   const shown = photos.slice(0, 3);
-  const [first, second, third] = shown;
+  const first = shown.at(0);
+  const second = shown.at(1);
+  const third = shown.at(2);
   if (!first) {
     return <PhotoFrame alt={emptyAlt} ratio="16:9" className={className} />;
   }

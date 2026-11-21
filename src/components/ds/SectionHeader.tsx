@@ -18,10 +18,10 @@ interface SectionHeaderProps {
  * Use it to open every page section so headings stay consistent.
  *
  * @param props - Component props
- * @param props.title
- * @param props.controls
- * @param props.id
- * @param props.className
+ * @param props.title - Section title, rendered as an h2
+ * @param props.controls - Controls aligned to the right of the title
+ * @param props.id - Id for the heading element
+ * @param props.className - Extra classes merged onto the root element
  * @returns The header
  */
 export function SectionHeader({

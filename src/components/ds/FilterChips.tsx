@@ -22,10 +22,10 @@ interface FilterChipsProps {
  * Use it above a filtered list so users can see and undo what narrows it.
  *
  * @param props - Component props
- * @param props.filters
- * @param props.onRemove
- * @param props.onClear
- * @param props.className
+ * @param props.filters - The active filters to show as chips
+ * @param props.onRemove - Called with the filter key when its chip is removed
+ * @param props.onClear - Called when "Clear filters" is pressed
+ * @param props.className - Extra classes merged onto the root element
  * @returns The chips, or null
  */
 export function FilterChips({
