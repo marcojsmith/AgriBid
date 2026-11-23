@@ -150,7 +150,7 @@ function AdminLayoutContent({
   }, [isMobileNavOpen]);
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] bg-muted/30">
+    <div className="flex min-h-[calc(100vh-64px)] bg-muted/30 [--btn-h:2.75rem] md:[--btn-h:2.25rem]">
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex w-64 border-r bg-background flex-col sticky top-16 h-[calc(100vh-64px)] shrink-0">
         <div className="p-6">

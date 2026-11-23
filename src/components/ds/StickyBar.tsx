@@ -16,7 +16,7 @@ interface StickyBarProps {
   /** Under 10 minutes: the title (the countdown) turns red. */
   urgent?: boolean;
   /** The wa.me link for the 44px WhatsApp icon button. */
-  whatsappHref: string;
+  whatsappHref?: string;
   /** The call to action label, e.g. "Register to bid". */
   cta: ReactNode;
   /** Link target of the call to action. Use this or `onCta`. */
@@ -50,7 +50,7 @@ const SUB_TONE = {
  * @param props.sub - Context line
  * @param props.subTone - default, ok or warn
  * @param props.urgent - Red title for the final 10 minutes
- * @param props.whatsappHref - WhatsApp link
+ * @param props.whatsappHref - WhatsApp link; the logo is left out when there is none
  * @param props.cta - Call to action label
  * @param props.ctaHref - Call to action link
  * @param props.onCta - Call to action click handler
@@ -96,7 +96,7 @@ export function StickyBar({
           </small>
         ) : null}
       </div>
-      <WhatsAppButton href={whatsappHref} />
+      {whatsappHref ? <WhatsAppButton href={whatsappHref} /> : null}
       {ctaHref ? (
         <Button asChild variant={variant} className={ctaClass}>
           <a href={ctaHref}>{cta}</a>

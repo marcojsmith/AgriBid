@@ -35,9 +35,19 @@ describe("DesignSystem page", () => {
       "Imagery",
       "Lot detail blocks",
       "Controls",
+      "Page frame and Home blocks",
     ]) {
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     }
+  });
+
+  it("shows Home blocks and opens the Fees & rules sheet", () => {
+    renderPage();
+    expect(
+      screen.getByRole("heading", { name: "Before you bid" })
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open Fees & rules" }));
+    expect(screen.getByRole("dialog", { name: "Fees & rules" })).toBeVisible();
   });
 
   it("shows a contrast ratio for each pair", () => {
