@@ -8,6 +8,7 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 
 ## Convex
 
+- 2026-11-23 - `resolveBuyerPremium` returns `rate: undefined` for the fee-rows case; sum the active buyer percentage rows (`isBuyerPercentageFee`) rather than falling back to the platform default, or the confirm sheet shows the wrong premium.
 - 2026-11-23 - `getLotById` used to send `sellerId`, `winnerId`, `sellerEmail` and the reserve amount to every visitor; return booleans (`isSeller`, `isWinner`) and a `reserveState` instead, and mask bidders with a salted per-lot hash (`BIDDER_LABEL_SALT`).
 - 2026-11-23 - `lots.imageAngles` is keyed by storage ref while `images` holds resolved URLs; use the resolved `photos` array (`resolveLotPhotos`) when you need both.
 - 2026-11-23 - Plain `Error`s thrown from mutations are redacted in production; throw `ConvexError` for anything the client must show (bid rejections).

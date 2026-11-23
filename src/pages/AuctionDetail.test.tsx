@@ -388,6 +388,15 @@ describe("AuctionDetail (lot page)", () => {
     expect(within(sheet).queryByText(/Someone bid before you/)).toBeNull();
   });
 
+  it("the seller sees no bid form or sticky bid action on their own lot", () => {
+    h.authed = true;
+    setup({ isSeller: true });
+    renderPage();
+    expect(screen.queryByLabelText("Your bid")).toBeNull();
+    expect(screen.getByText(/This is your lot/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Bid R/ })).toBeNull();
+  });
+
   it("an unverified user is sent to verify instead of bidding", () => {
     h.authed = true;
     h.verified = false;

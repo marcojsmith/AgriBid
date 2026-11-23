@@ -77,12 +77,14 @@ export function useLotBid({
 
   const startBid = useCallback(
     (next?: number) => {
-      if (next !== undefined) setTyped(next);
+      // Freeze the amount being confirmed: it must not drift with the live
+      // minimum while the sheet is open.
+      setTyped(next ?? typed ?? minimum);
       setShownMinimum(minimum);
       setError(null);
       setConfirmOpen(true);
     },
-    [minimum]
+    [minimum, typed]
   );
 
   const reviseBid = useCallback((next: number) => {

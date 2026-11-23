@@ -315,8 +315,9 @@ function LotPage({ id }: { id: string | undefined }) {
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  const stickyAction: LotStickyAction | null =
-    viewer === "guest"
+  const stickyAction: LotStickyAction | null = lot.isSeller
+    ? null
+    : viewer === "guest"
       ? { kind: "link", href: registerHref, label: "Register to bid" }
       : eligibility === "needs-verification"
         ? { kind: "link", href: "/kyc", label: "Verify to bid" }
@@ -388,92 +389,107 @@ function LotPage({ id }: { id: string | undefined }) {
     </div>
   );
 
-  const panel = isLive ? (
-    <div className="scroll-mt-20">
-      <BidPanel
-        id="bidding-panel"
-        viewer={viewer}
-        price={lot.currentPrice}
-        bidCount={lot.bidCount}
-        watchers={lot.watcherCount}
-        closesAt={closesAt}
-        extended={extended}
-        reserve={reserve}
-        cost={{
-          bid: minimum,
-          seller: lot.sellerVatKind,
-          premiumPct: premium,
-          vatRatePct,
-          onFeesClick: () => {
-            setFeesOpen(true);
-          },
-        }}
-        deposit={deposit}
-        minimum={minimum}
-        quickAmounts={quick}
-        amount={bid.amount}
-        onAmountChange={bid.setAmount}
-        onBid={() => {
-          bid.startBid();
-        }}
-        registerHref={registerHref}
-        eligibility={eligibility}
-        ctaRef={ctaRef}
-      />
-    </div>
-  ) : isUpcoming ? (
-    <section aria-label="Bidding" className="flex flex-col gap-3">
-      <Money amount={lot.startingPrice} label="Opening bid" display />
-      <p className="text-[15px]">
-        <b className="font-bold">
-          Opens {formatSastDate(liveWindow.effectiveStartTime ?? 0)}
-        </b>
-      </p>
-      <CostBox
-        bid={lot.startingPrice}
-        seller={lot.sellerVatKind}
-        premiumPct={premium}
-        vatRatePct={vatRatePct}
-        onFeesClick={() => {
-          setFeesOpen(true);
-        }}
-      />
-      {deposit && !isAuthenticated ? (
-        <DepositLines amount={deposit.amount} refundDays={deposit.refundDays} />
-      ) : null}
-    </section>
-  ) : isEnded ? (
-    <section aria-label="Result" className="flex flex-col gap-3">
-      {lot.isWinner ? <Banner kind="ok">You won this lot</Banner> : null}
-      {isSold || hasBids ? (
+  const panel =
+    isLive && lot.isSeller ? (
+      <section aria-label="Bidding" className="flex flex-col gap-3">
         <Money
           amount={lot.currentPrice}
-          label={isSold ? "Sold for" : "Highest bid"}
+          label={hasBids ? "Current bid" : "Opening bid"}
           display
         />
-      ) : (
-        <p className="text-[15px] text-muted-foreground">
-          No bids were placed.
+        <p className="text-[15px]">
+          This is your lot. Sellers can't bid on their own lots.
         </p>
-      )}
-      {hasBids ? (
-        <p className="text-sm text-muted-foreground">
-          {String(lot.bidCount)} {lot.bidCount === 1 ? "bid" : "bids"} ·{" "}
-          {String(lot.watcherCount)} watching
+      </section>
+    ) : isLive ? (
+      <div className="scroll-mt-20">
+        <BidPanel
+          id="bidding-panel"
+          viewer={viewer}
+          price={lot.currentPrice}
+          bidCount={lot.bidCount}
+          watchers={lot.watcherCount}
+          closesAt={closesAt}
+          extended={extended}
+          reserve={reserve}
+          cost={{
+            bid: minimum,
+            seller: lot.sellerVatKind,
+            premiumPct: premium,
+            vatRatePct,
+            onFeesClick: () => {
+              setFeesOpen(true);
+            },
+          }}
+          deposit={deposit}
+          minimum={minimum}
+          quickAmounts={quick}
+          amount={bid.amount}
+          onAmountChange={bid.setAmount}
+          onBid={() => {
+            bid.startBid();
+          }}
+          registerHref={registerHref}
+          eligibility={eligibility}
+          ctaRef={ctaRef}
+        />
+      </div>
+    ) : isUpcoming ? (
+      <section aria-label="Bidding" className="flex flex-col gap-3">
+        <Money amount={lot.startingPrice} label="Opening bid" display />
+        <p className="text-[15px]">
+          <b className="font-bold">
+            Opens {formatSastDate(liveWindow.effectiveStartTime ?? 0)}
+          </b>
         </p>
-      ) : null}
-      <Button asChild variant="outline" className="w-full">
-        <Link to="/auctions">See current auctions</Link>
-      </Button>
-    </section>
-  ) : (
-    <section aria-label="Availability" className="flex flex-col gap-3">
-      <Banner kind="info">This lot isn&apos;t open for bidding yet.</Banner>
-      <Button asChild variant="outline" className="w-full">
-        <Link to="/auctions">See current auctions</Link>
-      </Button>
-    </section>
-  );
+        <CostBox
+          bid={lot.startingPrice}
+          seller={lot.sellerVatKind}
+          premiumPct={premium}
+          vatRatePct={vatRatePct}
+          onFeesClick={() => {
+            setFeesOpen(true);
+          }}
+        />
+        {deposit && !isAuthenticated ? (
+          <DepositLines
+            amount={deposit.amount}
+            refundDays={deposit.refundDays}
+          />
+        ) : null}
+      </section>
+    ) : isEnded ? (
+      <section aria-label="Result" className="flex flex-col gap-3">
+        {lot.isWinner ? <Banner kind="ok">You won this lot</Banner> : null}
+        {isSold || hasBids ? (
+          <Money
+            amount={lot.currentPrice}
+            label={isSold ? "Sold for" : "Highest bid"}
+            display
+          />
+        ) : (
+          <p className="text-[15px] text-muted-foreground">
+            No bids were placed.
+          </p>
+        )}
+        {hasBids ? (
+          <p className="text-sm text-muted-foreground">
+            {String(lot.bidCount)} {lot.bidCount === 1 ? "bid" : "bids"} ·{" "}
+            {String(lot.watcherCount)} watching
+          </p>
+        ) : null}
+        <Button asChild variant="outline" className="w-full">
+          <Link to="/auctions">See current auctions</Link>
+        </Button>
+      </section>
+    ) : (
+      <section aria-label="Availability" className="flex flex-col gap-3">
+        <Banner kind="info">This lot isn&apos;t open for bidding yet.</Banner>
+        <Button asChild variant="outline" className="w-full">
+          <Link to="/auctions">See current auctions</Link>
+        </Button>
+      </section>
+    );
 
   const showViewCollect = !isEnded;
   const backLink = sale ? (

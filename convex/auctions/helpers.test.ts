@@ -13,6 +13,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 const viewer = vi.hoisted(() => ({
   current: null as null | {
     userId: string;
+    authUser: { _id: string };
     profile: { role: string } | null;
   },
 }));
@@ -20,7 +21,14 @@ const viewer = vi.hoisted(() => ({
 vi.mock("../lib/auth", () => ({
   getAuthWithProfile: vi.fn(() => Promise.resolve(viewer.current)),
 }));
+const fees = vi.hoisted(() => ({
+  active: [] as { feeType: string; appliesTo: string; value: number }[],
+}));
+
 vi.mock("../lib/buyerPremium", () => ({
+  isBuyerPercentageFee: (fee: { feeType: string; appliesTo: string }) =>
+    fee.feeType === "percentage" &&
+    (fee.appliesTo === "buyer" || fee.appliesTo === "both"),
   percentToFraction: (pct: number) => Math.round(pct * 100) / 10000,
   resolveBuyerPremium: vi.fn(() =>
     Promise.resolve({ source: "snapshot", rate: 0.12 })
@@ -322,6 +330,9 @@ describe("toLotDetail", () => {
         query: vi.fn(() => ({
           withIndex: vi.fn().mockReturnThis(),
           unique: vi.fn().mockResolvedValue(sellerProfile),
+          collect: vi
+            .fn()
+            .mockImplementation(() => Promise.resolve(fees.active)),
         })),
       },
       auth: {
@@ -409,7 +420,11 @@ describe("toLotDetail", () => {
     mockCtx = setupMockCtx(null, false);
     viewer.current = null;
     const signedOut = await toLotDetail(mockCtx, createMockLot());
-    viewer.current = { userId: "buyer_1", profile: { role: "user" } };
+    viewer.current = {
+      userId: "buyer_1",
+      authUser: { _id: "auth_buyer_1" },
+      profile: { role: "user" },
+    };
     const buyer = await toLotDetail(mockCtx, createMockLot());
 
     for (const result of [signedOut, buyer]) {
@@ -423,9 +438,17 @@ describe("toLotDetail", () => {
 
   it("shows the reserve amount to the seller and to admins", async () => {
     mockCtx = setupMockCtx(null, true);
-    viewer.current = { userId: "seller_123", profile: { role: "user" } };
+    viewer.current = {
+      userId: "seller_123",
+      authUser: { _id: "auth_seller_123" },
+      profile: { role: "user" },
+    };
     const seller = await toLotDetail(mockCtx, createMockLot());
-    viewer.current = { userId: "admin_1", profile: { role: "admin" } };
+    viewer.current = {
+      userId: "admin_1",
+      authUser: { _id: "auth_admin_1" },
+      profile: { role: "admin" },
+    };
     const admin = await toLotDetail(mockCtx, createMockLot());
 
     expect(seller.reservePrice).toBe(45000);
@@ -437,9 +460,17 @@ describe("toLotDetail", () => {
   it("flags the winner for the winning user only", async () => {
     mockCtx = setupMockCtx(null, true);
     const lot = { ...createMockLot(), winnerId: "winner_1" };
-    viewer.current = { userId: "winner_1", profile: { role: "user" } };
+    viewer.current = {
+      userId: "winner_1",
+      authUser: { _id: "auth_winner_1" },
+      profile: { role: "user" },
+    };
     const winner = await toLotDetail(mockCtx, lot);
-    viewer.current = { userId: "other", profile: null };
+    viewer.current = {
+      userId: "other",
+      authUser: { _id: "auth_other" },
+      profile: null,
+    };
     const other = await toLotDetail(mockCtx, lot);
 
     expect(winner.isWinner).toBe(true);
@@ -457,6 +488,39 @@ describe("toLotDetail", () => {
     const result = await toLotDetail(mockCtx, createMockLot());
 
     expect(result.buyerPremiumFraction).toBe(0.1);
+  });
+
+  it("sums the active buyer percentage rows when they set the premium", async () => {
+    const buyerPremium = await import("../lib/buyerPremium");
+    vi.mocked(buyerPremium.resolveBuyerPremium).mockResolvedValueOnce({
+      source: "feeRows",
+      rate: undefined,
+    });
+    fees.active = [
+      { feeType: "percentage", appliesTo: "buyer", value: 8 },
+      { feeType: "percentage", appliesTo: "both", value: 2 },
+      { feeType: "percentage", appliesTo: "seller", value: 5 },
+      { feeType: "fixed", appliesTo: "buyer", value: 99 },
+    ];
+    mockCtx = setupMockCtx(null, true);
+
+    const result = await toLotDetail(mockCtx, createMockLot());
+    fees.active = [];
+
+    expect(result.buyerPremiumFraction).toBe(0.1);
+  });
+
+  it("treats a seller stored under the auth user id as the seller", async () => {
+    viewer.current = {
+      userId: "someone",
+      authUser: { _id: "seller_123" },
+      profile: { role: "user" },
+    };
+    mockCtx = setupMockCtx(null, true);
+
+    const result = await toLotDetail(mockCtx, createMockLot());
+
+    expect(result.isSeller).toBe(true);
   });
 
   it("should handle missing category", async () => {

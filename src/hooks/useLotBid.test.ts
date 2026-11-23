@@ -55,6 +55,15 @@ describe("useLotBid", () => {
     expect(result.current.amount).toBe(430_000);
   });
 
+  it("freezes the amount under review when the minimum moves while the sheet is open", () => {
+    const { result, rerender } = setup(414_000);
+    act(() => {
+      result.current.startBid();
+    });
+    rerender({ minimum: 420_000 });
+    expect(result.current.amount).toBe(414_000);
+  });
+
   it("opens the confirm sheet, optionally at an amount, and closes it", () => {
     const { result } = setup();
     act(() => {

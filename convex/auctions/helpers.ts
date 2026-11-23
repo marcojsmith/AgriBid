@@ -5,7 +5,11 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { getBuyerPremiumPct } from "../admin/platformSettings";
 import { resolveUrlCached } from "../image_cache";
 import { getAuthWithProfile } from "../lib/auth";
-import { percentToFraction, resolveBuyerPremium } from "../lib/buyerPremium";
+import {
+  isBuyerPercentageFee,
+  percentToFraction,
+  resolveBuyerPremium,
+} from "../lib/buyerPremium";
 import { getBidCount, getWatcherCount } from "../lib/lotCounters";
 import { reserveStateOf } from "../lib/reserve";
 import { provinceValidator } from "../lib/provinces";
@@ -438,6 +442,26 @@ export const LotDetailValidator = v.object({
 });
 
 /**
+ * The buyer premium (as a fraction) that settlement charges when it comes from
+ * the active buyer percentage fee rows: their sum. Falls back to the platform
+ * default when no such row is active.
+ *
+ * @param ctx - Query context
+ * @returns The premium as a fraction (0.12 = 12%)
+ */
+async function activeBuyerPremiumFraction(ctx: QueryCtx): Promise<number> {
+  const fees = await ctx.db
+    .query("platformFees")
+    .withIndex("by_active", (q) => q.eq("isActive", true))
+    .collect();
+  const rows = fees.filter(isBuyerPercentageFee);
+  if (rows.length === 0) {
+    return percentToFraction(await getBuyerPremiumPct(ctx));
+  }
+  return percentToFraction(rows.reduce((sum, fee) => sum + fee.value, 0));
+}
+
+/**
  * Create a full lot object with image references resolved to accessible URLs.
  * Seller and winner ids are never returned: the caller gets `isSeller` and
  * `isWinner` booleans, and `reservePrice` only when they are the seller or an
@@ -465,13 +489,14 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
       getWatcherCount(ctx, lot._id),
       getBidCount(ctx, lot._id),
     ]);
-  const isSeller = viewer !== null && viewer.userId === lot.sellerId;
-  const isWinner =
-    viewer !== null && lot.winnerId != null && viewer.userId === lot.winnerId;
+  // Ids are stored under either the profile user id or the auth user id.
+  const viewerIds = viewer ? [viewer.userId, viewer.authUser._id] : [];
+  const isSeller = viewerIds.includes(lot.sellerId);
+  const isWinner = lot.winnerId != null && viewerIds.includes(lot.winnerId);
   const canSeeReserve = isSeller || viewer?.profile?.role === "admin";
   const premium = await resolveBuyerPremium(ctx, lot);
   const buyerPremiumFraction =
-    premium.rate ?? percentToFraction(await getBuyerPremiumPct(ctx));
+    premium.rate ?? (await activeBuyerPremiumFraction(ctx));
   const sellerVat = resolveLotSellerVat(lot, sellerProfile);
   const coldStartVideoUrl = lot.coldStartVideo
     ? ((await ctx.storage.getUrl(lot.coldStartVideo)) ?? undefined)
