@@ -13,7 +13,6 @@ const sales: SaleListItem[] = [
     effectiveEndTime: NOW + 27 * 3_600_000,
     lotCount: 5,
     bucket: "live",
-    imageUrl: "https://img/a.jpg",
   },
   {
     _id: "b",
@@ -42,6 +41,7 @@ describe("SaleList", () => {
       "href",
       "/auctions/a"
     );
+    expect(items[1]).toHaveTextContent("Upcoming");
     expect(items[1]).toHaveTextContent("Opens Mon 23 Nov, 12:00");
     expect(items[1]).toHaveTextContent("1 lot");
     expect(items[1]).not.toHaveTextContent("Closes in");

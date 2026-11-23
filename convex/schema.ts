@@ -46,9 +46,19 @@ export default defineSchema({
     defaultBuyerPremiumPct: v.optional(v.number()),
     defaultSellerCommissionPct: v.optional(v.number()),
     createdBy: v.string(), // admin userId
+    // Stable import key (`wbt:auction:<source id>`) set only by the webuytractors.shop
+    // demo import; `seed:weeklyReset` re-times and resets only sales that have one.
+    seedId: v.optional(v.string()),
+    // Where an imported sale sits on the demo timeline (see `saleWindow`).
+    demoRole: v.optional(
+      v.union(v.literal("live"), v.literal("upcoming"), v.literal("closed"))
+    ),
+    // 1 = the newest closed imported sale; 0 for live and upcoming sales.
+    demoOrder: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_seedId", ["seedId"])
     .index("by_status", ["status"])
     .index("by_startTime", ["startTime"])
     .index("by_status_startTime", ["status", "startTime"])

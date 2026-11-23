@@ -155,6 +155,7 @@ describe("SpecsSection", () => {
 describe("ViewCollect", () => {
   const finance = {
     name: "Lee-Anne Vermeulen",
+    company: "com-fin",
     phone: "083 277 0178",
     tel: "tel:0832770178",
   };
@@ -181,7 +182,7 @@ describe("ViewCollect", () => {
     ).toHaveAttribute("href", "/support");
     expect(
       screen.getByRole("link", {
-        name: /Need finance\? Lee-Anne Vermeulen, 083 277 0178/,
+        name: /Need finance\? Lee-Anne Vermeulen, com-fin, 083 277 0178/,
       })
     ).toHaveAttribute("href", "tel:0832770178");
     expect(

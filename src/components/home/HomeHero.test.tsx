@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi } from "vitest";
 
@@ -147,13 +147,62 @@ describe("HomeHero", () => {
     expect(screen.getByText("Mon 23 Nov, 12:00 · 1 lot")).toBeVisible();
   });
 
-  it("keeps only the cost box and call to action in the multi-sale state", () => {
+  it("lists the sales and drops View all lots in the multi-sale state", () => {
+    const sales = [
+      {
+        _id: "a1",
+        title: "Sale A",
+        startTime: NOW - 1000,
+        effectiveEndTime: NOW + 51 * 3_600_000,
+        lotCount: 85,
+        lotCountCapped: true,
+        bucket: "live" as const,
+      },
+      {
+        _id: "b1",
+        title: "Sale B",
+        startTime: NOW + 3_600_000,
+        effectiveEndTime: NOW + 9 * 3_600_000,
+        lotCount: 4,
+        bucket: "upcoming" as const,
+      },
+    ];
+    renderHero({ sale: null, sales, lotsHref: "/auctions", totalLots: 21 });
+    expect(
+      screen.getByRole("heading", { level: 1, name: /auctions/i })
+    ).toBeVisible();
+    expect(screen.getByText(/^1 live · 1 opens /)).toBeVisible();
+    const rows = within(screen.getByRole("list", { name: "Auctions" }));
+    expect(rows.getAllByRole("listitem")).toHaveLength(2);
+    expect(rows.getByText(/85\+ lots/)).toBeVisible();
+    expect(screen.queryByRole("link", { name: /View all/ })).toBeNull();
+    expect(screen.getByRole("link", { name: "Register to bid" })).toBeVisible();
+    expect(screen.getByRole("link", { name: /John Deere/ })).toBeVisible();
+  });
+
+  it("shows no heading or list with no sale and fewer than two sales", () => {
     renderHero({ sale: null, lotsHref: "/auctions", totalLots: 21 });
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
-    expect(screen.queryByRole("link", { name: /John Deere/ })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Auctions" })).toBeNull();
     expect(
       screen.getByRole("link", { name: "View all 21 lots" })
     ).toHaveAttribute("href", "/auctions");
-    expect(screen.getByRole("link", { name: "Register to bid" })).toBeVisible();
+  });
+
+  it("counts several upcoming sales in the multi-sale summary", () => {
+    const upcoming = (id: string) => ({
+      _id: id,
+      title: id,
+      startTime: NOW + 3_600_000,
+      effectiveEndTime: NOW + 9 * 3_600_000,
+      lotCount: 1,
+      bucket: "upcoming" as const,
+    });
+    renderHero({
+      sale: null,
+      sales: [upcoming("x"), upcoming("y")],
+      totalLots: 2,
+    });
+    expect(screen.getByText("0 live · 2 upcoming")).toBeVisible();
   });
 });

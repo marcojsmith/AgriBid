@@ -63,13 +63,13 @@ const PRICE_LABEL: Record<LotCardState, string> = {
 };
 
 /**
- * Groups thousands with a narrow no-break space, as `formatRand` does.
+ * Groups thousands with a no-break space, as `formatRand` does.
  *
  * @param n - A whole number
  * @returns The grouped digits
  */
 function groupDigits(n: number): string {
-  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
 /**

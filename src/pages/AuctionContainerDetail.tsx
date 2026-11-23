@@ -44,6 +44,7 @@ import {
   DEFAULT_DESCRIPTION,
   DEFAULT_OG_IMAGE,
 } from "@/lib/seo";
+import { lotTitle, lotTitleWithYear } from "@/lib/lotTitle";
 import type { ShareResult } from "@/lib/share";
 
 /** Lots added by each "Show more" tap. */
@@ -226,7 +227,7 @@ function EventPage({ id }: { id: string | undefined }) {
   const firstLot = lotsResult?.lots[0];
   const candidate = featuredRow
     ? {
-        title: `${String(featuredRow.lot.year)} ${featuredRow.lot.make} ${featuredRow.lot.model}`,
+        title: lotTitleWithYear(featuredRow.lot),
         bid:
           featuredRow.bids > 0
             ? featuredRow.lot.currentPrice
@@ -234,7 +235,7 @@ function EventPage({ id }: { id: string | undefined }) {
       }
     : firstLot
       ? {
-          title: `${firstLot.make} ${firstLot.model}`,
+          title: lotTitle(firstLot),
           bid:
             firstLot.bids > 0 ? firstLot.currentPrice : firstLot.startingPrice,
         }

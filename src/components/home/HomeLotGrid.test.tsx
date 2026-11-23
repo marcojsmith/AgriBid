@@ -6,6 +6,7 @@ import { HomeLotGrid, type HomeGridLot } from "./HomeLotGrid";
 const NOW = 1_000_000;
 const lot = (over: Partial<HomeGridLot> = {}): HomeGridLot => ({
   _id: "l1",
+  title: "New Holland T6070",
   make: "New Holland",
   model: "T6070",
   year: 2016,

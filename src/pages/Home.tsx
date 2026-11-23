@@ -21,12 +21,13 @@ import { showToast } from "@/components/ds/showToast";
 import { HomeFilters, type PriceFilter } from "@/components/home/HomeFilters";
 import { HomeHero } from "@/components/home/HomeHero";
 import { HomeLotGrid } from "@/components/home/HomeLotGrid";
-import { SaleList } from "@/components/home/SaleList";
+import { SaleLotGroup } from "@/components/home/SaleLotGroup";
 import { LotBrowser } from "@/components/LotBrowser";
 import { Button } from "@/components/ui/button";
 import { useBranding } from "@/hooks/useBranding";
 import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
+import { lotTitle, lotTitleWithYear } from "@/lib/lotTitle";
 import { WATCHING_MESSAGE } from "@/lib/auctionRules";
 import { formatClosesIn } from "@/lib/countdown";
 import { URGENT_MS } from "@/lib/auction-badges";
@@ -114,13 +115,16 @@ export default function Home() {
     [active.results, now]
   );
   const { hero, open, mode } = sales;
+  // The filtered grid belongs to the single-sale state only: with two or more
+  // sales the lots are grouped per sale and have no filters (home-r8).
   const gridSaleIds = useMemo(
+    () => (mode === "single" && hero ? [hero._id] : []),
+    [mode, hero]
+  );
+  const liveSales = useMemo(
     () =>
-      (mode === "single" && hero ? [hero._id] : open.map((s) => s._id)).slice(
-        0,
-        MAX_OPEN_SALES
-      ),
-    [mode, hero, open]
+      open.filter((sale) => sale.bucket === "live").slice(0, MAX_OPEN_SALES),
+    [open]
   );
 
   // Filters belong to the set of sales they were picked in: when a sale opens
@@ -140,6 +144,12 @@ export default function Home() {
   const featuredRows = useQuery(
     api.engagement.getMostEngagedLots,
     hero && mode === "single" ? { auctionId: hero._id, limit: 1 } : "skip"
+  );
+  const featuredAcross = useQuery(
+    api.engagement.getMostEngagedLotAcrossSales,
+    mode === "multi" && liveSales.length > 0
+      ? { auctionIds: liveSales.map((sale) => sale._id) }
+      : "skip"
   );
   const home = useQuery(
     api.auctions.getHomeLots,
@@ -196,11 +206,11 @@ export default function Home() {
   const waHref = whatsappLink(businessInfo?.whatsapp);
   const premiumPct = settings?.buyerPremiumPct ?? 0;
 
-  const featuredRow = featuredRows?.[0];
+  const featuredRow = mode === "multi" ? featuredAcross : featuredRows?.[0];
   const featured = featuredRow
     ? {
         _id: featuredRow.lot._id,
-        title: `${String(featuredRow.lot.year)} ${featuredRow.lot.make} ${featuredRow.lot.model}`,
+        title: lotTitleWithYear(featuredRow.lot),
         town: featuredRow.lot.location,
         price:
           featuredRow.bids > 0
@@ -221,7 +231,7 @@ export default function Home() {
     ? { title: featured.title, bid: featured.price }
     : firstLot
       ? {
-          title: `${firstLot.make} ${firstLot.model}`,
+          title: lotTitle(firstLot),
           bid: firstLot.currentPrice,
         }
       : null;
@@ -277,27 +287,21 @@ export default function Home() {
         </div>
       ) : (
         <>
-          {mode === "multi" ? (
-            <>
-              <h1 className="sr-only">Agricultural equipment auctions</h1>
-              <SaleList
-                now={now}
-                className="py-1"
-                sales={open.map((sale) => ({
-                  _id: sale._id,
-                  title: sale.title,
-                  startTime: sale.startTime,
-                  effectiveEndTime: sale.effectiveEndTime,
-                  lotCount: sale.lotCount,
-                  bucket: sale.bucket,
-                  imageUrl: sale.leadImageUrls[0],
-                }))}
-              />
-            </>
-          ) : null}
-
           {settings && (mode === "single" || mode === "multi") ? (
             <HomeHero
+              sales={
+                mode === "multi"
+                  ? open.map((sale) => ({
+                      _id: sale._id,
+                      title: sale.title,
+                      startTime: sale.startTime,
+                      effectiveEndTime: sale.effectiveEndTime,
+                      lotCount: sale.lotCount,
+                      lotCountCapped: sale.lotCountCapped,
+                      bucket: sale.bucket,
+                    }))
+                  : undefined
+              }
               sale={
                 mode === "single" && hero
                   ? {
@@ -344,6 +348,25 @@ export default function Home() {
               <Button asChild variant="outline" className="mt-4">
                 <Link to="/auctions">See past auctions</Link>
               </Button>
+            </section>
+          ) : null}
+
+          {mode === "multi" ? (
+            <section
+              aria-label="Lots by auction"
+              className="container mx-auto max-w-[1200px] px-4 py-5 md:py-8"
+            >
+              {liveSales.map((sale) => (
+                <SaleLotGroup
+                  key={sale._id}
+                  sale={sale}
+                  now={now}
+                  watchedIds={watchedSet}
+                  onToggleWatch={(id) => {
+                    void handleToggleWatch(id);
+                  }}
+                />
+              ))}
             </section>
           ) : null}
 

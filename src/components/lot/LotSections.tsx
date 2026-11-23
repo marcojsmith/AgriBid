@@ -260,7 +260,12 @@ interface ViewCollectProps {
   /** "Malmesbury, Western Cape". */
   place: string;
   phone?: { text: string; tel: string };
-  finance?: { name: string | null; phone: string | null; tel?: string };
+  finance?: {
+    name: string | null;
+    company?: string | null;
+    phone: string | null;
+    tel?: string;
+  };
   className?: string;
   /** Draw the divider and title (phone) or just the rows (the desktop column). */
   heading?: boolean;
@@ -286,6 +291,10 @@ export function ViewCollect({
   className,
   heading = true,
 }: ViewCollectProps) {
+  const who = [finance?.name, finance?.company]
+    .map((part) => part?.trim() ?? "")
+    .filter(Boolean)
+    .join(", ");
   const rows = (
     <IconList className={className}>
       {place ? (
@@ -324,8 +333,7 @@ export function ViewCollect({
               className="size-[18px] shrink-0 text-primary"
             />
             <span className="flex-1">
-              Need finance?{finance.name ? ` ${finance.name},` : ""}{" "}
-              {finance.phone}
+              Need finance?{who ? ` ${who},` : ""} {finance.phone}
             </span>
             <ChevronRight aria-hidden="true" className="size-4" />
           </a>

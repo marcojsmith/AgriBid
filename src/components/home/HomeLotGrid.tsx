@@ -1,11 +1,13 @@
 import { LotCard, type LotCardState } from "@/components/ds/LotCard";
 import type { ReserveState } from "@/components/ds/ReservePill";
+import { lotTitle } from "@/lib/lotTitle";
 import { formatRemaining } from "@/lib/countdown";
 import { cn } from "@/lib/utils";
 
 /** One lot of the grid, as `getHomeLots` returns it. */
 export interface HomeGridLot {
   _id: string;
+  title: string;
   make: string;
   model: string;
   year: number;
@@ -128,7 +130,7 @@ export function HomeLotGrid({
               className="w-full"
               lot={{
                 number: lot.lotNumber ?? "–",
-                title: `${lot.make} ${lot.model}`,
+                title: lotTitle(lot),
                 href: `/auction/${lot._id}`,
                 photoSrc: lot.leadImageUrl,
                 year: lot.year,

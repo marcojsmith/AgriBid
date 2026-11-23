@@ -63,8 +63,8 @@ describe("formatNumber", () => {
 });
 
 describe("formatRand", () => {
-  const N = " ";
-  it("groups with narrow no-break spaces and drops cents", () => {
+  const N = " ";
+  it("groups with no-break spaces and drops cents", () => {
     expect(formatRand(200000)).toBe(`R${N}200${N}000`);
   });
   it("rounds to the nearest rand", () => {

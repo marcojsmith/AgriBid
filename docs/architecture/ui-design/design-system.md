@@ -181,7 +181,7 @@ Notes:
 
 ### Formatters
 
-- `formatRand(n)` in `src/lib/currency.ts`: `R 200 000`, whole rand, narrow no-break spaces (U+202F) so a price never wraps. Use it for display. `formatCurrency` keeps cents for statements.
+- `formatRand(n)` in `src/lib/currency.ts`: `R 200 000`, whole rand, no-break spaces (U+00A0) so a price never wraps (U+202F renders almost invisibly in Inter, giving "R250000"). Use it for display. `formatCurrency` keeps cents for statements.
 - `formatSastDate(ms)` in `src/lib/dates.ts` returns `Wed 25 Nov, 11:00` (D1): no "SAST" (everything is South African time), fixed Africa/Johannesburg offset. `formatClosesIn(ms)` in `src/lib/countdown.ts` returns `Closes in 2d 3h`; seconds appear only in the final 10 minutes (`1m 52s`), 10 minutes to an hour shows minutes (`42m`).
 - Fees: `calculateBuyerTotal` in `src/lib/vat.ts` is the single source of the maths. Premium is 12% of the bid (Admin-configurable); VAT is 15% of bid + premium for a VAT-registered seller (`vatBase: "bid-and-premium"`) and of the premium only for a private seller (`vatBase: "premium"`; `vatBaseForSeller` maps `vat | private | any`). R 400 000: VAT-registered seller pays R 515 200 (premium 48 000, VAT 67 200); private seller pays R 455 200 (premium 48 000, VAT 7 200). `CostBox` uses it.
 

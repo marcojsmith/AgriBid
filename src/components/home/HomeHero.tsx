@@ -7,6 +7,7 @@ import { DepositLines } from "@/components/ds/DepositLines";
 import { IconList, IconRow } from "@/components/ds/IconRow";
 import { PhotoFrame } from "@/components/ds/PhotoFrame";
 import { StatusBadge } from "@/components/ds/StatusBadge";
+import { SaleList, type SaleListItem } from "@/components/home/SaleList";
 import type { DepositSettings } from "@/components/ds/FeesRulesSheet";
 import { Button } from "@/components/ui/button";
 import { softCloseRule } from "@/lib/auctionRules";
@@ -47,8 +48,10 @@ export interface ExampleLot {
 }
 
 interface HomeHeroProps {
-  /** The sale to describe, or null in the multi-sale state (the band then has no title). */
+  /** The sale to describe, or null in the multi-sale state (the band then lists the sales). */
   sale: HeroSale | null;
+  /** The live and upcoming sales, soonest first; shown as compact rows when there are two or more. */
+  sales?: readonly SaleListItem[];
   featured: FeaturedLot | null;
   example: ExampleLot | null;
   premiumPct: number;
@@ -69,16 +72,20 @@ interface HomeHeroProps {
 }
 
 /**
- * The Home hero for one sale (r5): the most-engaged lot as a photo with its
- * caption, then a dark green band with the status, the sale title, close or
- * opening time, the cost box, the call to action and, for guests, the deposit
- * and trust lines. On desktop the text sits left of the photo.
+ * The Home hero (home-r8). A dark green band with the status, the sale title,
+ * close or opening time (or, with two or more sales, "Live auctions" and one
+ * compact row per sale), the cost box, the call to action and, for guests, the
+ * deposit and trust lines. The most-engaged lot is the photo with its caption:
+ * on desktop it covers the right 56% of the band with a short green-to-clear
+ * fade on its left edge only, so all text sits on solid green; on phones it
+ * sits behind the top of the band and the green fades down into it.
  *
  * The call to action is state-aware: "Register to bid" for guests, "My bids"
  * when signed in (who also don't need the deposit and trust lines).
  *
  * @param props - Component props
- * @param props.sale - The sale to describe; null in the multi-sale state, where the band keeps only the cost box, call to action and trust lines
+ * @param props.sale - The sale to describe; null in the multi-sale state
+ * @param props.sales - The live and upcoming sales listed in the multi-sale state
  * @param props.featured - The featured lot, or null to show no photo
  * @param props.example - The lot the cost box works through, or null to hide it
  * @param props.premiumPct - Buyer's premium percentage
@@ -96,6 +103,7 @@ interface HomeHeroProps {
  */
 export function HomeHero({
   sale,
+  sales = [],
   featured,
   example,
   premiumPct,
@@ -113,20 +121,33 @@ export function HomeHero({
   const live = sale?.bucket === "live";
   const lots = formatLotCount(totalLots, totalCapped);
   const when = sale ? (live ? sale.effectiveEndTime : sale.startTime) : 0;
+  const multi = sale === null && sales.length >= 2;
+  const liveCount = sales.filter((s) => s.bucket === "live").length;
+  const upcoming = sales.filter((s) => s.bucket === "upcoming");
+  const summary = [
+    `${String(liveCount)} live`,
+    upcoming.length === 1
+      ? `1 opens ${formatSastDate(upcoming[0].startTime)}`
+      : upcoming.length > 1
+        ? `${String(upcoming.length)} upcoming`
+        : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <section
       data-slot="home-hero"
-      aria-labelledby={sale ? "home-hero-title" : undefined}
-      aria-label={sale ? undefined : "Register to bid"}
+      aria-labelledby={sale || multi ? "home-hero-title" : undefined}
+      aria-label={sale || multi ? undefined : "Register to bid"}
       className={cn(
-        "bg-hero text-hero-foreground lg:grid lg:grid-cols-[1fr_1fr]",
+        "relative bg-hero text-hero-foreground lg:flex lg:min-h-[480px] lg:items-center",
         className
       )}
     >
-      {sale && featured ? (
+      {featured ? (
         <Link
           to={`/auction/${featured._id}`}
-          className="relative block h-[220px] overflow-hidden sm:h-[300px] lg:order-2 lg:h-auto lg:min-h-[480px]"
+          className="relative block h-[240px] overflow-hidden sm:h-[300px] lg:absolute lg:inset-y-0 lg:right-0 lg:left-[44%] lg:h-auto"
         >
           <PhotoFrame
             src={featured.imageUrl}
@@ -135,7 +156,11 @@ export function HomeHero({
             eager
             className="rounded-none"
           />
-          <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-black/75 to-transparent px-4 pt-12 pb-3.5 text-white lg:px-8 lg:pb-5">
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 hidden w-[27%] bg-linear-to-r from-hero to-transparent lg:block"
+          />
+          <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-linear-to-t from-hero via-hero/70 to-transparent px-4 pt-16 pb-3.5 text-white lg:bg-linear-to-t lg:from-black/75 lg:via-transparent lg:to-transparent lg:px-8 lg:pb-5">
             <span className="min-w-0">
               <span className="block font-display text-lg leading-tight font-semibold lg:text-xl">
                 {featured.title}
@@ -151,7 +176,20 @@ export function HomeHero({
         </Link>
       ) : null}
 
-      <div className="px-4 pt-5 pb-6 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-8 lg:py-10 lg:pl-[max(2rem,calc((100vw-1200px)/2+1rem))]">
+      <div className="relative z-10 px-4 pt-5 pb-6 lg:w-[44%] lg:py-10 lg:pr-8 lg:pl-[max(2rem,calc((100vw-1200px)/2+1rem))]">
+        {multi ? (
+          <>
+            <h1
+              id="home-hero-title"
+              className="font-display text-[26px] leading-[1.15] font-semibold md:text-4xl"
+            >
+              <span className="md:hidden">Auctions</span>
+              <span className="hidden md:inline">Live auctions</span>
+            </h1>
+            <p className="num mt-1 text-sm text-hero-muted">{summary}</p>
+            <SaleList sales={sales} now={now} className="mt-3" />
+          </>
+        ) : null}
         {sale ? (
           <>
             <div className="flex items-center gap-2.5">
@@ -195,7 +233,7 @@ export function HomeHero({
             premiumPct={premiumPct}
             vatRatePct={vatRatePct}
             onFeesClick={onFeesClick}
-            className="mt-4 max-w-md"
+            className="mt-4 max-w-full md:max-w-md"
           />
         ) : null}
 
@@ -210,13 +248,15 @@ export function HomeHero({
               <Link to="/login">Register to bid</Link>
             )}
           </Button>
-          <Button
-            asChild
-            variant="outline"
-            className="flex-1 border-hero-muted/60 bg-transparent text-hero-foreground hover:bg-white/10 hover:text-hero-foreground sm:flex-none"
-          >
-            <Link to={lotsHref}>View all {lots}</Link>
-          </Button>
+          {multi ? null : (
+            <Button
+              asChild
+              variant="outline"
+              className="flex-1 border-hero-muted/60 bg-transparent text-hero-foreground hover:bg-white/10 hover:text-hero-foreground sm:flex-none"
+            >
+              <Link to={lotsHref}>View all {lots}</Link>
+            </Button>
+          )}
         </div>
 
         {signedIn ? null : (

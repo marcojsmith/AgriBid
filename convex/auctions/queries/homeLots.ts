@@ -119,14 +119,18 @@ export function passes(
 export { reserveStateOf };
 
 /**
- * Counts values and returns them largest first (ties alphabetical).
+ * Counts values and returns them largest first (ties alphabetical). Blank
+ * values are skipped (imported lots with an unknown make have none).
  *
  * @param values - The values to count.
  * @returns `[value, count]` pairs.
  */
 export function tally(values: readonly string[]): [string, number][] {
   const counts = new Map<string, number>();
-  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  for (const value of values) {
+    if (value.trim() === "") continue;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
   return [...counts.entries()].sort(
     (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
   );

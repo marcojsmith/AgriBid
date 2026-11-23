@@ -72,6 +72,7 @@ import {
   SITE_NAME,
   SITE_URL,
 } from "@/lib/seo";
+import { lotTitle } from "@/lib/lotTitle";
 import type { ShareResult } from "@/lib/share";
 import { isValidCallbackUrl } from "@/lib/utils";
 import { getViewSessionId } from "@/lib/viewSession";
@@ -221,7 +222,7 @@ function LotPage({ id }: { id: string | undefined }) {
     : "%2F";
   const registerHref = `/login?callbackUrl=${callbackUrl}`;
 
-  const title = `${lot.make} ${lot.model}`;
+  const title = lotTitle(lot);
   const provinceLabel = lot.province
     ? PROVINCE_LABELS[lot.province]
     : undefined;
@@ -589,6 +590,7 @@ function LotPage({ id }: { id: string | undefined }) {
                   phone={phone}
                   finance={{
                     name: finance.name,
+                    company: finance.company,
                     phone: finance.phone,
                     tel: financeTel,
                   }}
@@ -638,6 +640,7 @@ function LotPage({ id }: { id: string | undefined }) {
                   phone={phone}
                   finance={{
                     name: finance.name,
+                    company: finance.company,
                     phone: finance.phone,
                     tel: financeTel,
                   }}

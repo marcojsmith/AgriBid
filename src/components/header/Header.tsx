@@ -72,7 +72,7 @@ export const Header = () => {
           to="/"
           className="inline-flex min-h-11 shrink-0 items-center rounded-sm font-display text-[21px] font-bold tracking-tight text-primary"
         >
-          {branding?.appName ?? "AgriBid"}
+          AgriBid
         </Link>
 
         <nav
